@@ -284,30 +284,30 @@ export interface CliArgs {
 }
 
 const USAGE = [
-  "uso: flightdeckd [start] [--config <arquivo>] [--runtime fake|claude]",
+  "usage: flightdeckd [start] [--config <file>] [--runtime fake|claude]",
   "     flightdeckd --version",
-  "     flightdeckd db prune [--dry-run] [--config <arquivo>]",
-  "     flightdeckd backup [--out <arquivo>] [--config <arquivo>]",
-  "     flightdeckd restore <arquivo> [--config <arquivo>]   (com o daemon parado)",
-  "     flightdeckd update --from <binário> [--allow-downgrade] [--config <arquivo>]",
-  "     flightdeckd setup [--yes --folders <a,b>] [--config <arquivo>]   (primeira execução guiada)",
-  "     flightdeckd doctor [--config <arquivo>]   (o que falta para funcionar e como consertar)",
-  "     flightdeckd pair [--rotate] [--config <arquivo>]",
-  "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <arquivo>]",
-  "     flightdeckd history reindex [--config <arquivo>]",
-  "     flightdeckd hooks install|uninstall|status [--config <arquivo>]",
-  "     flightdeckd telemetry install|uninstall|status [--config <arquivo>]",
-  "     flightdeckd hook session-start --url <receptor> --token <token>   (chamado pelo Claude Code)",
-  "     flightdeckd channel --launch <id> --url <receptor> --token <token>   (servidor MCP do canal)",
-  "     flightdeckd claude [argumentos do claude]   (config em FLIGHTDECK_CONFIG)",
-  "     flightdeckd askpass <prompt>   (chamado pelo ssh via SSH_ASKPASS; config em FLIGHTDECK_CONFIG)",
-  "     flightdeckd mcp [--config <arquivo>]   (servidor MCP stdio para o Claude Code deste host)",
-  "     flightdeckd statusline [--config <arquivo>]   (uma linha para a statusline do Claude Code)",
-  "     flightdeckd message list|send <para> <texto>|idle <sessão>|read <sessão> [--last N]|team <time>",
-  "     flightdeckd action list [--project <id>] [--config <arquivo>]",
-  "     flightdeckd action run <nome> [--project <id>] [--param chave=valor ...] [--config <arquivo>]",
-  "     flightdeckd snippet list [--project-path <pasta>] [--query <texto>] [--config <arquivo>]",
-  "     flightdeckd snippet get <nome> [--project-path <pasta>] [--config <arquivo>]",
+  "     flightdeckd db prune [--dry-run] [--config <file>]",
+  "     flightdeckd backup [--out <file>] [--config <file>]",
+  "     flightdeckd restore <file> [--config <file>]   (with the daemon stopped)",
+  "     flightdeckd update --from <binary> [--allow-downgrade] [--config <file>]",
+  "     flightdeckd setup [--yes --folders <a,b>] [--config <file>]   (guided first run)",
+  "     flightdeckd doctor [--config <file>]   (what is missing for it to work, and how to fix it)",
+  "     flightdeckd pair [--rotate] [--config <file>]",
+  "     flightdeckd service install|uninstall|status|stop|start [--dry-run] [--config <file>]",
+  "     flightdeckd history reindex [--config <file>]",
+  "     flightdeckd hooks install|uninstall|status [--config <file>]",
+  "     flightdeckd telemetry install|uninstall|status [--config <file>]",
+  "     flightdeckd hook session-start --url <receiver> --token <token>   (called by Claude Code)",
+  "     flightdeckd channel --launch <id> --url <receiver> --token <token>   (the channel's MCP server)",
+  "     flightdeckd claude [claude arguments]   (config in FLIGHTDECK_CONFIG)",
+  "     flightdeckd askpass <prompt>   (called by ssh through SSH_ASKPASS; config in FLIGHTDECK_CONFIG)",
+  "     flightdeckd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
+  "     flightdeckd statusline [--config <file>]   (one line for Claude Code's statusline)",
+  "     flightdeckd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
+  "     flightdeckd action list [--project <id>] [--config <file>]",
+  "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
+  "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
+  "     flightdeckd snippet get <name> [--project-path <folder>] [--config <file>]",
 ].join("\n");
 
 const SERVICE_ACTIONS: readonly ServiceAction[] = [
@@ -352,7 +352,7 @@ class ArgReader {
 
 type Handler = (args: CliArgs, reader: ArgReader, value: () => string) => void;
 
-const invalid = (what: string, got: string | undefined, none = "(nenhuma)") =>
+const invalid = (what: string, got: string | undefined, none = "(none)") =>
   new Error(`${what}: ${got ?? none}\n${USAGE}`);
 
 /** The word after a command, which must be one of `allowed`. */
@@ -372,7 +372,7 @@ function subAction<T extends string>(
 /** A name after an action (`action run <name>`); it cannot be another flag. */
 function operand(reader: ArgReader, what: string): string {
   const next = reader.next();
-  if (next === undefined || next.startsWith("--")) throw new Error(`falta ${what}\n${USAGE}`);
+  if (next === undefined || next.startsWith("--")) throw new Error(`missing ${what}\n${USAGE}`);
   return next;
 }
 
@@ -421,7 +421,7 @@ const withNamedAction =
 const HANDLERS: Record<string, Handler> = {
   db: (args, reader) => {
     args.command = "db";
-    subAction(reader, ["prune"], "ação de db inválida");
+    subAction(reader, ["prune"], "invalid db action");
   },
   backup: setCommand("backup"),
   restore: (args, reader) => {
@@ -438,11 +438,11 @@ const HANDLERS: Record<string, Handler> = {
   channel: setCommand("channel"),
   mcp: setCommand("mcp"),
   statusline: setCommand("statusline"),
-  service: withAction("service", SERVICE_ACTIONS, "ação de serviço inválida"),
+  service: withAction("service", SERVICE_ACTIONS, "invalid service action"),
   hook: (args, reader) => {
     args.command = "hook";
     const event = reader.next();
-    if (event !== "session-start") throw new Error(`hook inválido: ${event ?? "(nenhum)"}`);
+    if (event !== "session-start") throw new Error(`invalid hook: ${event ?? "(none)"}`);
   },
   claude: (args, reader) => {
     args.command = "claude";
@@ -452,18 +452,18 @@ const HANDLERS: Record<string, Handler> = {
     args.command = "askpass";
     args.askpassPrompt = reader.takeRest().join(" ");
   },
-  hooks: withAction("hooks", ["install", "uninstall", "status"], "ação de hooks inválida"),
+  hooks: withAction("hooks", ["install", "uninstall", "status"], "invalid hooks action"),
   telemetry: withAction(
     "telemetry",
     ["install", "uninstall", "status"],
     "invalid telemetry action",
   ),
-  history: withAction("history", ["reindex"], "ação de histórico inválida"),
+  history: withAction("history", ["reindex"], "invalid history action"),
   action: withNamedAction(
     "action",
     ["list", "run"],
-    "ação inválida",
-    "o nome da ação",
+    "invalid action",
+    "the action name",
     (args, name) => {
       args.actionName = name;
     },
@@ -471,8 +471,8 @@ const HANDLERS: Record<string, Handler> = {
   snippet: withNamedAction(
     "snippet",
     ["list", "get"],
-    "ação de snippet inválida",
-    "o nome do snippet",
+    "invalid snippet action",
+    "the snippet name",
     (args, name) => {
       args.snippetName = name;
     },
@@ -482,15 +482,15 @@ const HANDLERS: Record<string, Handler> = {
     const action = subAction(
       reader,
       ["list", "send", "idle", "read", "team"],
-      "ação de mensagem inválida",
+      "invalid message action",
     );
     args.action = action as never;
     if (action === "send") {
-      args.to = operand(reader, "o endereço da sessão");
-      args.text = operand(reader, "o texto");
+      args.to = operand(reader, "the session address");
+      args.text = operand(reader, "the text");
     }
-    if (action === "idle" || action === "read") args.session = operand(reader, "a sessão");
-    if (action === "team") args.team = operand(reader, "o time");
+    if (action === "idle" || action === "read") args.session = operand(reader, "the session");
+    if (action === "team") args.team = operand(reader, "the team");
   },
   "--out": setValue((args, v) => {
     args.out = v;
@@ -525,7 +525,7 @@ const HANDLERS: Record<string, Handler> = {
   "--last": setValue((args, v) => {
     const last = Number(v);
     if (!Number.isInteger(last) || last < 1)
-      throw new Error(`--last quer um inteiro positivo\n${USAGE}`);
+      throw new Error(`--last needs a positive integer\n${USAGE}`);
     args.last = last;
   }),
   "--project": setValue((args, v) => {
@@ -539,7 +539,7 @@ const HANDLERS: Record<string, Handler> = {
   }),
   "--param": setValue((args, v) => {
     const [key, ...rest] = v.split("=");
-    if (!key || rest.length === 0) throw new Error(`--param quer chave=valor\n${USAGE}`);
+    if (!key || rest.length === 0) throw new Error(`--param needs key=value\n${USAGE}`);
     args.params = { ...args.params, [key]: rest.join("=") };
   }),
   "--dry-run": setFlag((args) => {
@@ -560,12 +560,11 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     const [flag = "", inline] = arg.startsWith("--") ? arg.split("=", 2) : [arg, undefined];
     const value = () => {
       const v = inline ?? reader.next();
-      if (v === undefined || v.startsWith("--"))
-        throw new Error(`${flag} precisa de um valor\n${USAGE}`);
+      if (v === undefined || v.startsWith("--")) throw new Error(`${flag} needs a value\n${USAGE}`);
       return v;
     };
     const handler = Object.hasOwn(HANDLERS, flag) ? HANDLERS[flag] : undefined;
-    if (!handler) throw new Error(`argumento desconhecido: ${arg}\n${USAGE}`);
+    if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
     handler(args, reader, value);
   }
   return args;
@@ -579,7 +578,7 @@ export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
-    super(`já em execução (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
+    super(`already running (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
   }
 }
 
@@ -1746,7 +1745,7 @@ export async function startDaemon(
   boardLoop.start();
   if (config.allowedRoots.length === 0) {
     logger.error(
-      'aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada (rode "flightdeckd setup")',
+      'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
     );
   }
 
@@ -2029,9 +2028,9 @@ async function stopInstalledDaemon(
 /** `service stop`: the daemon goes, the task or unit stays installed. */
 async function stopService(args: CliArgs, ctx: ServiceContext, deps: CliDeps): Promise<void> {
   const stopped = await stopInstalledDaemon(args, ctx, deps);
-  if (stopped === null) throw new Error("nenhum serviço instalado");
-  if (!stopped) throw new Error("o daemon do serviço não parou: pare-o à mão");
-  deps.log.log("daemon do serviço parado (o serviço continua instalado)");
+  if (stopped === null) throw new Error("no service installed");
+  if (!stopped) throw new Error("the service's daemon did not stop: stop it by hand");
+  deps.log.log("the service's daemon stopped (the service stays installed)");
 }
 
 /** `service start`: runs the task or unit and waits for `/health` of the service's config. */
@@ -2041,13 +2040,13 @@ async function startInstalledService(
   deps: CliDeps,
 ): Promise<void> {
   const installed = await serviceCommand(ctx);
-  if (!installed) throw new Error("nenhum serviço instalado");
+  if (!installed) throw new Error("no service installed");
   const url = healthUrl(await serviceConfig(args, installed));
   await startService(ctx);
   if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
-    throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
+    throw new Error(`the service's daemon did not answer on /health (${url})`);
   }
-  deps.log.log(`daemon do serviço respondendo em ${url}`);
+  deps.log.log(`the service's daemon is answering on ${url}`);
 }
 
 type ServiceContextOf = ReturnType<NonNullable<CliDeps["serviceContext"]>>;
@@ -2059,7 +2058,7 @@ async function uninstallInstalledService(
 ): Promise<void> {
   // Removing the task or unit alone would leave the daemon running: it goes first.
   if (!ctx.dryRun && (await stopInstalledDaemon(args, ctx, deps)) === false) {
-    deps.log.error("aviso: o daemon do serviço continua rodando; pare-o à mão");
+    deps.log.error("warning: the service's daemon is still running; stop it by hand");
   }
   printResult(deps, await uninstallService(ctx));
   if (ctx.dryRun) {
@@ -2078,7 +2077,7 @@ async function recordServiceClaude(
 ): Promise<void> {
   if (ctx.dryRun) {
     if (claude.path) {
-      deps.log.log(`claude.executablePath = "${claude.path}" (seria gravado em ${file})`);
+      deps.log.log(`claude.executablePath = "${claude.path}" (would be written to ${file})`);
     }
     return;
   }
@@ -2109,9 +2108,9 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
   if (ctx.platform === "win32") await startService(ctx);
   const url = healthUrl(await loadConfig(file));
   if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
-    throw new Error(`o daemon do serviço não respondeu em /health (${url})`);
+    throw new Error(`the service's daemon did not answer on /health (${url})`);
   }
-  deps.log.log(`daemon do serviço respondendo em ${url}`);
+  deps.log.log(`the service's daemon is answering on ${url}`);
 }
 
 /**
@@ -2122,7 +2121,7 @@ async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
   const config = await loadConfig(configPath(args));
   const lock = await acquireLock(config.dataDir);
   if (!lock) {
-    throw new AlreadyRunningError(config.dataDir, "pare o daemon antes de reconstruir o índice");
+    throw new AlreadyRunningError(config.dataDir, "stop the daemon before rebuilding the index");
   }
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   try {
@@ -2132,7 +2131,7 @@ async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
       excludeCwds: historyExcludes(config),
     });
     const { sessions, messages } = await history.rebuild();
-    deps.log.log(`histórico reconstruído: ${sessions} sessões, ${messages} mensagens`);
+    deps.log.log(`history rebuilt: ${sessions} sessions, ${messages} messages`);
   } finally {
     store.close();
     await lock.release();
@@ -2140,9 +2139,9 @@ async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
 }
 
 const HOOKS_LABELS: Record<HooksStatus, string> = {
-  installed: "instalados",
-  absent: "ausentes",
-  outdated: "desatualizados (rode hooks install de novo)",
+  installed: "installed",
+  absent: "absent",
+  outdated: "outdated (run hooks install again)",
 };
 
 /** Where Claude Code reads the user's hooks; resolved at call time (tests swap HOME). */
@@ -2177,14 +2176,12 @@ async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
   }
   if (args.action === "uninstall") {
     const removed = await uninstallHooks(settings);
-    deps.log.log(
-      removed ? `hooks removidos de ${settings}` : "nenhum hook do Flightdeck instalado",
-    );
+    deps.log.log(removed ? `hooks removed from ${settings}` : "no Flightdeck hook installed");
     return;
   }
   if (config.hooks.port === 0) {
     throw new Error(
-      "hooks.port 0 não serve para hooks instalados: defina uma porta fixa na config",
+      "hooks.port 0 does not work for installed hooks: set a fixed port in the config",
     );
   }
   if (!config.hooks.token) {
@@ -2193,9 +2190,7 @@ async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
     config = await loadConfig(file);
   }
   await installHooks(settings, hookTarget(config, self));
-  deps.log.log(
-    `hooks instalados em ${settings} (cópia anterior em settings.json.flightdeck-backup)`,
-  );
+  deps.log.log(`hooks installed in ${settings} (previous copy in settings.json.flightdeck-backup)`);
 }
 
 const TELEMETRY_LABELS: Record<TelemetryStatus, string> = {
@@ -2241,7 +2236,7 @@ async function runBackup(args: CliArgs, deps: CliDeps): Promise<void> {
       backup: config.backup,
       ...(deps.now ? { now: deps.now } : {}),
     }).backupNow(args.out);
-    deps.log.log(`backup criado: ${info.path} (${info.bytes} bytes)`);
+    deps.log.log(`backup created: ${info.path} (${info.bytes} bytes)`);
   } finally {
     store.close();
   }
@@ -2277,7 +2272,7 @@ function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
 }
 
 async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
-  if (!args.from) throw new Error("update precisa de --from <binário novo>");
+  if (!args.from) throw new Error("update needs --from <new binary>");
   const ctx = (deps.serviceContext ?? osServiceContext)(false);
   return runUpdate(
     { from: args.from, allowDowngrade: args.allowDowngrade === true },
@@ -2298,10 +2293,10 @@ async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
 
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
 async function runRestore(args: CliArgs, deps: CliDeps): Promise<void> {
-  if (!args.file) throw new Error("restore precisa do arquivo: flightdeckd restore <arquivo>");
+  if (!args.file) throw new Error("restore needs the file: flightdeckd restore <file>");
   const config = await loadConfig(configPath(args));
   const { beforeRestore } = await restoreBackup({ file: args.file, dataDir: config.dataDir });
-  deps.log.log(`banco restaurado de ${args.file}; o anterior ficou em ${beforeRestore}`);
+  deps.log.log(`database restored from ${args.file}; the previous one stayed at ${beforeRestore}`);
 }
 
 /** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
@@ -2316,7 +2311,7 @@ async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
       ...(deps.now ? { now: deps.now } : {}),
     });
     const counts = await maintenance.prune(args.dryRun === true);
-    deps.log.log(args.dryRun ? "simulação da limpeza (nada foi apagado):" : "limpeza feita:");
+    deps.log.log(args.dryRun ? "dry run of the cleanup (nothing was deleted):" : "cleanup done:");
     for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
   } finally {
     store.close();
@@ -2435,7 +2430,7 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       token: args.token ?? "",
       transport: deps.channelTransport ?? new StdioServerTransport(),
     }).catch((error: Error) => {
-      throw new Error(`não consegui abrir o canal do Flightdeck: ${error.message}`);
+      throw new Error(`could not open the Flightdeck channel: ${error.message}`);
     });
     void channel.closed.then(() => deps.exit(0));
     return null;
