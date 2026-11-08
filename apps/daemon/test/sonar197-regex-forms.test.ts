@@ -69,7 +69,7 @@ describe("knowledge feed: which paths are given", () => {
       fed("docs/decisions/a.txt"),
       fed("docs/decisions/a:b.md"),
       fed('docs/decisions/a"b.md'),
-      fed("docs/decisions/a‮b.md"),
+      fed(`docs/decisions/a${String.fromCodePoint(0x202e)}b.md`),
       fed("docs/decisions.md"),
     ]).toEqual([0, 0, 0, 0, 0, 0]);
   });
