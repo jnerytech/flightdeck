@@ -17,6 +17,8 @@ export function RailFlyout(
   }>,
 ) {
   const anchor = useRef<HTMLDivElement>(null);
+  // The panel closed because the person went elsewhere: the focus stays where they went.
+  const wentElsewhere = useRef(false);
   return (
     <Popover open={props.open} onOpenChange={props.onOpenChange}>
       <PopoverAnchor ref={anchor}>{props.trigger}</PopoverAnchor>
@@ -27,10 +29,15 @@ export function RailFlyout(
         className="rail-flyout p-2"
         // The icon's own press closes the panel; counting it as "outside" would reopen it.
         onInteractOutside={(event) => {
-          if (anchor.current?.contains(event.target as Node)) event.preventDefault();
+          if (anchor.current?.contains(event.target as Node)) return event.preventDefault();
+          wentElsewhere.current = true;
+        }}
+        onOpenAutoFocus={() => {
+          wentElsewhere.current = false;
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
+          if (wentElsewhere.current) return;
           anchor.current?.querySelector("button")?.focus();
         }}
       >

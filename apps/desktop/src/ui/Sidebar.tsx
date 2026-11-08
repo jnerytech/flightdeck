@@ -361,9 +361,11 @@ export function Sidebar(
     setFolded(next);
     props.store.setSidebarFolded(next);
   };
+  // The project tree beside the rail's Projects icon (#689). Only a collapsed bar has it open, so
+  // a bar that was expanded meanwhile does not bring it back on the next collapse.
+  const [projectsFlyout, setProjectsFlyout] = useState(false);
+  const projectsOpen = collapsed && projectsFlyout;
   /** The host whose removal is being confirmed. */
-  // The project tree beside the rail's Projects icon (#689).
-  const [projectsOpen, setProjectsOpen] = useState(false);
   const [removing, setRemoving] = useState<HostView | null>(null);
   const [renaming, setRenaming] = useState<HostView | null>(null);
   const icon = "size-4 shrink-0";
@@ -603,7 +605,7 @@ export function Sidebar(
               <RailFlyout
                 label={t("sidebar.projects")}
                 open={projectsOpen}
-                onOpenChange={setProjectsOpen}
+                onOpenChange={setProjectsFlyout}
                 trigger={
                   <NavButton
                     collapsed={collapsed}
@@ -611,7 +613,7 @@ export function Sidebar(
                     active={here === "projects"}
                     label={t("sidebar.projects")}
                     opens={{ expanded: projectsOpen }}
-                    onClick={() => setProjectsOpen(!projectsOpen)}
+                    onClick={() => setProjectsFlyout(!projectsOpen)}
                   />
                 }
               >
@@ -621,10 +623,10 @@ export function Sidebar(
                   filter={activeWorktreeFilter(state)}
                   stay={here === "sessions"}
                   allLink
-                  onPicked={() => setProjectsOpen(false)}
+                  onPicked={() => setProjectsFlyout(false)}
                   t={t}
                   go={(route) => {
-                    setProjectsOpen(false);
+                    setProjectsFlyout(false);
                     go(route);
                   }}
                 />

@@ -1170,7 +1170,6 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
-/* The popover that asks for a terminal's persona before it opens (issue #177). */
 /* The project tree beside the rail's Projects icon (#689): the sidebar's width, and it scrolls
    when the tree is taller than the window. */
 @utility rail-flyout {
@@ -1179,6 +1178,7 @@ html:not(:has([data-slot="status-bar"])) {
   overflow-y: auto;
 }
 
+/* The popover that asks for a terminal's persona before it opens (issue #177). */
 @utility terminal-ask {
   display: flex;
   width: 18rem;
