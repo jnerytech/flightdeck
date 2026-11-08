@@ -21,11 +21,14 @@ const SAFE: Record<string, string> = {
   "%": "",
 };
 
+/** A run of white space with a line break in it: the whole run is what a line break replaces. */
+const BREAK = /[\r\n]/;
+
 /** One safe line of at most `max` characters, ending in the note when it had to be cut. */
 export function azText(text: string, max: number): string {
   const line = text
     .trim()
-    .replace(/\s*[\r\n]+\s*/g, " — ")
+    .replace(/\s+/g, (run) => (BREAK.test(run) ? " — " : run))
     .replace(/[<>&|^"%]/g, (char) => SAFE[char] as string)
     .replace(/\s+/g, " ")
     .trim()
@@ -61,7 +64,9 @@ export function sanitizeAzArgs(args: string[]): string[] {
     if (flag === undefined) return arg;
     const max = AZ_TEXT_FLAGS[flag];
     if (max !== undefined) return azText(arg, max);
-    return flag === "--wiql" ? arg.replace(/\s*[\r\n]+\s*/g, " ").trim() : arg;
+    return flag === "--wiql"
+      ? arg.replace(/\s+/g, (run) => (BREAK.test(run) ? " " : run)).trim()
+      : arg;
   });
 }
 

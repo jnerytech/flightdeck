@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { azText, sanitizeAzArgs } from "../src/board/az-text.ts";
 import { stripRemote } from "../src/central/project-key.ts";
 import { projectName } from "../src/names/format.ts";
+import { trimEndOf, trimStartOf } from "../src/trim.ts";
 
 /**
  * Issue #363 (Sonar S8786): text cut at its end or at its line breaks (a remote, a folder, a card's
@@ -80,5 +81,25 @@ describe("trim-linear: azText and the --wiql line (a card's text made one safe l
     const text = `${" ".repeat(60_000)}a`;
     expect(took(() => azText(text, 60))).toBeLessThan(FAST_MS);
     expect(took(() => sanitizeAzArgs(["--wiql", text]))).toBeLessThan(FAST_MS);
+  });
+});
+
+describe("trim-linear: trimStartOf and trimEndOf (the helper the cuts above and the rule words use)", () => {
+  test.each([
+    ["//a//", "/", "a//", "//a"],
+    ["\"'a'\"", "\"'", "a'\"", "\"'a"],
+    ["abc", "/", "abc", "abc"],
+    ["///", "/", "", ""],
+    ["", "/", "", ""],
+    ["a/b", "/", "a/b", "a/b"],
+  ])("%j without %j at its start is %j and at its end is %j", (text, chars, start, end) => {
+    expect(trimStartOf(text, chars)).toBe(start);
+    expect(trimEndOf(text, chars)).toBe(end);
+  });
+
+  test("a long run is cut in a moment", () => {
+    const text = `${"/".repeat(120_000)}a${"/".repeat(120_000)}`;
+    expect(took(() => trimStartOf(text, "/"))).toBeLessThan(FAST_MS);
+    expect(took(() => trimEndOf(text, "/"))).toBeLessThan(FAST_MS);
   });
 });
