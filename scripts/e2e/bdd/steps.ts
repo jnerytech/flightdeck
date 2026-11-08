@@ -198,7 +198,7 @@ step(
 // What a scenario makes for itself: the card it created, the project folder it added.
 const made = new WeakMap<
   Context,
-  { card?: string; project?: string; entry?: string; counts?: number[] }
+  { card?: string; project?: string; entry?: string; counts?: number[]; guard?: string }
 >();
 const mine = (c: Context) => {
   const state = made.get(c) ?? {};
@@ -1050,4 +1050,65 @@ step(Then, "the second run of the card completes", async (c) => {
   await c.page
     .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
     .waitFor({ state: "detached", timeout: WAIT });
+});
+
+// The quota in the status bar opens both windows of a host and the guard "new cards wait from N%" (issue #1218).
+const quotaPanel = (c: Context) =>
+  c.page.getByRole("dialog", { name: c.t("quota.popover.label"), exact: true });
+const guardSelect = (c: Context, host: string) =>
+  quotaPanel(c).getByLabel(c.t("quota.guard.labelFor", { host }), { exact: true });
+
+step(Given, "I am on the queue of what needs me", async (c) => open(c, { name: "needs-you" }));
+
+step(When, "I press the quota in the status bar", async (c) => {
+  await c.page.locator('[data-slot="status-bar"] .status-quota').first().click({ timeout: WAIT });
+  await quotaPanel(c).waitFor({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the panel shows the 5 hours and 7 days windows of host {string}",
+  async (c, host = "") => {
+    for (const window of ["five_hour", "seven_day"] as const) {
+      const label = c.t("quota.meter", { window: c.t(`quota.windows.${window}`), host });
+      await quotaPanel(c).getByLabel(label, { exact: true }).waitFor({ timeout: WAIT });
+    }
+  },
+);
+
+step(
+  When,
+  "I make new cards wait from {string} on host {string}",
+  async (c, percent = "", host = "") => {
+    const select = guardSelect(c, host);
+    mine(c).guard = await select.inputValue();
+    await select.selectOption({ label: percent });
+  },
+);
+
+step(Then, "the guard of host {string} reads {string}", async (c, host = "", percent = "") => {
+  await waitFor(
+    () =>
+      guardSelect(c, host).evaluate(
+        (select, wanted) =>
+          (select as HTMLSelectElement).selectedOptions[0]?.textContent === wanted,
+        percent,
+      ),
+    `the guard reads ${percent}`,
+  );
+});
+
+step(When, "I reload the app and open the quota again", async (c) => {
+  await open(c, { name: "needs-you" });
+  await c.page.locator('[data-slot="status-bar"] .status-quota').first().click({ timeout: WAIT });
+  await quotaPanel(c).waitFor({ timeout: WAIT });
+});
+
+step(Then, "I put the guard of host {string} back to what it was", async (c, host = "") => {
+  const before = mine(c).guard ?? "";
+  await guardSelect(c, host).selectOption(before);
+  await waitFor(
+    async () => (await guardSelect(c, host).inputValue()) === before,
+    "the guard is back",
+  );
 });
