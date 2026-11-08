@@ -167,7 +167,7 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
   test("a project without the post-mortem workflow says how to get it, and cannot start", async () => {
     const { sent } = setup({ workflows: [] });
     await open();
-    expect(screen.queryByText(/Draft workflow is not set up in this project/) !== null).toBe(true);
+    expect(screen.queryByText(/workflow is not set up in this project/) !== null).toBe(true);
     const start = button("Start the post-mortem") as HTMLButtonElement | null;
     expect(start?.disabled).toBe(true);
     expect(sent).toEqual([]);

@@ -6,6 +6,7 @@ import { CardArena } from "@/components/card/card-arena";
 import { CardFields } from "@/components/card/card-fields";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
+import { PostMortem } from "@/components/card/post-mortem";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
@@ -34,6 +35,8 @@ export const CardDetail = memo(function CardDetail(props: {
   /** Opens Settings, section Assistant (the wand found no provider). */
   onOpenSettings(): void;
   onBack(): void;
+  /** Opens another card of the project (the post-mortem that was just started). */
+  onOpenCard(cardId: string): void;
 }) {
   const t = useT();
   const { store, hostId, cardId } = props;
@@ -163,6 +166,15 @@ export const CardDetail = memo(function CardDetail(props: {
               {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
             </InlineNotice>
           )}
+          <PostMortem
+            store={store}
+            hostId={hostId}
+            card={card}
+            run={run ?? null}
+            claudeSessionId={session?.claudeSessionId ?? null}
+            workflows={workflows}
+            onOpenCard={props.onOpenCard}
+          />
           {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
           {run?.steps
             .filter((step) => step.type === "gate" && step.status === "waiting")

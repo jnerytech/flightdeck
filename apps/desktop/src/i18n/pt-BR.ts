@@ -3841,6 +3841,19 @@ export const ptBR = {
     budgetLine: "{label}: {shown} de {max}",
     budgetNoLimit: "{label}: {shown} (sem limite)",
   },
+  postMortem: {
+    open: "Redigir um post-mortem",
+    title: "Redigir um post-mortem",
+    intro:
+      "Um card novo vai escrever o post-mortem deste como um arquivo Markdown e perguntar antes de abrir um pull request. Confira o que ele vai receber sobre o incidente e edite.",
+    loading: "Lendo a sessão",
+    field: "Incidente",
+    missing:
+      "O workflow Rascunho de post-mortem não está configurado neste projeto. Adicione em Workflows, Modelos, e tente de novo.",
+    start: "Iniciar o post-mortem",
+    cardTitle: "Post-mortem: {title}",
+    started: "Post-mortem iniciado: {title}",
+  },
   workflowsUi: {
     title: "Workflows de {project}",
     subtitle: "Lidos de .flightdeck/workflows na branch base do projeto.",
