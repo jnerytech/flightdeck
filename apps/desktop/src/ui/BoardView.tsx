@@ -109,10 +109,10 @@ const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
   done: CircleCheckBig,
 };
 
-/** Why "Iniciar card" is off (queued or running), else null. */
 /** What a card's own text lacks: fixed in its fields, not on the card's run (#1197). */
 const FIELD_NEEDS: ReadonlySet<string> = new Set(["criteria", "validation", "spec"]);
 
+/** Why "Iniciar card" is off (queued or running), else null. */
 function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
   if (block === "queued") return t("board.startQueued");
   return block === "running" ? t("board.startRunning") : null;

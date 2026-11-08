@@ -1303,8 +1303,9 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   **Descartar card** no lugar. Os cards que esperavam o excluído ficam livres dele, com um aviso.
 - **O selo Precisa de:** de um card do board é um botão. Para o que o texto do card não tem
   (critérios, uma nota de validação, uma especificação) abre o card com o título pronto para
-  editar; para um link de PR ou checks abre o card, onde o próximo passo lidera. Ele não é uma
-  parada do Tab: Enter no título do card abre o mesmo card.
+  editar; para um link de PR ou checks abre o card, onde o próximo passo aparece primeiro. Ele não
+  é uma parada do Tab: pelo teclado, Enter no título do card abre o card, e **M** e depois
+  **Editar** o abre com o título pronto para editar.
 
 ### Provedores de PR
 
