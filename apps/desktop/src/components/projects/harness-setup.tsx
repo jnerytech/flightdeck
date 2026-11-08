@@ -109,6 +109,8 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
 
   const preview = async () => {
     setOutcome(null);
+    // What an older apply wrote is not what the next one will: no commit of it.
+    setWrote(null);
     setTicked(false);
     const got = await store.hostCommand(hostId, "project.harness.preview", { path, parts });
     if (got) setShown(got);
@@ -127,6 +129,7 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       })
       .finally(() => setBusy(false));
     if (!result.ok) {
+      setWrote(null);
       const again = PREVIEW_AGAIN.has(result.reason ?? "");
       setOutcome({ text: refusalText(result.code, result.message, t, result), again });
       return;
@@ -134,12 +137,15 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
     const files = result.data.written.join(", ");
     setOutcome({ text: t("projectPage.harness.setup.done", { files }), again: false });
     const digests = result.data.digests;
-    setWrote(digests ? { files: result.data.written, digests } : null);
+    // Nothing written, nothing to commit.
+    const any = digests !== undefined && Object.keys(digests).length > 0;
+    setWrote(any ? { files: result.data.written, digests } : null);
     await props.onApplied();
   };
 
   // The files apply wrote, by their digests: the host commits them only if they are still so.
   const commit = async (made: { files: string[]; digests: Record<string, string> }) => {
+    if (busy) return;
     setAskingCommit(false);
     setBusy(true);
     const result = await store
@@ -150,6 +156,8 @@ export const HarnessSetup = memo(function HarnessSetup(props: Readonly<HarnessSe
       })
       .finally(() => setBusy(false));
     if (!result.ok) {
+      // A stale refusal will not pass on a retry: the files must be applied again first.
+      if (result.reason === "harness_commit_stale") setWrote(null);
       setOutcome({ text: refusalText(result.code, result.message, t, result), again: false });
       return;
     }
