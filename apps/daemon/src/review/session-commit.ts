@@ -87,14 +87,17 @@ export async function withDigests(root: string, files: DiffFile[]): Promise<Diff
   return out;
 }
 
+/** A chosen file as it was read: its bytes, or a link's text. */
+interface Read {
+  data: Buffer;
+  link: boolean;
+}
+
 /**
  * A chosen file's bytes as they are now, read once through a handle that does not follow a link
  * and is sized by that handle: a link's text, null when the file is gone, or too large to read.
  */
-async function bytesOf(
-  root: string,
-  path: string,
-): Promise<{ data: Buffer; link: boolean } | null | "too large"> {
+async function bytesOf(root: string, path: string): Promise<Read | null | "too large"> {
   const full = join(root, path);
   const info = await lstat(full).catch(() => null);
   if (info === null) return null;
@@ -256,8 +259,8 @@ export class SessionCommits {
     root: string,
     chosen: DiffFile[],
     sent: Readonly<Record<string, string>>,
-  ): Promise<Map<string, Buffer | null>> {
-    const out = new Map<string, Buffer | null>();
+  ): Promise<Map<string, Read | null>> {
+    const out = new Map<string, Read | null>();
     for (const file of chosen) {
       const bytes = await bytesOf(root, file.path);
       if (bytes === "too large") {
@@ -281,7 +284,7 @@ export class SessionCommits {
           },
         );
       }
-      out.set(file.path, bytes?.data ?? null);
+      out.set(file.path, bytes);
     }
     return out;
   }
@@ -292,21 +295,24 @@ export class SessionCommits {
    */
   private async holds(
     root: string,
-    expected: Map<string, Buffer | null>,
+    expected: Map<string, Read | null>,
     scratch: string,
   ): Promise<boolean> {
-    for (const [path, data] of expected) {
-      const committed = await this.git(root, ["rev-parse", "--verify", "--quiet", `HEAD:${path}`]);
-      if (data === null) {
-        if (committed.code === 0) return false;
+    for (const [path, read] of expected) {
+      // `<mode> <type> <id>\t<path>`, or nothing when the commit does not hold the path.
+      const entry = (await this.must(root, ["ls-tree", "HEAD", "--", path])).split(/\s+/);
+      if (read === null) {
+        if (entry[0] !== "") return false;
         continue;
       }
-      const file = join(scratch, "blob");
-      await writeFile(file, data);
-      const link = (await lstat(join(root, path)).catch(() => null))?.isSymbolicLink() === true;
-      const filters = link ? ["--no-filters"] : [`--path=${path}`];
-      const hashed = await this.git(root, ["hash-object", ...filters, "--", file]);
-      if (committed.code !== 0 || hashed.stdout.trim() !== committed.stdout.trim()) return false;
+      // A link checked as a link, a file as a file: a swap of one for the other is a change.
+      if ((entry[0] === "120000") !== read.link) return false;
+      const blob = join(scratch, "blob");
+      await writeFile(blob, read.data);
+      const hashed = read.link
+        ? await this.git(root, ["hash-object", "--no-filters", "--", blob])
+        : await this.git(root, ["hash-object", `--path=${path}`, "--", blob]);
+      if (hashed.code !== 0 || hashed.stdout.trim() !== entry[2]) return false;
     }
     return true;
   }
@@ -321,7 +327,7 @@ export class SessionCommits {
     base: string | null,
     paths: string[],
     message: string,
-    expected: Map<string, Buffer | null>,
+    expected: Map<string, Read | null>,
   ): Promise<string> {
     const index = resolve(root, await this.must(root, ["rev-parse", "--git-path", "index"]));
     const keep = await mkdtemp(join(tmpdir(), "fd-commit-index-"));
@@ -348,6 +354,8 @@ export class SessionCommits {
           onDisk.push(path);
       }
       const added = onDisk.length === 0 ? null : await this.git(root, ["add", "--", ...onDisk]);
+      // The commit the branch starts on (none in a repository with no commit yet): an undo goes there.
+      const before = await this.git(root, ["rev-parse", "--verify", "--quiet", "HEAD"]);
       const made =
         added === null || added.code === 0
           ? await this.git(root, ["commit", "-q", "-F", "-", "--", ...paths], message)
@@ -369,9 +377,18 @@ export class SessionCommits {
       }
       if (!(await this.holds(root, expected, keep))) {
         // Undone: the branch back on the commit it started from, the index as it was.
-        const parent = await this.git(root, ["rev-parse", "--verify", "--quiet", "HEAD~1"]);
-        if (parent.code === 0) await this.must(root, ["reset", "-q", "--soft", "HEAD~1"]);
-        else await this.must(root, ["update-ref", "-d", "HEAD"]);
+        const start = before.stdout.trim();
+        const undo =
+          before.code === 0
+            ? await this.git(root, ["reset", "-q", "--soft", start])
+            : await this.git(root, ["update-ref", "-d", "HEAD"]);
+        if (undo.code !== 0) {
+          throw new FlightdeckError(
+            "internal",
+            "a file changed during the commit, and the commit could not be undone",
+            "changes_commit_git",
+          );
+        }
         await putBack();
         throw stale();
       }
