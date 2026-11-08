@@ -120,3 +120,80 @@ describe("diff-comment-keys: what the line numbers leave alone (#1177)", () => {
     expect(screen.queryByText(/Click a line number to comment/) === null).toBe(true);
   });
 });
+
+// OpenCode review of #1179: in the split view a context row has no old-side number, so a file that
+// starts with a context line had no Tab stop at all; the picked line is the Tab stop; and at the
+// first or last number an arrow is left to the page, so it still scrolls.
+describe("diff-comment-keys: split view, the picked line and the ends (#1177)", () => {
+  const mixed = {
+    path: "m.ts",
+    oldPath: null,
+    status: "modified",
+    additions: 1,
+    deletions: 1,
+    uncommitted: true,
+    binary: false,
+    tooLarge: false,
+    hunks: [
+      {
+        header: "@@ -1,3 +1,3 @@",
+        lines: [
+          { op: " ", text: "same" },
+          { op: "-", text: "was" },
+          { op: "+", text: "is" },
+          { op: " ", text: "end" },
+        ],
+      },
+    ],
+  } as never;
+
+  test("split view: a file that starts with a context line has one Tab stop, and the arrows follow the screen", () => {
+    render(
+      <TContext.Provider value={translator("en")}>
+        <DiffView files={[mixed]} mode="split" selection={null} composer={null} onPick={() => {}} />
+      </TContext.Provider>,
+    );
+    expect(tabStops()).toEqual(["Comment on line 1 of m.ts"]);
+    const first = screen.getByRole("button", { name: "Comment on line 1 of m.ts" });
+    first.focus();
+    const at = () => document.activeElement?.getAttribute("aria-label") ?? "";
+    const order = [at()];
+    for (let i = 0; i < 3; i++) {
+      fireEvent.keyDown(document.activeElement as Element, { key: "ArrowDown" });
+      order.push(at());
+    }
+    expect(order).toEqual([
+      "Comment on line 1 of m.ts",
+      "Comment on old line 2 of m.ts",
+      "Comment on line 2 of m.ts",
+      "Comment on line 3 of m.ts",
+    ]);
+  });
+
+  test("the picked line is its file's Tab stop", () => {
+    render(
+      <TContext.Provider value={translator("en")}>
+        <DiffView
+          files={[file("a.ts", 4), file("b.ts", 3)]}
+          mode="unified"
+          selection={{ path: "a.ts", side: "new", start: 3, end: 3 }}
+          composer={null}
+          onPick={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    expect(tabStops()).toEqual(["Comment on line 3 of a.ts", "Comment on line 1 of b.ts"]);
+  });
+
+  test("an arrow past the first or last number is left to the page", () => {
+    render(view("en", () => {}));
+    const first = screen.getByRole("button", { name: "Comment on line 1 of a.ts" });
+    const last = screen.getByRole("button", { name: "Comment on line 4 of a.ts" });
+    // fireEvent returns false when the handler called preventDefault.
+    expect([
+      fireEvent.keyDown(first, { key: "ArrowUp" }),
+      fireEvent.keyDown(last, { key: "ArrowDown" }),
+      fireEvent.keyDown(first, { key: "ArrowDown" }),
+    ]).toEqual([true, true, false]);
+  });
+});
