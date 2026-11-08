@@ -62,7 +62,14 @@ interface GhNode {
 
 /** The text of the first `[...]` with something inside, which is where gh names the missing scopes. */
 export function firstBracketed(text: string): string | undefined {
-  return /\[([^\]]+)\]/.exec(text)?.[1];
+  let open = text.indexOf("[");
+  while (open >= 0) {
+    const close = text.indexOf("]", open + 1);
+    if (close < 0) return undefined;
+    if (close > open + 1) return text.slice(open + 1, close);
+    open = text.indexOf("[", close + 1);
+  }
+  return undefined;
 }
 
 /** The refusal a gh failure means; what it said is never repeated beyond its last line. */
