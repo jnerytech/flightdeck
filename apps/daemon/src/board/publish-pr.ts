@@ -50,10 +50,16 @@ const PUSH_ENV = { GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" };
  * token may ride. Git quotes the address in its messages, and `changes.get` shows the push address.
  */
 export function withoutCredentials(text: string): string {
-  return text.replace(/([a-z][a-z0-9+.-]*:\/\/)([^\s'"]*)/gi, (_, scheme: string, rest: string) => {
-    const address = rest.replace(/^[^/]*@/, "");
-    return scheme + address.replace(/[?#].*$/, "");
-  });
+  // A scheme starts where its run of scheme characters starts (the lookbehind), so each run is
+  // read once; the digits and signs before its first letter are kept as they were.
+  return text.replace(
+    /(?<![a-z0-9+.-])([0-9+.-]*[a-z][a-z0-9+.-]*:\/\/)([^\s'"]*)/gi,
+    (_, scheme: string, rest: string) => {
+      const address = rest.replace(/^[^/]*@/, "");
+      const cut = address.search(/[?#]/);
+      return scheme + (cut === -1 ? address : address.slice(0, cut));
+    },
+  );
 }
 
 /**
