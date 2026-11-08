@@ -228,3 +228,45 @@ describe("botao-motivo-linha: in a dialog's footer the reason grows inward (#106
     ]).toEqual([true, true, true, true, true, false]);
   });
 });
+
+// #1270: a field with its action (a card's Save spec file, Send adjustment) puts the button at the
+// row's right end, at the card's edge. Its reason hung from the button's left and grew right, past
+// the card at 1280 and cut by the window at 640. There it hangs from the row's right edge (the card's
+// edge) and grows left, under the field, never wider than the row: hung from the button, a stale
+// field's Save (with Use theirs after it) would push a 20rem reason past the card's left edge at 390.
+// happy-dom has no layout: this reads the rules; the narrow guard measures them.
+describe("botao-motivo-linha: beside a field the reason grows inward (#1270)", () => {
+  // Inside the field-with-action utility: the stylesheet keeps no class selectors of its own (base-ui).
+  const utility = () => {
+    const at = css.indexOf("@utility field-with-action {");
+    return at < 0 ? "" : css.slice(at, css.indexOf("\n}\n", at));
+  };
+  const RULE = /& > \.action-button-box \.action-reason \{([^}]*)\}/;
+  const BOX = /& > \.action-button-box \{([^}]*)\}/;
+  const ROW = /@utility field-with-action \{([^&]*)/;
+
+  test("the reason of a field's action button hangs from the row's right, never wider than the row", () => {
+    const { container } = render(
+      <div className="field-with-action">
+        <input aria-label="Spec file" />
+        <ActionButton disabled disabledReason="Type the spec file's path to save it.">
+          Save spec file
+        </ActionButton>
+      </div>,
+    );
+    const row = container.querySelector(".field-with-action");
+    const box = screen.queryByText("Type the spec file's path to save it.")?.parentElement ?? null;
+    const rule = utility().match(RULE)?.[1] ?? "";
+    const own = utility().match(BOX)?.[1] ?? "";
+    const outer = utility().match(ROW)?.[1] ?? "";
+    expect([
+      box?.parentElement === row,
+      /position: relative;/.test(outer),
+      /position: static;/.test(own),
+      /right: 0;/.test(rule),
+      /left: auto;/.test(rule),
+      /text-align: right;/.test(rule),
+      /max-width: min\(20rem, 100%\);/.test(rule),
+    ]).toEqual([true, true, true, true, true, true, true]);
+  });
+});
