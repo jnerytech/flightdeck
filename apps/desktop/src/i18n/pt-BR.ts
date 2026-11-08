@@ -2298,6 +2298,8 @@ export const ptBR = {
     gone: "O que isto citava não existe mais.",
     dismiss: "Descartar",
     asks: "Pergunta: {question}",
+    keys: "A aprova · N nega",
+    keysHigh: "Segure o botão para aprovar · N nega",
     runs: "Quer executar: {command}",
     edits: "Quer alterar {file}",
     uses: "Quer usar {tool}",

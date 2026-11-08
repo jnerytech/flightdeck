@@ -2299,6 +2299,12 @@ unblocked. A badge on the bell counts the unread ones.
   and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
   repeated requests become one row with a count ("3 times"). A row whose card or request is gone
   says so and has **Dismiss**.
+- A request that still waits is answered from its row: its risk chip, then **Approve** and **Deny**
+  (with the row focused, **A** approves and **N** denies, as in Needs you). A high-risk request is
+  approved by holding the button, never by a key. A question, a plan, a workflow gate and a request
+  for a secret have no buttons: click the row to open it. An answered request leaves the bell, also
+  one answered somewhere else (while its host is offline the row stays, since nothing says it was
+  answered). After an answer the focus goes to the row that took its place, or to the panel's title.
 - Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
   nothing.
 - Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert

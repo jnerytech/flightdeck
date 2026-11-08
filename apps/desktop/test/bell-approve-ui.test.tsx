@@ -192,6 +192,33 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     expect(rowCount()).toBe(1);
   });
 
+  test("after an answer the focus stays in the panel: on the row that took its place, or the title", async () => {
+    await setup({
+      pending: [request(), request({ requestId: "r2" })],
+      entries: [
+        entry("r1", { at: new Date(Date.now() - 1000).toISOString() }),
+        entry("r2", { subject: "Second session" }),
+      ],
+    });
+    await open();
+    const row = (name: RegExp) => panelButton(name) as HTMLElement;
+    // The newest entry is first: answer it with the keyboard on its row.
+    row(/Second session/).focus();
+    await act(async () => {
+      fireEvent.keyDown(row(/Second session/), { key: "a" });
+    });
+    expect(await settleMaybe(() => document.activeElement === panelButton(/Backend tests/))).toBe(
+      true,
+    );
+    await act(async () => {
+      fireEvent.keyDown(row(/Backend tests/), { key: "n" });
+    });
+    const title = within(screen.getByRole("dialog")).getByRole("heading", {
+      name: "Notifications",
+    });
+    expect(await settleMaybe(() => document.activeElement === title)).toBe(true);
+  });
+
   test("in Portuguese the chip, the buttons and the keys are in Portuguese", async () => {
     const { answered } = await setup({ lang: "pt-BR" });
     await open();

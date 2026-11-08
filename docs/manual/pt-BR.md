@@ -2306,6 +2306,13 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   time e o host, e diz o que pede em palavras ("Pergunta: qual banco usar?"), não o nome da
   ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("3 vezes").
   Uma linha cujo card ou pedido não existe mais avisa e tem **Descartar**.
+- Um pedido que ainda espera é respondido na própria linha: o selo de risco, depois **Aprovar** e
+  **Negar** (com a linha focada, **A** aprova e **N** nega, como em Precisa de você). Um pedido de
+  risco alto é aprovado segurando o botão, nunca por uma tecla. Uma pergunta, um plano, um portão de
+  workflow e um pedido de segredo não têm botões: clique na linha para abri-lo. Um pedido respondido
+  sai do sino, também o respondido em outro lugar (com o host offline a linha fica, pois nada diz que
+  foi respondido). Depois de uma resposta o foco vai para a linha que ocupou o lugar, ou para o título
+  do painel.
 - Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida**: ele marca
   aquela linha e não abre nada.
 - Clique numa entrada para marcar só ela como lida e abrir a tela dela (um pedido abre no card dele;
