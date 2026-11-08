@@ -9,7 +9,7 @@ import { budgetLabel } from "../src/lib/budgets.ts";
  */
 describe("budget-label: a budget's name reads in each language (#1216)", () => {
   const project = { scope: "project", projectKey: "github.com/acme/app", period: "month" } as const;
-  const host = { scope: "host", period: "day" } as const;
+  const host = { scope: "host", projectKey: null, period: "day" } as const;
 
   test("en: 'app budget (month)' and 'host budget (day)'", () => {
     const t = translator("en");
