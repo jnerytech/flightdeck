@@ -395,7 +395,10 @@ class FakeRun implements AgentRun {
         { type: "addDirectories", directories: [this.opts.cwd], destination: "session" },
         { type: "setMode", mode: "acceptEdits", destination: "session" },
       ],
-      done: (updated) => `arquivo criado: ${String(updated?.file_path ?? input.file_path)}`,
+      done: (updated) => {
+        const file = [updated?.file_path, input.file_path].find((v) => typeof v === "string");
+        return `arquivo criado: ${file ?? ""}`;
+      },
     });
   }
 
