@@ -4268,6 +4268,9 @@ export const ptBR = {
     searchPlaceholder: "Nome, host, branch ou pasta",
     sortBy: "Ordenar por",
     clearHost: "Limpar o filtro de host: {host}",
+    newProject: "Novo projeto",
+    newOn: "Em {host}",
+    noHostOnline: "Nenhum host está online para adicionar um projeto.",
     sorts: {
       activity: "Última atividade",
       name: "Nome",

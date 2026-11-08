@@ -867,6 +867,12 @@ um traço quando o host não informa custos. Digite na busca para filtrar por no
 pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
 precisa de atenção primeiro.
 
+**Novo projeto**, no alto à direita da página, adiciona um projeto: abre o formulário de adição (as
+pastas das sessões recentes, uma pasta digitada ou escolhida, **Adicionar**) e a página do projeto
+abre quando ele é adicionado. Com um host online, ou com o filtro de host ligado, o formulário é
+daquele host; com vários hosts online ele pergunta primeiro qual ("Em alfa", "Em beta"). Sem
+nenhum host online o botão fica desligado e diz isso.
+
 Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões** (a lista, filtrada pelo projeto: um chip "Projeto: nome" com × limpa o filtro), aos
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
 configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.

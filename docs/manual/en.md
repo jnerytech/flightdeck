@@ -872,6 +872,12 @@ when the host does not report costs. Type in the search box to narrow the list b
 branch or folder, and use **Sort by** to order it by last activity, name, cost this week or what
 needs attention first.
 
+**New project**, at the top right of the page, adds a project: it opens the add form (the folders of
+recent sessions, a typed or browsed folder, **Add**) and the project's page opens once it is added.
+With one host online, or with a host filter on, the form is for that host; with several hosts
+online it first asks which one ("On alfa", "On beta"). With no host online the button is off and
+says so.
+
 Click a card to open the project's page. It links the project's **Board**, **Sessions**,
 **Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
 settings, where the folder, base branch, setup and personas are edited).

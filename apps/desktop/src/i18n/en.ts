@@ -4259,6 +4259,9 @@ export const en: Dictionary = {
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",
     clearHost: "Clear host filter: {host}",
+    newProject: "New project",
+    newOn: "On {host}",
+    noHostOnline: "No host is online to add a project to.",
     sorts: {
       activity: "Last activity",
       name: "Name",
