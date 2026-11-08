@@ -1859,6 +1859,48 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
   },
 
+  // Issue #932: with a host chosen in the switcher, opening one of its projects keeps that host; with
+  // the tabs of all hosts, opening another host's project says the switch, and its toast's button
+  // goes back. (The demo's projects are alfa's, so beta is the host the switch leaves.)
+  "projetos-host": async (c) => {
+    const switcher = (host: string) =>
+      c.page.getByRole("button", { name: c.t("shell.host", { host }), exact: true });
+    const card = (name: string, host: string) =>
+      c.page.getByRole("button", {
+        name: c.t("projectsOverview.open", { name, host }),
+        exact: true,
+      });
+    await open(c, { name: "host", host: ALFA });
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    await open(c, { name: "all-projects" });
+    await card("flightdeck-web", "alfa").click();
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    const said = c.page.getByText(c.t("toast.switchedHost", { host: "alfa" }), { exact: true });
+    if ((await said.count()) > 0) throw new Error("abrir um projeto do próprio host avisou troca");
+    // Beta in the switcher, with the tabs of all hosts: alfa's projects are listed there too.
+    await switcher("alfa").click();
+    await c.page.getByRole("menuitemradio", { name: new RegExp(`^${BETA}`) }).click();
+    await switcher(BETA).click();
+    await c.page
+      .getByRole("menuitemcheckbox", { name: c.t("shell.allHostsTabs"), exact: true })
+      .click();
+    await c.page.keyboard.press("Escape");
+    // The sidebar's Projects, not a reload: the switcher's pick is this window's.
+    await c.page
+      .locator("aside")
+      .first()
+      .getByRole("button", { name: new RegExp(`^${c.t("sidebar.projects")}`) })
+      .first()
+      .click();
+    await card("flightdeck-web", "alfa").click();
+    await said.waitFor({ timeout: WAIT });
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("toast.backTo", { host: BETA }), exact: true })
+      .click();
+    await switcher(BETA).waitFor({ timeout: WAIT });
+  },
+
   // Issue #931: the Projects page adds a project. The route names alfa, so one host is in scope and
   // the button opens the add form for it at once (the pick between hosts is a component test).
   "projeto-novo": async (c) => {

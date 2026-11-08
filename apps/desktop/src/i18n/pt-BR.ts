@@ -402,6 +402,8 @@ export const ptBR = {
     noHost: "Nenhum host online informa isto.",
   },
   toast: {
+    switchedHost: "Mudou para {host}",
+    backTo: "Voltar para {host}",
     copied: "Copiado",
     details: "Detalhes",
     close: "Fechar",
