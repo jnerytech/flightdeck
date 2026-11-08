@@ -45,6 +45,20 @@ export function ToolRow(
   const note = (text: string) => (
     <p className="border-t px-3 py-2 text-muted-foreground text-xs">{text}</p>
   );
+  const body = () => {
+    if (detail === "loading" || detail === undefined) return note(t("reader.toolLoading"));
+    if (detail === null) return note(t("reader.toolMissing"));
+    return (
+      <>
+        <ToolCallBody
+          input={detail.input}
+          result={detail.result}
+          waiting={t("reader.toolNoResult")}
+        />
+        {detail.truncated && note(t("reader.toolTruncated"))}
+      </>
+    );
+  };
   return (
     <figure aria-label={props.label} className="m-0 rounded-md border bg-card text-sm">
       <button
@@ -62,21 +76,7 @@ export function ToolRow(
         />
         {line}
       </button>
-      {open &&
-        (detail === "loading" || detail === undefined ? (
-          note(t("reader.toolLoading"))
-        ) : detail === null ? (
-          note(t("reader.toolMissing"))
-        ) : (
-          <>
-            <ToolCallBody
-              input={detail.input}
-              result={detail.result}
-              waiting={t("reader.toolNoResult")}
-            />
-            {detail.truncated && note(t("reader.toolTruncated"))}
-          </>
-        ))}
+      {open && body()}
     </figure>
   );
 }

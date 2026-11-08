@@ -141,12 +141,9 @@ export const CostsPage = memo(function CostsPage(props: {
   const [routeHost, setRouteHost] = useState<string | null>(props.host ?? null);
   const [routeProject, setRouteProject] = useState<string | null>(props.projectKey ?? null);
   // Home opens Costs with `__all__` when several hosts have costs: every host, for this visit.
-  const routeScope: DataScope | null =
-    routeHost === null
-      ? null
-      : routeHost === ALL_HOSTS
-        ? ALL_SCOPE
-        : { kind: "host", hostId: routeHost };
+  let routeScope: DataScope | null = null;
+  if (routeHost === ALL_HOSTS) routeScope = ALL_SCOPE;
+  else if (routeHost !== null) routeScope = { kind: "host", hostId: routeHost };
   const kept = activeScope(keptScope, state.hosts, state.hostsLoaded);
   /** The project whose costs these are, if one: the route's, else the kept scope's. */
   const projectKey =
