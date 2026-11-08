@@ -1478,6 +1478,7 @@ export const en: Dictionary = {
     bg: "background sessions",
     projectTrust: "project trust",
     harnessStack: "reading the project's stack",
+    knowledge: "reading the project's documents",
     harnessPreview: "previewing Claude Code setup changes",
     keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
