@@ -33,7 +33,7 @@ export function ContractDialog(
      * The dialog closed: the card it asked about gets the focus, the menu it came from is gone.
      * Left out, the focus goes back to the control that opened it.
      */
-    onRestoreFocus?: ((cardId: string) => void) | undefined;
+    onRestoreFocus?: (cardId: string) => void;
     /** The question is about starting the card, not moving it (issue #78, slice 3a). */
     start?: boolean;
   }>,

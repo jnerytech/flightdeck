@@ -45,12 +45,12 @@ export function FileViewer(
     target: string;
     path: string;
     /** The file's changes against HEAD, live from the Changes tab's diff; absent when unchanged. */
-    diff?: DiffFile | undefined;
+    diff?: DiffFile;
     /** The file's whole path on the host, once known: a host of this computer opens it here. */
     full?: string | null;
     /** Opens at this line (1-based) and column, selected and in view: a `path:line` from a terminal (#506). */
-    line?: number | undefined;
-    col?: number | undefined;
+    line?: number;
+    col?: number;
     onClose(): void;
   }>,
 ) {

@@ -163,9 +163,10 @@ async function run(work: string): Promise<void> {
     const deadline = Date.now() + TIMEOUT_MS;
     let update: { available?: boolean; version?: string } | undefined;
     while (!update?.available && Date.now() < deadline) {
-      const info = await client.send("host.info", {});
+      const asking = client.send("host.info", {});
+      const info = await asking; // NOSONAR: a poll, one look per pause
       update = info.ok ? (info.data as { update?: NonNullable<typeof update> }).update : undefined;
-      if (!update?.available) await Bun.sleep(50);
+      if (!update?.available) await Bun.sleep(50); // NOSONAR: a poll, one look per pause
     }
     if (update?.version !== "9.9.9") throw new Error(`update: ${JSON.stringify(update)}`);
     log(`atualização disponível: ${update.version}`);

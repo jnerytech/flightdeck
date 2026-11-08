@@ -57,7 +57,7 @@ async function until<T>(
     const found = await check();
     if (found) return found;
     if (Date.now() > deadline) throw new Error(`timeout esperando ${what}`);
-    await Bun.sleep(40);
+    await Bun.sleep(40); // NOSONAR: a poll, one look per pause
   }
 }
 
@@ -363,10 +363,11 @@ async function run(work: string): Promise<void> {
     let paused = "";
     for (let i = 0; i < 14 && !paused; i++) {
       const [from, to] = i % 2 === 0 ? [claudeA1, a2] : [claudeA2, a1];
-      const result = await from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
+      const sending = from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
         to: `host-a/${to}`,
         text: `vai e volta ${i}`,
       });
+      const result = await sending; // NOSONAR: the pair bounces one message at a time until the loop is refused
       if (result.data.resultado === "recusada") paused = result.data.motivo ?? "";
     }
     if (!paused.includes("loop")) throw new Error(`o laço devia ser recusado: ${paused}`);
