@@ -394,6 +394,7 @@ const validCommands: Record<CommandType, unknown> = {
   "runenv.get": { cardId: "k" },
   "runenv.watch": {},
   "run.get": { runId: "r" },
+  "run.resume": { runId: "r1", confirm: true },
   "run.watch": {},
   "gate.respond": { runId: "r", stepId: "approve", attempt: 1, decision: "reject", note: "não" },
   "quota.get": {},
