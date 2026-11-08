@@ -7,7 +7,7 @@ import {
   type AssistantResult,
   AssistantRunPayload,
 } from "./assistant.ts";
-import { ColumnContract } from "./board-contracts.ts";
+import { ColumnContract, SPEC_PATH_MAX, SpecState, specPathProblem } from "./board-contracts.ts";
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
@@ -116,7 +116,7 @@ export const PersonaRef = z
   })
   .strict()
   .refine((ref) => (ref.id === undefined) !== (ref.definition === undefined), {
-    message: "informe id ou definition, um dos dois",
+    message: "give id or definition, one of the two",
   });
 export type PersonaRef = z.infer<typeof PersonaRef>;
 
@@ -843,6 +843,10 @@ export const Card = z.object({
   estimateHours: z.number().nullable().default(null),
   /** Issue #78: what the person did to validate the work, a note a column can ask for. */
   validationNote: z.string().nullable().default(null),
+  /** Issue #78: the spec file the card names in its worktree; `null` is `docs/specs/<slug>.md`. */
+  specPath: z.string().nullable().default(null),
+  /** Issue #78: what the host last found of the spec file; `null` until it looked. */
+  specState: SpecState.nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -962,7 +966,7 @@ export const ReviewTarget = z
   .string()
   .regex(
     /^(session|card|terminal|project):.+$/,
-    "alvo session:<id>, card:<id>, terminal:<id> ou project:<id>",
+    "target session:<id>, card:<id>, terminal:<id> or project:<id>",
   );
 
 /** Issue #797: a search over a repository, by path or by content; a fixed string, never a pattern. */
@@ -2056,9 +2060,7 @@ export const TelemetrySummary = z.object({
 });
 export type TelemetrySummary = z.infer<typeof TelemetrySummary>;
 
-const BgId = z
-  .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "id de sessão em segundo plano inválido");
+const BgId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "invalid background session id");
 
 /** Phase 27: a Claude Code background session (`claude --bg`), as `claude agents --json` lists it. */
 export const BgSession = z.object({
@@ -2453,6 +2455,8 @@ export const ExternalSession = z.object({
   persona: SessionPersona.optional(),
   meta: SessionMeta.optional(),
   summary: SessionLine.optional(),
+  /** #935: the mode its hooks last reported (Shift+Tab in the terminal included); absent until one does. */
+  permissionMode: PermissionMode.optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 
@@ -2698,7 +2702,7 @@ export type VaultDaemonRequester = z.infer<typeof VaultDaemonRequester>;
 export const SessionIdentity = z
   .object({ session: z.string().min(1).optional(), launch: z.string().min(1).optional() })
   .refine((who) => (who.session === undefined) !== (who.launch === undefined), {
-    message: "informe a sessão (session) ou o lançamento (launch), um dos dois",
+    message: "give the session (session) or the launch (launch), one of the two",
   });
 export type SessionIdentity = z.infer<typeof SessionIdentity>;
 
@@ -3162,6 +3166,13 @@ export const Command = z.discriminatedUnion("type", [
       estimateHours: z.number().min(0).max(1000).nullable().optional(),
       /** Issue #78: the validation note; empty text or `null` clears it. */
       validationNote: z.string().max(4000).nullable().optional(),
+      /** Issue #78: the spec file in the worktree, relative; `null` goes back to the default. */
+      specPath: z
+        .string()
+        .max(SPEC_PATH_MAX)
+        .refine((path) => specPathProblem(path) === null)
+        .nullable()
+        .optional(),
       ...CardDeps,
     }),
   ),
@@ -3177,6 +3188,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("card.start", CardStartPayload),
   cmd("card.get", CardIdPayload),
+  /** Issue #78: looks at the card's spec file again and answers the card. */
+  cmd("card.spec", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   /** Issue #100: teleport, the source side (feature `teleport`). */
@@ -3513,6 +3526,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("teams.pause", z.object({ team: z.string().min(1) })),
   cmd("teams.resume", z.object({ team: z.string().min(1) })),
   cmd("teams.close", z.object({ team: z.string().min(1), confirm: z.boolean().optional() })),
+  /** Issue #934: deletes a closed team whose members are not at work; its sessions stay. */
+  cmd("teams.delete", z.object({ team: z.string().min(1) })),
   /** A message from Flightdeck to every member ("mandar a todos"). */
   cmd("teams.message", z.object({ team: z.string().min(1), text: z.string().min(1) })),
   /** With `as`, only a member of the team may ask (the MCP tool does). */
@@ -3749,7 +3764,7 @@ export const Command = z.discriminatedUnion("type", [
       .object({ plugin: z.string().min(1).optional(), dir: z.string().min(1).optional() })
       .strict()
       .refine((p) => (p.plugin === undefined) !== (p.dir === undefined), {
-        message: "informe plugin ou dir, um dos dois",
+        message: "give plugin or dir, one of the two",
       }),
   ),
   cmd("plugins.previewUpdate", z.object({ plugin: z.string().min(1) }).strict()),
@@ -3766,7 +3781,7 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict()
       .refine((p) => (p.plugin === undefined) !== (p.dir === undefined), {
-        message: "informe plugin ou dir, um dos dois",
+        message: "give plugin or dir, one of the two",
       }),
   ),
   cmd(
@@ -3870,11 +3885,11 @@ export const Command = z.discriminatedUnion("type", [
         name: z.string().min(1).max(120).optional(),
         persona: z
           .string()
-          .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+          .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "invalid persona id")
           .optional(),
       })
       .refine((p) => p.cardId !== undefined || (p.cwd !== undefined && p.prompt !== undefined), {
-        message: "bg.start pede cwd e prompt, ou um card",
+        message: "bg.start needs cwd and prompt, or a card",
       }),
   ),
   cmd("telemetry.status", z.object({}).strict()),
@@ -3936,12 +3951,12 @@ export const Command = z.discriminatedUnion("type", [
           .object({
             resume: z
               .string()
-              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "id de sessão inválido")
+              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "invalid session id")
               .optional(),
             /** Phase 20: `--persona <id>` (a persona of the host, the project or the pack). */
             persona: z
               .string()
-              .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "id de persona inválido")
+              .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "invalid persona id")
               .optional(),
           })
           .optional(),
@@ -3949,7 +3964,7 @@ export const Command = z.discriminatedUnion("type", [
         rows: TerminalRows,
       })
       .refine((payload) => !(payload.command && payload.claude), {
-        message: "command e claude não podem ir juntos",
+        message: "command and claude cannot go together",
       }),
   ),
   /**
@@ -4098,7 +4113,7 @@ export const Command = z.discriminatedUnion("type", [
         projectPath: z.string().optional(),
       })
       .strict()
-      .refine((p) => p.id !== undefined || p.name !== undefined, { message: "id ou name" }),
+      .refine((p) => p.id !== undefined || p.name !== undefined, { message: "give id or name" }),
   ),
   cmd("snippets.remove", z.object({ id: z.string() }).strict()),
   /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
@@ -4196,7 +4211,7 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict()
       .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
-        message: "informe sessionId ou claudeSessionId, um dos dois",
+        message: "give sessionId or claudeSessionId, one of the two",
       }),
   ),
   /** Leaves the role that was applied: back to normal. */
@@ -4210,7 +4225,7 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict()
       .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
-        message: "informe sessionId ou claudeSessionId, um dos dois",
+        message: "give sessionId or claudeSessionId, one of the two",
       }),
   ),
   /** The personas that hold in the project, as the agents `persona-<id>` a session can call. */
@@ -5077,6 +5092,7 @@ export interface CommandResults {
   "teams.pause": TeamInfo;
   "teams.resume": TeamInfo;
   "teams.close": TeamInfo;
+  "teams.delete": TeamInfo;
   "teams.message": { delivered: number; refused: number };
   "teams.status": TeamStatus;
   "teams.watch": undefined;
@@ -5129,6 +5145,7 @@ export interface CommandResults {
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
   "card.get": Card;
+  "card.spec": Card;
   "workflow.list": { workflows: WorkflowInfo[] };
   "workflow.validate": WorkflowInfo;
   "workflow.trust": WorkflowInfo;

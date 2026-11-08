@@ -78,7 +78,7 @@ const exportButton = () => screen.queryByRole("button", { name: "Exportar CSV" }
 /** Opens the scope menu and picks a host (or every host) from it. */
 async function pick(current: string, choice: string) {
   const trigger = menu(current) as HTMLElement;
-  expect(trigger === null).toBe(false);
+  expect(trigger).not.toBeNull();
   await act(async () => {
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   });
@@ -95,8 +95,8 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await act(async () => store.router.push({ name: "costs" }));
     await settle(() => total() === "US$ 7.00");
     expect(total()).toBe("US$ 7.00");
-    expect(menu(ptBR.scope.all) === null).toBe(false);
-    expect(screen.queryByLabelText("Host dos custos") === null).toBe(true);
+    expect(menu(ptBR.scope.all)).not.toBeNull();
+    expect(screen.queryByLabelText("Host dos custos") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 
   test("choosing a host in the menu scopes the screen to it, and the scope is the store's", async () => {
@@ -107,7 +107,7 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await settle(() => total() === "US$ 2.00");
     expect(total()).toBe("US$ 2.00");
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
-    expect(exportButton() === null).toBe(false);
+    expect(exportButton()).not.toBeNull();
   });
 
   test("a scope kept from the last run is what the screen opens on", async () => {
@@ -115,7 +115,7 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await act(async () => store.router.push({ name: "costs" }));
     await settle(() => total() === "US$ 5.00");
     expect(total()).toBe("US$ 5.00");
-    expect(menu("beta") === null).toBe(false);
+    expect(menu("beta")).not.toBeNull();
   });
 
   test("a route's host wins for that visit and never rewrites the scope; picking in the menu ends it", async () => {
@@ -124,12 +124,12 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await act(async () => store.router.push({ name: "costs", host: "hb" }));
     await settle(() => total() === "US$ 5.00");
     expect(total()).toBe("US$ 5.00");
-    expect(menu("beta") === null).toBe(false);
+    expect(menu("beta")).not.toBeNull();
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
     await pick("beta", "alfa");
     await settle(() => total() === "US$ 2.00");
     expect(total()).toBe("US$ 2.00");
-    expect(menu("alfa") === null).toBe(false);
+    expect(menu("alfa")).not.toBeNull();
   });
 
   test("a scoped host that reports no costs gets a notice and no numbers, and Show all hosts brings them back", async () => {
@@ -140,9 +140,9 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
       () =>
         screen.queryByText(fill(ptBR.scope.noCosts, { host: "gama" }), { exact: false }) !== null,
     );
-    expect(total() === null).toBe(true);
+    expect(total()).toBeNull();
     const all = screen.queryByRole("button", { name: ptBR.scope.showAll });
-    expect(all === null).toBe(false);
+    expect(all).not.toBeNull();
     await act(async () => {
       fireEvent.click(all as HTMLElement);
     });
@@ -156,30 +156,30 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await act(async () => store.router.push({ name: "costs" }));
     await settle(() => total() === "US$ 7.00");
     const button = exportButton();
-    expect(button === null).toBe(false);
+    expect(button).not.toBeNull();
     await act(async () => {
       fireEvent.click(button as HTMLElement);
     });
     await settle(() => saved.length === 1);
     const lines = (saved[0]?.text ?? "").split("\n");
     expect(lines[0]?.startsWith("host,day,")).toBe(true);
-    expect(lines.filter((line) => line.startsWith("alfa,")).length).toBe(1);
-    expect(lines.filter((line) => line.startsWith("beta,")).length).toBe(1);
+    expect(lines.filter((line) => line.startsWith("alfa,"))).toHaveLength(1);
+    expect(lines.filter((line) => line.startsWith("beta,"))).toHaveLength(1);
   });
 
   test("on All hosts the quota is one line asking for a host, with a button per host that scopes the screen", async () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
     await settle(() => total() === "US$ 7.00");
-    expect(screen.queryByText(ptBR.costsUi.quotaPick) === null).toBe(false);
+    expect(screen.queryByText(ptBR.costsUi.quotaPick)).not.toBeNull();
     const alfa = screen.queryByRole("button", { name: "alfa" });
-    expect(alfa === null).toBe(false);
+    expect(alfa).not.toBeNull();
     await act(async () => {
       fireEvent.click(alfa as HTMLElement);
     });
     await settle(() => total() === "US$ 2.00");
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
-    expect(screen.queryByText(ptBR.costsUi.quotaPick) === null).toBe(true);
+    expect(screen.queryByText(ptBR.costsUi.quotaPick) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 });
 
@@ -196,19 +196,19 @@ describe("costs-scope: a project scope", () => {
     await act(async () => store.router.push({ name: "costs" }));
     await settle(() => total() === "US$ 8.00");
     const trigger = menu(ptBR.scope.all) as HTMLElement;
-    expect(trigger === null).toBe(false);
+    expect(trigger).not.toBeNull();
     await act(async () => {
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
     });
     await settleMaybe(() => screen.queryByRole("group", { name: ptBR.scope.projects }) !== null);
     const found = screen.queryByRole("group", { name: ptBR.scope.projects });
-    expect(found === null).toBe(false);
+    expect(found).not.toBeNull();
     const group = found as HTMLElement;
     const listed = within(group)
       .queryAllByRole("menuitemradio")
       .map((item) => item.textContent);
     const entry = within(group).queryByRole("menuitemradio", { name: label(Z) });
-    expect(entry === null).toBe(false);
+    expect(entry).not.toBeNull();
     await act(async () => {
       fireEvent.click(entry as HTMLElement);
     });
@@ -281,6 +281,6 @@ describe("costs-scope: a project scope", () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
     await settle(() => total() === "US$ 7.00");
-    expect(screen.queryByRole("combobox", { name: "Projeto" }) === null).toBe(true);
+    expect(screen.queryByRole("combobox", { name: "Projeto" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 });

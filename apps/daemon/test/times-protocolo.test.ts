@@ -95,6 +95,7 @@ describe("times-protocolo", () => {
       ["teams.pause", { team: "t" }],
       ["teams.resume", { team: "t" }],
       ["teams.close", { team: "t", confirm: true }],
+      ["teams.delete", { team: "t" }],
       ["teams.message", { team: "t", text: "oi" }],
       ["teams.status", { team: "t" }],
       ["teams.watch", {}],
@@ -140,6 +141,15 @@ describe("times-protocolo", () => {
     expect(
       await app.data("teams.update", { team: team?.id, goal: "Novo objetivo." }),
     ).toMatchObject({ goal: "Novo objetivo." });
+    // An open team is not deleted (issue #934); one that does not exist is not found.
+    expect(await app.request("teams.delete", { team: team?.id })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state", reason: "team_delete_open" },
+    });
+    expect(await app.request("teams.delete", { team: "nada" })).toMatchObject({
+      ok: false,
+      error: { code: "not_found" },
+    });
     expect(await app.request("teams.close", { team: team?.id })).toMatchObject({
       ok: false,
       error: { code: "invalid_state" },

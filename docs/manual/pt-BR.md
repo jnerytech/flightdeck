@@ -1062,6 +1062,15 @@ aparece mascarado e como **Oculto**, e não abre.
   pergunta antes só num projeto cujo contrato de Em andamento confirma critérios de aceite, e só
   para um card sem eles (nenhum item `- [ ] …` na descrição): **Iniciar mesmo assim** segue. Por
   padrão Em andamento só avisa, então Iniciar não pergunta nada.
+- **Um arquivo de especificação** (#78). Um projeto pode fazer uma coluna pedir uma
+  **especificação**: o worktree do card precisa ter o arquivo que o card indica,
+  `docs/specs/<nome do card>.md`, a menos que você defina outro caminho no campo **Arquivo da
+  especificação** do card (um caminho relativo para um arquivo `.md` dentro do worktree). A página do
+  card diz o que o host achou ("Especificação encontrada: <primeiro título>" ou "Nenhum arquivo de
+  especificação em <caminho>") e **Verificar de novo** olha mais uma vez; um movimento para uma
+  coluna que pede isso olha o arquivo antes. O host só confere que o arquivo existe (um arquivo
+  comum, não vazio, que não seja um link, dentro do worktree) e lê o primeiro título: nunca lê nem
+  envia o resto.
 - **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
   estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
 - **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
@@ -2518,6 +2527,12 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
     recebe o aviso com o nome e o card da nova executora);
   - tirar um membro: a sessão dele é parada, a coordenadora é avisada e o card fica no board;
   - encerrar o time, com confirmação.
+- **Excluir um time encerrado:** um time encerrado mantém o card dele até você excluí-lo. O menu **⋯**
+  do card tem **Excluir time**: desligado num time aberto (diz "Encerre o time primeiro"), e num
+  encerrado pergunta antes, com o nome do time. O que sai é o registro do time e o card dele na
+  página Times. O que fica é a sessão de cada membro, com a transcrição e o histórico, e os cards
+  deles no board: só deixam de ser do time. O host recusa enquanto um membro trabalha (rodando ou
+  esperando uma resposta); tente de novo quando descansarem. Todos os apps conectados tiram o card.
 - **A cota:** quando a cota do plano passa do limite (`quota.pauseAt`), o time pausa sozinho. Você
   recebe uma notificação, e a linha diz "pausado pela cota". Quando a janela reinicia, o time
   retoma e avisa.

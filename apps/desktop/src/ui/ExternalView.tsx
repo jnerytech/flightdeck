@@ -77,6 +77,11 @@ export function ExternalView(
         })}
         controls={
           <>
+            {session?.permissionMode && (
+              <span className="text-muted-foreground text-xs">
+                {t("session.modeChip", { mode: t(`modes.${session.permissionMode}.name`) })}
+              </span>
+            )}
             {session?.controllable && (
               <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
                 <Radio aria-hidden="true" className="size-3" />

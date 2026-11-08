@@ -150,19 +150,31 @@ async function requestedPersona(
   }
 }
 
-/** Writes the MCP config that gives the session the Flightdeck channel; returns its path. */
+/**
+ * Writes the MCP config that gives the session the Flightdeck channel; returns its path, or `null`
+ * when it cannot be written: the session then opens with neither flag, since `--mcp-config` of a
+ * file that is not there and a channel named after a server that is not configured make claude
+ * print a warning for a channel that does nothing (#936).
+ */
 async function writeChannelConfig(
   opts: RunClaudeOptions,
   launchId: string,
   url: string,
   token: string,
-): Promise<string> {
+): Promise<string | null> {
   const dir = join(opts.config.dataDir, "channels");
-  await mkdir(dir, { recursive: true });
   const path = join(dir, `${launchId}.json`);
   const [command, ...rest] = opts.self;
   const args = [...rest, "channel", "--launch", launchId, "--url", url, "--token", token];
-  await writeFile(path, JSON.stringify({ mcpServers: { flightdeck: { command, args } } }));
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path, JSON.stringify({ mcpServers: { flightdeck: { command, args } } }));
+  } catch {
+    opts.log.error(
+      "flightdeckd: não foi possível gravar a configuração do canal; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
+    );
+    return null;
+  }
   return path;
 }
 
@@ -241,7 +253,8 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
   const token = opts.config.hooks.token;
   const mcpConfigPath = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
-  if (!mcpConfigPath && !print) {
+  // Without a receptor or a token: the daemon is down. A config that failed to write said so itself.
+  if (!mcpConfigPath && !print && !(url && token)) {
     opts.log.error(
       "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
     );

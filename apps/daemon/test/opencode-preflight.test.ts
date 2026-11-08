@@ -283,22 +283,22 @@ describe("opencode-preflight", () => {
     const { preflight, calls, tick } = setup();
     await preflight.check("/w");
     await preflight.check("/w");
-    expect(calls.length).toBe(3);
+    expect(calls).toHaveLength(3);
     await preflight.check("/other");
-    expect(calls.length).toBe(6);
+    expect(calls).toHaveLength(6);
     tick(PREFLIGHT_CACHE_MS + 1);
     await preflight.check("/w");
-    expect(calls.length).toBe(9);
+    expect(calls).toHaveLength(9);
     let fingerprint = "a";
     const changing = setup({}, { scan: async () => ({ findings: [], fingerprint }) });
     await changing.preflight.check("/w");
     fingerprint = "b";
     await changing.preflight.check("/w");
-    expect(changing.calls.length).toBe(6);
+    expect(changing.calls).toHaveLength(6);
     const refused = setup({ saved: [{ id: "p", action: "shell", resource: "x" }] });
     await refusal(refused.preflight.check("/w"));
     await refusal(refused.preflight.check("/w"));
-    expect(refused.calls.length).toBe(6);
+    expect(refused.calls).toHaveLength(6);
   });
 
   test("the answers recorded from OpenCode 2.2.5 pass as they are", async () => {
@@ -349,7 +349,7 @@ describe("opencode-preflight", () => {
   test("two checks of one folder at once share one run of the three commands", async () => {
     const { preflight, calls } = setup();
     await Promise.all([preflight.check("/w"), preflight.check("/w")]);
-    expect(calls.length).toBe(3);
+    expect(calls).toHaveLength(3);
   });
 
   test("a binary replaced since the daemon checked it refuses until it is checked again", async () => {
@@ -364,7 +364,7 @@ describe("opencode-preflight", () => {
       reason: "opencode_changed",
       params: { version: "2.2.5" },
     });
-    expect(calls.length).toBe(3);
+    expect(calls).toHaveLength(3);
   });
 
   test("maskResource cuts at 40 characters and hides token-like runs", () => {

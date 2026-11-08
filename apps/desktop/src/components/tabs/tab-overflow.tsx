@@ -131,9 +131,9 @@ function TabList(
         onKeyDown={onKeyDown}
       />
       {shown.length === 0 ? (
-        <p role="status" className="px-2 py-1.5 text-muted-foreground text-sm">
+        <output className="block px-2 py-1.5 text-muted-foreground text-sm">
           {t("tabs.filterNone")}
-        </p>
+        </output>
       ) : (
         <div
           id={`${base}-list`}

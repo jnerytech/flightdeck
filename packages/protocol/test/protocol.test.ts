@@ -113,6 +113,7 @@ const validCommands: Record<CommandType, unknown> = {
     persona: { id: "revisor", language: "en" },
   },
   "card.get": { cardId: "c" },
+  "card.spec": { cardId: "c" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
   "assistant.run": {
@@ -267,6 +268,7 @@ const validCommands: Record<CommandType, unknown> = {
   "teams.pause": { team: "t1" },
   "teams.resume": { team: "t1" },
   "teams.close": { team: "t1", confirm: true },
+  "teams.delete": { team: "t1" },
   "teams.message": { team: "t1", text: "parem" },
   "teams.status": { team: "t1" },
   "teams.watch": {},

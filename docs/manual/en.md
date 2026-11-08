@@ -1059,6 +1059,13 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   in a project whose In progress contract confirms acceptance criteria and only for a card with
   none (no `- [ ] …` item in its description): **Start anyway** goes on. By default In progress
   only hints, so Start asks nothing.
+- **A spec file** (#78). A project can make a column ask for a **spec**: the card's worktree must
+  have the spec file the card names, `docs/specs/<card name>.md` unless you set another path in the
+  card's **Spec file** field (a relative path to a `.md` file inside the worktree). The card page
+  says what the host found ("Spec found: <first heading>" or "No spec file at <path>") and **Check
+  again** looks once more; a move to a column that asks for it looks at the file first. The host
+  checks only that the file is there (a plain, non-empty file, not a link, inside the worktree) and
+  reads its first heading: it never reads or sends the rest.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
 - **Discard…** shows one dialog with every selected card, and says what goes with each: a
@@ -2512,6 +2519,12 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   - take a member out: its session is stopped, the coordinator is told, and its card stays on the
     board;
   - close the team, with a confirmation.
+- **Deleting a closed team:** a closed team keeps its card until you delete it. Its card's **⋯**
+  menu has **Delete team**: off on an open team (it says "Close the team first"), and on a closed
+  one it asks first, naming the team. What goes is the team record and its card on the Teams page.
+  What stays is every member's session, with its transcript and history, and their board cards:
+  they are only taken out of the team. The host refuses while a member is at work (running, or
+  waiting for an answer); try again once they rest. Every connected app drops the card.
 - **The quota:** when the plan quota crosses the limit (`quota.pauseAt`), the team pauses by
   itself. You get a notification, and the row says "paused by the quota". When the window
   restarts, the team resumes and tells you.

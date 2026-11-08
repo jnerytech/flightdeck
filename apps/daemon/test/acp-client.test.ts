@@ -78,7 +78,7 @@ describe("acp-client", () => {
     await agent.wrote(1);
     agent.send({ jsonrpc: "2.0", id: 1, error: { code: -32000, message: "auth_required" } });
     const error = await call;
-    expect(error instanceof AcpError).toBe(true);
+    expect(error).toBeInstanceOf(AcpError);
     expect((error as AcpError | null)?.code).toBe(-32000);
     expect((error as AcpError | null)?.message).toBe("auth_required");
   });
@@ -179,7 +179,7 @@ describe("acp-client", () => {
     expect(((await failure(agent.client.request("x", {}))) as AcpError | null)?.code).toBe(
       ACP_CLOSED,
     );
-    expect(agent.written.length).toBe(1);
+    expect(agent.written).toHaveLength(1);
   });
 
   test("close closes the agent's stdin", () => {
@@ -198,7 +198,7 @@ describe("acp-client", () => {
     await agent.wrote(1);
     agent.send({ jsonrpc: "2.0", id: 1, result: null });
     await done;
-    expect(logs.length).toBe(2);
+    expect(logs).toHaveLength(2);
     expect(logs.join("\n")).not.toContain("SECRET");
   });
 
@@ -226,7 +226,7 @@ describe("acp-client", () => {
     agent.send({ jsonrpc: "2.0", id: 1, result: { stopReason: "end_turn" } });
     expect(await poll(() => answer)).toEqual({ stopReason: "end_turn" });
     expect(closedWith).toBe(null);
-    expect(logs.length).toBe(4);
+    expect(logs).toHaveLength(4);
     expect(logs.join("\n")).not.toContain("SECRET");
   });
 
