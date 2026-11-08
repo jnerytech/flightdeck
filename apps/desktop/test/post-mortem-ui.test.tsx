@@ -38,7 +38,7 @@ function setup(
     language?: "en" | "pt-BR";
     card?: Record<string, unknown>;
     run?: Record<string, unknown> | null;
-    workflows?: unknown[];
+    workflows?: unknown[] | null;
     claudeSessionId?: string | null;
     created?: boolean;
     started?: boolean;
@@ -52,8 +52,15 @@ function setup(
   const recaps: string[] = [];
   const success: Array<{ text: string; open: (() => void) | undefined }> = [];
   const opened: string[] = [];
-  store.hostCommand = (async (_hostId: string, type: string, payload: unknown) => {
+  const retries: unknown[] = [];
+  store.hostCommand = (async (
+    _hostId: string,
+    type: string,
+    payload: unknown,
+    commandOptions?: { retry?: boolean },
+  ) => {
     sent.push([type, payload]);
+    retries.push(commandOptions?.retry);
     if (type === "card.create") {
       return options.created === false ? null : { id: "new1", title: "Post-mortem: Fix the login" };
     }
@@ -75,12 +82,12 @@ function setup(
         card={{ ...CARD, ...options.card } as never}
         run={(options.run ?? null) as never}
         claudeSessionId={options.claudeSessionId === undefined ? "s1" : options.claudeSessionId}
-        workflows={(options.workflows ?? [WORKFLOW]) as never}
+        workflows={(options.workflows === undefined ? [WORKFLOW] : options.workflows) as never}
         onOpenCard={(id) => opened.push(id)}
       />
     </TContext.Provider>,
   );
-  return { store, sent, recaps, success, opened };
+  return { store, sent, recaps, success, opened, retries };
 }
 
 const click = (el: Element) =>
@@ -169,6 +176,36 @@ describe("Draft a post-mortem from a failed card (issue #79)", () => {
     const { sent } = setup({ workflows: [] });
     await open();
     expect(screen.queryByText(/draft workflow is not set up in this project/i) !== null).toBe(true);
+    const start = button("Start the post-mortem") as HTMLButtonElement | null;
+    expect(start?.disabled).toBe(true);
+    expect(sent).toEqual([]);
+  });
+
+  test("a refused command is not offered a retry that would make a card without starting it", async () => {
+    const { sent, retries } = setup();
+    await open();
+    await press("Start the post-mortem");
+    await settleMaybe(() => sent.length === 2);
+    expect(retries).toEqual([false, false]);
+  });
+
+  test("a card made but refused a start is said, and Start again only starts that card", async () => {
+    const { sent } = setup({ started: false });
+    await open();
+    await press("Start the post-mortem");
+    await settleMaybe(() => sent.length === 2);
+    await settleMaybe(() => screen.queryByText(/was made but did not start/) !== null);
+    expect(screen.queryByText(/was made but did not start/) !== null).toBe(true);
+    expect(dialog("Draft a post-mortem") !== null).toBe(true);
+    await press("Start the post-mortem");
+    await settleMaybe(() => sent.length === 3);
+    expect(sent.map(([type]) => type)).toEqual(["card.create", "card.start", "card.start"]);
+  });
+
+  test("while the project's workflows are not known yet, it neither warns nor starts", async () => {
+    const { sent } = setup({ workflows: null });
+    await open();
+    expect(screen.queryByText(/workflow is not set up in this project/i) === null).toBe(true);
     const start = button("Start the post-mortem") as HTMLButtonElement | null;
     expect(start?.disabled).toBe(true);
     expect(sent).toEqual([]);

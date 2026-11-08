@@ -33,8 +33,8 @@ export function PostMortem(
     run: WorkflowRun | null;
     /** The Claude session of the card, when it has one: its summary joins the facts. */
     claudeSessionId: string | null;
-    /** The workflows the project can start: trusted and valid. */
-    workflows: WorkflowInfo[];
+    /** The workflows the project can start: trusted and valid; null until the host has answered. */
+    workflows: WorkflowInfo[] | null;
     onOpenCard(cardId: string): void;
   }>,
 ) {
@@ -45,7 +45,7 @@ export function PostMortem(
   const [text, setText] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   if (card.notice === null && run?.status !== "failed") return null;
-  const available = props.workflows.some((w) => w.name === WORKFLOW);
+  const available = props.workflows?.some((w) => w.name === WORKFLOW) ?? false;
 
   const onOpenChange = (next: boolean) => {
     setOpen(next);
