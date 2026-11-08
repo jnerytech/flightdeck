@@ -125,7 +125,10 @@ export function ChangesPanel(
   };
 
   const send = async () => {
-    const sent = await store.hostCommand(hostId, "review.send", { target });
+    const sent = await store.hostCommand(hostId, "review.send", {
+      target,
+      language: t.lang,
+    });
     if (!sent) return;
     store.success(t(`changes.sentVia.${sent.via}`));
     if (sent.via === "copy") await store.copyText(sent.text);
@@ -285,12 +288,12 @@ export function ChangesPanel(
         </Button>
       </div>
       {undo && (
-        <div role="status" className="flex items-center gap-2 text-sm">
+        <output className="flex items-center gap-2 text-sm">
           <span>{t("changes.reverted", { path: undo.path })}</span>
           <Button variant="outline" size="sm" onClick={() => void undoRevert(undo.path)}>
             {t("changes.undo")}
           </Button>
-        </div>
+        </output>
       )}
       {changes.files.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("changes.empty")}</p>
@@ -322,7 +325,12 @@ export function ChangesPanel(
           {...(props.onCompose
             ? {
                 onCompose: () =>
-                  props.onCompose?.(reviewMessage(comments.filter((c) => c.state === "draft"))),
+                  props.onCompose?.(
+                    reviewMessage(
+                      comments.filter((c) => c.state === "draft"),
+                      t.lang,
+                    ),
+                  ),
               }
             : {})}
         />

@@ -39,6 +39,8 @@ export function TrustPanel(
     canCommit?: boolean;
     /** The host can draft a CLAUDE.md with its model (#75, G1). */
     canDraft?: boolean;
+    /** The host keeps a project's Markdown setup as a template (#75, T2). */
+    canShare?: boolean;
   }>,
 ) {
   const { store, hostId, path } = props;
@@ -203,9 +205,11 @@ export function TrustPanel(
                   onApplied: read,
                   canCommit: props.canCommit === true,
                   canDraft: props.canDraft === true,
+                  canTemplates: props.canShare === true,
                 }
               : null
           }
+          share={props.canShare ? { store, hostId, path } : null}
         />
       )}
     </>

@@ -207,7 +207,7 @@ describe("knowledge-status-ui: changing the status of a document (#76)", () => {
       ).not.toBeNull(),
     );
     expect(sent.filter(([type]) => type === "knowledge.setStatus")).toHaveLength(1);
-    await waitFor(() => expect(document.activeElement === picker("Use the outbox")).toBe(true));
+    await waitFor(() => expect(document.activeElement === picker("Use the outbox")).toBe(true)); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     // The list read again says Obsolete, so there is nothing left to change.
     await waitFor(() => expect(picker("Use the outbox").value).toBe("obsolete"));
     expect(canApply("Use the outbox")).toBe(false);

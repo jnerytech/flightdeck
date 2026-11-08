@@ -43,8 +43,7 @@ const lastLine = (text: string) =>
   text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
-    .pop()
+    .findLast(Boolean)
     ?.slice(0, 300) ?? "";
 
 interface Run {

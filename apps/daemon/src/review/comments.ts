@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { realpath } from "node:fs/promises";
 import { relative } from "node:path";
-import { inSequence, reviewMessage } from "@flightdeck/protocol";
+import { inSequence, type ReviewLanguage, reviewMessage } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
@@ -244,7 +244,7 @@ export class ReviewComments {
    * Sends the target's drafts as one review: to the card's session, the managed session, the
    * channel of a terminal session, or back as text to copy. Marked sent only once delivered.
    */
-  async send(target: string): Promise<ReviewSent> {
+  async send(target: string, language?: ReviewLanguage): Promise<ReviewSent> {
     const drafts = this.db
       .query<Row, [string]>(
         "SELECT * FROM review_comments WHERE target = ? AND state = 'draft' ORDER BY created_at, rowid",
@@ -254,7 +254,10 @@ export class ReviewComments {
       throw new FlightdeckError("invalid_state", "no comment in draft", "review_no_drafts");
     }
     const resolved = await this.opts.changes.resolve(target);
-    const text = reviewMessage(drafts.map((d) => toComment(d, false)));
+    const text = reviewMessage(
+      drafts.map((d) => toComment(d, false)),
+      language,
+    );
     const via = this.deliver(resolved, text);
     const at = new Date(this.now()).toISOString();
     const mark = this.db.query(

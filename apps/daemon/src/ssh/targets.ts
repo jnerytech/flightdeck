@@ -50,7 +50,10 @@ const USER = /^\w[\w.-]{0,63}$/;
 /** `[bind:]port:host:port`, kept as the text OpenSSH takes for LocalForward. */
 const FORWARD = /^(?:[A-Za-z0-9.*-]+:)?(\d{1,5}):[A-Za-z0-9][A-Za-z0-9._-]*:(\d{1,5})$/;
 const hasControl = (text: string) =>
-  [...text].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
+  [...text].some((char) => {
+    const code = char.codePointAt(0) ?? 0;
+    return code < 32 || code === 127;
+  });
 const MAX_TAGS = 20;
 
 const badRequest = (

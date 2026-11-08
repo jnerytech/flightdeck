@@ -123,7 +123,7 @@ describe("file-explorer-live: a file the session writes shows in the tree withou
     await push([changed("README.md", "modified")]);
     const before = asked.length;
     await push([changed("README.md", "modified")]);
-    expect(asked.length).toBe(before);
+    expect(asked).toHaveLength(before);
   });
 
   test("a listing that fails to refresh leaves the entries that were there", async () => {

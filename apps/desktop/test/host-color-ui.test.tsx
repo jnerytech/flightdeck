@@ -82,7 +82,7 @@ describe("host-color-ui: a host's color shows where its name does (issue #644)",
     });
     const [board, settings] = screen.queryAllByRole("option");
     expect(paint(board?.querySelector("[data-host-dot]") ?? null)).toBe(hostColorVar("ha"));
-    expect(settings?.querySelector("[data-host-dot]") === null).toBe(true);
+    expect(settings?.querySelector("[data-host-dot]") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a host tab's strip item holds its host's color; a shared tab's holds none", async () => {

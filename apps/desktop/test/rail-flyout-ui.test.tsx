@@ -85,8 +85,8 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
     await open("Projects");
     expect(await isOpen("Projects")).toBe(true);
     const panel = flyout("Projects") as HTMLElement;
-    expect(within(panel).queryByRole("list", { name: "Branches of api" }) === null).toBe(false);
-    expect(within(panel).queryByRole("button", { name: "All projects (1)" }) === null).toBe(false);
+    expect(within(panel).queryByRole("list", { name: "Branches of api" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(within(panel).queryByRole("button", { name: "All projects (1)" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(railButton("Projects").getAttribute("aria-expanded")).toBe("true");
     expect(went).toEqual([]);
   });
@@ -171,7 +171,7 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
     expect(railButton("Projects").getAttribute("aria-haspopup")).toBeNull();
     await open("Projects");
     expect(went).toEqual([{ name: "all-projects" }]);
-    expect(flyout("Projects") === null).toBe(true);
+    expect(flyout("Projects") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("the expanded bar is as it was: the item goes to the Projects page and has no flyout", async () => {
@@ -182,7 +182,7 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
       fireEvent.click(item);
     });
     expect(went).toEqual([{ name: "all-projects" }]);
-    expect(flyout("Projects") === null).toBe(true);
+    expect(flyout("Projects") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("in Portuguese the flyout and its link are in Portuguese", async () => {
@@ -190,8 +190,7 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
     await open("Projetos");
     expect(await isOpen("Projetos")).toBe(true);
     const panel = flyout("Projetos") as HTMLElement;
-    expect(within(panel).queryByRole("button", { name: "Todos os projetos (1)" }) === null).toBe(
-      false,
-    );
+    const absent = within(panel).queryByRole("button", { name: "Todos os projetos (1)" }) === null;
+    expect(absent).toBe(false);
   });
 });

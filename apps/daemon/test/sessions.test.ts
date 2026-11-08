@@ -438,6 +438,9 @@ describe("ciclo de vida — bordas", () => {
     const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     await waitFor(() => manager.get(sessionId).status === "error");
     expect(record(manager, sessionId).find("session.error")[0]?.code).toBe("runtime_exit");
+    expect(record(manager, sessionId).find("session.error")[0]?.message).toBe(
+      "the runtime ended unexpectedly",
+    );
   });
 
   test("listener com erro não quebra a sessão; interrupt sem runtime e close repetido são inofensivos", async () => {

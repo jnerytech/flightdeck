@@ -337,9 +337,9 @@ export function TabBar(
         {newTab}
         {/* Only a window already split offers its buttons here: to join the areas again. */}
         {store.workspace.split && props.children}
-        <div role="status" aria-label={t("tabs.position")} className="sr-only">
+        <output aria-label={t("tabs.position")} className="sr-only">
           {announcement}
-        </div>
+        </output>
       </div>
     );
   }
@@ -401,7 +401,7 @@ export function TabBar(
                   </span>
                 )}
                 {/* The wrapper is invisible to the tablist: the tab and its × are siblings inside it. */}
-                <div
+                <div // NOSONAR: the wrapper is invisible to the tablist: the tab and its × are siblings inside it
                   role="presentation"
                   {...(prod === undefined ? {} : { "data-prod": String(prod) })}
                   {...(tab.pinned ? { "data-pinned": "true" } : {})}
@@ -538,9 +538,9 @@ export function TabBar(
       {activeMenu}
       {newTab}
       {props.children}
-      <div role="status" aria-label={t("tabs.position")} className="sr-only">
+      <output aria-label={t("tabs.position")} className="sr-only">
         {announcement}
-      </div>
+      </output>
     </div>
   );
 }

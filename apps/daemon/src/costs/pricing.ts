@@ -83,7 +83,7 @@ export function costOf(tokens: UsageTokens, pricing: Pricing): number | null {
   const price = pricing.models[tokens.model];
   if (!price) return null;
   const prompt = tokens.input + tokens.cacheRead + tokens.cacheWrite5m + tokens.cacheWrite1h;
-  const tier = (price.tiers ?? []).filter((t) => prompt > t.abovePromptTokens).at(-1);
+  const tier = (price.tiers ?? []).findLast((t) => prompt > t.abovePromptTokens);
   const input = tier?.input ?? price.input;
   const output = tier?.output ?? price.output;
   const perMillion =

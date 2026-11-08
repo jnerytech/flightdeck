@@ -347,9 +347,18 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
   nothing in the project changes, and environment variables are never shown in it. When some of
   the project's files cannot be read, it says so: a part shown as missing may be there.
+- On a host that can keep setup templates, **Share as template** under the checklist asks for a name
+  and keeps the project's `CLAUDE.md`, agents and skills as a template any project on that host can
+  start from. Settings (hooks, permissions, MCP servers) are never shared, every file is checked for
+  secrets first, and a name already taken is refused.
 - A host's page also lists its **Claude Code setup templates**, the ones shared from a project's setup,
   with their files and size. **Delete** asks first and removes only that template: the projects set
   up from it keep their files. It works from this computer or over Tailscale, not from afar.
+- When the host has setup templates, the set-up dialog's **Start from** choice picks one instead of
+  Flightdeck's own files. The preview then shows that template's files, lists under **Left out of
+  the template** any file it did not propose and why (front matter that could run a command or grant
+  a permission, a secret, an import from outside the project, a command that runs as it loads), and
+  does not offer the CLAUDE.md draft.
 - **Project knowledge** lists the project's PRDs, RFCs, ADRs and specs (the Markdown files in
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` and `docs/specs`), each with its title, path,
   type and the status it says it has in its front matter (`status: valid`, `transitional` or

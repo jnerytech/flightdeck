@@ -285,7 +285,7 @@ describe("regras-aprovacao: aprovar", () => {
     const second = t.run();
     const g = await t.frame(1);
     expect(g).toMatchObject({ decision: "allow", ruleId: null });
-    expect(g.reason).toContain("sessão");
+    expect(g.reason).toContain("already approved in this session");
     t.actions.gate(g.purpose);
     t.deliver(g);
     await second;

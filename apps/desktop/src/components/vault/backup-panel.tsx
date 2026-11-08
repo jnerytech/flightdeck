@@ -108,7 +108,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
               disabled={passphrase === "" || confirmation === ""}
               disabledReason={t("vault.backup.exportNeeds")}
             />
-            {exportMessage && <p role="status">{exportMessage}</p>}
+            {exportMessage && <output className="block">{exportMessage}</output>}
           </Form>
         </Stack>
       </section>
@@ -185,7 +185,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
               <FormActions submit={t("vault.backup.apply")} />
             </Form>
           )}
-          {importMessage && <p role="status">{importMessage}</p>}
+          {importMessage && <output className="block">{importMessage}</output>}
         </Stack>
       </section>
       {replacing && preview && (

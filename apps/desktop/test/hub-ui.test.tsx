@@ -187,7 +187,7 @@ describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
     }
     // A terminal session says so with a chip on its row, not in the row's meta text (#583).
     const run = item("repo-run") as HTMLElement;
-    expect(run.querySelector("[data-slot='row-meta']") === null).toBe(true);
+    expect(run.querySelector("[data-slot='row-meta']") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(run.querySelector("[data-slot='origin-chip']")?.textContent).toBe("terminal");
     const managedMeta = (item("Gerenciada") as HTMLElement).querySelector("[data-slot='row-meta']");
     expect(managedMeta?.textContent).toBe("Flightdeck");
@@ -290,7 +290,7 @@ describe("hub-ui", () => {
       item(title)?.querySelector('[data-slot="row-word"]')?.textContent ?? null;
     const summary = (title: string) =>
       item(title)?.querySelector('[data-slot="summary"]')?.textContent ?? "";
-    const chips = Array.from(document.querySelectorAll("output[aria-label]")).map(
+    const chips = Array.from(document.querySelectorAll("output[aria-label]:not(.sr-only)")).map(
       (o) => o.textContent ?? "",
     );
     expect([

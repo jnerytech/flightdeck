@@ -193,15 +193,15 @@ export async function runAskpass(opts: {
   ticket: string | undefined;
   prompt: string;
 }): Promise<string> {
-  if (!opts.ticket) throw new Error("sem ticket do askpass (FLIGHTDECK_ASKPASS_TICKET)");
+  if (!opts.ticket) throw new Error("no askpass ticket (FLIGHTDECK_ASKPASS_TICKET)");
   const config = await readConfig(opts.configFile);
-  if (!config) throw new Error(`sem config do Flightdeck em ${opts.configFile}`);
+  if (!config) throw new Error(`no Flightdeck config at ${opts.configFile}`);
   const daemon = await DaemonClient.connect(
     daemonUrl(config),
     config.token,
     "flightdeckd-askpass",
   ).catch(() => {
-    throw new Error("não consegui falar com o daemon");
+    throw new Error("could not reach the daemon");
   });
   try {
     const answer = await daemon.call("askpass.ask", { ticket: opts.ticket, prompt: opts.prompt });

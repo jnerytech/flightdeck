@@ -77,12 +77,12 @@ const input = () => screen.queryByLabelText("Buscar no histórico") as HTMLInput
 describe("busca-global-fecha: the global search leaves when the person asks it to (issue #566)", () => {
   test("Esc in the field closes it and gives the focus back to what opened it", async () => {
     const { closed, opener } = mount();
-    expect(document.activeElement === input()).toBe(true);
+    expect(document.activeElement === input()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(input(), { key: "Escape" });
     });
     expect(closed).toHaveLength(1);
-    expect(document.activeElement === opener).toBe(true);
+    expect(document.activeElement === opener).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("Esc closes it even with the focus outside, on the page behind", async () => {
@@ -92,7 +92,7 @@ describe("busca-global-fecha: the global search leaves when the person asks it t
       fireEvent.keyDown(opener, { key: "Escape" });
     });
     expect(closed).toHaveLength(1);
-    expect(document.activeElement === opener).toBe(true);
+    expect(document.activeElement === opener).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a click outside closes it; a click inside does not", async () => {
@@ -106,7 +106,7 @@ describe("busca-global-fecha: the global search leaves when the person asks it t
       fireEvent.pointerDown(screen.queryByText("The page behind") as HTMLElement);
     });
     expect(closed).toHaveLength(1);
-    expect(document.activeElement === opener).toBe(true);
+    expect(document.activeElement === opener).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a long row truncates with an ellipsis and keeps its full text in a title, so the list never scrolls sideways", () => {

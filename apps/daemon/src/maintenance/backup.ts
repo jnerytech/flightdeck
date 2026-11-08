@@ -67,7 +67,7 @@ export async function keepLast(dir: string, keep: number): Promise<string[]> {
 
 /** Refuses anything that is not an intact database this flightdeckd knows how to migrate. */
 function checkBackup(file: string): void {
-  let integrity = "ilegível";
+  let integrity = "unreadable";
   let version = 0;
   try {
     const db = new Database(file, { readonly: true });
@@ -79,14 +79,14 @@ function checkBackup(file: string): void {
       db.close();
     }
   } catch {
-    // Not a SQLite database: integrity stays "ilegível".
+    // Not a SQLite database: integrity stays "unreadable".
   }
   if (integrity !== "ok") {
-    throw new Error(`o backup não passou na verificação de integridade (${integrity})`);
+    throw new Error(`the backup failed the integrity check (${integrity})`);
   }
   if (version > MIGRATIONS.length) {
     throw new Error(
-      `o backup veio de uma versão mais nova do flightdeckd (user_version ${version}; esta conhece ${MIGRATIONS.length})`,
+      `the backup comes from a newer flightdeckd (user_version ${version}; this one knows ${MIGRATIONS.length})`,
     );
   }
 }
@@ -101,7 +101,7 @@ export async function restoreBackup(opts: {
 }): Promise<{ beforeRestore: string }> {
   const lock = await acquireLock(opts.dataDir);
   if (!lock) {
-    throw new Error("o daemon está rodando com este dataDir: pare o daemon e rode de novo");
+    throw new Error("the daemon is running with this dataDir: stop the daemon and run again");
   }
   try {
     checkBackup(opts.file);

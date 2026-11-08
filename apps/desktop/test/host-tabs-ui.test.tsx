@@ -95,7 +95,7 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     const beta = screen
       .queryAllByRole("menuitemradio")
       .find((item) => /beta/.test(item.textContent ?? ""));
-    expect(beta === undefined).toBe(false);
+    expect(beta).toBeDefined();
     await act(async () => {
       if (beta) fireEvent.click(beta);
     });
@@ -114,7 +114,7 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     expect(store.router.current).toEqual({ name: "host", host: "ha" });
     const before = store.tabs.tabs.length;
     await newTab();
-    expect(store.tabs.tabs.length).toBe(before + 1);
+    expect(store.tabs.tabs).toHaveLength(before + 1);
   });
 
   test("a new-session form for a host that is not configured draws nothing instead of breaking the window", async () => {
@@ -122,8 +122,8 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     await act(async () => {
       store.router.push({ name: "new-session", host: "gone" });
     });
-    expect(screen.queryByRole("tablist", { name: "Abas" }) === null).toBe(false);
-    expect(document.querySelector("form") === null).toBe(true);
+    expect(screen.queryByRole("tablist", { name: "Abas" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(document.querySelector("form") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with no host chosen yet, a new tab is the Overview of the first host, which becomes the active one", async () => {

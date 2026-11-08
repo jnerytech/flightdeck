@@ -93,7 +93,7 @@ describe("roi-fold: the return on cost card opens folded to its headline", () =>
       .queryAllByRole("img")
       .find((el) => el.getAttribute("aria-label")?.startsWith(prefix));
     const weeks = [...(trend?.querySelectorAll("span") ?? [])];
-    expect(weeks.length).toBe(8);
+    expect(weeks.length).toBe(8); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(weeks.every((week) => week.getAttribute("data-empty") === "true")).toBe(true);
     const how = within(card()).queryByRole("button", { name: en.roiUi.how });
     expect(how?.getAttribute("data-variant")).toBe("link");

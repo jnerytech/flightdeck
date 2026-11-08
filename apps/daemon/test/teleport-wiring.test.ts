@@ -74,7 +74,7 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       deps.session("s1"),
       deps.inTeam("s1"),
       deps.inTeam("s2"),
-      deps.transcriptOf(ID),
+      await deps.transcriptOf(ID),
       deps.dir,
       deps.historyRoots,
       deps.scan("ghp_x"),
@@ -93,6 +93,31 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
       2,
       true,
     ]);
+  });
+
+  test("a transcript the indexer has not recorded yet (one a move just brought in) is found on disk, under the history roots only", async () => {
+    const root = projectsRoot();
+    const store = new EventStore(":memory:");
+    // Never scanned: as on a host whose indexer has not seen the file the import just wrote.
+    const indexer = new HistoryIndexer({ db: store.db, roots: [root] });
+    cleanups.push(() => indexer.stop());
+    const file = writeTranscript(root, "-work-app-worktree", ID, [
+      userLine({ uuid: "u1", text: "fix the login", cwd: "/work/app-worktree" }),
+    ]);
+    const deps = teleportDeps({
+      manager: { get: () => null as never },
+      names: { get: () => null },
+      indexer,
+      historyRoots: [root],
+      dataDir: "/data",
+      scan: () => [],
+      log: () => {},
+    });
+    expect([
+      await deps.transcriptOf(ID),
+      await deps.transcriptOf("11111111-1111-4111-8111-111111111111"),
+      await deps.transcriptOf("../-work-app-worktree"),
+    ]).toEqual([file, null, null]);
   });
 
   test("the server announces teleport and answers prepare, read and cancel; without it they are off", async () => {

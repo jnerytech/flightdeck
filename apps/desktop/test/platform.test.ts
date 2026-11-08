@@ -318,7 +318,7 @@ describe("platform", () => {
       actionHandler?.({ actionId, notification: { extra } });
     click("tap", { link });
     expect(received.filter((url) => url === link)).toEqual([link]);
-    expect(invokes.filter(([command]) => command === "focus_main").length).toBe(1);
+    expect(invokes.filter(([command]) => command === "focus_main")).toHaveLength(1);
     // Not the notification itself, no link, a pairing link: nothing opens, nothing comes forward.
     click("dismiss", { link });
     click("tap", {});
@@ -326,7 +326,7 @@ describe("platform", () => {
     click("tap", { link: 42 });
     expect(received.filter((url) => url === link)).toEqual([link]);
     expect(received.includes("flightdeck://pc:7420?token=abc")).toBe(false);
-    expect(invokes.filter(([command]) => command === "focus_main").length).toBe(1);
+    expect(invokes.filter(([command]) => command === "focus_main")).toHaveLength(1);
     stop();
     granted = before;
   });

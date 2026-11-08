@@ -257,7 +257,7 @@ describe("card-pins-ui: choosing is not pinning, and the keyboard keeps its plac
         fireEvent.click(within(panel()).getByRole("button", { name: names.unpin }));
       });
       await waitFor(() => expect(status()).toBe(names.unpinned));
-      expect(document.activeElement === pick()).toBe(true);
+      expect(document.activeElement === pick()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     });
   }
 });
@@ -290,14 +290,14 @@ describe("card-pins-ui: where the focus goes when the picker cannot take it (#10
     await choose(OUTBOX);
     await press("Pin");
     await waitFor(() => expect(status()?.textContent).toBe("Pinned: Use the outbox."));
-    expect(document.activeElement === status()).toBe(true);
+    expect(document.activeElement === status()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("with no picker, Unpin leaves the focus on the status line", async () => {
     show({ pins: [SQLITE], library: false });
     await press(`Unpin ${SQLITE}`);
     await waitFor(() => expect(status()?.textContent).toBe(`Unpinned: ${SQLITE}.`));
-    expect(document.activeElement === status()).toBe(true);
+    expect(document.activeElement === status()).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a refused pin keeps the choice and the focus, and says why", async () => {

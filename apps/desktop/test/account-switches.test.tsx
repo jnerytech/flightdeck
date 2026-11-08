@@ -106,9 +106,9 @@ for (const [lang, dict] of [
     test("with What's new hidden its entry leaves the menu, and it stays when shown", async () => {
       footer({ whatsNew: true });
       await openMenu();
-      expect(screen.queryByRole("menuitem", { name: dict.sidebarAccount.whatsNew }) === null).toBe(
-        true,
-      );
+      const absent =
+        screen.queryByRole("menuitem", { name: dict.sidebarAccount.whatsNew }) === null;
+      expect(absent).toBe(true);
       cleanup();
       footer({ whatsNew: false });
       await openMenu();
@@ -182,9 +182,9 @@ for (const [lang, dict] of [
       expect(store.shellPrefs.value.hideWhatsNew).toBe(true);
       expect(dot()).toBe(false);
       await openMenu();
-      expect(
-        screen.queryByRole("menuitem", { name: new RegExp(dict.sidebarAccount.whatsNew) }) === null,
-      ).toBe(true);
+      const absent =
+        screen.queryByRole("menuitem", { name: new RegExp(dict.sidebarAccount.whatsNew) }) === null;
+      expect(absent).toBe(true);
     });
 
     test("Hide the setup checklist takes its row off the sidebar, and showing it brings it back", async () => {

@@ -197,7 +197,7 @@ describe("conversas-ui: the timeline's states (#588)", () => {
       fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
     });
     expect(screen.queryByRole("status", { name: "Carregando mensagens" })).not.toBeNull();
-    expect(screen.queryByText("Nenhuma mensagem") === null).toBe(true);
+    expect(screen.queryByText("Nenhuma mensagem") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("a filter that hides every message says so and keeps the Times link out", async () => {
@@ -210,7 +210,7 @@ describe("conversas-ui: the timeline's states (#588)", () => {
       fireEvent.change(screen.getByLabelText("Filtrar mensagens"), { target: { value: "zzz" } });
     });
     expect(screen.queryByText("Nenhuma mensagem corresponde ao filtro.")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Abrir Times" }) === null).toBe(true);
-    expect(list() === null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Abrir Times" }) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(list() === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 });

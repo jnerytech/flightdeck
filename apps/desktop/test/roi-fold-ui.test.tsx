@@ -49,14 +49,14 @@ describe("roi-fold-ui: the Return on cost card is one line until it is opened (#
     setup(false);
     await settleMaybe(() => has("p"));
     const section = card();
-    expect(section !== null).toBe(true);
+    expect(section !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const title = section?.querySelector("h2");
     const button = details();
     const headline = section?.querySelector("p");
     expect(title !== null && button !== null && headline !== null).toBe(true);
     const row = title?.parentElement;
-    expect(row === button?.parentElement).toBe(true);
-    expect(row === headline?.parentElement).toBe(true);
+    expect(row === button?.parentElement).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    expect(row === headline?.parentElement).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(section?.children.length).toBe(1);
   });
 
@@ -71,7 +71,7 @@ describe("roi-fold-ui: the Return on cost card is one line until it is opened (#
     setup(false);
     await settleMaybe(() => details() !== null && has("p"));
     const button = details();
-    expect(button !== null).toBe(true);
+    expect(button !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     if (button) {
       await act(async () => {
         fireEvent.click(button);
@@ -81,7 +81,7 @@ describe("roi-fold-ui: the Return on cost card is one line until it is opened (#
     const section = card();
     expect(has("fieldset")).toBe(true);
     const headline = section?.querySelector("p");
-    expect(headline?.parentElement === section).toBe(true);
+    expect(headline?.parentElement === section).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(details()?.getAttribute("aria-expanded")).toBe("true");
   });
 

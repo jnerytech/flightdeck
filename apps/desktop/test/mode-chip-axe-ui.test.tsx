@@ -118,7 +118,7 @@ describe("mode-chip: the chips' menus next to a live region", () => {
         await act(async () => {
           (target === "its own chip" ? trigger : (back as HTMLElement)).focus();
         });
-        expect(screen.queryByRole("menu") !== null).toBe(true);
+        expect(screen.queryByRole("menu") !== null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
       });
     }
   }

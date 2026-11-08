@@ -247,7 +247,7 @@ describe("card-form (en): the validation note and starting a card with no criter
   test("the validation note is a labelled field that saves on the card, and clears with empty text", async () => {
     const { d, card, store } = await openCard("en");
     await settle(() => screen.queryByLabelText("Description") !== null);
-    expect(screen.queryByLabelText("Validation note") === null).toBe(false);
+    expect(screen.queryByLabelText("Validation note") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const field = screen.getByLabelText("Validation note") as HTMLTextAreaElement;
     await act(async () => {
       fireEvent.change(field, { target: { value: "  Ran it by hand on the staging data.  " } });
@@ -299,7 +299,7 @@ describe("card-form (en): the validation note and starting a card with no criter
     const { card, sent, start } = await watchStarts(false);
     await start();
     await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
-    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(screen.queryByRole("alertdialog") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(sent).toEqual([card.id]);
   });
 
@@ -307,13 +307,13 @@ describe("card-form (en): the validation note and starting a card with no criter
     const { card, sent, start } = await watchStarts(true);
     await start();
     await settle(() => sent.length > 0 || screen.queryByRole("alertdialog") !== null);
-    expect(screen.queryByRole("alertdialog") === null).toBe(false);
+    expect(screen.queryByRole("alertdialog") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const dialog = screen.getByRole("alertdialog");
     expect(dialog.textContent).toContain("acceptance criteria");
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     });
-    expect(screen.queryByRole("alertdialog") === null).toBe(true);
+    expect(screen.queryByRole("alertdialog") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     expect(sent).toEqual([]);
     await start();
     await settle(() => screen.queryByRole("alertdialog") !== null);
@@ -358,7 +358,7 @@ describe("card-form (en): the spec file", () => {
     const { d } = await openCard("en", { prepare: tree(false) });
     expect(await says("No spec file at docs/specs/cart-screen.md")).toBe(true);
     writeFileSync(join(d.root, "spec-tree/docs/specs/cart-screen.md"), "# Written meanwhile\n");
-    expect(screen.queryByRole("button", { name: "Check again" }) === null).toBe(false);
+    expect(screen.queryByRole("button", { name: "Check again" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Check again" }));
     });
@@ -369,7 +369,7 @@ describe("card-form (en): the spec file", () => {
   test("the spec file path is a labelled field that saves on the card; a path out of the worktree cannot be saved", async () => {
     const { d, card } = await openCard("en", { prepare: tree(false) });
     await settle(() => screen.queryByLabelText("Description") !== null);
-    expect(screen.queryByLabelText("Spec file") === null).toBe(false);
+    expect(screen.queryByLabelText("Spec file") === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     const field = screen.getByLabelText("Spec file") as HTMLInputElement;
     const save = () => screen.getByRole("button", { name: "Save spec file" }) as HTMLButtonElement;
     await act(async () => {

@@ -339,10 +339,20 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **Faltando**, e o cartão diz quantas das seis partes existem. Ele só lê: nada no projeto muda, e
   variáveis de ambiente nunca aparecem nele. Quando algum arquivo do projeto não pode ser lido, ele
   avisa: uma parte marcada como faltando pode existir.
+- Em um host que guarda modelos de configuração, **Compartilhar como modelo**, abaixo da checklist,
+  pede um nome e guarda o `CLAUDE.md`, os agentes e as skills do projeto como um modelo do qual
+  qualquer projeto desse host pode partir. As configurações (hooks, permissões, servidores MCP)
+  nunca são compartilhadas, cada arquivo é verificado em busca de segredos antes, e um nome já
+  usado é recusado.
 - A página de um host também lista seus **modelos de configuração do Claude Code**, os compartilhados
   da configuração de um projeto, com seus arquivos e tamanho. **Apagar** pergunta antes e remove só
   esse modelo: os projetos configurados com ele ficam com os arquivos. Funciona deste computador ou
   pelo Tailscale, não de longe.
+- Quando o host tem modelos de configuração, a escolha **Partir de** no diálogo de configuração
+  escolhe um deles em vez dos arquivos do próprio Flightdeck. A prévia mostra então os arquivos desse
+  modelo, lista em **Deixado de fora do modelo** o que ele não propôs e por quê (cabeçalho que
+  poderia executar um comando ou conceder uma permissão, um segredo, uma importação de fora do
+  projeto, um comando que roda ao carregar), e não oferece o rascunho do CLAUDE.md.
 - **Conhecimento do projeto** lista os PRDs, RFCs, ADRs e specs do projeto (os arquivos Markdown em
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` e `docs/specs`), cada um com título, caminho,
   tipo e o status que diz ter no front matter (`status: valid`, `transitional` ou `obsolete`). Um

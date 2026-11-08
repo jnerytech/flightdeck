@@ -103,13 +103,14 @@ describe("ssh-destinos", () => {
     const { targets } = setup();
     const save = (extra: Partial<SshTargetInput>) => codeOf(() => targets.save(base(extra)));
     expect(save({ auth: "key-file" })).toBe("bad_request");
-    for (const secretRef of ["-oProxyCommand=x", "a\nb", "a\u0000b"]) {
+    for (const secretRef of ["-oProxyCommand=x", "a\nb", "a\u0000b", "a\u001fb", "a\u007fb"]) {
       expect([secretRef, save({ auth: "key-file", secretRef })]).toEqual([
         secretRef,
         "bad_request",
       ]);
     }
     expect(save({ auth: "key-file", secretRef: "~/.ssh/id_ed25519" })).toBe("ok");
+    expect(save({ auth: "key-file", secretRef: "~/.ssh/ключ 😀 key" })).toBe("ok");
     expect(save({ auth: "vault-key" })).toBe("bad_request");
     expect(save({ auth: "vault-key", secretRef: "chave-da-vps" })).toBe("ok");
     // A password may come from the vault or be typed when asked: no reference is fine.

@@ -59,19 +59,19 @@ describe("sonar-a11y3: the day chart keeps its roles, names and keys", () => {
     await act(async () => {
       fireEvent.keyDown(columns()[0] as HTMLElement, { key: "ArrowRight" });
     });
-    expect(document.activeElement === columns()[1]).toBe(true);
+    expect(document.activeElement === columns()[1]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(columns()[1] as HTMLElement, { key: "End" });
     });
-    expect(document.activeElement === columns()[2]).toBe(true);
+    expect(document.activeElement === columns()[2]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(columns()[2] as HTMLElement, { key: "ArrowLeft" });
     });
-    expect(document.activeElement === columns()[1]).toBe(true);
+    expect(document.activeElement === columns()[1]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.keyDown(columns()[1] as HTMLElement, { key: "Home" });
     });
-    expect(document.activeElement === columns()[0]).toBe(true);
+    expect(document.activeElement === columns()[0]).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
     await act(async () => {
       fireEvent.focus(columns()[2] as HTMLElement);
     });
