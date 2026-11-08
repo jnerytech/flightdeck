@@ -255,3 +255,54 @@ describe("refusal-english: teams, service, names, messaging policy, board and wr
     expect(fresh.filter((text) => MSGS3_PORTUGUESE.test(text))).toEqual([]);
   });
 });
+
+/**
+ * Issue #957 (english-msgs4): the usage text, the argument refusals and the log and error text of
+ * the daemon's entry file (`main.ts`) is English.
+ */
+const MSGS4_FILES = ["main.ts"];
+
+/** The Portuguese words of the earlier detectors, plus the ones `main.ts` used. */
+const MSGS4_PORTUGUESE = new RegExp(
+  `${MSGS3_PORTUGUESE.source}|\\b(uso|arquivo|binário|argumentos?|falta|quer|chave|pasta|texto|nenhum\\w*|seria|gravado|precisa|rodando|respondendo|respondeu|restaurado|limpeza|reconstruído|histórico|removidos|instalados|ausentes|desatualizados|cópia|anterior|banco|abrir|ação|pare|rode|defina|receptor|servidor|endereço|nome|guiada|execução|consertar|funcionar|simulação|o time)\\b`,
+  "i",
+);
+
+describe("refusal-english: the daemon's entry file (#957)", () => {
+  test.each(MSGS4_FILES)("%s has no Portuguese usage, refusal, log or error text", async (file) => {
+    const source = await Bun.file(`${SRC}${file}`).text();
+    const portuguese = quoted(source)
+      .filter(({ text }) => MSGS4_PORTUGUESE.test(text))
+      .map(({ line, text }) => `${file}:${line}: ${text}`);
+    expect(portuguese).toEqual([]);
+  });
+
+  test("the words of the old main.ts text are caught, and their English wording passes", () => {
+    const old = [
+      "uso: flightdeckd [start] [--config <arquivo>]",
+      "ação de serviço inválida",
+      "argumento desconhecido: --x",
+      "já em execução (dataDir /d)",
+      "nenhum serviço instalado",
+      "o daemon do serviço não respondeu em /health",
+      "hooks instalados em /s",
+      "banco restaurado de f; o anterior ficou em g",
+      "limpeza feita:",
+      "--last quer um inteiro positivo",
+    ];
+    const fresh = [
+      "usage: flightdeckd [start] [--config <file>]",
+      "invalid service action",
+      "unknown argument: --x",
+      "already running (dataDir /d)",
+      "no service installed",
+      "the service's daemon did not answer on /health",
+      "hooks installed in /s",
+      "database restored from f; the previous one stayed at g",
+      "cleanup done:",
+      "--last needs a positive integer",
+    ];
+    expect(old.filter((text) => !MSGS4_PORTUGUESE.test(text))).toEqual([]);
+    expect(fresh.filter((text) => MSGS4_PORTUGUESE.test(text))).toEqual([]);
+  });
+});

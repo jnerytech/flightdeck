@@ -207,7 +207,7 @@ describe("backup", () => {
     expect(restored.out).toContain("flightdeck.db.before-restore");
     const missing = await run(["restore", "--config", config]);
     expect(missing.code).toBe(1);
-    expect(missing.out).toContain("restore precisa do arquivo");
+    expect(missing.out).toContain("restore needs the file");
   });
 
   test("protocolo: maintenance.status, maintenance.backup e maintenance.prune, e o recurso maintenance", async () => {
