@@ -2455,6 +2455,8 @@ export const ExternalSession = z.object({
   persona: SessionPersona.optional(),
   meta: SessionMeta.optional(),
   summary: SessionLine.optional(),
+  /** #935: the mode its hooks last reported (Shift+Tab in the terminal included); absent until one does. */
+  permissionMode: PermissionMode.optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 
