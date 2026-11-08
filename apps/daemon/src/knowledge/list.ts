@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open, readdir, realpath } from "node:fs/promises";
 import { join, posix } from "node:path";
-import type { KnowledgeEntry, KnowledgeListResult } from "@flightdeck/protocol";
+import {
+  KNOWLEDGE_FOLDERS,
+  type KnowledgeEntry,
+  type KnowledgeListResult,
+} from "@flightdeck/protocol";
 import { samePath } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { parseKnowledge } from "./parse.ts";
@@ -18,7 +22,6 @@ export interface KnowledgeOptions {
   maxFiles?: number;
 }
 
-const FOLDERS = ["docs/decisions", "docs/adr", "docs/rfc", "docs/prd", "docs/specs"];
 const SKIPPED = new Set([".git", "node_modules"]);
 const MAX_FILES = 500;
 /** The most of a document read: its front matter, its heading and the links near its top. */
@@ -104,7 +107,7 @@ export async function listKnowledge(
   const found: string[] = [];
   const seen = { n: 0 };
   const real = await realpath(root);
-  for (const folder of FOLDERS) {
+  for (const folder of KNOWLEDGE_FOLDERS) {
     // The folder must be where its name says it is: a link above it, out of the project or to another
     // folder of it (a credential folder), would list what the name does not show.
     const [at] = await Promise.allSettled([realpath(`${root}/${folder}`)]);

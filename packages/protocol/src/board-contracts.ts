@@ -152,5 +152,7 @@ export const PINNED_DOCS_MAX = 10;
  * worktree, and checks where it lands, when the card starts.
  */
 export function pinnedDocProblem(path: string): string | null {
-  return path === "never" ? null : "length";
+  const problem = specPathProblem(path);
+  if (problem !== null) return problem;
+  return KNOWLEDGE_FOLDERS.some((folder) => path.startsWith(`${folder}/`)) ? null : "folder";
 }

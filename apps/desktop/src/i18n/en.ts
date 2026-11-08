@@ -1525,6 +1525,8 @@ export const en: Dictionary = {
     card_contract_unmet: "This card isn't ready for {column}: it lacks {needs}.",
     spec_path_invalid:
       "The spec path must be a relative path to a Markdown file inside the worktree, like specs/name.md.",
+    pinned_doc_invalid:
+      "A pinned document must be a Markdown file in the project's docs (decisions, adr, rfc, prd or specs), and a card pins at most 10.",
     card_moved_anyway: "Moved to {column} anyway; it lacked {needs}.",
     contract_invalid: "The contract for {column} is not valid.",
     project_no_origin: "This project has no origin remote.",

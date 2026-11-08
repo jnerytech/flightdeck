@@ -931,4 +931,8 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE external_sessions ADD COLUMN permission_mode TEXT;
   `,
+  // Issue #76: the library documents pinned to a card (a JSON list of paths; NULL: none).
+  `
+  ALTER TABLE cards ADD COLUMN pinned_docs TEXT;
+  `,
 ];

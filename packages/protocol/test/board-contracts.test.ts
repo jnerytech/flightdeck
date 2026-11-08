@@ -259,7 +259,8 @@ describe("board-contracts: the spec artifact (issue #78, slice 3b)", () => {
 
   test("card.update takes at most ten pinned documents, each a library path", () => {
     const update = (pinnedDocs: unknown) =>
-      Command.safeParse({ type: "card.update", payload: { cardId: "c", pinnedDocs } }).success;
+      Command.safeParse({ type: "card.update", id: "1", payload: { cardId: "c", pinnedDocs } })
+        .success;
     const many = (n: number) => Array.from({ length: n }, (_, i) => `docs/adr/${i}.md`);
     expect([
       update([]),

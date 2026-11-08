@@ -1521,6 +1521,8 @@ export const ptBR = {
     card_contract_unmet: "Este card não está pronto para {column}: falta {needs}.",
     spec_path_invalid:
       "O caminho da especificação deve ser relativo, para um arquivo Markdown dentro do worktree, como specs/nome.md.",
+    pinned_doc_invalid:
+      "Um documento fixado deve ser um arquivo Markdown da pasta docs do projeto (decisions, adr, rfc, prd ou specs), e um card fixa no máximo 10.",
     card_moved_anyway: "Movido para {column} mesmo assim; faltava {needs}.",
     contract_invalid: "O contrato de {column} não é válido.",
     project_no_origin: "Este projeto não tem o remoto origin.",
