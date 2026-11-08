@@ -60,6 +60,8 @@ async function setup(
   const store = new AppStore(phone.platform, { baseDelayMs: 60_000 });
   stores.push(store);
   const answered: Array<[string, string, string, unknown]> = [];
+  const badges: number[] = [];
+  phone.platform.setBadge = async (count: number) => void badges.push(count);
   const patch = (pending: Pending[]) =>
     (store as unknown as { update(patch: object): void }).update({
       hosts: [
@@ -89,7 +91,13 @@ async function setup(
   store.refreshHub = (async () => {}) as never;
   render(<App store={store} />);
   await act(async () => patch(waiting));
-  return { store, answered };
+  /** The host's list of what waits changes: another screen or another person answered. */
+  const waitingNow = async (next: Pending[], status?: "online" | "offline") => {
+    waiting = next;
+    if (status) options.status = status;
+    await act(async () => patch(waiting));
+  };
+  return { store, answered, badges, waitingNow };
 }
 
 const bell = () => screen.queryByRole("button", { name: /^(Notifications|Notificações)/ });
@@ -179,17 +187,30 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     expect(rowCount()).toBe(2);
   });
 
-  test("a request that was answered elsewhere is not in the bell, nor in its count", async () => {
+  test("a request answered elsewhere leaves the bell, its count and the taskbar badge", async () => {
+    const { waitingNow, badges } = await setup();
+    await open();
+    expect(rowCount()).toBe(1);
+    await waitingNow([]);
+    expect(await settleMaybe(() => rowCount() === 0)).toBe(true);
+    expect(bell()?.getAttribute("aria-label")).toBe("Notifications");
+    expect(badges.at(-1)).toBe(0);
+  });
+
+  test("a request this run never saw waiting is not claimed to be answered: it stays, as gone", async () => {
     await setup({ pending: [], entries: [entry("r1")] });
     await open();
-    expect(rowCount()).toBe(0);
-    expect(bell()?.getAttribute("aria-label")).toBe("Notifications");
+    expect(rowCount()).toBe(1);
+    expect(
+      within(screen.getByRole("dialog")).queryByText("What this was about is gone.") === null,
+    ).toBe(false);
   });
 
   test("while the host is offline its requests stay listed: nothing says they were answered", async () => {
-    await setup({ pending: [], entries: [entry("r1")], status: "offline" });
+    const { waitingNow } = await setup();
     await open();
-    expect(rowCount()).toBe(1);
+    await waitingNow([], "offline");
+    await stays(() => rowCount() === 1);
   });
 
   test("after an answer the focus stays in the panel: on the row that took its place, or the title", async () => {
@@ -236,6 +257,39 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
       });
     });
     await stays(() => answered.length === 0);
+  });
+
+  test("a row's buttons are a group named by what the row is about, so Approve is not anonymous", async () => {
+    await setup();
+    const panel = await open();
+    const group = within(panel).queryByRole("group", { name: "Backend tests" });
+    expect(group === null).toBe(false);
+    expect([
+      within(group as HTMLElement).queryByRole("button", { name: "Approve" }) === null,
+      within(group as HTMLElement).queryByRole("button", { name: "Deny" }) === null,
+    ]).toEqual([false, false]);
+  });
+
+  test("the keys are said on the row, and a high-risk row says approving takes holding", async () => {
+    await setup();
+    await open();
+    const hint = (id: string | null) => (id ? document.getElementById(id)?.textContent : null);
+    const described = () => panelButton(/Backend tests/)?.getAttribute("aria-describedby") ?? null;
+    expect(hint(described())).toBe("A approves · N denies");
+    cleanup();
+    await setup({ pending: [request({ risk: "high" })] });
+    await open();
+    expect(hint(described())).toBe("Hold the button to approve · N denies");
+  });
+
+  test("an answer is announced when its row leaves, in a region that was already in the panel", async () => {
+    await setup();
+    const panel = await open();
+    const live = () => panel.querySelector("[data-slot='inbox-live']");
+    expect(live()?.tagName).toBe("OUTPUT");
+    expect(live()?.textContent).toBe("");
+    await press("Deny");
+    expect(await settleMaybe(() => live()?.textContent === "Backend tests: denied")).toBe(true);
   });
 
   test("in Portuguese the chip, the buttons and the keys are in Portuguese", async () => {
