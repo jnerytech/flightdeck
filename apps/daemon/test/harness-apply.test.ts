@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   existsSync,
   linkSync,
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -227,6 +229,7 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
       const preview = await previewHarness(outside, ["agents"]);
       // The project's folder, once resolved, became a link to another place.
       renameSync(root, `${root}-was`);
+      cleanups.push(() => rmSync(`${root}-was`, { recursive: true, force: true }));
       symlinkSync(outside, root);
       expect([
         await outcome(applyHarness(root, ["agents"], digestsOf(preview))),
@@ -235,18 +238,92 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
     },
   );
 
-  test("a settings file hard-linked to a file elsewhere is refused: writing it would change that file", async () => {
+  test("a settings file hard-linked to a file elsewhere gets no proposal, and one linked after the preview is refused", async () => {
     const text = json({ model: "opus" });
-    const root = repo(bunProject);
     const elsewhere = join(tempDir("fd-apply-out-"), "settings.json");
     writeFileSync(elsewhere, text);
-    mkdirSync(join(root, ".claude"));
-    linkSync(elsewhere, join(root, SETTINGS));
-    const preview = await previewHarness(root, ["permissions"]);
+    const linked = repo(bunProject);
+    mkdirSync(join(linked, ".claude"));
+    linkSync(elsewhere, join(linked, SETTINGS));
+    const late = repo({ ...bunProject, [SETTINGS]: text });
+    const preview = await previewHarness(late, ["permissions"]);
+    rmSync(join(late, SETTINGS));
+    linkSync(elsewhere, join(late, SETTINGS));
     expect([
-      await outcome(applyHarness(root, ["permissions"], digestsOf(preview))),
+      // The preview and apply agree: a file apply would refuse is never offered.
+      (await previewHarness(linked, ["permissions"])).unreadable,
+      await outcome(applyHarness(late, ["permissions"], digestsOf(preview))),
       readFileSync(elsewhere, "utf8") === text,
-    ]).toEqual(["harness_stale", true]);
+    ]).toEqual([[SETTINGS], "harness_stale", true]);
+  });
+
+  test.skipIf(onWindows || process.getuid?.() === 0)(
+    "a settings file the host cannot write gets no proposal, so the preview never offers what apply refuses",
+    async () => {
+      const root = repo({ ...bunProject, [SETTINGS]: json({}) });
+      chmodSync(join(root, SETTINGS), 0o444);
+      cleanups.push(() => chmodSync(join(root, SETTINGS), 0o644));
+      expect((await previewHarness(root, ["permissions"])).unreadable).toEqual([SETTINGS]);
+    },
+  );
+
+  test("settings that writing back would reformat are written only with reformat: true, as the preview flagged", async () => {
+    const text = '{"model": "opus"}\n';
+    const [refusedRoot, allowedRoot] = [
+      repo({ ...bunProject, [SETTINGS]: text }),
+      repo({ ...bunProject, [SETTINGS]: text }),
+    ];
+    const preview = await previewHarness(refusedRoot, ["permissions"]);
+    const digests = digestsOf(preview);
+    expect([
+      preview.settings?.reformats,
+      await outcome(applyHarness(refusedRoot, ["permissions"], digests)),
+      read(refusedRoot, SETTINGS) === text,
+      await outcome(applyHarness(allowedRoot, ["permissions"], digests, { reformat: true })),
+      read(allowedRoot, SETTINGS) === text,
+    ]).toEqual([true, "harness_reformat", true, "ok", false]);
+  });
+
+  test("a settings write that fails part way puts the person's bytes back, env included", async () => {
+    const text = json({ model: "opus", env: { A: "1" } });
+    const root = repo({ ...bunProject, [SETTINGS]: text });
+    const preview = await previewHarness(root, ["permissions"]);
+    let writes = 0;
+    const fs: ApplyFs = {
+      open: async (path, flags) => {
+        const handle = await open(path, flags);
+        return new Proxy(handle, {
+          get(target, key) {
+            // A disk that takes 4 bytes of the first write, then works again.
+            if (key === "write" && writes++ === 0) {
+              return () => target.write(Buffer.from('{"mo'), 0, 4, 0);
+            }
+            const value = Reflect.get(target, key);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+        });
+      },
+    };
+    const result = await outcome(applyHarness(root, ["permissions"], digestsOf(preview), { fs }));
+    expect([result === "ok", read(root, SETTINGS) === text]).toEqual([false, true]);
+  });
+
+  test("a new file that appears right before it is opened is not overwritten, and the settings stay as they were", async () => {
+    const text = json({});
+    const root = repo({ ...bunProject, [SETTINGS]: text });
+    const parts = ["claudeMd", "permissions"] as const;
+    const preview = await previewHarness(root, parts);
+    const fs: ApplyFs = {
+      open: async (path, flags) => {
+        if (path.endsWith("CLAUDE.md")) writeFileSync(path, "# Mine\n");
+        return open(path, flags);
+      },
+    };
+    expect([
+      await outcome(applyHarness(root, parts, digestsOf(preview), { fs })),
+      read(root, "CLAUDE.md"),
+      read(root, SETTINGS) === text,
+    ]).toEqual(["harness_stale", "# Mine\n", true]);
   });
 
   test.skipIf(onWindows)(
@@ -264,7 +341,7 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
         },
       };
       expect([
-        await outcome(applyHarness(root, ["agents"], digestsOf(preview), fs)),
+        await outcome(applyHarness(root, ["agents"], digestsOf(preview), { fs })),
         existsSync(join(outside, "reviewer.md")) &&
           readFileSync(join(outside, "reviewer.md"), "utf8"),
       ]).toEqual(["harness_stale", ""]);
@@ -283,7 +360,7 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
       },
     };
     expect([
-      await outcome(applyHarness(root, ["permissions"], digestsOf(preview), fs)),
+      await outcome(applyHarness(root, ["permissions"], digestsOf(preview), { fs })),
       read(root, SETTINGS) === text,
     ]).toEqual(["harness_stale", true]);
   });
