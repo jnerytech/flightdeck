@@ -119,32 +119,39 @@ describe("ux-review-eval (#983)", () => {
     expect(reportOf(JSON.stringify({ type: "result", result: 3 }))).toBe("");
   });
 
-  test("a review runs as the ux-reviewer agent with no Edit or Write, and the home folder denied outside it", () => {
+  test("a review runs as the ux-reviewer agent with the diff in its prompt, no git, no Edit or Write, and only the four checks", () => {
     const options = { model: "sonnet", budget: "0.5" };
-    const args = reviewArgs(reviewPrompt("abc123"), options, { dir: "/tmp/x", home: "/home/u" });
-    expect(args.slice(0, 4)).toEqual([
-      "-p",
-      "Review the UI change of this worktree against the base abc123. Report as your Output section says.",
-      "--agent",
-      "ux-reviewer",
-    ]);
+    const prompt = reviewPrompt("abc123", "+  <span>Hi</span>");
+    expect(prompt).toBe(
+      [
+        "Review the UI change of this worktree against the base abc123. Its diff is below: do not run git.",
+        "Report as your Output section says.",
+        "",
+        "```diff",
+        "+  <span>Hi</span>",
+        "```",
+      ].join("\n"),
+    );
+    const args = reviewArgs(prompt, options, { dir: "/tmp/x", home: "/home/u" });
+    expect(args.slice(0, 4)).toEqual(["-p", prompt, "--agent", "ux-reviewer"]);
     const allowed = args.slice(
       args.indexOf("--allowedTools") + 1,
       args.indexOf("--disallowedTools"),
     );
-    expect(allowed.some((tool) => /^(Edit|Write)/.test(tool))).toBe(false);
-    expect(allowed).toContain("Bash(bun --config=bunfig.area.toml test *)");
-    const denied = args.slice(args.indexOf("--disallowedTools") + 1);
-    expect(denied).toEqual([
-      "Edit",
-      "Write",
-      "NotebookEdit",
-      "Bash(git push *)",
-      "Bash(git remote *)",
-      "Read(~/**)",
-      "Edit(~/**)",
-      "Write(~/**)",
+    // #986 security review: a test run takes no flag of its own (no outfile, no other folder).
+    expect(allowed).toEqual([
+      "Read(./**)",
+      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/textos.test.tsx)",
+      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/i18n-missing.test.ts)",
+      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/layout-ratchet.test.ts)",
+      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/state-selectors-ratchet.test.ts)",
     ]);
+    const denied = args.slice(args.indexOf("--disallowedTools") + 1);
+    // No git at all: `git diff <path> <path>` reads any file, and `--output` writes one.
+    for (const tool of ["Edit", "Write", "NotebookEdit", "Bash(git *)", "Bash(git * --output*)"]) {
+      expect(denied).toContain(tool);
+    }
+    expect(denied.slice(-3)).toEqual(["Read(~/**)", "Edit(~/**)", "Write(~/**)"]);
     const inside = reviewArgs("p", options, { dir: "/home/u/tmp/x", home: "/home/u/" });
     expect(inside.includes("Read(~/**)")).toBe(false);
     expect(args[args.indexOf("--max-budget-usd") + 1]).toBe("0.5");

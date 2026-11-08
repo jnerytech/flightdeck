@@ -93,9 +93,11 @@ for (const uxCase of UX_CASES) {
           .code === 0;
       if (!committed) fail(`ux-review-eval: the ${uxCase.name} change did not commit in ${dir}`);
     }
+    // The diff goes in the prompt, so the review needs no git (#986 security review).
+    const diff = run(["git", "diff", `${base}..HEAD`], dir).out;
     console.error(`ux-review-eval: ${uxCase.name} sample ${sample}/${options.samples} in ${dir}`);
     const session = run(
-      [claude, ...reviewArgs(reviewPrompt(base), options, { dir, home: homedir() })],
+      [claude, ...reviewArgs(reviewPrompt(base, diff), options, { dir, home: homedir() })],
       dir,
     );
     const report = reportOf(session.out);

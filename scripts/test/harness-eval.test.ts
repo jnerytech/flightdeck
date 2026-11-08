@@ -215,6 +215,19 @@ describe("harness-eval: what the session may touch", () => {
       expect(denied).toContain(tool);
     }
     for (const tool of ["Read(~/**)", "Edit(~/**)", "Write(~/**)"]) expect(denied).toContain(tool);
+    // #986 security review: `git diff <path> <path>` with a path outside the clone compares files
+    // (an implied --no-index), so it reads what Read(~/**) denies.
+    for (const tool of [
+      "Bash(git * --no-index*)",
+      "Bash(git diff /*)",
+      "Bash(git diff * /*)",
+      "Bash(git diff ~*)",
+      "Bash(git diff * ~*)",
+      "Bash(git diff ../*)",
+      "Bash(git diff *../*)",
+    ]) {
+      expect(denied).toContain(tool);
+    }
   });
 
   test("a clone inside the home folder does not deny the home folder, which would deny the clone", () => {

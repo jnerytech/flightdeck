@@ -167,7 +167,7 @@ export function gradeReport(expect: UxExpect | null, report: string): boolean {
 }
 
 /** The prompt of one review: the worktree is the clone, the base the commit before the case. */
-export function reviewPrompt(base: string): string {
+export function reviewPrompt(base: string, _diff: string): string {
   return [
     `Review the UI change of this worktree against the base ${base}.`,
     "Report as your Output section says.",
