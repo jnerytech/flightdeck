@@ -42,6 +42,14 @@ const DRAFT = {
   checkFilled: null,
 };
 
+const ADDED = {
+  path: ".flightdeck/workflows/alert-fixer.yaml",
+  branch: "flightdeck/workflow-alert-fixer-20261108-1405",
+  base: "main",
+  url: "https://github.com/o/r/pull/7",
+};
+const OFFERED = ["workflowTemplateAdd"];
+
 type Answer = () => Promise<unknown>;
 
 function setup(
@@ -52,17 +60,43 @@ function setup(
     copyWorks?: boolean;
     /** Answers the next copies by hand: each call waits for its resolver. */
     copyBy?: Array<(worked: boolean) => void>;
+    /** The host's features (#1221); without them the store knows no host, as before. */
+    features?: string[];
+    /** The answer to `workflow.template.add`; null is a refusal the store already showed. */
+    added?: object | null;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
   store.i18n.start();
+  if (options.features) {
+    (store as unknown as { update(p: object): void }).update({
+      hosts: [
+        {
+          id: "h1",
+          name: "alfa",
+          url: "ws://x",
+          token: "",
+          status: "online",
+          info: null,
+          hostInfo: { daemonVersion: "x", features: options.features },
+          incompatibility: null,
+          daemonUpdate: null,
+          sessions: [],
+        },
+      ],
+    });
+  }
   const sent: Array<[string, string, unknown]> = [];
   const copied: string[] = [];
+  const opened: string[] = [];
+  store.openLink = ((url: string) => void opened.push(url)) as never;
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     sent.push([hostId, type, payload]);
     if (type === "workflow.list") return { workflows: [] };
+    if (type === "workflow.template.add")
+      return options.added === undefined ? ADDED : options.added;
     if (type === "workflow.templates") {
       return options.templates
         ? options.templates()
@@ -82,7 +116,8 @@ function setup(
     </TContext.Provider>,
   );
   const asked = () => sent.filter(([, type]) => type === "workflow.templates");
-  return { store, sent, copied, asked };
+  const adds = () => sent.filter(([, type]) => type === "workflow.template.add");
+  return { store, sent, copied, asked, adds, opened };
 }
 
 const click = (el: Element) =>
@@ -327,5 +362,77 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     expect(
       screen.queryByText("Faça commit em .flightdeck/workflows/alert-fixer.yaml"),
     ).not.toBeNull();
+  });
+});
+
+describe("adding a template to the project from the app (issue #1221)", () => {
+  test("Add to the project asks first, then has the host open the PR, and links it", async () => {
+    const { adds, opened } = setup({ features: OFFERED });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    expect(adds()).toHaveLength(0);
+    const asking = screen.queryByRole("group", { name: "Add Alert fixer to the project" });
+    expect(asking).not.toBeNull();
+    expect(
+      within(asking ?? document.body).queryByText(
+        /\.flightdeck\/workflows\/alert-fixer\.yaml on a new branch/,
+      ),
+    ).not.toBeNull();
+    await press("Open the pull request");
+    await settleMaybe(() => button("View the pull request") !== null);
+    expect(adds()).toEqual([
+      [
+        "h1",
+        "workflow.template.add",
+        { projectId: "p1", templateId: "alert-fixer", confirm: true },
+      ],
+    ]);
+    const status = document.querySelector('[data-slot="add-status"]');
+    expect(status?.getAttribute("role") ?? "").toBe("status");
+    expect(status?.textContent ?? "").toContain(ADDED.branch);
+    await press("View the pull request");
+    expect(opened).toEqual([ADDED.url]);
+  });
+
+  test("Cancel sends nothing and gives the focus back to Add to the project", async () => {
+    const { adds } = setup({ features: OFFERED });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    await press("Cancel");
+    expect(adds()).toHaveLength(0);
+    expect(screen.queryByRole("group", { name: "Add Alert fixer to the project" }) === null).toBe(
+      true,
+    );
+    expect(document.activeElement === button("Add to the project")).toBe(true);
+  });
+
+  test("a refusal leaves no note that it worked and offers Add to the project again", async () => {
+    setup({ features: OFFERED, added: null });
+    await open("Add from a template", "Show Alert fixer");
+    await press("Add to the project");
+    await press("Open the pull request");
+    await settleMaybe(() => button("Add to the project") !== null);
+    expect(button("Add to the project")).not.toBeNull();
+    expect(button("View the pull request") === null).toBe(true);
+  });
+
+  test("a host that does not offer it keeps the copy path and its words", async () => {
+    setup({ features: [] });
+    await open("Add from a template", "Show Alert fixer");
+    expect(button("Copy the file")).not.toBeNull();
+    expect(button("Add to the project") === null).toBe(true);
+    expect(screen.queryByText(/Nothing is written for you/)).not.toBeNull();
+  });
+
+  test("in Portuguese the add, its question and its note follow the language", async () => {
+    setup({ features: OFFERED, language: "pt-BR" });
+    await open("Adicionar de um modelo", "Ver Corretor de alertas");
+    await press("Adicionar ao projeto");
+    expect(
+      screen.queryByRole("group", { name: "Adicionar Corretor de alertas ao projeto" }),
+    ).not.toBeNull();
+    await press("Abrir o pull request");
+    await settleMaybe(() => button("Ver o pull request") !== null);
+    expect(button("Ver o pull request")).not.toBeNull();
   });
 });
