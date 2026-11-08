@@ -5,17 +5,19 @@ import { SecretScanner } from "@flightdeck/protocol";
 import { applyHarness } from "../src/harness/apply.ts";
 import { commitHarness } from "../src/harness/commit.ts";
 import { previewHarness } from "../src/harness/preview.ts";
+import { startServer } from "../src/server.ts";
 import { git } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { newManager, tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 /**
  * Issue #75, slice C1: what the harness apply wrote is committed on a new branch the host names,
  * through a temporary index, with the person's identity: their branch, index and files stay as they
  * are, no hook of the repository runs, and a secret or a changed file refuses.
  */
-const SETTINGS = ".claude/settings.json";
 const ALL = ["claudeMd", "hooks", "skills", "agents", "permissions"] as const;
 const AT = () => new Date("2026-11-08T14:05:00Z");
+const TOKEN = "harness-commit-token-0123456789ab";
 const posix = process.platform !== "win32";
 
 /** A repository with one commit, a person's identity, and a Bun project to set up. */
@@ -179,4 +181,53 @@ describe("harness-commit: the setup is committed on a new branch, nothing else m
       ]).toEqual(["ok", true, false]);
     },
   );
+
+  test("the server commits over a near connection, with confirm, inside the allowed roots only", async () => {
+    const root = repo();
+    const done = await applied(root);
+    const { manager } = newManager();
+    const commit = (path: string, digests: Readonly<Record<string, string>>) =>
+      commitHarness(path, digests, { scanner: scanner(), now: AT });
+    const base = {
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+      allowedNetworks: ["0.0.0.0/0", "::/0"],
+    };
+    const servers = [
+      startServer({ ...base, harnessCommit: commit }),
+      startServer({ ...base, harnessCommit: commit, peerOf: () => "8.8.8.8" }),
+      startServer(base),
+    ];
+    const clients = servers.map((server) => new FrameClient(server.url));
+    try {
+      for (const client of clients) await client.request("hello", { token: TOKEN, client: "t" });
+      const [near, far, off] = clients as [FrameClient, FrameClient, FrameClient];
+      const answer = async (client: FrameClient, payload: Record<string, unknown>) => {
+        const ack = await client.request("project.harness.commit", payload);
+        const error = ack.error as { reason?: string } | undefined;
+        return ack.ok === true ? (ack.data as { branch?: string }).branch : (error?.reason ?? null);
+      };
+      const asked = { path: root, digests: done.digests ?? {} };
+      expect([
+        await answer(near, asked),
+        await answer(far, { ...asked, confirm: true }),
+        await answer(off, { ...asked, confirm: true }),
+        await answer(near, { ...asked, path: tempDir("fd-elsewhere-"), confirm: true }),
+        await answer(near, { ...asked, confirm: true }),
+      ]).toEqual([
+        "harness_confirm",
+        "transport_refused",
+        "feature_off",
+        "cwd_outside_roots",
+        "flightdeck/claude-setup-20261108-1405",
+      ]);
+    } finally {
+      for (const client of clients) client.close();
+      for (const server of servers) await server.stop();
+    }
+  });
 });
