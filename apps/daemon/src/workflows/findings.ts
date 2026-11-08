@@ -19,6 +19,15 @@ export interface Finding {
   body: string;
 }
 
+/** What the board did with the findings: the new cards' ids, and what it left out. */
+export interface CardsRaised {
+  created: string[];
+  /** Findings a card already covers, or that repeat one earlier in the list. */
+  duplicates: number;
+  /** New findings left out because the run already created `CARDS_PER_RUN`. */
+  overCap: number;
+}
+
 export type FindingsResult =
   | { ok: true; findings: Finding[] }
   | { ok: false; reason: "findings_missing" }

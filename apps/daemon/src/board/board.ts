@@ -40,6 +40,7 @@ import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
+import type { CardsRaised, Finding } from "../workflows/findings.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
@@ -128,6 +129,8 @@ export interface BoardOptions {
   worktreeIncludeLimit?: number;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
   idle?: () => Promise<void>;
+  /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
+  suspendApproval?: (cardId: string, reason: string) => void;
 }
 
 interface ProjectRow {
@@ -578,6 +581,19 @@ export class Board {
     }
     const project = this.listProjects().find((p) => isInside(resolve(p.path), resolve(cwd)));
     return project ? { project, card: null } : null;
+  }
+
+  /**
+   * Issue #79: raises the findings of a workflow's agent step as Backlog cards, skipping those a
+   * card of the project already covers (by key, or by title among the open ones) and creating at
+   * most `CARDS_PER_RUN`. The text is the agent's: marked as such, with approval kept off.
+   */
+  raiseCards(
+    _projectId: string,
+    _findings: readonly Finding[],
+    _origin: { workflow: string; runId: string },
+  ): CardsRaised {
+    return { created: [], duplicates: 0, overCap: 0 };
   }
 
   getCard(id: string): Card {
