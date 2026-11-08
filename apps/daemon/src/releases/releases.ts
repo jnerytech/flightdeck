@@ -33,12 +33,14 @@ const GithubRelease = z.object({
 });
 const GithubReleases = z.array(GithubRelease);
 
+/** The text with each `[label](target)` link shortened to its label. */
+export function withoutLinks(text: string): string {
+  return text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+}
+
 /** A bullet as plain text: no bold, code or link markup, cut to a line a card can show. */
 function plain(text: string): string {
-  const clean = text
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[*_`]/g, "")
-    .trim();
+  const clean = withoutLinks(text).replace(/[*_`]/g, "").trim();
   return clean.length > MAX_BULLET ? `${clean.slice(0, MAX_BULLET - 1).trimEnd()}…` : clean;
 }
 
