@@ -3840,6 +3840,28 @@ export const ptBR = {
     loading: "Carregando workflows",
     empty: "Nenhum workflow na branch base ainda.",
     failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
+    templates: {
+      open: "Adicionar de um modelo",
+      title: "Modelos de workflow",
+      intro:
+        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. Nada é gravado para você.",
+      loading: "Carregando modelos",
+      failed:
+        "Não deu para carregar os modelos. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
+      list: "Modelos",
+      show: "Ver {name}",
+      back: "Voltar aos modelos",
+      persona: "Persona: {persona}",
+      inputs: "Pede: {inputs}",
+      path: "Faça commit em {path}",
+      file: "Arquivo {path}",
+      copy: "Copiar o arquivo",
+      copied: "Copiado. Faça commit na branch base e confie nele aqui.",
+      checkFilled:
+        "A linha check tem o comando de teste deste projeto. Confira antes de confiar no workflow.",
+      checkPlaceholder:
+        "A linha check tem um texto provisório que falha. Troque pelo seu comando de teste antes de fazer o commit do arquivo.",
+    },
   },
   sessionViews: { label: "Visões da sessão", terminal: "Terminal" },
   shortcuts: {
