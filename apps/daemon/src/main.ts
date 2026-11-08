@@ -786,6 +786,8 @@ export async function startDaemon(
     linger?: () => Promise<"on" | "off" | null>;
     /** The machine's service manager, for the probes above when they are not given; the real one when absent. */
     serviceContext?: (dryRun: boolean) => ServiceContext;
+    /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
+    serviceSelf?: string[];
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
     /** What keeps the computer awake (issue #163); the machine's own when absent. */
