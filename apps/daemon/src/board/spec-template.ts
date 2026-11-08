@@ -13,7 +13,7 @@ import {
   contractOf,
   specPathProblem,
 } from "@flightdeck/protocol";
-import { createInside } from "../create-inside.ts";
+import { createInside, readInside } from "../create-inside.ts";
 
 /** The project's TDD skill, as the harness setup writes it (#75). */
 const TDD_SKILL = ".claude/skills/tdd/SKILL.md";
@@ -46,7 +46,10 @@ export function wantsSpec(contracts: ContractOverrides, specPath: string | null)
 }
 
 /** The card's spec from the template: front matter, title and the checklist of its description. */
-export function renderSpec(card: { id: string; title: string; description: string }): string {
+export function renderSpec(
+  card: { id: string; title: string; description: string },
+  template: string = BODY,
+): string {
   // One line, so it can neither end the heading nor the front matter early.
   const title = card.title.replace(/[\r\n]+/g, " ").trim();
   const items = card.description.split(/\r?\n/).filter((line) => CHECKLIST_ITEM.test(line));
@@ -55,7 +58,7 @@ export function renderSpec(card: { id: string; title: string; description: strin
     criteria: items.length > 0 ? items.join("\n") : "- [ ] ",
   };
   // One pass: a criterion that names a placeholder stays as it is.
-  const body = BODY.replace(/\{\{(title|criteria)\}\}/g, (_, key: string) => values[key] ?? "");
+  const body = template.replace(/\{\{(title|criteria)\}\}/g, (_, key: string) => values[key] ?? "");
   const front = [
     "---",
     `card: ${card.id}`,
@@ -88,6 +91,20 @@ export async function writeSpec(
   } catch {
     return "failed";
   }
+}
+
+/** The project's own spec template, and the most of it read: a template is a page, not a book. */
+const PROJECT_TEMPLATE = ".flightdeck/templates/spec.md";
+const TEMPLATE_MAX = 32 * 1024;
+
+/**
+ * The body a trusted project gives its specs (`.flightdeck/templates/spec.md` under `root`, the
+ * trusted checkout), or null: missing, empty, too big, or reached through a link. The host adds the
+ * front matter (with `draft: true`) either way.
+ */
+export async function projectTemplate(root: string): Promise<string | null> {
+  const text = await readInside(root, PROJECT_TEMPLATE, TEMPLATE_MAX);
+  return text?.trim() ? text : null;
 }
 
 /** Whether the worktree has the TDD skill the first prompt can name. */

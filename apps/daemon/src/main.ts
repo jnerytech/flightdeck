@@ -995,6 +995,11 @@ export async function startDaemon(
   const board = new Board({
     folderLocks,
     preparePersonas: prepare,
+    // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
+    specTemplateRoot: async (worktree) => {
+      const trust = await trustForKnowledge(worktree);
+      return trust.trusted ? (trust.configRoot ?? worktree) : null;
+    },
     db: store.db,
     manager,
     quota,

@@ -62,7 +62,14 @@ import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./p
 import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
-import { hasTddSkill, renderSpec, specFirstLine, wantsSpec, writeSpec } from "./spec-template.ts";
+import {
+  hasTddSkill,
+  projectTemplate,
+  renderSpec,
+  specFirstLine,
+  wantsSpec,
+  writeSpec,
+} from "./spec-template.ts";
 import type {
   BoardColumn,
   Card,
@@ -139,6 +146,12 @@ export interface BoardOptions {
   projectKeys?: { known(path: string): string; resolve?(path: string): Promise<string> };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
   worktreeIncludeLimit?: number;
+  /**
+   * Issue #78: the folder a card's spec template may be read from (the trusted checkout of the
+   * worktree's project), or null when the project is not trusted: its template would reach the
+   * agent before the person trusted it.
+   */
+  specTemplateRoot?: (worktree: string) => Promise<string | null>;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
   idle?: () => Promise<void>;
   /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
@@ -339,8 +352,8 @@ function skippedNotice(left: number, limit: number): string {
   const files =
     left === 1
       ? "1 arquivo do .worktreeinclude não copiado"
-      : left + " arquivos do .worktreeinclude não copiados";
-  return files + ": passou do limite de " + Math.round((limit / 1024 / 1024) * 100) / 100 + " MB";
+      : `${left} arquivos do .worktreeinclude não copiados`;
+  return `${files}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
 }
 
 /** The reason and params of a refusal; `null` for any other error. */
@@ -1601,7 +1614,12 @@ export class Board {
     const card = this.getCard(id);
     const path = specExpectedPath(card);
     if (path === null || !wantsSpec(contracts, card.specPath)) return null;
-    const result = await writeSpec(worktree, path, renderSpec(card));
+    // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
+    const root = this.opts.specTemplateRoot
+      ? await this.opts.specTemplateRoot(worktree).catch(() => null)
+      : null;
+    const template = root ? await projectTemplate(root) : null;
+    const result = await writeSpec(worktree, path, renderSpec(card, template ?? undefined));
     if (result === "failed") {
       // The app says it in its language; the prompt sends the agent to no spec that is not there.
       const why = new FlightdeckError(

@@ -1,9 +1,9 @@
 /**
- * Creates a new file inside a folder, never through a link and never over a file (#75, #78): the
- * harness apply and a card's spec template both write into a project this way.
+ * Files inside a folder, never through a link (#75, #78): the harness preview and apply and a card's
+ * spec template read and create project files this way, and a new file never goes over one.
  */
-import { constants } from "node:fs";
-import { type FileHandle, lstat, mkdir, open, realpath } from "node:fs/promises";
+import { type BigIntStats, constants } from "node:fs";
+import { type FileHandle, lstat, mkdir, open, readFile, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { samePath } from "./paths.ts";
 
@@ -51,4 +51,37 @@ export async function createInside(
   } finally {
     await handle.close();
   }
+}
+
+/** Where a walk inside a folder ends: missing, refused, or a plain file at `at` whose `lstat` was `info`. */
+export type Walk =
+  | { state: "absent" }
+  | { state: "refused" }
+  | { state: "file"; at: string; info: BigIntStats };
+
+/**
+ * A file inside the real folder `root`, walked one name at a time: missing, a plain file of at most
+ * `max` bytes, or refused. A link anywhere on the way is refused, dangling or not, out of the folder
+ * or into it, so what is read or written is where the path says.
+ */
+export async function walkInside(root: string, name: string, max: number): Promise<Walk> {
+  let at = root;
+  let info: BigIntStats | null = null;
+  for (const segment of name.split("/")) {
+    // What came before this name must be a folder.
+    if (info !== null && !info.isDirectory()) return { state: "refused" };
+    at = join(at, segment);
+    info = await orNull(lstat(at, { bigint: true }));
+    if (info === null) return { state: "absent" };
+    if (info.isSymbolicLink()) return { state: "refused" };
+  }
+  if (!info?.isFile() || info.size > BigInt(max)) return { state: "refused" };
+  return { state: "file", at, info };
+}
+
+/** The text of a plain file inside `root` of at most `max` bytes; null when missing or refused. */
+export async function readInside(root: string, name: string, max: number): Promise<string | null> {
+  const found = await walkInside(root, name, max);
+  if (found.state !== "file") return null;
+  return orNull(readFile(found.at, "utf8"));
 }
