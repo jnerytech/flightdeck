@@ -2,7 +2,10 @@
 import type { Finish } from "../../apps/desktop/src/lib/finished.ts";
 import { requestLink } from "../../apps/desktop/src/lib/request-link.ts";
 
-/** The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago. */
+/**
+ * The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago.
+ * `request` is a request really open in the demo: the "web · tests" row links to it.
+ */
 export function demoInbox(lang: string, request?: { hostId: string; requestId: string }): string {
   const pt = lang.startsWith("pt");
   const dayStart = new Date().setUTCHours(0, 0, 0, 0);
@@ -42,6 +45,8 @@ export function demoInbox(lang: string, request?: { hostId: string; requestId: s
       host: "alfa",
       ask: pt ? "Quer executar: bun test" : "Wants to run: bun test",
       group: "alfa/web",
+      // A link to an open request is what makes the row answerable from the bell (#1131).
+      ...(request ? { link: requestLink(request.hostId, request.requestId) } : {}),
     }),
     entry("5", today(60), {
       title: pt ? "Card desbloqueado" : "Card unblocked",
@@ -76,5 +81,5 @@ export function demoFinished(
     at: now.toISOString(),
     files: null,
   };
-  return JSON.stringify({ list: [] as Finish[], lastLook: finish.at });
+  return JSON.stringify({ list: [finish], lastLook: null });
 }

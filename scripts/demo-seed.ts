@@ -95,6 +95,8 @@ function writeUserConfig(home: string): void {
 /** Ids the prints open screens with. */
 export interface DemoIds {
   waitingSession: string;
+  /** The permission request `waitingSession` holds open: the bell's print links a row to it (#1168). */
+  waitingRequest: string;
   idleSession: string;
   project: string;
   emptyProject: string;
@@ -862,6 +864,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const session = (name: string, prompt: string) =>
     client.call<{ sessionId: string }>("session.create", { cwd: web, name, prompt });
   const bash = await session("Testes do backend", "[bash] rode a suíte");
+  const bashRequest = await until(() => client.requests.get(bash.sessionId), "pedido do Bash");
   await session("Changelog da versão", "[tool] escreva o changelog");
   const idle = await session(
     "Revisão do PR 128",
@@ -1153,6 +1156,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     ],
     ids: {
       waitingSession: bash.sessionId,
+      waitingRequest: bashRequest,
       idleSession: idle.sessionId,
       project: project.id,
       emptyProject: empty.id,
