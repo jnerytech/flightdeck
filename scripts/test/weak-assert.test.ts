@@ -66,6 +66,13 @@ describe("weak-assert (#1141)", () => {
         `expect(id)${m("toBeDefined")};\nexpect(n)${m("toBe", "1")};`,
       ),
     ).toBe(true);
+    // An unclosed `expect(` in a comment hides nothing after it.
+    expect(
+      weakensAssertions(
+        `// expect( is how\nexpect(id)${m("toBe", "1")};`,
+        `// expect( is how\nexpect(id)${m("toBeDefined")};`,
+      ),
+    ).toBe(true);
     // A paren inside a string does not end the subject.
     expect(
       weakensAssertions(`expect(f("("))${m("toBe", "1")};`, `expect(f("("))${m("toBeDefined")};`),
