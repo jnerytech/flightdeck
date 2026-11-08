@@ -517,7 +517,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         </form>
       </div>`);
     expect(narrow()).toEqual([
-      "sheet-actions: dialog-content > input (under dialog-content > form-actions)",
+      "sheet-actions: dialog-content > input[2] (under dialog-content > form-actions)",
     ]);
     // Fixed: the buttons rest on the bottom, and the last field scrolls up clear of them (the sheet
     // hides 300 px, so at the end of its scroll the field at 900 is at 600, above the buttons at 640).
