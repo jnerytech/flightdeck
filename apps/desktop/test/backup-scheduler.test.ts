@@ -153,7 +153,10 @@ describe("backup-scheduler (#1264)", () => {
     await waitFor(() => writes.length === 2 || undefined, "the timer's run").catch(() => null);
     scheduler.dispose();
     clock.now = T0 + 2 * DAY;
-    await Bun.sleep(80);
+    // Nothing should run now: give a stray timer time to show itself, then look.
+    await waitFor(() => writes.length > 2 || undefined, "a run after dispose", 100).catch(
+      () => null,
+    );
     forget();
     await scheduler.start();
     scheduler.dispose();
