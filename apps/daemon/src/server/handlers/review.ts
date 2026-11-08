@@ -5,6 +5,7 @@
 import { withTurnUuids } from "../../checkpoints/turn-uuid.ts";
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import { preparePersonas } from "../../personas/prepare.ts";
+import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const reviewHandlers = {
@@ -124,6 +125,19 @@ export const reviewHandlers = {
   "changes.revert": async (payload, { server }) => {
     const { target, path, confirm } = payload;
     return await server.need("files").revert(target, path, confirm === true);
+  },
+  "changes.commit": async (payload, { ws, server }) => {
+    const { target, files, message, branch, confirm } = payload;
+    // A branch made in the person's checkout, with their hooks running: near only, and confirmed.
+    requireVaultTransport(ws.data.origin, "changes.commit", server.opts.log);
+    if (confirm !== true) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "committing the session's changes needs confirm: true",
+        "changes_commit_confirm",
+      );
+    }
+    return await server.need("sessionCommits").commit(target, { files, message, branch });
   },
   "changes.undoRevert": async (payload, { server }) => {
     const { target, path, confirm } = payload;

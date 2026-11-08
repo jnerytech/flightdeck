@@ -23,7 +23,7 @@ import { hasFeature } from "../lib/version.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
 export function Snippet({ text }: Readonly<{ text: string }>) {
-  const parts = text.split(/«|»/);
+  const parts = text.split(/[«»]/);
   // A part's position in the text is its key (parts are immutable and ordered).
   let at = 0;
   return (

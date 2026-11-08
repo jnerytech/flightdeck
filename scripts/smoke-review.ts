@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -41,14 +42,8 @@ const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 let step = "preparar";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-async function until<T>(check: () => Promise<T | null | undefined | false>, what: string) {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = await check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
-  }
+function until<T>(check: () => T | Pending | Promise<T | Pending>, what: string): Promise<T> {
+  return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 50 });
 }
 
 class Client {
@@ -223,13 +218,13 @@ async function run(work: string): Promise<void> {
       throw new Error(`revisão enviada: ${JSON.stringify(sent)}`);
     }
     await until(
-      async () => client.said(sessionId, JSON.stringify(expected).slice(1, -1)),
+      () => client.said(sessionId, JSON.stringify(expected).slice(1, -1)),
       "a revisão chegar à sessão do card",
     );
     // The quote has the fake's `[commit]`: it commits once more on this turn, which must end
     // before the merge.
     await until(
-      async () => client.said(sessionId, "Echo: Revisão das mudanças:"),
+      () => client.said(sessionId, "Echo: Revisão das mudanças:"),
       "a resposta do agente",
     );
     await idle(() => true, "o agente terminar o turno da revisão");

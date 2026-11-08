@@ -12,6 +12,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type TerminalAttachResult } from "@flightdeck/protocol";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -35,7 +36,7 @@ const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 
 /** The whole of what runs in the terminal: a fixed script, nothing a user typed. */
-const SCRIPT = `
+const SCRIPT = String.raw`
 const { spawn } = require("node:child_process");
 const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
 console.log("READY pid=" + process.pid + " child=" + child.pid);
@@ -44,7 +45,7 @@ let buffer = "";
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
   for (;;) {
-    const end = buffer.search(/[\\r\\n]/);
+    const end = buffer.search(/[\r\n]/);
     if (end < 0) break;
     const line = buffer.slice(0, end);
     buffer = buffer.slice(end + 1);
@@ -57,14 +58,8 @@ setInterval(() => {}, 1000);
 let step = "preparar";
 const log = (msg: string) => console.log(`  · ${msg}`);
 
-async function until<T>(check: () => T | null | undefined | false, what: string): Promise<T> {
-  const deadline = Date.now() + TIMEOUT_MS;
-  for (;;) {
-    const value = check();
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
-  }
+function until<T>(check: () => T | Pending, what: string): Promise<T> {
+  return pollUntil(check, what, { timeoutMs: TIMEOUT_MS, pauseMs: 50 });
 }
 
 class Client {
@@ -170,7 +165,7 @@ async function run(work: string): Promise<void> {
     step = "saída do processo";
     const seen = (text: string) => client.output.includes(text);
     const first = await until(
-      () => client.output.match(/READY pid=(\d+) child=(\d+)/),
+      () => /READY pid=(\d+) child=(\d+)/.exec(client.output),
       "a primeira linha do processo",
     );
     pids.push(Number(first[1]), Number(first[2]));

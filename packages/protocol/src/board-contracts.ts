@@ -68,7 +68,7 @@ export function contractOf(
 }
 
 const AFTER_INDENT = /[-*]\s+\[[ xX]\]\s/y;
-const WHITE_SPACE = /\s*/y;
+const WHITE_SPACE = /\s*/y; // NOSONAR: sticky and one quantifier, so one pass from the position it is set to
 const LINE_BREAK = /[\n\r\u2028\u2029]/g;
 
 /**

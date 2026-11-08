@@ -947,6 +947,11 @@ export const DiffFile = z.object({
    * no counts, and the daemon never reads a new one (issue #509). Absent from an older daemon.
    */
   secret: z.boolean().optional(),
+  /**
+   * #1133: a session's uncommitted file as it is now (sha256 of its bytes, `deleted` when it is
+   * gone): `changes.commit` takes back the digests the person saw, and refuses when one moved.
+   */
+  digest: z.string().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;
@@ -1087,8 +1092,23 @@ export const ChangesResult = z.object({
   files: z.array(DiffFile),
   /** A card's commits ahead of and behind its base; `null` for a session. */
   position: z.object({ ahead: z.number().int(), behind: z.number().int() }).nullable(),
+  /**
+   * #1133: the commit hooks a commit of this checkout runs (`pre-commit`, `commit-msg`...), shown
+   * before the person confirms one. Only for a target against `HEAD`.
+   */
+  hooks: z.array(z.string()).optional(),
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
+
+/** #1133: what `changes.commit` made: the new branch, the one it started from, and the commit. */
+export const ChangesCommitted = z.object({
+  branch: z.string(),
+  /** The branch the checkout was on; null when it was detached. */
+  base: z.string().nullable(),
+  commit: z.string(),
+  files: z.array(z.string()),
+});
+export type ChangesCommitted = z.infer<typeof ChangesCommitted>;
 
 // Phase 14: terminals embedded in the host (a real shell behind a PTY).
 export const TerminalInfo = z.object({
@@ -3181,6 +3201,14 @@ export const HARNESS_PREVIEW_PARTS = [
   "permissions",
 ] as const;
 
+/** #75, slice T1: a host harness template's id, which is its folder's name: lower case, no dot or slash. */
+export const HARNESS_TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+/** #75, slice T1b: the most digests a harness apply or commit takes: a template's 16 files and the settings. */
+export const HARNESS_DIGESTS_MAX = 17;
+const harnessDigests = z
+  .record(z.string().max(256), z.string().max(128))
+  .refine((digests) => Object.keys(digests).length <= HARNESS_DIGESTS_MAX);
+
 const cmd = <T extends string, P extends z.ZodType>(type: T, payload: P) =>
   z.object({ id: z.string().min(1), type: z.literal(type), payload });
 
@@ -3256,6 +3284,8 @@ export const Command = z.discriminatedUnion("type", [
       .object({
         path: z.string().min(1).max(4096),
         parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
+        /** #75, slice T1b: a host template's Markdown instead of the fixed files. */
+        template: z.string().regex(HARNESS_TEMPLATE_ID).optional(),
       })
       .strict(),
   ),
@@ -3298,9 +3328,7 @@ export const Command = z.discriminatedUnion("type", [
     z
       .object({
         path: z.string().min(1).max(4096),
-        digests: z
-          .record(z.string().max(256), z.string().max(128))
-          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        digests: harnessDigests,
         confirm: z.boolean().optional(),
       })
       .strict(),
@@ -3316,12 +3344,12 @@ export const Command = z.discriminatedUnion("type", [
       .object({
         path: z.string().min(1).max(4096),
         parts: z.array(z.enum(HARNESS_PREVIEW_PARTS)).min(1).max(HARNESS_PREVIEW_PARTS.length),
-        digests: z
-          .record(z.string().max(256), z.string().max(128))
-          .refine((digests) => Object.keys(digests).length <= HARNESS_PREVIEW_PARTS.length),
+        digests: harnessDigests,
         confirm: z.boolean().optional(),
         /** The person accepted the settings being rewritten with another layout (the preview's `reformats`). */
         reformat: z.boolean().optional(),
+        /** #75, slice T1b: a host template's Markdown instead of the fixed files. */
+        template: z.string().regex(HARNESS_TEMPLATE_ID).optional(),
       })
       .strict(),
   ),
@@ -4604,6 +4632,24 @@ export const Command = z.discriminatedUnion("type", [
     "changes.revert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
   ),
+  /**
+   * #1133: commits the chosen uncommitted files of a plain session on a new branch, in the person's
+   * own checkout with their hooks. `files` maps each path to the digest `changes.get` gave.
+   */
+  cmd(
+    "changes.commit",
+    z
+      .object({
+        target: ReviewTarget,
+        files: z
+          .record(z.string().min(1).max(4096), z.string().max(128))
+          .refine((files) => Object.keys(files).length >= 1 && Object.keys(files).length <= 500),
+        message: z.string().min(1).max(20_000),
+        branch: z.string().min(1).max(200),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "changes.undoRevert",
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
@@ -5003,6 +5049,19 @@ export const HarnessPreview = z.object({
   /** A new file, whole; `digest` is the sha256 of `content`. */
   files: z.array(z.object({ path: z.string(), content: z.string(), digest: z.string() })),
   unreadable: z.array(z.string()),
+  /**
+   * #75, slice T1b: a template's files not proposed, by project path: front matter that could run a
+   * command or grant a permission, a secret, an import from outside the project, or a command a skill
+   * runs as it loads (`` !`cmd` ``). Only with a template.
+   */
+  withheld: z
+    .array(
+      z.object({
+        path: z.string(),
+        reason: z.enum(["frontmatter", "secret", "import", "command"]),
+      }),
+    )
+    .optional(),
 });
 export type HarnessPreview = z.infer<typeof HarnessPreview>;
 
@@ -5581,6 +5640,7 @@ export interface CommandResults {
   "review.send": ReviewSent;
   /** Undo with `changes.undoRevert` until `undoUntil`. */
   "changes.revert": { path: string; undoUntil: string };
+  "changes.commit": ChangesCommitted;
   "changes.undoRevert": { path: string };
   /** `hash`: sha256 of the bytes, hex, for `file.write`. */
   "file.read": { path: string; text: string; hash: string; size: number };

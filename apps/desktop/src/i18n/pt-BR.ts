@@ -1002,6 +1002,12 @@ export const ptBR = {
     gateTool: "etapa “{step}” do workflow",
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
+    finished: "Concluídas",
+    finishedOutcome: { done: "Concluída", failed: "Falhou", ended: "Encerrada" },
+    finishedFilesOne: "1 arquivo alterado",
+    finishedFilesMany: "{n} arquivos alterados",
+    finishedNoFiles: "Nenhum arquivo alterado",
+    seeChanges: "Ver as alterações",
   },
   projectTree: {
     more: "mais {n}",
@@ -1198,6 +1204,9 @@ export const ptBR = {
     sectionClients: "Clientes",
     sectionRecent: "Recentes",
     sectionCreate: "Criar",
+    sectionStart: "Iniciar",
+    startIn: "Iniciar em {project}: {text}",
+    startDetail: "Nova sessão",
     createCard: "Criar card “{title}” em {project}",
     createCardIssue: "Criar card da issue {issue} em {project}",
     createDetail: "Card novo",
@@ -1468,6 +1477,7 @@ export const ptBR = {
     budgets: "os orçamentos",
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
+    sessionCommits: "o commit das mudanças de uma sessão",
     ssh: "os destinos ssh",
     snippets: "os snippets",
     personaSessions: "as personas em sessões abertas",
@@ -1842,6 +1852,29 @@ export const ptBR = {
     harness_confirm: "Mudar a configuração do Claude Code precisa da sua confirmação.",
     harness_reformat:
       "Gravar as configurações de volta mudaria o layout delas e pode reescrever alguns valores: confirme isso também, ou edite o arquivo à mão.",
+    changes_commit_confirm: "Confirme o commit antes que ele seja feito.",
+    changes_commit_target:
+      "Só uma sessão iniciada à mão vira commit aqui: um cartão tem o seu próprio Abrir PR.",
+    changes_commit_state:
+      "O repositório está ocupado ({state}): termine ou desfaça isso num terminal e faça o commit de novo.",
+    changes_commit_stale:
+      "Os arquivos mudaram desde que você olhou: confira de novo e faça o commit.",
+    changes_commit_secret:
+      "{file} parece conter um segredo, então nada foi para o commit: tire-o antes.",
+    changes_commit_message_secret:
+      "A mensagem parece conter um segredo, então nada foi para o commit: tire-o antes.",
+    changes_commit_too_large:
+      "{file} é grande demais para procurar segredos: faça o commit você mesmo.",
+    changes_commit_branch_taken: "Já existe um branch {branch}: escolha outro nome.",
+    changes_commit_hook:
+      "O commit foi recusado: {output}. Você está em {branch} com os arquivos como estavam; corrija e faça o commit de novo, ou volte com git checkout {base}.",
+    changes_commit_timeout:
+      "O commit passou do tempo (um hook ou um pedido de assinatura que não terminou). Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_commit_hook_withheld:
+      "O commit foi recusado, e o que o hook disse não aparece: parece conter um segredo. Você está em {branch} com os arquivos como estavam; volte com git checkout {base}.",
+    changes_commit_rewritten:
+      "{files} mudou durante o commit (um hook que formata, ou a sessão ainda escrevendo), então o commit foi desfeito: confira as mudanças de novo e faça o commit.",
+    changes_commit_git: "O git não conseguiu criar o branch ou o commit neste repositório.",
     harness_commit_stale:
       "Os arquivos não estão como a configuração os gravou: aplique a configuração de novo e faça o commit.",
     harness_commit_no_head: "O projeto ainda não tem commit de onde começar um branch.",
@@ -1853,6 +1886,8 @@ export const ptBR = {
       "O git não conseguiu fazer o commit ou o branch da configuração neste repositório.",
     harness_commit_ignored:
       "{file} é ignorado pelo git neste projeto, então não foi para o commit: faça o commit você mesmo se quiser.",
+    harness_commit_withheld:
+      "{file} poderia rodar um comando ou dar uma permissão ao carregar, então não foi para o commit: faça o commit você mesmo se quiser.",
     harness_draft_exists: "O projeto já tem um CLAUDE.md: um rascunho só cria um.",
     harness_draft_failed: "O modelo não respondeu com um CLAUDE.md: tente de novo.",
     harness_draft_secret: "O rascunho tinha um segredo, então foi descartado: tente de novo.",
@@ -1862,6 +1897,7 @@ export const ptBR = {
     harness_template_taken: "Já existe um modelo chamado {id} neste host: escolha outro nome.",
     harness_template_title_secret:
       "O título do modelo contém um segredo, então nada foi compartilhado.",
+    harness_template_missing: "Não há mais um modelo {id} neste host: escolha outro.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -2312,6 +2348,8 @@ export const ptBR = {
     gone: "O que isto citava não existe mais.",
     dismiss: "Descartar",
     asks: "Pergunta: {question}",
+    keys: "A aprova · N nega",
+    keysHigh: "Segure o botão para aprovar · N nega",
     runs: "Quer executar: {command}",
     edits: "Quer alterar {file}",
     uses: "Quer usar {tool}",
@@ -2476,6 +2514,7 @@ export const ptBR = {
     needPrompt: "Escreva o primeiro prompt para iniciar em segundo plano.",
     addFolder: "Adicionar uma pasta na página de {host}",
     host: "Host",
+    moreOptions: "Mais opções",
   },
   /** What each model is for, in the Model menu and the tooltip of the chip. */
   modelExplain: {
@@ -2640,7 +2679,9 @@ export const ptBR = {
     sessionLast: "última em {when}",
     sessionSpan: "de {from} a {to}",
     sessionFiles: "Arquivos que a sessão escreveu",
-    sessionFilesNone: "A sessão ainda não escreveu arquivos.",
+    sessionFilesTitle: "Arquivos que a sessão editou direto (Write, Edit)",
+    sessionFilesNone:
+      "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
   },
   cardReview: {

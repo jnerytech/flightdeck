@@ -48,6 +48,7 @@ type InPlace =
   | "start-card"
   | "create-card"
   | "create-card-issue"
+  | "start-session"
   | "snippet"
   | "pull-link"
   | "switch-client"
@@ -279,6 +280,22 @@ export function runPaletteTarget(
         .then((card) => {
           if (card) ui.go(board);
         });
+      return;
+    }
+    case "start-session": {
+      // Issue #1135: the typed text is the task; the mode and model are the form's last ones, and
+      // the persona the client defaults to for that folder, as on the form.
+      const { mode, model } = store.newSessionPrefs.value;
+      const persona = store.personaRef(
+        store.clientScope().defaultPersona(target.hostId, target.cwd),
+      );
+      void store.createSession(target.hostId, {
+        cwd: target.cwd,
+        prompt: target.prompt,
+        permissionMode: mode,
+        ...(model ? { model } : {}),
+        ...(persona ? { persona } : {}),
+      });
       return;
     }
     case "create-card-issue": {
@@ -631,7 +648,11 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onShortcuts={() => setHelp(true)}
               onWhatsNew={() => setWhatsNew(true)}
               {...(focusHost && store.uiMode(focusHost.id).canSwitch
-                ? { onSimpleMode: () => void store.toggleUiMode() }
+                ? {
+                    onSimpleMode: () => {
+                      void store.toggleUiMode(); // NOSONAR: the promise is deliberately not awaited; void says so
+                    },
+                  }
                 : {})}
             />
           )}

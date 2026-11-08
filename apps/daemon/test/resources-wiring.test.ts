@@ -164,83 +164,87 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
 });
 
 describe("resources-wiring: the machine's own defaults (issue #154)", () => {
-  test("with nothing given it reads the OS memory and the data disk, and ends an orphan with a real SIGTERM", async () => {
-    // Windows has no `sleep`, no load average and no SIGTERM to read back.
-    if (process.platform === "win32") return;
-    const child = Bun.spawn(["sleep", "30"]);
-    const pid = child.pid;
-    const proc = {
-      pageSize: 4096,
-      ticksPerSecond: 100,
-      pids: async () => [42, pid],
-      stat: async (p: number) =>
-        p === 1
-          ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
-          : { pid: p, ppid: 42, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
-      cwd: async () => "/gone",
-      uptimeSec: async () => 10_000,
-    };
-    const resources = await createResources({
-      dataDir: osTempDir(),
-      sessions: () => [OLD_SESSION],
-      terminals: () => [],
-      pidOf: () => null,
-      ownPid: 42,
-      platform: "linux",
-      proc,
-    });
-    const snap = await resources.snapshot();
-    expect(snap.memory.totalBytes).toBeGreaterThan(0);
-    expect(snap.disk?.totalBytes).toBeGreaterThan(0);
-    expect(snap.loadPercent).not.toBeNull();
-    await resources.endOrphan(pid, 1);
-    await child.exited;
-    expect(child.signalCode).toBe("SIGTERM");
-  });
+  test.skipIf(process.platform === "win32")(
+    "with nothing given it reads the OS memory and the data disk, and ends an orphan with a real SIGTERM",
+    async () => {
+      // Windows has no `sleep`, no load average and no SIGTERM to read back.
+      const child = Bun.spawn(["sleep", "30"]);
+      const pid = child.pid;
+      const proc = {
+        pageSize: 4096,
+        ticksPerSecond: 100,
+        pids: async () => [42, pid],
+        stat: async (p: number) =>
+          p === 1
+            ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
+            : { pid: p, ppid: 42, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
+        cwd: async () => "/gone",
+        uptimeSec: async () => 10_000,
+      };
+      const resources = await createResources({
+        dataDir: osTempDir(),
+        sessions: () => [OLD_SESSION],
+        terminals: () => [],
+        pidOf: () => null,
+        ownPid: 42,
+        platform: "linux",
+        proc,
+      });
+      const snap = await resources.snapshot();
+      expect(snap.memory.totalBytes).toBeGreaterThan(0);
+      expect(snap.disk?.totalBytes).toBeGreaterThan(0);
+      expect(snap.loadPercent).not.toBeNull();
+      await resources.endOrphan(pid, 1);
+      await child.exited;
+      expect(child.signalCode).toBe("SIGTERM");
+    },
+  );
 });
 
 describe("resources-wiring: the machine's own page size and clock (F8)", () => {
-  test("the /proc reader uses the page size and ticks the machine says, not guesses", async () => {
-    // The fixture is a /proc tree with a symlink for the cwd: Windows cannot make one without a privilege.
-    if (process.platform === "win32") return;
-    const { mkdirSync, writeFileSync, rmSync, symlinkSync } = await import("node:fs");
-    const { join } = await import("node:path");
-    const root = realTempDir("fd-proc-wiring-");
-    try {
-      writeFileSync(join(root, "uptime"), "10000.00 0\n");
-      const add = (pid: number, ppid: number, name: string, rss: number, start: number) => {
-        mkdirSync(join(root, String(pid)));
-        writeFileSync(
-          join(root, String(pid), "stat"),
-          `${pid} (${name}) S ${ppid} 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 ${start} 1 ${rss} 1`,
-        );
-      };
-      add(42, 0, "flightdeckd", 1, 0);
-      add(9, 42, "claude", 100, 1);
-      symlinkSync("/gone", join(root, "9", "cwd"));
-      const asked: string[] = [];
-      const snap = await (
-        await createResources({
-          dataDir: osTempDir(),
-          sessions: () => [OLD_SESSION],
-          terminals: () => [],
-          pidOf: () => null,
-          ownPid: 42,
-          platform: "linux",
-          procRoot: root,
-          sysconf: (name) => {
-            asked.push(name);
-            return name === "PAGESIZE" ? 16384 : 250;
-          },
-        })
-      ).snapshot();
-      expect(asked.sort()).toEqual(["CLK_TCK", "PAGESIZE"]);
-      // 100 pages of 16 KB, and a start of 1 tick at 250 per second in a 10 000 s uptime.
-      expect(snap.orphans[0]).toMatchObject({ pid: 9, rssBytes: 100 * 16384, ageSec: 10_000 });
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  test.skipIf(process.platform === "win32")(
+    "the /proc reader uses the page size and ticks the machine says, not guesses",
+    async () => {
+      // The fixture is a /proc tree with a symlink for the cwd: Windows cannot make one without a privilege.
+      const { mkdirSync, writeFileSync, rmSync, symlinkSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const root = realTempDir("fd-proc-wiring-");
+      try {
+        writeFileSync(join(root, "uptime"), "10000.00 0\n");
+        const add = (pid: number, ppid: number, name: string, rss: number, start: number) => {
+          mkdirSync(join(root, String(pid)));
+          writeFileSync(
+            join(root, String(pid), "stat"),
+            `${pid} (${name}) S ${ppid} 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 ${start} 1 ${rss} 1`,
+          );
+        };
+        add(42, 0, "flightdeckd", 1, 0);
+        add(9, 42, "claude", 100, 1);
+        symlinkSync("/gone", join(root, "9", "cwd"));
+        const asked: string[] = [];
+        const snap = await (
+          await createResources({
+            dataDir: osTempDir(),
+            sessions: () => [OLD_SESSION],
+            terminals: () => [],
+            pidOf: () => null,
+            ownPid: 42,
+            platform: "linux",
+            procRoot: root,
+            sysconf: (name) => {
+              asked.push(name);
+              return name === "PAGESIZE" ? 16384 : 250;
+            },
+          })
+        ).snapshot();
+        expect(asked.sort()).toEqual(["CLK_TCK", "PAGESIZE"]);
+        // 100 pages of 16 KB, and a start of 1 tick at 250 per second in a 10 000 s uptime.
+        expect(snap.orphans[0]).toMatchObject({ pid: 9, rssBytes: 100 * 16384, ageSec: 10_000 });
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   test("a machine that cannot say falls back to 4 KB and 100 ticks", async () => {
     const { defaultSysconf } = await import("../src/resources/wiring.ts");

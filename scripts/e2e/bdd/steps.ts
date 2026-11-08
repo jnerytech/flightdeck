@@ -2,6 +2,9 @@
  * The steps of the BDD scenarios: written once, in English. The UI text a step looks for comes from
  * the dictionaries, in the language of the run (the same scenarios run in en and pt-BR).
  */
+import { execFileSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
@@ -183,3 +186,275 @@ step(
     });
   },
 );
+
+// What a scenario makes for itself: the card it created, the project folder it added.
+const made = new WeakMap<Context, { card?: string; project?: string; entry?: string }>();
+const mine = (c: Context) => {
+  const state = made.get(c) ?? {};
+  made.set(c, state);
+  return state;
+};
+const unique = (c: Context, what: string) =>
+  `${what}-${c.lang}-${Date.now().toString(36)}`.toLowerCase();
+
+// The board: a card is made, asked about before it starts, moved, and finished.
+/** The column a feature names in English, by the key the dictionaries use. */
+const columnKey = (name: string) => {
+  const found = Object.entries(en.kanban.columns).find(([, text]) => text === name)?.[0];
+  if (!found) throw new Error(`no column called "${name}"`);
+  return found;
+};
+const columnName = (c: Context, name: string) =>
+  c.t(`kanban.columns.${columnKey(name)}` as Parameters<Context["t"]>[0]);
+const tile = (c: Context) =>
+  c.page.locator(`li[aria-label="${c.t("kanban.card", { title: mine(c).card ?? "" })}"]`);
+
+step(When, "I create a card with a title of my own", async (c) => {
+  const title = unique(c, "bdd card");
+  mine(c).card = title;
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+  await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+  await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+});
+
+step(Then, "the card is in the column {string}", async (c, column = "") =>
+  c.page
+    .getByRole("region", { name: columnName(c, column), exact: true })
+    .locator(`li[aria-label="${c.t("kanban.card", { title: mine(c).card ?? "" })}"]`)
+    .waitFor({ timeout: WAIT }),
+);
+
+step(When, "I ask to start the card and then cancel", async (c) => {
+  const title = mine(c).card ?? "";
+  await tile(c)
+    .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
+    .click();
+  await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+  const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+  await start.waitFor({ timeout: WAIT });
+  await start.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+  await start.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I move the card to the column {string} from its menu", async (c, column = "") => {
+  const title = mine(c).card ?? "";
+  await tile(c)
+    .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
+    .click();
+  await c.page
+    .getByRole("menuitem", {
+      name: c.t("board.moveTo", { column: columnName(c, column) }),
+      exact: true,
+    })
+    .click();
+});
+
+step(Then, "the board asks before moving it, saying the card lacks a PR link", async (c) => {
+  const title = mine(c).card ?? "";
+  const ask = c.page.getByRole("alertdialog", {
+    name: c.t("board.contract.title", { column: columnName(c, "In review") }),
+  });
+  await ask
+    .getByText(c.t("board.contract.lacksOne", { title, needs: c.t("board.contract.needs.pr") }), {
+      exact: true,
+    })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I move it anyway", async (c) =>
+  c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("board.contract.moveAnyway"), exact: true })
+    .click(),
+);
+
+step(When, "I open the card and read the three ways to finish it", async (c) => {
+  await tile(c)
+    .getByRole("button", { name: mine(c).card ?? "", exact: true })
+    .click();
+  await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+  const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
+  for (const key of ["finishMove", "finishComplete", "finishMerge"] as const) {
+    await dialog.getByText(c.t(`cardUi.${key}`), { exact: true }).waitFor({ timeout: WAIT });
+  }
+  // No worktree yet: the merge is off, and the dialog says why.
+  await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
+  await c.page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I finish the card by moving it to Done", async (c) => {
+  await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+  const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
+  await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(Then, "the card says it is already done", async (c) => {
+  await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+  await c.page
+    .getByRole("dialog", { name: c.t("cardUi.finishTitle") })
+    .getByText(c.t("cardUi.alreadyDone"), { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+// Set up Claude Code: a project the scenario makes, set up, then committed on a branch.
+step(Given, "a git project of my own is added to host {string}", async (c) => {
+  const name = unique(c, "setup");
+  const folder = join(dirname(c.ids.freshRepo), name);
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, "README.md"), `# ${name}\n`);
+  const git = (...args: string[]) =>
+    execFileSync("git", ["-C", folder, ...args], { stdio: "ignore" });
+  git("init", "-q", "-b", "main");
+  git("config", "user.name", "BDD");
+  git("config", "user.email", "bdd@flightdeck.invalid");
+  git("config", "commit.gpgsign", "false");
+  git("add", "README.md");
+  git("commit", "-q", "-m", "first");
+  mine(c).project = name;
+  await open(c, { name: "all-projects", host: ALFA });
+  await c.page
+    .getByRole("button", { name: c.t("projectsOverview.newProject"), exact: true })
+    .click();
+  const dialog = c.page.getByRole("dialog", { name: c.t("addProject.title"), exact: true });
+  await dialog.getByLabel(c.t("addProject.folder"), { exact: true }).fill(folder);
+  await dialog.getByRole("button", { name: c.t("addProject.add"), exact: true }).click();
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I open that project", async (c) => {
+  await open(c, { name: "all-projects", host: ALFA });
+  const row = c.page.locator(`li[data-project="${mine(c).project}"]`);
+  await row.getByRole("button").click({ timeout: WAIT });
+});
+
+step(When, "I preview the Claude Code setup", async (c) => {
+  await c.page
+    .getByRole("button", { name: c.t("projectPage.harness.setup.action"), exact: true })
+    .click();
+});
+
+step(Then, "the preview lists {string} among the new files", async (c, file = "") => {
+  const dialog = c.page.getByRole("alertdialog");
+  await dialog.getByText(c.t("projectPage.harness.setup.message"), { exact: true }).waitFor({
+    timeout: WAIT,
+  });
+  await dialog.getByText(file, { exact: true }).first().waitFor({ timeout: WAIT });
+});
+
+step(When, "I apply the setup", async (c) => {
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("projectPage.harness.setup.apply"), exact: true })
+    .click();
+});
+
+step(Then, "the setup says which files it wrote", async (c) => {
+  const done = c.t("projectPage.harness.setup.done", { files: "" }).trim();
+  await c.page.getByRole("status").filter({ hasText: done }).waitFor({ timeout: WAIT });
+});
+
+step(When, "I commit the setup on a new branch", async (c) => {
+  const commit = c.t("projectPage.harness.setup.commit");
+  await c.page.getByRole("button", { name: commit, exact: true }).click();
+  await c.page.getByRole("alertdialog").getByRole("button", { name: commit, exact: true }).click();
+});
+
+step(Then, "the setup says it was committed on a branch", async (c) => {
+  const { committed } = dictionary(c).projectPage.harness.setup;
+  await c.page
+    .getByRole("status")
+    .filter({ hasText: pattern(committed) })
+    .waitFor({ timeout: WAIT });
+});
+
+// The bell: a request that waits is answered in its row, without opening its session.
+const bell = (c: Context) => c.page.getByRole("dialog");
+const bellRequest = (c: Context, session: string) =>
+  bell(c).getByRole("group", { name: new RegExp(session) });
+
+step(Given, "the bell holds the request of {string}", async (c, session = "") => {
+  // The web demo sends no notification: the request is put in the bell by hand.
+  await open(c, { name: "needs-you" });
+  await request(c, session).first().click({ timeout: SESSION_WAIT });
+  const card = c.page.locator("fieldset[data-request-id]").first();
+  await card.waitFor({ timeout: WAIT });
+  const requestId = (await card.getAttribute("data-request-id")) ?? "";
+  const link = `flightdeck://request?${new URLSearchParams({ host: ALFA, request: requestId })}`;
+  const entry = `bell-${Date.now().toString(36)}`;
+  mine(c).entry = entry;
+  const seed = JSON.stringify([
+    {
+      id: entry,
+      at: new Date().toISOString(),
+      title: dictionary(c).inbox.title,
+      body: "",
+      link,
+      subject: session,
+      host: "alfa",
+      ask: dictionary(c).inbox.runs.replace("{command}", "ls"),
+      read: false,
+    },
+  ]);
+  await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
+});
+
+step(When, "I open the bell at a phone's width", async (c) => {
+  await c.page.setViewportSize({ width: 390, height: 800 });
+  await open(c, { name: "hub" });
+  await c.page.getByRole("button", { name: new RegExp(`^${c.t("inbox.bell")}`) }).click();
+  await bell(c).waitFor({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the request of {string} shows its risk and the buttons Approve and Deny",
+  async (c, session = "") => {
+    const row = bellRequest(c, session);
+    await row.waitFor({ timeout: SESSION_WAIT });
+    await row.getByText(c.t("approval.risk.medium"), { exact: true }).waitFor({ timeout: WAIT });
+    await row.getByRole("button", { name: c.t("approval.approve"), exact: true }).waitFor();
+    await row.getByRole("button", { name: c.t("approval.deny"), exact: true }).waitFor();
+  },
+);
+
+step(Then, "the request row fits inside the panel", async (c) => {
+  const fits = await bell(c).evaluate((box) => {
+    const edge = box.getBoundingClientRect().right;
+    const past = [...box.querySelectorAll<HTMLElement>(".inbox-request > *")].filter(
+      (el) => el.getBoundingClientRect().right > edge + 1,
+    );
+    return box.scrollWidth <= box.clientWidth + 1 && past.length === 0;
+  });
+  if (!fits) throw new Error("the request row runs past the bell panel at 390 px");
+});
+
+step(When, "I approve the request of {string} from the bell", async (c, session = "") =>
+  bellRequest(c, session)
+    .getByRole("button", { name: c.t("approval.approve"), exact: true })
+    .click(),
+);
+
+step(
+  When,
+  "I press the key {string} on the title of that request in the bell",
+  async (c, key = "") => {
+    const title = bell(c).locator(`[data-entry="${mine(c).entry}"] .inbox-pick`);
+    await title.focus();
+    await c.page.keyboard.press(key);
+  },
+);
+
+step(Then, "the request of {string} leaves the bell", async (c, session = "") =>
+  waitFor(async () => (await bellRequest(c, session).count()) === 0, "the request left the bell"),
+);
+
+step(Then, "the status says {string} was {string}", async (c, session = "", decision = "") => {
+  const words = c.t(`approval.resolved.${decision === "approved" ? "allow" : "deny"}`);
+  await c.page
+    .getByRole("status")
+    .filter({ hasText: `${session}: ${words}` })
+    .first()
+    .waitFor({ timeout: WAIT });
+});

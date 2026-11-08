@@ -74,7 +74,8 @@ export function statusLine(
   const silent = `${Math.round(drop.silentMs / 1000)} s silent`;
   // 1006 is the browser's own code for a link that ended without a close frame.
   const by = drop.code === 1006 ? "" : " by the host";
-  const close = `${drop.code}${drop.reason ? ` ${drop.reason}` : ""}`;
+  const reason = drop.reason ? ` ${drop.reason}` : "";
+  const close = `${drop.code}${reason}`;
   const why = drop.byWatchdog
     ? `given up by the app after ${silent}`
     : `closed${by} (${close}), ${silent}`;

@@ -1,14 +1,18 @@
 import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
+import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
+import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
 import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -24,7 +28,7 @@ const MODES: PermissionMode[] = [
   "bypassPermissions",
 ];
 
-const MODELS = ["opus", "sonnet", "haiku"];
+const MODELS = CLAUDE_MODELS;
 
 /** Phase 39: what an OpenCode session can start in (Flightdeck's own two agents, and bypass). */
 const OPENCODE_MODES: PermissionMode[] = ["default", "plan", "bypassPermissions"];
@@ -50,6 +54,8 @@ export function NewSessionForm(
     promptRequired?: boolean;
     /** More fields above Criar sessão: the persona picker (phase 20). */
     extra?: React.ReactNode;
+    /** Something in `extra` is set (a persona, background), so More options opens (issue #1135). */
+    extraSet?: boolean;
     /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
     onFolder?(cwd: string): void;
     /** The hosts a session can start on (online); the form offers a choice when there are two or more. */
@@ -63,8 +69,18 @@ export function NewSessionForm(
   const roots = props.host.info?.allowedRoots ?? [];
   // The folder picked, else the host's first: its folders may arrive after the form opened.
   const [picked, setRoot] = useState<string | null>(null);
-  const root = picked ?? roots[0] ?? "";
-  const [sub, setSub] = useState("");
+  // The folder the last session here started in (issue #1135), while the host still allows it.
+  const prefs = props.store?.newSessionPrefs;
+  const kept = prefs?.folderOf(props.host.id);
+  const keptHere = kept && roots.includes(kept.root) ? kept : undefined;
+  const root = picked ?? keptHere?.root ?? roots[0] ?? "";
+  // The subfolder typed; before that, the remembered one (only with the remembered folder).
+  const [typedSub, setSub] = useState<string | null>(null);
+  const sub = typedSub ?? (picked === null && keptHere ? keptHere.sub : "");
+  // The person's own click on More options; until then it follows `wanted` (below).
+  const [moreOpen, setMoreOpen] = useState<boolean | null>(null);
+  const [latched, setLatched] = useState(false);
+  const optionsId = useId();
   const [browsing, setBrowsing] = useState(false);
   /** The host answers `fs.dirs`: an older daemon does not, and there the folder is typed. */
   const canBrowse =
@@ -89,11 +105,21 @@ export function NewSessionForm(
   const cwd = joinPath(root, sub);
   useEffect(() => onFolder?.(cwd), [onFolder, cwd]);
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<PermissionMode>("default");
-  const [model, setModel] = useState("");
+  const [mode, setMode] = useState<PermissionMode>(
+    prefs && MODES.includes(prefs.value.mode) ? prefs.value.mode : "default",
+  );
+  const [model, setModel] = useState(
+    prefs && MODELS.includes(prefs.value.model) ? prefs.value.model : "",
+  );
   /** Phase 39: the agent, offered when the host has OpenCode on; its models come from the host. */
   const [runtime, setRuntime] = useState<Runtime>("claude");
   const opencode = runtime === "opencode";
+  // More options is folded, except that it opens by itself for what would otherwise act unseen: a
+  // subfolder, OpenCode, or a setting of the screen's own. Once open for that it stays open, so
+  // the field being edited never disappears from under the cursor.
+  const wanted = sub !== "" || opencode || props.extraSet === true;
+  if (wanted && !latched) setLatched(true);
+  const more = moreOpen ?? latched;
   const hasOpenCode =
     props.host.hostInfo?.runtimes?.some((r) => r.kind === "opencode" && r.available) === true;
   const [openCodeModels, setOpenCodeModels] = useState<string[]>([]);
@@ -134,6 +160,15 @@ export function NewSessionForm(
       return;
     }
     setAsking(false);
+    // OpenCode's modes and models are its own: only the folder is kept from such a session.
+    if (prefs) {
+      prefs.remember(props.host.id, {
+        root,
+        sub,
+        mode: opencode ? prefs.value.mode : mode,
+        model: opencode ? prefs.value.model : model,
+      });
+    }
     const done = props.onCreate({
       cwd,
       ...(prompt.trim() ? { prompt: prompt.trim() } : {}),
@@ -168,20 +203,48 @@ export function NewSessionForm(
             )}
           </Field>
         )}
-        {hasOpenCode && (
-          <Field label={t("newSession.agent")}>
-            {(control) => (
-              <NativeSelect
+        <Field label={t("newSession.prompt")}>
+          {(control) => {
+            const area = (assist?: { onKeyDown?(event: React.KeyboardEvent): void }) => (
+              <Textarea
                 {...control}
-                value={runtime}
-                onChange={(e) => chooseRuntime(e.target.value as Runtime)}
+                {...assist}
+                // The task is what the person came to write: the form opens on it (issue #1135).
+                autoFocus
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  assist?.onKeyDown?.(e);
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
+                placeholder={t("newSession.optional")}
+                className="min-h-28"
+              />
+            );
+            // The AI wand (phase 40): it improves the prompt and never starts the session.
+            return store ? (
+              <AssistField
+                binding={{
+                  controller: store.assistant,
+                  kind: "prompt",
+                  fieldHostId: hostId,
+                  ...(cwd ? { cwd } : {}),
+                  openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
+                }}
+                value={prompt}
+                onChange={setPrompt}
+                t={t}
               >
-                <option value="claude">{t("newSession.agentClaude")}</option>
-                <option value="opencode">{t("newSession.agentOpenCode")}</option>
-              </NativeSelect>
-            )}
-          </Field>
-        )}
+                {area}
+              </AssistField>
+            ) : (
+              area()
+            );
+          }}
+        </Field>
         <Field label={t("newSession.folder")}>
           {(control) => (
             <NativeSelect {...control} value={root} onChange={(e) => setRoot(e.target.value)}>
@@ -191,16 +254,6 @@ export function NewSessionForm(
                 </option>
               ))}
             </NativeSelect>
-          )}
-        </Field>
-        <Field label={t("newSession.subfolder")}>
-          {(control) => (
-            <Input
-              {...control}
-              value={sub}
-              onChange={(e) => setSub(e.target.value)}
-              placeholder={t("newSession.optional")}
-            />
           )}
         </Field>
         {canBrowse && (
@@ -221,16 +274,6 @@ export function NewSessionForm(
             onClose={() => setBrowsing(false)}
           />
         )}
-        <Field label={t("newSession.name")}>
-          {(control) => (
-            <Input
-              {...control}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("newSession.optional")}
-            />
-          )}
-        </Field>
         <Field label={t("newSession.mode")}>
           {(control) => (
             <>
@@ -264,58 +307,78 @@ export function NewSessionForm(
             </NativeSelect>
           )}
         </Field>
-        {opencode && (
-          <Field label={t("newSession.effort")}>
-            {(control) => (
-              <NativeSelect
-                {...control}
-                value={effort}
-                onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
-              >
-                <option value="">{t("newSession.effortDefault")}</option>
-                {EFFORTS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </NativeSelect>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          aria-expanded={more}
+          aria-controls={optionsId}
+          onClick={() => setMoreOpen(!more)}
+        >
+          <ChevronRight
+            aria-hidden="true"
+            className={cn("size-4 transition-transform", more && "rotate-90")}
+          />
+          {t("newSession.moreOptions")}
+        </Button>
+        <div id={optionsId} hidden={!more}>
+          <Stack gap={4}>
+            {hasOpenCode && (
+              <Field label={t("newSession.agent")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    value={runtime}
+                    onChange={(e) => chooseRuntime(e.target.value as Runtime)}
+                  >
+                    <option value="claude">{t("newSession.agentClaude")}</option>
+                    <option value="opencode">{t("newSession.agentOpenCode")}</option>
+                  </NativeSelect>
+                )}
+              </Field>
             )}
-          </Field>
-        )}
-        <Field label={t("newSession.prompt")}>
-          {(control) => {
-            const area = (assist?: object) => (
-              <Textarea
-                {...control}
-                {...assist}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={t("newSession.optional")}
-                className="min-h-28"
-              />
-            );
-            // The AI wand (phase 40): it improves the prompt and never starts the session.
-            return store ? (
-              <AssistField
-                binding={{
-                  controller: store.assistant,
-                  kind: "prompt",
-                  fieldHostId: hostId,
-                  ...(cwd ? { cwd } : {}),
-                  openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
-                }}
-                value={prompt}
-                onChange={setPrompt}
-                t={t}
-              >
-                {area}
-              </AssistField>
-            ) : (
-              area()
-            );
-          }}
-        </Field>
-        {!opencode && props.extra}
+            <Field label={t("newSession.subfolder")}>
+              {(control) => (
+                <Input
+                  {...control}
+                  value={sub}
+                  onChange={(e) => setSub(e.target.value)}
+                  placeholder={t("newSession.optional")}
+                />
+              )}
+            </Field>
+            <Field label={t("newSession.name")}>
+              {(control) => (
+                <Input
+                  {...control}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("newSession.optional")}
+                />
+              )}
+            </Field>
+            {opencode && (
+              <Field label={t("newSession.effort")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    value={effort}
+                    onChange={(e) => setEffort(e.target.value as EffortLevel | "")}
+                  >
+                    <option value="">{t("newSession.effortDefault")}</option>
+                    {EFFORTS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </Field>
+            )}
+            {!opencode && props.extra}
+          </Stack>
+        </div>
         {asking && (
           <ConfirmDialog
             destructive

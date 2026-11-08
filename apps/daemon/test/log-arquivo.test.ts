@@ -153,34 +153,40 @@ describe("log-privacidade: where the log lives and what it says about the user (
     expect((await log.tail(5)).join("\n")).not.toContain("Carl");
   });
 
-  test("the folder is 0700 and the files are 0600", async () => {
-    if (process.platform === "win32") return;
-    const { dir, log } = make({ maxBytes: 100, files: 3 });
-    for (let i = 0; i < 8; i++) log.write("info", `message number ${i} with some padding to fill`);
-    await log.flush();
-    expect(statSync(dir).mode & 0o777).toBe(0o700);
-    for (const name of readdirSync(dir)) expect(statSync(join(dir, name)).mode & 0o777).toBe(0o600);
-  });
+  test.skipIf(process.platform === "win32")(
+    "the folder is 0700 and the files are 0600",
+    async () => {
+      const { dir, log } = make({ maxBytes: 100, files: 3 });
+      for (let i = 0; i < 8; i++)
+        log.write("info", `message number ${i} with some padding to fill`);
+      await log.flush();
+      expect(statSync(dir).mode & 0o777).toBe(0o700);
+      for (const name of readdirSync(dir))
+        expect(statSync(join(dir, name)).mode & 0o777).toBe(0o600);
+    },
+  );
 
-  test("a symlink where the log file should be is never written through or read", async () => {
-    if (process.platform === "win32") return;
-    const { dir, log } = make();
-    const outside = join(tempDir("fd-outside-"), "victim.txt");
-    writeFileSync(outside, "do not touch\n");
-    mkdirSync(dir, { recursive: true });
-    symlinkSync(outside, join(dir, "flightdeckd.log"));
-    log.write("info", "this must not land in the victim");
-    await log.flush();
-    expect(readFileSync(outside, "utf8")).toBe("do not touch\n");
-    // The link is not read either, and nothing breaks.
-    expect(await log.tail(5)).toEqual([]);
-    rmSync(join(dir, "flightdeckd.log"));
-    symlinkSync(outside, join(dir, "flightdeckd.log.1"));
-    log.write("info", "fresh");
-    await log.flush();
-    expect((await log.tail(5)).join("\n")).not.toContain("do not touch");
-    expect((await log.tail(5)).join("\n")).toContain("fresh");
-  });
+  test.skipIf(process.platform === "win32")(
+    "a symlink where the log file should be is never written through or read",
+    async () => {
+      const { dir, log } = make();
+      const outside = join(tempDir("fd-outside-"), "victim.txt");
+      writeFileSync(outside, "do not touch\n");
+      mkdirSync(dir, { recursive: true });
+      symlinkSync(outside, join(dir, "flightdeckd.log"));
+      log.write("info", "this must not land in the victim");
+      await log.flush();
+      expect(readFileSync(outside, "utf8")).toBe("do not touch\n");
+      // The link is not read either, and nothing breaks.
+      expect(await log.tail(5)).toEqual([]);
+      rmSync(join(dir, "flightdeckd.log"));
+      symlinkSync(outside, join(dir, "flightdeckd.log.1"));
+      log.write("info", "fresh");
+      await log.flush();
+      expect((await log.tail(5)).join("\n")).not.toContain("do not touch");
+      expect((await log.tail(5)).join("\n")).toContain("fresh");
+    },
+  );
 
   test("tail reads at most the last 256 KiB of each file", async () => {
     const { dir, log } = make();

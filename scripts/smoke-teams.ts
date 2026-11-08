@@ -49,7 +49,7 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
 
 /** Polls an async check until it holds. */
 async function until<T>(
-  check: () => Promise<T | null | undefined | false>,
+  check: () => T | null | undefined | false | Promise<T | null | undefined | false>,
   what: string,
 ): Promise<T> {
   const deadline = Date.now() + TIMEOUT_MS;
@@ -57,7 +57,7 @@ async function until<T>(
     const found = await check();
     if (found) return found;
     if (Date.now() > deadline) throw new Error(`timeout esperando ${what}`);
-    await Bun.sleep(40);
+    await Bun.sleep(40); // NOSONAR: a poll, one look per pause
   }
 }
 
@@ -363,10 +363,11 @@ async function run(work: string): Promise<void> {
     let paused = "";
     for (let i = 0; i < 14 && !paused; i++) {
       const [from, to] = i % 2 === 0 ? [claudeA1, a2] : [claudeA2, a1];
-      const result = await from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
+      const sending = from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
         to: `host-a/${to}`,
         text: `vai e volta ${i}`,
       });
+      const result = await sending; // NOSONAR: the pair bounces one message at a time until the loop is refused
       if (result.data.resultado === "recusada") paused = result.data.motivo ?? "";
     }
     if (!paused.includes("loop")) throw new Error(`o laço devia ser recusado: ${paused}`);
@@ -374,7 +375,7 @@ async function run(work: string): Promise<void> {
     if (rules.paused.length !== 1)
       throw new Error(`o par devia estar pausado: ${JSON.stringify(rules)}`);
     const alert = await until(
-      async () => a.client.frames.find((f) => f.type === "messaging.alert"),
+      () => a.client.frames.find((f) => f.type === "messaging.alert"),
       "o alerta do laço",
     );
     if (alert.type !== "messaging.alert") throw new Error("alerta inesperado");
