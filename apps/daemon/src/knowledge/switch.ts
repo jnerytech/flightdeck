@@ -49,10 +49,15 @@ export function knowledgeSwitchFor(deps: KnowledgeSwitchDeps): KnowledgeSwitch {
       if ((await state(path)).on) await deps.change((entries) => [...entries, path]);
     } else {
       const names = await rootNames([path]);
-      const named = (entry: string) =>
-        names.some((name) => samePath(resolve(expandHome(entry)), name));
+      // The entries that are this project under some name: its path, `~`, or a link to it.
+      const ours = new Set<string>();
+      for (const entry of deps.off()) {
+        const places = await rootNames([entry]);
+        if (places.some((place) => names.some((name) => samePath(place, name)))) ours.add(entry);
+      }
+      const named = (entry: string) => ours.has(resolve(expandHome(entry)));
       // Only the entries that name this project: a folder above it switches off other projects too.
-      if (deps.off().some(named)) await deps.change((entries) => entries.filter((e) => !named(e)));
+      if (ours.size > 0) await deps.change((entries) => entries.filter((e) => !named(e)));
     }
     return await state(path);
   };
