@@ -25,16 +25,18 @@ const transitionName = (key: string) => `activity-${key.replace(/[^a-zA-Z0-9]/g,
  * the last request and what it is doing, how long ago it changed, and, when it is asking, the
  * request with Approve and Deny (a high-risk one is approved by holding the button).
  */
-export function ActivityCardView(props: {
-  card: ActivityCard;
-  t: T;
-  nowMs: number;
-  onOpen(newTab: boolean): void;
-  /** `held`: the Approve was held its full time, the proof the store asks of a high risk (#245). */
-  onRespond(request: PendingItem, decision: "allow" | "deny", held?: boolean): unknown;
-  /** Test seam: the hold time of a high-risk approval. */
-  holdMs?: number;
-}) {
+export function ActivityCardView(
+  props: Readonly<{
+    card: ActivityCard;
+    t: T;
+    nowMs: number;
+    onOpen(newTab: boolean): void;
+    /** `held`: the Approve was held its full time, the proof the store asks of a high risk (#245). */
+    onRespond(request: PendingItem, decision: "allow" | "deny", held?: boolean): unknown;
+    /** Test seam: the hold time of a high-risk approval. */
+    holdMs?: number;
+  }>,
+) {
   const { card, t } = props;
   const { row, pending } = card;
   const line = sessionLineText(row.summary, props.nowMs, t);
