@@ -9,6 +9,6 @@ import { byCodeUnit } from "@flightdeck/protocol";
 
 const QUICK_TEST = /(?:-ratchet|(?:^|\/)protocol-surface|^scripts\/test\/md-links)\.test\.tsx?$/;
 
-export function quickTests(tracked: readonly string[]): string[] {
+export function quickTests(tracked: readonly string[], _read?: (path: string) => string): string[] {
   return tracked.filter((path) => QUICK_TEST.test(path)).sort(byCodeUnit);
 }
