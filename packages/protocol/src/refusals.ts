@@ -500,6 +500,7 @@ export const DAEMON_FEATURES = [
   "budgets",
   "quotaHistory",
   "changes",
+  "sessionCommits",
   "ssh",
   "snippets",
   "personaSessions",

@@ -13,10 +13,11 @@ import {
   lstat,
   mkdtemp,
   open,
-  readdir,
   readlink,
+  realpath,
   rename,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -42,11 +43,6 @@ export interface SessionCommitDeps {
   isCardWorktree: (root: string) => boolean;
   /** How long one git call (a hook included) may run; 120 s when absent. */
   timeoutMs?: number;
-  /**
-   * When the session started, in ms (null when unknown): a hook or a local setting that runs a
-   * program, changed since, may be the session's own, and is refused.
-   */
-  startedAt?: (claudeSessionId: string) => number | null;
   /** Runs after the files are checked, before git reads them: a seam for a test that changes one. */
   afterCheck?: () => Promise<void>;
 }
@@ -138,17 +134,32 @@ async function bytesOf(root: string, path: string): Promise<Read | null | "too l
   }
 }
 
-/** A local setting whose value is a program git runs: a session may have set it to run its own. */
-const RUNS_PROGRAM =
-  /^(core\.(fsmonitor|sshcommand|hookspath|askpass|gitproxy)|gpg\.([^.]+\.)?program|filter\..+\.(clean|smudge|process)|credential\.(.+\.)?helper|diff\..+\.(command|textconv)|merge\..+\.driver)$/;
+/** The hooks a commit runs, by name, in the order git runs them. */
+const COMMIT_HOOKS = ["pre-commit", "prepare-commit-msg", "commit-msg", "post-commit"];
 
-/** Whether a local `key=value` line names a program (a boolean `core.fsmonitor` names none). */
-function runsProgram(line: string): boolean {
-  const at = line.indexOf("=");
-  const key = (at < 0 ? line : line.slice(0, at)).toLowerCase();
-  const value = at < 0 ? "" : line.slice(at + 1).toLowerCase();
-  if (key === "core.fsmonitor" && ["true", "false", "0", "1", ""].includes(value)) return false;
-  return RUNS_PROGRAM.test(key);
+/**
+ * The commit hooks a commit of the checkout at `root` runs: those present (and executable, outside
+ * Windows) in the folder git takes them from, which accounts for `core.hooksPath` and a linked
+ * worktree. The person sees them before confirming a commit.
+ */
+export async function commitHooks(root: string): Promise<string[]> {
+  const found = await runCommand(
+    [whichOnPath("git") ?? "git", "rev-parse", "--git-path", "hooks"],
+    root,
+    undefined,
+    TIMEOUT_MS,
+    killTree,
+    ENV,
+  );
+  if (found.code !== 0) return [];
+  const folder = resolve(root, found.stdout.trim());
+  const out: string[] = [];
+  for (const name of COMMIT_HOOKS) {
+    const info = await stat(join(folder, name)).catch(() => null);
+    const runs = process.platform === "win32" || ((info?.mode ?? 0) & 0o111) !== 0;
+    if (info?.isFile() && runs) out.push(name);
+  }
+  return out;
 }
 
 /** Which operation is half done in the checkout, if any: a commit now would mix into it. */
@@ -204,25 +215,31 @@ export class SessionCommits {
     if (!target.startsWith("session:")) {
       throw refuse("changes_commit_target", "only a plain session's changes are committed here");
     }
-    const { root, claudeSessionId } = await this.deps.changes.resolve(target);
+    const { root } = await this.deps.changes.resolve(target);
     if (this.deps.isCardWorktree(root)) {
       throw refuse("changes_commit_target", "a card's worktree is committed by its card");
     }
-    const prior = this.running.get(root) ?? Promise.resolve();
+    // Keyed by the real folder: two paths to one checkout share one line.
+    const key = await realpath(root).catch(() => root);
+    const prior = this.running.get(key) ?? Promise.resolve();
     const run = prior.then(
-      () => this.commitIn(root, claudeSessionId, target, input),
-      () => this.commitIn(root, claudeSessionId, target, input),
+      () => this.commitIn(root, target, input),
+      () => this.commitIn(root, target, input),
     );
-    this.running.set(
-      root,
-      run.catch(() => undefined),
+    const tail: Promise<unknown> = run.then(
+      () => undefined,
+      () => undefined,
     );
+    this.running.set(key, tail);
+    // The last one done takes its entry away: the map never grows with old checkouts.
+    void tail.then(() => {
+      if (this.running.get(key) === tail) this.running.delete(key);
+    });
     return run;
   }
 
   private async commitIn(
     root: string,
-    claudeSessionId: string | null,
     target: string,
     input: SessionCommitInput,
   ): Promise<ChangesCommitted> {
@@ -237,16 +254,6 @@ export class SessionCommits {
     const state = await inProgress(gitDir);
     if (state !== null) {
       throw refuse("changes_commit_state", `a ${state} is in progress: finish it first`, { state });
-    }
-    const started =
-      claudeSessionId === null ? null : (this.deps.startedAt?.(claudeSessionId) ?? null);
-    const since = started === null ? null : await this.changedSince(root, gitDir, started);
-    if (since !== null) {
-      throw refuse(
-        "changes_commit_state",
-        `the repository's ${since} changed since the session started: commit it yourself`,
-        { state: since },
-      );
     }
     const chosen = await this.chosen(target, input.files);
     const paths = [...new Set(chosen.flatMap((file) => [file.path, file.oldPath ?? []].flat()))];
@@ -274,31 +281,6 @@ export class SessionCommits {
       commit,
       files: chosen.map((file) => file.path).sort(byCodeUnit),
     };
-  }
-
-  /**
-   * What the commit would run that changed after the session started, and so may be the session's
-   * own: a hook (in the hooks folder or `core.hooksPath`), or a local setting naming a program.
-   */
-  private async changedSince(
-    root: string,
-    gitDir: string,
-    started: number,
-  ): Promise<"hooks" | "config" | null> {
-    const after = async (path: string) =>
-      ((await lstat(path).catch(() => null))?.mtimeMs ?? 0) > started;
-    const hooksPath = await this.git(root, ["config", "--get", "core.hooksPath"]);
-    const folders = [join(gitDir, "hooks")];
-    if (hooksPath.code === 0 && hooksPath.stdout.trim() !== "") {
-      folders.push(resolve(root, hooksPath.stdout.trim()));
-    }
-    for (const folder of folders) {
-      const names = await readdir(folder).catch(() => [] as string[]);
-      for (const name of names) if (await after(join(folder, name))) return "hooks";
-    }
-    if (!(await after(join(gitDir, "config")))) return null;
-    const local = await this.git(root, ["config", "--local", "--list"]);
-    return local.stdout.split("\n").some(runsProgram) ? "config" : null;
   }
 
   /** The branch `branch` was made from in the checkout at `root`, when this daemon made it. */

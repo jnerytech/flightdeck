@@ -50,16 +50,10 @@ branch of the checkout.
     hashes a large artifact, and choosing it refuses at once.
 - **One at a time.** Commits of one checkout run one after the other. A second one (a double click,
   two windows) then finds its files committed and refuses as stale.
-- **What the session may have changed refuses.**
-  - The daemon knows when the session started (its earliest record). A file in the hooks folder or
-    in `core.hooksPath` changed since then refuses (`changes_commit_state`, `hooks`).
-  - So does the local `.git/config` changed since then, when it names a program git runs. These are
-    `core.fsmonitor` (not a boolean), `core.sshCommand`, `core.hooksPath`, `core.askPass`,
-    `core.gitProxy`, `gpg.*program`, `filter.*.clean|smudge|process`, `credential.*helper`,
-    `diff.*.command|textconv` and `merge.*.driver` (`changes_commit_state`, `config`).
-  - Such a hook or setting may be the session's own, and would run as the daemon's user, outside the
-    session's permissions.
-  - When the start is unknown, these checks are skipped.
+- **The hooks that will run are shown.** For a session, `changes.get` names the commit hooks a
+  commit runs (`pre-commit`, `prepare-commit-msg`, `commit-msg`, `post-commit`). It takes them
+  from the folder `git rev-parse --git-path hooks` gives, which accounts for `core.hooksPath` and
+  for a linked worktree. The app shows them in the confirm (slice A).
 - **A failing hook.**
   - The person stays on the new branch, with their files untouched and their index put back from a
     copy taken before.
@@ -98,12 +92,15 @@ branch of the checkout.
 - The daemon runs the repository's hooks, which are code from the project. It does so only on a
   confirmed request from a near connection, and they are the same hooks the person's own `git commit`
   would run.
-- A session can write `.git/hooks`, `core.hooksPath` or `.git/config` itself. A hook it wrote runs as
-  the daemon's user, outside the session's own permissions, and the person does not see its text.
-  Hooks and program settings changed since the session started are refused, as above. The
-  confirm in the app (slice A) also says the repository's git hooks run.
-- The config check is by the file's time, so a setting written for another reason refuses as well.
-  For example, `git push -u` writes the branch's upstream into a config that already names
-  `core.hooksPath`. The person then commits in a terminal.
+- A session can write `.git/hooks`, `core.hooksPath` or `.git/config` itself: a hook, a filter,
+  `core.fsmonitor`, `core.sshCommand`, an include. These run as the daemon's user, outside the
+  session's own permissions, exactly as they would for the person's own next `git commit` in
+  that checkout. Flightdeck shows the hooks that will run. It does not claim to detect a planted
+  hook or setting.
+- **A check of what changed since the session started was tried and dropped.**
+  - It compared file times, which `touch` resets.
+  - It read neither config includes, nor worktree config, nor a linked worktree's common folder.
+  - Its list of settings that run programs was a deny-list, which a new setting passes unseen.
+  - A check that cannot hold reads as a guarantee, which is worse than an honest notice.
 - After a failed hook, the new branch stays there with no commit of its own. A retry needs another
   name, and the app (slice A) drafts a new one.

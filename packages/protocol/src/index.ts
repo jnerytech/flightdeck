@@ -1092,6 +1092,11 @@ export const ChangesResult = z.object({
   files: z.array(DiffFile),
   /** A card's commits ahead of and behind its base; `null` for a session. */
   position: z.object({ ahead: z.number().int(), behind: z.number().int() }).nullable(),
+  /**
+   * #1133: the commit hooks a commit of this checkout runs (`pre-commit`, `commit-msg`...), shown
+   * before the person confirms one. Only for a target against `HEAD`.
+   */
+  hooks: z.array(z.string()).optional(),
 });
 export type ChangesResult = z.infer<typeof ChangesResult>;
 

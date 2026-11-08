@@ -11,7 +11,7 @@ import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
-import { withDigests } from "./session-commit.ts";
+import { commitHooks, withDigests } from "./session-commit.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
 export type WatchFn = (
@@ -55,6 +55,8 @@ export interface ChangesResult {
   files: DiffFile[];
   /** A card's commits ahead of and behind its base; `null` for a session. */
   position: { ahead: number; behind: number } | null;
+  /** The commit hooks a commit of this checkout runs (#1133); only against `HEAD`. */
+  hooks?: string[];
 }
 
 const DEBOUNCE_MS = 500;
@@ -81,13 +83,6 @@ const SESSION_CWD = `SELECT cwd FROM (
   UNION ALL SELECT cwd, 3, last_ts FROM history_sessions WHERE claude_session_id = $id
 ) WHERE cwd IS NOT NULL AND cwd <> '' ORDER BY rank, at DESC LIMIT 1`;
 
-/** When a session started: the earliest of its records (managed, opened in a terminal, history). */
-const SESSION_START = `SELECT MIN(at) AS at FROM (
-  SELECT created_at AS at FROM sessions WHERE claude_session_id = $id
-  UNION ALL SELECT started_at FROM external_sessions WHERE claude_session_id = $id
-  UNION ALL SELECT first_ts FROM history_sessions WHERE claude_session_id = $id
-) WHERE at IS NOT NULL AND at <> ''`;
-
 /**
  * The working tree of any session or card, as a diff. The folder always comes from what the
  * daemon recorded (sessions, external sessions, history, card worktrees), never from the client.
@@ -97,15 +92,6 @@ export class Changes {
 
   constructor(readonly opts: ChangesOptions) {
     this.timers = opts.timers ?? realTimers;
-  }
-
-  /** When the session started, in ms, by its earliest record; null when there is none (#1133). */
-  startedAt(claudeSessionId: string): number | null {
-    const row = this.opts.db.query(SESSION_START).get({ id: claudeSessionId }) as {
-      at: string | null;
-    } | null;
-    const at = row?.at ? Date.parse(row.at) : Number.NaN;
-    return Number.isNaN(at) ? null : at;
   }
 
   /** `terminal`: the caller only reads files (`file.read`, `file.list`), the one use of a terminal's folder (#506). */
@@ -218,7 +204,8 @@ export class Changes {
 
   async get(target: string): Promise<ChangesResult> {
     const { root, base, branch } = await this.resolve(target);
-    // Against `HEAD` (a session): each uncommitted file has its digest, for a commit (#1133).
+    // Against `HEAD` (a session): each uncommitted file has its digest, and the hooks a commit runs
+    // are named, for a commit (#1133).
     if (base === null) {
       return {
         target,
@@ -226,6 +213,8 @@ export class Changes {
         base,
         files: await withDigests(root, await workingDiff(root)),
         position: null,
+        // The hooks a commit would run, named before the person confirms one.
+        hooks: await commitHooks(root),
       };
     }
     const { files } = await cardDiff(root, base);
