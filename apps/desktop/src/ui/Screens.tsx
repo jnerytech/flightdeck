@@ -273,7 +273,13 @@ function ManagedSession(
                 : {})}
             />
             {claudeId && (
-              <RecapPanel store={store} hostId={hostId} claudeSessionId={claudeId} stamp={status} />
+              <RecapPanel
+                store={store}
+                hostId={hostId}
+                claudeSessionId={claudeId}
+                stamp={status}
+                {...(owner?.path || cwd ? { libraryPath: owner?.path ?? cwd } : {})}
+              />
             )}
           </>
         }

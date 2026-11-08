@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
+import { AdrDraftDialog } from "@/components/session/adr-draft-dialog";
 import { useTight } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -63,6 +64,7 @@ export function RecapPanel(
 ) {
   const t = useT();
   const { store, hostId, claudeSessionId, question, stamp, retryMs = RETRY_MS } = props;
+  const [drafting, setDrafting] = useState(false);
   const host = useStoreSlice(store, HOSTS).hosts.find((h) => h.id === hostId);
   const supported = hasFeature(host?.hostInfo?.features, "summary", false);
   // `undefined` while it loads, `null` when the host has none.
@@ -149,7 +151,21 @@ export function RecapPanel(
           >
             {t("recap.copy")}
           </Button>
+          {props.libraryPath && hasFeature(host?.hostInfo?.features, "knowledgeCreate", false) && (
+            <Button variant="outline" size="sm" onClick={() => setDrafting(true)}>
+              {t("recap.draftAdr")}
+            </Button>
+          )}
         </div>
+      )}
+      {drafting && props.libraryPath && (
+        <AdrDraftDialog
+          store={store}
+          hostId={hostId}
+          path={props.libraryPath}
+          summary={lines.map(([l, x]) => `${l}: ${x}`).join("\n")}
+          onClose={() => setDrafting(false)}
+        />
       )}
     </Panel>
   );
