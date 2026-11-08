@@ -45,15 +45,18 @@ describe("ci-quick", () => {
 
   test("the quick tests are every ratchet and the protocol surface, in order (#272)", () => {
     expect(
-      quickTests([
-        "scripts/test/wait-ratchet.test.ts",
-        "apps/desktop/test/layout-ratchet.test.ts",
-        "scripts/test/protocol-surface.test.ts",
-        "scripts/test/ci-quick.test.ts",
-        "scripts/lib/wait-ratchet.ts",
-        "scripts/test/perf-baseline.test.ts",
-        "apps/desktop/test/x-ratchet.test.tsx",
-      ]),
+      quickTests(
+        [
+          "scripts/test/wait-ratchet.test.ts",
+          "apps/desktop/test/layout-ratchet.test.ts",
+          "scripts/test/protocol-surface.test.ts",
+          "scripts/test/ci-quick.test.ts",
+          "scripts/lib/wait-ratchet.ts",
+          "scripts/test/perf-baseline.test.ts",
+          "apps/desktop/test/x-ratchet.test.tsx",
+        ],
+        () => "",
+      ),
     ).toEqual([
       "apps/desktop/test/layout-ratchet.test.ts",
       "apps/desktop/test/x-ratchet.test.tsx",
