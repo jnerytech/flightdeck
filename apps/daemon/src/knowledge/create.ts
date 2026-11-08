@@ -63,9 +63,9 @@ const slugOf = (title: string) =>
     .replace(/\p{M}+/gu, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-+|-+$/g, "") // NOSONAR: oneLine cut the title to 120 characters (NFD adds a few per letter)
     .slice(0, SLUG_MAX)
-    .replace(/-+$/, "");
+    .replace(/-+$/, ""); // NOSONAR: the slug was just cut to SLUG_MAX (60) characters
 
 /** Windows opens these names as devices whatever the extension: `nul.md` is no file. */
 const DEVICE_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/;
