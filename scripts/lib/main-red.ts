@@ -36,12 +36,13 @@ const LABEL = "main-red";
  * character, at most `max` characters.
  */
 function oneLine(text: string, max: number): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
-  return text
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
+  const printable = [...text]
+    .map((char) => {
+      const code = char.codePointAt(0) ?? 0;
+      return code < 32 || code === 127 ? " " : char;
+    })
+    .join("");
+  return printable.replace(/\s+/g, " ").trim().slice(0, max);
 }
 
 /** A session name (fd-harness): letters, digits, dots, dashes and underscores; else unknown. */
