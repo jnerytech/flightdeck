@@ -261,6 +261,22 @@ describe("backup-all-ui: Settings > Backup (#1241)", () => {
     expect([told, said("too big to be a key")]).toEqual([true, false]);
   });
 
+  test("a platform with no file dialog (the web build) offers no Read backup and says why", async () => {
+    const { platform } = memoryPlatform(false, "en");
+    platform.vault.canPick = false;
+    const store = new AppStore(platform, { baseDelayMs: 600_000, vaultWorkFactor: 4 });
+    store.i18n.start();
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <BackupAllPanel store={store} />
+      </TContext.Provider>,
+    );
+    const noButton = screen.queryByRole("button", { name: "Read backup" }) === null;
+    const said = (document.body.textContent ?? "").includes("needs the desktop app");
+    const exportStays = screen.queryByRole("button", { name: "Back up now" }) !== null;
+    expect([noButton, said, exportStays]).toEqual([true, true, true]);
+  });
+
   test("the pt-BR panel is in Portuguese", async () => {
     open({ language: "pt-BR" });
     const shown = await settleMaybe(
