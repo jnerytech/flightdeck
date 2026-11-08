@@ -3,7 +3,7 @@
  * spec template read and create project files this way, and a new file never goes over one.
  */
 import { type BigIntStats, constants } from "node:fs";
-import { type FileHandle, lstat, mkdir, open, readFile, realpath } from "node:fs/promises";
+import { type FileHandle, lstat, mkdir, open, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { samePath } from "./paths.ts";
 
@@ -79,9 +79,23 @@ export async function walkInside(root: string, name: string, max: number): Promi
   return { state: "file", at, info };
 }
 
-/** The text of a plain file inside `root` of at most `max` bytes; null when missing or refused. */
+/**
+ * The text of a plain file inside `root` of at most `max` bytes; null when missing or refused. The
+ * file must have one name only (a hard link may lie outside), and it is read through a handle that
+ * follows no link and must be the very file the walk found, so a swap in between reads nothing.
+ */
 export async function readInside(root: string, name: string, max: number): Promise<string | null> {
   const found = await walkInside(root, name, max);
-  if (found.state !== "file") return null;
-  return orNull(readFile(found.at, "utf8"));
+  if (found.state !== "file" || found.info.nlink !== 1n) return null;
+  const flags = constants.O_RDONLY | NO_FOLLOW | (constants.O_NONBLOCK ?? 0);
+  const handle = await orNull(open(found.at, flags));
+  if (handle === null) return null;
+  try {
+    const info = await handle.stat({ bigint: true });
+    const same = info.dev === found.info.dev && info.ino === found.info.ino;
+    if (!same || !info.isFile() || info.nlink !== 1n || info.size > BigInt(max)) return null;
+    return await orNull(handle.readFile("utf8"));
+  } finally {
+    await handle.close();
+  }
 }
