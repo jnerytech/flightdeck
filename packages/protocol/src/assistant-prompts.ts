@@ -224,7 +224,7 @@ const QUOTES: Array<[string, string]> = [
 
 /** Strips what models add around an answer: a preamble line, a code fence, wrapping quotes. */
 export function normalizeOutput(kind: AssistantKind, text: string): string {
-  let out = text.replace(/\s+$/, "").replace(/^\s*\n/, "");
+  let out = text.trimEnd().replace(/^\s*\n/, "");
   out = out.replace(/^(?:here (?:is|are)|here's|aqui (?:está|estão))[^\n]*:\s*\n+/i, "");
   out = out.replace(/^```[^\n]*\n([\s\S]*?)\n?```$/, "$1");
   for (const [open, close] of QUOTES) {
