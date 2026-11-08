@@ -23,7 +23,7 @@ export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   const hosts = useStoreSlice(store, ["hosts", "roiRevision"]).hosts;
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const settings = store.roi.data();
   const [rate, setRate] = useState(

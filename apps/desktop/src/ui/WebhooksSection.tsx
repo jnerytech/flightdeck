@@ -52,7 +52,7 @@ export function WebhooksSection(props: Readonly<{ store: AppStore }>) {
   const t = useT();
   const { store } = props;
   const hosts = useStoreSlice(store, HOSTS).hosts;
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});

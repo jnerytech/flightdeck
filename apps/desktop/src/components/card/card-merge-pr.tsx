@@ -68,7 +68,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
   return (
     <>
       {merged && (
-        <div
+        <div // NOSONAR: holds flow content (a paragraph), which <output> may not
           role="status"
           ref={said}
           tabIndex={-1}
