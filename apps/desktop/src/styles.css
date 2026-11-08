@@ -2357,6 +2357,15 @@ html:not(:has([data-slot="status-bar"])) {
   line-height: 1.2;
 }
 
+/* #1063: a dialog's footer puts its last button at the dialog's right edge. Hung from the button's
+   left, the reason grew past that edge and was cut; here it hangs from the button's right and grows
+   inward. On a phone the footer is a column of full-width buttons, so it reads the same. */
+[data-slot="dialog-footer"] .action-reason {
+  left: auto;
+  right: 0;
+  text-align: right;
+}
+
 /* Simple mode (phase 33): the question card. */
 @utility question-card {
   display: flex;
