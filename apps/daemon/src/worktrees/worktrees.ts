@@ -176,7 +176,7 @@ function blockersOf(facts: {
     [facts.unpushed > 0, "unpushed"],
     [!facts.baseUsable, "unknown_base"],
     [facts.unknownState, "unknown_state"],
-    [facts.branch === null || !facts.branch.startsWith(OWN_PREFIX), "other_branch"],
+    [!facts.branch?.startsWith(OWN_PREFIX), "other_branch"],
   ];
   return [
     ...(facts.busy ? [facts.busy] : []),
