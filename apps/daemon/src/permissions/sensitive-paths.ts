@@ -5,6 +5,8 @@
  * permission must never cover). Every other check derives from these lists.
  */
 
+import { ntfsName } from "../ntfs-name.ts";
+
 /** A file whose name starts with one of these holds a secret: `.env`, `.env.local`, `id_rsa`. */
 export const SECRET_PREFIXES: readonly string[] = [".env", "id_"];
 /** Files that hold a token, a password or a history of commands (issue #439). */
@@ -83,12 +85,15 @@ export const SECRET_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["github cli", "hosts.yml"],
 ];
 
-/** Compares a path as the classifier does: without case, with either slash, with no empty step. */
+/**
+ * Compares a path as the classifier does: without case, with either slash, with no empty step, and
+ * each step as an NTFS volume reads it (a stream, trailing dots and a short name do not hide it).
+ */
 export const pathParts = (text: string): string[] =>
   text
-    .toLowerCase()
     .replaceAll("\\", "/")
     .split("/")
+    .map(ntfsName)
     .filter((part) => part !== "" && part !== ".");
 
 const follows = (parts: readonly string[], dir: string, next: string) =>
