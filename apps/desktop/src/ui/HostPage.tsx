@@ -37,6 +37,7 @@ import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
+import { HarnessTemplatesSection } from "./HarnessTemplatesSection.tsx";
 import { HostAccount } from "./HostAccount.tsx";
 import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
@@ -342,6 +343,10 @@ export function HostPage(
               {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
                 <MaintenanceSection store={store} hostId={host.id} />
               )}
+              {host.status === "online" &&
+                hasFeature(info?.features, "harnessTemplates", false) && (
+                  <HarnessTemplatesSection store={store} hostId={host.id} />
+                )}
               <HostLogs store={store} host={host} />
               <Panel title={t("hostPage.host")}>
                 <div className="flex gap-2">

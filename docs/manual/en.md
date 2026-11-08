@@ -347,6 +347,9 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Each is **Found** or **Missing**, and the card says how many of the six are there. It only reads:
   nothing in the project changes, and environment variables are never shown in it. When some of
   the project's files cannot be read, it says so: a part shown as missing may be there.
+- A host's page also lists its **Claude Code setup templates**, the ones shared from a project's setup,
+  with their files and size. **Delete** asks first and removes only that template: the projects set
+  up from it keep their files. It works from this computer or over Tailscale, not from afar.
 - **Project knowledge** lists the project's PRDs, RFCs, ADRs and specs (the Markdown files in
   `docs/decisions`, `docs/adr`, `docs/rfc`, `docs/prd` and `docs/specs`), each with its title, path,
   type and the status it says it has in its front matter (`status: valid`, `transitional` or
