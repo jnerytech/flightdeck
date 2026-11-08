@@ -38,7 +38,7 @@ const PORT_REFERENCE = /\{\{\s*port\.([\w-]+)\s*\}\}/g;
 export function interpolatePorts(text: string, ports: PortMap): string {
   return text.replace(PORT_REFERENCE, (_raw, name: string) => {
     const port = ports[name];
-    if (port === undefined) throw new Error(`porta sem bloco: ${name}`);
+    if (port === undefined) throw new Error(`port without a block: ${name}`);
     return String(port);
   });
 }

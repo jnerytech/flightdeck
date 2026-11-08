@@ -1,6 +1,7 @@
 import type { Dirent } from "node:fs";
 import { access, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
+import { parseJsonText } from "../json-text.ts";
 import { isInside } from "../paths.ts";
 
 /** What a project's own files would load into a Claude Code session, read without running anything (issue #196). */
@@ -120,7 +121,7 @@ async function readJson(
     if (!isInside(root, real)) throw new Error("leaves the project");
     const info = await stat(real);
     if (!info.isFile() || info.size > MAX_FILE) throw new Error("not a plain file of a sane size");
-    const parsed: unknown = JSON.parse(await readFile(real, "utf8"));
+    const parsed: unknown = parseJsonText(await readFile(real, "utf8"));
     if (!isObject(parsed)) throw new Error("not an object");
     return parsed;
   } catch {

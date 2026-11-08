@@ -22,6 +22,7 @@ export const JOURNEYS: readonly string[] = [
   "status-bar",
   "trust-revoke",
   "knowledge-panel",
+  "harness-setup",
   "files-viewer",
   "terminal-copy",
   "sleep-wake",

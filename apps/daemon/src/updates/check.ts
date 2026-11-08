@@ -91,11 +91,11 @@ export class UpdateChecker {
     try {
       response = await this.fetch(this.opts.manifestUrl);
     } catch (error) {
-      throw new Error(`não consegui baixar o manifesto: ${(error as Error).message}`);
+      throw new Error(`could not download the manifest: ${(error as Error).message}`);
     }
-    if (!response.ok) throw new Error(`o servidor respondeu HTTP ${response.status}`);
+    if (!response.ok) throw new Error(`the server answered HTTP ${response.status}`);
     const parsed = DaemonManifest.safeParse(await response.json().catch(() => null));
-    if (!parsed.success) throw new Error(`manifesto inválido: ${parsed.error.message}`);
+    if (!parsed.success) throw new Error(`invalid manifest: ${parsed.error.message}`);
     return parsed.data;
   }
 }
