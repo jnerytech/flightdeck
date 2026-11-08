@@ -280,11 +280,24 @@ export async function loadConfig(path: string = defaultConfigPath()): Promise<Co
   };
 }
 
+/** The rewrites of the config file run one at a time: each reads the file the one before it wrote. */
+let rewriting: Promise<unknown> = Promise.resolve();
+
 /**
  * Rewrites the raw config file through `update`, keeping fields it does not touch. Writes to a
- * temp file and renames it, so a running daemon never reads a half-written config.
+ * temp file and renames it, so a running daemon never reads a half-written config. Two rewrites
+ * asked together run in turn, so neither loses the other's change.
  */
-export async function updateConfigFile(
+export function updateConfigFile(
+  file: string,
+  update: (raw: Record<string, unknown>) => Record<string, unknown>,
+): Promise<void> {
+  const run = rewriting.then(() => rewriteConfigFile(file, update));
+  rewriting = Promise.allSettled([run]);
+  return run;
+}
+
+async function rewriteConfigFile(
   file: string,
   update: (raw: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<void> {

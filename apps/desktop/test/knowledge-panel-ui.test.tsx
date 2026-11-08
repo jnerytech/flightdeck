@@ -24,6 +24,7 @@ const entry = (path: string, over: Partial<KnowledgeEntry> = {}): KnowledgeEntry
   changedAt: "2026-11-05T10:00:00.000Z",
   problems: [],
   warnings: [],
+  hash: "h",
   ...over,
 });
 

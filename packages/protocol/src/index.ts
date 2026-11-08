@@ -996,12 +996,26 @@ export interface KnowledgeEntry {
   problems: string[];
   /** A valid document that points at an obsolete one: `references_obsolete:<path>`. */
   warnings: string[];
+  /** What the list read of the file (its size and start); `knowledge.setStatus` writes only if it still holds. */
+  hash: string;
 }
 
 export interface KnowledgeListResult {
   entries: KnowledgeEntry[];
   /** More documents than the list holds. */
   truncated: boolean;
+}
+
+/** Whether sessions in a project are given the library's index, and why not. */
+export interface KnowledgeFeedState {
+  /** Not switched off: the project, or a folder above it, is not in the host's `knowledge.feedOff`. */
+  on: boolean;
+  /** The project is trusted. An untrusted project is not given the index, on or off. */
+  trusted: boolean;
+  /** The folder in `knowledge.feedOff` that switches it off; the project itself, or one above it. */
+  offBy: string | null;
+  /** `offBy` is the project itself (under any name of it), so the project's own switch can turn it on. */
+  own: boolean;
 }
 
 /** What a session is given of the library: Markdown for its system prompt, empty when it is not given any. */
@@ -4480,6 +4494,25 @@ export const Command = z.discriminatedUnion("type", [
   cmd("knowledge.list", z.object({ path: z.string().min(1).max(4096) }).strict()),
   /** Issue #76: the index of the project's current documents that a session is given in its system prompt. */
   cmd("knowledge.index", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: whether sessions in the project at `path` are given that index. */
+  cmd("knowledge.feed", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  /** Issue #76: the `status:` line of one library document, written only if the file is as it was listed. */
+  cmd(
+    "knowledge.setStatus",
+    z
+      .object({
+        path: z.string().min(1).max(4096),
+        file: z.string().min(1).max(512),
+        status: KnowledgeStatus,
+        expectedHash: z.string().min(1).max(128),
+      })
+      .strict(),
+  ),
+  /** Issue #76: switch the index on or off for the project at `path`, in the host's config. */
+  cmd(
+    "knowledge.setFeed",
+    z.object({ path: z.string().min(1).max(4096), enabled: z.boolean() }).strict(),
+  ),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -5366,6 +5399,9 @@ export interface CommandResults {
   "file.search": FileSearchResult;
   "knowledge.list": KnowledgeListResult;
   "knowledge.index": KnowledgeIndexResult;
+  "knowledge.feed": KnowledgeFeedState;
+  "knowledge.setStatus": KnowledgeEntry;
+  "knowledge.setFeed": KnowledgeFeedState;
   "file.write": { path: string; hash: string; size: number };
 }
 

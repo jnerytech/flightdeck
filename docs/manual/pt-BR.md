@@ -352,9 +352,18 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   uma linha diz quantos documentos ficaram de fora. Os títulos são marcados como dados do
   repositório, não como instruções. Um worktree é lido da pasta principal confiável, não da branch.
   Um prompt de sistema que você mesmo passar (`--append-system-prompt`) fica como está, sem o
-  índice ao lado. Para desligar em um projeto, liste a pasta dele no arquivo de configuração do
-  host: `"knowledge": { "feedOff": ["/caminho/do/projeto"] }` (tudo dentro da pasta também fica
-  desligado).
+  índice ao lado. O painel diz se o projeto recebe o índice, e **Desligar** / **Ligar** mudam isso
+  só para aquele projeto. A escolha fica no arquivo de configuração do host, como
+  `"knowledge": { "feedOff": ["/caminho/do/projeto"] }`, e uma pasta dessa lista desliga tudo
+  dentro dela também: um projeto desligado por uma pasta acima diz isso, e é religado editando
+  essa entrada no arquivo. Um projeto sem confiança não recebe o índice, ligado ou desligado.
+  Cada documento tem um seletor de status. Escolher um escreve só a linha `status:` do front matter
+  daquele arquivo (um documento sem front matter ganha um bloco com essa linha), mantém o resto do
+  arquivo como está e deixa a mudança na pasta do projeto, sem commit: revise com o git. A mudança
+  é recusada quando o arquivo mudou desde que a lista o mostrou (recarregue e tente de novo),
+  quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
+  de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
+  de credencial ou um arquivo fora das pastas da biblioteca não podem.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
