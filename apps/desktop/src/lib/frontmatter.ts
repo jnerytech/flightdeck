@@ -18,7 +18,28 @@ export interface Document {
   eol: string;
 }
 
-const KEY = /^([A-Za-z0-9_-]+):(?:[ \t]+(.*))?$/;
+const KEY = /[A-Za-z0-9_-]+/y;
+/** What `.` does not take: a line that holds one of these is not a `key: value` line. */
+const LINE_BREAK = /[\n\r\u2028\u2029]/;
+
+/**
+ * `key:` or `key: value` read in one pass: the key, then what follows the colon. The value is the
+ * text after the spaces and tabs that follow the colon (`undefined` when nothing follows it);
+ * `null` when the line is not one: no colon right after the key, text glued to the colon, or a
+ * line break inside the rest.
+ */
+function keyLine(line: string): { key: string; value: string | undefined } | null {
+  KEY.lastIndex = 0;
+  if (!KEY.test(line)) return null;
+  const key = line.slice(0, KEY.lastIndex);
+  if (line[KEY.lastIndex] !== ":") return null;
+  const rest = line.slice(KEY.lastIndex + 1);
+  if (rest === "") return { key, value: undefined };
+  if ((rest[0] !== " " && rest[0] !== "\t") || LINE_BREAK.test(rest)) return null;
+  let start = 1;
+  while (rest[start] === " " || rest[start] === "\t") start++;
+  return { key, value: rest.slice(start) };
+}
 
 /** The text of a YAML scalar: quotes taken off, the escapes undone. */
 function unquote(raw: string): string {
@@ -50,13 +71,13 @@ export function parseDocument(content: string): Document {
   let i = 1;
   while (i < close) {
     const line = lines[i] as string;
-    const match = KEY.exec(line);
+    const found = keyLine(line);
     i++;
-    if (!match) continue;
+    if (!found) continue;
     const block = [line];
     while (i < close && /^(\s|-)/.test(lines[i] as string)) block.push(lines[i++] as string);
-    const key = match[1] as string;
-    const raw = match[2] ?? "";
+    const { key } = found;
+    const raw = found.value ?? "";
     const complex = block.length > 1 || /^[|>]/.test(raw) || raw === "";
     entries.push(
       complex
