@@ -1,5 +1,5 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { GateText } from "@/components/approval/gate-text";
 import { ClientChip } from "@/components/clients/client-chip";
@@ -22,6 +22,7 @@ import {
 import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
 import type { ClientColor } from "../lib/clients.ts";
+import { type Finish, sinceLastLook } from "../lib/finished.ts";
 import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import { pendingText } from "../lib/pending-text.ts";
@@ -33,7 +34,8 @@ type Entry =
   | { kind: "alert"; key: string; label: string; clientId?: string }
   | { kind: "loop"; key: string; alert: LoopAlert }
   | { kind: "watch"; key: string; alert: WatchAlert }
-  | { kind: "request"; key: string; item: PendingItem };
+  | { kind: "request"; key: string; item: PendingItem }
+  | { kind: "finished"; key: string; finish: Finish };
 
 // items-stretch: a button's own style is align-items: flex-start, which leaves a line no width
 // to cut at (issue #175).
@@ -73,6 +75,12 @@ function entriesOf(state: AppState, t: T): Entry[] {
       kind: "request" as const,
       key: `${item.hostId}/${item.requestId}`,
       item,
+    })),
+    // What finished since the person last looked comes after what waits for them.
+    ...sinceLastLook(state.finished, state.finishedLook).map((finish) => ({
+      kind: "finished" as const,
+      key: `finished/${finish.key}`,
+      finish,
     })),
   ];
 }
@@ -153,6 +161,31 @@ function EntryRow(
       </RowButton>
     );
   }
+  if (entry.kind === "finished") {
+    const { finish } = entry;
+    const outcome = t(`needsYou.finishedOutcome.${finish.outcome}` as Key);
+    const who = `${hostNameOf(store, finish.hostId)} · ${finish.name}`;
+    return (
+      <RowButton
+        active={active}
+        pressed={selected}
+        label={`${who}: ${outcome}`}
+        onActivate={onActivate}
+      >
+        <RowHead>
+          <StatusDot tone={FINISH_TONE[finish.outcome]} label={outcome} />
+          <span className="min-w-0 flex-1 truncate text-sm">{who}</span>
+          <time
+            dateTime={finish.at}
+            className="shrink-0 text-muted-foreground text-xs tabular-nums"
+          >
+            {formatAgo(store.now() - Date.parse(finish.at), t)}
+          </time>
+        </RowHead>
+        <span className="truncate pl-5 text-muted-foreground text-xs">{outcome}</span>
+      </RowButton>
+    );
+  }
   const { item } = entry;
   const chip = props.chipOf(item.sessionId);
   // A workflow gate is not a tool: its line says which step waits (issue #175).
@@ -173,6 +206,50 @@ function EntryRow(
         {what}
       </span>
     </RowButton>
+  );
+}
+
+const FINISH_TONE = { done: "idle", failed: "error", ended: "ended" } as const;
+
+/** The name of a host, as the list shows it; its id when it is gone. */
+function hostNameOf(store: AppStore, hostId: string): string {
+  return store.getState().hosts.find((h) => h.id === hostId)?.name ?? hostId;
+}
+
+/** A session that finished: how, when, how many files it changed, and the way to its Changes. */
+function FinishedDetail(
+  props: Readonly<{ finish: Finish; store: AppStore; go(route: Route): void }>,
+) {
+  const { finish, store, go } = props;
+  const { t } = store.i18n;
+  const outcome = t(`needsYou.finishedOutcome.${finish.outcome}` as Key);
+  const files =
+    finish.files === null
+      ? null
+      : finish.files === 0
+        ? t("needsYou.finishedNoFiles")
+        : finish.files === 1
+          ? t("needsYou.finishedFilesOne")
+          : t("needsYou.finishedFilesMany", { n: finish.files });
+  return (
+    <DetailColumn>
+      <h2 className="font-semibold text-base">{finish.name}</h2>
+      <p className="text-sm">
+        {hostNameOf(store, finish.hostId)} · {outcome} ·{" "}
+        {formatAgo(store.now() - Date.parse(finish.at), t)}
+      </p>
+      {files && <p className="text-sm">{files}</p>}
+      <Inline gap={2}>
+        <Button
+          onClick={() => {
+            store.sessionViews.remember(finish.key, "changes");
+            go({ name: "session", host: finish.hostId, id: finish.sessionId });
+          }}
+        >
+          {t("needsYou.seeChanges")}
+        </Button>
+      </Inline>
+    </DetailColumn>
   );
 }
 
@@ -345,6 +422,8 @@ function Detail(
   const { chosen, store, go } = props;
   if (chosen.kind === "watch") return <WatchDetail alert={chosen.alert} store={store} go={go} />;
   if (chosen.kind === "loop") return <LoopDetail alert={chosen.alert} store={store} />;
+  if (chosen.kind === "finished")
+    return <FinishedDetail finish={chosen.finish} store={store} go={go} />;
   return (
     <RequestDetail
       item={chosen.item}
@@ -369,6 +448,8 @@ export function NeedsYou(
   const { store, state, go } = props;
   const { t } = store.i18n;
   const entries = entriesOf(state, t);
+  const waiting = entries.filter((e) => e.kind !== "finished");
+  const firstFinished = entries.findIndex((e) => e.kind === "finished");
   const [selected, setSelected] = useState<string | null>(null);
   /** The row the keyboard is on (-1: none yet). */
   const [cursor, setCursor] = useState(-1);
@@ -378,6 +459,15 @@ export function NeedsYou(
     const key = projectOf.get(sessionId);
     return key === undefined ? null : scope.chipOf(key);
   };
+  // Leaving the page is the look: what finished while it was open is not new the next time.
+  const shownFinished = useRef(0);
+  shownFinished.current = entries.length - waiting.length;
+  useEffect(
+    () => () => {
+      if (shownFinished.current > 0) store.finishedSeen();
+    },
+    [store],
+  );
   const chosen = entries.find((e) => e.key === selected);
   const open = (entry: Entry) => {
     if (entry.kind === "alert")
@@ -440,22 +530,30 @@ export function NeedsYou(
     <section className="flex h-full min-h-0 flex-col">
       <div className="flex items-baseline gap-2 border-b px-4 py-3">
         <h1 className="font-semibold text-base">{t("needsYou.title")}</h1>
-        <span className="text-muted-foreground text-xs tabular-nums">{entries.length}</span>
+        <span className="text-muted-foreground text-xs tabular-nums">{waiting.length}</span>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto p-2">
         {entries.map((entry, i) => (
-          <EntryRow
-            key={entry.key}
-            entry={entry}
-            active={cursor === i}
-            selected={selected === entry.key}
-            store={store}
-            chipOf={chipOf}
-            onActivate={() => {
-              setCursor(i);
-              open(entry);
-            }}
-          />
+          <Fragment key={entry.key}>
+            {i === firstFinished && (
+              <li>
+                <h2 className="px-2 pt-3 pb-1 font-medium text-muted-foreground text-xs">
+                  {t("needsYou.finished")}
+                </h2>
+              </li>
+            )}
+            <EntryRow
+              entry={entry}
+              active={cursor === i}
+              selected={selected === entry.key}
+              store={store}
+              chipOf={chipOf}
+              onActivate={() => {
+                setCursor(i);
+                open(entry);
+              }}
+            />
+          </Fragment>
         ))}
       </ul>
     </section>

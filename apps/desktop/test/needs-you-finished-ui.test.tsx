@@ -6,6 +6,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { NeedsYou } = await import("../src/ui/NeedsYou.tsx");
 
 afterEach(() => cleanup());
 
@@ -22,11 +23,17 @@ const finish = (sessionId: string, over: Record<string, unknown> = {}) => ({
 });
 
 /** Needs you with nothing waiting, and the finishes `list` after a look at `look`. */
-async function open(list: unknown[], look: string | null = null, lang: "en" | "pt-BR" = "en") {
+async function open(
+  list: unknown[],
+  look: string | null = null,
+  lang: "en" | "pt-BR" = "en",
+  inApp = true,
+) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { now: () => NOW });
-  render(<App store={store} />);
+  if (inApp) render(<App store={store} />);
+  else store.i18n.start();
   await act(async () => {
-    store.router.push({ name: "needs-you" });
+    if (inApp) store.router.push({ name: "needs-you" });
     (store as unknown as { update(patch: object): void }).update({
       hosts: [{ id: "h", name: "alfa", status: "online", sessions: [] }],
       finished: list,
@@ -34,6 +41,13 @@ async function open(list: unknown[], look: string | null = null, lang: "en" | "p
     });
   });
   return store;
+}
+
+/** The page on its own, so choosing "See the changes" does not load a session of a fake host. */
+function page(store: InstanceType<typeof AppStore>, go: (route: unknown) => void = () => {}) {
+  return render(
+    <NeedsYou store={store} state={store.getState()} go={go} onOpenRequest={() => {}} />,
+  );
 }
 
 const rows = () =>
@@ -61,16 +75,17 @@ describe("needs-you-finished-ui: the Finished group (issue #1134)", () => {
   });
 
   test("choosing one shows its outcome, when and how many files, and opens its Changes", async () => {
-    const store = await open([finish("s1")]);
-    const row = screen.getByRole("button", { name: /Backend tests/ });
+    const store = await open([finish("s1")], null, "en", false);
+    const went: unknown[] = [];
+    page(store, (route) => went.push(route));
     await act(async () => {
-      fireEvent.click(row);
+      fireEvent.click(screen.getByRole("button", { name: /Backend tests/ }));
     });
     expect(document.body.textContent).toContain("3 files changed");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "See the changes" }));
     });
-    expect(store.router.current).toMatchObject({ name: "session", host: "h", id: "s1" });
+    expect(went).toEqual([{ name: "session", host: "h", id: "s1" }]);
     expect(store.sessionViews.last("h/s1")).toBe("changes");
   });
 
@@ -79,20 +94,18 @@ describe("needs-you-finished-ui: the Finished group (issue #1134)", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Backend tests/ }));
     });
+    expect(screen.getByRole("button", { name: "See the changes" })).toBeTruthy();
     expect(document.body.textContent).not.toContain("files changed");
     expect(document.body.textContent).not.toContain("No files changed");
   });
 
   test("leaving the page is the look: they are gone when it comes back", async () => {
-    const store = await open([finish("s1")]);
+    const store = await open([finish("s1")], null, "en", false);
+    const first = page(store);
     expect(rows()).toHaveLength(1);
-    await act(async () => {
-      store.router.push({ name: "hub" });
-    });
+    first.unmount();
     expect(store.getState().finishedLook).toBe(new Date(NOW).toISOString());
-    await act(async () => {
-      store.router.push({ name: "needs-you" });
-    });
+    page(store);
     expect(rows()).toEqual([]);
   });
 
