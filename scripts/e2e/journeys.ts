@@ -1884,7 +1884,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("menuitemcheckbox", { name: c.t("shell.allHostsTabs"), exact: true })
       .click();
     await c.page.keyboard.press("Escape");
-    await open(c, { name: "all-projects" });
+    // The sidebar's Projects, not a reload: the switcher's pick is this window's.
+    await c.page
+      .locator("aside")
+      .first()
+      .getByRole("button", { name: new RegExp(`^${c.t("sidebar.projects")}`) })
+      .first()
+      .click();
     await card("flightdeck-web", "alfa").click();
     await said.waitFor({ timeout: WAIT });
     await switcher("alfa").waitFor({ timeout: WAIT });
