@@ -91,6 +91,10 @@ const upstream = (repo: string, branch: string) => {
   }
 };
 
+/** The push address `changes.get` shows the person: what the app sends back. */
+const seenRemote = async (made: ReturnType<typeof setup>) =>
+  (await made.changes.get(TARGET)).remote ?? "none";
+
 async function outcome(run: Promise<unknown>): Promise<string> {
   try {
     await run;
@@ -104,13 +108,20 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
   test("the branch the commit made is pushed and its PR opened against the branch it started from", async () => {
     const made = setup();
     await committed(made, "work/note");
-    const opened = await made.prs.open(TARGET, { title: "Add a note", body: "What it does." });
+    const remote = await seenRemote(made);
+    const opened = await made.prs.open(TARGET, {
+      title: "Add a note",
+      body: "What it does.",
+      remote,
+    });
     expect([
+      remote,
       opened,
       pushed(made.remote, "work/note"),
       upstream(made.repo, "work/note"),
       made.created.map(({ base, head, title, body }) => ({ base, head, title, body })),
     ]).toEqual([
+      made.remote,
       { url: URL, branch: "work/note", base: "main" },
       true,
       "origin/work/note",
@@ -118,29 +129,54 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
     ]);
   });
 
-  test("with no base on record (a restarted daemon), the remote's default branch is the base, or it refuses", async () => {
+  test("a branch this daemon's commit did not make is never pushed, whatever the remote calls its default", async () => {
     const made = setup();
     git(made.repo, "switch", "-q", "-c", "work/by-hand");
     writeFileSync(join(made.repo, "hand.txt"), "by hand\n");
     git(made.repo, "add", "--", "hand.txt");
     git(made.repo, "commit", "-q", "-m", "By hand");
-    const before = await outcome(made.prs.open(TARGET, { title: "t", body: "b" }));
+    // A session may point the remote's default anywhere: it never stands in for the record.
     git(made.repo, "remote", "set-head", "origin", "main");
-    const after = await made.prs.open(TARGET, { title: "t", body: "b" });
-    expect([before, after.base, pushed(made.remote, "work/by-hand")]).toEqual([
+    const done = await outcome(
+      made.prs.open(TARGET, { title: "t", body: "b", remote: await seenRemote(made) }),
+    );
+    expect([done, pushed(made.remote, "work/by-hand"), made.created]).toEqual([
       "changes_pr_base",
-      "main",
-      true,
+      false,
+      [],
     ]);
+  });
+
+  test("the push goes where the person saw: a remote changed since refuses, and its address never carries a password", async () => {
+    const made = setup();
+    await committed(made, "work/moved");
+    const seen = await seenRemote(made);
+    const elsewhere = join(made.remote, "..", "elsewhere.git");
+    git(made.repo, "init", "-q", "--bare", elsewhere);
+    git(made.repo, "remote", "set-url", "--push", "origin", elsewhere);
+    const done = await outcome(made.prs.open(TARGET, { title: "t", body: "b", remote: seen }));
+    git(
+      made.repo,
+      "remote",
+      "set-url",
+      "--push",
+      "origin",
+      "https://ana:s3cret@example.com/app.git",
+    );
+    expect([
+      done,
+      pushed(made.remote, "work/moved"),
+      pushed(elsewhere, "work/moved"),
+      await seenRemote(made),
+    ]).toEqual(["changes_pr_remote", false, false, "https://example.com/app.git"]);
   });
 
   test("the base is never pushed, nor a detached checkout, nor a secret; a card opens its own PR", async () => {
     const vault = ["k3y-in-the-vault"];
     const onMain = setup({ vault });
-    // The remote names its default branch, so the checkout's own branch is known to be the base.
     git(onMain.repo, "remote", "set-head", "origin", "main");
-    const sent = (made: ReturnType<typeof setup>, title = "t", body = "b") =>
-      outcome(made.prs.open(TARGET, { title, body }));
+    const sent = async (made: ReturnType<typeof setup>, title = "t", body = "b") =>
+      outcome(made.prs.open(TARGET, { title, body, remote: await seenRemote(made) }));
     const main = await sent(onMain);
     const detached = setup();
     git(detached.repo, "switch", "-q", "--detach", "HEAD");
@@ -154,13 +190,13 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
       await sent(detached),
       await sent(secret, "t", "uses k3y-in-the-vault"),
       await sent(secret, "k3y-in-the-vault", "b"),
-      await outcome(secret.prs.open("card:c-1", { title: "t", body: "b" })),
+      await outcome(secret.prs.open("card:c-1", { title: "t", body: "b", remote: secret.remote })),
       await sent(card),
       await sent(none),
       pushed(secret.remote, "work/secret"),
       [onMain, secret, none].flatMap((made) => made.created),
     ]).toEqual([
-      "changes_pr_on_base",
+      "changes_pr_base",
       "changes_pr_detached",
       "pr_secret",
       "pr_title_secret",
@@ -191,11 +227,13 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
     try {
       for (const client of clients) await client.request("hello", { token: TOKEN, client: "t" });
       const [near, far] = clients as [FrameClient, FrameClient];
+      const remote = await seenRemote(made);
       const send = async (client: FrameClient, confirm?: boolean) => {
         const ack = await client.request("changes.pr", {
           target: TARGET,
           title: "t",
           body: "b",
+          remote,
           ...(confirm === undefined ? {} : { confirm }),
         });
         const error = ack.error as { reason?: string } | undefined;
