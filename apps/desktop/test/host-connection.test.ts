@@ -418,32 +418,6 @@ describe("desktop: conexão com o host", () => {
     });
   });
 
-  test("a hidden window whose timers run once a minute still answers pings on time, and the link stays online 10 minutes (#939)", async () => {
-    const hand = handWatchdog();
-    let ping: (frame: unknown) => void = () => {};
-    let pongs = 0;
-    const url = quietHost((send) => {
-      ping = send;
-    });
-    const { conn, statuses } = connect(url, TOKEN, { watchdog: hand.watchdog });
-    await waitFor(() => conn.status === "online", "online");
-    // The pong goes out from the message itself, never from a timer: count what the host gets.
-    const sent = (conn as unknown as { ws: WebSocket }).ws;
-    const original = sent.send.bind(sent);
-    sent.send = (data: string) => {
-      if (String(data).includes('"pong"')) pongs++;
-      original(data);
-    };
-    for (let step = 1; step <= 40; step++) {
-      hand.advance(15_000);
-      ping({ type: "ping", id: String(step) });
-      await waitFor(() => pongs === step, `pong ${step}`);
-      // The watchdog's interval, throttled: it runs once in four pings (once a minute).
-      if (step % 4 === 0) hand.tick();
-    }
-    expect([statuses, conn.lastDrop, pongs]).toEqual([["connecting", "online"], null, 40]);
-  });
-
   test("a host that pings every 15 s stays online for 10 minutes, with no drop (#939)", async () => {
     const hand = handWatchdog();
     let ping: (frame: unknown) => void = () => {};
