@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card, Project } from "@flightdeck/protocol";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
@@ -163,8 +163,7 @@ describe("rail-flyout-ui: the Projects icon of the collapsed rail opens the proj
     });
     expect(await isClosed("Projects")).toBe(true);
     // The icon does not take the focus back from where the person went.
-    expect(await settleMaybe(() => document.activeElement === railButton("Projects"))).toBe(false);
-    expect(document.activeElement === board).toBe(true);
+    await stays(() => document.activeElement === board);
   });
 
   test("with no project to list, the icon goes straight to the Projects page", async () => {
