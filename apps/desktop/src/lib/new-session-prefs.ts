@@ -20,6 +20,9 @@ export interface NewSessionPrefsValue {
 /** The modes worth keeping: bypass asks again each time, so it is never the starting point. */
 const KEPT_MODES: readonly PermissionMode[] = ["default", "acceptEdits", "plan", "auto", "dontAsk"];
 
+/** The models the form offers for a Claude session; nothing else is kept as the starting model. */
+export const CLAUDE_MODELS: readonly string[] = ["opus", "sonnet", "haiku"];
+
 const NOTHING: NewSessionPrefsValue = { mode: "default", model: "", folders: {} };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -27,6 +30,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isKept = (mode: unknown): mode is PermissionMode =>
   KEPT_MODES.includes(mode as PermissionMode);
+
+/** No model (the account's default) or one the form offers. */
+const isOffered = (model: unknown): model is string =>
+  model === "" || (typeof model === "string" && CLAUDE_MODELS.includes(model));
 
 /** What is kept, read leniently: a part that is missing or of the wrong kind starts from nothing. */
 function read(storage: Platform["storage"]): NewSessionPrefsValue {
@@ -43,7 +50,7 @@ function read(storage: Platform["storage"]): NewSessionPrefsValue {
     }
     return {
       mode: isKept(kept.mode) ? kept.mode : NOTHING.mode,
-      model: typeof kept.model === "string" ? kept.model : NOTHING.model,
+      model: isOffered(kept.model) ? kept.model : NOTHING.model,
       folders,
     };
   } catch {
@@ -64,14 +71,14 @@ export class NewSessionPrefs {
     return this.value.folders[hostId];
   }
 
-  /** Keeps what a session was started with; a mode that is not worth keeping leaves the last one. */
+  /** Keeps what a session was started with; a mode or model that is not worth keeping leaves the last one. */
   remember(
     hostId: string,
     choice: { root: string; sub: string; mode: PermissionMode; model: string },
   ): void {
     this.value = {
       mode: isKept(choice.mode) ? choice.mode : this.value.mode,
-      model: choice.model,
+      model: isOffered(choice.model) ? choice.model : this.value.model,
       folders: { ...this.value.folders, [hostId]: { root: choice.root, sub: choice.sub } },
     };
     try {
