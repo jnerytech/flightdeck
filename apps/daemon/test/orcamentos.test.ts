@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import type { Budget } from "@flightdeck/protocol";
+import type { Budget, BudgetInput } from "@flightdeck/protocol";
 import { Budgets, type BudgetUpdate } from "../src/costs/budgets.ts";
 import { UsageIndexer } from "../src/costs/usage-indexer.ts";
 import { startServer } from "../src/server.ts";
@@ -50,7 +50,7 @@ const HOST_DAY = { scope: "host", period: "day", limitUsd: 10, action: "notify" 
 const raised = (budget: Budget, limitUsd: number) => ({
   id: budget.id,
   scope: budget.scope,
-  period: budget.period,
+  period: budget.period as BudgetInput["period"],
   action: budget.action,
   limitUsd,
   ...(budget.projectKey ? { projectKey: budget.projectKey } : {}),

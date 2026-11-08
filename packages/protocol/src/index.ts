@@ -2486,25 +2486,37 @@ export type QuotaHistory = z.infer<typeof QuotaHistory>;
 export const BudgetPeriod = z.enum(["day", "month", "five_hour", "seven_day"]);
 export type BudgetPeriod = z.infer<typeof BudgetPeriod>;
 
-/**
- * A limit of the host or of one project: dollars per day or month, or a share of a plan quota
- * window (`five_hour`, `seven_day`; issue #1248).
- */
+/** A cost limit of the host or of one project, per day or month (host time zone). */
 export const BudgetInput = z.object({
   /** Present to change an existing budget. */
   id: z.string().optional(),
   scope: z.enum(["host", "project"]),
   /** Required for `project`, ignored for `host`. */
   projectKey: z.string().min(1).optional(),
-  period: BudgetPeriod,
-  /** Required for `day` and `month`, ignored for a window. */
-  limitUsd: z.number().positive().optional(),
-  /** Required for `five_hour` and `seven_day`: the share of the window, above 0 up to 1. */
-  limitPct: z.number().positive().max(1).optional(),
+  period: z.enum(["day", "month"]),
+  limitUsd: z.number().positive(),
   /** `queue`: at 100%, new cards of the scope wait (sessions are never held). */
   action: z.enum(["notify", "queue"]),
 });
 export type BudgetInput = z.infer<typeof BudgetInput>;
+
+/**
+ * A limit in terms of the plan quota instead of dollars (issue #1248): the share of a quota
+ * window the host, or one project (an estimate), may use. The window is its period.
+ */
+export const QuotaBudgetInput = z.object({
+  /** Present to change an existing budget. */
+  id: z.string().optional(),
+  scope: z.enum(["host", "project"]),
+  /** Required for `project`, ignored for `host`. */
+  projectKey: z.string().min(1).optional(),
+  window: z.enum(["five_hour", "seven_day"]),
+  /** The share of the window, above 0 up to 1. */
+  limitPct: z.number().positive().max(1),
+  /** `queue`: at 100% of the limit, new cards of the scope wait (sessions are never held). */
+  action: z.enum(["notify", "queue"]),
+});
+export type QuotaBudgetInput = z.infer<typeof QuotaBudgetInput>;
 
 export const Budget = z.object({
   id: z.string(),
@@ -4232,6 +4244,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("costs.export", CostsFilter),
   cmd("budget.list", z.object({}).strict()),
   cmd("budget.set", BudgetInput),
+  cmd("budget.setQuota", QuotaBudgetInput),
   cmd("budget.remove", z.object({ id: z.string() })),
   /** `budget.updated` after each change, threshold crossed or new period. */
   cmd("budget.watch", z.object({}).strict()),
@@ -5665,6 +5678,7 @@ export interface CommandResults {
   "costs.export": { csv: string; filename: string };
   "budget.list": { budgets: Budget[] };
   "budget.set": Budget;
+  "budget.setQuota": Budget;
   "budget.remove": undefined;
   "budget.watch": undefined;
   "quota.history": QuotaHistory;

@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { Budget, BudgetInput, QuotaState } from "@flightdeck/protocol";
+import type { Budget, BudgetInput, QuotaBudgetInput, QuotaState } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
 import { localDay } from "../quota/usage.ts";
@@ -30,6 +30,15 @@ const THRESHOLDS = [0.5, 0.8, 1] as const;
 
 const CHECK_MS = 60_000;
 
+const HOUR_MS = 3_600_000;
+/** How long each plan quota window lasts: the span before its reset that its budgets look at. */
+const WINDOW_MS: Partial<Record<Budget["period"], number>> = {
+  five_hour: 5 * HOUR_MS,
+  seven_day: 7 * 24 * HOUR_MS,
+};
+
+const iso = (ms: number) => new Date(ms).toISOString();
+
 const realTimers: Timers = {
   set: (fn, ms) => setTimeout(fn, ms),
   clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -51,8 +60,9 @@ const signature = (budget: Budget) =>
   `${budget.periodKey}|${budget.action === "queue" && budget.fraction >= 1}`;
 
 /**
- * Cost limits of the host and its projects, per day or month in the host's time zone. The
- * estimated cost of every origin counts; alerts fire at 50%, 80% and 100% once per period.
+ * Limits of the host and its projects: dollars per day or month in the host's time zone, or a
+ * share of a plan quota window (issue #1248). The estimated cost of every origin counts; alerts
+ * fire at 50%, 80% and 100% of the limit once per period, and a window's period is the window.
  */
 export class Budgets {
   private readonly db: Database;
@@ -64,6 +74,7 @@ export class Budgets {
   private readonly seen = new Map<string, string>();
   private timer: unknown = null;
   private started = false;
+  private unwatchQuota: (() => void) | null = null;
 
   constructor(readonly opts: BudgetsOptions) {
     this.db = opts.db;
@@ -78,8 +89,41 @@ export class Budgets {
     return this.rows().map((row) => this.state(row));
   }
 
-  /** Creates a budget, or changes the one with `input.id` (its creation date stays). */
+  /** Creates a dollar budget, or changes the one with `input.id` (its creation date stays). */
   set(input: BudgetInput): Budget {
+    return this.save({
+      id: input.id,
+      scope: input.scope,
+      projectKey: input.projectKey,
+      period: input.period,
+      limit: input.limitUsd,
+      pct: null,
+      action: input.action,
+    });
+  }
+
+  /** The same for a budget in terms of a quota window: its period is the window. */
+  setWindow(input: QuotaBudgetInput): Budget {
+    return this.save({
+      id: input.id,
+      scope: input.scope,
+      projectKey: input.projectKey,
+      period: input.window,
+      limit: 0,
+      pct: input.limitPct,
+      action: input.action,
+    });
+  }
+
+  private save(input: {
+    id?: string;
+    scope: Budget["scope"];
+    projectKey?: string;
+    period: Budget["period"];
+    limit: number;
+    pct: number | null;
+    action: Budget["action"];
+  }): Budget {
     if (input.scope === "project" && !input.projectKey) {
       throw new FlightdeckError(
         "bad_request",
@@ -92,7 +136,8 @@ export class Budgets {
       scope: input.scope,
       key: projectKey,
       period: input.period,
-      limit: input.limitUsd ?? 0,
+      limit: input.limit,
+      pct: input.pct,
       action: input.action,
     };
     let id = input.id;
@@ -101,15 +146,15 @@ export class Budgets {
       this.db
         .query(
           `UPDATE budgets SET scope = $scope, project_key = $key, period = $period,
-             limit_usd = $limit, action = $action WHERE id = $id`,
+             limit_usd = $limit, limit_pct = $pct, action = $action WHERE id = $id`,
         )
         .run({ id, ...fields });
     } else {
       id = ulid(this.now());
       this.db
         .query(
-          `INSERT INTO budgets (id, scope, project_key, period, limit_usd, action, created_at)
-           VALUES ($id, $scope, $key, $period, $limit, $action, $at)`,
+          `INSERT INTO budgets (id, scope, project_key, period, limit_usd, limit_pct, action, created_at)
+           VALUES ($id, $scope, $key, $period, $limit, $pct, $action, $at)`,
         )
         .run({ id, at: new Date(this.now()).toISOString(), ...fields });
     }
@@ -156,11 +201,15 @@ export class Budgets {
   /** The period check, every `checkMs`, for as long as there is a budget to check. */
   start(): void {
     this.started = true;
+    // A new reading of the plan quota is spending too: a window budget may have crossed.
+    this.unwatchQuota ??= this.opts.quota?.watch(() => this.evaluate()) ?? null;
     this.arm();
   }
 
   stop(): void {
     this.started = false;
+    this.unwatchQuota?.();
+    this.unwatchQuota = null;
     this.arm();
   }
 
@@ -214,16 +263,7 @@ export class Budgets {
   }
 
   private state(row: Row): Budget {
-    const today = this.day(this.now());
-    const periodKey = row.period === "day" ? today : today.slice(0, 7);
-    // `day >= p AND day < p || '~'` is every day that starts with the period ('~' sorts after the
-    // digits and the dash), a range of the index on the day instead of a scan of the entries.
-    const { spent } = this.db
-      .query(
-        `SELECT TOTAL(cost_usd) AS spent FROM usage_entries
-         WHERE day >= $period AND day < $period || '~' AND ($key IS NULL OR project_key = $key)`,
-      )
-      .get({ period: periodKey, key: row.project_key }) as { spent: number };
+    const { periodKey, spentUsd, spentPct, estimated, fraction } = this.spent(row);
     const crossed = this.db
       .query<{ threshold: number }, [string, string]>(
         "SELECT threshold FROM budget_alerts WHERE budget_id = ? AND period = ? ORDER BY threshold",
@@ -236,15 +276,69 @@ export class Budgets {
       projectKey: row.project_key,
       period: row.period,
       limitUsd: row.limit_usd,
-      limitPct: null,
+      limitPct: row.limit_pct,
       action: row.action,
       createdAt: row.created_at,
+      periodKey,
+      spentUsd,
+      spentPct,
+      estimated,
+      fraction,
+      crossed,
+    };
+  }
+
+  /** What the budget's scope has used in its current period, and how much of the limit that is. */
+  private spent(row: Row) {
+    const span = WINDOW_MS[row.period];
+    if (span === undefined || row.limit_pct === null) return this.spentUsd(row);
+    return this.spentShare(row, span, row.limit_pct);
+  }
+
+  private spentUsd(row: Row) {
+    const today = this.day(this.now());
+    const periodKey = row.period === "day" ? today : today.slice(0, 7);
+    // `day >= p AND day < p || '~'` is every day that starts with the period ('~' sorts after the
+    // digits and the dash), a range of the index on the day instead of a scan of the entries.
+    const { spent } = this.db
+      .query(
+        `SELECT TOTAL(cost_usd) AS spent FROM usage_entries
+         WHERE day >= $period AND day < $period || '~' AND ($key IS NULL OR project_key = $key)`,
+      )
+      .get({ period: periodKey, key: row.project_key }) as { spent: number };
+    return {
       periodKey,
       spentUsd: spent,
       spentPct: null,
       estimated: false,
       fraction: spent / row.limit_usd,
-      crossed,
     };
+  }
+
+  /**
+   * A window budget: the host's share is the window's utilization; a project's is that times its
+   * part of the estimated cost since the window began (the plan does not say who used it, so the
+   * budget says it is an estimate). No reading of the window: nothing used, nothing alerts.
+   */
+  private spentShare(row: Row, span: number, limitPct: number) {
+    const reading = this.opts.quota?.state().windows.find((w) => w.window === row.period);
+    const periodKey = reading?.resetsAt ?? "unread";
+    const now = this.now();
+    const from = (reading?.resetsAt ? Date.parse(reading.resetsAt) : now) - span;
+    const { total, scoped } = this.db
+      .query(
+        `SELECT TOTAL(cost_usd) AS total,
+                TOTAL(CASE WHEN $key IS NULL OR project_key = $key THEN cost_usd ELSE 0 END) AS scoped
+         FROM usage_entries WHERE at >= $from AND at <= $to`,
+      )
+      .get({ key: row.project_key, from: iso(from), to: iso(now) }) as {
+      total: number;
+      scoped: number;
+    };
+    const utilization = reading?.utilization ?? 0;
+    const estimated = row.project_key !== null;
+    const share = estimated ? (total > 0 ? scoped / total : 0) : 1;
+    const spentPct = utilization * share;
+    return { periodKey, spentUsd: scoped, spentPct, estimated, fraction: spentPct / limitPct };
   }
 }

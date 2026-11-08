@@ -1538,6 +1538,7 @@ export const ptBR = {
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
     quotaPause: "a trava da cota para cartões novos",
+    quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {

@@ -49,6 +49,9 @@ export const costsHandlers = {
   "budget.set": (payload, { server }) => {
     return server.need("budgets").set(payload);
   },
+  "budget.setQuota": (payload, { server }) => {
+    return server.need("budgets").setWindow(payload);
+  },
   "budget.remove": (payload, { server }) => {
     server.need("budgets").remove(payload.id);
   },

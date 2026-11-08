@@ -24,7 +24,7 @@ interface Draft {
   projectKey: string;
   /** The project is one the list does not have: its key is typed. */
   other: boolean;
-  period: Budget["period"];
+  period: BudgetInput["period"];
   limitUsd: string;
   action: Budget["action"];
 }
@@ -58,14 +58,16 @@ export function BudgetsSection(
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [removing, setRemoving] = useState<Budget | null>(null);
   const saving = useBusy();
-  const editing = props.budgets.find((b) => b.id === draft.id);
+  // The form below is in dollars; a budget in terms of the plan quota (issue #1248) has its own place.
+  const dollarBudgets = props.budgets.filter((b) => b.limitPct === null);
+  const editing = dollarBudgets.find((b) => b.id === draft.id);
   // The selected client's project budgets, and the host's own, which cap everything on the host.
   const scope = store.clientScope();
   const { clientSelection: selection } = useStoreSlice(store, BUDGETS_KEYS);
-  const visible = props.budgets.filter(
+  const visible = dollarBudgets.filter(
     (b) => b.scope === "host" || scope.includes(selection, b.projectKey ?? ""),
   );
-  const hidden = props.budgets.length - visible.length;
+  const hidden = dollarBudgets.length - visible.length;
   const [spentOn, setSpentOn] = useState<string[]>([]);
   // The keys a project budget can name are the ones the host has seen: those with usage in the
   // last 30 days and those a budget already uses.
@@ -77,7 +79,7 @@ export function BudgetsSection(
   const keys = [
     ...new Set([
       ...spentOn,
-      ...props.budgets.flatMap((b) => (b.projectKey ? [b.projectKey] : [])),
+      ...dollarBudgets.flatMap((b) => (b.projectKey ? [b.projectKey] : [])),
       ...(draft.projectKey ? [draft.projectKey] : []),
     ]),
   ];
@@ -112,7 +114,7 @@ export function BudgetsSection(
     <section aria-label={title}>
       <Panel title={title}>
         <Stack gap={4}>
-          {props.budgets.length === 0 ? (
+          {dollarBudgets.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t("budgetsUi.none")}</p>
           ) : (
             <Stack as="ul" gap={2}>
@@ -140,7 +142,7 @@ export function BudgetsSection(
                                 scope: budget.scope,
                                 projectKey: budget.projectKey ?? "",
                                 other: false,
-                                period: budget.period,
+                                period: budget.period === "day" ? "day" : "month",
                                 limitUsd: String(budget.limitUsd),
                                 action: budget.action,
                               })

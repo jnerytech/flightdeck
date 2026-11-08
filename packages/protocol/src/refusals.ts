@@ -578,6 +578,7 @@ export const DAEMON_FEATURES = [
   "harnessTemplates",
   "keepAwake",
   "quotaPause",
+  "quotaBudgets",
   "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

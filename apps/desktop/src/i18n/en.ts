@@ -1545,6 +1545,7 @@ export const en: Dictionary = {
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
     quotaPause: "the quota guard for new cards",
+    quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {

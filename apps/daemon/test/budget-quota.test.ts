@@ -42,7 +42,7 @@ function setup() {
   return { budgets, frames, quota, read, spend, thresholds, time };
 }
 
-const HOST_5H = { scope: "host", period: "five_hour", limitPct: 0.5, action: "notify" } as const;
+const HOST_5H = { scope: "host", window: "five_hour", limitPct: 0.5, action: "notify" } as const;
 
 const refusal = (fn: () => unknown) => {
   try {
@@ -62,7 +62,7 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
   test("a host budget of half the 5-hour window notifies at 50%, 80% and 100% of that half, once each", () => {
     const { budgets, read, thresholds, time } = setup();
     read("five_hour", 0.1, 2 * HOUR);
-    const budget = budgets.set(HOST_5H);
+    const budget = budgets.setWindow(HOST_5H);
     expect(budget).toMatchObject({
       scope: "host",
       period: "five_hour",
@@ -87,7 +87,7 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
 
   test("a queue budget holds the new cards at 100% of its share and the next window releases them", () => {
     const { budgets, read, time } = setup();
-    budgets.set({ ...HOST_5H, action: "queue" });
+    budgets.setWindow({ ...HOST_5H, action: "queue" });
     read("five_hour", 0.3, 2 * HOUR);
     expect(budgets.blocked("kA")).toBe(false);
     read("five_hour", 0.5, 2 * HOUR);
@@ -109,10 +109,10 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     spend(1, "kB", HOUR);
     spend(100, "kA", 4 * HOUR);
     read("five_hour", 0.4, 2 * HOUR);
-    const project = budgets.set({
+    const project = budgets.setWindow({
       scope: "project",
       projectKey: "kA",
-      period: "five_hour",
+      window: "five_hour",
       limitPct: 0.3,
       action: "queue",
     });
@@ -128,10 +128,10 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
     spend(1, "kA", 30 * HOUR);
     spend(1, "kB", 30 * HOUR);
     read("seven_day", 0.2, 3 * 24 * HOUR);
-    const weekly = budgets.set({
+    const weekly = budgets.setWindow({
       scope: "project",
       projectKey: "kA",
-      period: "seven_day",
+      window: "seven_day",
       limitPct: 0.2,
       action: "notify",
     });
@@ -141,11 +141,13 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
 
   test("with no reading of the window the budget is at zero and nothing alerts until one arrives", () => {
     const { budgets, read, thresholds } = setup();
-    const budget = budgets.set(HOST_5H);
+    const budget = budgets.setWindow(HOST_5H);
     expect(budget).toMatchObject({ spentPct: 0, fraction: 0, periodKey: "unread", crossed: [] });
     expect(thresholds()).toEqual([]);
+    // A jump past two thresholds announces the highest and records both.
     read("five_hour", 0.45, 2 * HOUR);
-    expect(thresholds()).toEqual([0.5, 0.8]);
+    expect(thresholds()).toEqual([0.8]);
+    expect(budgets.list()[0]?.crossed).toEqual([0.5, 0.8]);
   });
 
   test("a dollar budget still works beside a window one, and says it is not a share of a window", () => {
@@ -157,26 +159,45 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
       spentPct: null,
       estimated: false,
     });
-    const window = budgets.set(HOST_5H);
+    const window = budgets.setWindow(HOST_5H);
     expect(budgets.list().map((b: Budget) => b.id)).toEqual([dollars.id, window.id]);
   });
 
-  test("a budget without its limit is refused with a reason, whichever unit it is in", () => {
+  test("a project window budget needs its project, as a dollar one does", () => {
     const { budgets } = setup();
     expect(
-      refusal(() => budgets.set({ scope: "host", period: "five_hour", action: "notify" })),
-    ).toMatchObject({
-      code: "bad_request",
-      reason: "budget_needs_limit",
-      params: { period: "five_hour" },
-    });
-    expect(
-      refusal(() => budgets.set({ scope: "host", period: "day", limitPct: 0.5, action: "notify" })),
-    ).toMatchObject({
-      code: "bad_request",
-      reason: "budget_needs_limit",
-      params: { period: "day" },
-    });
+      refusal(() =>
+        budgets.setWindow({
+          scope: "project",
+          window: "five_hour",
+          limitPct: 0.5,
+          action: "queue",
+        }),
+      ),
+    ).toMatchObject({ code: "bad_request", reason: "budget_needs_project" });
     expect(budgets.list()).toEqual([]);
+  });
+
+  test("a budget changes from dollars to a window and back, keeping its id and its creation date", () => {
+    const { budgets, time } = setup();
+    const dollars = budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
+    time.advance(60_000);
+    const window = budgets.setWindow({ ...HOST_5H, id: dollars.id });
+    expect(window).toMatchObject({
+      id: dollars.id,
+      createdAt: dollars.createdAt,
+      period: "five_hour",
+      limitUsd: 0,
+      limitPct: 0.5,
+    });
+    const back = budgets.set({
+      id: dollars.id,
+      scope: "host",
+      period: "month",
+      limitUsd: 20,
+      action: "notify",
+    });
+    expect(back).toMatchObject({ period: "month", limitUsd: 20, limitPct: null, spentPct: null });
+    expect(budgets.list()).toHaveLength(1);
   });
 });
