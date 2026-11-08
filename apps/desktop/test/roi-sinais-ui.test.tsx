@@ -85,7 +85,7 @@ for (const [lang, t] of [
       await settle(() => screen.queryByText(S.agentCommits.other.replace("{n}", "7")) === null);
     });
 
-    test("issues closed show their count, and a refusal shows why", async () => {
+    test("issues closed show their count, and a refusal shows why", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       await boardPage(lang, { count: 1 });
       await settle(() => screen.queryByLabelText(S.issues) !== null);
       await toggle(S.issues);

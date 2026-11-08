@@ -58,12 +58,12 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
     await settle(() => store.getState().hosts[0]?.hostInfo?.keepAwake?.enabled === true);
   });
 
-  test("while it holds, the page says so", async () => {
+  test("while it holds, the page says so", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     await hostPage("en", { held: true });
     await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
   });
 
-  test("when nothing can hold it, the reason is said in words", async () => {
+  test("when nothing can hold it, the reason is said in words", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     await hostPage("en", { reason: "no-inhibitor" });
     await settle(
       () =>
@@ -87,7 +87,7 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
     expect(screen.queryByText("Keep this computer awake")).toBeNull();
   });
 
-  test("opening the page reads the status again: what changed since the host connected is shown (review: stale panel)", async () => {
+  test("opening the page reads the status again: what changed since the host connected is shown (review: stale panel)", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     const store = await hostPage("en", { held: false }, false);
     // The sessions started after the app connected: the host holds now.
     store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
@@ -109,7 +109,7 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
     await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
   });
 
-  test("a WSL host says why it holds nothing, in both languages", async () => {
+  test("a WSL host says why it holds nothing, in both languages", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
     await hostPage("en", { reason: "wsl" });
     await settle(
       () =>

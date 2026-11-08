@@ -36,7 +36,7 @@ export function defineJourneys(lang: Lang): void {
     });
 
     for (const name of JOURNEYS) {
-      test(name, async ({ page }, info) => {
+      test(name, async ({ page }, info) /* NOSONAR: the journey asserts */ => {
         const { url, ids } = demo();
         await (journeys[name] as (c: Context) => Promise<void>)({
           page,
@@ -49,7 +49,7 @@ export function defineJourneys(lang: Lang): void {
       });
     }
 
-    test("layout", async ({ page }) => {
+    test("layout", async ({ page }) /* NOSONAR: layout() asserts */ => {
       // Under the 90 s every journey gets (#1003): the check is trimmed to fit, not given more time.
       const { url, ids } = demo();
       const problems: string[] = [];
