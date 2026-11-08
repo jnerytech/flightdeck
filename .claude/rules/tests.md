@@ -14,6 +14,8 @@ paths:
   be `undefined` takes `?? ""`.
 - Tests aim at business logic and the important flows: the coverage gate is 80% of each file's
   lines and functions (#1002), not 100%. Do not write a test only to reach a line.
+- A test that scans the whole repository (`git ls-files` on the root) carries a `// repo-wide`
+  comment line (#1108), so CI's quick job runs it on every PR; `repo-wide.test.ts` checks it.
 - A flaky test is deleted, never skipped. When it is the only check of a business flow, replace it
   with a fast deterministic one (#1003). The `// unstable: #<issue>` skips left are removed under
   #1003; until then the hook, the TDD audit and the unstable-skip ratchet still check their notes.

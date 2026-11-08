@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { anchorsOf, brokenLinks, githubSlug, missingDocRefs } from "../lib/md-links.ts";
 
+// repo-wide (#1108): reads every tracked doc and the doc paths in code; the quick job runs it.
+
 const ROOT = resolve(import.meta.dir, "../..");
 const tracked = (...patterns: string[]) =>
   spawnSync("git", ["ls-files", ...patterns], { cwd: ROOT, encoding: "utf8" })

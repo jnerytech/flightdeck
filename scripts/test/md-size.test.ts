@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 import { overBaseline } from "../lib/layout-ratchet.ts";
 import { mdLimit, oversized } from "../lib/md-size.ts";
 
+// repo-wide (#1108): reads every tracked doc, so CI's quick job runs it on every PR.
+
 const ROOT = resolve(import.meta.dir, "../..");
 const lines = (n: number) => "x\n".repeat(n);
 

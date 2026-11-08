@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 import { slotViolation } from "../lib/claude-hooks.ts";
 import { realTempDir } from "./temp-dir.ts";
 
+// repo-wide (#1108): reads every tracked file, so CI's quick job runs it on every PR.
+
 /**
  * The project's Claude Code setup itself (.claude/): a hook path that does not resolve or a
  * frontmatter that does not parse fails silently in Claude Code, so it fails here instead.

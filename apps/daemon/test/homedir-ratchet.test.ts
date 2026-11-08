@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// repo-wide (#1108): reads every tracked daemon source file, so CI's quick job runs it on every PR.
+
 /**
  * #258: Bun keeps, on Linux, the HOME the process started with for `os.homedir()`, so the
  * preload's fake HOME never reaches it and a test through `startDaemon` would read the real home
