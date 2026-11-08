@@ -2339,7 +2339,18 @@ export class Board {
     }
   }
 
-  private async pollPr(id: string): Promise<void> {
+  /** The reads in flight, by card: a poll and a merge asking at once share one answer (and one `place`). */
+  private readonly prReads = new Map<string, Promise<void>>();
+
+  private pollPr(id: string): Promise<void> {
+    const running = this.prReads.get(id);
+    if (running) return running;
+    const read = this.readPr(id).finally(() => this.prReads.delete(id));
+    this.prReads.set(id, read);
+    return read;
+  }
+
+  private async readPr(id: string): Promise<void> {
     const card = this.getCard(id);
     const project = this.getProject(card.projectId);
     const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
