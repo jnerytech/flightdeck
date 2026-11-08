@@ -3,7 +3,12 @@
  * `project.trust.inspect` already lists (#196). Each part is found or missing, with the names or
  * kinds that show it; never a score, and never an `env` value or name.
  */
-import { HOOK_KINDS, type HookKind, type ProjectLoad } from "@flightdeck/protocol";
+import {
+  type HarnessPreview,
+  HOOK_KINDS,
+  type HookKind,
+  type ProjectLoad,
+} from "@flightdeck/protocol";
 
 export type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions" | "mcp";
 
@@ -48,4 +53,31 @@ export function harnessParts(load: ProjectLoad): HarnessItem[] {
       load.mcpServers.map((server) => server.name),
     ),
   ];
+}
+
+/**
+ * Issue #75, slice S4b: what apply must get back from the preview the person read: each proposal's
+ * digest, by path. The app never sends content; the host makes the proposals again and compares.
+ */
+export function previewDigests(preview: HarnessPreview): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (preview.settings) out[preview.settings.path] = preview.settings.digest;
+  for (const file of preview.files) out[file.path] = file.digest;
+  return out;
+}
+
+/** The settings gain hooks or deny rules (a conflict alone writes nothing). */
+export function writesSettings(preview: HarnessPreview): boolean {
+  const settings = preview.settings;
+  return settings !== null && settings.hooks.length + settings.denyRules.length > 0;
+}
+
+/** Nothing would be written: the setup has nothing to add. */
+export function addsNothing(preview: HarnessPreview): boolean {
+  return !writesSettings(preview) && preview.files.length === 0;
+}
+
+/** Writing the settings back changes their layout: the person ticks that before apply. */
+export function needsReformat(preview: HarnessPreview): boolean {
+  return writesSettings(preview) && preview.settings?.reformats === true;
 }
