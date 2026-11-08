@@ -1148,6 +1148,18 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **New card in a column.** The **New card** button at the bottom of a column creates the card
   there (it appears on hover and on focus, and always on a screen without a pointer).
 
+### Starting a session from the task
+
+**New session** opens on **First prompt**, with the cursor in it: write the task and press
+**Create session** (or **Ctrl+Enter**). The folder, the permission mode and the model start as the
+last session on that host used them (**Bypass permissions** never does: it asks every time). The
+agent, subfolder, name, effort and persona are under **More options**, which opens by itself to
+show a remembered subfolder.
+
+In the **Ctrl+K** palette, a sentence typed with one project in scope offers **Start in <project>:
+<text>**: **Enter** starts a session in that project's folder with the text as its first prompt,
+in the same mode and model, and opens it.
+
 ### Choosing a folder
 
 **New session** and the project form have a **Browse…** button next to the folder. It opens a
