@@ -74,3 +74,40 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
   for a spec with the bare template.
 - The app shows the draft state in a later slice. Until then, the card page shows the spec as not
   there.
+
+## Slice S-T3a: a trusted project's own template
+
+- **Where it comes from.** `.flightdeck/templates/spec.md` in the project, read from the trusted
+  checkout: the folder `sessionTrust` names (`templateRootOf`). For a worktree that is its main
+  checkout, never the branch, as #196 reads a worktree's configuration. When no checkout is named,
+  no template is read: the worktree's own copy is the branch's.
+- **When it is read.** Only for a trusted project. For an untrusted one the built-in template is
+  written: the first prompt sends the agent to the spec, so an untrusted template would reach the
+  agent before the person trusted the project, as its CLAUDE.md would.
+- **How it is read.** It goes through `readInside`, which shares the path walk with the harness
+  preview (`walkInside` in `create-inside.ts`):
+  - a link anywhere on the way is refused;
+  - only a plain file is read, of at most 32 KiB;
+  - an empty file is ignored.
+  - The file must have one name only, and it is read through a handle that follows no link and
+    must be the file the walk found, at most one byte past the cap.
+  - Any of these falls back to the built-in template. A trust check that fails also falls back, and
+    goes to the daemon's log (never the template's text). The card shows no notice yet: that is new
+    text in both languages, planned with the validation note template.
+- **What it gives.** It gives the body only, with the same `{{title}}` and `{{criteria}}`
+  placeholders filled in one pass. The host adds the front matter (`card`, `title`, `draft: true`)
+  either way, so the spec check works the same for every template. A template without
+  `{{criteria}}` gets none of the card's criteria: the project chose its own shape. A template with a
+  front matter of its own keeps it below the host's, which is the one the check reads.
+
+## Slice S-T3b: the shape of a validation note
+
+- **What it does.** The card's validation note field shows the shape of a note as its placeholder,
+  in the app's language: what was checked, how, the result, and what was not checked.
+- **Why a placeholder.** It is never saved. A prefilled template, or a button that inserts one, could
+  be saved as it is and would meet the `validation` check with nothing validated, as the spec
+  template would have without `draft: true`.
+- **What is left.** A project's own validation template (`.flightdeck/templates/validation.md`, for
+  trusted projects only, as the spec template) needs the host to read it for the app. It also
+  needs the notice that a project template was ignored. Both are left for a later slice, if they
+  are wanted.

@@ -364,6 +364,11 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   quando o front matter não é claro o bastante para editar com segurança, ou quando o arquivo passa
   de 1 MB ou não é texto. Só os documentos que a lista mostra podem ser mudados; um link, um nome
   de credencial ou um arquivo fora das pastas da biblioteca não podem.
+  **Novo documento** começa um documento a partir de um modelo: escolha o tipo (ADR, RFC ou PRD),
+  digite um título e use **Criar a partir do modelo**. O arquivo vai para `docs/adr`, `docs/rfc` ou
+  `docs/prd` do projeto (ADR e RFC são numerados, `0004-<título>.md`; um PRD é `<título>.md`), como
+  rascunho com `status: transitional`, sem commit. Ele nunca substitui um arquivo que já existe, e é
+  recusado quando `docs/<tipo>` é um link ou fica fora do projeto.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
   projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
@@ -1116,8 +1121,10 @@ aparece mascarado e como **Oculto**, e não abre.
   parcialmente limpo. Cards que nunca começaram são excluídos; os que começaram são
   descartados. Cancelar deixa tudo como estava.
 - **Largura das colunas.** A alça na borda direita de uma coluna (arraste-a, ou vá até ela com Tab e
-  use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 220 e 520 px (260 por
-  padrão), guardada neste computador. O board rola dentro de si, nunca a página.
+  use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 180 e 520 px, guardada neste computador. Até você
+  definir uma, as cinco colunas dividem a largura da janela (a 1280 px cada uma tem uns 187 px, e janelas
+  maiores as deixam mais largas), então nenhuma é cortada na borda direita. Com a janela estreita demais
+  para isso, ou depois de você definir uma largura, o board rola dentro de si, nunca a página.
 - **Contagens.** Cada coluna mostra quantos cards tem; com um filtro ligado ela lê `n / total`, e
   uma coluna que o filtro esvaziou diz "Nenhuma correspondência" em vez de oferecer um card novo.
 - **Card novo numa coluna.** O botão **Novo card** no fim de uma coluna cria o card ali (aparece ao
@@ -2864,7 +2871,8 @@ de Custos ganha uma **tabela de projetos**, uma **tabela de pessoas** e um bloco
 *entregamos mais pelo que custou?* Todos os números são correlacionados e estimados: horas e valores são digitados, não
 medidos, e um card concluído não é um resultado verificado. As telas nunca falam em lucro nem em economia.
 
-- **O cartão.** Escolha 7 dias, 30 dias ou este mês. A primeira linha diz quantos itens foram entregues (cards
+- **O cartão.** Começa dobrado numa só linha (o título, a primeira linha abaixo e **Detalhes**), então o
+  board começa logo abaixo dele; **Detalhes** abre e a escolha é lembrada. Escolha 7 dias, 30 dias ou este mês. A primeira linha diz quantos itens foram entregues (cards
   concluídos, separados em *planejados*, que já estavam no board quando o período começou, e *não planejados*, criados e
   concluídos dentro dele), quanto os agentes custaram e se isso é mais, menos ou praticamente o mesmo (dentro de 5%) que
   no período anterior, com o custo por item dos dois. Abaixo: cards concluídos e PRs mesclados, custo por card e por PR,

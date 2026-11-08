@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore, HostView } from "../lib/app-store.ts";
-import { mergeSummaries } from "../lib/client-costs.ts";
 import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
-import { type HomeLeaders, homeLeaders } from "../lib/home-leaders.ts";
+import type { HomeLeaders } from "../lib/home-leaders.ts";
+import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "../lib/home-view.ts";
 import { knownProjectKeys } from "../lib/project-keys.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -119,15 +119,12 @@ export function HomePage(
   /** The subtitle says whose numbers they are, as the scope menu does. */
   const scoped = scope.kind === "host" ? hosts[0]?.name : undefined;
   // A kept host not listed yet has no name: the subtitle names no scope rather than "all hosts".
-  const subtitle = (() => {
-    if (scope.kind === "all") return t("home.range");
-    if (projectKey) {
-      return t("home.rangeProject", {
-        project: projectNames.get(projectKey) ?? projectLabel(projectKey),
-      });
-    }
-    return scoped ? t("home.rangeHost", { host: scoped }) : t("home.rangeDays");
-  })();
+  const subtitle = rangeSubtitle(
+    t,
+    scope,
+    scoped,
+    projectKey ? projectNames.get(projectKey) : undefined,
+  );
   const online = hosts.filter((host) => host.status === "online");
   const key = online.map((host) => host.id).join(",");
   /** The cache's entry: every host of the set, whether it is online now or not. */
@@ -177,34 +174,17 @@ export function HomePage(
       online.map((host) => readHost(store, host, { range, days, only, projectKey })),
     ).then((results) => {
       if (!current) return;
-      // A host that did not answer keeps the numbers it had, and the hosts that are offline too.
       const before = store.homeCache.get(entry) ?? {};
-      const hosts: HomeSnapshot = { ...before };
-      for (const result of results) {
-        if (result.answered || !before[result.id]) hosts[result.id] = result.data;
-      }
+      const hosts = keepAnswers(before, results);
       store.homeCache.set(entry, hosts);
-      const shares = results.flatMap((r) => (r.shares ? [{ hostId: r.id, ...r.shares }] : []));
-      const merged = (part: "week" | "first" | "second") =>
-        mergeSummaries(
-          shares.map((s) => ({ hostId: s.hostId, summary: s[part] })),
-          range.from,
-          range.to,
-        ).summary;
       // The week names every project of the hosts that answered, not only the ones listed here:
       // the labels of every screen are told apart against them.
-      if (shares.length > 0) {
-        store.projectKeys.note(merged("week").byProject.map((row) => row.projectKey));
-      }
-      // Shares from only some hosts would read as the whole: until every host with costs gave
-      // its three answers, the last whole leaderboard of these hosts stays, or the panel says so.
-      const priced = results.filter((r) => r.priced);
-      if (priced.length > 0 && shares.length === priced.length) {
-        setLeaders({
-          entry,
-          leaders: homeLeaders(merged("week"), merged("first"), merged("second")),
-        });
-      } else {
+      const total = addUp(results, range);
+      if (total.projectKeys) store.projectKeys.note(total.projectKeys);
+      // Until every host with costs gave its three answers, the last whole leaderboard of these
+      // hosts stays, or the panel says so.
+      if (total.whole) setLeaders({ entry, leaders: total.leaders });
+      else {
         setLeaders((last) =>
           last?.entry === entry && last.leaders ? last : { entry, leaders: null },
         );
@@ -253,12 +233,7 @@ export function HomePage(
   // At start the hosts are still connecting: that is not "no host".
   const connecting = !state.hostsLoaded || hosts.some((host) => host.status === "connecting");
   const busy = !kpis && (online.length === 0 ? connecting : true);
-  const message = (() => {
-    if (kpis) return t("home.ready");
-    if (away && !connecting) return t(awayKey(away.status, "numbers"), { host: away.name });
-    if (online.length === 0) return connecting ? t("home.connecting") : t("home.noHosts");
-    return t("home.loading");
-  })();
+  const message = homeMessage(t, { ready: kpis !== null, away, connecting, online: online.length });
   // Hosts that do not have costs at all: their spend is unknown, which is not the same as none.
   const withoutCosts = online
     .filter((host) => !hasFeature(host.hostInfo?.features, "costs", false))

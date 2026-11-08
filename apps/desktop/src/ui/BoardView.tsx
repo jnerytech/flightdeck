@@ -66,10 +66,12 @@ import { boardFiles } from "../lib/board-files.ts";
 import {
   answerOf,
   type BulkRefusal,
+  COLUMN_GAP,
   columnCount,
   countLabel,
   filteredColumnCount,
   filteredCountLabel,
+  fitColumnWidth,
   moveMany,
   pruneSelection,
   rangeSelection,
@@ -333,7 +335,11 @@ export const BoardView = memo(function BoardView(props: {
   const [busy, setBusy] = useState(false);
   /** The cards dragged together when the dragged one is part of a selection. */
   const draggingMany = useRef<string[] | null>(null);
-  const width = useSyncExternalStore(store.boardWidth.subscribe, () => store.boardWidth.value);
+  const chosenWidth = useSyncExternalStore(
+    store.boardWidth.subscribe,
+    () => store.boardWidth.value,
+  );
+  const chosen = useSyncExternalStore(store.boardWidth.subscribe, () => store.boardWidth.chosen);
   const withDeps = hasFeature(
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "deps",
@@ -573,6 +579,9 @@ export const BoardView = memo(function BoardView(props: {
   };
   // After a move the card is somewhere else, so its old element is gone: focus the new one.
   const boardRef = useRef<HTMLDivElement>(null);
+  // Until the person picks a width, the columns share what the window gives them (#1030).
+  const boardPx = useWidth(boardRef);
+  const width = chosen ? chosenWidth : fitColumnWidth(boardPx, COLUMNS.length, COLUMN_GAP);
   useEffect(() => {
     const wanted = refocus.current;
     if (!wanted) return;
@@ -1055,7 +1064,7 @@ function ColumnHeader(
 ) {
   const Icon = COLUMN_ICONS[props.id];
   return (
-    <Inline gap={2} className="column-head">
+    <Inline gap={2} className="column-head flex-nowrap">
       <Icon data-slot="column-icon" aria-hidden="true" />
       <h3 className="column-title">{props.title}</h3>
       <Badge variant="secondary" className="column-count" role="img" aria-label={props.label}>

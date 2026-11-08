@@ -13,6 +13,7 @@ import type { DemoIds } from "../demo-seed.ts";
 import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
+  CONTRACT_CARD,
   DANGER_SESSION,
   DEMO_CLOSED_TEAM,
   OVERFLOW_VIEWPORTS,
@@ -830,6 +831,95 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await on.first().waitFor({ timeout: WAIT });
   },
 
+  // Stage contracts (issue #78): Review asks for a PR, so moving a card that has none asks first.
+  // Cancel leaves the card where it was; Move anyway moves it, and the card says what it lacked.
+  // The journey puts the card back, as the demo keeps its state.
+  "stage-contract": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.knowledgeProject });
+    const column = (id: string) => c.page.locator(`[data-column="${id}"]`);
+    const tile = (id: string) =>
+      column(id).locator(`li[aria-label="${c.t("kanban.card", { title: CONTRACT_CARD })}"]`);
+    const moveTo = async (from: string, to: string) => {
+      await tile(from)
+        .getByRole("button", {
+          name: c.t("board.cardActions", { title: CONTRACT_CARD }),
+          exact: true,
+        })
+        .click();
+      await c.page
+        .getByRole("menuitem", {
+          name: c.t("board.moveTo", { column: c.t(`kanban.columns.${to}` as never) }),
+          exact: true,
+        })
+        .click();
+    };
+    // A run that stopped half way left the card in Review: start from the same place anyway.
+    await tile("backlog").or(tile("review")).first().waitFor({ timeout: WAIT });
+    if ((await tile("backlog").count()) === 0) {
+      await moveTo("review", "backlog");
+      await tile("backlog").waitFor({ timeout: WAIT });
+    }
+    const dialog = c.page.getByRole("alertdialog", {
+      name: c.t("board.contract.title", { column: c.t("kanban.columns.review") }),
+    });
+    await moveTo("backlog", "review");
+    await dialog
+      .getByText(c.t("board.contract.needs.pr"), { exact: false })
+      .waitFor({ timeout: WAIT });
+    // Cancel: nothing moved.
+    await dialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    if ((await tile("review").count()) !== 0) {
+      throw new Error("stage-contract: Cancel moved the card");
+    }
+    // Move anyway: the card is in Review, and its notice says what it lacked.
+    await moveTo("backlog", "review");
+    await dialog
+      .getByRole("button", { name: c.t("board.contract.moveAnyway"), exact: true })
+      .click();
+    await tile("review").waitFor({ timeout: WAIT });
+    await tile("review")
+      .getByText(c.t("board.contract.needs.pr"), { exact: false })
+      .first()
+      .waitFor({ timeout: WAIT });
+    // Back to the backlog, which asks nothing.
+    await moveTo("review", "backlog");
+    await tile("backlog").waitFor({ timeout: WAIT });
+  },
+
+  // Card pins (issue #76): a card pins a document of the project's library, the pin shows with its
+  // title, path and status, and Unpin takes it away. The journey ends with nothing pinned, as the
+  // demo keeps its state.
+  "card-pins": async (c) => {
+    await open(c, {
+      name: "card",
+      host: ALFA,
+      projectId: c.ids.knowledgeProject,
+      cardId: c.ids.contractCard,
+    });
+    const panel = c.page.getByRole("region", { name: c.t("cardUi.pins.title"), exact: true });
+    const none = panel.getByText(c.t("cardUi.pins.none"), { exact: true });
+    const path = "docs/adr/0001-design-tokens.md";
+    const unpin = panel.getByRole("button", {
+      name: c.t("cardUi.pins.unpin", { path }),
+      exact: true,
+    });
+    // A run that stopped half way left the pin: start from the same place anyway.
+    await none.or(unpin).first().waitFor({ timeout: WAIT });
+    if ((await unpin.count()) > 0) {
+      await unpin.click();
+      await none.waitFor({ timeout: WAIT });
+    }
+    await panel.getByLabel(c.t("cardUi.pins.pick"), { exact: true }).selectOption(path);
+    await unpin.waitFor({ timeout: WAIT });
+    await panel
+      .getByText("Design tokens come from one file", { exact: true })
+      .waitFor({ timeout: WAIT });
+    await none.waitFor({ state: "detached", timeout: WAIT });
+    await unpin.click();
+    await none.waitFor({ timeout: WAIT });
+  },
+
   // Workflow templates (issue #79): Add from a template lists the templates, a template opens with
   // where to commit it and the file itself, Copy puts the file on the clipboard and says so, and
   // Back returns to the list. Nothing is written to the project.
@@ -1570,6 +1660,76 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         return null;
       });
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
+    }
+  },
+
+  // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
+  // (none cut at the right edge, no head running past its column), and the Return on cost card is
+  // one short row, so the columns start right under it.
+  "board-fit": async (c) => {
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    const grid = c.page.locator("[data-slot='board-columns']");
+    await grid.waitFor({ timeout: WAIT });
+    const measure = () =>
+      grid.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const lanes = [...el.querySelectorAll("section[data-column]")].map((lane) =>
+          lane.getBoundingClientRect(),
+        );
+        const last = lanes[lanes.length - 1];
+        return {
+          lanes: lanes.length,
+          scroll: el.scrollWidth,
+          client: el.clientWidth,
+          inside: lanes.every((lane) => lane.right <= window.innerWidth),
+          // The columns share the width: the last one reaches (almost) the row's right edge.
+          gap: last === undefined ? Number.NaN : box.right - last.right,
+        };
+      });
+    const fits = async () => {
+      const m = await measure();
+      return m.lanes === 5 && m.scroll <= m.client + 1 && m.inside && m.gap <= 24;
+    };
+    try {
+      await waitFor(fits, "as cinco colunas cabem na largura do quadro, a 1280");
+    } catch (error) {
+      throw new Error(`${(error as Error).message}: ${JSON.stringify(await measure())}`);
+    }
+    // A head is one line: its items share a top, and none runs past the lane's right edge.
+    const heads = await grid.evaluate((el) =>
+      [...el.querySelectorAll("section[data-column]")].flatMap((lane) => {
+        const edge = lane.getBoundingClientRect().right;
+        const name = lane.getAttribute("data-column") ?? "";
+        const items = [...lane.querySelectorAll(".column-head > *")].map((item) =>
+          item.getBoundingClientRect(),
+        );
+        const past = items.some((box) => box.right > edge + 1);
+        const wrapped = items.some((box) => Math.abs(box.top - (items[0]?.top ?? 0)) > 6);
+        return past || wrapped ? [name] : [];
+      }),
+    );
+    if (heads.length > 0) {
+      throw new Error(`o cabeçalho passa da coluna: ${[...new Set(heads)].join(", ")}`);
+    }
+    // The Return on cost card, when the demo has one: one short row, and the columns right under it.
+    const roi = c.page.getByRole("region", { name: c.t("roiUi.title"), exact: true });
+    if ((await roi.count()) > 0) {
+      // Folded and loaded: the details button says it is closed (the loading box has none).
+      await c.page
+        .getByRole("button", { name: c.t("roiUi.details"), exact: true })
+        .and(c.page.locator("[aria-expanded='false']"))
+        .waitFor({ timeout: WAIT });
+      const gap = await roi.evaluate((card) => {
+        const own = card.getBoundingClientRect();
+        const columns = document.querySelector("[data-slot='board-columns']");
+        return {
+          height: own.height,
+          below: (columns?.getBoundingClientRect().top ?? 0) - own.bottom,
+        };
+      });
+      if (gap.height > 64) throw new Error(`o card de retorno tem ${gap.height}px dobrado`);
+      if (gap.below > 32) throw new Error(`as colunas começam ${gap.below}px abaixo do card`);
     }
   },
 

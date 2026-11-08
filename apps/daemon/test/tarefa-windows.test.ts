@@ -101,6 +101,6 @@ describe("tarefa-windows", () => {
     );
     expect(() =>
       windowsTaskXml(["flightdeckd.exe"], { user: "u", systemRoot: "C:\\Windows" }),
-    ).toThrow("caminho absoluto");
+    ).toThrow("absolute path");
   });
 });

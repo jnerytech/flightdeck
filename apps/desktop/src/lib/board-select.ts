@@ -36,8 +36,25 @@ export function shownSelection(selected: string[], shown: string[]): string[] {
 }
 
 /** One width for every column, in px (issue #161). */
-export const COLUMN_WIDTH = { default: 260, min: 220, max: 520, step: 20 } as const;
+export const COLUMN_WIDTH = { default: 260, min: 180, max: 520, step: 20 } as const;
 export const COLUMN_WIDTH_KEY = "flightdeck.boardColumnWidth";
+
+/** The gap between two columns, in px: the board row's `gap-3`. */
+export const COLUMN_GAP = 12;
+
+/** The room the last column's resize handle takes past its edge, in px (`-right-2`, 8 px wide). */
+export const HANDLE_ROOM = 8;
+
+/**
+ * Issue #1030: the width that lets `count` columns, `gap` px apart, share a board `board` px wide,
+ * with room for the last handle so the row does not scroll. A board too narrow for columns of
+ * the minimum width keeps the usual width and scrolls, as it always did.
+ */
+export function fitColumnWidth(board: number, count: number, gap: number): number {
+  if (board <= 0) return COLUMN_WIDTH.default;
+  const fit = Math.floor((board - HANDLE_ROOM - gap * (count - 1)) / count);
+  return fit < COLUMN_WIDTH.min ? COLUMN_WIDTH.default : clampWidth(fit);
+}
 
 export function clampWidth(width: number): number {
   if (Number.isNaN(width)) return COLUMN_WIDTH.default;
@@ -47,6 +64,8 @@ export function clampWidth(width: number): number {
 /** The columns' width, kept across starts. */
 export class BoardWidth {
   value: number;
+  /** True once the person has set a width, or one was kept: until then the columns share the board. */
+  chosen = false;
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: Platform["storage"]) {
@@ -56,7 +75,8 @@ export class BoardWidth {
     } catch {
       // A storage that cannot be read (a private window): the default width.
     }
-    this.value = Number.isFinite(stored) && stored > 0 ? clampWidth(stored) : COLUMN_WIDTH.default;
+    this.chosen = Number.isFinite(stored) && stored > 0;
+    this.value = this.chosen ? clampWidth(stored) : COLUMN_WIDTH.default;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -67,6 +87,7 @@ export class BoardWidth {
   /** Sets the width; `persist: false` while a drag is going, then `persist()` when it ends. */
   set(width: number, persist = true): void {
     this.value = clampWidth(width);
+    this.chosen = true;
     if (persist) this.persist();
     for (const listener of this.listeners) listener();
   }

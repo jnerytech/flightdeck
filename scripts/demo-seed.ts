@@ -24,7 +24,12 @@ import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
-import { acoesActions, DANGER_SESSION, DEMO_CLOSED_TEAM } from "./lib/e2e-journeys.ts";
+import {
+  acoesActions,
+  CONTRACT_CARD,
+  DANGER_SESSION,
+  DEMO_CLOSED_TEAM,
+} from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -118,6 +123,8 @@ export interface DemoIds {
   teleportRepo: string;
   /** A project whose docs folders hold a valid, a transitional and an obsolete document (issue #76). */
   knowledgeProject: string;
+  /** The card with no PR in that project's backlog: the stage-contract and card-pins journeys use it (issues #78, #76). */
+  contractCard: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -733,6 +740,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     });
     projectIds[name] = added.id;
   }
+  // Issue #78: a card with no PR in a project whose board asks for one before Review.
+  const contractCard = await client.call<{ id: string }>("card.create", {
+    projectId: projectIds["design-system"],
+    title: CONTRACT_CARD,
+    description: "Explain how the design tokens are used.",
+  });
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");
@@ -1157,6 +1170,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       longTitleSession: longTitle.sessionId,
       teleportRepo: join(beta.projects, "flightdeck-web"),
       knowledgeProject: projectIds["design-system"] as string,
+      contractCard: contractCard.id,
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.

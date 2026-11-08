@@ -376,7 +376,7 @@ describe("board-multi-review: the width handles (OpenCode review of #161)", () =
     await act(async () => {
       fireEvent.keyDown(last, { key: "Home" });
     });
-    expect(widthOf()).toBe("220px");
+    expect(widthOf()).toBe("180px");
   });
 });
 

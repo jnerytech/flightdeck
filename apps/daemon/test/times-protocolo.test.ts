@@ -211,7 +211,7 @@ describe("mcp-mensagens: team_status", () => {
     expect(seen.data).toMatchObject({ team: { id: team.id, goal: "Faça o login." }, messages: 0 });
     expect(seen.data.members).toHaveLength(2);
     const asOutsider = await mcp(outsider, teams, server);
-    expect((await asOutsider({ team: team.id })).error).toContain("não é do time");
+    expect((await asOutsider({ team: team.id })).error).toContain("is not in team");
     expect((await asMember({ team: "nada" })).error).toContain("not_found");
   });
 });

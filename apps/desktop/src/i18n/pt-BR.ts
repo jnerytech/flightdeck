@@ -850,7 +850,7 @@ export const ptBR = {
       },
       hint: "Precisa de: {needs}",
       title: "Mover para {column} mesmo assim?",
-      lacksOne: "{title} não tem: {needs}.",
+      lacksOne: "{title} ainda precisa de {needs}.",
       lacksMany: "{count} cards não têm algo de que {column} precisa:",
       item: "{title} — {needs}",
       moveAnyway: "Mover mesmo assim",
@@ -1483,6 +1483,7 @@ export const ptBR = {
     knowledge: "a leitura dos documentos do projeto",
     knowledgeFeed: "o interruptor do índice de documentos nos prompts dos agentes",
     knowledgeStatus: "a mudança do status de um documento",
+    knowledgeCreate: "a criação de um documento a partir de um modelo",
     harnessPreview: "a prévia de mudanças na configuração do Claude Code",
     harnessApply: "a aplicação de mudanças na configuração do Claude Code",
     keepAwake: "a função de manter o computador acordado",
@@ -1752,6 +1753,10 @@ export const ptBR = {
       "O arquivo {path} mudou desde que foi aberto: recarregue e aplique a edição de novo.",
     knowledge_frontmatter:
       "O front matter de {path} não pode ser mudado com segurança por aqui: edite o arquivo à mão.",
+    knowledge_title_invalid: "Dê ao documento um título com letras ou dígitos.",
+    knowledge_folder_unsafe:
+      "A pasta deste documento é um link ou fica fora do projeto: nada foi gravado.",
+    knowledge_exists: "Já existe um documento chamado {path}: nada foi sobrescrito.",
     review_revert_confirm: "Confirme o revert para continuar.",
     review_undo_confirm: "Confirme o desfazer para continuar.",
     review_undo_nothing:
@@ -3754,6 +3759,8 @@ export const ptBR = {
     saveDescription: "Salvar descrição",
     validation: "Nota de validação",
     saveValidation: "Salvar nota de validação",
+    validationShape:
+      "O que foi verificado:\nComo (comandos, passos, dados):\nResultado:\nO que não foi verificado:",
     specFile: "Arquivo da especificação",
     saveSpec: "Salvar arquivo da especificação",
     specPathInvalid: "Use o caminho de um arquivo Markdown dentro do worktree, como specs/nome.md.",
@@ -3922,7 +3929,7 @@ export const ptBR = {
       open: "Adicionar de um modelo",
       title: "Modelos de workflow",
       intro:
-        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. Nada é gravado para você.",
+        "Cada modelo é um arquivo. Copie, faça commit em .flightdeck/workflows/ na branch base e confie nele nesta página. O app não grava nenhum arquivo por você.",
       loading: "Carregando modelos",
       failed:
         "Não deu para carregar os modelos. O host pode estar offline ou precisar de uma versão mais nova do Flightdeck.",
@@ -4249,7 +4256,7 @@ export const ptBR = {
   projectPage: {
     knowledge: {
       title: "Conhecimento do projeto",
-      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter. Só leitura: nada aqui muda o projeto.",
+      hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter.",
       filter: "{status} ({n})",
       all: "Todos",
       status: {
@@ -4276,6 +4283,18 @@ export const ptBR = {
       empty: "Nenhum documento em docs/decisions, docs/adr, docs/rfc, docs/prd ou docs/specs.",
       truncated: "A lista foi cortada: só os primeiros documentos aparecem.",
       failed: "Não foi possível ler os documentos neste host.",
+      create: {
+        title: "Novo documento",
+        hint: "Começa um documento a partir de um modelo na pasta docs do projeto, como rascunho (transitório). Nada é commitado.",
+        kind: "Tipo",
+        titleLabel: "Título",
+        adr: "Registro de decisão (ADR)",
+        rfc: "Proposta (RFC)",
+        prd: "Requisitos do produto (PRD)",
+        button: "Criar a partir do modelo",
+        created: "{path} criado. O arquivo está na pasta do projeto e não foi commitado.",
+        failed: "Não foi possível criar o documento. {why}",
+      },
       setStatus: {
         hint: "Mudar um status edita o arquivo do documento na pasta deste projeto. Nada é commitado: revise a mudança com o git.",
         label: "Status de {title}",
