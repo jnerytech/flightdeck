@@ -89,29 +89,29 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     restore();
   });
 
-  test("a 992 px board gives five columns 188 px each, so none is cut", async () => {
+  test("a 992 px board gives five columns 187 px each, so none is cut", async () => {
     const { resize, restore } = setup();
     await ready();
     await resize(992);
-    await settleMaybe(() => columnsWidth() === "188px");
-    expect(columnsWidth()).toBe("188px");
+    await settleMaybe(() => columnsWidth() === "187px");
+    expect(columnsWidth()).toBe("187px");
     restore();
   });
 
-  test("a wide board makes the columns wider, up to the limit, and a narrow one stops at 180", async () => {
+  test("a wide board makes the columns wider, up to the limit, and a narrow one keeps the usual width and scrolls", async () => {
     const { resize, restore } = setup();
     await ready();
     const seen: Array<string | undefined> = [];
     for (const [board, want] of [
-      [1700, "330px"],
+      [1700, "328px"],
       [3000, "520px"],
-      [600, "180px"],
+      [600, "260px"],
     ] as const) {
       await resize(board);
       await settleMaybe(() => columnsWidth() === want);
       seen.push(columnsWidth());
     }
-    expect(seen).toEqual(["330px", "520px", "180px"]);
+    expect(seen).toEqual(["328px", "520px", "260px"]);
     restore();
   });
 
@@ -127,9 +127,9 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     const { resize, restore } = setup();
     await ready();
     await resize(992);
-    await settleMaybe(() => columnsWidth() === "188px");
+    await settleMaybe(() => columnsWidth() === "187px");
     const handle = screen.getAllByRole("separator", { name: "Resize the columns" })[0];
-    expect(handle?.getAttribute("aria-valuenow")).toBe("188");
+    expect(handle?.getAttribute("aria-valuenow")).toBe("187");
     restore();
   });
 

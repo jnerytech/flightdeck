@@ -74,11 +74,16 @@ describe("board-multi: the column width (issue #161)", () => {
     expect(clampWidth(Number.NaN)).toBe(260);
   });
 
-  test("columns share the board's width: five fit a 992 px board at 188 px, never under 180 or over 520", () => {
-    expect(fitColumnWidth(992, 5, 12)).toBe(188);
-    expect(fitColumnWidth(1700, 5, 12)).toBe(330);
+  test("columns share the board's width, with room for the last handle: five fit a 992 px board at 187 px, never over 520", () => {
+    expect(fitColumnWidth(992, 5, 12)).toBe(187);
+    expect(fitColumnWidth(1700, 5, 12)).toBe(328);
     expect(fitColumnWidth(3000, 5, 12)).toBe(520);
-    expect(fitColumnWidth(600, 5, 12)).toBe(180);
+    expect(fitColumnWidth(956, 5, 12)).toBe(180);
+  });
+
+  test("a board too narrow for five readable columns keeps the usual width and scrolls", () => {
+    expect(fitColumnWidth(955, 5, 12)).toBe(260);
+    expect(fitColumnWidth(600, 5, 12)).toBe(260);
     expect(fitColumnWidth(0, 5, 12)).toBe(260);
   });
 
