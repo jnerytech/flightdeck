@@ -47,7 +47,7 @@ const card = (over: object = {}) =>
     ...over,
   }) as never;
 
-async function open(first: object) {
+async function open(first: object, before = false) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   store.hostCommand = (async () => null) as never;
@@ -58,6 +58,8 @@ async function open(first: object) {
         cards: { [sessionKey("h1", "c1")]: card(over) },
       });
     });
+  // A card the store already has is there on the first render: the page opens on its tab at once.
+  if (before) await put(first);
   render(
     <TContext.Provider value={store.i18n.t}>
       <CardDetail
@@ -70,7 +72,7 @@ async function open(first: object) {
       />
     </TContext.Provider>,
   );
-  await put(first);
+  if (!before) await put(first);
   return { put };
 }
 
@@ -82,6 +84,11 @@ describe("card-opens-on-changes-ui: a finished run opens on its changes (#1197)"
   test("a card with a finished run and no PR opens on Changes", async () => {
     await open(FINISHED);
     await settle(() => pressed("Conversation") !== null);
+    expect([pressed("Changes"), pressed("Conversation")]).toEqual(["true", "false"]);
+  });
+
+  test("a card the store already has opens on Changes at its first paint, with no flash of the conversation", async () => {
+    await open(FINISHED, true);
     expect([pressed("Changes"), pressed("Conversation")]).toEqual(["true", "false"]);
   });
 
