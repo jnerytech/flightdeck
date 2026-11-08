@@ -73,9 +73,10 @@ async function daemonWith(options: Parameters<typeof startDaemon>[3]) {
       4000,
     );
   };
-  const hello = await call("hello", { token: TOKEN, client: "t" });
+  await call("hello", { token: TOKEN, client: "t" });
+  const info = await call("host.info", {});
   const features =
-    ((hello?.ok ? hello.data : null) as { features?: string[] } | null)?.features ?? [];
+    ((info?.ok ? info.data : null) as { features?: string[] } | null)?.features ?? [];
   return { call, features, file };
 }
 
@@ -112,7 +113,7 @@ describe("service.install over the protocol (#1200)", () => {
     });
     expect(d.features.includes(protocol.FEATURE_SERVICE_INSTALL)).toBe(false);
     const refused = await d.call("service.install", { confirm: true });
-    expect(refused?.ok ? "ok" : (refused?.error.code ?? "")).toBe("feature_off");
+    expect(refused?.ok ? "ok" : (refused?.error.reason ?? "")).toBe("feature_off");
     expect(os.written).toEqual([]);
   });
 });
