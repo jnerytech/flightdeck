@@ -101,13 +101,17 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
   test("a wide board makes the columns wider, up to the limit, and a narrow one stops at 180", async () => {
     const { resize, restore } = setup();
     await ready();
-    await resize(1700);
-    await settleMaybe(() => columnsWidth() === "325px");
-    await resize(3000);
-    await settleMaybe(() => columnsWidth() === "520px");
-    await resize(600);
-    await settleMaybe(() => columnsWidth() === "180px");
-    expect(columnsWidth()).toBe("180px");
+    const seen: Array<string | undefined> = [];
+    for (const [board, want] of [
+      [1700, "330px"],
+      [3000, "520px"],
+      [600, "180px"],
+    ] as const) {
+      await resize(board);
+      await settleMaybe(() => columnsWidth() === want);
+      seen.push(columnsWidth());
+    }
+    expect(seen).toEqual(["330px", "520px", "180px"]);
     restore();
   });
 

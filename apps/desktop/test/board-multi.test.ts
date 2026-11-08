@@ -76,7 +76,7 @@ describe("board-multi: the column width (issue #161)", () => {
 
   test("columns share the board's width: five fit a 992 px board at 188 px, never under 180 or over 520", () => {
     expect(fitColumnWidth(992, 5, 12)).toBe(188);
-    expect(fitColumnWidth(1700, 5, 12)).toBe(325);
+    expect(fitColumnWidth(1700, 5, 12)).toBe(330);
     expect(fitColumnWidth(3000, 5, 12)).toBe(520);
     expect(fitColumnWidth(600, 5, 12)).toBe(180);
     expect(fitColumnWidth(0, 5, 12)).toBe(260);
@@ -149,7 +149,7 @@ describe("board-multi: the column width (issue #161)", () => {
     let told = 0;
     w.subscribe(() => told++);
     w.set(10);
-    expect(w.value).toBe(220);
+    expect(w.value).toBe(180);
     w.set(1000);
     expect(w.value).toBe(520);
     expect(told).toBe(2);

@@ -992,6 +992,11 @@ html:not(:has([data-slot="status-bar"])) {
 @utility column-title {
   font-size: 0.75rem;
   font-weight: 500;
+  /* Five columns share a 1280 px window (#1030): a long name gives way, the count and the + stay. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The count of a column, a small pill. */

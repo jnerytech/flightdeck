@@ -36,12 +36,16 @@ export function shownSelection(selected: string[], shown: string[]): string[] {
 }
 
 /** One width for every column, in px (issue #161). */
-export const COLUMN_WIDTH = { default: 260, min: 220, max: 520, step: 20 } as const;
+export const COLUMN_WIDTH = { default: 260, min: 180, max: 520, step: 20 } as const;
 export const COLUMN_WIDTH_KEY = "flightdeck.boardColumnWidth";
 
+/** The gap between two columns, in px: the board row's `gap-3`. */
+export const COLUMN_GAP = 12;
+
 /** Issue #1030: the width that lets `count` columns, `gap` px apart, share a board `board` px wide. */
-export function fitColumnWidth(_board: number, _count: number, _gap: number): number {
-  return 0;
+export function fitColumnWidth(board: number, count: number, gap: number): number {
+  if (board <= 0) return COLUMN_WIDTH.default;
+  return clampWidth(Math.floor((board - gap * (count - 1)) / count));
 }
 
 export function clampWidth(width: number): number {
@@ -63,7 +67,8 @@ export class BoardWidth {
     } catch {
       // A storage that cannot be read (a private window): the default width.
     }
-    this.value = Number.isFinite(stored) && stored > 0 ? clampWidth(stored) : COLUMN_WIDTH.default;
+    this.chosen = Number.isFinite(stored) && stored > 0;
+    this.value = this.chosen ? clampWidth(stored) : COLUMN_WIDTH.default;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -74,6 +79,7 @@ export class BoardWidth {
   /** Sets the width; `persist: false` while a drag is going, then `persist()` when it ends. */
   set(width: number, persist = true): void {
     this.value = clampWidth(width);
+    this.chosen = true;
     if (persist) this.persist();
     for (const listener of this.listeners) listener();
   }
