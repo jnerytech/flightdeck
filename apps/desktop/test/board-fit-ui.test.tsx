@@ -105,7 +105,8 @@ describe("board-fit-ui: the columns share the window until the person picks a wi
     for (const [board, want] of [
       [1700, "328px"],
       [3000, "520px"],
-      [600, "260px"],
+      // Under 640 px a narrow board shows one column at a time instead (#1198).
+      [700, "260px"],
     ] as const) {
       await resize(board);
       await settleMaybe(() => columnsWidth() === want);
