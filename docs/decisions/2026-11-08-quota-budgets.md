@@ -4,7 +4,7 @@ On a subscription the cost is not what runs out: the plan window is. A budget ca
 of the 5-hour or the weekly window, with the same two actions as a dollar budget.
 
 - **A command of its own.** `budget.setQuota` takes `QuotaBudgetInput`: `window` (`five_hour` or
-  `seven_day`), `limitPct` (above 0, up to 1), the scope, the action and an optional `id`. The
+  `seven_day`), `limitPct` (0.1% up to 100%; a smaller share has no use and could make the fraction non-finite), the scope, the action and an optional `id`. The
   dollar `BudgetInput` stays as released: the protocol-surface ratchet refuses a required field
   made optional, and a second command also gives an older host a clean `unsupported`. The host
   announces `quotaBudgets` in `host.info`, so the app offers the unit only where it works. A budget

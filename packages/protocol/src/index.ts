@@ -2511,8 +2511,8 @@ export const QuotaBudgetInput = z.object({
   /** Required for `project`, ignored for `host`. */
   projectKey: z.string().min(1).optional(),
   window: z.enum(["five_hour", "seven_day"]),
-  /** The share of the window, above 0 up to 1. */
-  limitPct: z.number().positive().max(1),
+  /** The share of the window, from 0.1% up to 100%. */
+  limitPct: z.number().min(0.001).max(1),
   /** `queue`: at 100% of the limit, new cards of the scope wait (sessions are never held). */
   action: z.enum(["notify", "queue"]),
 });

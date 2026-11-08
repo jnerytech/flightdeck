@@ -329,13 +329,23 @@ export class Budgets {
       .query(
         `SELECT TOTAL(cost_usd) AS total,
                 TOTAL(CASE WHEN $key IS NULL OR project_key = $key THEN cost_usd ELSE 0 END) AS scoped
-         FROM usage_entries WHERE at >= $from AND at <= $to`,
+         FROM usage_entries
+         WHERE day >= $fromDay AND day <= $toDay AND at >= $from AND at <= $to`,
       )
-      .get({ key: row.project_key, from: iso(from), to: iso(now) }) as {
+      // The day range lets the query use the index on the day; `at` is the exact edge.
+      .get({
+        key: row.project_key,
+        from: iso(from),
+        to: iso(now),
+        fromDay: this.day(from),
+        toDay: this.day(now),
+      }) as {
       total: number;
       scoped: number;
     };
-    const utilization = reading?.utilization ?? 0;
+    // A plan reading is a share of 0 to 1; the CLI's `1e999` or a NaN must not reach the math.
+    const raw = reading?.utilization ?? 0;
+    const utilization = Number.isNaN(raw) ? 0 : Math.min(Math.max(raw, 0), 1);
     const estimated = row.project_key !== null;
     const share = estimated ? (total > 0 ? scoped / total : 0) : 1;
     const spentPct = utilization * share;
