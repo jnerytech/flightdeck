@@ -76,4 +76,27 @@ describe("host-switch: the window says the switch, with a way back", () => {
       host: store.activeHostId(),
     }).toEqual({ text: "Switched to beta", button: "Back to alfa", host: "h1" });
   });
+
+  // The e2e journey of #932: after a reload the tabs have no host of their own, and the switcher
+  // names the window's host. Opening that host's project switches nothing, so nothing is said.
+  test("from no tabs' host, opening the project of the host the switcher names says nothing", async () => {
+    const mem = memoryPlatform(false, "en");
+    mem.platform.storage.setItem(
+      HOSTS_KEY,
+      JSON.stringify([
+        { id: "h1", name: "alfa", url: "ws://x" },
+        { id: "h2", name: "beta", url: "ws://x" },
+      ]),
+    );
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    await store.init();
+    store.select("h1", null);
+    const before = store.getState().notices.length;
+    store.router.push(project("h1", "p-api"));
+    expect({ named: store.uiHostId(), said: store.getState().notices.length - before }).toEqual({
+      named: "h1",
+      said: 0,
+    });
+  });
 });

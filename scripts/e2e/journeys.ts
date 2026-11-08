@@ -1858,6 +1858,42 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
   },
 
+  // Issue #932: with a host chosen in the switcher, opening one of its projects keeps that host; with
+  // the tabs of all hosts, opening another host's project says the switch, and its toast's button
+  // goes back. (The demo's projects are alfa's, so beta is the host the switch leaves.)
+  "projetos-host": async (c) => {
+    const switcher = (host: string) =>
+      c.page.getByRole("button", { name: c.t("shell.host", { host }), exact: true });
+    const card = (name: string, host: string) =>
+      c.page.getByRole("button", {
+        name: c.t("projectsOverview.open", { name, host }),
+        exact: true,
+      });
+    await open(c, { name: "host", host: ALFA });
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    await open(c, { name: "all-projects" });
+    await card("flightdeck-web", "alfa").click();
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    const said = c.page.getByText(c.t("toast.switchedHost", { host: "alfa" }), { exact: true });
+    if ((await said.count()) > 0) throw new Error("abrir um projeto do próprio host avisou troca");
+    // Beta in the switcher, with the tabs of all hosts: alfa's projects are listed there too.
+    await switcher("alfa").click();
+    await c.page.getByRole("menuitemradio", { name: new RegExp(`^${BETA}`) }).click();
+    await switcher(BETA).click();
+    await c.page
+      .getByRole("menuitemcheckbox", { name: c.t("shell.allHostsTabs"), exact: true })
+      .click();
+    await c.page.keyboard.press("Escape");
+    await open(c, { name: "all-projects" });
+    await card("flightdeck-web", "alfa").click();
+    await said.waitFor({ timeout: WAIT });
+    await switcher("alfa").waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("toast.backTo", { host: BETA }), exact: true })
+      .click();
+    await switcher(BETA).waitFor({ timeout: WAIT });
+  },
+
   // Home's data scope (#126, #846): the Data from menu switches Home between all hosts and one
   // host, the choice is kept when the page is opened again, a host that is offline says so and
   // offers all hosts, and the menu is in reach in a phone-sized window and a desktop one.
