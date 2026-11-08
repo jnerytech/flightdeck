@@ -57,6 +57,8 @@ export function SessionTabs(
     files?: boolean;
     /** Issue #107: which session tab this is (`<host>/<session>`); its last view is kept under it. */
     viewKey?: string;
+    /** The page's conversation takes text handed to its message box (a managed session's does). */
+    reviewToComposer?: boolean;
     /**
      * Issue #107: the Terminal view. `session`: a shell the host opens in this managed session's
      * folder; `launch`: the session started from a terminal, whose PTY the view shows (none while

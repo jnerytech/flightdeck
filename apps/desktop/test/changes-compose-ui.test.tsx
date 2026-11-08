@@ -167,6 +167,34 @@ describe("changes-compose-ui: commenting by keyboard, and a review put in the me
     expect(calls.some((c) => c.type === "review.add")).toBe(false);
   });
 
+  test("Esc and adding a comment return the focus to the line that was picked", async () => {
+    await show();
+    const line = screen.getByRole("button", { name: "Comment on line 2 of app.ts" });
+    await act(async () => {
+      line.focus();
+      fireEvent.click(line);
+    });
+    const box = screen.getByRole("textbox", { name: "Comment" });
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "Escape" });
+    });
+    expect(document.activeElement === line).toBe(true);
+    await act(async () => {
+      line.focus();
+      fireEvent.click(line);
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByRole("textbox", { name: "Comment" }), {
+        target: { value: "use total" },
+      });
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "Comment" }), {
+        key: "Enter",
+        ctrlKey: true,
+      });
+    });
+    expect(document.activeElement === line).toBe(true);
+  });
+
   test("with drafts, Review in the message box hands over the review as one message and sends nothing", async () => {
     const comments = [draft("c1", "app.ts", 2, "use total"), draft("c2", "cart.ts", 1, "name it")];
     const handed: string[] = [];
