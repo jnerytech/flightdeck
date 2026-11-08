@@ -8,7 +8,18 @@
  */
 import { createHash } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { copyFile, lstat, mkdtemp, open, readlink, rename, rm, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  lstat,
+  mkdtemp,
+  open,
+  readlink,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -50,6 +61,8 @@ const MAX_SCAN = 8 * 1024 * 1024;
 const MAX_OUTPUT = 2000;
 /** Not defined on Windows: there the lstat before the open stands alone. */
 const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;
+/** A regular file opens at once either way; this only keeps a file swapped for a pipe from blocking. */
+const NON_BLOCK = constants.O_NONBLOCK ?? 0;
 
 /** Git as the person runs it (their hooks too), with no prompt and paths taken as written. */
 const ENV = { GIT_TERMINAL_PROMPT: "0", GIT_LITERAL_PATHSPECS: "1" };
@@ -60,7 +73,10 @@ const refuse = (reason: string, message: string, params?: Record<string, string>
 const stale = () =>
   refuse("changes_commit_stale", "the files changed since they were shown: look again");
 
-/** A file in the working tree as it is now: the sha256 of its bytes, or `deleted`. */
+/** The digest of a file over the size a commit checks: it is never read to make one. */
+export const TOO_LARGE = "too-large";
+
+/** A file in the working tree as it is now: the sha256 of its bytes, `deleted`, or `too-large`. */
 export async function fileDigest(root: string, path: string): Promise<string> {
   const full = join(root, path);
   const info = await lstat(full).catch(() => null);
@@ -69,6 +85,8 @@ export async function fileDigest(root: string, path: string): Promise<string> {
   // A link is what it points at as text, never the file it reaches.
   if (info.isSymbolicLink()) return hash.update(`link\0${await readlink(full)}`).digest("hex");
   if (!info.isFile()) return hash.update(`other\0${info.mode}`).digest("hex");
+  // Never read whole on a refresh: a commit refuses it anyway.
+  if (info.size > MAX_SCAN) return TOO_LARGE;
   for await (const chunk of createReadStream(full)) hash.update(chunk as Buffer);
   return hash.digest("hex");
 }
@@ -97,20 +115,63 @@ interface Read {
  * A chosen file's bytes as they are now, read once through a handle that does not follow a link
  * and is sized by that handle: a link's text, null when the file is gone, or too large to read.
  */
-async function bytesOf(root: string, path: string): Promise<Read | null | "too large"> {
+async function bytesOf(root: string, path: string): Promise<Read | null | "too large" | "other"> {
   const full = join(root, path);
   const info = await lstat(full).catch(() => null);
   if (info === null) return null;
   if (info.isSymbolicLink()) return { data: Buffer.from(await readlink(full), "utf8"), link: true };
-  const handle = await open(full, constants.O_RDONLY | NO_FOLLOW);
+  // A pipe or a device is never opened: an open of a pipe with no writer never returns.
+  if (!info.isFile()) return "other";
+  const handle = await open(full, constants.O_RDONLY | NO_FOLLOW | NON_BLOCK).catch(() => null);
+  if (handle === null) return "other";
   try {
     const stat = await handle.stat();
-    if (!stat.isFile()) return { data: Buffer.alloc(0), link: false };
+    if (!stat.isFile()) return "other";
     if (stat.size > MAX_SCAN) return "too large";
     return { data: await handle.readFile(), link: false };
   } finally {
     await handle.close();
   }
+}
+
+/**
+ * The hooks a commit from the app runs: the commit's own, and those the new branch's switch, the
+ * ref update and the index write run.
+ */
+const COMMIT_HOOKS = [
+  "pre-commit",
+  "prepare-commit-msg",
+  "commit-msg",
+  "post-commit",
+  "post-checkout",
+  "reference-transaction",
+  "post-index-change",
+];
+
+/**
+ * The commit hooks a commit of the checkout at `root` runs: those present (and executable, outside
+ * Windows) in the folder git takes them from, which accounts for `core.hooksPath` and a linked
+ * worktree. The person sees them before confirming a commit.
+ */
+export async function commitHooks(root: string): Promise<string[] | undefined> {
+  const found = await runCommand(
+    [whichOnPath("git") ?? "git", "rev-parse", "--git-path", "hooks"],
+    root,
+    undefined,
+    TIMEOUT_MS,
+    killTree,
+    ENV,
+  );
+  // Unknown, never "none": the person must not read a failed look as no hook at all.
+  if (found.code !== 0) return undefined;
+  const folder = resolve(root, found.stdout.trim());
+  const out: string[] = [];
+  for (const name of COMMIT_HOOKS) {
+    const info = await stat(join(folder, name)).catch(() => null);
+    const runs = process.platform === "win32" || ((info?.mode ?? 0) & 0o111) !== 0;
+    if (info?.isFile() && runs) out.push(name);
+  }
+  return out;
 }
 
 /** Which operation is half done in the checkout, if any: a commit now would mix into it. */
@@ -137,6 +198,8 @@ async function inProgress(gitDir: string): Promise<string | null> {
 /** The commits of plain sessions, and the branch each started from (the PR's base, D2). */
 export class SessionCommits {
   private readonly bases = new Map<string, string | null>();
+  /** The commit running in each checkout: a second one waits for it (a double click, two windows). */
+  private readonly running = new Map<string, Promise<unknown>>();
 
   constructor(readonly deps: SessionCommitDeps) {}
 
@@ -168,6 +231,30 @@ export class SessionCommits {
     if (this.deps.isCardWorktree(root)) {
       throw refuse("changes_commit_target", "a card's worktree is committed by its card");
     }
+    // Keyed by the real folder: two paths to one checkout share one line.
+    const key = await realpath(root).catch(() => root);
+    const prior = this.running.get(key) ?? Promise.resolve();
+    const run = prior.then(
+      () => this.commitIn(root, target, input),
+      () => this.commitIn(root, target, input),
+    );
+    const tail: Promise<unknown> = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.running.set(key, tail);
+    // The last one done takes its entry away: the map never grows with old checkouts.
+    void tail.then(() => {
+      if (this.running.get(key) === tail) this.running.delete(key);
+    });
+    return run;
+  }
+
+  private async commitIn(
+    root: string,
+    target: string,
+    input: SessionCommitInput,
+  ): Promise<ChangesCommitted> {
     const branch = assertBranchName(input.branch);
     if (this.deps.scanner.scan(input.message).length > 0) {
       throw refuse(
@@ -233,6 +320,11 @@ export class SessionCommits {
           },
         );
       }
+      if (file?.digest === TOO_LARGE) {
+        throw refuse("changes_commit_too_large", `${path} is too large to check for secrets`, {
+          file: path,
+        });
+      }
       if (file === undefined || !file.uncommitted || file.digest !== digest) throw stale();
       out.push(file);
     }
@@ -263,6 +355,7 @@ export class SessionCommits {
     const out = new Map<string, Read | null>();
     for (const file of chosen) {
       const bytes = await bytesOf(root, file.path);
+      if (bytes === "other") throw stale();
       if (bytes === "too large") {
         throw refuse("changes_commit_too_large", `${file.path} is too large to check for secrets`, {
           file: file.path,
@@ -285,36 +378,46 @@ export class SessionCommits {
         );
       }
       out.set(file.path, bytes);
+      // A rename's old path goes into the commit as gone: it must be gone now, and stay gone.
+      if (file.oldPath) {
+        if ((await lstat(join(root, file.oldPath)).catch(() => null)) !== null) throw stale();
+        out.set(file.oldPath, null);
+      }
     }
     return out;
   }
 
   /**
-   * Whether the commit holds exactly the bytes checked: a session still writing may have changed a
-   * file between the check and git's read. Each is hashed by git with the path's own filters.
+   * The paths whose committed content is not the bytes checked: a hook that reformats a file, or a
+   * session still writing, changed it between the check and git's read. Each is hashed by git with
+   * the path's own filters.
    */
-  private async holds(
+  private async rewritten(
     root: string,
     expected: Map<string, Read | null>,
     scratch: string,
-  ): Promise<boolean> {
+  ): Promise<string[]> {
+    const out: string[] = [];
     for (const [path, read] of expected) {
       // `<mode> <type> <id>\t<path>`, or nothing when the commit does not hold the path.
       const entry = (await this.must(root, ["ls-tree", "HEAD", "--", path])).split(/\s+/);
       if (read === null) {
-        if (entry[0] !== "") return false;
+        if (entry[0] !== "") out.push(path);
         continue;
       }
       // A link checked as a link, a file as a file: a swap of one for the other is a change.
-      if ((entry[0] === "120000") !== read.link) return false;
+      if ((entry[0] === "120000") !== read.link) {
+        out.push(path);
+        continue;
+      }
       const blob = join(scratch, "blob");
       await writeFile(blob, read.data);
       const hashed = read.link
         ? await this.git(root, ["hash-object", "--no-filters", "--", blob])
         : await this.git(root, ["hash-object", `--path=${path}`, "--", blob]);
-      if (hashed.code !== 0 || hashed.stdout.trim() !== entry[2]) return false;
+      if (hashed.code !== 0 || hashed.stdout.trim() !== entry[2]) out.push(path);
     }
-    return true;
+    return out.sort(byCodeUnit);
   }
 
   /**
@@ -336,6 +439,11 @@ export class SessionCommits {
       () => true,
       () => false,
     );
+    // The commit the branch starts on (none in a repository with no commit yet): an undo goes there,
+    // and from a detached checkout it is the way back.
+    const before = await this.git(root, ["rev-parse", "--verify", "--quiet", "HEAD"]);
+    const start = before.code === 0 ? before.stdout.trim() : null;
+    const back = base ?? start ?? "";
     try {
       const switched = await this.git(root, ["switch", "-q", "-c", refArg(branch)]);
       if (switched.code !== 0) {
@@ -354,8 +462,6 @@ export class SessionCommits {
           onDisk.push(path);
       }
       const added = onDisk.length === 0 ? null : await this.git(root, ["add", "--", ...onDisk]);
-      // The commit the branch starts on (none in a repository with no commit yet): an undo goes there.
-      const before = await this.git(root, ["rev-parse", "--verify", "--quiet", "HEAD"]);
       const made =
         added === null || added.code === 0
           ? await this.git(root, ["commit", "-q", "-F", "-", "--", ...paths], message)
@@ -369,17 +475,13 @@ export class SessionCommits {
       };
       if (made.code !== 0 || made.timedOut) {
         await putBack();
-        throw refuse(
-          "changes_commit_hook",
-          "the commit was refused: you are on the new branch, with your files as they were",
-          { output: this.outputOf(made), branch, base: base ?? "" },
-        );
+        throw this.refused(made, branch, back);
       }
-      if (!(await this.holds(root, expected, keep))) {
+      const changed = await this.rewritten(root, expected, keep);
+      if (changed.length > 0) {
         // Undone: the branch back on the commit it started from, the index as it was.
-        const start = before.stdout.trim();
         const undo =
-          before.code === 0
+          start !== null
             ? await this.git(root, ["reset", "-q", "--soft", start])
             : await this.git(root, ["update-ref", "-d", "HEAD"]);
         if (undo.code !== 0) {
@@ -390,7 +492,11 @@ export class SessionCommits {
           );
         }
         await putBack();
-        throw stale();
+        throw refuse(
+          "changes_commit_rewritten",
+          "a hook or the session changed files while they were committed: look again, then commit",
+          { files: changed.join(", ") },
+        );
       }
       return await this.must(root, ["rev-parse", "HEAD"]);
     } finally {
@@ -398,13 +504,23 @@ export class SessionCommits {
     }
   }
 
-  /** What git and the hooks said, its end only, and never a secret. */
-  private outputOf(result: CommandResult): string {
-    if (result.timedOut) return "the commit ran out of time";
+  /**
+   * Why the commit was refused, with the way back: out of time, or what git and the hooks said (its
+   * end only), or not that when it holds a secret.
+   */
+  private refused(result: CommandResult, branch: string, base: string): FlightdeckError {
+    const where = { branch, base };
+    if (result.timedOut) {
+      return refuse("changes_commit_timeout", "the commit ran out of time", where);
+    }
     // Scanned whole, then cut: a cut could split a secret and hide it from the scanner.
     const said = `${result.stderr}\n${result.stdout}`.trim();
-    return this.deps.scanner.scan(said).length > 0
-      ? "(what the hook said is not shown: it looks like it holds a secret)"
-      : said.slice(-MAX_OUTPUT);
+    if (this.deps.scanner.scan(said).length > 0) {
+      return refuse("changes_commit_hook_withheld", "the commit was refused", where);
+    }
+    return refuse("changes_commit_hook", "the commit was refused", {
+      output: said.slice(-MAX_OUTPUT),
+      ...where,
+    });
   }
 }

@@ -22,6 +22,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   budgets: "budgets",
   central: "central",
   changes: "changes",
+  sessionCommits: "sessionCommits",
   costs: "costs",
   files: "files",
   fileLog: "logs",

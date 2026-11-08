@@ -1459,6 +1459,7 @@ export const en: Dictionary = {
     budgets: "budgets",
     quotaHistory: "the quota history",
     changes: "change review",
+    sessionCommits: "committing a session's changes",
     ssh: "ssh destinations",
     snippets: "snippets",
     personaSessions: "personas in open sessions",
@@ -1843,7 +1844,13 @@ export const en: Dictionary = {
     changes_commit_too_large: "{file} is too large to check for secrets: commit it yourself.",
     changes_commit_branch_taken: "There is already a branch {branch}: pick another name.",
     changes_commit_hook:
-      "The commit was refused: {output}. You are on {branch} with your files as they were; fix it and commit again, or go back with git switch {base}.",
+      "The commit was refused: {output}. You are on {branch} with your files as they were; fix it and commit again, or go back with git checkout {base}.",
+    changes_commit_timeout:
+      "The commit ran out of time (a hook or a signing prompt that never ended). You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_commit_hook_withheld:
+      "The commit was refused, and what the hook said is not shown: it looks like it holds a secret. You are on {branch} with your files as they were; go back with git checkout {base}.",
+    changes_commit_rewritten:
+      "{files} changed while being committed (a hook that formats, or the session still writing), so the commit was undone: look at the changes again, then commit.",
     changes_commit_git: "Git could not make the branch or the commit in this repository.",
     harness_commit_stale:
       "The files are not as the setup wrote them: apply the setup again, then commit.",

@@ -1,6 +1,8 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { open } from "node:fs/promises";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { Changes } from "../src/review/changes.ts";
@@ -32,6 +34,10 @@ function setup(
     cardWorktree?: boolean;
     timeoutMs?: number;
     afterCheck?: () => Promise<void>;
+    /** A pre-commit hook the person had before the session started. */
+    hook?: string;
+    /** Runs each time the commit has read the changes: a test swaps a file in that moment. */
+    afterGet?: () => void;
   } = {},
 ) {
   const ctx = newManager();
@@ -44,10 +50,23 @@ function setup(
   writeFileSync(join(repo, "b.txt"), "two\n");
   git(repo, "add", "--", "a.txt", "b.txt");
   git(repo, "commit", "-q", "-m", "first");
+  if (options.hook !== undefined) {
+    const hook = join(repo, ".git", "hooks", "pre-commit");
+    writeFileSync(hook, options.hook);
+    chmodSync(hook, 0o755);
+  }
   insertSession(ctx.store.db, "m-1", "s-1", repo);
   const changes = new Changes({ db: ctx.store.db });
+  const seen = {
+    resolve: changes.resolve.bind(changes),
+    get: async (target: string) => {
+      const result = await changes.get(target);
+      options.afterGet?.();
+      return result;
+    },
+  };
   const commits = new SessionCommits({
-    changes,
+    changes: seen,
     scanner: new SecretScanner(() => options.vault ?? []),
     isCardWorktree: () => options.cardWorktree === true,
     ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
@@ -99,6 +118,31 @@ describe("session-commit: a plain session's files committed on a new branch (#11
     });
   });
 
+  test.skipIf(!posix)(
+    "the changes name the commit hooks that will run: in the hooks folder, core.hooksPath, or a linked worktree's",
+    async () => {
+      const own = setup({ hook: "#!/bin/sh\nexit 0\n" });
+      const husky = setup();
+      mkdirSync(join(husky.repo, ".husky"));
+      writeFileSync(join(husky.repo, ".husky", "commit-msg"), "#!/bin/sh\nexit 0\n");
+      chmodSync(join(husky.repo, ".husky", "commit-msg"), 0o755);
+      writeFileSync(join(husky.repo, ".husky", "post-commit"), "not executable\n");
+      // The new branch's switch runs this one too.
+      writeFileSync(join(husky.repo, ".husky", "post-checkout"), "#!/bin/sh\nexit 0\n");
+      chmodSync(join(husky.repo, ".husky", "post-checkout"), 0o755);
+      git(husky.repo, "config", "core.hooksPath", ".husky");
+      const linked = setup({ hook: "#!/bin/sh\nexit 0\n" });
+      const worktree = join(linked.repo, "..", "linked-worktree");
+      git(linked.repo, "worktree", "add", "-q", "-b", "side", worktree);
+      insertSession(linked.ctx.store.db, "m-2", "s-2", worktree);
+      expect([
+        (await own.changes.get(TARGET)).hooks,
+        (await husky.changes.get(TARGET)).hooks,
+        (await linked.changes.get("session:s-2")).hooks,
+      ]).toEqual([["pre-commit"], ["commit-msg", "post-checkout"], ["pre-commit"]]);
+    },
+  );
+
   test("the chosen files are committed on a new branch, the rest stay as they were", async () => {
     const { repo, changes, commits } = setup();
     writeFileSync(join(repo, "a.txt"), "one, changed\n");
@@ -142,10 +186,9 @@ describe("session-commit: a plain session's files committed on a new branch (#11
   test.skipIf(!posix)(
     "a hook that fails says what it said, leaves the person on the new branch with nothing lost, and names the way back",
     async () => {
-      const { repo, changes, commits } = setup();
-      const hook = join(repo, ".git", "hooks", "pre-commit");
-      writeFileSync(hook, "#!/bin/sh\necho 'lint failed: a.txt'\nexit 1\n");
-      chmodSync(hook, 0o755);
+      const { repo, changes, commits } = setup({
+        hook: "#!/bin/sh\necho 'lint failed: a.txt'\nexit 1\n",
+      });
       writeFileSync(join(repo, "a.txt"), "one, changed\n");
       writeFileSync(join(repo, "c.txt"), "new\n");
       const before = status(repo);
@@ -187,7 +230,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       }),
     );
     expect([done, branchOf(repo), git(repo, "rev-parse", "HEAD") === first, status(repo)]).toEqual([
-      "changes_commit_stale",
+      { reason: "changes_commit_rewritten", files: "a.txt" },
       "work/swapped",
       true,
       ["M a.txt"],
@@ -197,10 +240,10 @@ describe("session-commit: a plain session's files committed on a new branch (#11
   test.skipIf(!posix)(
     "what a hook said is withheld whole when a secret is anywhere in it, even cut",
     async () => {
-      const { repo, changes, commits } = setup({ vault: ["k3y-in-the-vault"] });
-      const hook = join(repo, ".git", "hooks", "pre-commit");
-      writeFileSync(hook, `#!/bin/sh\necho 'k3y-in-the-vault'\nprintf '%01995d\\n' 0\nexit 1\n`);
-      chmodSync(hook, 0o755);
+      const { repo, changes, commits } = setup({
+        vault: ["k3y-in-the-vault"],
+        hook: `#!/bin/sh\necho 'k3y-in-the-vault'\nprintf '%01995d\\n' 0\nexit 1\n`,
+      });
       writeFileSync(join(repo, "a.txt"), "one, changed\n");
       const done = await outcome(
         commits.commit(TARGET, {
@@ -209,16 +252,15 @@ describe("session-commit: a plain session's files committed on a new branch (#11
           branch: "work/said",
         }),
       );
-      expect(JSON.stringify(done).includes("k3y")).toBe(false);
-      expect((done as { output?: string }).output ?? "").toContain("not shown");
+      expect([JSON.stringify(done).includes("k3y"), done]).toEqual([
+        false,
+        { reason: "changes_commit_hook_withheld", branch: "work/said", base: "main" },
+      ]);
     },
   );
 
   test.skipIf(!posix)("a hook that never ends is stopped at the time limit", async () => {
-    const { repo, changes, commits } = setup({ timeoutMs: 400 });
-    const hook = join(repo, ".git", "hooks", "pre-commit");
-    writeFileSync(hook, "#!/bin/sh\nsleep 30\n");
-    chmodSync(hook, 0o755);
+    const { repo, changes, commits } = setup({ timeoutMs: 400, hook: "#!/bin/sh\nsleep 30\n" });
     writeFileSync(join(repo, "a.txt"), "one, changed\n");
     const done = await outcome(
       commits.commit(TARGET, {
@@ -228,7 +270,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       }),
     );
     expect([(done as { reason?: string }).reason, status(repo)]).toEqual([
-      "changes_commit_hook",
+      "changes_commit_timeout",
       ["M a.txt"],
     ]);
   });
@@ -319,6 +361,126 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       false,
     ]);
   });
+
+  test.skipIf(!posix)(
+    "a hook that reformats a file undoes the commit and names it; committed again as it is now, it goes in",
+    async () => {
+      const { repo, changes, commits } = setup({
+        hook: "#!/bin/sh\ntr a-z A-Z < a.txt > a.tmp && mv a.tmp a.txt && git add a.txt\n",
+      });
+      writeFileSync(join(repo, "a.txt"), "one, changed\n");
+      const first = await outcome(
+        commits.commit(TARGET, {
+          files: await digests(changes, "a.txt"),
+          message: "Change a",
+          branch: "work/format",
+        }),
+      );
+      const again = await outcome(
+        commits.commit(TARGET, {
+          files: await digests(changes, "a.txt"),
+          message: "Change a",
+          branch: "work/format-2",
+        }),
+      );
+      expect([first, again, git(repo, "show", "HEAD:a.txt")]).toEqual([
+        { reason: "changes_commit_rewritten", files: "a.txt" },
+        "ok",
+        "ONE, CHANGED",
+      ]);
+    },
+  );
+
+  test.skipIf(!posix)("a chosen path that became a pipe is refused, never opened", async () => {
+    let swap = false;
+    let repo = "";
+    const made = setup({
+      afterGet: () => {
+        if (!swap) return;
+        rmSync(join(repo, "c.txt"));
+        execFileSync("mkfifo", [join(repo, "c.txt")]);
+      },
+    });
+    repo = made.repo;
+    const { changes, commits } = made;
+    writeFileSync(join(repo, "c.txt"), "new\n");
+    const files = await digests(changes, "c.txt");
+    swap = true;
+    const done = await Promise.race([
+      outcome(commits.commit(TARGET, { files, message: "m", branch: "work/pipe" })),
+      // timing: an open of a pipe with no writer never returns; the race turns that hang into a value.
+      Bun.sleep(3000).then(() => "hung"),
+    ]);
+    if (done === "hung") {
+      // Let the stuck open go: a writer for the pipe.
+      const writer = await open(join(repo, "c.txt"), "w");
+      await writer.close();
+    }
+    expect(done).toBe("changes_commit_stale");
+  });
+
+  test("a renamed file's old path is part of the commit: recreated meanwhile, it is not committed", async () => {
+    let repo = "";
+    const made = setup({
+      afterCheck: async () => writeFileSync(join(repo, "a.txt"), "back again\n"),
+    });
+    repo = made.repo;
+    git(repo, "mv", "a.txt", "d.txt");
+    const done = await outcome(
+      made.commits.commit(TARGET, {
+        files: await digests(made.changes, "d.txt"),
+        message: "Move a",
+        branch: "work/back",
+      }),
+    );
+    expect(done).toEqual({ reason: "changes_commit_rewritten", files: "a.txt" });
+  });
+
+  test("a file over 8 MiB is never hashed on a refresh, and refuses at once", async () => {
+    const { repo, changes, commits } = setup();
+    writeFileSync(join(repo, "big.bin"), Buffer.alloc(9 * 1024 * 1024, 1));
+    const files = await digests(changes, "big.bin");
+    expect([
+      files,
+      await outcome(commits.commit(TARGET, { files, message: "m", branch: "work/big" })),
+    ]).toEqual([
+      { "big.bin": "too-large" },
+      { reason: "changes_commit_too_large", file: "big.bin" },
+    ]);
+  });
+
+  test("two commits of one checkout at once run one after the other", async () => {
+    const { repo, changes, commits } = setup();
+    writeFileSync(join(repo, "a.txt"), "one, changed\n");
+    const files = await digests(changes, "a.txt");
+    const both = await Promise.all(
+      ["work/first", "work/second"].map((branch) =>
+        outcome(commits.commit(TARGET, { files, message: "m", branch })),
+      ),
+    );
+    // One after the other, in whichever order they reach the checkout: one goes in, the other then
+    // finds its file committed.
+    const branches = git(repo, "branch", "--list", "work/*").replaceAll(/[ *]/g, "").split("\n");
+    expect([[...both].sort(), branches.length]).toEqual([["changes_commit_stale", "ok"], 1]);
+  });
+
+  test.skipIf(!posix)(
+    "from a detached checkout, the way back is the commit it was on",
+    async () => {
+      const { repo, changes, commits } = setup({ hook: "#!/bin/sh\nexit 1\n" });
+      git(repo, "switch", "-q", "--detach", "HEAD");
+      const at = git(repo, "rev-parse", "HEAD");
+      writeFileSync(join(repo, "a.txt"), "one, changed\n");
+      const done = await outcome(
+        commits.commit(TARGET, {
+          files: await digests(changes, "a.txt"),
+          message: "m",
+          branch: "work/detached",
+        }),
+      );
+      expect((done as { base?: string }).base).toBe(at);
+    },
+  );
 
   test("the server commits only over a near connection, and only once confirmed", async () => {
     const { ctx, repo, changes, commits } = setup();
