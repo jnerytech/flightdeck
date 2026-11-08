@@ -798,6 +798,11 @@ export const TeamsPage = memo(function TeamsPage(props: {
     const list = await store.hostCommand(current, "teams.list", {});
     if (!list) return;
     setTeams(list.teams);
+    // The workers' branches are on their cards: the page asks for its teams' boards, as the app
+    // may open here first (#1220), without holding the teams' states back.
+    void inSequence([...new Set(list.teams.map((team) => team.projectId))], (projectId) =>
+      store.loadBoard(current, projectId),
+    );
     const next: Record<string, TeamStatus> = {};
     await inSequence(list.teams, async (team) => {
       const status = await store.hostCommand(current, "teams.status", { team: team.id });
