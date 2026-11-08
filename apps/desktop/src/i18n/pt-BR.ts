@@ -1069,7 +1069,7 @@ export const ptBR = {
     rowWord: {
       running: "Trabalhando",
       needs_you: "Esperando você",
-      idle: "Concluída",
+      idle: "Ociosa",
       ended: "Encerrada",
       failed: "Falhou",
     },

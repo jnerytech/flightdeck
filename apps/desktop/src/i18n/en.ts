@@ -1069,7 +1069,7 @@ export const en: Dictionary = {
     rowWord: {
       running: "Working",
       needs_you: "Waiting for you",
-      idle: "Finished",
+      idle: "Idle",
       ended: "Ended",
       failed: "Failed",
     },

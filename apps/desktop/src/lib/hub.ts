@@ -17,6 +17,11 @@ const PT = translator("pt-BR");
 export type HubOrigin = "flightdeck" | "terminal" | "history" | "background";
 export type HubState = "running" | "needs_you" | "idle" | "ended" | "failed";
 
+/** A session that is over: ended on purpose or failed (#1132). It is not live, and folds into the earlier ones. */
+export function isOver(state: HubState): boolean {
+  return state === "ended" || state === "failed";
+}
+
 /** One line of the Sessões screen, whatever the session's origin. */
 export interface HubRow {
   key: string;
@@ -69,7 +74,7 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
 };
 
 const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history", "background"];
-const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended"];
+const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended", "failed"];
 
 /** The hub's kept filter as stored, or nothing when it is not a JSON object. */
 function storedFilter(storage: { getItem(key: string): string | null }): Record<string, unknown> {
@@ -606,7 +611,7 @@ export function hubView(
 ): HubGroupView[] {
   return groups.map((group) => {
     // A pinned session is one the person wants close: it stays with the live ones.
-    const isEarlier = (r: HubRow) => !r.pinned && (r.origin === "history" || r.state === "ended");
+    const isEarlier = (r: HubRow) => !r.pinned && (r.origin === "history" || isOver(r.state));
     const earlier = group.rows
       .filter(isEarlier)
       .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));

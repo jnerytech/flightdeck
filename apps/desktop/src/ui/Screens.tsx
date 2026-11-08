@@ -21,7 +21,7 @@ import {
   sessionKey,
 } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
-import type { HubRow } from "../lib/hub.ts";
+import { type HubRow, isOver } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename, holdsFolder } from "../lib/paths.ts";
@@ -108,7 +108,7 @@ function hostToWait(route: Route): string | null {
 export function rowRoute(row: HubRow): Route {
   const id = row.claudeSessionId as string;
   if (row.sessionId) return { name: "session", host: row.hostId, id: row.sessionId };
-  if (row.origin === "terminal" && row.state !== "ended") {
+  if (row.origin === "terminal" && !isOver(row.state)) {
     return { name: "external", host: row.hostId, claudeSessionId: id };
   }
   // A background session: its screen when the host knows its Claude session, else the hub.

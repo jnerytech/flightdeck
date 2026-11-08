@@ -734,6 +734,7 @@ export function SessionsHub(
                     {group.rows.map((row) => {
                       const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
                       const line = sessionLineText(row.summary, store.now(), t);
+                      const said = rowStatus(row, store.now(), t);
                       // What the whole group shares is in its header; the row keeps what differs.
                       const rowMeta = [
                         shared.origin === null && row.origin !== "terminal"
@@ -772,12 +773,10 @@ export function SessionsHub(
                             </TooltipTrigger>
                             <TooltipContent>{row.title}</TooltipContent>
                           </Tooltip>
-                          {/* #1132: what the session is doing, in words: the dot alone did not say. */}
-                          <span data-slot="row-status" className="row-status">
-                            {(() => {
-                              const said = rowStatus(row, store.now(), t);
-                              return [said.word, said.detail].filter(Boolean).join(" · ");
-                            })()}
+                          {/* #1132: what the session is doing, in words: the dot alone did not say.
+                              A reader already hears it from the dot and the row's summary. */}
+                          <span data-slot="row-status" aria-hidden="true" className="row-status">
+                            {[said.word, said.detail].filter(Boolean).join(" · ")}
                           </span>
                           {shared.hostName === null && (
                             <HostChip
