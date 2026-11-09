@@ -84,7 +84,17 @@ function fakeResizeObserver() {
 }
 
 function setup(
-  options: { language?: "en" | "pt-BR"; refuse?: string[]; quota?: boolean; max?: number } = {},
+  options: {
+    language?: "en" | "pt-BR";
+    refuse?: string[];
+    quota?: boolean;
+    max?: number;
+    /** The host's answers to project.list and workflow.list wait until this resolves. */
+    hold?: Promise<void>;
+    /** The project's workflows, by name and inputs. */
+    workflows?: Array<{ name: string; inputs: string[] }>;
+    cards?: object[];
+  } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
@@ -92,7 +102,11 @@ function setup(
   store.i18n.start();
   const internals = store as unknown as { update(p: object): void };
   internals.update({ hosts: [host] });
-  internals.update({ cards: Object.fromEntries(CARDS.map((c) => [`h1/${c.id}`, c])) });
+  internals.update({
+    cards: Object.fromEntries(
+      (options.cards ?? CARDS).map((c) => [`h1/${(c as { id: string }).id}`, c]),
+    ),
+  });
   if (options.quota) {
     internals.update({
       quota: {
@@ -116,8 +130,17 @@ function setup(
   store.hostCommand = (async (_hostId: string, type: string, payload: unknown) => {
     commands.push([type, payload]);
     if (type === "board.get") return { project: { id: "p1", name: "api" }, cards: [] };
+    if (type === "project.list" || type === "workflow.list") await options.hold;
     if (type === "project.list") return { projects: [], maxParallelRuns: options.max ?? 2 };
-    if (type === "workflow.list") return [];
+    if (type === "workflow.list") {
+      return (options.workflows ?? []).map((w) => ({
+        ...w,
+        hash: "h",
+        trusted: true,
+        checks: [],
+        errors: [],
+      }));
+    }
     return {};
   }) as never;
   store.hostRequest = (async (_hostId: string, type: string, payload: unknown) => {
@@ -280,6 +303,48 @@ describe("board-bulk-ui: the Start confirm (#1354)", () => {
     await settleMaybe(() => dialog() !== null);
     await click(button(dialog(), "Cancel"));
     expect([started(requests, "card.start"), selected()]).toEqual([[], ["A", "B"]]);
+    restore();
+  });
+});
+
+// From the ux-reviewer: the card's workflow and the host's limit arrive after the confirm opens.
+describe("board-bulk-ui: what the confirm waits for (#1354)", () => {
+  test("Start in the confirm is off until the host's limit and the workflows have come", async () => {
+    let release = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { restore } = setup({ hold });
+    await ready();
+    await ctrl("A", "B");
+    await click(button(bar(), "Start 2"));
+    await settleMaybe(() => dialog() !== null);
+    const before = button(dialog(), "Start 2").hasAttribute("disabled");
+    await act(async () => {
+      release();
+    });
+    await settleMaybe(() => !button(dialog(), "Start 2").hasAttribute("disabled"));
+    expect([before, button(dialog(), "Start 2").hasAttribute("disabled")]).toEqual([true, false]);
+    restore();
+  });
+
+  test("a card whose workflow asks for inputs is skipped, with why, and starts from its menu", async () => {
+    const { requests, restore } = setup({
+      workflows: [{ name: "deploy", inputs: ["alert"] }],
+      cards: [...CARDS, card("W", "backlog", 4, { startWorkflow: "deploy" })],
+    });
+    await ready();
+    await ctrl("A", "W");
+    await click(button(bar(), "Start 2"));
+    await settleMaybe(() => dialogText().includes("asks for inputs"));
+    const text = dialogText();
+    await click(button(dialog(), "Start 1"));
+    await settleMaybe(() => started(requests, "card.start").length === 1);
+    expect([
+      text.includes("Start 1 card?"),
+      text.includes("W — skipped: its workflow asks for inputs; start it from its menu"),
+      started(requests, "card.start"),
+    ]).toEqual([true, true, ["A"]]);
     restore();
   });
 });
