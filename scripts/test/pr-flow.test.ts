@@ -70,6 +70,8 @@ function fake(
     graphqlError?: string;
     /** GitHub ignores the head filter and lists every open PR (#1115, seen 2026-11-08). */
     ignoreHead?: boolean;
+    /** #1526: the PR's OpenCode review text; null when it has none yet; absent, the dep is not wired. */
+    review?: string | null;
   } = {},
 ) {
   const prs = opts.prs ?? [];
@@ -236,6 +238,7 @@ function fake(
     env: opts.env ?? {},
     log: (line) => lines.push(line),
     ...(opts.now === undefined ? {} : { now: () => opts.now ?? 0 }),
+    ...(opts.review === undefined ? {} : { review: async () => opts.review ?? null }),
   };
   return { deps, writes, gitWrites, lines, asked, out: () => lines.join("\n") };
 }
@@ -986,6 +989,45 @@ describe("pr-flow: update and merge", () => {
     });
     expect(await prFlow(["auto", "12"], refused.deps)).toBe(1);
     expect(refused.out()).toContain("GitHub refused to merge #12");
+  });
+
+  test("auto first says where the PR's OpenCode review stands, in one line (#1526)", async () => {
+    const none = fake({ prs: [pr(12, "a")], review: null });
+    const changes = fake({
+      prs: [pr(12, "a")],
+      review:
+        "[high] a.ts:1 x\n[medium] b.ts:2 y\n[medium] c.ts:3 z\n[low] d.ts:4 w\nVERDICT: changes\n",
+    });
+    const codes = [
+      await prFlow(["auto", "12"], none.deps),
+      await prFlow(["auto", "12"], changes.deps),
+    ];
+    expect([codes, none.lines[0], changes.lines[0]]).toEqual([
+      [0, 0],
+      "OpenCode review: none yet",
+      "OpenCode review: VERDICT changes, 1 blocker/high, 2 medium (pr-reviews/pr-12.md)",
+    ]);
+  });
+
+  test("auto asks for --now before merging a clean PR whose review is missing or says changes (#1526)", async () => {
+    const asked = (review: string | null, now = false) => {
+      const f = fake({ prs: [pr(12, "a")], graphqlError: CLEAN, runs: { sha12: green() }, review });
+      return { f, run: prFlow(["auto", "12", ...(now ? ["--now"] : [])], f.deps) };
+    };
+    const missing = asked(null);
+    const changes = asked("[medium] a.ts:1 x\nVERDICT: changes\n");
+    const approved = asked("VERDICT: approve\n");
+    const forced = asked(null, true);
+    const codes = await Promise.all([missing.run, changes.run, approved.run, forced.run]);
+    const merged = [missing, changes, approved, forced].map(
+      ({ f }) => f.writes.filter((w) => w.includes("/merge")).length,
+    );
+    expect([codes, merged, missing.f.lines.at(-1), changes.f.lines.at(-1)]).toEqual([
+      [2, 2, 0, 0],
+      [0, 0, 1, 1],
+      "#12 is already mergeable, but its OpenCode review is none yet: merge it now with bun run pr -- auto 12 --now, or wait for the review",
+      "#12 is already mergeable, but its OpenCode review says changes: merge it now with bun run pr -- auto 12 --now, or fix it first",
+    ]);
   });
 
   test("an unknown command or a missing argument is the usage, exit 2", async () => {

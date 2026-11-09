@@ -31,6 +31,8 @@ export interface PrFlowDeps {
   now?: () => number;
   /** #1246: the one-line warning while main is red (null when green); absent, nothing is said. */
   mainRed?: () => Promise<string | null>;
+  /** #1526: the PR's OpenCode review (pr-reviews/pr-<n>.md), null when none yet; absent, nothing is said. */
+  review?: (n: number) => Promise<string | null>;
 }
 
 export interface Pr {
