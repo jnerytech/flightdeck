@@ -53,7 +53,13 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
       body: "linha 1\nlinha 2 com 50% feito",
     });
     expect(url).toBe(`${AZ_WEB}/pullrequest/12`);
-    expect(await provider.status({ cwd, url })).toEqual({ state: "open", checks: "passing" });
+    expect(await provider.status({ cwd, url })).toEqual({
+      state: "open",
+      checks: "passing",
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
     expect(started.count()).toBe(0);
     expect(ran).toHaveLength(4);
     expect(ran.every((bin) => bin.startsWith(az.dir))).toBe(true);
@@ -67,14 +73,23 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
     const gh = fake("gh", [
       { args: ["view", "url"], code: 1 },
       { args: ["pr", "create"], stdout: `Creating pull request\n${GH_URL}\n` },
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "MERGED" }),
+      },
     ]);
     const provider = new GithubCli({ run: gh.run });
     const cwd = tempDir();
     const started = spawns();
     const url = await provider.create({ cwd, base: "main", head: "fd/x", title: "t", body: "b" });
     expect(url).toBe(GH_URL);
-    expect(await provider.status({ cwd, url })).toEqual({ state: "merged", checks: null });
+    expect(await provider.status({ cwd, url })).toEqual({
+      state: "merged",
+      checks: null,
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
     expect(started.count()).toBe(0);
     expect(gh.calls().map((c) => c.slice(0, 2).join(" "))).toEqual([
       "pr view",
@@ -107,18 +122,33 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
       cwd: tempDir(),
       url: `${AZ_WEB}/pullrequest/3`,
     });
-    expect(status).toEqual({ state: "merged", checks: null });
+    expect(status).toEqual({
+      state: "merged",
+      checks: null,
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
     expect(started.count()).toBe(2);
     expect(az.calls()).toHaveLength(2);
   });
 
   test("a runner that is not given leaves gh to its own process, found on PATH", async () => {
     const gh = fake("gh", [
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "MERGED" }),
+      },
     ]);
     const started = spawns();
     const status = await new GithubCli().status({ cwd: tempDir(), url: GH_URL });
-    expect(status).toEqual({ state: "merged", checks: null });
+    expect(status).toEqual({
+      state: "merged",
+      checks: null,
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
     expect(started.count()).toBe(1);
     expect(gh.calls()).toHaveLength(1);
   });

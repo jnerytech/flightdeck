@@ -640,6 +640,14 @@ export type PrState = z.infer<typeof PrState>;
 export const ChecksState = z.enum(["pending", "passing", "failing"]);
 export type ChecksState = z.infer<typeof ChecksState>;
 
+/** Issue #1352: whether a PR can be merged as it is, as its host reports it. */
+export const PrMergeable = z.enum(["clean", "conflict", "blocked", "unknown"]);
+export type PrMergeable = z.infer<typeof PrMergeable>;
+
+/** Issue #1352: where the PR stands with its reviewers. */
+export const PrReview = z.enum(["approved", "changes_requested", "required", "none"]);
+export type PrReview = z.infer<typeof PrReview>;
+
 /** Phase 13: the project's automatic approval, off by default. */
 export const AutoApproveSettings = z.object({
   enabled: z.boolean().default(false),
@@ -817,6 +825,10 @@ export const Card = z.object({
   prUrl: z.string().nullable(),
   prState: PrState.nullable(),
   checksState: ChecksState.nullable(),
+  /** Issue #1352 (host `prDetails`): merge state, review state and open date, read with the checks. */
+  prMergeable: PrMergeable.nullable().optional(),
+  prReview: PrReview.nullable().optional(),
+  prOpenedAt: z.string().nullable().optional(),
   /** Started and waiting for a free slot. */
   queued: z.boolean(),
   /** Session of the active (latest) run. */
@@ -1678,6 +1690,8 @@ export interface ActivityPr extends ActivityCard {
 export interface ActivityRun {
   runId: string;
   cardId: string;
+  /** The card's project (issue #1408), so the line opens a card the app has not loaded; an older host sends none. */
+  projectId?: string;
   workflowName: string;
   /** Why it failed, as a key and params the app translates. */
   reasonKey: string | null;

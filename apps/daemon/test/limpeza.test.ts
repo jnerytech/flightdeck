@@ -82,7 +82,10 @@ describe("limpeza", () => {
     const gh = installFakeCli("gh", [
       { args: ["view", "url"], code: 1 },
       { args: ["pr", "create"], stdout: "https://github.com/acme/repo/pull/9\n" },
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "OPEN" }),
+      },
     ]);
     cleanups.push(gh.restore);
     const { board, card, root, repo, worktree, sessionId, manager } = await reviewedCard("github");
@@ -91,7 +94,10 @@ describe("limpeza", () => {
     expect(git(repo, "remote", "get-url", "origin")).toBe(join(root, "remote.git"));
     await board.createPr(card.id);
     gh.respond([
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "MERGED" }),
+      },
     ]);
     const done = await cardWhen(board, card.id, (c) => c.worktreePath === null);
     expect(done ?? {}).toMatchObject({ column: "done", prState: "merged" });

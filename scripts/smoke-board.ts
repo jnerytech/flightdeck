@@ -151,7 +151,10 @@ async function run(work: string): Promise<void> {
   const gh = installFakeCli("gh", [
     { args: ["view", "url"], code: 1 },
     { args: ["pr", "create"], stdout: `${PR_URL}\n` },
-    { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
+    {
+      args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+      stdout: JSON.stringify({ state: "OPEN" }),
+    },
   ]);
 
   const token = crypto.randomUUID().replaceAll("-", "");
@@ -237,7 +240,10 @@ async function run(work: string): Promise<void> {
 
     step = "simular o merge";
     gh.respond([
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "MERGED" }),
+      },
     ]);
     const done = await until(
       () => client.card(created.id, (c) => c.column === "done" && c.worktreePath === null),

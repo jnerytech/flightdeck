@@ -3,9 +3,10 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
+import { azureDetails, githubDetails, type PrDetails } from "./pr-details.ts";
 import type { ChecksState, PrProviderKind, PrState } from "./types.ts";
 
-export interface PrStatus {
+export interface PrStatus extends Partial<PrDetails> {
   state: PrState;
   checks: ChecksState | null;
   /** Phase 13: the names of the checks that failed, when the host says. */
@@ -369,9 +370,20 @@ export class GithubCli extends CliProvider implements PrProvider {
   }
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
-    const pr = await this.json<{ state: string; statusCheckRollup?: GhCheck[] }>(
+    const pr = await this.json<
+      {
+        state: string;
+        statusCheckRollup?: GhCheck[];
+      } & Parameters<typeof githubDetails>[0]
+    >(
       "gh",
-      ["pr", "view", url, "--json", "state,statusCheckRollup"],
+      [
+        "pr",
+        "view",
+        url,
+        "--json",
+        "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt",
+      ],
       cwd,
     );
     const rollup = pr.statusCheckRollup ?? [];
@@ -388,6 +400,7 @@ export class GithubCli extends CliProvider implements PrProvider {
       state: GH_STATES[pr.state] ?? "open",
       checks: summarize(checks),
       ...(failed.length > 0 ? { failed } : {}),
+      ...githubDetails(pr),
     };
   }
 
@@ -630,7 +643,7 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
     const id = /\/pullrequest\/(\d+)/.exec(url)?.[1] ?? "";
-    const pr = await this.json<{ status: string }>(
+    const pr = await this.json<{ status: string } & Parameters<typeof azureDetails>[0]>(
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
@@ -644,7 +657,11 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
       if (AZ_FAIL.has(status)) return "failing" as const;
       return AZ_PASS.has(status) ? ("passing" as const) : ("pending" as const);
     });
-    return { state: AZ_STATES[pr.status] ?? "open", checks: summarize(checks) };
+    return {
+      state: AZ_STATES[pr.status] ?? "open",
+      checks: summarize(checks),
+      ...azureDetails(pr),
+    };
   }
 
   /**

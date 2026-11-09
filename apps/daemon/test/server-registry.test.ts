@@ -246,6 +246,24 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the host readouts left the switch of server.ts.
+  test("the hostReads domain owns the host readout commands", () => {
+    expect(Object.keys(DOMAINS.hostReads ?? {}).sort()).toEqual(
+      [
+        "deps.check",
+        "doctor.run",
+        "idle.subscribe",
+        "logs.tail",
+        "names.list",
+        "releases.list",
+        "resources.get",
+        "roi.summary",
+        "runtime.models",
+        "statusline.get",
+      ].sort(),
+    );
+  });
+
   // Issue #1288: the PR comments commands left the switch of server.ts.
   test("the prComments domain owns the pr.comments commands", () => {
     expect(Object.keys(DOMAINS.prComments ?? {}).sort()).toEqual(
