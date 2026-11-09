@@ -33,6 +33,7 @@ import { GithubBoards } from "./boardsync/github.ts";
 import { BoardSyncLoop } from "./boardsync/loop.ts";
 import { BoardSyncService } from "./boardsync/service.ts";
 import { BoardSyncStore } from "./boardsync/store.ts";
+import { runCardCli } from "./card-cli.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
@@ -252,13 +253,26 @@ export interface CliArgs {
     | "action"
     | "snippet"
     | "message"
+    | "card"
     | "version"
     | "db"
     | "backup"
     | "restore"
     | "update";
   /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
-  action?: ServiceAction | "reindex" | "list" | "run" | "get" | "send" | "idle" | "read" | "team";
+  action?:
+    | ServiceAction
+    | "reindex"
+    | "list"
+    | "run"
+    | "get"
+    | "send"
+    | "idle"
+    | "read"
+    | "team"
+    | "show"
+    | "new"
+    | "start";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -267,8 +281,14 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
-  /** `action ... --project <id>`. */
+  /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
+  /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
+  cardId?: string;
+  cardTitle?: string;
+  description?: string;
+  workflow?: string;
+  json?: true;
   /** `action run <name>`. */
   actionName?: string;
   /** `snippet get <name>` (phase 18). */
@@ -327,6 +347,10 @@ const USAGE = [
   "     flightdeckd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
   "     flightdeckd statusline [--config <file>]   (one line for Claude Code's statusline)",
   "     flightdeckd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
+  "     flightdeckd card list [--project <name or id>] [--json] [--config <file>]",
+  "     flightdeckd card show <card> [--json] [--config <file>]",
+  "     flightdeckd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
+  "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
   "     flightdeckd action list [--project <id>] [--config <file>]",
   "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
@@ -515,6 +539,22 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "idle" || action === "read") args.session = operand(reader, "the session");
     if (action === "team") args.team = operand(reader, "the team");
   },
+  card: (args, reader) => {
+    args.command = "card";
+    const action = subAction(reader, ["list", "show", "new", "start"], "invalid card action");
+    args.action = action;
+    if (action === "show" || action === "start") args.cardId = operand(reader, "the card");
+    if (action === "new") args.cardTitle = operand(reader, "the title");
+  },
+  "--json": setFlag((args) => {
+    args.json = true;
+  }),
+  "--description": setValue((args, v) => {
+    args.description = v;
+  }),
+  "--workflow": setValue((args, v) => {
+    args.workflow = v;
+  }),
   "--out": setValue((args, v) => {
     args.out = v;
   }),
@@ -590,6 +630,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
     handler(args, reader, value);
   }
+  if (
+    args.command !== "card" &&
+    (args.json || args.description !== undefined || args.workflow !== undefined)
+  )
+    throw new Error(
+      `--json, --description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
+    );
   return args;
 }
 
@@ -2727,6 +2774,29 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
         identityOf(deps.env),
       ),
     );
+  },
+  card: async (args, deps) => {
+    // The daemon's token is read from the config file and from nowhere else.
+    if (args.token !== undefined)
+      throw new Error("the token of this command is read from the config file only: drop --token");
+    const config = await loadConfig(configPath(args));
+    const result = await runCardCli(
+      {
+        action: args.action as "list" | "show" | "new" | "start",
+        ...(args.project === undefined ? {} : { project: args.project }),
+        ...(args.cardId === undefined ? {} : { id: args.cardId }),
+        ...(args.cardTitle === undefined ? {} : { title: args.cardTitle }),
+        ...(args.description === undefined ? {} : { description: args.description }),
+        ...(args.workflow === undefined ? {} : { workflow: args.workflow }),
+        ...(args.json ? { json: true } : {}),
+      },
+      config,
+    );
+    return settled(() => {
+      for (const line of result.out) deps.log.log(line);
+      for (const line of result.err) deps.log.error(`flightdeckd: ${line}`);
+      return result.code;
+    });
   },
   action: async (args, deps) => {
     const config = await loadConfig(configPath(args));

@@ -63,6 +63,7 @@ are written in Portuguese.
   - [Running and following](#running-and-following)
   - [Budget of a run](#budget-of-a-run)
   - [The flightdeckd mcp MCP server](#the-flightdeckd-mcp-mcp-server)
+  - [The flightdeckd card command](#the-flightdeckd-card-command)
 - [History](#history)
   - [What is indexed](#what-is-indexed)
   - [Excluding folders](#excluding-folders)
@@ -1923,6 +1924,33 @@ sessions) get this server with no setup: the daemon adds it to the session, next
 servers. You only need the command above for a `claude` you open in a terminal outside Flightdeck.
 The Doctor's "Team tools" line tells you when the daemon's program is no longer where sessions
 expect it.
+
+### The flightdeckd card command
+
+`flightdeckd card` drives the board from a terminal, a git alias, a cron job or a CI step. It talks
+to the daemon on the same host, with the token of the config file, like the MCP server above. The
+daemon applies the same rules as the app: the queue, the holds and the limits.
+
+```sh
+flightdeckd card list [--project <name or id>] [--json]
+flightdeckd card show <card> [--json]
+flightdeckd card new "<title>" [--project <name or id>] [--description <text>] [--json]
+flightdeckd card start <card> [--workflow <name>] [--json]
+```
+
+- `list` prints one line per card (project, id, column, title, and why a card waits). Without
+  `--project` it lists every project. `--project` takes an id or a name; a host with one project needs
+  no `--project` for `new`.
+- `start` of a card that has to wait says why (a free slot, the plan quota, the host's memory, the
+  budget, a paused host, the cards it waits on) and still exits 0: the card is queued.
+- `--json` prints the answer for a script. Discarding and finishing a card stay in the app.
+- **Exit codes:** 0 done, 1 refused (the reason is on stderr, with the daemon's code), 2 no daemon
+  (not running, or silent for 15 s).
+- **The token** comes only from the config file: `--token` is refused and the environment is not
+  read. It is never printed. The command talks only to a daemon on the loopback (`127.0.0.1` or
+  `::1`); a daemon bound to another address is refused. As with `flightdeckd mcp`, the token goes to
+  whatever listens on that local port, so keep the daemon running when you use it.
+- With `--json` the answer is JSON on stdout, but an error is still a line of text on stderr.
 
 ## History
 

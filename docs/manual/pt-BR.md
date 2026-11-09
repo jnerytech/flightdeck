@@ -63,6 +63,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Rodar e acompanhar](#rodar-e-acompanhar)
   - [Orçamento de uma execução](#orçamento-de-uma-execução)
   - [O servidor MCP flightdeckd mcp](#o-servidor-mcp-flightdeckd-mcp)
+  - [O comando flightdeckd card](#o-comando-flightdeckd-card)
 - [Histórico](#histórico)
   - [O que é indexado](#o-que-é-indexado)
   - [Excluir pastas](#excluir-pastas)
@@ -1943,6 +1944,33 @@ sessões comuns) já recebem esse servidor, sem configurar nada: o daemon o junt
 dos seus servidores MCP. O comando acima só é preciso para um `claude` aberto num terminal fora do
 Flightdeck. A linha "Ferramentas do time" do Doutor avisa quando o programa do daemon não está mais
 onde as sessões esperam.
+
+### O comando flightdeckd card
+
+`flightdeckd card` conduz o quadro de um terminal, de um alias do git, de um cron ou de um passo de
+CI. Ele fala com o daemon do mesmo host, com o token do arquivo de config, como o servidor MCP
+acima. O daemon aplica as mesmas regras do app: a fila, as retenções e os limites.
+
+```sh
+flightdeckd card list [--project <nome ou id>] [--json]
+flightdeckd card show <card> [--json]
+flightdeckd card new "<título>" [--project <nome ou id>] [--description <texto>] [--json]
+flightdeckd card start <card> [--workflow <nome>] [--json]
+```
+
+- `list` imprime uma linha por card (projeto, id, coluna, título e por que um card espera). Sem
+  `--project` lista todos os projetos. `--project` aceita um id ou um nome; um host com um só
+  projeto dispensa `--project` no `new`.
+- `start` de um card que precisa esperar diz por quê (vaga livre, cota do plano, memória do host,
+  orçamento, host pausado, cards de que ele depende) e sai com 0: o card fica na fila.
+- `--json` imprime a resposta para um script. Descartar e concluir um card ficam no app.
+- **Códigos de saída:** 0 feito, 1 recusado (o motivo vai para o stderr, com o código do daemon), 2
+  sem daemon (parado, ou mudo por 15 s).
+- **O token** vem só do arquivo de config: `--token` é recusado e o ambiente não é lido. Ele nunca
+  é impresso. O comando fala só com um daemon no loopback (`127.0.0.1` ou `::1`); um daemon ligado a
+  outro endereço é recusado. Como no `flightdeckd mcp`, o token vai para o que estiver escutando
+  naquela porta local, então mantenha o daemon rodando ao usar o comando.
+- Com `--json` a resposta é JSON no stdout, mas um erro continua sendo uma linha de texto no stderr.
 
 ## Histórico
 
