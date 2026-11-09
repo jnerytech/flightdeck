@@ -146,7 +146,9 @@ describe("gate-ui", () => {
 
   test("recusar pela fila encerra a execução", async () => {
     const { run } = await atGate();
-    await sidebar.queueItem("alfa · repo · Somar: A etapa “approve” do workflow espera sua aprovação");
+    await sidebar.queueItem(
+      "alfa · repo · Somar: A etapa “approve” do workflow espera sua aprovação",
+    );
     await click("Negar");
     await click("Negar");
     await settle(() => run().status === "rejected");
