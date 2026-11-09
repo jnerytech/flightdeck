@@ -168,6 +168,14 @@ describe("card-opens-on-changes-ui: a gate waiting is the card's one primary (#1
     expect(screen.queryByRole("button", { name: "Approve" })).not.toBeNull();
   });
 
+  test("the menu in the run panel says what it is in words, not only with an icon (#1331)", async () => {
+    await open(asked, true, [gate("waiting")]);
+    await settle(() => pressed("Conversation") !== null);
+    const menu = screen.queryByRole("button", { name: "Actions for Cart screen" });
+    expect(menu).not.toBeNull();
+    expect(menu?.textContent?.trim()).toBe("Actions");
+  });
+
   test("once the gate is answered, the run panel leads with Open PR again", async () => {
     await open(asked, true, [gate("approved")]);
     await settle(() => pressed("Conversation") !== null);
