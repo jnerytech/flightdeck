@@ -84,19 +84,21 @@ describe("istanbul-changed (#1493)", () => {
     ]);
   });
 
-  test("it fails closed: no base, an output inside the checkout, or a diff git could not give", async () => {
+  test("it fails closed: no base, a base git would read as an option, an output inside the checkout, or no diff", async () => {
     const noBase = fakes(["scripts/test/shots-holds.test.ts"]);
+    const option = fakes(["scripts/test/shots-holds.test.ts"]);
     const inside = fakes(["scripts/test/shots-holds.test.ts"]);
     const noDiff = fakes(null);
     const codes = [
       await istanbulChanged("", OUT, noBase.deps),
+      await istanbulChanged("--output=x", OUT, option.deps),
       await istanbulChanged("abc123", "/repo/coverage/istanbul", inside.deps),
       await istanbulChanged("abc123", OUT, noDiff.deps),
     ];
-    const spawned = [noBase, inside, noDiff].map((f) => f.spawned.length);
+    const spawned = [noBase, option, inside, noDiff].map((f) => f.spawned.length);
     expect([codes, spawned, noDiff.printed]).toEqual([
-      [2, 2, 1],
-      [0, 0, 0],
+      [2, 2, 2, 1],
+      [0, 0, 0, 0],
       ["istanbul-changed: git could not list the files changed since abc123"],
     ]);
   });
