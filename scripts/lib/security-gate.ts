@@ -298,12 +298,34 @@ export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
     .map(([, to]) => ({ path: to, why: ["moved from tests"] }));
 }
 
+/**
+ * #1541: the app's dictionaries, whose values are what a person reads. Their words (a token to
+ * paste, a permission denied) are no secret or permission code; a secret's own shape in a value
+ * is, and code in them is read as everywhere.
+ */
+const DICTIONARY = /^apps\/desktop\/src\/i18n\/(?:en|pt-BR)\.ts$/;
+const TEXT_AREAS = new Set(["secret", "permission"]);
+/** What a secret value looks like (a word saying "token" is not one). */
+const SECRET_VALUES = [
+  /(?:gh[pousr]_|github_pat_)\w{20,}/,
+  /glpat-[\w-]{20,}/,
+  /\bsk-[\w-]{16,}/,
+  /AKIA[0-9A-Z]{16}/,
+  /xox[abprs]-[\w-]{10,}/,
+  /eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,}/,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+];
+
 /** The risk areas these lines of code touch, comments left out. */
 function areasOf(lines: string[], path: string): string[] {
   const code = lines.filter((line) => !commentOnly(line, path));
-  return AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
-    ([name]) => name,
-  );
+  const text = DICTIONARY.test(path);
+  const areas = AREAS.filter(
+    ([name, patterns]) =>
+      !(text && TEXT_AREAS.has(name)) && code.some((line) => any(patterns, line)),
+  ).map(([name]) => name);
+  if (text && code.some((line) => any(SECRET_VALUES, line))) areas.push("secret");
+  return areas;
 }
 
 /** The changed source files (never a test) in a risk area, sorted by path. */

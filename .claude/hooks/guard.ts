@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import {
+  blockDetail,
   budgetedGh,
   checkoutRoot,
   commandViolation,
@@ -35,7 +36,8 @@ const ROOT = resolve(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, 
 
 function block(rule: string, reason: string | null) {
   if (!reason) return;
-  logHook("guard", rule);
+  // #1541: the log keeps what the refusal was for, so harness:stats can tell catches from friction.
+  logHook("guard", rule, "block", { detail: blockDetail(reason) });
   console.error(reason);
   process.exit(2);
 }

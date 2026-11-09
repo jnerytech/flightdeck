@@ -839,6 +839,10 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
       ),
       conflicting: view.mergeable === "CONFLICTING",
       minutes: Math.floor((now - started) / 60_000),
+      // Only a PR read with the field and none set: an unread PR is not known to be off.
+      ...("autoMergeRequest" in view && view.autoMergeRequest === null
+        ? { autoMergeOff: true }
+        : {}),
     };
   } catch {
     return null;
@@ -851,6 +855,7 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
  */
 function parsedView(text: string | null): {
   mergeable?: string;
+  autoMergeRequest?: unknown;
   statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
 } {
   try {
@@ -884,7 +889,10 @@ export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: strin
     if (runs === null) return null;
     if (runs.trim() === "[]") return "none";
     // `--` ends the flags, so the branch is always the PR to view.
-    const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
+    const pr = gh(
+      ["pr", "view", "--json=mergeable,statusCheckRollup,autoMergeRequest", "--", branch],
+      dir,
+    );
     return prRunFrom(runs, pr, now());
   };
 }
@@ -996,6 +1004,8 @@ export function pushWaitPass(run: PrRun): PushWaitPass | null {
   // A failed check or a conflict makes the push a fix that must go out (#756 review).
   if (run.failed) return { reason: "failed check" };
   if (run.conflicting) return { reason: "conflicts" };
+  // #1541: with auto-merge off the run merges nothing; every such block of a day was overridden.
+  if (run.autoMergeOff) return { reason: "auto-merge off" };
   if (!run.inProgress) return { reason: "run ended" };
   if (run.minutes >= PUSH_WAIT_MINUTES) return { reason: "old run", minutes: run.minutes };
   return null;
@@ -1061,8 +1071,8 @@ export function withBudget<A extends unknown[], R>(
 }
 
 /** What the guard's log keeps of a refusal (#1541): its first line, printable, secrets hidden, clipped. */
-export function blockDetail(_reason: string): string {
-  return "";
+export function blockDetail(reason: string): string {
+  return redacted(printable(reason.split("\n")[0] ?? "")).slice(0, 160);
 }
 
 /** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */
