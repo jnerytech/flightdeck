@@ -3,7 +3,7 @@ import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -33,13 +33,18 @@ const project = {
 
 const SECTION = "Vigiar e consertar PRs · alfa";
 
-async function openSettings(features: string[] = ["watch"]) {
+async function openSettings(
+  features: string[] = ["watch"],
+  /** Set on the fake host before the app opens, so its first read already has them. */
+  settings: Record<string, unknown> = {},
+) {
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
   daemon.watch.projects = [project];
+  daemon.watch.settings = { ...daemon.watch.settings, ...settings } as typeof daemon.watch.settings;
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -88,11 +93,11 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     await settle(() => sent(daemon).some((p) => (p as { patch?: unknown }).patch !== undefined));
     expect(sent(daemon).at(-1)).toEqual({
       projectId: "p1",
+      // #1361: only what changed, so a far host never sends a field it may not change.
       patch: {
         enabled: true,
         maxRounds: 2,
         budgetUsd: null,
-        dailyUsd: 20,
         checks: ["bun test", "bun run lint"],
         checkTimeoutMin: 5,
       },
@@ -176,5 +181,117 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     await openSettings([]);
     await settle(() => screen.queryByRole("heading", { name: "Configurações" }) !== null);
     expect(section()).toBeNull();
+  });
+});
+
+describe("vigiar-config: the check loop's settings (#1361)", () => {
+  /** A field of the section, or null: the red says what is missing, by assertion. */
+  const maybe = (name: string) =>
+    section() ? within(section() as HTMLElement).queryByLabelText(name) : null;
+  const fireIf = (target: HTMLElement | null, init: { target: { value: string } }) => {
+    if (target) fireEvent.change(target, init);
+  };
+  const loopHost = () =>
+    openSettings(["watch"], { checkRounds: 3, checkEnv: ["JAVA_HOME"], checkLoopDefault: false });
+
+  test("a host with the check loop shows its rounds, its extra variables and the default for new cards", async () => {
+    await loopHost();
+    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
+    expect([
+      (maybe("Rodadas do laço de checks") as HTMLInputElement | null)?.value,
+      (maybe("Variáveis extras dos checks (uma por linha)") as HTMLTextAreaElement | null)?.value,
+      (maybe("Ligar o laço de checks em cards novos") as HTMLInputElement | null)?.checked,
+    ]).toEqual(["3", "JAVA_HOME", false]);
+  });
+
+  test("Salvar sends only the loop's field that changed", async () => {
+    const { daemon } = await loopHost();
+    await settleMaybe(
+      () => screen.queryByLabelText("Variáveis extras dos checks (uma por linha)") !== null,
+    );
+    await act(async () => {
+      fireIf(maybe("Variáveis extras dos checks (uma por linha)"), {
+        target: { value: "JAVA_HOME\n GOPATH \n" },
+      });
+    });
+    await act(async () => {
+      const button = section()
+        ? within(section() as HTMLElement).queryByRole("button", { name: "Salvar" })
+        : null;
+      if (button) fireEvent.click(button);
+    });
+    await settleMaybe(() =>
+      sent(daemon).some((p) => (p as { patch?: unknown }).patch !== undefined),
+    );
+    expect(sent(daemon).at(-1)).toEqual({
+      projectId: "p1",
+      patch: { checkEnv: ["JAVA_HOME", "GOPATH"] },
+    });
+  });
+
+  /** Whether Save is off after `value` goes into `label`, and whether `reason` is said. */
+  const refuses = async (label: string, value: string, reason: string) => {
+    await loopHost();
+    await settleMaybe(() => screen.queryByLabelText(label) !== null);
+    await act(async () => fireIf(maybe(label), { target: { value } }));
+    const save = section()
+      ? within(section() as HTMLElement).queryByRole("button", { name: "Salvar" })
+      : null;
+    const said = section() ? within(section() as HTMLElement).queryByText(reason) !== null : false;
+    const off = (save as HTMLButtonElement | null)?.disabled === true;
+    cleanup();
+    return [off, said];
+  };
+
+  test("a variable shaped like a secret, too many names or rounds out of 1 to 10 each turn Save off, with their reason", async () => {
+    const env = "Variáveis extras dos checks (uma por linha)";
+    expect([
+      await refuses(
+        env,
+        "GITHUB_TOKEN",
+        "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+      ),
+      await refuses(
+        env,
+        Array.from({ length: 21 }, (_, i) => `TOOL${i}_HOME`).join("\n"),
+        "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
+      ),
+      await refuses("Rodadas do laço de checks", "11", "Rodadas do laço de checks: de 1 a 10"),
+    ]).toEqual([
+      [true, true],
+      [true, true],
+      [true, true],
+    ]);
+  });
+
+  test("the same name twice is sent once", async () => {
+    const { daemon } = await loopHost();
+    await settleMaybe(
+      () => screen.queryByLabelText("Variáveis extras dos checks (uma por linha)") !== null,
+    );
+    await act(async () => {
+      fireIf(maybe("Variáveis extras dos checks (uma por linha)"), {
+        target: { value: "JAVA_HOME\nGOPATH\nGOPATH" },
+      });
+    });
+    await act(async () => {
+      const button = section()
+        ? within(section() as HTMLElement).queryByRole("button", { name: "Salvar" })
+        : null;
+      if (button) fireEvent.click(button);
+    });
+    await settleMaybe(() =>
+      sent(daemon).some((p) => (p as { patch?: unknown }).patch !== undefined),
+    );
+    expect(sent(daemon).at(-1)).toEqual({
+      projectId: "p1",
+      patch: { checkEnv: ["JAVA_HOME", "GOPATH"] },
+    });
+  });
+
+  test("a host from before the check loop shows none of its fields", async () => {
+    await openSettings();
+    await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
+    expect(screen.queryByLabelText("Rodadas do laço de checks") === null).toBe(true);
   });
 });

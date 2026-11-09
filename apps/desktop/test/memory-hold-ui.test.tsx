@@ -157,7 +157,12 @@ describe("memory hold on the board and the host (#1343)", () => {
       await shown("pt-BR", {}, ["aguardando memória", "na fila"]),
       await shown("en", { queueReason: "slot" }, ["queued", "waiting for memory"]),
       await shown("pt-BR", { queueReason: "slot" }, ["na fila", "aguardando memória"]),
+      // The other two reasons that name themselves: no second "queued" beside them either.
+      await shown("en", { queueReason: "quota" }, ["waiting for the quota", "queued"]),
+      await shown("en", { queueReason: "paused" }, ["waiting: host paused", "queued"]),
     ]).toEqual([
+      [true, false],
+      [true, false],
       [true, false],
       [true, false],
       [true, false],

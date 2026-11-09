@@ -106,6 +106,24 @@ describe("BackupScheduler: Google Drive (#1444)", () => {
     ]);
   });
 
+  test("choosing Drive where it is not available keeps the folder as the target", async () => {
+    const s = setup({ clientId: null });
+    await s.scheduler.start();
+    s.scheduler.setTarget("drive");
+    expect([s.scheduler.schedule().target, loadSchedule(s.platform.storage).target]).toEqual([
+      "folder",
+      "folder",
+    ]);
+  });
+
+  test("a start finds the sign-in a token already in the vault stands for", async () => {
+    const s = setup();
+    s.keyring.set(REFRESH_TOKEN_ID, "refresh-1");
+    expect(s.scheduler.driveSignedIn).toBe(false);
+    await s.scheduler.start();
+    expect(s.scheduler.driveSignedIn).toBe(true);
+  });
+
   test("an owed backup goes to Drive, not to the folder, and the last run is saved", async () => {
     const s = setup();
     await onDrive(s);

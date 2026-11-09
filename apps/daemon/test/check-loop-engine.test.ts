@@ -33,6 +33,8 @@ function rig(
     trusted?: boolean;
     limit?: "budget" | "quota" | "memory" | null;
     outcomes?: CheckOutcome[];
+    /** The project's extra environment names (`checkEnv`). */
+    checkEnv?: string[];
     /** The card reads as gone after this many reads (the card discarded under the loop). */
     vanishAfter?: number;
   } = {},
@@ -41,7 +43,7 @@ function rig(
     checks: ["bun test"],
     checkTimeoutMin: 10,
     checkRounds: 3,
-    checkEnv: [] as string[],
+    checkEnv: over.checkEnv ?? ([] as string[]),
   };
   let mode: PermissionMode = over.mode ?? "bypassPermissions";
   let trusted = over.trusted ?? true;
@@ -60,6 +62,8 @@ function rig(
   const records: RoundRecord[] = [];
   const sent: string[] = [];
   const signals: AbortSignal[] = [];
+  /** What each run of the checks was asked to do, without its signal. */
+  const inputs: object[] = [];
   const timers: Array<{ fn: () => void; ms: number; cleared: boolean }> = [];
   /** Lets a test hold a check until it says so. */
   let gate: Promise<void> | null = null;
@@ -81,8 +85,9 @@ function rig(
     mode: () => mode,
     trusted: () => trusted,
     limit: () => limit,
-    runChecks: async ({ signal }) => {
+    runChecks: async ({ signal, ...asked }) => {
       signals.push(signal);
+      inputs.push(asked);
       if (gate) await gate;
       return outcomes.shift() ?? PASS;
     },
@@ -114,6 +119,7 @@ function rig(
     records,
     sent,
     signals,
+    inputs,
     timers,
     checksDone,
     setMode: (next: PermissionMode) => (mode = next),
@@ -251,6 +257,37 @@ describe("check-loop: the gate before every round (#1361, tracked)", () => {
     fresh.engine.onTurnResult("c", ok);
     await fresh.checksDone();
     expect([stale.records.at(-1)?.reason, fresh.sent.length]).toEqual(["check_loop_confirm", 1]);
+    // Each of the other two things the hash covers, changed alone: no round, the loop ends asking again.
+    const otherEnv = rig({
+      mode: "default",
+      checkEnv: ["JAVA_HOME"],
+      card: { confirmedHash: confirmationHash(["bun test"], [], "default") },
+      outcomes: [FAIL],
+    });
+    otherEnv.engine.onTurnResult("c", ok);
+    await otherEnv.checksDone();
+    const otherMode = rig({
+      mode: "default",
+      card: { confirmedHash: confirmationHash(["bun test"], [], "acceptEdits") },
+      outcomes: [FAIL],
+    });
+    otherMode.engine.onTurnResult("c", ok);
+    await otherMode.checksDone();
+    expect([
+      otherEnv.records.at(-1)?.reason,
+      otherEnv.sent.length,
+      otherMode.records.at(-1)?.reason,
+      otherMode.sent.length,
+    ]).toEqual(["check_loop_confirm", 0, "check_loop_confirm", 0]);
+  });
+
+  test("the checks run in the card's worktree, for the project's timeout, with the project's extra environment", async () => {
+    const r = rig({ checkEnv: ["JAVA_HOME"], outcomes: [PASS] });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    expect(r.inputs).toEqual([
+      { checks: ["bun test"], worktree: "/w/tree", timeoutMin: 10, envNames: ["JAVA_HOME"] },
+    ]);
   });
 
   test("an untrusted project, plan mode, and each limit stop the loop with their own reason", async () => {
@@ -681,10 +718,15 @@ describe("check-loop: the security review's cases", () => {
     const text = roundMessage(1, 3, { ...FAIL, output });
     expect([
       text.includes("ghp_abcdefghijklmnopqrstuvwxyz0123456789"),
+      // Neither half of the secret, and not the colour code that split it: the code is stripped
+      // before the mask runs, so the mask sees one token.
+      text.includes("ghp_abcdefghij"),
+      text.includes("klmnopqrstuvwxyz0123456789"),
+      text.includes("[0m"),
       text.includes("\u202e"),
       text.includes("\u009b"),
       text.includes("fine"),
-    ]).toEqual([false, false, false, true]);
+    ]).toEqual([false, false, false, false, false, false, true]);
   });
 });
 
@@ -754,11 +796,14 @@ describe("check-loop: the round's message", () => {
     expect([
       text.startsWith("Round 2 of 3: `bun test` failed (exit 1)."),
       text.includes("\u001b"),
+      // The colour codes go and the word they coloured stays.
+      text.includes("[31m") || text.includes("[0m"),
+      text.includes("\nred\n"),
       text.includes(`${fence}\n`),
       text.trimEnd().endsWith(fence),
       text.length < 4400,
       text.includes("z".repeat(100)),
-    ]).toEqual([true, false, true, true, true, true]);
+    ]).toEqual([true, false, false, true, true, true, true, true]);
   });
 
   test("a check that timed out or printed too much says so", () => {

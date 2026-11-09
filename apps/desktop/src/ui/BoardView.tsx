@@ -743,6 +743,12 @@ export const BoardView = memo(function BoardView(props: {
       );
     });
   };
+  /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
+  const [updated, setUpdated] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a finished run is the only trigger
+  useEffect(() => {
+    if (updated > 0) restoreOpener();
+  }, [updated]);
   /** #1406: the run of Update from the base, card by card: how far it got. */
   const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
   /**
@@ -780,7 +786,9 @@ export const BoardView = memo(function BoardView(props: {
     setNotice(updateSummary(t, results));
     setUpdating(null);
     setBusy(false);
-    restoreOpener();
+    // The button was disabled while it ran, and a browser takes the focus off a disabled button:
+    // it goes back once the render has turned the button on again.
+    setUpdated((n) => n + 1);
   };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;
@@ -866,10 +874,12 @@ export const BoardView = memo(function BoardView(props: {
       memoryOver,
     }),
   );
-  /** #1422: the startable cards that would wait here, and the hosts they could start on. */
+  /** #1481: a paused host is a hold like the others: the confirm names it and the cards join the queue. */
   const hostPaused = state.hosts.find((h) => h.id === hostId)?.hostInfo?.pause?.paused === true;
+  if (hostPaused) holds.push(t("board.startPausedHold", { host: hostName }));
+  /** #1422: the startable cards that would wait here, and the hosts they could start on. */
   const waiting = waitingCards(startable, {
-    held: hostPaused || holds.length > 0,
+    held: holds.length > 0,
     max: queueMax ?? null,
     running: runningOnHost,
   });
@@ -899,7 +909,13 @@ export const BoardView = memo(function BoardView(props: {
       lines.push(queueLine(t, split, queueMax));
     }
     lines.push(...quotaLines, ...holds);
-    if (otherHosts.length > 0) lines.push(t("board.startOnHint", { n: waiting.length }));
+    if (otherHosts.length > 0) {
+      lines.push(
+        waiting.length === 1
+          ? t("board.startOnHintOne")
+          : t("board.startOnHint", { n: waiting.length }),
+      );
+    }
     const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
     if (lacking > 0) {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
