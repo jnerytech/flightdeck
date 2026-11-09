@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 /**
- * PostToolUse (Edit|Write): `biome check --write` on the edited file, in the checkout it belongs
- * to (the main one or a worktree); exit 2 hands what is left to Claude.
+ * PostToolUse (Edit|Write): Biome fixes the edited file and reports what is left, in the checkout
+ * it belongs to (the main one or a worktree); exit 2 hands what is left to Claude. No project
+ * scan (checkEditedFile, #1566), so the type-aware rules are left to `bun run lint`.
  */
 import { relative, resolve } from "node:path";
-import { biomeEditArgs, checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
+import { checkEditedFile, checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
 import { logHook } from "./log.ts";
 
 const CHECKED = /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$/i;
@@ -18,17 +19,12 @@ const root = checkoutRoot(filePath, ROOT);
 if (!root) process.exit(0);
 const rel = relative(root, resolve(ROOT, filePath));
 
-const proc = Bun.spawnSync(["bun", ...biomeEditArgs(rel)], {
-  cwd: root,
-  stdout: "pipe",
-  stderr: "pipe",
-});
-if (proc.exitCode === 0) {
+const result = checkEditedFile(root, rel);
+if (result.ok) {
   logHook("biome-on-edit", null);
   process.exit(0);
 }
 logHook("biome-on-edit", "biome");
 
-const output = `${proc.stdout.toString()}${proc.stderr.toString()}`.trim();
-console.error(`biome check ${rel} still reports problems:\n${output.slice(0, 4000)}`);
+console.error(`biome check ${rel} still reports problems:\n${result.output.slice(0, 4000)}`);
 process.exit(2);

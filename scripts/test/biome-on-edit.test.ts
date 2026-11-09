@@ -48,7 +48,7 @@ describe.skipIf(process.platform === "win32")("biome-on-edit: what the hook find
     const { ok, output, after } = check(
       'import { b, a } from "./y.ts";\nexport const z = {a, b}\n',
     );
-    expect(after).toBe('import { a, b } from "./y.ts";\n\nexport const z = { a, b };\n');
+    expect(after).toBe('import { a, b } from "./y.ts";\nexport const z = { a, b };\n');
     expect(ok).toBe(true);
     expect(output).toBe("");
   });

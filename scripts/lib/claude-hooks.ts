@@ -2,7 +2,7 @@
  * The rules behind the project's Claude Code hooks (.claude/hooks), kept here to be tested.
  * The hooks only read the tool call from stdin and apply these.
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits, uncommentedOffLinux } from "./tdd-audit.ts";
@@ -175,27 +175,6 @@ export function checkoutRoot(filePath: string, projectDir: string): string | nul
   }
 }
 
-/**
- * The arguments `bun` gets to check one edited file with Biome (the biome-on-edit hook, #1566).
- * Biome 2 scans the whole project before it checks a file when a rule needs the types of other
- * files (noFloatingPromises, useArraySortCompare): 3 to 13 s per edit. The `project` and `types`
- * domains are skipped, so a run takes under a second; those rules stay in `bun run lint`, which
- * CI and `handoff:check` run. Formatting, the import order and every other rule are unchanged.
- */
-export function biomeEditArgs(rel: string): string[] {
-  return [
-    "x",
-    "biome",
-    "check",
-    "--write",
-    "--no-errors-on-unmatched",
-    "--files-ignore-unknown=true",
-    "--skip=project",
-    "--skip=types",
-    rel,
-  ];
-}
-
 /** What the biome-on-edit hook found in the file it checked: `ok` when nothing is left to fix. */
 export interface EditedFileCheck {
   ok: boolean;
@@ -205,13 +184,41 @@ export interface EditedFileCheck {
 /**
  * The biome-on-edit hook's check of one edited file (#1566): formatting, import order and safe
  * fixes are written into the file, and what is left is returned.
+ *
+ * `biome check <file>` scans the whole project before it checks one file, 3 to 13 s per edit. Two
+ * runs do not: `check --write` over stdin (it fixes, it does not report) and `lint` with the
+ * `project` and `types` domains skipped. Those domains hold the two type-aware rules
+ * (noFloatingPromises, useArraySortCompare), which stay in `bun run lint`, run by CI and by
+ * `handoff:check`. `biome` is the command that starts Biome, `bun x biome` by default.
  */
 export function checkEditedFile(
-  _root: string,
-  _rel: string,
-  _biome: string[] = ["bun", "x", "biome"],
+  root: string,
+  rel: string,
+  biome: string[] = ["bun", "x", "biome"],
 ): EditedFileCheck {
-  return { ok: true, output: "" };
+  const run = (args: string[], input?: string) => {
+    const proc = Bun.spawnSync([...biome, ...args], {
+      cwd: root,
+      stdout: "pipe",
+      stderr: "pipe",
+      ...(input === undefined ? {} : { stdin: Buffer.from(input) }),
+    });
+    return { code: proc.exitCode, out: proc.stdout.toString(), err: proc.stderr.toString() };
+  };
+  const file = join(root, rel);
+  const before = readFileSync(file, "utf8");
+  const fixed = run(["check", "--write", `--stdin-file-path=${rel}`], before);
+  if (fixed.code === 0 && fixed.out !== "" && fixed.out !== before) writeFileSync(file, fixed.out);
+  const left = run([
+    "lint",
+    "--skip=project",
+    "--skip=types",
+    "--no-errors-on-unmatched",
+    "--files-ignore-unknown=true",
+    rel,
+  ]);
+  if (left.code === 0) return { ok: true, output: "" };
+  return { ok: false, output: `${left.out}${left.err}`.trim() };
 }
 
 /**
