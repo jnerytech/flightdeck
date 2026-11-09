@@ -6,7 +6,7 @@ import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { maskPairingLink, TOKEN_MASK } from "../lib/pairing-mask.ts";
+import { keptToken, maskPairingLink } from "../lib/pairing-mask.ts";
 import { pairingErrorText } from "../lib/pairing-text.ts";
 
 export interface HostDraft {
@@ -95,10 +95,16 @@ export function HostForm(
                 return;
               }
               // A read link is shown with its token as dots (#1548); the real token is in the draft.
-              // Editing the dotted link must not take the dots for the token.
-              const token = parsed.value.token === TOKEN_MASK ? draft.token : parsed.value.token;
+              // Editing the dotted link must not take the dots for the token, or carry it to another host.
+              const next = draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token);
+              const token = keptToken(parsed.value.token, next, draft);
+              if (token === null) {
+                setLink(e.target.value);
+                setLinkError(pairingErrorText(t, "token"));
+                return;
+              }
               setLink(maskPairingLink(e.target.value));
-              setDraft(draftFromLink(parsed.value.url, parsed.value.name, token));
+              setDraft({ ...next, token });
               setByHand(true);
             }}
           />

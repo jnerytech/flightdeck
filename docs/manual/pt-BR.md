@@ -271,7 +271,9 @@ ou informe nome, endereço (`127.0.0.1`, ou o `bind` configurado), porta (`7420`
 de `token` no `config.json` do daemon). **Testar e adicionar** faz `hello` e `host.info` antes de
 salvar e mostra o motivo quando falha (token recusado, host fora do ar). Depois que o link colado é
 lido, o campo o mostra com o token em pontos (`token=••••`), como o campo **Token**, e uma
-captura ou o compartilhamento da tela do formulário não mostram o token.
+captura ou o compartilhamento da tela do formulário não mostram o token. O link mostrado não pode ser
+copiado com o token: copie-o de novo do daemon. Editar o link com pontos mantém o token com que foi
+lido, mas só para o mesmo endereço e porta: outro endereço diz que o link não tem token.
 
 O token fica no cofre de credenciais do sistema operacional (Windows Credential Manager, Keychain,
 Secret Service), não em texto puro. Depois, use **+** ao lado do host para criar uma sessão: pasta
