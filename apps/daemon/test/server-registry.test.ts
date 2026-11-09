@@ -118,4 +118,28 @@ describe("server-registry", () => {
       ].sort(),
     );
   });
+
+  // Issue #1288: the project commands left the switch of server.ts (board.* and roots.add follow later).
+  test("the project domain owns the project, projects and harness template commands", () => {
+    expect(Object.keys(DOMAINS.project ?? {}).sort()).toEqual(
+      [
+        "harness.templates.delete",
+        "harness.templates.list",
+        "project.add",
+        "project.harness.apply",
+        "project.harness.commit",
+        "project.harness.draft",
+        "project.harness.export",
+        "project.harness.preview",
+        "project.harness.stack",
+        "project.list",
+        "project.trust.inspect",
+        "project.trust.set",
+        "project.trust.state",
+        "project.update",
+        "projects.clone",
+        "projects.scan",
+      ].sort(),
+    );
+  });
 });
