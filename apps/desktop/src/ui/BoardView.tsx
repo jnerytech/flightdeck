@@ -1018,7 +1018,7 @@ export const BoardView = memo(function BoardView(props: {
                       t={t}
                       width={width}
                       index={COLUMNS.findIndex((column) => column.id === id) + 1}
-                      last={id === COLUMNS[COLUMNS.length - 1]?.id}
+                      last={id === COLUMNS.at(-1)?.id}
                       onChange={(next) => store.boardWidth.set(next, false)}
                       onCommit={() => store.boardWidth.persist()}
                     />

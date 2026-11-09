@@ -223,7 +223,7 @@ export class HostTabs {
    * switch is still the last one, so a later pick or switch is not undone.
    */
   returnAcross(from: string | null): void {
-    if (this.cameFrom && this.cameFrom.hostId === from) this.returnFrom();
+    if (this.cameFrom?.hostId === from) this.returnFrom();
   }
 
   /** Back past a switch: the host and the kind of tab the window was on (#932). */
