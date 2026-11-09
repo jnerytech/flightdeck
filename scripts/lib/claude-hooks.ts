@@ -924,47 +924,66 @@ export function pushWaitCheck(
   const passes: PushWaitPass[] = [];
   if (deps.env.FLIGHTDECK_COORDINATOR) return { violation: null, passes };
   for (const call of gitCalls(command, cwd)) {
-    if (call.sub !== "push" || call.dir === null) continue;
-    if (deps.inProject && !deps.inProject(call.dir)) continue;
-    const segment = command.slice(call.start, call.end);
-    if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) continue;
-    const dir = call.dir;
-    // Unprintable characters out first, so none reaches the terminal or splits a secret (#945 review).
-    const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(printable(segment.trim()))}`;
+    const push = pushToCheck(call, command, deps);
+    if (push === null) continue;
+    const { dir, override } = push;
     for (const branch of pushedBranches(call, (args) => deps.git(args, dir))) {
-      // The name comes from the command or from git: unprintable characters out first (so none splits a secret), then secrets hidden (#945 review).
-      const shown = redacted(printable(branch));
-      // A reason an earlier branch's lookups left is not this branch's (#945 security review).
-      deps.whyUnread?.();
-      // One more try: a gh call can time out once on a busy machine.
-      const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
-      if (run === null) {
-        // No lookup could answer (gh missing, no time left): retrying would not help, so it goes,
-        // logged with why (#945 review). GitHub that answered with a failure holds.
-        const why = deps.whyUnread?.() ?? null;
-        if (why) {
-          passes.push({ reason: why });
-          continue;
-        }
-        const violation = `GitHub could not be read to check the PR run of ${shown}, twice (#741). Push again in a minute, or push now with:\n  ${override}`;
-        return { violation, passes };
-      }
-      if (run === "none") {
-        passes.push({ reason: "no run" });
-        continue;
-      }
-      const pass = pushWaitPass(run);
-      if (pass) {
-        passes.push(pass);
-        continue;
-      }
-      // Only GitHub's own https address; the echoed push hides credentials (security review).
-      const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
-      const violation = `a push now cancels CI run ${run.id} on the PR of ${shown}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  ${override}`;
-      return { violation, passes };
+      const verdict = branchVerdict(branch, dir, override, deps);
+      if ("violation" in verdict) return { violation: verdict.violation, passes };
+      passes.push(verdict.pass);
     }
   }
   return { violation: null, passes };
+}
+
+/**
+ * The folder and the override line of a push the rule looks at (#741), or null for any other git
+ * call, a push outside the project and a push that carries `FLIGHTDECK_PUSH_NOW="<reason>"`.
+ */
+function pushToCheck(
+  call: GitCall,
+  command: string,
+  deps: PushWaitDeps,
+): { dir: string; override: string } | null {
+  if (call.sub !== "push" || call.dir === null) return null;
+  if (deps.inProject && !deps.inProject(call.dir)) return null;
+  const segment = command.slice(call.start, call.end);
+  if (heavyReasonGiven(prefixAssignment(segment, "FLIGHTDECK_PUSH_NOW"))) return null;
+  // Unprintable characters out first, so none reaches the terminal or splits a secret (#945 review).
+  const override = `FLIGHTDECK_PUSH_NOW="<reason>" ${redacted(printable(segment.trim()))}`;
+  return { dir: call.dir, override };
+}
+
+/** Whether one pushed branch holds the push (the refusal) or goes (why), #741. */
+function branchVerdict(
+  branch: string,
+  dir: string,
+  override: string,
+  deps: PushWaitDeps,
+): { violation: string } | { pass: PushWaitPass } {
+  // The name comes from the command or from git: unprintable characters out first (so none splits a secret), then secrets hidden (#945 review).
+  const shown = redacted(printable(branch));
+  // A reason an earlier branch's lookups left is not this branch's (#945 security review).
+  deps.whyUnread?.();
+  // One more try: a gh call can time out once on a busy machine.
+  const run = deps.prRun(branch, dir) ?? deps.prRun(branch, dir);
+  if (run === null) {
+    // No lookup could answer (gh missing, no time left): retrying would not help, so it goes,
+    // logged with why (#945 review). GitHub that answered with a failure holds.
+    const why = deps.whyUnread?.() ?? null;
+    if (why) return { pass: { reason: why } };
+    return {
+      violation: `GitHub could not be read to check the PR run of ${shown}, twice (#741). Push again in a minute, or push now with:\n  ${override}`,
+    };
+  }
+  if (run === "none") return { pass: { reason: "no run" } };
+  const pass = pushWaitPass(run);
+  if (pass) return { pass };
+  // Only GitHub's own https address; the echoed push hides credentials (security review).
+  const url = /^https:\/\/[!-~]+$/.test(run.url) ? `: ${run.url}` : "";
+  return {
+    violation: `a push now cancels CI run ${run.id} on the PR of ${shown}, ${run.minutes} min old with no failed check (#741)${url}. Batch the next commits with this one and push once the run ends, or push now with:\n  ${override}`,
+  };
 }
 
 /**
