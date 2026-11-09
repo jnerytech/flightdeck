@@ -143,6 +143,8 @@ export class CheckLoopEngine {
   private readonly loops = new Map<string, Loop>();
   /** Cards whose slot the board released at this turn's idle: no loop may hold or release it. */
   private readonly released = new Set<string>();
+  /** Cards whose turn result already passed without a loop: their idle is the board's to release. */
+  private readonly passed = new Set<string>();
 
   constructor(private readonly fx: CheckLoopEffects) {}
 
@@ -158,6 +160,8 @@ export class CheckLoopEngine {
       return "hold";
     }
     if (this.released.has(cardId)) return "released";
+    // This turn's result came first and was not the loop's: nothing to wait for.
+    if (this.passed.delete(cardId)) return "release";
     if (!this.isLoopCard(cardId)) {
       this.released.add(cardId);
       return "release";
@@ -178,6 +182,8 @@ export class CheckLoopEngine {
     // A slot the board already released is not the loop's: the card moves on as it always did.
     if (!loop && this.released.has(cardId)) return "place";
     if (turn.isError || turn.interrupted || !this.isLoopCard(cardId)) {
+      // With no loop, the idle of this turn (if it comes after) is the board's to release.
+      if (!loop) this.passed.add(cardId);
       // What happened is the person's to see; a slot held at idle goes back now, with its line.
       if (loop) {
         const why = turn.isError
@@ -218,6 +224,7 @@ export class CheckLoopEngine {
   /** The session went busy (a new turn): its slot is the run's again, for the loop to hold. */
   onBusy(cardId: string): void {
     this.released.delete(cardId);
+    this.passed.delete(cardId);
     // A round's turn started: a wait armed by a stray idle, or the round's watchdog, is over.
     const loop = this.loops.get(cardId);
     if (!loop) return;
@@ -362,6 +369,18 @@ export class CheckLoopEngine {
     this.close(cardId, loop, how);
   }
 
+  /**
+   * Hands the slot back. A release that throws is the board's fault to see in its own log; it must
+   * never escape into a timer callback or the checks' promise, where nothing would catch it.
+   */
+  private releaseSafely(cardId: string): void {
+    try {
+      this.fx.release(cardId);
+    } catch {
+      // Nothing more the loop can do: the loop is already forgotten, so it holds nothing.
+    }
+  }
+
   /** Forgets the loop: its check aborted, its timer cleared, its slot and card handed back once. */
   private close(cardId: string, loop: Loop, how: { release: boolean; place?: boolean }): void {
     if (this.loops.get(cardId) !== loop) return;
@@ -375,7 +394,7 @@ export class CheckLoopEngine {
     } catch {
       // A placement that failed leaves the card where it is; the slot still goes back below.
     } finally {
-      if (how.release) this.fx.release(cardId);
+      if (how.release) this.releaseSafely(cardId);
     }
   }
 }
