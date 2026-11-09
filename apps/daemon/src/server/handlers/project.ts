@@ -12,19 +12,15 @@ import { requireVaultTransport } from "../../vault/vault.ts";
 import type { ServerContext } from "../context.ts";
 import type { Handlers } from "../dispatch.ts";
 
-/** An option that is not set on this host: refused with `feature_off` and the feature's name. */
-function on<T>(value: T | undefined, feature: string): T {
-  if (!value) throw featureOff(feature);
-  return value;
-}
-
 /** A host template's Markdown for a harness preview or apply, read now; null without one (#75, T1b). */
 async function markdownOf(
   server: ServerContext,
   template: string | undefined,
 ): Promise<TemplateMarkdown | null> {
   if (template === undefined) return null;
-  return on(server.opts.harnessTemplates, "harnessTemplates").files(template);
+  const templates = server.opts.harnessTemplates;
+  if (!templates) throw featureOff("harnessTemplates");
+  return templates.files(template);
 }
 
 export const projectHandlers = {
@@ -45,7 +41,8 @@ export const projectHandlers = {
     return await board.forWire(board.updateProject(projectId, patch));
   },
   "project.trust.state": async (payload, { server }) => {
-    const trust = on(server.opts.projectTrust, "projectTrust");
+    const trust = server.opts.projectTrust;
+    if (!trust) throw featureOff("projectTrust");
     const paths = await Promise.all(
       payload.paths.map((p) => resolveAllowedCwd(p, server.opts.allowedRoots)),
     );
@@ -53,14 +50,16 @@ export const projectHandlers = {
     return { items: trust.state(paths) };
   },
   "project.trust.inspect": async (payload, { ws, server }) => {
-    const trust = on(server.opts.projectTrust, "projectTrust");
+    const trust = server.opts.projectTrust;
+    if (!trust) throw featureOff("projectTrust");
     // Commands and server arguments are shown whole, a secret in one included: a near connection only.
     requireVaultTransport(ws.data.origin, "project.trust.inspect", server.opts.log);
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await trust.inspect(path);
   },
   "project.trust.set": async (payload, { ws, server }) => {
-    const trust = on(server.opts.projectTrust, "projectTrust");
+    const trust = server.opts.projectTrust;
+    if (!trust) throw featureOff("projectTrust");
     // Trusting lets the project's own hooks and MCP servers run without a prompt: only from a near
     // connection, like roots.add and host.bypass. Revoking only lowers risk.
     if (payload.trusted)
@@ -82,12 +81,14 @@ export const projectHandlers = {
     return trust.set(path, payload.trusted);
   },
   "project.harness.stack": async (payload, { server }) => {
-    const stack = on(server.opts.harnessStack, "harnessStack");
+    const stack = server.opts.harnessStack;
+    if (!stack) throw featureOff("harnessStack");
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await stack(path);
   },
   "project.harness.preview": async (payload, { ws, server }) => {
-    const preview = on(server.opts.harnessPreview, "harnessPreview");
+    const preview = server.opts.harnessPreview;
+    if (!preview) throw featureOff("harnessPreview");
     const { parts, template } = payload;
     // A template's files come back whole, and T1a keeps them off a far connection: near only.
     if (template !== undefined) {
@@ -97,7 +98,8 @@ export const projectHandlers = {
     return await preview(path, parts, await markdownOf(server, template));
   },
   "project.harness.export": async (payload, { ws, server }) => {
-    const templates = on(server.opts.harnessTemplates, "harnessTemplates");
+    const templates = server.opts.harnessTemplates;
+    if (!templates) throw featureOff("harnessTemplates");
     // It reads a project's instructions into a store any project of the host can use: near only.
     requireVaultTransport(ws.data.origin, "project.harness.export", server.opts.log);
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
@@ -105,14 +107,16 @@ export const projectHandlers = {
     return await templates.export(path, id, title);
   },
   "project.harness.draft": async (payload, { ws, server }) => {
-    const draft = on(server.opts.harnessDraft, "harnessDraft");
+    const draft = server.opts.harnessDraft;
+    if (!draft) throw featureOff("harnessDraft");
     // A model call on the plan, whose text a later apply may write: a near connection only.
     requireVaultTransport(ws.data.origin, "project.harness.draft", server.opts.log);
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await draft(path);
   },
   "project.harness.commit": async (payload, { ws, server }) => {
-    const commit = on(server.opts.harnessCommit, "harnessCommit");
+    const commit = server.opts.harnessCommit;
+    if (!commit) throw featureOff("harnessCommit");
     // A branch made in the person's repository, one push from public: near only, and confirmed.
     requireVaultTransport(ws.data.origin, "project.harness.commit", server.opts.log);
     if (payload.confirm !== true) {
@@ -126,7 +130,8 @@ export const projectHandlers = {
     return await commit(path, payload.digests);
   },
   "project.harness.apply": async (payload, { ws, server }) => {
-    const apply = on(server.opts.harnessApply, "harnessApply");
+    const apply = server.opts.harnessApply;
+    if (!apply) throw featureOff("harnessApply");
     // A hook written here runs its command in every session of a trusted project: a near
     // connection only, like project.trust.set, and only once the person confirmed.
     requireVaultTransport(ws.data.origin, "project.harness.apply", server.opts.log);
@@ -147,10 +152,13 @@ export const projectHandlers = {
     });
   },
   "harness.templates.list": async (_payload, { server }) => {
-    return { templates: await on(server.opts.harnessTemplates, "harnessTemplates").list() };
+    const templates = server.opts.harnessTemplates;
+    if (!templates) throw featureOff("harnessTemplates");
+    return { templates: await templates.list() };
   },
   "harness.templates.delete": async (payload, { ws, server }) => {
-    const templates = on(server.opts.harnessTemplates, "harnessTemplates");
+    const templates = server.opts.harnessTemplates;
+    if (!templates) throw featureOff("harnessTemplates");
     // It deletes files on the host: a near connection, and only once the person confirmed.
     requireVaultTransport(ws.data.origin, "harness.templates.delete", server.opts.log);
     if (payload.confirm !== true) {
@@ -163,12 +171,12 @@ export const projectHandlers = {
     return await templates.remove(payload.id);
   },
   "projects.scan": async (payload, { server }) => {
-    on(server.opts.findProjects, "projects.scan");
+    if (!server.opts.findProjects) throw featureOff("projects.scan");
     const { depth } = payload;
     return await scanRepos(server.opts.allowedRoots, depth ? { depth } : {});
   },
   "projects.clone": async (payload, { server }) => {
-    on(server.opts.findProjects, "projects.clone");
+    if (!server.opts.findProjects) throw featureOff("projects.clone");
     return await cloneRepo(payload, server.opts.allowedRoots, server.opts.git ?? spawnGit);
   },
 } satisfies Partial<Handlers>;
