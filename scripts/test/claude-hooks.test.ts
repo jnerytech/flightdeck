@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { checkoutRoot, commandViolation, generatedViolation } from "../lib/claude-hooks.ts";
+import {
+  blockDetail,
+  checkoutRoot,
+  commandViolation,
+  generatedViolation,
+} from "../lib/claude-hooks.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 describe("claude-hooks", () => {
@@ -141,5 +146,17 @@ describe("claude-hooks", () => {
     mkdirSync(broken, { recursive: true });
     writeFileSync(join(broken, ".git"), "not a gitdir line\n");
     expect(checkoutRoot(join(broken, "x.ts"), main)).toBeNull();
+  });
+});
+
+describe("the guard logs what each refusal was for (#1541)", () => {
+  test("the reason's first line, printable, secrets hidden, at most 160 characters", () => {
+    const long = `bun run test:related holds the slot ${"x".repeat(300)}`;
+    expect([
+      blockDetail("first line\nsecond line"),
+      blockDetail("run \u001b[2Jit with GH_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123"),
+      blockDetail(long).length,
+      blockDetail(long).startsWith("bun run test:related holds the slot"),
+    ]).toEqual(["first line", "run [2Jit with GH_TOKEN=***", 160, true]);
   });
 });

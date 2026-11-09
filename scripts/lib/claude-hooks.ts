@@ -794,6 +794,8 @@ export interface PrRun {
   conflicting: boolean;
   /** Minutes since the run started. */
   minutes: number;
+  /** #1541: the PR's auto-merge is off, so the run decides nothing; absent when on or unknown. */
+  autoMergeOff?: boolean;
 }
 
 /** A branch's latest PR run, "none" when it has none, null when GitHub cannot be read. */
@@ -1056,6 +1058,11 @@ export function withBudget<A extends unknown[], R>(
   limit: number,
 ): (...args: A) => R | null {
   return (...args) => (now() > limit ? null : fn(...args));
+}
+
+/** What the guard's log keeps of a refusal (#1541): its first line, printable, secrets hidden, clipped. */
+export function blockDetail(_reason: string): string {
+  return "";
 }
 
 /** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */

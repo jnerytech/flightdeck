@@ -451,6 +451,46 @@ const RISKY_DIFF = [
   '+Bun.spawn(["git"]);',
 ].join("\n");
 
+describe("security-gate: the app's dictionaries are text (#1541)", () => {
+  const EN = "apps/desktop/src/i18n/en.ts";
+  const PT = "apps/desktop/src/i18n/pt-BR.ts";
+
+  test("added keys whose words say token, secret or permission are not risky; a secret value or code is", () => {
+    const added = new Map([
+      [
+        EN,
+        [
+          '    tokenHint: "Paste the pairing token here",',
+          '    permissionDenied: "Permission denied",',
+        ],
+      ],
+      [PT, ['    secretSaved: "Segredo salvo no cofre",']],
+      ["apps/desktop/src/i18n/index.ts", ["const token = read();"]],
+    ]);
+    const leaked = new Map([[EN, ['    example: "ghp_abcdefghijklmnopqrstuvwxyz0123456789",']]]);
+    const code = new Map([[PT, ['    run: () => Bun.spawn(["sh"]),']]]);
+    expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code)]).toEqual([
+      [{ path: "apps/desktop/src/i18n/index.ts", why: ["secret"] }],
+      [{ path: EN, why: ["secret"] }],
+      [{ path: PT, why: ["spawn"] }],
+    ]);
+  });
+
+  test("an edited key reads the dictionary at HEAD as text too; a secret-handling edit elsewhere still counts", () => {
+    const removed = new Map([
+      [EN, ['    tokenHint: "Paste the token",']],
+      ["apps/daemon/src/vault-read.ts", ["const x = 1;"]],
+    ]);
+    const heads: Record<string, string> = {
+      [EN]: 'export const en = {\n  tokenHint: "Paste the pairing token here",\n  permissionDenied: "Permission denied",\n};',
+      "apps/daemon/src/vault-read.ts": "export const password = readPassword();",
+    };
+    expect(riskyEdits([], removed, (path) => heads[path] ?? null)).toEqual([
+      { path: "apps/daemon/src/vault-read.ts", why: ["edits secret code"] },
+    ]);
+  });
+});
+
 describe("security-gate: end to end", () => {
   test("a git that fails, or a base that does not resolve, gives unknown, never 0 (#273)", () => {
     for (const [answers, base, why] of [

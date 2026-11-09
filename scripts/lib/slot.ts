@@ -74,6 +74,8 @@ export interface SlotEnv {
   detached?: boolean;
   /** FLIGHTDECK_SLOT_HEAVY in this process's environment: the reason a run over the file limit gives (#833). */
   heavyReason?: string;
+  /** #1541: each test file's CI seconds (scripts/test-timings.json); the limit is then time, not files. */
+  timings?: Record<string, number>;
   /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
   record?(
     rule: "slot-files" | "long-hold",
