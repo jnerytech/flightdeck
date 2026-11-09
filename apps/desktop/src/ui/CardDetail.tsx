@@ -262,11 +262,12 @@ export const CardDetail = memo(function CardDetail(props: {
                 {withWatch && card.prUrl && (
                   <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
                 )}
-                {withWatch && card.checkLoop && (
-                  <CheckLoopPanel store={store} hostId={hostId} card={card} />
-                )}
                 {card.worktreePath && has("runenv") && (
                   <RunPanel store={store} hostId={hostId} card={card} />
+                )}
+                {/* Issue #1361: after the run panel, so its height never moves what comes before. */}
+                {withWatch && card.checkLoop && (
+                  <CheckLoopPanel store={store} hostId={hostId} card={card} />
                 )}
                 {arena.view}
               </>
