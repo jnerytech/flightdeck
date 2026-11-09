@@ -489,6 +489,18 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     expect(riskyFiles(code)).toEqual([{ path: EN, why: ["secret", "permission"] }]);
   });
 
+  test("from the security review: an escaped backslash before a quote ends the literal, and a long run of backslashes is quick", () => {
+    // In JS this is "a\\" + Bun.spawn(...) and a comment: code, not one literal.
+    const trick = new Map([[EN, ['    k: "a\\\\" + Bun.spawn(["sh"]) // \\"']]]);
+    const started = performance.now();
+    const slow = riskyFiles(new Map([[PT, [`    k: "${"\\".repeat(40)}`]]]));
+    expect([riskyFiles(trick), slow, performance.now() - started < 100]).toEqual([
+      [{ path: EN, why: ["spawn"] }],
+      [],
+      true,
+    ]);
+  });
+
   test("an edited key reads the dictionary at HEAD as text too; a secret-handling edit elsewhere still counts", () => {
     const removed = new Map([
       [EN, ['    tokenHint: "Paste the token",']],
