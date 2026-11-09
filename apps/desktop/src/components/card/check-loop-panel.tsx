@@ -1,6 +1,7 @@
 import type { Card } from "@flightdeck/protocol";
 import { useId, useRef, useState } from "react";
 import { Inline, Stack } from "@/components/layout/stack";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
@@ -22,6 +23,7 @@ export function CheckLoopPanel(props: Readonly<{ store: AppStore; hostId: string
   const [refused, setRefused] = useState<string | null>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const lineId = useId();
+  const switchId = useId();
   const loop = card.checkLoop;
   if (!loop) return null;
   const line = checkLoopLine(loop);
@@ -46,17 +48,17 @@ export function CheckLoopPanel(props: Readonly<{ store: AppStore; hostId: string
     }
   };
   return (
-    <section className="text-sm" aria-label={t("checkLoopUi.switch")}>
+    <section className="text-sm">
       <Stack gap={2}>
         <Inline gap={2}>
           <Switch
-            aria-label={t("checkLoopUi.switch")}
+            id={switchId}
             aria-describedby={line ? lineId : undefined}
             checked={loop.on}
             disabled={busy}
             onCheckedChange={(on) => void send(on)}
           />
-          <span>{t("checkLoopUi.switch")}</span>
+          <Label htmlFor={switchId}>{t("checkLoopUi.switch")}</Label>
         </Inline>
         {line && (
           <p id={lineId} className="text-muted-foreground text-xs">
