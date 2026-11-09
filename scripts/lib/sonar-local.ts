@@ -24,13 +24,56 @@ export interface SonarLocalDeps {
   log(line: string): void;
 }
 
+/** Where Sonar looks for source (sonar-project.properties: sonar.sources). */
+const SOURCE_ROOTS = ["apps/", "packages/", "scripts/"];
+
+/** What Sonar does not analyse as source: sonar.test.inclusions and sonar.exclusions. */
+const NOT_SOURCE = [
+  /(^|\/)test\//,
+  /\.test\.tsx?$/,
+  /^scripts\/e2e\//,
+  /(^|\/)node_modules\//,
+  /(^|\/)dist\//,
+  /(^|\/)coverage\//,
+  /^apps\/desktop\/src-tauri\/(target|gen)\//,
+  /^apps\/desktop\/screenshots\//,
+  /^apps\/desktop\/src\/components\/ui\//,
+];
+
 /** Whether Sonar analyses the file as source (sonar-project.properties: sources and exclusions). */
 export function isScanned(file: string): boolean {
-  return file.length < 0;
+  return (
+    SOURCE_ROOTS.some((root) => file.startsWith(root)) &&
+    /\.tsx?$/.test(file) &&
+    !NOT_SOURCE.some((pattern) => pattern.test(file))
+  );
 }
 
 /** `sonar-left --local [--path <prefix>]`; the exit code. */
 export async function sonarLocal(args: string[], deps: SonarLocalDeps): Promise<number> {
-  void [args, deps, oneLine];
-  return 1;
+  const at = args.indexOf("--path");
+  const prefix = (at === -1 ? undefined : args[at + 1]) ?? "";
+  const listed = await deps.git(["ls-files", "-z"]);
+  if (listed.code !== 0) {
+    deps.log("sonar-left --local: git could not list the tracked files");
+    return 1;
+  }
+  const files = listed.stdout
+    .split(/[\0\n]/)
+    .filter((file) => isScanned(file) && file.startsWith(prefix));
+  let found: LintFinding[];
+  try {
+    found = await deps.lint(files);
+  } catch (error) {
+    deps.log(oneLine(`sonar-left --local: ${(error as Error).message}`));
+    return 1;
+  }
+  const sorted = [...found].sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+  deps.log(
+    `${sorted.length} functions over ${COMPLEXITY_LIMIT} (local run of Sonar's S3776 rule; Sonar's own list is \`sonar-left\`)`,
+  );
+  for (const one of sorted) {
+    deps.log(oneLine(`CRITICAL typescript:S3776 ${one.file}:${one.line} ${one.message}`));
+  }
+  return 0;
 }

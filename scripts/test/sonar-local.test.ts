@@ -101,11 +101,9 @@ describe("sonar-left --local: Sonar's complexity rule over the tracked sources (
       }),
     ).toBe(1);
     expect(noGit).toEqual(["sonar-left --local: git could not list the tracked files"]);
-    const { done, lines: out } = run(
-      [],
-      [finding("scripts/lib/issue-claim.ts‮", 1, 20)],
-      "scripts/lib/issue-claim.ts‮",
-    );
+    // A right-to-left override in a path: built from its code so the source holds no hidden character.
+    const hostile = `scripts/lib/is${String.fromCodePoint(0x202e)}sue-claim.ts`;
+    const { done, lines: out } = run([], [finding(hostile, 1, 20)], hostile);
     expect(await done).toBe(0);
     expect(out[1]).toBe(
       "CRITICAL typescript:S3776 scripts/lib/is sue-claim.ts:1 Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.",
