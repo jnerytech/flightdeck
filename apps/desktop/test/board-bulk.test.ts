@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
-import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../src/lib/board-bulk.ts";
+import {
+  bulkSplit,
+  holdLines,
+  queueLine,
+  queueSplit,
+  runMany,
+  updateMany,
+  updateSummary,
+} from "../src/lib/board-bulk.ts";
 
 /**
  * #1354 (docs/decisions/2026-11-09-board-bulk-actions.md): Start N and Stop N act on the selection.
@@ -163,6 +171,130 @@ describe("board-bulk: what keeps new cards waiting (#1393)", () => {
     expect(lines).toEqual([
       "alfa chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
       "alfa está sem memória: os cards novos esperam ela liberar.",
+    ]);
+  });
+});
+
+/**
+ * #1406: Update from the base for the selection. It takes the idle cards that have a branch, one
+ * after the other: a card already on its base is left alone, a conflict stops only that card (the
+ * host aborts the rebase), and the summary names each group.
+ */
+describe("board-bulk: Update from the base for many cards (#1406)", () => {
+  const branched = (id: string, over: object = {}) =>
+    card(id, { branch: `fd/${id}`, worktreePath: `/w/${id}`, ...over });
+
+  test("it takes the idle cards with a branch; one with no branch yet, or running or queued, stays out, named", () => {
+    const split = bulkSplit(
+      [
+        branched("a"),
+        card("b", { branch: null, worktreePath: null }),
+        branched("c", { sessionStatus: "running" }),
+        branched("d", { queued: true }),
+        branched("e", { sessionStatus: "idle" }),
+      ],
+      t,
+    );
+    expect({
+      update: split.update.map((c: { id: string }) => c.id),
+      skipUpdate: split.skipUpdate.map(
+        (s: { card: { id: string }; reason: string }) => `${s.card.id}: ${s.reason}`,
+      ),
+    }).toEqual({
+      update: ["a", "e"],
+      skipUpdate: [
+        "b: the card has no branch yet",
+        "c: the card is already running",
+        "d: the card is already queued",
+      ],
+    });
+  });
+
+  test("one card at a time, in order: a current one is not rebased, a conflict does not stop the next card", async () => {
+    const asked: string[] = [];
+    const progress: string[] = [];
+    let going = 0;
+    let most = 0;
+    const behind: Record<string, number | null> = { a: 2, b: 0, c: 3, d: 1, e: null };
+    const results = await updateMany(
+      ["a", "b", "c", "d", "e"].map((id) => branched(id)),
+      {
+        behind: async (c: { id: string }) => {
+          going++;
+          most = Math.max(most, going);
+          await Promise.resolve();
+          going--;
+          return behind[c.id] ?? null;
+        },
+        update: async (c: { id: string }) => {
+          going++;
+          most = Math.max(most, going);
+          asked.push(c.id);
+          await Promise.resolve();
+          going--;
+          if (c.id === "c") {
+            return {
+              ok: false,
+              message: "conflict updating with main: src/a.ts",
+              reason: "rebase_conflict",
+              params: { base: "main", files: "src/a.ts" },
+            };
+          }
+          if (c.id === "d")
+            return { ok: false, message: "the card is running", reason: "card_running" };
+          return { ok: true };
+        },
+        onProgress: (done, total) => progress.push(`${done}/${total}`),
+      },
+    );
+    expect({
+      // b is on its base already: no rebase is asked for it. e's count is unknown: it is tried.
+      asked,
+      most,
+      outcomes: results.map((r) => `${r.card.id}: ${r.outcome}`),
+      conflict: results.find((r) => r.outcome === "conflicted")?.reason ?? null,
+      progress,
+    }).toEqual({
+      asked: ["a", "c", "d", "e"],
+      most: 1,
+      outcomes: ["a: updated", "b: current", "c: conflicted", "d: failed", "e: updated"],
+      conflict: "rebase_conflict",
+      progress: ["1/5", "2/5", "3/5", "4/5", "5/5"],
+    });
+  });
+
+  const results = [
+    { card: branched("a"), outcome: "updated" as const },
+    { card: branched("b"), outcome: "updated" as const },
+    { card: branched("c"), outcome: "current" as const },
+    {
+      card: branched("d"),
+      outcome: "conflicted" as const,
+      message: "conflict updating with main: src/a.ts",
+      reason: "rebase_conflict",
+      params: { base: "main", files: "src/a.ts" },
+    },
+    {
+      card: branched("e"),
+      outcome: "failed" as const,
+      message: "the card is running",
+      reason: "card_running",
+    },
+  ];
+
+  test("the summary names the updated, already current, conflicted and not updated cards, with why", () => {
+    expect(updateSummary(t, results)).toBe(
+      "Updated: card a, card b. Already current: card c. Conflict, left as it was: card d (Updating with main conflicts in: src/a.ts). Not updated: card e (The card is running: wait for the agent to finish).",
+    );
+  });
+
+  test("a group with no card is left out of the summary, and pt-BR says it too", () => {
+    expect([
+      updateSummary(t, [results[2] as never]),
+      updateSummary(tPt, results.slice(0, 4) as never),
+    ]).toEqual([
+      "Already current: card c.",
+      "Atualizados: card a, card b. Já em dia: card c. Conflito, ficou como estava: card d (Atualizar com main dá conflito em: src/a.ts).",
     ]);
   });
 });

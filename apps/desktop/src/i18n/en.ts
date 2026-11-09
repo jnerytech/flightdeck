@@ -974,6 +974,14 @@ export const en: Dictionary = {
     deselectCard: "Deselect card",
     /** #1354: the check on each card while a selection exists. */
     selectCardNamed: "Select {title}",
+    /** #1406: Update from the base for the selection, and its summary. */
+    updateSelected: "Update {n} from the base",
+    updateNoBranch: "the card has no branch yet",
+    updating: "Updating {done} of {total}…",
+    updatedNames: "Updated: {names}.",
+    currentNames: "Already current: {names}.",
+    conflictedNames: "Conflict, left as it was: {names}.",
+    notUpdatedNames: "Not updated: {names}.",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
     /** What a column asks of a card before it gets there (issue #78). */

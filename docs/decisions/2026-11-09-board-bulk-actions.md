@@ -185,6 +185,24 @@ languages, re-measured at 1024, 640 and 390 by the narrow guard:
   (`board.startMemoryHold`) came in #1400 (#1393). #1414 reads the memory hold when the confirm opens,
   makes the queue line agree with any hold, and prints both lines.
 
+## Update from the base for many cards (#1406)
+
+- **What:** **Update N from the base** in the selection bar takes the selected cards that have a
+  branch and a worktree and are neither running nor queued. It runs `card.updateFromBase`, one card
+  at a time, as the single-card button does.
+- **Already current:** `card.updateFromBase` answers with the card, so its reply cannot tell
+  "updated" from "nothing to do". Each card is read first with `changes.get` (`card:<id>`): a
+  `position.behind` of 0 means already current, and that card is not rebased. A card whose count is
+  unknown is tried. This keeps the change in the desktop, at one extra request per card.
+- **A conflict:** the host aborts the rebase (`rebase_conflict`), so the card's worktree is as it
+  was. The run goes on to the next card.
+- **Afterwards:** the board's notice names the updated, already current and conflicted cards, and
+  the refused ones with their reason. The updated and current cards leave the selection; the others
+  stay, to be opened. The focus goes back to the button, or to the board when the bar is gone.
+- **Progress:** "Updating 2 of 5…" is shown on the bar, not announced; the summary is announced.
+- **Still to come:** the same action on the Pull requests page (#1345), and the journey with three
+  cards and one conflict.
+
 ## Out of scope
 
 - Selecting every card in a column (Ctrl+A).
