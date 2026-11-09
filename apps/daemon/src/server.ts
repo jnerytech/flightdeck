@@ -515,6 +515,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "cardTemplates"),
     // Issue #1196: a card merges its open PR (`card.pr.merge`).
     ...when(opts.board, "cardPrMerge"),
+    // Issue #1352: the card carries the PR's merge state, review state and open date.
+    ...when(opts.board, "prDetails"),
     // Issue #1405: cards whose changes touch the same files carry `mayConflict`.
     ...when(opts.board, "conflictRadar"),
     ...when(opts.issues, "issues"),
@@ -742,10 +744,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...opts.terminal,
         });
-      case "board.get": {
-        const found = board().getBoard(command.payload.projectId);
-        return ok(command.type, { ...found, project: await board().forWire(found.project) });
-      }
       case "roots.add": {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
@@ -758,17 +756,6 @@ export function startServer(opts: ServerOptions): RunningServer {
             opts.rootsPlatform,
           ),
         });
-      }
-      case "board.settings": {
-        const { maxParallelRuns } = command.payload;
-        if (maxParallelRuns !== undefined) await board().setMaxParallelRuns(maxParallelRuns);
-        return ok(command.type, { maxParallelRuns: board().maxParallelRuns });
-      }
-      case "board.watch": {
-        const cards = board();
-        ws.data.unwatchBoard?.();
-        ws.data.unwatchBoard = cards.watch((card) => send(ws, { type: "card.updated", card }));
-        return ok(command.type);
       }
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
@@ -823,12 +810,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         opts.ui.mode = next.mode;
         opts.ui.locked = next.locked;
         return ok(command.type, { ...next });
-      }
-      case "pr.comments":
-        return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
-      case "pr.comments.send": {
-        const { cardId, ids } = command.payload;
-        return ok(command.type, await board().sendPrComments(cardId, ids));
       }
     }
   }

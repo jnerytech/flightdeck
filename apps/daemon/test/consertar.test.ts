@@ -106,6 +106,13 @@ describe("consertar: a round of fixing", () => {
     ]).toEqual([false, true, true]);
   });
 
+  test("#1361: the watch's checks get the project's extra environment names", async () => {
+    const f = await fixture({ settings: { checks: ["bun test"], checkEnv: ["JAVA_HOME"] } });
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    expect(f.envNames).toEqual([["JAVA_HOME"]]);
+  });
+
   test("it pushes HEAD to the card's own branch, with no force, once", async () => {
     const f = await fixture();
     await f.fixer.onTrigger(f.trigger({ comments: [work()] }));

@@ -89,9 +89,11 @@ import type {
   ChecksState,
   MayConflict,
   NewProject,
+  PrMergeable,
   Project,
   ProjectPatch,
   PrProviderKind,
+  PrReview,
   PrState,
 } from "./types.ts";
 import {
@@ -330,6 +332,9 @@ interface CardRow {
   pr_url: string | null;
   pr_state: PrState | null;
   checks_state: ChecksState | null;
+  pr_mergeable: PrMergeable | null;
+  pr_review: PrReview | null;
+  pr_opened_at: string | null;
   notice: string | null;
   notice_reason: string | null;
   notice_params: string | null;
@@ -762,6 +767,9 @@ export class Board {
       prUrl: row.pr_url,
       prState: row.pr_state,
       checksState: row.checks_state,
+      prMergeable: row.pr_mergeable,
+      prReview: row.pr_review,
+      prOpenedAt: row.pr_opened_at,
       ...this.mayConflictOf(id),
       queued: active !== undefined && active.started_at === null && active.ended_at === null,
       sessionId,
@@ -2118,7 +2126,8 @@ export class Board {
     const url = await publishPr({ cwd, branch, base, title, body, provider, scanner });
     this.db
       .query(
-        "UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = NULL, notice = NULL WHERE id = ?",
+        `UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = NULL, pr_mergeable = NULL,
+           pr_review = NULL, pr_opened_at = NULL, notice = NULL WHERE id = ?`,
       )
       .run(url, id);
     this.place(id, { type: "pr", state: "open" });
@@ -2512,11 +2521,19 @@ export class Board {
     if (!provider || !card.prUrl) return;
     // From the main repository: a cwd inside the worktree would lock it while it is removed.
     const cwd = project.path;
-    const { state, checks, failed } = await provider.status({ cwd, url: card.prUrl });
+    const { state, checks, failed, mergeable, review, openedAt } = await provider.status({
+      cwd,
+      url: card.prUrl,
+    });
     if (this.stopped) return;
+    // A provider that says nothing of the details leaves what the card has.
     this.db
-      .query("UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL WHERE id = ?")
-      .run(state, checks, id);
+      .query(
+        `UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL,
+           pr_mergeable = COALESCE(?, pr_mergeable), pr_review = COALESCE(?, pr_review),
+           pr_opened_at = COALESCE(?, pr_opened_at) WHERE id = ?`,
+      )
+      .run(state, checks, mergeable ?? null, review ?? null, openedAt ?? null, id);
     this.changed(id);
     if (checks === "failing" && card.checksState !== "failing") {
       for (const listener of this.checkWatchers) listener(id, failed ?? []);

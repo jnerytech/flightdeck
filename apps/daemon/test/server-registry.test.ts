@@ -220,6 +220,13 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the board commands left the switch of server.ts.
+  test("the board domain owns the board.* commands", () => {
+    expect(Object.keys(DOMAINS.board ?? {}).sort()).toEqual(
+      ["board.get", "board.settings", "board.watch"].sort(),
+    );
+  });
+
   // Issue #1344: "While you were away" reads what happened on the host since a time.
   test("the activity domain owns activity.since", () => {
     expect(Object.keys(DOMAINS.activity ?? {}).sort()).toEqual(["activity.since"]);
@@ -236,6 +243,13 @@ describe("server-registry", () => {
   test("the issues domain owns the issues.* commands", () => {
     expect(Object.keys(DOMAINS.issues ?? {}).sort()).toEqual(
       ["issues.createCard", "issues.get", "issues.list"].sort(),
+    );
+  });
+
+  // Issue #1288: the PR comments commands left the switch of server.ts.
+  test("the prComments domain owns the pr.comments commands", () => {
+    expect(Object.keys(DOMAINS.prComments ?? {}).sort()).toEqual(
+      ["pr.comments", "pr.comments.send"].sort(),
     );
   });
 });
