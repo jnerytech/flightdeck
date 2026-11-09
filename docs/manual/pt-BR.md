@@ -3587,11 +3587,12 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
 - **Sessões em silêncio:** uma sessão que consta como rodando mas não produziu nada em 15 minutos
   (30 enquanto uma chamada de ferramenta está aberta, pois um build pode ficar em silêncio) aparece
   sob os pedidos como "Em silêncio há 23 min · última: Bash", num daemon que anuncia `stall`.
-  Escolha-a para **Abrir**, **Interromper**, **Enviar "continue"** e **Não travou, adiar 1 h** (que
-  tira essa sessão da lista por uma hora, neste computador). Ela sai da lista no próximo sinal de
+  Escolha-a para **Abrir**, **Parar o turno**, **Enviar "continue"** e **Não travou, adiar 1 h** (que
+  tira essa sessão da lista e do cartão dela por uma hora, diz quando ela volta e vale também depois
+  de reiniciar o app, neste computador). Ela sai da lista no próximo sinal de
   vida, e uma sessão esperando uma aprovação nunca fica em silêncio. Sai uma notificação do sistema
   quando ela fica em silêncio, nunca com o app em foco; o cartão Trabalhando do quadro de Atividade
-  traz a marca "Em silêncio 23 min". `stall.afterMinutes` na configuração do daemon define os 15
+  e o cartão do quadro do projeto trazem a marca "Em silêncio 23 min". `stall.afterMinutes` na configuração do daemon define os 15
   (0 desliga).
 - **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
   responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
