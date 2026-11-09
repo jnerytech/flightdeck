@@ -1,5 +1,5 @@
 import { GitPullRequest } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CardMergePr } from "@/components/card/card-merge-pr";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
@@ -70,10 +70,16 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
    * #1406: Update from the base for every listed PR that can take it (idle, with a branch), one card
    * at a time, each on its own host. The summary names the updated, current and conflicted cards.
    */
-  const updatable = bulkSplit(
+  const split = bulkSplit(
     rows.map((row) => row.card),
     t,
-  ).update;
+  );
+  const updatable = split.update;
+  /** #1500: the listed PRs the action leaves out, each with its reason, so "Update N" says which N. */
+  const leftOut = split.skipUpdate
+    .map(({ card, reason }) => `${card.title} (${reason})`)
+    .join("; ");
+  const leftOutId = useId();
   const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
   const [summary, setSummary] = useState("");
   const updateAll = useRef<HTMLButtonElement>(null);
@@ -162,22 +168,30 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
       <Stack gap={3}>
         {/* #1406: one row's own button is enough for a single PR. */}
         {updatable.length > 1 && (
-          <Inline gap={2}>
-            <ActionButton
-              ref={updateAll}
-              variant="outline"
-              size="sm"
-              disabled={updating !== null}
-              onClick={() => void updateEvery()}
-            >
-              {t("board.updateSelected", { n: updatable.length })}
-            </ActionButton>
-            {updating && (
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {t("board.updating", updating)}
-              </span>
+          <Stack gap={1}>
+            <Inline gap={2}>
+              <ActionButton
+                ref={updateAll}
+                variant="outline"
+                size="sm"
+                disabled={updating !== null}
+                aria-describedby={leftOut ? leftOutId : undefined}
+                onClick={() => void updateEvery()}
+              >
+                {t("board.updateSelected", { n: updatable.length })}
+              </ActionButton>
+              {updating && (
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {t("board.updating", updating)}
+                </span>
+              )}
+            </Inline>
+            {leftOut && (
+              <p id={leftOutId} className="break-words text-muted-foreground text-xs">
+                {t("pullRequests.updateLeftOut", { items: leftOut })}
+              </p>
             )}
-          </Inline>
+          </Stack>
         )}
         <output className="block text-sm empty:hidden">{summary}</output>
         {refusal && <PrRefusal text={refusal} />}

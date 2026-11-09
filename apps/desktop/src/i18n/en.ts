@@ -3254,6 +3254,8 @@ export const en: Dictionary = {
     loading: "Reading the pull requests…",
     empty: "No open pull requests.",
     emptyDetail: "A card's PR shows up here while it is open.",
+    /** #1500: the PRs Update N from the base leaves out, each with its reason. */
+    updateLeftOut: "Left out: {items}.",
     refused: "{title}: {reason}",
     noHosts: "No host is online.",
     watchOff: "Watch and fix is off",

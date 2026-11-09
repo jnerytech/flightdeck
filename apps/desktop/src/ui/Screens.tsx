@@ -757,6 +757,18 @@ function hostScreen(props: ScreenProps, host: HostInfo): ReactNode {
       key={host.id}
       store={store}
       host={host}
+      {...(props.route.name === "host" && props.route.section
+        ? {
+            section: props.route.section,
+            // The ask is used up: the tab goes back to the plain host page. Only while the focused
+            // tab still shows this ask, so another screen is never replaced.
+            onSectionDone: () => {
+              const now = store.router.current;
+              if (now.name === "host" && now.host === host.id && now.section)
+                store.router.replace({ name: "host", host: host.id });
+            },
+          }
+        : {})}
       onRename={(name) => store.renameHost(host.id, name)}
       onReconnect={() => void store.reconnectHost(host.id)}
       onPairAgain={(input) => store.pairAgain(host.id, input)}
