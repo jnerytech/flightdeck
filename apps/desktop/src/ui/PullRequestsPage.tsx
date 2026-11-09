@@ -2,7 +2,9 @@ import { GitPullRequest } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CardMergePr } from "@/components/card/card-merge-pr";
 import { Page } from "@/components/layout/page";
+import { Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { PrRefusal } from "@/components/pull-requests/pr-refusal";
 import { PrRow } from "@/components/pull-requests/pr-row";
 import { refusalText } from "@/i18n/errors";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -64,7 +66,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   let body = null;
   if (rows.length > 0) {
     body = (
-      <ul aria-label={t("pullRequests.list")} className="flex flex-col gap-2">
+      <Stack as="ul" gap={2} label={t("pullRequests.list")}>
         {rows.map((row) => {
           const features = state.hosts.find((h) => h.id === row.hostId)?.hostInfo?.features;
           const key = sessionKey(row.hostId, row.card.id);
@@ -92,7 +94,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
             />
           );
         })}
-      </ul>
+      </Stack>
     );
   } else if (!loaded) {
     body = <LoadingState label={t("pullRequests.loading")} />;
@@ -107,15 +109,8 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   }
   return (
     <Page title={t("pullRequests.title")} subtitle={t("pullRequests.subtitle")}>
-      <div className="flex flex-col gap-3">
-        {refusal && (
-          <div
-            role="alert"
-            className="rounded-md border border-status-error/40 px-3 py-2 text-sm text-status-error"
-          >
-            {refusal}
-          </div>
-        )}
+      <Stack gap={3}>
+        {refusal && <PrRefusal text={refusal} />}
         {merging && target && (
           <CardMergePr
             key={`${merging.hostId}/${merging.cardId}`}
@@ -127,7 +122,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
           />
         )}
         {body}
-      </div>
+      </Stack>
     </Page>
   );
 }
