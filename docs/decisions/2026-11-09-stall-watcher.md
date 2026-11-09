@@ -40,3 +40,5 @@ watcher, like `hostPause`. An older app ignores the fields; an older daemon neve
 
 A setting in the host page for the delay (today the config file), a "quiet" filter on the Sessions list,
 and persisting the snooze.
+
+- The watcher owns one timer while it is on (every 30 s, `sessions/stall.ts`); `daemon-idle.test.ts` lists it among the idle daemon's timers. `stall.afterMinutes: 0` starts none.
