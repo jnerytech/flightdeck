@@ -423,9 +423,78 @@ describe("desktop: conexão com o host", () => {
       code: 1006,
       reason: "",
       byWatchdog: true,
+      byApp: false,
       silentMs: 46_000,
+      upMs: 46_000,
+      pingMs: null,
       wasOnline: true,
     });
+  });
+
+  test("a drop keeps how long the link was up, and the time since the last heartbeat apart from the last frame of any kind (#1532)", async () => {
+    const hand = handWatchdog();
+    let say: (frame: unknown) => void = () => {};
+    let pings = 0;
+    const { conn } = connect(
+      quietHost((send) => {
+        say = send;
+      }),
+      TOKEN,
+      {
+        watchdog: hand.watchdog,
+        staleMs: 45_000,
+        connectTimeoutMs: 1000,
+        onPing: () => void pings++,
+      },
+    );
+    await waitFor(() => conn.status === "online", "online");
+    hand.advance(12_000);
+    say({ type: "ping", id: "1" });
+    await waitFor(() => pings === 1, "the ping");
+    // A later frame that is no heartbeat: the host is heard, the heartbeat is older.
+    hand.advance(5000);
+    say({ type: "ack", id: "nobody-asked", ok: true });
+    await waitFor(
+      () => (conn as unknown as { lastHeard: number }).lastHeard === 17_000,
+      "the later frame",
+    );
+    hand.advance(46_000);
+    hand.tick();
+    hand.tick();
+    expect(conn.lastDrop).toEqual({
+      code: 1006,
+      reason: "",
+      byWatchdog: true,
+      byApp: false,
+      silentMs: 46_000,
+      upMs: 63_000,
+      pingMs: 51_000,
+      wasOnline: true,
+    });
+  });
+
+  test("letting go of a live link is the app's own close, with how long it had been up (#1532)", async () => {
+    const hand = handWatchdog();
+    const { conn } = connect(quietHost(), TOKEN, { watchdog: hand.watchdog });
+    await waitFor(() => conn.status === "online", "online");
+    hand.advance(7000);
+    conn.dispose();
+    expect(conn.lastDrop).toEqual({
+      code: 1000,
+      reason: "",
+      byWatchdog: false,
+      byApp: true,
+      silentMs: 7000,
+      upMs: 7000,
+      pingMs: null,
+      wasOnline: true,
+    });
+  });
+
+  test("a host that puts the token in its close reason does not put it in the app's log (#1532)", async () => {
+    const { conn } = connect(closingHost(4408, `bye ${TOKEN} now`));
+    await waitFor(() => conn.retry !== null, "the drop");
+    expect(conn.lastDrop?.reason).toBe("bye [token] now");
   });
 
   test("a host that pings every 15 s stays online for 10 minutes, with no drop (#939)", async () => {
@@ -464,32 +533,57 @@ describe("desktop: conexão com o host", () => {
   });
 });
 
-describe("desktop: the app log of a host's link (#939)", () => {
+describe("desktop: the app log of a host's link (#939, #1532)", () => {
   const drop = {
     code: 4408,
     reason: "heartbeat timeout",
     byWatchdog: false,
+    byApp: false,
     silentMs: 45_200,
+    upMs: 272_400,
+    pingMs: 45_200,
     wasOnline: true,
   };
 
-  test("one WARN per drop of a link that was online, with why; the tries after it are INFO", () => {
+  test("one WARN per drop of a link that was online, with why and the clocks; the tries after it are INFO", () => {
     expect([
       statusLine("pc", "online", null),
       statusLine("pc", "offline", drop),
       statusLine("pc", "connecting", drop),
-      statusLine("pc", "offline", { ...drop, code: 1006, reason: "", wasOnline: false }),
+      statusLine("pc", "offline", {
+        ...drop,
+        code: 1006,
+        reason: "",
+        wasOnline: false,
+        upMs: 3000,
+        pingMs: null,
+      }),
       statusLine("pc", "offline", { ...drop, code: 1006, reason: "", byWatchdog: true }),
+      statusLine("pc", "offline", {
+        ...drop,
+        code: 1000,
+        reason: "",
+        byApp: true,
+        silentMs: 2000,
+        pingMs: 2000,
+      }),
       statusLine("pc", "unauthorized", null),
     ]).toEqual([
       { level: "info", text: "pc: online" },
       {
         level: "warn",
-        text: "pc: offline, closed by the host (4408 heartbeat timeout), 45 s silent",
+        text: "pc: offline, closed by the host (4408 heartbeat timeout), 45 s silent, up 272 s, last ping 45 s ago",
       },
       { level: "info", text: "pc: connecting" },
-      { level: "info", text: "pc: offline, closed (1006), 45 s silent" },
-      { level: "warn", text: "pc: offline, given up by the app after 45 s silent" },
+      { level: "info", text: "pc: offline, closed (1006), 45 s silent, up 3 s, no ping heard" },
+      {
+        level: "warn",
+        text: "pc: offline, given up by the app after 45 s silent, up 272 s, last ping 45 s ago",
+      },
+      {
+        level: "info",
+        text: "pc: offline, closed by the app, 2 s silent, up 272 s, last ping 2 s ago",
+      },
       { level: "warn", text: "pc: unauthorized" },
     ]);
   });

@@ -53,8 +53,14 @@ export interface Drop {
   code: number;
   reason: string;
   byWatchdog: boolean;
+  /** The app let go of the link itself (it was removed, or the app is closing). */
+  byApp: boolean;
   /** How long nothing had come from the host when the link went down. */
   silentMs: number;
+  /** How long the link had been up when it went down (#1532). */
+  upMs: number;
+  /** How long since the host's last heartbeat ping; null when none came on this link. */
+  pingMs: number | null;
   /** Whether the link was online, or still trying to get there. */
   wasOnline: boolean;
 }
@@ -578,6 +584,9 @@ export class HostConnection {
       // The host chooses the reason: one plain line, so it cannot forge lines in the log.
       reason: reason.replaceAll(/\p{Cc}+/gu, " ").slice(0, 123),
       byWatchdog: this.gaveUp,
+      byApp: false,
+      upMs: 0,
+      pingMs: null,
       silentMs: (this.opts.watchdog ?? REAL_WATCHDOG).now() - this.lastHeard,
       wasOnline: this.status === "online",
     };
