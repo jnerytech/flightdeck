@@ -179,9 +179,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
             )}
           </Inline>
         )}
-        <p role="status" className="text-sm empty:hidden">
-          {summary}
-        </p>
+        <output className="block text-sm empty:hidden">{summary}</output>
         {refusal && <PrRefusal text={refusal} />}
         {merging && target && (
           <CardMergePr
