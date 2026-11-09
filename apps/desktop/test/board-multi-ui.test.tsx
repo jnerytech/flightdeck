@@ -537,7 +537,8 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
     act(async () => {
       fireEvent.keyDown(document.activeElement as Element, { key, ...init });
     });
-  const live = () => document.querySelector("[data-slot='selection-live']")?.textContent ?? null;
+  // The board's status line (an <output>, polite): it says the bar's count, filter and all.
+  const live = () => document.querySelector("[data-slot='board-status']")?.textContent ?? null;
 
   test("x toggles the focused card, and a polite live region says the count", async () => {
     setup();
@@ -562,6 +563,40 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
       ["A", "B", "C"],
       "Card C",
     ]);
+  });
+
+  // From the ux-reviewer: a range from the keys starts where the person is, and goes back as well.
+  test("after Esc, Shift+Down ranges from the focused card, not from a card picked before", async () => {
+    setup();
+    await ready();
+    titleOf("A")?.focus();
+    await press("x");
+    await press("Escape");
+    titleOf("B")?.focus();
+    await press("ArrowDown", { shiftKey: true });
+    expect(selected()).toEqual(["B", "C"]);
+  });
+
+  test("Shift+Up after Shift+Down shrinks the range back toward its start", async () => {
+    setup();
+    await ready();
+    titleOf("A")?.focus();
+    await press("ArrowDown", { shiftKey: true });
+    await press("ArrowDown", { shiftKey: true });
+    await press("ArrowUp", { shiftKey: true });
+    expect([selected(), focused()]).toEqual([["A", "B"], "Card B"]);
+  });
+
+  test("a click on a card's check leaves the focus on the card, where the keys work", async () => {
+    setup();
+    await ready();
+    await ctrl("A");
+    const check = within(li("B")).queryByRole("checkbox", { name: "Select B" });
+    if (check) await click(check);
+    const afterSelect = focused();
+    const again = within(li("B")).queryByRole("checkbox", { name: "Select B" });
+    if (again) await click(again);
+    expect([afterSelect, focused(), selected()]).toEqual(["Card B", "Card B", ["A"]]);
   });
 
   test("Esc clears the selection, keeps the focus on the card and goes no further; with none it passes on", async () => {
