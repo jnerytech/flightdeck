@@ -19,11 +19,11 @@ afterEach(async () => {
 const PR_URL = "https://github.com/acme/repo/pull/9";
 const DIAGNOSE = "mergeStateStatus,reviewDecision,statusCheckRollup";
 const OPEN = {
-  args: ["view", "state,statusCheckRollup"],
+  args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
   stdout: JSON.stringify({ state: "OPEN" }),
 };
 const MERGED = {
-  args: ["view", "state,statusCheckRollup"],
+  args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
   stdout: JSON.stringify({ state: "MERGED" }),
 };
 
@@ -201,7 +201,13 @@ describe("card-pr-merge: the card merges its open PR, after a confirm (#1196)", 
   test("a PR merged by gh is a success even when the read that follows fails: a notice, then the next round moves the card", async () => {
     const gh = fakeGh([{ args: ["pr", "merge"] }]);
     const ctx = await setup();
-    gh.respond([{ args: ["pr", "merge"] }, { args: ["view", "state,statusCheckRollup"], code: 1 }]);
+    gh.respond([
+      { args: ["pr", "merge"] },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        code: 1,
+      },
+    ]);
     const card = await ctx.board.mergePr(ctx.cardId, "merge", true);
     const after = [card.notice !== null, card.prState];
     gh.respond([MERGED]);

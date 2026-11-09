@@ -25,7 +25,7 @@ function fake(name: string, rules: FakeRule[]): FakeCli {
 const GH_URL = "https://github.com/acme/repo/pull/7";
 const AZ_WEB = "https://dev.azure.com/acme/proj/_git/repo";
 const ghStatus = (state: string, rollup: unknown[] = []) => ({
-  args: ["view", "state,statusCheckRollup"],
+  args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
   stdout: JSON.stringify({ state, statusCheckRollup: rollup }),
 });
 
@@ -89,13 +89,43 @@ describe("pr: GitHub", () => {
       ],
     ]);
     expect(await cardWhen(board, card.id, (c) => c.checksState === "pending")).not.toBeNull();
-    expect(gh.calls()[2]).toEqual(["pr", "view", GH_URL, "--json", "state,statusCheckRollup"]);
+    expect(gh.calls()[2]).toEqual([
+      "pr",
+      "view",
+      GH_URL,
+      "--json",
+      "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt",
+    ]);
     // Polls run from the project's repository: a cwd inside the worktree would lock it on Windows
     // while Concluir or Descartar removes it.
     expect(gh.cwds()[2]).toBe(repo);
     gh.respond([ghStatus("MERGED", [{ conclusion: "SUCCESS" }])]);
     const merged = await cardWhen(board, card.id, (c) => c.prState === "merged");
     expect(merged).toMatchObject({ column: "done", checksState: "passing" });
+  });
+
+  test("o poll guarda no card se o PR conflita, a revisão e quando foi aberto (#1352)", async () => {
+    const gh = fake("gh", [
+      { args: ["view", "url"], stdout: JSON.stringify({ url: GH_URL }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({
+          state: "OPEN",
+          statusCheckRollup: [],
+          mergeStateStatus: "DIRTY",
+          reviewDecision: "CHANGES_REQUESTED",
+          createdAt: "2026-11-09T10:00:00Z",
+        }),
+      },
+    ]);
+    const { board, card } = await cardWithWork("github", gh);
+    await board.createPr(card.id);
+    const polled = await cardWhen(board, card.id, (c) => c.prMergeable === "conflict");
+    expect(polled).toMatchObject({
+      prMergeable: "conflict",
+      prReview: "changes_requested",
+      prOpenedAt: "2026-11-09T10:00:00Z",
+    });
   });
 
   test("PR já aberto para a branch é reaproveitado, sem gh pr create", async () => {
@@ -127,10 +157,34 @@ describe("pr: GitHub", () => {
     ]);
     const gh = new GithubCli();
     const cwd = tempDir();
-    expect(await gh.status({ cwd, url: "u1" })).toEqual({ state: "open", checks: null });
-    expect(await gh.status({ cwd, url: "u2" })).toEqual({ state: "open", checks: "failing" });
-    expect(await gh.status({ cwd, url: "u3" })).toEqual({ state: "closed", checks: "passing" });
-    expect(await gh.status({ cwd, url: "u4" })).toEqual({ state: "merged", checks: null });
+    expect(await gh.status({ cwd, url: "u1" })).toEqual({
+      state: "open",
+      checks: null,
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
+    expect(await gh.status({ cwd, url: "u2" })).toEqual({
+      state: "open",
+      checks: "failing",
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
+    expect(await gh.status({ cwd, url: "u3" })).toEqual({
+      state: "closed",
+      checks: "passing",
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
+    expect(await gh.status({ cwd, url: "u4" })).toEqual({
+      state: "merged",
+      checks: null,
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
+    });
   });
 });
 
@@ -200,10 +254,16 @@ describe("pr: Azure DevOps", () => {
     expect(await az.status({ cwd, url: `${AZ_WEB}/pullrequest/1` })).toEqual({
       state: "merged",
       checks: "failing",
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
     });
     expect(await az.status({ cwd, url: `${AZ_WEB}/pullrequest/2` })).toEqual({
       state: "open",
       checks: "pending",
+      mergeable: "unknown",
+      review: "none",
+      openedAt: null,
     });
   });
 });
@@ -236,7 +296,10 @@ describe("pr: erros e configuração", () => {
     const gh = fake("gh", [
       { args: ["view", "url"], code: 1 },
       { args: ["pr", "create"], stdout: `${GH_URL}\n` },
-      { args: ["view", "state,statusCheckRollup"], code: 4 },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        code: 4,
+      },
     ]);
     const { board, card } = await cardWithWork("github", gh);
     await board.createPr(card.id);

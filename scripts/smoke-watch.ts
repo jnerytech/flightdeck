@@ -158,7 +158,10 @@ const ghRules = (state: string, bucket: string, id: number) => [
   },
   { args: ["view", "url"], code: 1 },
   { args: ["pr", "create"], stdout: `${PR_URL}\n` },
-  { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state }) },
+  {
+    args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+    stdout: JSON.stringify({ state }),
+  },
 ];
 
 /** Asks the watch of the card until a round has pushed. */

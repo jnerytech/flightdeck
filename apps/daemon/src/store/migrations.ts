@@ -992,4 +992,10 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (card_id, run_id, n)
   );
   `,
+  // Issue #1352: what the PR poll reads besides the checks: merge state, review state, open date.
+  `
+  ALTER TABLE cards ADD COLUMN pr_mergeable TEXT;
+  ALTER TABLE cards ADD COLUMN pr_review TEXT;
+  ALTER TABLE cards ADD COLUMN pr_opened_at TEXT;
+  `,
 ];
