@@ -1071,7 +1071,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   host, as sessões que terminaram, os cards que chegaram à revisão, os PRs com merge feito ou com
   checks falhando, as execuções de workflow que falharam e a cota usada. Cada linha leva à sessão
   ou ao card; um grupo mostra as três primeiras linhas e diz quantas faltam. Um host que não
-  respondeu é citado. Só aparece quando há novidade, e **Dispensar** o fecha até o próximo início.
+  respondeu é citado. Só aparece quando há novidade, e **Dispensar** o fecha até o próximo início (o foco vai para o primeiro pedido, ou para o título
+  da página quando não há nenhum).
 - **Pull requests** (na barra lateral, em Trabalho, depois de Board; ou **Ir para Pull requests**
   na paleta) lista todo card com PR aberto nos hosts conectados, primeiro os que pedem atenção
   (checks falhando, conflito, mudanças pedidas, ou uma vigia que precisa de você). Cada linha diz o card, o host e o projeto, os
