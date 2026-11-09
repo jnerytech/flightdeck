@@ -204,4 +204,11 @@ describe("server-registry", () => {
       ].sort(),
     );
   });
+
+  // Issue #1288: the board commands left the switch of server.ts.
+  test("the board domain owns the board.* commands", () => {
+    expect(Object.keys(DOMAINS.board ?? {}).sort()).toEqual(
+      ["board.get", "board.settings", "board.watch"].sort(),
+    );
+  });
 });
