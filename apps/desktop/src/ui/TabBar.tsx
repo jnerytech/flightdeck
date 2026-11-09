@@ -114,7 +114,7 @@ function tabFacts(tab: Tab, at: TabFacts) {
   const label = title(tab, state, store);
   const kind = tabKind(tab.router.current);
   const badge = tabBadge(tab.router.current, state);
-  const pinnedLabel = badge ? `${label}, ${t(`tabs.badge.${badge}`)}` : label;
+  const pinnedLabel = badge ? [label, t(`tabs.badge.${badge}`)].join(", ") : label;
   const ssh = sshOf(tab, store);
   const hostName = host ? (state.hosts.find((h) => h.id === host)?.name ?? host) : undefined;
   // A pinned tab shows no title, and a host's tab no longer carries its host's name in it: the

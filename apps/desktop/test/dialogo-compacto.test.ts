@@ -98,7 +98,7 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
   test("a focused field is scrolled clear of the footer, not left under it", () => {
     const content = compactRule('[data-slot="dialog-content"]');
     // 8rem: the bar is about 5rem, a reason line or a wrapped button row adds 1.5 to 3rem.
-    expect(content.includes("scroll-padding-bottom: 8rem")).toBe(true);
+    expect(content).toContain("scroll-padding-bottom: 8rem");
   });
 
   // #1271: a dialog's fields may scroll in a box of their own, so its buttons stay in view. In the
