@@ -6,8 +6,12 @@
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import { requireVaultTransport } from "../../vault/vault.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
+import { hostInfo } from "../host-info.ts";
 
 export const hostHandlers = {
+  "host.info": async (_payload, { ws, server }) => {
+    return await hostInfo(server, ws.data.origin);
+  },
   "resources.setPauseAt": async (payload, { server }) => {
     // Like quota.setPauseAt: it only decides whether a new card starts now or waits; nothing stops.
     await server.need("memoryPause").set(payload.pauseAt);
