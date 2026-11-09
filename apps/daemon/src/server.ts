@@ -123,7 +123,7 @@ import type { SummaryService } from "./summary/service.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
-import { importPackage, type TeleportImportDeps } from "./teleport/import.ts";
+import type { TeleportImportDeps } from "./teleport/import.ts";
 import type { TeleportPackages } from "./teleport/package.ts";
 import type { TeleportInbox } from "./teleport/receive.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
@@ -776,16 +776,6 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   function board(): Board {
     return need(opts, "board");
-  }
-
-  function teleport(): TeleportPackages {
-    if (!opts.teleport) throw featureOff("teleport");
-    return opts.teleport;
-  }
-
-  function teleportInbox(): TeleportInbox {
-    if (!opts.teleportInbox) throw featureOff("teleport");
-    return opts.teleportInbox;
   }
 
   function assistant(): AssistantService {
@@ -1493,29 +1483,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "assistant.cancel":
         assistant().cancel(command.payload.requestId);
         return ok(command.type);
-      case "teleport.prepare":
-        return ok(command.type, await teleport().prepare(command.payload.sessionId));
-      case "teleport.read": {
-        const { id, part, offset } = command.payload;
-        return ok(command.type, await teleport().read(id, part, offset));
-      }
-      case "teleport.cancel":
-        await teleport().cancel(command.payload.id);
-        return ok(command.type);
-      case "teleport.receive":
-        return ok(command.type, await teleportInbox().receive(command.payload.manifest));
-      case "teleport.write": {
-        const { id, part, offset, data } = command.payload;
-        return ok(command.type, await teleportInbox().write(id, part, offset, data));
-      }
-      case "teleport.abort":
-        await teleportInbox().abort(command.payload.id);
-        return ok(command.type);
-      case "teleport.finish": {
-        if (!opts.teleportImport) throw featureOff("teleport");
-        const { id, repo } = command.payload;
-        return ok(command.type, await importPackage(opts.teleportImport, id, repo));
-      }
       case "assistant.context":
         return ok(command.type, await assistant().context(command.payload));
       case "assistant.record":

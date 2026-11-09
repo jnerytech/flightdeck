@@ -11,6 +11,7 @@ import { messagingHandlers } from "./messaging.ts";
 import { reviewHandlers } from "./review.ts";
 import { runsHandlers } from "./runs.ts";
 import { securityHandlers } from "./security.ts";
+import { teleportHandlers } from "./teleport.ts";
 import { terminalHandlers } from "./terminal.ts";
 import { watchHandlers } from "./watch.ts";
 
@@ -26,6 +27,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   github: githubHandlers,
   knowledge: knowledgeHandlers,
   watch: watchHandlers,
+  teleport: teleportHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));

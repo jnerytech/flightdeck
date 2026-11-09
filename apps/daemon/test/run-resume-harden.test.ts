@@ -53,6 +53,7 @@ async function waitingAfterRestart(
   noHead = false,
   cardGone = false,
   reassigned = false,
+  tampered = false,
 ) {
   const { runner } = scripted();
   const made = await durableWorkflowCard(YAML, { checks: runner });
@@ -79,6 +80,12 @@ async function waitingAfterRestart(
     writeFileSync(join(worktree, "later.txt"), "later\n");
     git(worktree, "add", "--", "later.txt");
     git(worktree, "commit", "-q", "-m", "Later");
+  }
+  // As a stored definition someone changed: its hash no longer names it.
+  if (tampered) {
+    host.store.db
+      .query("UPDATE workflow_runs SET definition = definition || ' ' WHERE id = ?")
+      .run(host.runId);
   }
   // As a card that has started another run since: the old run is no longer its.
   if (reassigned) {
@@ -182,5 +189,35 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
       "run_resume_card",
       ["a"],
     ]);
+  });
+
+  test("a queued resume refused after a restart names the workflow and keeps its HEAD", async () => {
+    const made = await waitingAfterRestart(false, false, false, false, true);
+    const failed = await made.runWhen((run) => run.status === "failed");
+    const kept = made.host.store.db
+      .query<{ head_at_end: string | null }, [string]>(
+        "SELECT head_at_end FROM workflow_runs WHERE id = ?",
+      )
+      .get(made.host.runId)?.head_at_end;
+    expect([failed?.reasonKey, failed?.reasonParams, kept === made.head]).toEqual([
+      "run_resume_workflow_changed",
+      { name: "wf" },
+      true,
+    ]);
+  });
+
+  test("a running run whose card is gone after a restart ends with a reason the app translates", async () => {
+    const { runner } = scripted();
+    const made = await durableWorkflowCard(YAML, { checks: runner });
+    const { host } = made;
+    await made.runWhen((run) => run.status === "failed");
+    host.store.db
+      .query("UPDATE workflow_runs SET status = 'running', ended_at = NULL WHERE id = ?")
+      .run(host.runId);
+    host.store.db.exec("PRAGMA foreign_keys = OFF");
+    host.store.db.query("DELETE FROM cards WHERE id = ?").run(host.cardId);
+    await made.restart();
+    const failed = await made.runWhen((run) => run.status === "failed");
+    expect(failed?.reasonKey).toBe("run_card_gone");
   });
 });

@@ -67,4 +67,19 @@ describe("server-registry", () => {
       ].sort(),
     );
   });
+
+  // Issue #1288: the teleport commands left the switch of server.ts.
+  test("the teleport domain owns the teleport.* commands", () => {
+    expect(Object.keys(DOMAINS.teleport ?? {}).sort()).toEqual(
+      [
+        "teleport.abort",
+        "teleport.cancel",
+        "teleport.finish",
+        "teleport.prepare",
+        "teleport.read",
+        "teleport.receive",
+        "teleport.write",
+      ].sort(),
+    );
+  });
 });
