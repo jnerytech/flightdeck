@@ -603,13 +603,22 @@ describe("check-loop: the security review's cases", () => {
     const r = rig({ outcomes: [FAIL, FAIL] });
     r.duringSend(() => {
       r.engine.onBusy("c");
-      r.engine.onUserMessage("c");
+      r.engine.onUserMessage("c", r.sent.at(-1) ?? "");
     });
     r.engine.onTurnResult("c", ok);
     await r.checksDone();
     const afterEcho = r.records.at(-1)?.status;
-    r.engine.onUserMessage("c");
+    r.engine.onUserMessage("c", "outra coisa");
     expect([afterEcho, r.records.at(-1)?.reason]).toEqual(["sent", "person_turn"]);
+  });
+
+  test("an outside message that comes before the queued round's echo is the person's, not the echo", async () => {
+    const r = rig({ outcomes: [FAIL] });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    // The round waits behind a turn; the person's message reaches the session first.
+    r.engine.onUserMessage("c", "deixa que eu faço");
+    expect(r.records.at(-1)?.reason).toBe("person_turn");
   });
 
   test("the watchdog is armed before the send, so the busy the send itself causes clears it", async () => {
