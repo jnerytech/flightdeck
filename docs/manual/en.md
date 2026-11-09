@@ -1068,8 +1068,8 @@ live; the list is the project's, so a session of another project never shows her
   finished, the cards that reached review, the PRs merged or with failing checks, the failed
   workflow runs and the quota used. Each line goes to the session or the card; a group shows its
   first three lines and says how many more there are. A host that did not answer is named. It
-  shows only when something is new, and **Dismiss** closes it until the next start (the focus moves to the first request, or to the
-  page title when there is none).
+  shows only when something is new, and **Dismiss** closes it until the next start (the focus moves to the first item of the list, or
+  to the page title when there is none).
 - **Pull requests** (in the sidebar under Work, after Board; or **Go to Pull requests** in the
   palette) lists every card with an open PR on the connected hosts, the ones that need a look first
   (failing checks, a conflict, changes requested, or a watch that needs you). A row names the card, its host and project, its
