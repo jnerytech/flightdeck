@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { QuotaWindow } from "@flightdeck/protocol";
 import { activitySince } from "../src/activity/since.ts";
 import { EventStore } from "../src/store/event-store.ts";
 
@@ -84,8 +85,8 @@ describe("activity-since (#1344)", () => {
     const digest = activitySince({ db }, SINCE);
     expect(
       digest.prs.items
-        .map((p) => [p.cardId, p.prUrl, p.outcome])
-        .sort((a, b) => a[0]!.localeCompare(b[0]!)),
+        .toSorted((a, b) => a.cardId.localeCompare(b.cardId))
+        .map((p) => [p.cardId, p.prUrl, p.outcome]),
     ).toEqual([
       ["failing", "https://x/pr/2", "checks-failed"],
       ["merged", "https://x/pr/1", "merged"],
@@ -118,7 +119,7 @@ describe("activity-since (#1344)", () => {
 
   test("the quota windows come from the reader when the host has one, none otherwise", () => {
     const { db } = seeded();
-    const windows = [
+    const windows: QuotaWindow[] = [
       {
         window: "five_hour",
         utilization: 0.62,

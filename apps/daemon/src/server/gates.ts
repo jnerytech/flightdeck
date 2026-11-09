@@ -9,6 +9,7 @@ import type { ServerOptions } from "../server.ts";
 /** Each gated option, and the feature named when it is off. */
 export const GATES = {
   account: "account",
+  activity: "activity",
   actions: "actions",
   agentcfg: "agentcfg",
   askpass: "askpass",

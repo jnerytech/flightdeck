@@ -15,6 +15,7 @@ import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
 import { Actions } from "./actions/actions.ts";
 import { runActionCli, runSnippetCli } from "./actions/cli.ts";
+import { activitySince } from "./activity/since.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { assistantService } from "./assistant/factory.ts";
@@ -1550,6 +1551,9 @@ export async function startDaemon(
     fsDirs: true,
     findProjects: true,
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
+    // Issue #1344: "While you were away": what happened since a time, from what is stored.
+    activity: (since, limit) =>
+      activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
     roi: new RoiSummarizer({
       db: store.db,
       keyOf: (path) => keys.known(path),

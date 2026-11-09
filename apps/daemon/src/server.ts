@@ -497,6 +497,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
     ...when(opts.roi, "roi"),
+    ...when(opts.activity, "activity"),
     ...when(opts.central, "central"),
     ...when(opts.board, "workflows"),
     // Issue #1221: a template committed on a new branch and opened as a PR.
