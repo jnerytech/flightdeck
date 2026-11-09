@@ -24,10 +24,14 @@ const note = (owner: string, status: OwnerMark["status"], text = "work") => ({
 });
 
 function fakeGh(opts: {
-  state?: "OPEN" | "CLOSED";
+  state?: "OPEN" | "CLOSED" | null;
   comments?: Array<{ body: string; createdAt: string }>;
   /** What the second read answers (a claim made at the same moment by another session). */
   afterPost?: Array<{ body: string; createdAt: string }>;
+  /** The comments' listing answers this text instead (not JSON lines). */
+  commentsText?: string;
+  /** `gh issue comment` fails with this stderr. */
+  commentFails?: string;
 }) {
   const asked: string[][] = [];
   let posted = false;
@@ -36,8 +40,17 @@ function fakeGh(opts: {
   const gh = async (args: string[]): Promise<GhResult> => {
     asked.push(args);
     if (args[0] === "issue" && args[1] === "view") {
+      const state = opts.state === undefined ? "OPEN" : opts.state;
+      return { code: 0, stdout: JSON.stringify(state === null ? {} : { state }) };
+    }
+    // Every page of the comments, one JSON object per line (gh api --paginate --jq '.[]').
+    if (args[0] === "api" && args.includes("--paginate")) {
+      if (opts.commentsText !== undefined) return { code: 0, stdout: opts.commentsText };
       const listed = posted && opts.afterPost ? opts.afterPost : comments;
-      return { code: 0, stdout: JSON.stringify({ state: opts.state ?? "OPEN", comments: listed }) };
+      return { code: 0, stdout: listed.map((c) => JSON.stringify(c)).join("\n") };
+    }
+    if (args[0] === "issue" && args[1] === "comment" && opts.commentFails) {
+      return { code: 1, stdout: "", stderr: opts.commentFails };
     }
     if (args[0] === "issue" && args[1] === "comment") {
       comments.push({
@@ -178,5 +191,79 @@ describe("issue-claim: one session owns an issue (#1410)", () => {
       }),
     ).toBe(1);
     expect(lines).toEqual(["claim: gh could not read #7: HTTP 502"]);
+  });
+
+  test("from the review: strict arguments, the marker last in its comment, and an unknown state is an error", async () => {
+    for (const args of [
+      ["7", "--by", "--reassign"],
+      ["1e3", "--by", "fd-a"],
+      ["--by", "fd-a"],
+      ["7", "--by", "-x"],
+    ]) {
+      const fake = fakeGh({});
+      const r = claim(args, fake);
+      expect([args.join(" "), await r.code, posts(fake.asked).length]).toEqual([
+        args.join(" "),
+        2,
+        0,
+      ]);
+    }
+    // A quoted marker inside a reply is no marker: only the comment's last line counts.
+    const quoted = `> ${ownerMark("fd-a", "progress")}\n\nI disagree`;
+    expect(marksOf([{ body: quoted, createdAt: "t" }])).toEqual([]);
+    const noState = fakeGh({ state: null });
+    const lines: string[] = [];
+    expect(
+      await claimIssue(["7", "--by", "fd-a"], {
+        gh: noState.gh,
+        log: (l) => lines.push(l),
+        coordinator: false,
+      }),
+    ).toBe(1);
+    expect(lines[0] ?? "").toContain("claim: gh could not read #7");
+  });
+
+  test("from the review: the comments are read in time order, over every page", async () => {
+    const fake = fakeGh({
+      comments: [
+        { body: `x\n\n${ownerMark("fd-b", "progress")}`, createdAt: "2026-11-09T12:00:00Z" },
+        { body: `x\n\n${ownerMark("fd-a", "progress")}`, createdAt: "2026-11-09T09:00:00Z" },
+      ],
+    });
+    const r = claim(["7", "--by", "fd-b"], fake);
+    expect(await r.code).toBe(1);
+    expect(r.lines[0] ?? "").toStartWith("#7 is owned by fd-a");
+    const list = fake.asked.find((a) => a[0] === "api");
+    expect([
+      list?.includes("--paginate"),
+      list?.some((a) => a.endsWith("/issues/7/comments")),
+    ]).toEqual([true, true]);
+  });
+
+  test("from the review: a loser's claim stays ignored, and the owner's release frees the issue", () => {
+    expect(
+      currentOwner([mark("fd-a", "progress"), mark("fd-b", "progress"), mark("fd-a", "ready")]),
+    ).toBeNull();
+  });
+
+  test("from the review: --release posts the release, the owner's or the coordinator's", async () => {
+    const owned = fakeGh({ comments: [note("fd-a", "progress")] });
+    const r = claim(["7", "--by", "fd-a", "--release"], owned);
+    expect([await r.code, r.lines]).toEqual([0, ["released #7 (fd-a)"]]);
+    expect(bodyOf(posts(owned.asked)[0])).toContain(ownerMark("fd-a", "todo"));
+    const other = fakeGh({ comments: [note("fd-a", "progress")] });
+    const refused = claim(["7", "--by", "fd-b", "--release"], other);
+    expect([await refused.code, posts(other.asked).length]).toEqual([1, 0]);
+    expect(refused.lines[0] ?? "").toStartWith("#7 is owned by fd-a");
+  });
+
+  test("from the review: output that is not JSON lines, and a comment gh refuses, are one line and exit 1", async () => {
+    const garbled = fakeGh({ commentsText: "<html>proxy</html>" });
+    const a = claim(["7", "--by", "fd-a"], garbled);
+    expect([await a.code, posts(garbled.asked).length]).toEqual([1, 0]);
+    expect(a.lines[0] ?? "").toContain("claim: gh could not read #7");
+    const refused = fakeGh({ commentFails: "HTTP 403" });
+    const b = claim(["7", "--by", "fd-a"], refused);
+    expect([await b.code, b.lines]).toEqual([1, ["claim: gh could not comment on #7: HTTP 403"]]);
   });
 });
