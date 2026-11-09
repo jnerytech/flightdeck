@@ -51,6 +51,23 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the watch commands left the switch of server.ts.
+  test("the watch domain owns the watch.* commands", () => {
+    expect(Object.keys(DOMAINS.watch ?? {}).sort()).toEqual(
+      [
+        "watch.byUrl",
+        "watch.describe",
+        "watch.extend",
+        "watch.get",
+        "watch.resolveHeld",
+        "watch.set",
+        "watch.settings",
+        "watch.trace",
+        "watch.watch",
+      ].sort(),
+    );
+  });
+
   // Issue #1288: the folder and file commands left the switch of server.ts.
   test("the files domain owns the file.*, files.sessions and fs.* commands", () => {
     expect(Object.keys(DOMAINS.files ?? {}).sort()).toEqual(

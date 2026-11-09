@@ -697,10 +697,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "names");
   }
 
-  function watching(): PrWatch {
-    return need(opts, "watch");
-  }
-
   function idle(): Idle {
     return need(opts, "idle");
   }
@@ -978,33 +974,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.chooseVariant": {
         const { cardId, variantId, confirm } = command.payload;
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
-      }
-      case "watch.settings":
-        return ok(
-          command.type,
-          watching().settings(command.payload.projectId, command.payload.patch),
-        );
-      case "watch.set":
-        return ok(command.type, watching().set(command.payload.cardId, command.payload.enabled));
-      case "watch.get":
-        return ok(command.type, watching().info(command.payload.cardId));
-      case "watch.resolveHeld": {
-        const { cardId, roundId, action } = command.payload;
-        return ok(command.type, await watching().resolveHeld(cardId, roundId, action));
-      }
-      case "watch.extend":
-        return ok(command.type, watching().extend(command.payload.cardId, command.payload.rounds));
-      case "watch.trace":
-        return ok(command.type, watching().trace(command.payload.cardId));
-      case "watch.describe":
-        return ok(command.type, watching().describe(command.payload.cardId));
-      case "watch.byUrl":
-        return ok(command.type, watching().byUrl(command.payload.url));
-      case "watch.watch": {
-        const service = watching();
-        ws.data.unwatchPrs?.();
-        ws.data.unwatchPrs = service.watch((frame) => send(ws, frame));
-        return ok(command.type);
       }
       case "names.list":
         return ok(command.type, {
