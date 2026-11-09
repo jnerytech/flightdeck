@@ -299,12 +299,13 @@ export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
 }
 
 /**
- * #1541: the app's dictionaries, whose values are what a person reads. Their words (a token to
- * paste, a permission denied) are no secret or permission code; a secret's own shape in a value
- * is, and code in them is read as everywhere.
+ * #1541: the app's dictionaries, whose values are what a person reads. A plain entry's words (a
+ * token to paste, a permission denied) are no secret or permission code; a secret's own shape is,
+ * on any line, and every other line (code) is read in every area as everywhere.
  */
 const DICTIONARY = /^apps\/desktop\/src\/i18n\/(?:en|pt-BR)\.ts$/;
-const TEXT_AREAS = new Set(["secret", "permission"]);
+/** `key: "text",` with one quoted literal and nothing else; a template with `${` is code. */
+const PLAIN_ENTRY = /^\s*["']?[\w.-]+["']?\s*:\s*(["'`])(?:\\.|(?!\1).)*\1,?\s*$/;
 /** What a secret value looks like (a word saying "token" is not one). */
 const SECRET_VALUES = [
   /(?:gh[pousr]_|github_pat_)\w{20,}/,
@@ -319,14 +320,16 @@ const SECRET_VALUES = [
 
 /** The risk areas these lines of code touch, comments left out. */
 function areasOf(lines: string[], path: string): string[] {
-  const code = lines.filter((line) => !commentOnly(line, path));
   const text = DICTIONARY.test(path);
-  const areas = AREAS.filter(
-    ([name, patterns]) =>
-      !(text && TEXT_AREAS.has(name)) && code.some((line) => any(patterns, line)),
-  ).map(([name]) => name);
-  // A secret pasted in a comment is leaked all the same: every line is read for its shape.
-  if (text && lines.some((line) => any(SECRET_VALUES, line))) areas.push("secret");
+  const plain = (line: string) => text && PLAIN_ENTRY.test(line) && !line.includes("${");
+  const code = lines.filter((line) => !commentOnly(line, path) && !plain(line));
+  const areas = AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
+    ([name]) => name,
+  );
+  // A secret pasted in an entry or a comment is leaked all the same: every line is read for it.
+  if (text && !areas.includes("secret") && lines.some((line) => any(SECRET_VALUES, line))) {
+    areas.push("secret");
+  }
   return areas;
 }
 

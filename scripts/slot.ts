@@ -21,15 +21,25 @@ import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
 import { logHook } from "../.claude/hooks/log.ts";
 import { offerToOomKiller } from "./lib/oom-guard.ts";
-import { type ProcessInfo, type ProcReader, parseStat, run, type SlotEnv } from "./lib/slot.ts";
+import {
+  type ProcessInfo,
+  type ProcReader,
+  parseStat,
+  run,
+  type SlotEnv,
+  timingsFrom,
+} from "./lib/slot.ts";
 
-/** The CI timings file as `{ timings }`, or nothing when it cannot be read. */
-function timingsOf(path: string): { timings?: Record<string, number> } {
+/** The CI timings file as `{ timings, root }`, or nothing when it cannot be read (#1541). */
+function timingsOf(path: string): { timings?: Record<string, number>; root?: string } {
+  let text: string | null = null;
   try {
-    return { timings: JSON.parse(readFileSync(path, "utf8")) as Record<string, number> };
+    text = readFileSync(path, "utf8");
   } catch {
-    return {};
+    // No file: the 60-file limit applies.
   }
+  const timings = timingsFrom(text);
+  return timings ? { timings, root: join(import.meta.dir, "..") } : {};
 }
 
 const LOCK = process.env.FLIGHTDECK_SLOT_LOCK || join(tmpdir(), "flightdeck-slot.lock");

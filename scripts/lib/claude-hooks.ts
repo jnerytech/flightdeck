@@ -840,7 +840,8 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
       conflicting: view.mergeable === "CONFLICTING",
       minutes: Math.floor((now - started) / 60_000),
       // Only a PR read with the field and none set: an unread PR is not known to be off.
-      ...("autoMergeRequest" in view && view.autoMergeRequest === null
+      // A merged or closed PR's null says nothing (#1560 review): only an open one counts.
+      ...(view.state === "OPEN" && "autoMergeRequest" in view && view.autoMergeRequest === null
         ? { autoMergeOff: true }
         : {}),
     };
@@ -856,6 +857,7 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
 function parsedView(text: string | null): {
   mergeable?: string;
   autoMergeRequest?: unknown;
+  state?: string;
   statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
 } {
   try {
@@ -890,7 +892,7 @@ export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: strin
     if (runs.trim() === "[]") return "none";
     // `--` ends the flags, so the branch is always the PR to view.
     const pr = gh(
-      ["pr", "view", "--json=mergeable,statusCheckRollup,autoMergeRequest", "--", branch],
+      ["pr", "view", "--json=mergeable,statusCheckRollup,autoMergeRequest,state", "--", branch],
       dir,
     );
     return prRunFrom(runs, pr, now());
@@ -1096,21 +1098,27 @@ const TOKEN_SHAPES: readonly RegExp[] = [
 
 /** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
 function redacted(text: string): string {
-  return TOKEN_SHAPES.reduce(
-    (out, shape) => out.replace(shape, "***"),
-    text.replace(/:\/\/[^/@\s]+@/g, "://***@"),
-  )
-    .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
-    .replace(
-      /--((?:\w+-)*(?:token|password|passwd|secret|key))([= ])(?:"[^"]*"|'[^']*'|\S+)/gi,
-      "--$1$2***",
+  return (
+    TOKEN_SHAPES.reduce(
+      (out, shape) => out.replace(shape, "***"),
+      text.replace(/:\/\/[^/@\s]+@/g, "://***@"),
     )
-    .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
-    .replace(/\b(Cookie|X-Api-Key):\s*[^"'\s]+/gi, "$1: ***")
-    .replace(
-      /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
-      "$1=***",
-    );
+      .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
+      .replace(
+        /--((?:\w+-)*(?:token|password|passwd|secret|key))([= ])(?:"[^"]*"|'[^']*'|\S+)/gi,
+        "--$1$2***",
+      )
+      .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
+      // A header's whole value, to its closing quote or the end of the line (#1560 review).
+      .replace(
+        /\b((?:Set-)?Cookie|X-(?:Api-Key|Auth-Token|Amz-Security-Token)):\s*[^"'\n]*/gi,
+        "$1: ***",
+      )
+      .replace(
+        /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
+        "$1=***",
+      )
+  );
 }
 
 /**

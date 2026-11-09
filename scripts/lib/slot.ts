@@ -76,6 +76,8 @@ export interface SlotEnv {
   heavyReason?: string;
   /** #1541: each test file's CI seconds (scripts/test-timings.json); the limit is then time, not files. */
   timings?: Record<string, number>;
+  /** The checkout the timings' paths are relative to. */
+  root?: string;
   /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
   record?(
     rule: "slot-files" | "long-hold",
@@ -141,6 +143,8 @@ export const SLOT_TEST_FILES = 60;
  * a run over 60 unit files takes seconds, one of 40 slow files may hold the slot for minutes.
  */
 export const SLOT_TEST_SECONDS = 60;
+/** Past this many files a run needs a reason whatever the timings say (stale or missing ones). */
+export const SLOT_TEST_FILES_CAP = 3 * SLOT_TEST_FILES;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -629,9 +633,23 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
 
 const TEST_ARG = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
-/** The CI timings table from its text (#1541): stub. */
-export function timingsFrom(_text: string | null): Record<string, number> | undefined {
-  return undefined;
+/**
+ * The CI timings table from its text (#1541): only finite, non-negative numbers; anything that is
+ * not an object of them is no table, so the 60-file limit applies.
+ */
+export function timingsFrom(text: string | null): Record<string, number> | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text ?? "");
+  } catch {
+    return undefined;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
+  const entries = Object.entries(parsed).filter(
+    (entry): entry is [string, number] =>
+      typeof entry[1] === "number" && Number.isFinite(entry[1]) && entry[1] >= 0,
+  );
+  return Object.fromEntries(entries);
 }
 
 /** How many test files a `bun ... test` command names; 0 for any other command (#833). */
@@ -644,13 +662,20 @@ export function testFileCount(command: string[]): number {
 export function estimatedSeconds(
   command: string[],
   timings: Record<string, number>,
-  _root = "",
+  root = "",
 ): number {
   const values = Object.values(timings);
   const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 1;
+  // The table's keys are repo-relative with "/": a Windows-style or absolute path is read as one.
+  const base = `${root.replace(/\\/g, "/").replace(/\/$/, "")}/`;
+  const key = (arg: string) => {
+    const path = arg.replace(/\\/g, "/");
+    const inside = base !== "/" && path.startsWith(base) ? path.slice(base.length) : path;
+    return inside.replace(/^\.\//, "");
+  };
   return command
     .filter((arg) => TEST_ARG.test(arg))
-    .reduce((sum, arg) => sum + (timings[arg.replace(/^\.\//, "")] ?? mean), 0);
+    .reduce((sum, arg) => sum + (timings[key(arg)] ?? mean), 0);
 }
 
 /**
@@ -662,8 +687,9 @@ export function estimatedSeconds(
 function refusedOverLimit(env: SlotEnv, command: string[]): boolean {
   const count = testFileCount(command);
   if (count === 0) return false;
-  const seconds = env.timings ? Math.round(estimatedSeconds(command, env.timings)) : null;
-  if (seconds === null ? count <= SLOT_TEST_FILES : seconds <= SLOT_TEST_SECONDS) return false;
+  const seconds = env.timings ? Math.round(estimatedSeconds(command, env.timings, env.root)) : null;
+  const within = seconds === null ? count <= SLOT_TEST_FILES : seconds <= SLOT_TEST_SECONDS;
+  if (within && count <= SLOT_TEST_FILES_CAP) return false;
   const reason = (env.heavyReason ?? "").trim();
   if (heavyReasonGiven(reason)) {
     env.record?.("slot-files", "waived", { detail: reason.slice(0, 200) });
