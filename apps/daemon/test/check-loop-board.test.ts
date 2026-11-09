@@ -28,11 +28,20 @@ async function setup(results: BoundedCheckResult[] = [FAILED, PASSED]) {
   const answers = [...results];
   let gate: Promise<void> | null = null;
   let during: (() => void) | null = null;
+  const finished: string[] = [];
   const runner = {
-    run: async (command: string) => {
+    run: async (command: string, _cwd: string, _timeoutMs?: number, signal?: AbortSignal) => {
       ran.push(command);
       during?.();
-      if (gate) await gate;
+      // A held check ends when it is let go, or when it is killed (its signal aborts).
+      if (gate) {
+        await Promise.race([
+          gate,
+          new Promise<void>((done) => signal?.addEventListener("abort", () => done())),
+        ]);
+      }
+      finished.push(signal?.aborted ? "killed" : "done");
+      if (signal?.aborted) return { exitCode: 137, output: "", aborted: true };
       return answers.shift() ?? PASSED;
     },
   };
@@ -62,6 +71,7 @@ async function setup(results: BoundedCheckResult[] = [FAILED, PASSED]) {
     project,
     card,
     ran,
+    finished,
     switchOn,
     duringCheck: (fn: () => void) => (during = fn),
     holdChecks: () => {
@@ -139,7 +149,8 @@ describe("check-loop: on the board", () => {
   });
 
   test("the person's message while the checks run aborts them: no round is sent", async () => {
-    const ctx = await setup([FAILED]);
+    // The held check is killed, so it spends no result; the loop after the person's turn passes.
+    const ctx = await setup([PASSED]);
     ctx.switchOn(ctx.card.id);
     const open = ctx.holdChecks();
     await ctx.board.startCard(ctx.card.id);
@@ -167,6 +178,44 @@ describe("check-loop: on the board", () => {
     open();
     const otherRan = await poll(() => ctx.board.getCard(other.id).sessionId !== null, 10_000);
     expect([otherRan, ctx.rounds(ctx.card.id).at(-1)?.reason]).toEqual([true, "stopped_by_you"]);
+  });
+});
+
+describe("check-loop: the security review's cases on the board", () => {
+  test("reordering the card in its own column does not end the loop", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    const open = ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    const column = ctx.board.getCard(ctx.card.id).column;
+    await ctx.board.moveByHand(ctx.card.id, column, 0, false);
+    open();
+    const round = await poll(
+      () => prompts(ctx, ctx.card.id).some((text) => text.startsWith("Round 1 of 3")),
+      10_000,
+    );
+    expect([round, ctx.rounds(ctx.card.id)[0]?.status]).toEqual([true, "sent"]);
+  });
+
+  test("a new run of the card starts its loop afresh: the mark of an older session does not silence it", async () => {
+    const ctx = await setup([PASSED, PASSED]);
+    await ctx.board.startCard(ctx.card.id);
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    ctx.switchOn(ctx.card.id);
+    await ctx.board.startCard(ctx.card.id);
+    const checked = await poll(() => ctx.ran.length === 1, 10_000);
+    expect(checked).toBe(true);
+  });
+
+  test("a discard waits for the killed check to end before the card goes", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    await ctx.board.discardCard(ctx.card.id, true);
+    expect(ctx.finished).toEqual(["killed"]);
   });
 });
 
