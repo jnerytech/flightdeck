@@ -16,10 +16,24 @@ export interface AwayView {
   unreached: string[];
 }
 
-/** The summary to show, or null when there is none: no absence, closed by the person, or nothing new. */
+const newsOf = (result: ActivitySinceResult) =>
+  result.sessions.total + result.reviewCards.total + result.prs.total + result.failedRuns.total;
+
+/**
+ * The summary to show, or null when there is none: no absence, closed by the person, or nothing
+ * new. A host with nothing new is left out (its quota alone is not news); one that did not answer
+ * is named.
+ */
 export function awayView(
-  _away: AwayState & { unreached?: string[] },
-  _hosts: ReadonlyArray<{ id: string; name: string }>,
+  away: AwayState & { unreached?: string[] },
+  hosts: ReadonlyArray<{ id: string; name: string }>,
 ): AwayView | null {
-  return { since: "", news: [], unreached: [] };
+  if (away.since === null || away.dismissed) return null;
+  const nameOf = (id: string) => hosts.find((host) => host.id === id)?.name ?? id;
+  const news = away.hosts
+    .filter((host) => newsOf(host.result) > 0)
+    .map((host) => ({ hostId: host.hostId, hostName: nameOf(host.hostId), result: host.result }));
+  const unreached = (away.unreached ?? []).map(nameOf);
+  if (news.length === 0 && unreached.length === 0) return null;
+  return { since: away.since, news, unreached };
 }
