@@ -940,6 +940,9 @@ export const ptBR = {
     startQueue: "Eles entram na fila do board.",
     startQuota: "{host}: {percent}% da janela de 5 horas usados, {reset}.",
     startQuotaHold: "{host} passou do limite de pausa: os cards novos esperam a janela renovar.",
+    startBudgetHold:
+      "{host} chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
+    startMemoryHold: "{host} está sem memória: os cards novos esperam ela liberar.",
     noCriteriaOne: "1 deles não tem critérios de aceite; ele inicia mesmo assim.",
     noCriteria: "{n} deles não têm critérios de aceite; eles iniciam mesmo assim.",
     skipped: "fica de fora: {reason}",

@@ -74,9 +74,21 @@ export async function runMany(cards: Card[], request: CardRequest): Promise<Bulk
  * reason reports. A hold the host does not report adds no line.
  */
 export function holdLines(
-  _t: T,
-  _host: string,
-  _input: { budgets: Budget[]; projectKey: string | null; cards: Card[] },
+  t: T,
+  host: string,
+  input: { budgets: Budget[]; projectKey: string | null; cards: Card[] },
 ): string[] {
-  return [];
+  const reported = (reason: Card["queueReason"]) =>
+    input.cards.some((card) => card.queued && card.queueReason === reason);
+  const overBudget = input.budgets.some(
+    (budget) =>
+      budget.action === "queue" &&
+      budget.fraction >= 1 &&
+      (budget.scope === "host" ||
+        (budget.projectKey !== null && budget.projectKey === input.projectKey)),
+  );
+  const lines: string[] = [];
+  if (overBudget || reported("budget")) lines.push(t("board.startBudgetHold", { host }));
+  if (reported("memory")) lines.push(t("board.startMemoryHold", { host }));
+  return lines;
 }

@@ -78,7 +78,7 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
-import { bulkSplit, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
+import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
 import {
   askAbout,
   dragNeeds,
@@ -384,6 +384,7 @@ const BOARDVIEW_KEYS = [
   "quota",
   "account",
   "personas",
+  "budgets",
 ] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
@@ -730,6 +731,7 @@ export const BoardView = memo(function BoardView(props: {
   const bulkLines = (): string[] => {
     if (bulk === "stop") return [t("board.stopBody")];
     const lines: string[] = workflowsFailed ? [t("board.workflowsUnread")] : [];
+    const hostName = state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
     if (queueMax !== undefined) {
       lines.push(
         queueLine(t, queueSplit(startable.length, queueMax ?? 0, runningOnHost), queueMax),
@@ -738,7 +740,6 @@ export const BoardView = memo(function BoardView(props: {
     const quota = state.quota[hostId];
     if (onSubscription(quota, state.account[hostId])) {
       const bars = quotaBars(quota, Date.now(), (iso) => store.formatTime(iso), t);
-      const hostName = state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
       const fiveHour = bars[0];
       if (fiveHour?.hasReading) {
         lines.push(
@@ -751,6 +752,13 @@ export const BoardView = memo(function BoardView(props: {
       }
       if (bars.some((bar) => bar.hot)) lines.push(t("board.startQuotaHold", { host: hostName }));
     }
+    lines.push(
+      ...holdLines(t, hostName, {
+        budgets: state.budgets[hostId] ?? [],
+        projectKey: project ? store.projectKeyOf(hostId, project) : null,
+        cards: all,
+      }),
+    );
     const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
     if (lacking > 0) {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
