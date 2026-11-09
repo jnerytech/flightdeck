@@ -7,14 +7,24 @@ import { azureCoords, githubCoords } from "../issues/remote.ts";
 
 export type DetectedProvider = "github" | "azure-devops";
 
+/**
+ * Only a bare host name leaves this module. An address is whatever someone typed: a password with an
+ * `@` or a `/` in it, a port that is a word or a query can leave a secret in what looks like the host,
+ * so anything that is not letters, digits, hyphens and dots between labels gives nothing.
+ */
+const HOST_NAME = /^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z0-9-]+$/;
+function plainHost(part: string): string | null {
+  const lower = part.toLowerCase();
+  return HOST_NAME.test(lower) ? lower : null;
+}
+
 /** What a remote address says: the provider when it is one Flightdeck opens PRs on, and its host name. */
 export function providerOfRemote(url: string | null): {
   provider: DetectedProvider | null;
   host: string | null;
 } {
   if (url === null || url.trim() === "") return { provider: null, host: null };
-  // `stripRemote` leaves no scheme, user, password or port: the first part is the host name alone.
-  const host = stripRemote(url).split("/")[0]?.toLowerCase() || null;
+  const host = plainHost(stripRemote(url).split("/")[0] ?? "");
   if (githubCoords(url)) return { provider: "github", host };
   if (azureCoords(url)) return { provider: "azure-devops", host };
   return { provider: null, host };
