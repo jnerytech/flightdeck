@@ -67,6 +67,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   usage: "usage",
   vault: "vault",
   watch: "prWatch",
+  checkLoop: "prWatch",
   webhook: "webhook",
   // The gates written inline in a case before the split, each with a single name.
   bypass: "bypass",
