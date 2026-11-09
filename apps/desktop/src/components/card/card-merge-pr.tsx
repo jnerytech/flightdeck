@@ -5,6 +5,7 @@ import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
+import { radarMergeLine } from "@/lib/conflict-radar";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 export interface CardMergePrProps {
@@ -32,6 +33,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
   const said = useRef<HTMLDivElement>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const url = card.prUrl ?? "";
+  const radar = radarMergeLine(card, t);
 
   const merge = async () => {
     props.onOpenChange(false);
@@ -108,6 +110,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
                 <span className="text-sm">{t(`checks.${card.checksState}` as Key)}</span>
               )}
             </Stack>
+            {radar && <p className="text-sm">{radar}</p>}
             <Field label={t("cardMergePr.how")}>
               {(control) => (
                 <NativeSelect

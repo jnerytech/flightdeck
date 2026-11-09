@@ -648,6 +648,15 @@ export type PrMergeable = z.infer<typeof PrMergeable>;
 export const PrReview = z.enum(["approved", "changes_requested", "required", "none"]);
 export type PrReview = z.infer<typeof PrReview>;
 
+/** Issue #1405: another card of the project that changes some of the same files. */
+export const MayConflict = z.object({
+  cardId: z.string(),
+  title: z.string(),
+  /** The files both cards change (capped by the daemon). */
+  files: z.array(z.string()),
+});
+export type MayConflict = z.infer<typeof MayConflict>;
+
 /** Phase 13: the project's automatic approval, off by default. */
 export const AutoApproveSettings = z.object({
   enabled: z.boolean().default(false),
@@ -829,6 +838,8 @@ export const Card = z.object({
   prMergeable: PrMergeable.nullable().optional(),
   prReview: PrReview.nullable().optional(),
   prOpenedAt: z.string().nullable().optional(),
+  /** Issue #1405 (host `conflictRadar`): the cards that edit the same files; absent when none. */
+  mayConflict: z.array(MayConflict).optional(),
   /** Started and waiting for a free slot. */
   queued: z.boolean(),
   /** Session of the active (latest) run. */
@@ -848,7 +859,7 @@ export const Card = z.object({
   /** Workflow run of the active run; `null` for a simple card (phase 4). */
   workflowRunId: z.string().nullable().default(null),
   /** Why a queued card waits: a free slot, or the host's plan quota (phase 7). */
-  queueReason: z.enum(["slot", "quota", "memory", "budget"]).nullable().default(null),
+  queueReason: z.enum(["slot", "quota", "memory", "budget", "paused"]).nullable().default(null),
   /** With `queueReason: quota`, when the window resets (ISO); `null` when unknown. */
   quotaUntil: z.string().nullable().default(null),
   /** Phase 13: an arena variant's parent card; variants are not on the board. */
@@ -3457,6 +3468,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
   /** Keep this computer awake while sessions run: the host's switch (issue #163). */
   cmd("host.keepAwake", z.object({ enabled: z.boolean() }).strict()),
+  /** Issue #1404: new card runs wait on the host while paused; near only. */
+  cmd("host.pause", z.object({ paused: z.boolean() }).strict()),
   /** Issue #196: which folders may bring their own hooks, MCP servers and settings into a managed session. */
   cmd(
     "project.trust.state",
@@ -5104,6 +5117,12 @@ export const KeepAwakeStatus = z.object({
     .nullable(),
 });
 export type KeepAwakeStatus = z.infer<typeof KeepAwakeStatus>;
+/** Issue #1404: whether new card runs wait on the host, and how many sessions still run there. */
+export const HostPauseStatus = z.object({
+  paused: z.boolean(),
+  running: z.number().int().nonnegative(),
+});
+export type HostPauseStatus = z.infer<typeof HostPauseStatus>;
 /** Issue #280: where the daemon's automatic update stands, for the host page. */
 export const AutoUpdateStatus = z.object({
   enabled: z.boolean(),
@@ -5160,6 +5179,8 @@ export const HostInfoResult = z.object({
   sleepAfterMinutes: z.number().int().nonnegative().optional(),
   /** The host's keep-awake switch and whether it is holding the computer now; absent before issue #163. */
   keepAwake: KeepAwakeStatus.optional(),
+  /** Issue #1404: the host's pause of new card runs; absent on a daemon that predates it. */
+  pause: HostPauseStatus.optional(),
   /** Phase 39: the host's other runtimes (OpenCode), each available or not with the reason. */
   runtimes: z.array(HostRuntime).optional(),
 });
@@ -5680,6 +5701,7 @@ export interface CommandResults {
   "roots.add": RootsResult;
   "host.bypass": BypassResult;
   "host.keepAwake": KeepAwakeStatus;
+  "host.pause": HostPauseStatus;
   "project.trust.state": ProjectTrustStates;
   "project.trust.inspect": ProjectLoad;
   "project.harness.stack": HarnessStack;

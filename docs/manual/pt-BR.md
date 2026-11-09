@@ -1376,7 +1376,10 @@ merge ou squash), e então roda `gh pr merge` com esse jeito e nada mais: sem `-
 `--auto`, sem apagar a branch, então os checks e revisões obrigatórios continuam valendo. Se o
 GitHub recusar, o card diz por quê (revisão pendente, checks falhando ou ainda rodando, conflito, ou
 as palavras do próprio GitHub) com um link para o PR, e o card fica onde está; quando o merge
-acontece, o card vai para Concluído. Funciona por uma conexão próxima (este computador ou
+acontece, o card vai para Concluído. Quando o radar de conflitos do host acha outros cards do projeto
+que mudam os mesmos arquivos, o card mostra **Pode conflitar com …** no board, lista esses cards e os
+arquivos em comum em **Pode conflitar com outros cards** nos detalhes, e a confirmação do merge os
+nomeia. Funciona por uma conexão próxima (este computador ou
 Tailscale), e os cards do Azure DevOps fazem o merge no Azure DevOps. Os cards com PR aberto são consultados a cada 60 s, ou a cada
 `board.prPollIntervalMs` da config. PR mesclado leva o card a Concluído; fechado sem merge, a
 Esperando você.
@@ -1403,6 +1406,13 @@ interrompida ou fica ociosa.
   (**Cartões novos esperam com a memória em**, ou **Nunca**), ou no `config.json`
   (`{ "resources": { "pauseAt": 0.9 } }`, `null` desliga). Quando o host não consegue ler a
   memória, nada espera; o macOS, que conta o cache como memória em uso, não é lido.
+- **Pausar novas execuções** (#1404): antes de reiniciar ou atualizar um host, ligue **Pausar novas
+  execuções** na página dele (aba Configurações). Cards novos esperam com "aguardando: host
+  pausado", à frente de qualquer outro motivo, e as execuções em andamento terminam. O painel e a
+  barra de status dizem **Pausado · 2 rodando**, depois **Pausado · ocioso** quando nada roda; o item
+  da barra abre o host. **Retomar novas execuções** libera a fila. A pausa fica no `config.json`
+  (`"pauseNewRuns": true`) entre reinícios, e só uma conexão próxima (este computador ou a
+  Tailscale) pode mudá-la.
 
 ### Dependências entre cards
 

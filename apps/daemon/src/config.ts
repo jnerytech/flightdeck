@@ -57,6 +57,8 @@ export const Config = z.object({
   allowApiKey: z.boolean().default(false),
   /** Keep the computer awake while a session runs or waits (issue #163); on unless the person turns it off. */
   keepAwake: z.boolean().default(true),
+  /** Issue #1404: new card runs wait on this host (before a restart or an update); off by default. */
+  pauseNewRuns: z.boolean().default(false),
   /** A session may start in `bypassPermissions`; off until the person turns it on for the host. */
   allowBypassPermissions: z.boolean().default(false),
   /** Cards running at the same time; the rest wait in start order (protects the quota). */

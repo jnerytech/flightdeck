@@ -4,10 +4,13 @@ import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../src/main.ts";
 import type { ServiceContext } from "../src/service.ts";
+import { stableBinPath } from "../src/update.ts";
 import { poll, tempDir } from "./helpers.ts";
 
 const TOKEN = "service-install-token-0123456789";
-const STABLE = "/h/.flightdeck/bin/flightdeckd";
+// What the daemon compares itself with: the stable path is joined by the host's own path rules, so a
+// literal "/h/..." would never match on Windows, where the test still plays a Linux manager (#1417).
+const STABLE = stableBinPath("/h", "linux");
 const stops: Array<() => Promise<void>> = [];
 afterEach(async () => {
   for (const stop of stops.splice(0)) await stop();

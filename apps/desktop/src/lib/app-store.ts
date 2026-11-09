@@ -479,6 +479,7 @@ export type HostCommandType = Extract<
   | "host.sleep"
   | "session.sleep"
   | "host.keepAwake"
+  | "host.pause"
   | `project.trust.${string}`
   | `project.harness.${string}`
   | `harness.templates.${string}`

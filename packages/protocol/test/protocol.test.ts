@@ -96,6 +96,7 @@ const validCommands: Record<CommandType, unknown> = {
   "roots.add": { path: "/work/new", confirm: true },
   "host.bypass": { allow: true, confirm: true },
   "host.keepAwake": { enabled: true },
+  "host.pause": { paused: true },
   "project.trust.state": { paths: ["/work/app"] },
   "project.trust.inspect": { path: "/work/app" },
   "project.harness.stack": { path: "/work/app" },
