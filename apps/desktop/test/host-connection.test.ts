@@ -491,6 +491,13 @@ describe("desktop: conexão com o host", () => {
     });
   });
 
+  test("a close reason with a line separator or a bidi override is one plain line (#1532)", async () => {
+    const [ls, rlo, zwsp] = [0x2028, 0x202e, 0x200b].map((code) => String.fromCodePoint(code));
+    const { conn } = connect(closingHost(4408, `x${ls}ERROR y${rlo}z${zwsp}w`));
+    await waitFor(() => conn.retry !== null, "the drop");
+    expect(conn.lastDrop?.reason).toBe("x ERROR y z w");
+  });
+
   test("a host that puts the token in its close reason does not put it in the app's log (#1532)", async () => {
     const { conn } = connect(closingHost(4408, `bye ${TOKEN} now`));
     await waitFor(() => conn.retry !== null, "the drop");

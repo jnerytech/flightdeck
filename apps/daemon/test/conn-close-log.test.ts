@@ -124,6 +124,25 @@ function serve(extra: Parameters<typeof startServer>[0] extends infer O ? Partia
   return server;
 }
 
+describe("conn-close-log: invisible characters of a peer (issue #1532)", () => {
+  test("a line separator, a bidi override and a zero-width character cannot start a line or reorder the text", () => {
+    // Named by code point: a literal one in the source is what a reader cannot see.
+    const [ls, ps, rlo, pdi, zwsp, bom] = [0x2028, 0x2029, 0x202e, 0x2066, 0x200b, 0xfeff].map(
+      (code) => String.fromCodePoint(code),
+    );
+    const line = closeLine(
+      facts({
+        client: `a${ls}ERROR fake${rlo}evil`,
+        reason: `b${ps}c${pdi}d${zwsp}e${bom}f`,
+      }),
+      TOKEN,
+    );
+    for (const hidden of [ls, ps, rlo, pdi, zwsp, bom]) expect(line).not.toContain(hidden ?? "?");
+    expect(line).toContain('client "a ERROR fake evil"');
+    expect(line).toContain('code 1001 "b c d e f"');
+  });
+});
+
 describe("conn-close-log: the server writes it for each way a connection closes (issue #1532)", () => {
   test("a client that stops answering is closed by the heartbeat, and the line says so", async () => {
     const lines: string[] = [];
