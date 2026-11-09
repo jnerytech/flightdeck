@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CardReviewResult } from "@flightdeck/protocol";
+import { type CardReviewResult, DAEMON_REASONS } from "@flightdeck/protocol";
 import { Costs } from "../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../src/costs/pricing.ts";
 import { startDaemon } from "../src/main.ts";
@@ -107,5 +107,16 @@ describe("card-review over the protocol (#1439)", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     const info = await client.data<{ features?: string[] }>("host.info", {});
     expect(info?.features?.includes("cardReview")).toBe(true);
+  });
+
+  test("from the review: the refusals have reasons the app words in both languages", () => {
+    for (const r of [
+      "card_review_running",
+      "card_review_held",
+      "card_review_no_diff",
+      "card_review_limit",
+    ]) {
+      expect([r, (DAEMON_REASONS as readonly string[]).includes(r)]).toEqual([r, true]);
+    }
   });
 });

@@ -41,12 +41,24 @@ export interface CardReviewDeps {
   complete(opts: CompleteOptions): Promise<CompleteResult>;
   comments: { add(input: NewReviewComment): Promise<unknown> };
   redact(text: string): string;
-  /** The Code reviewer persona's instructions. */
-  persona: string;
+  /** The Code reviewer persona's instructions, in the app's language. */
+  persona: (language: ReviewLanguage) => string;
   model: string;
   /** Records what a call used, against the card. */
   record(cardId: string, worktree: string, tokens: UsageTokens): void;
   now?: () => number;
+}
+
+export type ReviewLanguage = "en" | "pt-BR";
+
+/** The first hold that refuses a review: the host's pause, the quota, memory, then the budget. */
+export function reviewHold(_gates: {
+  paused: boolean;
+  quota: boolean;
+  memory: boolean;
+  budget: boolean;
+}): "paused" | "quota" | "memory" | "budget" | null {
+  return null;
 }
 
 export interface CardReviewResult {
@@ -111,7 +123,7 @@ export class CardReviews {
   }
 
   /** Reviews the card's diff now, or answers the stored review of the same diff. */
-  async start(cardId: string): Promise<CardReviewResult> {
+  async start(cardId: string, _language: ReviewLanguage = "en"): Promise<CardReviewResult> {
     const card = this.deps.card(cardId);
     if (card.running || this.running.has(cardId))
       throw refused("card_review_running", "the card is busy");
@@ -177,7 +189,7 @@ export class CardReviews {
     try {
       result = await this.deps.complete({
         model: this.deps.model,
-        system: fixedSystem(this.deps.persona),
+        system: fixedSystem(this.deps.persona("en")),
         prompt,
         cwd: worktree,
         effort: "medium",

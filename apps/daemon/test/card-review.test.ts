@@ -88,7 +88,7 @@ function setup(
     },
     comments: { add: async (input) => void added.push(input) },
     redact: (t) => t.replaceAll("SECRET123", "[redacted]"),
-    persona: "You act as a senior code reviewer.",
+    persona: (language) => `You act as a senior code reviewer (${language}).`,
     model: "claude-sonnet-5-5",
     record: (cardId, worktree, t) => void recorded.push({ cardId, worktree, input: t.input }),
     now: () => Date.parse("2026-11-09T12:00:00Z"),
@@ -250,5 +250,83 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
       { max: "3" },
     ]);
     expect(calls.length).toBe(3);
+  });
+
+  test("from the review: a throw outside the call (the spec read) leaves no running key, and asking again works", async () => {
+    let fail = true;
+    const { reviews, calls } = setup({
+      spec: async () => {
+        if (fail) throw new Error("git broke");
+        return undefined;
+      },
+    });
+    expect(String(await reviews.start("c1").catch((e) => e))).toContain("git broke");
+    fail = false;
+    expect((await reviews.start("c1")).state).toBe("done");
+    expect(calls.length).toBe(1);
+  });
+
+  test("from the review: a review left running by a restart is no longer running for the next daemon", async () => {
+    const hang = setup({ complete: () => new Promise<CompleteResult>(() => {}) });
+    void hang.reviews.start("c1");
+    // timing: let the first start write its running key before the restart
+    await Bun.sleep(0);
+    const restarted = new CardReviews(hang.reviews.deps);
+    let asked = 0;
+    restarted.deps.complete = async () => {
+      asked++;
+      return { text: answer([]), subtype: "success", tokens };
+    };
+    expect((await restarted.start("c1")).state).toBe("done");
+    expect(asked).toBe(1);
+  });
+
+  test("from the review: the key covers the card's text too, and a card without a worktree is refused", async () => {
+    let title = "Fix";
+    const card = () => ({
+      id: "c1",
+      projectId: "p1",
+      title,
+      description: "it",
+      worktreePath: "/w/c1",
+      running: false,
+    });
+    const { reviews, calls } = setup({ card });
+    await reviews.start("c1");
+    title = "Fix the login";
+    expect((await reviews.start("c1")).cached).toBe(false);
+    expect(calls.length).toBe(2);
+    const bare = setup({
+      card: () => ({
+        id: "c1",
+        projectId: "p1",
+        title: "t",
+        description: "",
+        worktreePath: null,
+        running: false,
+      }),
+    });
+    expect(reason(await bare.reviews.start("c1").catch((e) => e))).toEqual([
+      "card_no_worktree",
+      {},
+    ]);
+    expect(bare.calls.length).toBe(0);
+  });
+
+  test("from the review: the review writes in the app's language", async () => {
+    const { reviews, calls } = setup();
+    await reviews.start("c1", "pt-BR");
+    expect(calls[0]?.system).toContain("(pt-BR)");
+    expect(calls[0]?.system).toContain(
+      "Write the summary and the findings in Brazilian Portuguese.",
+    );
+  });
+
+  test("from the review: the holds are named in order: paused, quota, memory, then budget", () => {
+    expect(reviewHold({ paused: true, quota: true, memory: true, budget: true })).toBe("paused");
+    expect(reviewHold({ paused: false, quota: true, memory: true, budget: true })).toBe("quota");
+    expect(reviewHold({ paused: false, quota: false, memory: true, budget: true })).toBe("memory");
+    expect(reviewHold({ paused: false, quota: false, memory: false, budget: true })).toBe("budget");
+    expect(reviewHold({ paused: false, quota: false, memory: false, budget: false })).toBeNull();
   });
 });

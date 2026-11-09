@@ -1504,7 +1504,7 @@ export async function startDaemon(
         complete,
         comments: reviewComments,
         redact: (text) => reviewScanner.redact(text, false),
-        persona: packPersonas("en").find((p) => p.id === "revisor")?.body ?? "",
+        persona: () => packPersonas("en").find((p) => p.id === "revisor")?.body ?? "",
         model: DEFAULT_MODELS.host.careful,
         record: (cardId, worktree, tokens) =>
           usageIndex.record({
