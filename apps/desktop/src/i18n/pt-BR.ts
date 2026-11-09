@@ -2917,6 +2917,8 @@ export const ptBR = {
     outdated: "Desatualizado",
     lines: "linha {line}",
     linesRange: "linhas {from}–{to}",
+    blankLine: "(linha em branco)",
+    blankLines: "(linhas em branco)",
     editComment: "Editar o comentário em {path}, {where}",
     removeComment: "Remover o comentário em {path}, {where}",
     commentText: "Texto do comentário",
