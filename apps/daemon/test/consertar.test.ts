@@ -72,6 +72,40 @@ describe("consertar: a round of fixing", () => {
     expect(f.gitCalls.some((args) => args[0] === "push")).toBe(false);
   });
 
+  test("#1361: a stored check the rules refuse never runs, and the card asks for you instead of a round to fix it", async () => {
+    const f = await fixture({ settings: { checks: ["bun test", "rm -rf /"] } });
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    const [round] = f.fixer.rounds(f.card.id);
+    expect([
+      f.ran.map((call) => call.command),
+      round?.status,
+      (round?.summary ?? "").includes("local check refused (outside_worktree)"),
+      f.watcher.status(f.card.id).status,
+      f.gitCalls.some((args) => args[0] === "push"),
+    ]).toEqual([["bun test"], "failed", true, "needs_you", false]);
+  });
+
+  test("#1361: the whole output is masked before it is cut, so a secret across the cut leaves nothing", async () => {
+    const token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+    // The 8 KB kept from the end starts 16 characters into the token's line, so a cut before the
+    // mask would keep its last 24 characters; more came before it.
+    const output = `${"y".repeat(12_000)}\n${token}\n${"x".repeat(8192 - 25)}`;
+    const f = await fixture({
+      settings: { checks: ["bun test"] },
+      checkExit: { "bun test": 1 },
+      checkOutput: { "bun test": output },
+    });
+    await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
+    await f.fixer.idle();
+    const summary = f.fixer.rounds(f.card.id)[0]?.summary ?? "";
+    expect([
+      summary.includes("rstuvwxyz0123456789"),
+      summary.includes("x".repeat(100)),
+      summary.length <= 8192 + 200,
+    ]).toEqual([false, true, true]);
+  });
+
   test("it pushes HEAD to the card's own branch, with no force, once", async () => {
     const f = await fixture();
     await f.fixer.onTrigger(f.trigger({ comments: [work()] }));
