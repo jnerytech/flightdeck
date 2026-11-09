@@ -79,6 +79,8 @@ describe("card-review over the protocol (#1439)", () => {
       )
       .run("card-review-c9-01J", 0.12);
     expect(new Costs({ db: store.db, pricing: DEFAULT_PRICING }).card("c9")).toBeCloseTo(0.12, 5);
+    // An id with a wildcard in it names no other card's reviews.
+    expect(new Costs({ db: store.db, pricing: DEFAULT_PRICING }).card("c%")).toBe(0);
   });
 
   test("the daemon wires the review when its runtime has the one-shot call", async () => {

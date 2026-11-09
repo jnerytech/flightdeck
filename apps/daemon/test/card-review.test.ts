@@ -240,4 +240,15 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     await first;
     expect(reason(second)).toEqual(["card_review_running", {}]);
   });
+
+  test("from the security review: a call that failed after it may have spent counts toward the day's limit, and can be asked again", async () => {
+    const down = () => new FlightdeckError("invalid_state", "down", "assistant_host_unavailable");
+    const { reviews, calls } = setup({ answers: [down(), down(), down(), down()] });
+    for (let i = 0; i < 3; i++) await reviews.start("c1").catch(() => null);
+    expect(reason(await reviews.start("c1").catch((e) => e))).toEqual([
+      "card_review_limit",
+      { max: "3" },
+    ]);
+    expect(calls.length).toBe(3);
+  });
 });

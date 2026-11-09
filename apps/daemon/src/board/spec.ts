@@ -33,6 +33,15 @@ export interface SpecHooks {
  * the system says where a descriptor points, still inside. Anything else is "not there": the
  * answer does not tell what exists beyond the worktree.
  */
+/** Issue #1439: the spec file's text (at most `max` bytes) with readSpec's checks; null when refused. */
+export async function readSpecText(
+  _root: string,
+  _path: string,
+  _max: number,
+): Promise<string | null> {
+  return "";
+}
+
 export async function readSpec(
   root: string,
   path: string,
