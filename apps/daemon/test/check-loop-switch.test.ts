@@ -116,13 +116,15 @@ describe("check-loop: the card's switch over the protocol", () => {
     ]);
   });
 
-  test("in bypassPermissions it turns on from anywhere with no confirmation; off always works and clears one", async () => {
+  test("in bypassPermissions it turns on with no confirmation, but only over a near connection; off always works and clears one", async () => {
     const bypass = await setup({ mode: "bypassPermissions" });
-    const on = await bypass.set(bypass.far, { on: true });
+    const farOn = await bypass.set(bypass.far, { on: true });
+    const nearOn = await bypass.set(bypass.near, { on: true });
     const confirmed = await setup({ mode: "default" });
     await confirmed.set(confirmed.near, { on: true, confirm: true });
     const off = await confirmed.set(confirmed.far, { on: false });
-    expect([on, off]).toEqual([
+    expect([farOn, nearOn, off]).toEqual([
+      "transport_refused",
       { on: true, rounds: null, confirmed: false },
       { on: false, rounds: null, confirmed: false },
     ]);
