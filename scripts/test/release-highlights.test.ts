@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { GhResult } from "../lib/ci-branch.ts";
 import {
   areaOf,
+  type HighlightsDeps,
+  highlightsDraft,
   issueOf,
   type MergedPr,
   REPO,
@@ -73,7 +75,9 @@ const TITLES: Record<number, string> = {
 const ok = (stdout: string): GhResult => ({ code: 0, stdout, stderr: "" });
 
 /** A gh that answers the release, the tag's date, the two search pages and the issue titles. */
-function fakeGh(overrides: { release?: GhResult; date?: GhResult } = {}) {
+function fakeGh(
+  overrides: { release?: GhResult; date?: GhResult; titles?: GhResult; page2?: GhResult } = {},
+) {
   const calls: string[][] = [];
   const gh = async (args: string[]): Promise<GhResult> => {
     calls.push(args);
@@ -82,12 +86,14 @@ function fakeGh(overrides: { release?: GhResult; date?: GhResult } = {}) {
     if (args[0] === "api" && args[1] === "graphql") {
       if (args.some((a) => a.startsWith("q="))) {
         const second = args.includes("after=C1");
+        if (second && overrides.page2) return overrides.page2;
         const search = {
           pageInfo: { hasNextPage: !second, endCursor: second ? null : "C1" },
           nodes: second ? PAGE_2 : PAGE_1,
         };
         return ok(JSON.stringify({ data: { search } }));
       }
+      if (overrides.titles) return overrides.titles;
       const repository: Record<string, { title: string }> = {};
       for (const [n, title] of Object.entries(TITLES)) {
         if (args.some((a) => a.includes(`i${n}:`))) repository[`i${n}`] = { title };
@@ -99,30 +105,44 @@ function fakeGh(overrides: { release?: GhResult; date?: GhResult } = {}) {
   return { gh, calls };
 }
 
+/** Runs it with this gh: the draft goes to `out` (stdout), errors and warnings to `err` (stderr). */
+async function draft(args: string[], gh: HighlightsDeps["gh"]) {
+  const out: string[] = [];
+  const err: string[] = [];
+  // A crash is a result too, so a test sees it as a wrong value, not as its own error.
+  const code = await releaseHighlights(args, {
+    gh,
+    log: (line) => out.push(line),
+    warn: (line) => err.push(line),
+  }).catch((error: unknown) => {
+    err.push(`threw ${String(error)}`);
+    return -1;
+  });
+  return { code, out: out.join("\n"), err };
+}
+
+const DRAFT = [
+  "## Highlights (draft)",
+  "",
+  "Since v0.37.16: 9 merged PRs, 5 user-facing in 4 entries. Edit before publishing.",
+  "",
+  "**Board**",
+  "- Card: merge its open PR from the card (#10, #11, #5)",
+  "",
+  "**Sessions**",
+  "- Teams: the team's outcome in one place (#17, #7)",
+  "",
+  "**Costs**",
+  "- budget alert reads right (#18)",
+  "",
+  "**Backup**",
+  "- Backup follow-ups: scheduled backups keeping the last N (#14, #6)",
+].join("\n");
+
 describe("release highlights draft (#1334)", () => {
   test("the PRs merged since the last tag become one bullet per issue, under its area", async () => {
     const { gh, calls } = fakeGh();
-    const lines: string[] = [];
-    expect(await releaseHighlights([], { gh, log: (line) => lines.push(line) })).toBe(0);
-    expect(lines.join("\n")).toBe(
-      [
-        "## Highlights (draft)",
-        "",
-        "Since v0.37.16: 9 merged PRs, 5 user-facing in 4 entries. Edit before publishing.",
-        "",
-        "**Board**",
-        "- Card: merge its open PR from the card (#10, #11, #5)",
-        "",
-        "**Sessions**",
-        "- Teams: the team's outcome in one place (#17, #7)",
-        "",
-        "**Costs**",
-        "- budget alert reads right (#18)",
-        "",
-        "**Backup**",
-        "- Backup follow-ups: scheduled backups keeping the last N (#14, #6)",
-      ].join("\n"),
-    );
+    expect(await draft([], gh)).toEqual({ code: 0, out: DRAFT, err: [] });
     // The search asks for main's merged PRs from the tag's date, and follows the cursor.
     const searches = calls.filter((c) => c.some((a) => a.startsWith("q=")));
     expect(searches.length).toBe(2);
@@ -131,38 +151,82 @@ describe("release highlights draft (#1334)", () => {
     ).toBe(true);
   });
 
+  test("an issue GitHub does not find leaves its bullet on the PR's title, and the rest stands", async () => {
+    // A reference to a missing issue: GitHub answers the others, with an error, and gh exits 1.
+    const partial = {
+      data: { repository: { i5: { title: TITLES[5] }, i6: null, i7: { title: TITLES[7] } } },
+      errors: [{ type: "NOT_FOUND", path: ["repository", "i6"] }],
+    };
+    const { gh } = fakeGh({
+      titles: { code: 1, stdout: JSON.stringify(partial), stderr: "NOT_FOUND" },
+    });
+    const { code, out, err } = await draft([], gh);
+    expect(code).toBe(0);
+    expect(out).toBe(
+      DRAFT.replace(
+        "- Backup follow-ups: scheduled backups keeping the last N (#14, #6)",
+        "- scheduled backups (#14, #6)",
+      ),
+    );
+    // The coordinator is told which number GitHub did not find.
+    expect(err).toEqual([
+      "release-highlights: GitHub did not find #6; its bullet uses the PR title",
+    ]);
+  });
+
   test("--since names the tag; a tag that is not a version is refused before any gh call", async () => {
     const { gh, calls } = fakeGh();
-    const lines: string[] = [];
-    expect(
-      await releaseHighlights(["--since", "v0.37.16"], { gh, log: (l) => lines.push(l) }),
-    ).toBe(0);
+    const named = await draft(["--since", "v0.37.16"], gh);
+    expect([named.code, named.out.split("\n")[2]]).toEqual([0, DRAFT.split("\n")[2]]);
     expect(calls.some((c) => c[0] === "release")).toBe(false);
-    const refused = fakeGh();
-    const said: string[] = [];
-    expect(
-      await releaseHighlights(["--since", "v1; rm -rf ~"], {
-        gh: refused.gh,
-        log: (l) => said.push(l),
-      }),
-    ).toBe(2);
-    expect(refused.calls).toEqual([]);
-    expect(said).toEqual(["release-highlights: --since takes a version tag such as v0.37.16"]);
+    expect(calls.some((c) => c[1] === `repos/${REPO}/commits/v0.37.16`)).toBe(true);
+    for (const args of [["--since", "v1; rm -rf ~"], ["--since"]]) {
+      const refused = fakeGh();
+      expect(await draft(args, refused.gh)).toEqual({
+        code: 2,
+        out: "",
+        err: ["release-highlights: --since takes a version tag such as v0.37.16"],
+      });
+      expect(refused.calls).toEqual([]);
+    }
   });
 
   test("a tag date that is not a date stops it before the search", async () => {
     const { gh, calls } = fakeGh({ date: ok("soon\n") });
-    const lines: string[] = [];
-    expect(await releaseHighlights([], { gh, log: (l) => lines.push(l) })).toBe(1);
-    expect(lines).toEqual(['release-highlights: could not read the date of v0.37.16: "soon"']);
+    expect(await draft([], gh)).toEqual({
+      code: 1,
+      out: "",
+      err: ['release-highlights: could not read the date of v0.37.16: "soon"'],
+    });
     expect(calls.some((c) => c.some((a) => a.startsWith("q=")))).toBe(false);
   });
 
-  test("GitHub that cannot be read stops it with gh's own words", async () => {
-    const { gh } = fakeGh({ release: { code: 1, stdout: "", stderr: "HTTP 502\n" } });
-    const lines: string[] = [];
-    expect(await releaseHighlights([], { gh, log: (l) => lines.push(l) })).toBe(1);
-    expect(lines).toEqual(["release-highlights: could not read the last release: HTTP 502"]);
+  test("GitHub that cannot be read, or answers what is not JSON, stops it on stderr", async () => {
+    const down = fakeGh({ release: { code: 1, stdout: "", stderr: "HTTP 502\n" } });
+    expect(await draft([], down.gh)).toEqual({
+      code: 1,
+      out: "",
+      err: ["release-highlights: could not read the last release: HTTP 502"],
+    });
+    const garbled = fakeGh({ page2: ok("<html>") });
+    const { code, out, err } = await draft([], garbled.gh);
+    expect([code, out, err.length]).toEqual([1, "", 1]);
+    expect(err[0]?.startsWith("release-highlights: could not read the merged PRs: ")).toBe(true);
+    // A long answer is cut, so an HTML page does not flood the terminal.
+    const long = fakeGh({ page2: ok(`<html>${"x".repeat(500)}`) });
+    expect((await draft([], long.gh)).err[0]?.length).toBeLessThanOrEqual(260);
+  });
+
+  test("a search result that is not a PR is a GitHub read error, not a crash", async () => {
+    for (const node of [{}, null]) {
+      const search = { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [node] };
+      const odd = fakeGh({ page2: ok(JSON.stringify({ data: { search } })) });
+      expect(await draft([], odd.gh)).toEqual({
+        code: 1,
+        out: "",
+        err: ["release-highlights: could not read the merged PRs: a result is not a PR"],
+      });
+    }
   });
 });
 
@@ -221,6 +285,8 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
     ).toBe(21);
     // No commit names one: the PR's title may.
     expect(issueOf({ ...pr(["feat(a): x"]), title: "the merge asks first (#22)" })).toBe(22);
+    // A (#N) in a body's prose is not a vote: only the headline and a cut headline's tail count.
+    expect(issueOf(pr(["feat(a): x (#3)"], { body: "Unlike (#4), and (#4) again." }))).toBe(3);
   });
 
   test("an area comes from the issue's words", () => {
@@ -238,5 +304,18 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
       "Quality",
     );
     expect(areaOf("Something else entirely")).toBe("Other");
+    // Short words match whole words only.
+    expect(areaOf("A crosshair cursor in the bootstrap view")).toBe("Other");
+    expect(areaOf("Personal notes in a forked unlinted chatter view")).toBe("Other");
+  });
+
+  test("a title GitHub gives for a PR number drops its type(scope): prefix", () => {
+    const one = { ...pr(["feat(a): x (#9)"]), number: 3 };
+    const text = highlightsDraft(
+      "v1.0.0",
+      [one],
+      new Map([[9, "feat(team-card): the outcome heads the card"]]),
+    );
+    expect(text.split("\n").at(-1)).toBe("- the outcome heads the card (#3, #9)");
   });
 });

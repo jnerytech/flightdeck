@@ -9,6 +9,9 @@ import {
   saveSchedule,
 } from "./backup-schedule.ts";
 
+/** What the person has to be told about: the passphrase to type, a folder to choose, a write that failed. */
+export type Attention = "passphrase" | "no-folder" | "failed";
+
 /** How often the app looks at whether a backup is owed. */
 const CHECK_INTERVAL_MS = 15 * 60_000;
 
@@ -26,11 +29,19 @@ export class BackupScheduler {
   private passphrase: string | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  /** What the app was already told this start (issue #1327): each kind is said once, not every check. */
+  private readonly told = new Set<Attention>();
   private readonly listeners = new Set<() => void>();
 
   constructor(
     private readonly platform: Platform,
-    private readonly options: { workFactor?: number; now?: () => number; intervalMs?: number } = {},
+    private readonly options: {
+      workFactor?: number;
+      now?: () => number;
+      intervalMs?: number;
+      /** Tells the app something needs the person's eyes (issue #1327); at most once per kind per start. */
+      onAttention?: (kind: Attention) => void;
+    } = {},
   ) {
     this.current = loadSchedule(platform.storage);
   }
@@ -59,6 +70,9 @@ export class BackupScheduler {
     if (!folder) return;
     this.folder = await folder.current().catch(() => null);
     if (this.folder && this.current.folder === "") this.current.folder = this.folder;
+    // The passphrase lives in memory only, so every start with the schedule on has to ask for it.
+    if (this.current.cadence !== "off" && this.folder && !this.passphrase)
+      this.attend("passphrase");
     this.notify();
     this.dispose();
     this.timer = setInterval(() => void this.tick(), this.options.intervalMs ?? CHECK_INTERVAL_MS);
@@ -122,10 +136,18 @@ export class BackupScheduler {
         this.save();
       }
       if (report.status !== "idle") this.report = report;
+      if (report.status === "skipped")
+        this.attend(report.reason === "no-passphrase" ? "passphrase" : report.reason);
     } finally {
       this.running = false;
       this.notify();
     }
+  }
+
+  private attend(kind: Attention): void {
+    if (this.told.has(kind)) return;
+    this.told.add(kind);
+    this.options.onAttention?.(kind);
   }
 
   private save(): void {

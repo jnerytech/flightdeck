@@ -19,6 +19,7 @@
   - `nested-scroll`: a box that hides content and scrolls, inside another that does, or inside the page when the page itself scrolls. The detail gives the px each one hides.
   - `header-clipped`: the page header (`data-slot="page-header"`) starts under the tab row (`role="tablist"`), or the page title (`data-slot="page-title"`) is cut.
   - `sheet-actions` (#1271): in a dialog that fills the window (the sheet below 640 px), a form's buttons (`data-slot="form-actions"`) end above the sheet's bottom (by how many px), or a field the sheet scrolls is still under them at the end of its scroll. A field inside a scroller of its own is not counted.
+  - `reason-over` (#1325): a disabled button's reason (`.action-reason`) drawn over another element's text by more than 2 px each way, measured on the text's own lines. Text in a floating layer (a menu, a tooltip) that does not hold the reason is not counted.
 - **Ratchet.** The baseline is `apps/desktop/responsive-baseline.json`. Each key is the rule, `theme lang WxH print` and the path with no numbers; its value is how many findings share it.
   - More findings than the count fails the prints, naming each one by its numbered path and px.
   - Fewer fails too, until the count is lowered (or the key removed at 0).

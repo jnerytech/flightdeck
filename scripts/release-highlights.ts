@@ -13,5 +13,9 @@ const gh = async (args: string[]) => {
   return { code: ran.timedOut ? 124 : ran.code, stdout: ran.stdout, stderr: ran.stderr };
 };
 process.exit(
-  await releaseHighlights(process.argv.slice(2), { gh, log: (line) => console.log(line) }),
+  await releaseHighlights(process.argv.slice(2), {
+    gh,
+    log: (line) => console.log(line),
+    warn: (line) => console.error(line),
+  }),
 );
