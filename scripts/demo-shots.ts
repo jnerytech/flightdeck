@@ -20,6 +20,7 @@ import {
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_REPORT,
+  DEMO_UPDATE_CARDS,
 } from "./lib/e2e-journeys.ts";
 import {
   type Finding,
@@ -311,6 +312,25 @@ function shots(ids: DemoIds): Shot[] {
           .first()
           .waitFor();
         await page.waitForTimeout(400);
+      },
+    },
+    // #1406: Update 3 from the base on the billing cards: the summary names the updated (or already
+    // current) cards and the one in conflict, which stays selected on the bar.
+    {
+      name: "board-atualizar",
+      route: { name: "board", host: ALFA, projectId: ids.updateProject },
+      async prepare(page) {
+        for (const title of DEMO_UPDATE_CARDS) {
+          await page
+            .locator("li[data-card]", { hasText: title })
+            .first()
+            .click({ modifiers: ["Control"], position: { x: 40, y: 4 } });
+        }
+        await page
+          .getByRole("group", { name: /^(Selection|Seleção)$/ })
+          .getByRole("button", { name: /^(Update 3 from the base|Atualizar 3 com a base)$/ })
+          .click();
+        await page.getByText(/(Conflict, left as it was|Conflito, ficou como estava)/).waitFor();
       },
     },
     // #117: the files of a worktree picked in the sidebar tree, in a panel beside the columns.
