@@ -412,6 +412,8 @@ describe("main-red: one claim per red main (#1246)", () => {
 
 /** #1381: main's full runs (the schedule and a dispatch with only=all), which push runs are not. */
 const NOW = Date.parse("2026-11-09T03:05:00Z");
+/** How a person clears a full run's red once it is fixed: a newer full run. */
+const RERUN = "gh workflow run CI --ref main -f only=all";
 const FULL_RED = {
   databaseId: 50,
   conclusion: "failure",
@@ -463,6 +465,7 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     expect(shown.lines).toEqual([
       `main is red: ${FULL_RED.url} (full run, 2h 5m old; the push run is green: ${GREEN_RUN.url})`,
       "failing: deps-gate > startCard is the only door",
+      `fixed since? a newer full run clears it: ${RERUN}`,
       'unclaimed: bun run main-red -- claim "<cause>"',
     ]);
   });
@@ -582,6 +585,28 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     expect(shown.lines).toEqual([`main is green: ${pushAfter.url}`, "closed: #30 (fd-qa)"]);
   });
 
+  test("a full run whose suite timed out, was cancelled or did not start is red: only success, skipped and neutral pass", async () => {
+    for (const conclusion of ["timed_out", "cancelled", "startup_failure"]) {
+      const fake = fakeGh({
+        schedule: [FULL_RED],
+        jobsById: { 50: [{ name: "test suite (ubuntu-latest)", conclusion }] },
+      });
+      expect([conclusion, (await latestFullRun(fake))?.red]).toEqual([conclusion, true]);
+    }
+    const passed = fakeGh({
+      schedule: [FULL_RED],
+      jobsById: {
+        50: [
+          { name: "test suite (ubuntu-latest)", conclusion: "success" },
+          { name: "screenshots", conclusion: "skipped" },
+          { name: "notes", conclusion: "neutral" },
+          { name: "test suite (windows-latest)", conclusion: "timed_out" },
+        ],
+      },
+    });
+    expect((await latestFullRun(passed))?.red).toBe(false);
+  });
+
   test("an age under an hour is told in minutes", async () => {
     const recent = { ...FULL_RED, createdAt: "2026-11-09T02:25:00Z" };
     const fake = fakeGh({ runs: [GREEN_RUN], schedule: [recent], jobsById: { 50: SUITE_FAILED } });
@@ -614,7 +639,7 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
       logById: { 50: FULL_LOG },
     };
     expect(await mainRedLine({ ...fakeGh(opts), now: () => NOW })).toBe(
-      `main is red since ${FULL_RED.url} (full run, 2h 5m old), unclaimed: bun run main-red -- claim "<cause>" before fixing it`,
+      `main is red since ${FULL_RED.url} (full run, 2h 5m old; fixed since? ${RERUN}), unclaimed: bun run main-red -- claim "<cause>" before fixing it`,
     );
     const fake = fakeGh(opts);
     expect(await runAt(["claim", "deps-gate after #1348"], fake).code).toBe(0);
