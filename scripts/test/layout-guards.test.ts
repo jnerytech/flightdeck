@@ -489,6 +489,36 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     ]);
   });
 
+  // #1325: the reason adds no height to its row (#38), so one that wraps, or a row with text right
+  // under it, draws over that text. Only a disabled button's reason: a tooltip or a menu floats on
+  // purpose, and a reason that ends above the next line, or touches it by 2 px, covers nothing.
+  test("narrow (#1325): a disabled button's reason drawn over other text, by how much; a reason clear of it or a tooltip is not", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <section data-slot="details" data-rect="16,16,600,400">
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save spec file</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,82,584,110">Type the spec file's path to save it.</span>
+            </span>
+          </div>
+          <p data-rect="32,100,584,116">No spec file at docs/specs/login.md</p>
+          <div data-rect="32,200,584,240">
+            <span style="position: relative" data-rect="480,200,584,240">
+              <button data-rect="480,200,584,240">Save hours</button>
+              <span class="action-reason" style="position: absolute" data-rect="400,242,584,256">Type the hours.</span>
+            </span>
+          </div>
+          <p data-rect="32,254,584,270">Estimated hours of this card</p>
+          <span data-slot="tooltip-content" style="position: absolute" data-rect="32,300,300,330">A tooltip</span>
+          <p data-rect="32,310,584,326">Under the tooltip</p>
+        </section>
+      </div>`);
+    expect(narrow()).toEqual([
+      "reason-over: page-body > details > span.action-reason (over page-body > details > p, 284x10 px)",
+    ]);
+  });
+
   test("narrow (#641): a box that scrolls inside another that scrolls is two scrollbars; one with nothing to hide is not", () => {
     page(`
       <div data-slot="scroll-area-viewport" style="overflow-y: auto" data-rect="0,0,640,800" data-ch="800" data-sh="1600">
