@@ -17,7 +17,12 @@ setDefaultTimeout(30_000);
 afterEach(cleanup);
 
 function setup() {
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+  // With no host the first tab reads "Conectar um host" (#1551): these tests are about the tabs.
+  const mem = memoryPlatform(false, "pt-BR");
+  seedDemoHosts(mem.win.localStorage, mem.tokens, [
+    { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+  ]);
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   render(<App store={store} />);
   return store;
 }
