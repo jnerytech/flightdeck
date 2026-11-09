@@ -305,7 +305,8 @@ export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
  */
 const DICTIONARY = /^apps\/desktop\/src\/i18n\/(?:en|pt-BR)\.ts$/;
 /** `key: "text",` with one quoted literal and nothing else; a template with `${` is code. */
-const PLAIN_ENTRY = /^\s*["']?[\w.-]+["']?\s*:\s*(["'`])(?:\\.|(?!\1).)*\1,?\s*$/;
+// A backslash only starts an escape pair: `\\"` cannot pass for an escaped quote, and nothing backtracks.
+const PLAIN_ENTRY = /^\s*["']?[\w.-]+["']?\s*:\s*(["'`])(?:\\.|(?!\1)[^\\])*\1,?\s*$/;
 /** What a secret value looks like (a word saying "token" is not one). */
 const SECRET_VALUES = [
   /(?:gh[pousr]_|github_pat_)\w{20,}/,
