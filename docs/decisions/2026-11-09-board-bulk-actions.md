@@ -22,11 +22,13 @@ chord stay as they are.
 |---|---|
 | `x` | Toggles the focused card in the selection. A card just selected becomes the anchor of a range. |
 | Shift+↑ ↓ ← → | Moves the focus as the arrow does, and selects from the anchor to the new card in the board's order (`rangeSelection`). With no anchor, the card left becomes the anchor. |
-| `s` | Focused card in the selection: opens **Start N?** for the selection. Otherwise it starts the focused card, as today. |
-| `m` | Focused card in the selection: opens the bar's **Move to…** menu. Otherwise it opens the card's menu, as today. |
-| `Esc` | An open menu or dialog closes first. Then, with a selection, it clears it and the focus stays on the card. With none, nothing happens. |
+| `s` | With a selection: opens **Start N?** for the selection, wherever the focus is. With none, it starts the focused card, as today. |
+| `m` | With a selection: opens the bar's **Move to…** menu. With none, it opens the card's menu, as today. |
+| `Esc` | An open menu or dialog closes first. Then, with a selection, it clears it and the focus stays on the card. With none, the board does nothing and Esc goes on as today (a split view closes). |
 
-- **One card selected.** `s` and `m` act on that one card, the same as without a selection.
+- **One scope per key.** While a selection exists, `s` and `m` always act on the selection, never on a
+  card outside it. A stray `s` on an unselected card then opens the confirm, rather than starting a
+  card the person did not pick. To act on one card, Esc first. One card selected is a selection of one.
 - **Esc must stop the event.** It must stop it only when it cleared a selection. `split-view.tsx` closes
   the split on any Escape from inside a pane and does not check `defaultPrevented`. Today the bar's Esc
   also reaches it. Slice 2 stops propagation in both places.
@@ -44,7 +46,8 @@ chord stay as they are.
   - The box is 16 px inside a 24 px target (`hit-control`): axe's target-size failed #1349 on bare radios.
   - It is not a Tab stop (`tabIndex -1`). `x` is its keyboard path, so each column stays one Tab stop.
   - Its name is "Select {title}" ("Selecionar {title}"). It replaces the `sr-only` "selected" span, so
-    the state is said once, by the checkbox.
+    the state is said once, by the checkbox. Slice 2 deletes the `board.selectedCard` key ("selected"),
+    in en and pt-BR, with the span.
   - Clicking it toggles the card. A plain click on the card still opens it.
 - **Touch, or no Ctrl key.** The card's menu (**Select card**) starts a selection. From then on every
   card shows its check.
@@ -94,10 +97,12 @@ confirm, only the column contract's question (#78).
 - **Stop N.** Stopping one card asks nothing today. Stopping several ends several sessions at once, so
   it asks.
   - **Title:** "Stop 1 card?"
-  - **Body:** "A running card is interrupted and a queued one goes back to Backlog. Worktrees, branches
-    and commits stay; Start picks a card up again." This is what `stopCard` does on the host.
+  - **Body:** "A running card's turn is cut off and the card waits in Needs you; a queued card goes back
+    to Backlog. Worktrees, branches and commits stay." This is what `stopCard` does on the host: an
+    interrupted turn sends the card to Needs you (`board.ts`, `stopCard`).
   - **List:** the selection, the cards that aren't running dimmed with "skipped: not running".
-  - **Button:** **Stop 1**. It isn't marked destructive, because nothing is lost.
+  - **Button:** **Stop 1**. It isn't marked destructive: the turn's unfinished work is cut off, but the
+    worktrees, branches and commits stay.
 
   ![Stop, dark (mock)](../images/decisions/1354-confirm-stop-dark.png)
   ![Stop, light (mock)](../images/decisions/1354-confirm-stop-light.png)
@@ -121,7 +126,10 @@ The board is one host's (`BoardView` takes one `hostId`), so the confirm names o
   do today: `card.start` and `card.stop`. Start goes through the board's `maxParallelRuns` queue and,
   once #1343 lands, its memory hold.
 - **Refusals.** The host's refusals are named afterwards in the bar's notice, the same way `board.stayed`
-  does it. A refused card stays selected for another try.
+  does it. A refused card stays selected for another try; a card that started or stopped leaves the
+  selection.
+- **Cut short.** The batch runs from the app. If the app closes midway, the cards done so far are done,
+  and the rest are untouched and stay as they were. Nothing is half-applied to one card.
 - **Busy.** While a batch runs, the bar's buttons are off (`busy`), as today.
 
 ## New strings (en / pt-BR)
@@ -132,25 +140,29 @@ The board is one host's (`BoardView` takes one `hostId`), so the confirm names o
 | `board.stopSelected` | Stop {n} | Parar {n} |
 | `board.noneCanStart` | None of the selected cards can start | Nenhum card selecionado pode iniciar |
 | `board.noneRunning` | None of the selected cards is running | Nenhum card selecionado está rodando |
-| `board.selectCard` | Select {title} | Selecionar {title} |
+| `board.selectCardNamed` | Select {title} | Selecionar {title} |
 | `board.otherColumnOne` | 1 in another column | 1 em outra coluna |
 | `board.otherColumns` | {n} in other columns | {n} em outras colunas |
 | `board.moreSelected` | More actions for the selection | Mais ações da seleção |
 | `board.clearShort` | Clear | Limpar |
 | `board.startTitleOne` / `board.startTitle` | Start 1 card? / Start {n} cards? | Iniciar 1 card? / Iniciar {n} cards? |
-| `board.startSplit` | {now} start now and {later} wait in the board's queue (at most {max} at once). | {now} iniciam agora e {later} esperam na fila do board (no máximo {max} ao mesmo tempo). |
+| `board.startNowOne` / `board.startNow` | 1 starts now / {n} start now | 1 inicia agora / {n} iniciam agora |
+| `board.waitOne` / `board.wait` | 1 waits in the board's queue / {n} wait in the board's queue | 1 espera na fila do board / {n} esperam na fila do board |
+| `board.startSplit` | {started} and {waiting} (at most {max} at once). | {started} e {waiting} (no máximo {max} ao mesmo tempo). |
+| `board.startAllNow` | All of them start now. | Todos iniciam agora. |
 | `board.startQueue` | They join the board's queue. | Eles entram na fila do board. |
 | `board.startQuota` | {host}: {percent}% of the 5-hour window used, resets in {reset}. | {host}: {percent}% da janela de 5 horas usados, renova em {reset}. |
 | `board.startBudgetHold` | A budget holds new cards on {host}: they wait until it allows. | Um orçamento segura cards novos em {host}: eles esperam até ele liberar. |
 | `board.startMemoryHold` | {host} is short of memory: new runs wait until it frees up. | {host} está com pouca memória: as execuções novas esperam ela liberar. |
 | `board.skipped` | skipped: {reason} | fica de fora: {reason} |
 | `board.stopTitleOne` / `board.stopTitle` | Stop 1 card? / Stop {n} cards? | Parar 1 card? / Parar {n} cards? |
-| `board.stopBody` | A running card is interrupted and a queued one goes back to Backlog. Worktrees, branches and commits stay; Start picks a card up again. | Um card rodando é interrompido e um card na fila volta para o Backlog. Worktrees, branches e commits ficam; Iniciar retoma o card. |
+| `board.stopBody` | A running card's turn is cut off and the card waits in Needs you; a queued card goes back to Backlog. Worktrees, branches and commits stay. | O turno de um card rodando é interrompido e o card espera em Esperando você; um card na fila volta para o Backlog. Worktrees, branches e commits ficam. |
 | `board.notRunning` | not running | não está rodando |
 | `board.keysHint` (new text) | Arrows move between the cards, Enter opens one, S starts it, M shows its actions, X selects it and Shift with an arrow selects a range. Esc clears the selection. | As setas passam de um card a outro, Enter abre, S inicia, M mostra as ações, X seleciona e Shift com uma seta seleciona um trecho. Esc limpa a seleção. |
 
-`board.startSplit` takes counts from 0 to N. When `{now}` is 0, slice 2 uses `board.startQueue`
-instead.
+Which line the Start confirm shows: with nothing left to wait, `board.startAllNow`; with nothing starting
+now, `board.startQueue`; otherwise `board.startSplit`, built from the one-or-many forms of
+`board.startNow` and `board.wait`.
 
 ## The mock prints
 
@@ -160,7 +172,8 @@ made with Ctrl-click, with slice 2's controls injected into the page. The confir
 
 - **Stand-ins.** The Pi's Chromium 114 paints no Tailwind ring, so the selected cards' `ring-1 ring-ring`
   and the focused title's ring are drawn with an inline box-shadow and outline.
-- **The script** is not in the repository: it is a one-off.
+- **The script** is not in the repository: it is a one-off, and these PNGs are a design, not evidence
+  of a built screen. Slice 2 replaces them with real prints from `demo:shots` and deletes these files.
 
 ## Out of scope
 
@@ -173,4 +186,5 @@ made with Ctrl-click, with slice 2's controls injected into the page. The confir
 - **Unit tests** of `boardKey` for `x`, Shift+arrows, and `s` and `m` with a selection.
 - **A journey:** keyboard only, select 3 cards with `x` and Shift+↓, start them, and see the confirm's
   count and quota.
-- **Prints** of the bar and both confirms at 1280/640/390, with axe and the narrow guard.
+- **Prints** of the bar, the Start confirm and the Stop confirm, each at 1280/640/390, in both themes
+  and both languages (the `demo:shots` matrix), with axe and the narrow guard.
