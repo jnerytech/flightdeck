@@ -13,6 +13,13 @@ export const hostHandlers = {
     await server.need("memoryPause").set(payload.pauseAt);
     return { pauseAt: payload.pauseAt };
   },
+  "host.pause": async (payload, { ws, server }) => {
+    // It decides whether this host starts new runs: a near connection only, like its other switches.
+    requireVaultTransport(ws.data.origin, "host.pause", server.opts.log);
+    const pause = server.need("hostPause");
+    await pause.set(payload.paused);
+    return pause.status();
+  },
   "host.sleep": async (payload, { server }) => {
     const { sleep } = server.opts;
     if (!sleep) throw featureOff("sleep");

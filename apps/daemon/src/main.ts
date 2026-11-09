@@ -24,6 +24,7 @@ import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
+import { HostPause } from "./board/host-pause.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -863,6 +864,8 @@ export async function startDaemon(
         ? () => null
         : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
   });
+  // Issue #1404: the person's pause of new card runs, kept in the config.
+  const hostPause = new HostPause(config.pauseNewRuns);
   const quotaHistory = new QuotaHistory({ db: store.db });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
@@ -1035,6 +1038,7 @@ export async function startDaemon(
     manager,
     quota,
     memory: memoryGate,
+    pause: hostPause,
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
     checkLoop: {
@@ -1501,6 +1505,20 @@ export async function startDaemon(
           ...raw,
           sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
         }));
+      },
+    },
+    hostPause: {
+      // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
+      // run waiting at a gate has no session but resumes after a restart).
+      status: () => ({
+        paused: hostPause.paused(),
+        running: manager.activeSessionCount() + board.workflows.activeRuns().length,
+      }),
+      set: async (paused) => {
+        // The file first: when it cannot be written the pause stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({ ...raw, pauseNewRuns: paused }));
+        config.pauseNewRuns = paused;
+        hostPause.set(paused);
       },
     },
     memoryPause: {

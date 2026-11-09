@@ -598,6 +598,7 @@ export const DAEMON_FEATURES = [
   "keepAwake",
   "quotaPause",
   "memoryPause",
+  "hostPause",
   "quotaBudgets",
   "autoUpdate",
 ] as const;
