@@ -1,10 +1,12 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
+import { Stack } from "@/components/layout/stack";
 import { useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +18,7 @@ import {
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { findingsNote } from "@/lib/second-opinion";
 import { nextStep } from "../../lib/card-next-step.ts";
@@ -84,6 +87,11 @@ export function CardRunForm(
     note: string | null;
   } | null>(null);
 
+  /** Why the host refused the PR, shown in the description dialog (#1543). */
+  const [refusal, setRefusal] = useState<string | null>(null);
+  /** Counts the PR dialogs opened or cancelled: a late answer for an earlier one is ignored. */
+  const prDialog = useRef(0);
+
   const askDiscard = async () => {
     const current = card.worktreePath
       ? await store.hostCommand(hostId, "card.diff", { cardId })
@@ -115,14 +123,21 @@ export function CardRunForm(
   const openPr = async () => {
     if (!features.watch) return store.hostCommand(hostId, "card.pr.create", { cardId });
     const offered = await store.describePr(hostId, cardId);
+    prDialog.current += 1;
+    setRefusal(null);
     if (offered) setDraft({ ...offered, note: await openFindingsNote() });
     return undefined;
   };
 
+  const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
+  // A project with no PR provider (no remote) cannot open one: say so, instead of asking for the text first (#1543).
+  const provider = store.getState().projects[hostId]?.find((one) => one.id === card.projectId);
+  const noRemote = canOpenPr && provider?.prProvider === "none";
   const step = nextStep(card, {
     tab: props.tab,
     canMerge: props.canMerge,
     gate: props.gateWaiting,
+    noPr: noRemote,
   });
   const running = cardStartBlock(card) !== null;
   /** A card starts when nothing runs for it and no run waits at a gate: the host refuses a start over a waiting run. */
@@ -164,7 +179,6 @@ export function CardRunForm(
     gate: null,
     none: null,
   }[step ?? "none"];
-  const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
 
   return (
     <>
@@ -219,7 +233,7 @@ export function CardRunForm(
                   {t("cardMergePr.action")}
                 </DropdownMenuItem>
               )}
-              {step !== "open-pr" && canOpenPr && (
+              {step !== "open-pr" && canOpenPr && !noRemote && (
                 <DropdownMenuItem onSelect={() => void openPr()}>
                   {t("cardUi.openPr")}
                 </DropdownMenuItem>
@@ -233,6 +247,16 @@ export function CardRunForm(
             </DropdownMenuContent>
           </DropdownMenu>
         </FieldRow>
+        {noRemote && (
+          <Stack gap={1}>
+            <p className="text-sm">{t("cardUi.noRemote")}</p>
+            {card.branch && (
+              <p className="text-muted-foreground text-sm">
+                {t("cardUi.noRemoteBranch", { branch: card.branch })}
+              </p>
+            )}
+          </Stack>
+        )}
       </Panel>
       {startingWith && (
         <CardStartDialog
@@ -255,12 +279,29 @@ export function CardRunForm(
             source: { kind: "card", cardId },
             openSettings: store.openAssistantSettings,
           }}
-          onCancel={() => setDraft(null)}
-          onConfirm={async (description, title) => {
+          onCancel={() => {
+            prDialog.current += 1;
+            setRefusal(null);
             setDraft(null);
-            await store.hostCommand(hostId, "card.pr.create", { cardId, description, title });
+          }}
+          onConfirm={async (description, title) => {
+            // The dialog closes once the host took it. A refusal is read here, where the person is
+            // (a toast sits behind the modal), and the text stays for another try (#1543).
+            const mine = prDialog.current;
+            const result = await store.hostRequest(hostId, "card.pr.create", {
+              cardId,
+              description,
+              title,
+            });
+            // Cancelled meanwhile: the dialog it was for is gone, and so is its answer.
+            if (prDialog.current !== mine) return;
+            if (result.ok) {
+              setRefusal(null);
+              setDraft(null);
+            } else setRefusal(refusalText(result.code, result.message, t, result));
           }}
         >
+          {refusal && <InlineNotice tone="error">{refusal}</InlineNotice>}
           {draft.note && <p className="text-status-needs-you text-sm">{draft.note}</p>}
         </PrDescriptionDialog>
       )}

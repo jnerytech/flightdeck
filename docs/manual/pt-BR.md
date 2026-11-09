@@ -1409,6 +1409,13 @@ descrição do card:
 - **Azure DevOps:** `az repos pr create --source-branch fd/<slug> --target-branch <base>`. Estado
   vem de `az repos pr show`, e os checks das políticas, de `az repos pr policy list`.
 
+Um projeto com o provedor **nenhum** (o padrão de um projeto novo, e o que um repositório sem remote
+tem) não tem Abrir PR: o painel do card diz isso, com os passos (defina o provedor nas configurações
+do projeto; se o repositório não tem remote, `git remote add origin <url>` antes, depois `gh auth
+login` ou `az login`) e a branch em que está o trabalho do card, para enviar à mão. **Revisar
+mudanças** continua. Adicionar um remote não define o provedor sozinho. Um PR que o host recusa mantém
+o diálogo aberto com o texto que você escreveu, e o motivo aparece nele.
+
 O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a
 extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge segue as regras
 do provedor: no GitHub, **Fazer merge do PR** num card com PR aberto (e checks que não estejam

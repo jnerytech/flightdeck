@@ -2227,7 +2227,8 @@ export const en: Dictionary = {
       "The push failed, and its output looks like it has a secret ({found}), so it is not shown: push from a terminal to see it.",
     merge_message_secret:
       "The merge message looks like it has a secret ({found}): take it out before merging.",
-    project_no_pr_provider: "The project has no PR provider.",
+    project_no_pr_provider:
+      "The project has no PR provider. Set it in the project's settings (GitHub or Azure DevOps), after adding a remote to the repository if it has none.",
     card_no_pr: "The card has no PR.",
     card_pr_not_open: "The card's PR is not open.",
     card_pr_merge_unsupported: "This PR host cannot merge from Flightdeck: merge the PR there.",
@@ -4378,6 +4379,9 @@ export const en: Dictionary = {
     start: "Start",
     stop: "Stop",
     openPr: "Open PR",
+    noRemote:
+      "No PR can be opened: this project has no PR provider set. Set it in the project's settings (GitHub or Azure DevOps). If the repository has no remote yet, add one first (git remote add origin <url>) and sign in (gh auth login for GitHub, az login for Azure DevOps). Then Open PR.",
+    noRemoteBranch: "The card's work is on the branch {branch}: you can push it by hand.",
     reviewChanges: "Review changes",
     startWith: "Start with a workflow or persona…",
     complete: "Complete",
