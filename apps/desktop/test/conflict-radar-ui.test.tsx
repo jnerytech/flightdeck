@@ -9,6 +9,7 @@ const { cleanup, render, screen, within } = await import("@testing-library/react
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { CardConflicts } = await import("../src/components/card/card-conflicts.tsx");
+const { RadarBadge } = await import("../src/components/board/radar-badge.tsx");
 const { CardMergePr } = await import("../src/components/card/card-merge-pr.tsx");
 
 setDefaultTimeout(30_000);
@@ -89,6 +90,17 @@ describe("conflict-radar-ui: Details and the Merge PR confirm (#1405)", () => {
     const section = screen.queryByRole("region", { name: "May conflict with other cards" });
     const lists = [...(section?.querySelectorAll("ul") ?? [])];
     expect(lists[0]?.className.includes("gap-2")).toBe(true);
+  });
+
+  test("the badge wraps inside a narrow card and carries an icon, with its full text (#1486)", () => {
+    render(<RadarBadge text="May conflict with 2 cards" />);
+    const badge = screen.queryByText("May conflict with 2 cards");
+    expect([
+      badge !== null,
+      badge?.classList.contains("max-w-full"),
+      badge?.classList.contains("whitespace-normal"),
+      badge?.querySelector("svg")?.getAttribute("aria-hidden"),
+    ]).toEqual([true, true, true, "true"]);
   });
 
   test("a card with no overlap has no section", () => {

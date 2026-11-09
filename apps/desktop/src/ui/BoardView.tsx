@@ -30,6 +30,7 @@ import { ColumnHandle } from "@/components/board/column-handle";
 import { ColumnSwitcher } from "@/components/board/column-switcher";
 import { ContractDialog } from "@/components/board/contract-dialog";
 import { NeedsBadge, needsText } from "@/components/board/needs-badge";
+import { RadarBadge } from "@/components/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -344,11 +345,7 @@ function CardTile(
               : t("kanban.waitingQuota")}
           </Badge>
         )}
-        {radar && (
-          <Badge variant="outline" className="text-status-needs-you">
-            {radar}
-          </Badge>
-        )}
+        {radar && <RadarBadge text={radar} />}
         {card.queueReason === "memory" && (
           <Badge variant="outline" className="text-status-needs-you">
             {t("kanban.waitingMemory")}
