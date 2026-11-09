@@ -49,6 +49,7 @@ const KINDS: Partial<Record<Route["name"], TabKind>> = {
   overview: "overview",
   "needs-you": "needs-you",
   activity: "activity",
+  "pull-requests": "pull-requests",
   workflows: "workflows",
   history: "history",
   host: "host",

@@ -46,6 +46,8 @@ function open(setup: Setup = {}) {
   const asked: Array<[string, string, unknown]> = [];
   const opened: string[] = [];
   const went: object[] = [];
+  // The boards are read through the host connections, which a test does not have: the cards are seeded.
+  store.loadPalette = (async () => {}) as never;
   store.hostCommand = (async () => null) as never;
   store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
     asked.push([hostId, type, payload]);
@@ -93,8 +95,9 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     expect(row("Card b").textContent).toContain("checks passing");
   });
 
-  test("with nothing open it says so", () => {
+  test("with nothing open it says so", async () => {
     open({ cards: {} });
+    await settle(() => screen.queryByText("No open pull requests.") !== null);
     expect(screen.queryByText("No open pull requests.")).not.toBeNull();
   });
 
