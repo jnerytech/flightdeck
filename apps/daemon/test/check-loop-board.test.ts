@@ -426,6 +426,20 @@ describe("check-loop: across a restart", () => {
     // Its follow of the card's session must start nothing, from the replay or after it.
     const started = await poll(() => ranAfter.length > 0, 500);
     expect([mark, started, ranAfter]).toEqual([ctx.manager.get(sessionId).lastSeq, null, []]);
+    // The mark itself: a turn at or below it, even delivered live, starts nothing; one past it does
+    // (the control that shows the feed can start checks at all).
+    const turn = { type: "turn.result", subtype: "success", isError: false, durationMs: 1 };
+    const feed = (seq: number) =>
+      (
+        again as unknown as {
+          onSessionEvent(id: string, event: object, at: { live: boolean; seq: number }): void;
+        }
+      ).onSessionEvent(ctx.card.id, turn, { live: true, seq });
+    feed(mark ?? 0);
+    expect(await poll(() => ranAfter.length > 0, 500)).toBeNull();
+    feed((mark ?? 0) + 1);
+    expect(await poll(() => ranAfter.length > 0, 5000)).not.toBeNull();
+    expect(ranAfter).toEqual(["bun test"]);
   });
 
   test("a round left open by a restart is closed as interrupted", async () => {
