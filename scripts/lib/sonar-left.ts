@@ -38,7 +38,7 @@ const unsafe = (code: number) =>
   (code >= 0x2066 && code <= 0x2069);
 
 /** One printable line: no control or bidi character, whitespace runs folded (API text is data). */
-const oneLine = (text: unknown) =>
+export const oneLine = (text: unknown) =>
   [...String(text)]
     .map((c) => (unsafe(c.codePointAt(0) ?? 0) ? " " : c))
     .join("")
