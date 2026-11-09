@@ -82,4 +82,39 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
       true,
     ]);
   });
+
+  test("backspacing a dot, typing inside them or after them still keeps the real token", async () => {
+    const { submitted } = setup();
+    await paste(LINK);
+    for (const edited of ["token=•••", "token=••a••", "token=••••x"]) {
+      await paste(`flightdeck://127.0.0.1:46507?name=alfa&${edited}`);
+    }
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Test and add" }));
+    });
+    expect([tokenField()?.value, submitted]).toEqual([
+      SECRET,
+      [{ name: "alfa", address: "127.0.0.1", port: "46507", token: SECRET }],
+    ]);
+  });
+
+  test("a dotted link pasted with no real token held says the link has no token", async () => {
+    setup();
+    await paste("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
+    expect([
+      screen.queryByText("The link has no token.") !== null,
+      tokenField()?.value ?? null,
+    ]).toEqual([true, ""]);
+  });
+
+  test("the dotted link edited to another address does not carry the token there", async () => {
+    setup();
+    await paste(LINK);
+    await paste("flightdeck://10.0.0.9:46507?name=alfa&token=••••");
+    expect([
+      screen.queryByText("The link has no token.") !== null,
+      tokenField()?.value,
+      (document.body.textContent ?? "").includes(SECRET),
+    ]).toEqual([true, SECRET, false]);
+  });
 });

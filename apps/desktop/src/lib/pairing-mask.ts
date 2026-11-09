@@ -9,3 +9,12 @@ export const TOKEN_MASK = "••••";
 export function maskPairingLink(link: string): string {
   return link.replace(/([?&]token=)[^&#\s]*/i, `$1${TOKEN_MASK}`);
 }
+
+/** Which token a link edited in the form carries. */
+export function keptToken(
+  token: string,
+  next: { address: string; port: string },
+  draft: { address: string; port: string; token: string },
+): string | null {
+  return token;
+}
