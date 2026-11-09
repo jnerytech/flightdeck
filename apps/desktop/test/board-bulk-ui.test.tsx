@@ -92,7 +92,7 @@ function setup(
     /** The host's answers to project.list and workflow.list wait until this resolves. */
     hold?: Promise<void>;
     /** The project's workflows, by name and inputs. */
-    workflows?: Array<{ name: string; inputs: string[] }>;
+    workflows?: Array<{ name: string; inputs: string[]; trusted?: boolean; errors?: string[] }>;
     cards?: object[];
   } = {},
 ) {
@@ -132,14 +132,17 @@ function setup(
     if (type === "board.get") return { project: { id: "p1", name: "api" }, cards: [] };
     if (type === "project.list" || type === "workflow.list") await options.hold;
     if (type === "project.list") return { projects: [], maxParallelRuns: options.max ?? 2 };
+    // The protocol's shape (#1390's review): { workflows }, each with its trust and errors.
     if (type === "workflow.list") {
-      return (options.workflows ?? []).map((w) => ({
-        ...w,
-        hash: "h",
-        trusted: true,
-        checks: [],
-        errors: [],
-      }));
+      return {
+        workflows: (options.workflows ?? []).map((w) => ({
+          hash: "h",
+          checks: [],
+          trusted: true,
+          errors: [],
+          ...w,
+        })),
+      };
     }
     return {};
   }) as never;
@@ -345,6 +348,42 @@ describe("board-bulk-ui: what the confirm waits for (#1354)", () => {
       text.includes("W — skipped: its workflow asks for inputs; start it from its menu"),
       started(requests, "card.start"),
     ]).toEqual([true, true, ["A"]]);
+    restore();
+  });
+});
+
+describe("board-bulk-ui: the workflow a card starts with (#1354)", () => {
+  // #1390's review: as the start dialog does, only a trusted workflow with no errors is used; a card
+  // whose workflow is not trusted, or broken, starts plain, and its own template workflow when it is.
+  test("a trusted workflow goes with its card; an untrusted or broken one does not", async () => {
+    const { requests, restore } = setup({
+      workflows: [
+        { name: "review", inputs: [] },
+        { name: "shady", inputs: [], trusted: false },
+        { name: "broken", inputs: [], errors: ["bad step"] },
+      ],
+      cards: [
+        ...CARDS,
+        card("R", "backlog", 4, { startWorkflow: "review" }),
+        card("S", "backlog", 5, { startWorkflow: "shady" }),
+        card("K", "backlog", 6, { startWorkflow: "broken" }),
+      ],
+    });
+    await ready();
+    await ctrl("R", "S", "K");
+    await click(button(bar(), "Start 3"));
+    await settleMaybe(
+      () => dialog() !== null && !button(dialog(), "Start 3").hasAttribute("disabled"),
+    );
+    await click(button(dialog(), "Start 3"));
+    await settleMaybe(() => started(requests, "card.start").length === 3);
+    const sent = requests
+      .filter(([kind]) => kind === "card.start")
+      .map(
+        ([, p]) =>
+          `${(p as { cardId: string }).cardId}:${(p as { workflow?: string }).workflow ?? "-"}`,
+      );
+    expect(sent).toEqual(["R:review", "S:-", "K:-"]);
     restore();
   });
 });
