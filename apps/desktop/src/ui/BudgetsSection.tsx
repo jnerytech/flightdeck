@@ -11,6 +11,7 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
+import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { budgetLabel, budgetLine, projectName } from "../lib/budgets.ts";
 import { periodRange } from "../lib/costs.ts";
@@ -59,6 +60,36 @@ const EMPTY: Draft = {
 
 /** The smallest share the daemon takes, in percent. */
 const MIN_PCT = 0.1;
+
+/** The form filled with a saved budget, for editing it. */
+function draftOf(budget: Budget): Draft {
+  const pct = budget.limitPct;
+  return {
+    id: budget.id,
+    scope: budget.scope,
+    projectKey: budget.projectKey ?? "",
+    other: false,
+    unit: pct === null ? "usd" : (budget.period as Draft["unit"]),
+    period: budget.period === "month" ? "month" : "day",
+    limitUsd: pct === null ? String(budget.limitUsd) : "",
+    limitPct: pct === null ? "" : String(Number((pct * 100).toPrecision(12))),
+    action: budget.action,
+  };
+}
+
+/** What stops the form from saving, or `null` when it can be saved. */
+function missingOf(draft: Draft, t: T): string | null {
+  const byShare = draft.unit !== "usd";
+  const limit = Number(byShare ? draft.limitPct : draft.limitUsd);
+  if (byShare && (draft.limitPct.trim() === "" || !(limit >= MIN_PCT && limit <= 100))) {
+    return t("budgetsUi.pctNeeded");
+  }
+  if (Number.isNaN(limit) || limit <= 0) return t("budgetsUi.limitNeeded");
+  if (draft.scope === "project" && draft.projectKey.trim() === "") {
+    return t("budgetsUi.projectNeeded");
+  }
+  return null;
+}
 
 /** A host's budgets with what each one spent in its period, and a form to create or edit one. */
 export function BudgetsSection(
@@ -135,14 +166,7 @@ export function BudgetsSection(
     setDraft(EMPTY);
   };
   const byShare = draft.unit !== "usd";
-  const limit = Number(byShare ? draft.limitPct : draft.limitUsd);
-  let needs: string | null = null;
-  if (byShare && (draft.limitPct.trim() === "" || !(limit >= MIN_PCT && limit <= 100))) {
-    needs = t("budgetsUi.pctNeeded");
-  } else if (Number.isNaN(limit) || limit <= 0) needs = t("budgetsUi.limitNeeded");
-  else if (draft.scope === "project" && draft.projectKey.trim() === "") {
-    needs = t("budgetsUi.projectNeeded");
-  }
+  const needs = missingOf(draft, t);
   const title = t("budgetsUi.title", { host: props.hostName });
   return (
     <section aria-label={title}>
@@ -170,25 +194,7 @@ export function BudgetsSection(
                             variant="ghost"
                             size="sm"
                             aria-label={t("budgetsUi.edit", { label: budgetLabel(budget, t) })}
-                            onClick={() =>
-                              setDraft({
-                                id: budget.id,
-                                scope: budget.scope,
-                                projectKey: budget.projectKey ?? "",
-                                other: false,
-                                unit:
-                                  budget.limitPct === null
-                                    ? "usd"
-                                    : (budget.period as Draft["unit"]),
-                                period: budget.period === "month" ? "month" : "day",
-                                limitUsd: budget.limitPct === null ? String(budget.limitUsd) : "",
-                                limitPct:
-                                  budget.limitPct === null
-                                    ? ""
-                                    : String(Number((budget.limitPct * 100).toPrecision(12))),
-                                action: budget.action,
-                              })
-                            }
+                            onClick={() => setDraft(draftOf(budget))}
                           >
                             {t("budgetsUi.editShort")}
                           </Button>
