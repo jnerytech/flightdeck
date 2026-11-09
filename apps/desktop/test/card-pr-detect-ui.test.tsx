@@ -153,7 +153,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
   test("a host that cannot detect is not asked, and there is no button to ask", async () => {
     const w = setup({ detect: false });
     await settle(() => panel().includes("no PR provider set"));
-    // The effect that would ask runs on mount; give anything it started the time to reach the host.
+    // timing: a negative: the ask, if the card made one, goes out on mount; give it the time to reach the host
     await act(async () => Bun.sleep(30));
     expect(w.asked).toEqual([]);
     expect(button("Check the remote again") === null).toBe(true);
@@ -162,6 +162,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
   test("a project that has a provider is not looked at", async () => {
     const w = setup({ provider: "github" });
     await settle(() => button("Open PR") !== null);
+    // timing: a negative: the ask, if the card made one, goes out on mount; give it the time to reach the host
     await act(async () => Bun.sleep(30));
     expect(w.asked).toEqual([]);
   });
