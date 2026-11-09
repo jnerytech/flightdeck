@@ -73,12 +73,12 @@ const TITLES: Record<number, string> = {
 const ok = (stdout: string): GhResult => ({ code: 0, stdout, stderr: "" });
 
 /** A gh that answers the release, the tag's date, the two search pages and the issue titles. */
-function fakeGh(overrides: { release?: GhResult } = {}) {
+function fakeGh(overrides: { release?: GhResult; date?: GhResult } = {}) {
   const calls: string[][] = [];
   const gh = async (args: string[]): Promise<GhResult> => {
     calls.push(args);
     if (args[0] === "release") return overrides.release ?? ok("v0.37.16\n");
-    if (args[1] === `repos/${REPO}/commits/v0.37.16`) return ok(`${TAG_DATE}\n`);
+    if (args[1] === `repos/${REPO}/commits/v0.37.16`) return overrides.date ?? ok(`${TAG_DATE}\n`);
     if (args[0] === "api" && args[1] === "graphql") {
       if (args.some((a) => a.startsWith("q="))) {
         const second = args.includes("after=C1");
@@ -150,6 +150,14 @@ describe("release highlights draft (#1334)", () => {
     expect(said).toEqual(["release-highlights: --since takes a version tag such as v0.37.16"]);
   });
 
+  test("a tag date that is not a date stops it before the search", async () => {
+    const { gh, calls } = fakeGh({ date: ok("soon\n") });
+    const lines: string[] = [];
+    expect(await releaseHighlights([], { gh, log: (l) => lines.push(l) })).toBe(1);
+    expect(lines).toEqual(['release-highlights: could not read the date of v0.37.16: "soon"']);
+    expect(calls.some((c) => c.some((a) => a.startsWith("q=")))).toBe(false);
+  });
+
   test("GitHub that cannot be read stops it with gh's own words", async () => {
     const { gh } = fakeGh({ release: { code: 1, stdout: "", stderr: "HTTP 502\n" } });
     const lines: string[] = [];
@@ -208,7 +216,9 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
     expect(issueOf(pr(["feat(a): x"], { body: "Why.\n\nRefs: #12" }))).toBe(12);
     expect(issueOf(pr(["feat(a): x", "test(a): y (#5)"]))).toBe(null);
     // GitHub cuts a long headline with "…" and moves the rest, with its (#N), into the body.
-    expect(issueOf(pr(["feat(a): a long headline that GitHub cuts…"], { body: "…and its tail (#21)" }))).toBe(21);
+    expect(
+      issueOf(pr(["feat(a): a long headline that GitHub cuts…"], { body: "…and its tail (#21)" })),
+    ).toBe(21);
     // No commit names one: the PR's title may.
     expect(issueOf({ ...pr(["feat(a): x"]), title: "the merge asks first (#22)" })).toBe(22);
   });
@@ -221,8 +231,12 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
     expect(areaOf("Card: merge its open PR from the card")).toBe("Board");
     expect(areaOf("Teams: the team's outcome in one place")).toBe("Sessions");
     expect(areaOf("Demo: a card with an open PR, so Merge PR has a print")).toBe("Quality");
-    expect(areaOf("Lint: an error is hidden behind Biome's cap, so a PR's lint log shows only infos")).toBe("Quality");
-    expect(areaOf("Harness: a red main is claimed once, and every session sees the claim")).toBe("Quality");
+    expect(
+      areaOf("Lint: an error is hidden behind Biome's cap, so a PR's lint log shows only infos"),
+    ).toBe("Quality");
+    expect(areaOf("Harness: a red main is claimed once, and every session sees the claim")).toBe(
+      "Quality",
+    );
     expect(areaOf("Something else entirely")).toBe("Other");
   });
 });
