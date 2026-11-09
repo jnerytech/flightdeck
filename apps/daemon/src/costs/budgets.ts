@@ -356,7 +356,8 @@ export class Budgets {
     const raw = reading?.utilization ?? (reading?.status === "rejected" ? 1 : 0);
     const utilization = Number.isNaN(raw) ? 0 : Math.min(Math.max(raw, 0), 1);
     const estimated = row.project_key !== null;
-    const share = estimated ? (total > 0 ? scoped / total : 0) : 1;
+    let share = 1;
+    if (estimated) share = total > 0 ? scoped / total : 0;
     const spentPct = utilization * share;
     return { periodKey, spentUsd: scoped, spentPct, estimated, fraction: spentPct / limitPct };
   }

@@ -278,7 +278,7 @@ describe("opencode-runtime", () => {
     run.send("again");
     expect(await poll(() => (agents[1]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(agents[1]?.calls("session/resume")[0]?.sessionId).toBe("ses_1");
-    expect(out.error).toBe(null);
+    expect(out.error).toBeNull();
   });
 
   test("an interrupt OpenCode answers in time needs no escalation", async () => {
@@ -498,7 +498,7 @@ describe("opencode-runtime", () => {
     expect(checks).toEqual(["/w", "/w"]);
     expect(agents[1]?.calls("session/resume")[0]?.sessionId).toBe("ses_1");
     expect(out.events.filter((e) => e.type === "session.init")).toHaveLength(1);
-    expect(out.error).toBe(null);
+    expect(out.error).toBeNull();
   });
 
   test("the process exiting by itself fails the run; the runtime's preflight is the preflight's check", async () => {

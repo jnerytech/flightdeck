@@ -402,8 +402,10 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
         "flightdeckd: the Flightdeck daemon is down; opening claude without the channel (the app will not be able to send messages)",
       );
     }
-    added.push(...(await systemPromptArgs(opts, args, persona, `${launchId}.md`, write)));
-    added.push(...(await agentArgs(opts, { claude, args, print, launchId }, write)));
+    added.push(
+      ...(await systemPromptArgs(opts, args, persona, `${launchId}.md`, write)),
+      ...(await agentArgs(opts, { claude, args, print, launchId }, write)),
+    );
     const proc = Bun.spawn(
       buildClaudeLaunch({
         claude,
