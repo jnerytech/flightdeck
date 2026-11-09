@@ -113,12 +113,6 @@ const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
 /** What a card's own text lacks: fixed in its fields, not on the card's run (#1197). */
 const FIELD_NEEDS: ReadonlySet<string> = new Set(["criteria", "validation", "spec"]);
 
-/** #1354: what the live region says of the selection: its count, or nothing when it is empty. */
-function selectionCount(t: T, count: number): string {
-  if (count === 0) return "";
-  return count === 1 ? t("board.selectedOne") : t("board.selectedCount", { n: count });
-}
-
 /** Why "Iniciar card" is off (queued or running), else null. */
 function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
   if (block === "queued") return t("board.startQueued");
@@ -220,7 +214,11 @@ function CardTile(
                 tabIndex={-1}
                 checked={props.selected}
                 aria-label={props.labels.selectNamed}
-                onChange={props.onToggleSelect}
+                onChange={() => {
+                  props.onToggleSelect();
+                  // The keys live on the title: a click on the check leaves the focus there.
+                  titleRef.current?.focus();
+                }}
                 onClick={(e) => e.stopPropagation()}
               />
             </span>
@@ -427,6 +425,8 @@ export const BoardView = memo(function BoardView(props: {
   const [discardingMany, setDiscardingMany] = useState(false);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
+  /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
+  const rangeBase = useRef<string[] | null>(null);
   /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
   const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
@@ -601,16 +601,20 @@ export const BoardView = memo(function BoardView(props: {
   };
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
+    anchor.current = null;
+    rangeBase.current = null;
     setPicked([]);
     boardRef.current?.focus();
   };
   const select = (card: Card) => {
+    rangeBase.current = null;
     // Only a card just selected anchors the next Shift-click.
     if (!selection.includes(card.id)) anchor.current = card.id;
     else if (anchor.current === card.id) anchor.current = null;
     setPicked(toggleSelection(selection, card.id));
   };
   const selectRange = (card: Card) => {
+    rangeBase.current = null;
     const order = shown.filter((other) => other.column === card.column).map((other) => other.id);
     setPicked(rangeSelection(order, anchor.current, card.id, selection));
     anchor.current = card.id;
@@ -729,11 +733,16 @@ export const BoardView = memo(function BoardView(props: {
     const afterG = lastKey.current.key === "g" && now - lastKey.current.at < CHORD_TIMEOUT_MS;
     lastKey.current = { key: e.key, at: now };
     const action = boardKey(shownIds, cardId, e, afterG);
+    if (action?.kind !== "extend") rangeBase.current = null;
     if (action?.kind === "focus") focusCard(action.cardId);
     if (action?.kind === "extend") {
-      // The anchor stays where the range began; with none, the card the focus leaves is it.
-      anchor.current ??= cardId;
-      setPicked(rangeSelection(boardOrder, anchor.current, action.cardId, selection));
+      // The anchor stays where the range began; with none, the card the focus leaves is it. The
+      // range is laid over the selection it started from, so going back shrinks it.
+      if (rangeBase.current === null) {
+        anchor.current ??= cardId;
+        rangeBase.current = selection;
+      }
+      setPicked(rangeSelection(boardOrder, anchor.current, action.cardId, rangeBase.current));
       focusCard(action.cardId);
     }
     if (action?.kind === "toggle") {
@@ -744,6 +753,7 @@ export const BoardView = memo(function BoardView(props: {
       // With no selection Esc goes on (a split view closes); with one it stops here, on the card.
       if (selection.length === 0) return null;
       e.stopPropagation();
+      anchor.current = null;
       setPicked([]);
     }
     return action;
@@ -913,10 +923,6 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <p id={hintId} className="sr-only">
           {t("board.keysHint")}
-        </p>
-        {/* #1354: the count after each change to the selection, said once and politely. */}
-        <p data-slot="selection-live" className="sr-only" aria-live="polite">
-          {selectionCount(t, selection.length)}
         </p>
         {switcher && all.length > 0 && (
           <ColumnSwitcher
