@@ -69,7 +69,7 @@ describe("check-loop: the loop's settings and who may change them", () => {
     ]);
   });
 
-  test("a far client cannot change any of the five fields that decide what runs unattended", async () => {
+  test("a far client cannot change any field that decides what runs unattended, or as whom, or what may be pushed", async () => {
     const { far, save } = await setup();
     const changes: Array<Record<string, unknown>> = [
       { checks: ["bun test"] },
@@ -77,6 +77,8 @@ describe("check-loop: the loop's settings and who may change them", () => {
       { checkRounds: 5 },
       { checkEnv: ["JAVA_HOME"] },
       { checkLoopDefault: true },
+      { persona: "dev" },
+      { driftAllow: ["**"] },
     ];
     const answers = [];
     for (const patch of changes) answers.push(await save(far, patch));
@@ -111,6 +113,61 @@ describe("check-loop: the loop's settings and who may change them", () => {
       { enabled: true, maxRounds: 4 },
       { checks: ["bun test"], checkEnv: ["JAVA_HOME"], checkRounds: 2, enabled: true },
     ]);
+  });
+
+  test("a checkEnv stored before the rules is read back without the names they refuse", async () => {
+    const { watcher, projectId } = await setup();
+    watcher.setSettings(projectId, { checkEnv: ["JAVA_HOME", "LD_PRELOAD", "GIT_SSH_COMMAND"] });
+    expect(watcher.settings(projectId).checkEnv).toEqual(["JAVA_HOME"]);
+  });
+
+  test("checkEnv takes only a toolchain's location names; anything that runs, redirects or looks like a secret is refused", () => {
+    const accepts = (names: string[]) =>
+      WatchSettings.partial().safeParse({ checkEnv: names }).success;
+    const refused = [
+      "GIT_SSH_COMMAND",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_EXTERNAL_DIFF",
+      "JAVA_TOOL_OPTIONS",
+      "_JAVA_OPTIONS",
+      "JDK_JAVA_OPTIONS",
+      "MAVEN_OPTS",
+      "GRADLE_OPTS",
+      "RUBYLIB",
+      "PYTHONHOME",
+      "NODE_PATH",
+      "npm_config_script_shell",
+      "RUSTC_WRAPPER",
+      "RUSTFLAGS",
+      "CC",
+      "CXX",
+      "SHELL",
+      "IFS",
+      "PROMPT_COMMAND",
+      "COMSPEC",
+      "PATHEXT",
+      "PSModulePath",
+      "SMTP_PASS",
+      "PWD",
+      "JWT_ISSUER",
+      "BEARER",
+      "AZURE_SAS",
+      "URL_SIGNATURE",
+      "WEBHOOK_URL",
+      "GITLAB_PAT",
+      "GIT_DIR",
+    ];
+    expect([
+      accepts([
+        "JAVA_HOME",
+        "CARGO_HOME",
+        "ANDROID_SDK_ROOT",
+        "GOPATH",
+        "GOMODCACHE",
+        "ProgramFiles(x86)",
+      ]),
+      refused.filter((name) => accepts([name])),
+    ]).toEqual([true, []]);
   });
 
   test("checkEnv takes variable names only, never one shaped like a secret or Flightdeck's own, in any case", () => {
