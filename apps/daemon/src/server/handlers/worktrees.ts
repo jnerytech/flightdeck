@@ -3,4 +3,11 @@
  */
 import type { Handlers } from "../dispatch.ts";
 
-export const worktreesHandlers = {} satisfies Partial<Handlers>;
+export const worktreesHandlers = {
+  "worktree.list": async (payload, { server }) => {
+    return await server.need("worktrees").list(payload.projectId);
+  },
+  "worktree.remove": async (payload, { server }) => {
+    return await server.need("worktrees").remove(payload.items);
+  },
+} satisfies Partial<Handlers>;
