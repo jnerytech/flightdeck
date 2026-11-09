@@ -112,6 +112,8 @@ function setup(
     conflict?: string[];
     /** #1406: each card.updateFromBase waits until this resolves. */
     holdUpdate?: Promise<void>;
+    /** #1406: changes.get throws, as a dropped link may. */
+    throwChanges?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -181,6 +183,7 @@ function setup(
       return read.answer;
     }
     const id = (payload as { cardId?: string }).cardId ?? "";
+    if (type === "changes.get" && options.throwChanges) throw new Error("link dropped");
     if (type === "changes.get") {
       const target = (payload as { target: string }).target.replace(/^card:/, "");
       const behind = options.behind?.[target] ?? 1;
@@ -853,6 +856,20 @@ describe("board-bulk-ui: Update from the base for the selection (#1406)", () => 
       "Updated: F. Not updated: G (the host refused).",
       ["G"],
     ]);
+    restore();
+  });
+
+  test("a request that throws does not leave the bar stuck: the cards are named as not updated", async () => {
+    const { restore } = setup({ cards: UPDATABLE, throwChanges: true });
+    await ready();
+    await ctrl("F", "G");
+    await click(button(bar(), "Update 2 from the base"));
+    await settleMaybe(() => !button(bar(), "Update 2 from the base").hasAttribute("disabled"));
+    expect([
+      button(bar(), "Update 2 from the base").hasAttribute("disabled"),
+      (bar()?.textContent ?? "").includes("Updating"),
+      noticeText(),
+    ]).toEqual([false, false, "Not updated: F (link dropped), G (link dropped)."]);
     restore();
   });
 
