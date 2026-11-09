@@ -45,6 +45,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-fixados",
   // #1271: a Form dialog in the narrow sheet, its buttons at the sheet's bottom.
   "acoes-nova",
+  // #1325, #1326: a card at a gate, with the empty spec file and hours rows and their reasons.
+  "card-gate",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

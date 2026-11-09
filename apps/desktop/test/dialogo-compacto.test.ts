@@ -4,10 +4,14 @@ import { join } from "node:path";
 
 const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
 
-/** The declarations of `selector` inside the stylesheet's `@media (width < 40rem)` block. */
+/**
+ * The declarations of `selector` inside the stylesheet's top-level `@media (width < 40rem)` block:
+ * the one at the start of a line, not a utility's own nested narrow block (#1326).
+ */
 function compactRule(selector: string): string {
-  const start = css.indexOf("@media (width < 40rem) {");
-  if (start < 0) return "";
+  const line = css.indexOf("\n@media (width < 40rem) {");
+  if (line < 0) return "";
+  const start = line + 1;
   let depth = 0;
   let end = start;
   for (let at = css.indexOf("{", start); at < css.length; at++) {
