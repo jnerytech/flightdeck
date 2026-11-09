@@ -455,23 +455,32 @@ html:not(:has([data-slot="status-bar"])) {
   overflow-y: auto;
 }
 
-/* A field and its own button on one line, never wrapped: the field takes the width, the button keeps its size. */
+/* A field and its own button on one line: the field takes the width, the button keeps its size. */
 @utility field-with-action {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.5rem;
-  position: relative;
-  /* #1270: the row ends at the card's edge, so a disabled action's reason hangs from the row's
-     right (not the button's: a stale field's Save has Use theirs after it) and grows left, under
-     the field, never wider than the row, so never past the card on either side. */
+  /* #1325: a disabled action's reason is a line of the row, not hung out of the flow (#38): hung,
+     it ran past the card (#1270) or, wrapped, drew over the line under the row. The button's box
+     gives way, so the reason takes a whole line under the field and every button (Use theirs too). */
   & > .action-button-box {
-    position: static;
+    display: contents;
   }
-  & > .action-button-box .action-reason {
-    left: auto;
-    right: 0;
-    text-align: right;
-    max-width: min(20rem, 100%);
+  & > .action-button-box > .action-reason {
+    position: static;
+    order: 1;
+    flex-basis: 100%;
+    width: auto;
+    max-width: none;
+    margin-top: -0.25rem;
+  }
+  /* #1326: at 390 the field got less width than its button; narrow, it takes a line of its own. */
+  @media (width < 40rem) {
+    justify-content: flex-end;
+    & > :first-child {
+      flex-basis: 100%;
+    }
   }
 }
 
