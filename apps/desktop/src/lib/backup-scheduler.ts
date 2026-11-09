@@ -6,8 +6,10 @@ import {
   loadSchedule,
   type RunReport,
   runScheduledBackup,
+  type ScheduleTarget,
   saveSchedule,
 } from "./backup-schedule.ts";
+import type { GoogleConfig, SignInResult } from "./google-oauth.ts";
 
 /** What the person has to be told about: the passphrase to type, a folder to choose, a write that failed. */
 export type Attention = "passphrase" | "no-folder" | "failed" | "drive-auth";
@@ -41,10 +43,28 @@ export class BackupScheduler {
       intervalMs?: number;
       /** Tells the app something needs the person's eyes (issue #1327); at most once per kind per start. */
       onAttention?: (kind: Attention) => void;
+      /** Issue #1444: Google Drive as a target; `config` is null while no client id is configured. */
+      google?: { config: GoogleConfig | null; fetch?: typeof fetch };
     } = {},
   ) {
     this.current = loadSchedule(platform.storage);
   }
+
+  /** Whether Drive can be chosen: a client id is configured and the shell can listen on the loopback. */
+  get driveAvailable(): boolean {
+    return false;
+  }
+
+  /** Whether a Google sign-in is held (its token is in the vault). */
+  driveSignedIn = false;
+
+  setTarget(_target: ScheduleTarget): void {}
+
+  async signInDrive(): Promise<SignInResult> {
+    return "cancelled";
+  }
+
+  async signOutDrive(): Promise<void> {}
 
   /** False on the web build, where no folder can be written. */
   get supported(): boolean {

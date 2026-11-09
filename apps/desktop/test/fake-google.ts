@@ -129,3 +129,17 @@ export function fakeOAuth(): FakeOAuth {
   };
   return oauth;
 }
+
+/** Both fakes behind one `fetch`, as the app sees Google: sign-in at oauth2, files at www.googleapis. */
+export function fakeGoogle() {
+  const drive = fakeDrive();
+  const oauth = fakeOAuth();
+  drive.accept = new Set(Array.from({ length: 9 }, (_, i) => `access-${i + 1}`));
+  const route = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    return url.startsWith("https://oauth2.googleapis.com/")
+      ? oauth.fetch(input, init)
+      : drive.fetch(input, init);
+  }) as typeof fetch;
+  return { drive, oauth, fetch: route };
+}
