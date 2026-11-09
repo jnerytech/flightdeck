@@ -28,6 +28,16 @@ describe("stall protocol: a quiet session is told in its summary (issue #1478)",
     expect(old.quietTool).toBeUndefined();
   });
 
+  test("a listed session that called no tool is quiet with a null tool, and still parses", () => {
+    // session.list sends `quietTool: null` for such a session (SessionManager.withQuiet).
+    const quiet = SessionSummary.parse({
+      ...summary,
+      quietSince: "2026-11-09T12:05:00.000Z",
+      quietTool: null,
+    });
+    expect(quiet.quietTool).toBeNull();
+  });
+
   test("the live summary event carries the same, and the tool may be unknown", () => {
     const event = SessionEvent.parse({
       type: "session.summary",

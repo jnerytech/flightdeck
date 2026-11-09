@@ -82,6 +82,8 @@ describe("stall-state: the app learns which sessions are quiet (issue #1478)", (
     expect([first?.quietSince, first?.quietTool]).toEqual([at(20), "Bash"]);
     inner.onSummaries("h", [summary()]);
     const next = store.getState().hosts[0]?.sessions[0];
+    // The session is still listed: an absent one would pass the two checks below by itself.
+    expect(next?.id).toBe("s1");
     expect(next?.quietSince).toBeUndefined();
     expect(next?.quietTool).toBeUndefined();
   });
