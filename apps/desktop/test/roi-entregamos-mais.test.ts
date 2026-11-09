@@ -61,23 +61,26 @@ describe("roi-entregamos-mais: did we deliver more?", () => {
       headline(
         period({ cards: 7, planned: 5, unplanned: 2, costUsd: 28 }),
         period({ cards: 4, planned: 4, costUsd: 31 }),
+        "en",
       ),
     ).toEqual({
       key: "roiUi.headline.more",
       vars: { n: 7, planned: 5, unplanned: 2, cost: "28.00", previous: 4, moved: "lower" },
     });
-    expect(headline(period({ cards: 10, costUsd: 5 }), period({ cards: 10, costUsd: 5 })).key).toBe(
-      "roiUi.headline.same",
-    );
-    expect(headline(period({ cards: 2, costUsd: 5 }), period({ cards: 9, costUsd: 5 })).key).toBe(
-      "roiUi.headline.fewer",
-    );
-    expect(headline(period({ cards: 0, costUsd: 6 }), period({ cards: 0, costUsd: 0 }))).toEqual({
+    expect(
+      headline(period({ cards: 10, costUsd: 5 }), period({ cards: 10, costUsd: 5 }), "en").key,
+    ).toBe("roiUi.headline.same");
+    expect(
+      headline(period({ cards: 2, costUsd: 5 }), period({ cards: 9, costUsd: 5 }), "en").key,
+    ).toBe("roiUi.headline.fewer");
+    expect(
+      headline(period({ cards: 0, costUsd: 6 }), period({ cards: 0, costUsd: 0 }), "en"),
+    ).toEqual({
       key: "roiUi.headline.none",
       vars: { cost: "6.00" },
     });
-    expect(headline(period({ cards: 0, costUsd: 6 }), period({ cards: 3, costUsd: 3 })).key).toBe(
-      "roiUi.headline.fewer",
-    );
+    expect(
+      headline(period({ cards: 0, costUsd: 6 }), period({ cards: 3, costUsd: 3 }), "en").key,
+    ).toBe("roiUi.headline.fewer");
   });
 });

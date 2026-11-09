@@ -182,8 +182,8 @@ describe("cota-ui", () => {
     // The project's header (name and total), then its day.
     expect(rows).toHaveLength(2);
     expect(rows[0] ?? "").toContain(basename(project));
-    expect(rows[0] ?? "").toContain("US$ 0.50");
-    expect(rows[1] ?? "").toContain("US$ 0.50");
+    expect(rows[0] ?? "").toContain("US$ 0,50");
+    expect(rows[1] ?? "").toContain("US$ 0,50");
     expect(rows[1] ?? "").toContain("1 turno");
     expect(store.getState().hosts).toHaveLength(1);
   });

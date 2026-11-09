@@ -132,7 +132,8 @@ function CardTile(
       delete: string;
       select: string;
       deselect: string;
-      selected: string;
+      /** #1354: the name of the card's check, "Select {title}". */
+      selectNamed: string;
     };
     /** Why "Iniciar card" is off (queued or running), else null. */
     startOff: string | null;
@@ -154,6 +155,10 @@ function CardTile(
     onDropOn(): void;
     /** Whether the card is in the selection (issue #161). */
     selected: boolean;
+    /** #1354: a selection exists, so the card shows its check and `s` starts no single card. */
+    selecting: boolean;
+    /** #1354: `m` with a selection opens the bar's Move to…, not the card's menu. */
+    onMoveSelection(): void;
     /** What the project's columns ask of a card (issue #78). */
     contracts: ContractOverrides;
     /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
@@ -201,6 +206,23 @@ function CardTile(
     >
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-start gap-2">
+          {props.selecting && (
+            // #1354: a 16 px box in a 24 px target; not a Tab stop, `x` is its key (#1198).
+            <span className="card-check hit-control">
+              <input
+                type="checkbox"
+                tabIndex={-1}
+                checked={props.selected}
+                aria-label={props.labels.selectNamed}
+                onChange={() => {
+                  props.onToggleSelect();
+                  // The keys live on the title: a click on the check leaves the focus there.
+                  titleRef.current?.focus();
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </span>
+          )}
           {card.sessionStatus && (
             <StatusDot
               tone={statusTone(card.sessionStatus)}
@@ -214,15 +236,21 @@ function CardTile(
             data-card-open
             tabIndex={props.tabbable ? 0 : -1}
             aria-describedby={props.hintId}
-            aria-keyshortcuts="S M"
+            aria-keyshortcuts="S M X"
             className="min-w-0 text-left font-medium"
             onFocus={props.onFocus}
             onKeyDown={(e) => {
               const action = props.onKey(e);
               if (!action) return;
               e.preventDefault();
-              if (action.kind === "start" && props.startOff === null) props.onStart();
-              if (action.kind === "menu") setMenuOpen(true);
+              // With a selection, s and m are the selection's (#1354), never a single card's.
+              if (action.kind === "start" && !props.selecting && props.startOff === null) {
+                props.onStart();
+              }
+              if (action.kind === "menu") {
+                if (props.selecting) props.onMoveSelection();
+                else setMenuOpen(true);
+              }
             }}
             onClick={(e) => {
               // A modified click selects (the tile handles it); only a plain one opens.
@@ -231,7 +259,6 @@ function CardTile(
           >
             {card.title}
           </button>
-          {props.selected && <span className="sr-only">{props.labels.selected}</span>}
         </span>
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
@@ -282,6 +309,11 @@ function CardTile(
             {card.quotaUntil
               ? t("kanban.waitingQuotaUntil", { time: props.formatTime(card.quotaUntil) })
               : t("kanban.waitingQuota")}
+          </Badge>
+        )}
+        {card.queueReason === "memory" && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {t("kanban.waitingMemory")}
           </Badge>
         )}
         {card.waitingOn.length > 0 && (
@@ -396,6 +428,12 @@ export const BoardView = memo(function BoardView(props: {
   const anchor = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [discardingMany, setDiscardingMany] = useState(false);
+  /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
+  const [moveMenuOpen, setMoveMenuOpen] = useState(false);
+  /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
+  const rangeBase = useRef<string[] | null>(null);
+  /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
+  const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
   const [busy, setBusy] = useState(false);
   /** The cards dragged together when the dragged one is part of a selection. */
@@ -568,16 +606,20 @@ export const BoardView = memo(function BoardView(props: {
   };
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
+    anchor.current = null;
+    rangeBase.current = null;
     setPicked([]);
     boardRef.current?.focus();
   };
   const select = (card: Card) => {
+    rangeBase.current = null;
     // Only a card just selected anchors the next Shift-click.
     if (!selection.includes(card.id)) anchor.current = card.id;
     else if (anchor.current === card.id) anchor.current = null;
     setPicked(toggleSelection(selection, card.id));
   };
   const selectRange = (card: Card) => {
+    rangeBase.current = null;
     const order = shown.filter((other) => other.column === card.column).map((other) => other.id);
     setPicked(rangeSelection(order, anchor.current, card.id, selection));
     anchor.current = card.id;
@@ -687,13 +729,38 @@ export const BoardView = memo(function BoardView(props: {
     pendingFocus.current = null;
     titleOf(cardId)?.focus();
   });
-  /** A key on a card's title: the arrows move the focus here, `s` and `m` are the card's. */
+  /**
+   * A key on a card's title: the arrows move the focus here, `s` and `m` are the card's (or the
+   * selection's, #1354), `x` toggles it, Shift with an arrow extends the selection, Esc clears it.
+   */
   const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) => {
     const now = Date.now();
     const afterG = lastKey.current.key === "g" && now - lastKey.current.at < CHORD_TIMEOUT_MS;
     lastKey.current = { key: e.key, at: now };
     const action = boardKey(shownIds, cardId, e, afterG);
+    if (action?.kind !== "extend") rangeBase.current = null;
     if (action?.kind === "focus") focusCard(action.cardId);
+    if (action?.kind === "extend") {
+      // The anchor stays where the range began; with none, the card the focus leaves is it. The
+      // range is laid over the selection it started from, so going back shrinks it.
+      if (rangeBase.current === null) {
+        anchor.current ??= cardId;
+        rangeBase.current = selection;
+      }
+      setPicked(rangeSelection(boardOrder, anchor.current, action.cardId, rangeBase.current));
+      focusCard(action.cardId);
+    }
+    if (action?.kind === "toggle") {
+      const card = all.find((other) => other.id === cardId);
+      if (card) select(card);
+    }
+    if (action?.kind === "clear") {
+      // With no selection Esc goes on (a split view closes); with one it stops here, on the card.
+      if (selection.length === 0) return null;
+      e.stopPropagation();
+      anchor.current = null;
+      setPicked([]);
+    }
     return action;
   };
   useEffect(() => {
@@ -765,6 +832,17 @@ export const BoardView = memo(function BoardView(props: {
                   onClear={clearSelection}
                   busy={busy}
                   onEscape={clearSelection}
+                  moveOpen={moveMenuOpen}
+                  onMoveOpenChange={setMoveMenuOpen}
+                  onMoveClosed={() => {
+                    const from = moveFrom.current;
+                    moveFrom.current = null;
+                    const title = from ? titleOf(from) : null;
+                    // A card a move took to a column not shown has no title to focus: the button keeps it.
+                    if (!title?.isConnected || title.closest("[hidden]")) return false;
+                    title.focus();
+                    return true;
+                  }}
                 />
               )
             }
@@ -882,7 +960,10 @@ export const BoardView = memo(function BoardView(props: {
               // Only the board's own Esc: one that closes a card's menu is the menu's.
               if (e.key !== "Escape" || e.defaultPrevented) return;
               if (!e.currentTarget.contains(e.target as Node)) return;
-              if (selection.length > 0) clearSelection();
+              if (selection.length === 0) return;
+              // It cleared something: the Esc stops here, so a split view stays open (#1354).
+              e.stopPropagation();
+              clearSelection();
             }}
           >
             {COLUMNS.map(({ id }) => {
@@ -950,7 +1031,7 @@ export const BoardView = memo(function BoardView(props: {
                             delete: store.i18n.t("board.delete"),
                             select: t("board.selectCard"),
                             deselect: t("board.deselectCard"),
-                            selected: t("board.selectedCard"),
+                            selectNamed: t("board.selectCardNamed", { title: card.title }),
                           }}
                           startOff={startOffText(cardStartBlock(card), store.i18n.t)}
                           deps={{
@@ -964,6 +1045,11 @@ export const BoardView = memo(function BoardView(props: {
                           onStart={() => startAsk.ask(card, contracts, () => setStarting(card))}
                           locked={busy}
                           selected={selection.includes(card.id)}
+                          selecting={selection.length > 0}
+                          onMoveSelection={() => {
+                            moveFrom.current = card.id;
+                            setMoveMenuOpen(true);
+                          }}
                           onToggleSelect={() => select(card)}
                           onRangeSelect={() => selectRange(card)}
                           tabbable={stops.has(card.id)}

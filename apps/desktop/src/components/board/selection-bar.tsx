@@ -23,11 +23,19 @@ export function SelectionBar(
     /** A batch is running: nothing else can start. */
     busy: boolean;
     onEscape(): void;
+    /** #1354: Move to…'s menu, also opened by `m` on a card of the selection. */
+    moveOpen?: boolean;
+    onMoveOpenChange?(open: boolean): void;
+    /** Where the focus goes when that menu closes; false leaves it on the button. */
+    onMoveClosed?(): boolean;
   }>,
 ) {
   const { t } = props;
   const leaveOnEscape = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape" && !e.defaultPrevented) props.onEscape();
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    // It clears the selection: the Esc stops here, so a split view around the board stays open.
+    e.stopPropagation();
+    props.onEscape();
   };
   return (
     <fieldset // NOSONAR: Escape leaves the selection from any control in the bar; the bar is a group, not a control
@@ -43,13 +51,21 @@ export function SelectionBar(
           {props.hidden === 1 ? t("board.hiddenOne") : t("board.hiddenCount", { n: props.hidden })}
         </span>
       )}
-      <DropdownMenu>
+      <DropdownMenu
+        {...(props.onMoveOpenChange
+          ? { open: props.moveOpen ?? false, onOpenChange: props.onMoveOpenChange }
+          : {})}
+      >
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="outline" disabled={props.shown === 0 || props.busy}>
             {t("board.moveSelected")}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent
+          onCloseAutoFocus={(e) => {
+            if (props.onMoveClosed?.()) e.preventDefault();
+          }}
+        >
           {COLUMNS.map(({ id }) => (
             <DropdownMenuItem key={id} onSelect={() => props.onMove(id)}>
               {t(`kanban.columns.${id}` as Key)}

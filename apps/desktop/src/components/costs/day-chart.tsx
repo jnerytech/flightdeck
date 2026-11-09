@@ -48,7 +48,7 @@ export function DayChart(
     Math.min(Math.max(projects.indexOf(projectKey), 0), tinted);
   const legend = projects.length > tinted ? [...projects.slice(0, tinted), null] : projects;
   const labelEvery = Math.ceil(days.length / LABELLED);
-  const dayText = (day: string) => `${day}: ${usd(totals.get(day) ?? 0)}`;
+  const dayText = (day: string) => `${day}: ${usd(totals.get(day) ?? 0, t.lang)}`;
   // One tab stop for the whole chart: the arrows walk the days, and the day in focus says its total.
   const current = Math.min(at, Math.max(days.length - 1, 0));
   const walk = (e: KeyboardEvent<HTMLElement>) => {
@@ -85,7 +85,7 @@ export function DayChart(
                     key={row.projectKey}
                     data-project={row.projectKey}
                     role="img"
-                    aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
+                    aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd, t.lang)}`}
                     className={cn(
                       "w-full border-card border-t first:rounded-t-sm",
                       SEGMENTS[tintOf(row.projectKey)],
@@ -120,7 +120,7 @@ export function DayChart(
           ))}
         </Inline>
         <span className="text-muted-foreground tabular-nums">
-          {t("costsUi.highestDay", { value: usd(highest) })}
+          {t("costsUi.highestDay", { value: usd(highest, t.lang) })}
         </span>
       </div>
     </>

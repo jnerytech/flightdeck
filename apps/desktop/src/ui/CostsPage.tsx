@@ -67,6 +67,7 @@ function Breakdown(
     rows: Array<{ id?: string; label: string; costUsd: number }>;
   }>,
 ) {
+  const t = useT();
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>
@@ -75,7 +76,7 @@ function Breakdown(
             {props.rows.map((row) => (
               <tr key={row.id ?? row.label} className="border-t first:border-t-0">
                 <td className="py-1">{row.label}</td>
-                <td className="py-1 text-right">{usd(row.costUsd)}</td>
+                <td className="py-1 text-right">{usd(row.costUsd, t.lang)}</td>
               </tr>
             ))}
           </tbody>
@@ -200,6 +201,82 @@ function useCostsStatus(store: AppStore, hostId: string, acrossHosts: boolean) {
     else setStatus(null);
   }, [store, hostId, acrossHosts]);
   return status;
+}
+
+type Named = Readonly<{ id: string; name: string }>;
+
+/** The notices above the figures: what the totals leave out or disagree on, and the client in view. */
+function CostsNotices(
+  props: Readonly<{
+    status: CostsStatus | null;
+    acrossHosts: boolean;
+    allHosts: readonly Named[];
+    hosts: readonly Named[];
+    failed: string[];
+    selection: string;
+    clients: readonly Named[];
+  }>,
+) {
+  const t = useT();
+  const { status, acrossHosts, allHosts, hosts, failed, selection, clients } = props;
+  return (
+    <>
+      {status && status.divergences.length > 0 && (
+        <InlineNotice>
+          {t("costsUi.divergence", {
+            models: status.divergences
+              .map((d) =>
+                t("costsUi.divergenceItem", {
+                  model: d.model,
+                  computed: usd(d.computedUsd, t.lang),
+                  sdk: usd(d.sdkUsd, t.lang),
+                }),
+              )
+              .join("; "),
+          })}
+        </InlineNotice>
+      )}
+      {acrossHosts && allHosts.some((h) => !hosts.includes(h)) && (
+        <InlineNotice>
+          {t("costsUi.hostsSkipped", {
+            hosts: allHosts
+              .filter((h) => !hosts.includes(h))
+              .map((h) => h.name)
+              .join(", "),
+          })}
+        </InlineNotice>
+      )}
+      {failed.length > 0 && (
+        <InlineNotice>
+          {t("costsUi.hostsFailed", {
+            hosts: failed.map((id) => allHosts.find((h) => h.id === id)?.name ?? id).join(", "),
+          })}
+        </InlineNotice>
+      )}
+      {selection !== ALL_CLIENTS && (
+        <InlineNotice>
+          {t("costsUi.onlyClient", {
+            name: clients.find((c) => c.id === selection)?.name ?? t("clients.unassigned"),
+          })}
+        </InlineNotice>
+      )}
+      {status && status.telemetryDivergences.length > 0 && (
+        <InlineNotice>
+          {t("telemetry.divergence", {
+            items: status.telemetryDivergences
+              .map((d) =>
+                t("telemetry.divergenceItem", {
+                  session: d.claudeSessionId.slice(0, 8),
+                  computed: usd(d.computedUsd, t.lang),
+                  telemetry: usd(d.telemetryUsd, t.lang),
+                }),
+              )
+              .join("; "),
+          })}
+        </InlineNotice>
+      )}
+    </>
+  );
 }
 
 /**
@@ -426,63 +503,15 @@ export const CostsPage = memo(function CostsPage(props: {
       }
     >
       <div className="flex flex-col gap-5">
-        {status && status.divergences.length > 0 && (
-          <InlineNotice>
-            {t("costsUi.divergence", {
-              models: status.divergences
-                .map((d) =>
-                  t("costsUi.divergenceItem", {
-                    model: d.model,
-                    computed: usd(d.computedUsd),
-                    sdk: usd(d.sdkUsd),
-                  }),
-                )
-                .join("; "),
-            })}
-          </InlineNotice>
-        )}
-        {acrossHosts && state.hosts.some((h) => !hosts.includes(h)) && (
-          <InlineNotice>
-            {t("costsUi.hostsSkipped", {
-              hosts: state.hosts
-                .filter((h) => !hosts.includes(h))
-                .map((h) => h.name)
-                .join(", "),
-            })}
-          </InlineNotice>
-        )}
-        {failed.length > 0 && (
-          <InlineNotice>
-            {t("costsUi.hostsFailed", {
-              hosts: failed
-                .map((id) => state.hosts.find((h) => h.id === id)?.name ?? id)
-                .join(", "),
-            })}
-          </InlineNotice>
-        )}
-        {selection !== ALL_CLIENTS && (
-          <InlineNotice>
-            {t("costsUi.onlyClient", {
-              name:
-                state.clientList.find((c) => c.id === selection)?.name ?? t("clients.unassigned"),
-            })}
-          </InlineNotice>
-        )}
-        {status && status.telemetryDivergences.length > 0 && (
-          <InlineNotice>
-            {t("telemetry.divergence", {
-              items: status.telemetryDivergences
-                .map((d) =>
-                  t("telemetry.divergenceItem", {
-                    session: d.claudeSessionId.slice(0, 8),
-                    computed: usd(d.computedUsd),
-                    telemetry: usd(d.telemetryUsd),
-                  }),
-                )
-                .join("; "),
-            })}
-          </InlineNotice>
-        )}
+        <CostsNotices
+          status={status}
+          acrossHosts={acrossHosts}
+          allHosts={state.hosts}
+          hosts={hosts}
+          failed={failed}
+          selection={selection}
+          clients={state.clientList}
+        />
         {away && (
           <InlineNotice tone="info">
             <span>
@@ -534,11 +563,16 @@ export const CostsPage = memo(function CostsPage(props: {
           <>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
               {[
-                [t("costsUi.estimated"), usd(summary.totals.costUsd)],
+                [t("costsUi.estimated"), usd(summary.totals.costUsd, t.lang)],
                 [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
-                [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd)],
+                [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd, t.lang)],
                 ...(topModel
-                  ? [[t("costsUi.topModel"), `${topModel.model} · ${usd(topModel.costUsd)}`]]
+                  ? [
+                      [
+                        t("costsUi.topModel"),
+                        `${topModel.model} · ${usd(topModel.costUsd, t.lang)}`,
+                      ],
+                    ]
                   : []),
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
@@ -655,7 +689,7 @@ export const CostsPage = memo(function CostsPage(props: {
                           props.onOpenSession(sessionHost[s.claudeSessionId] ?? hostId, s)
                         }
                       >
-                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectName(s.projectKey)} · ${usd(s.costUsd)}`}
+                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectName(s.projectKey)} · ${usd(s.costUsd, t.lang)}`}
                       </Button>
                     </li>
                   ))}

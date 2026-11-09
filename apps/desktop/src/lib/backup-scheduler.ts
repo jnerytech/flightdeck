@@ -25,7 +25,7 @@ export class BackupScheduler {
   /** The folder the shell stores (what the backups really go to), or null when none is chosen. */
   folder: string | null = null;
   report: RunReport = { status: "idle" };
-  private current: BackupSchedule;
+  private readonly current: BackupSchedule;
   private passphrase: string | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
@@ -95,7 +95,7 @@ export class BackupScheduler {
     await this.tick();
   }
 
-  async setKeep(keep: number): Promise<void> {
+  setKeep(keep: number): void {
     this.current.keep = Number.isFinite(keep) ? Math.max(1, Math.floor(keep)) : DEFAULT_KEEP;
     this.save();
   }

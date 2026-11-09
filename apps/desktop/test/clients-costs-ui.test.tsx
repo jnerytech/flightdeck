@@ -122,29 +122,29 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await settle(() => store.getState().clientSelection === "beta");
     expect(store.getState().clientSelection).toBe("beta");
     expect(scopeButton()?.getAttribute("aria-label")).toBe("Dados de beta");
-    await settle(() => total() === "US$ 3.00");
-    expect(total()).toBe("US$ 3.00");
+    await settle(() => total() === "US$ 3,00");
+    expect(total()).toBe("US$ 3,00");
   });
 
   test("it opens on all hosts by default, and the scope menu offers every host", async () => {
     await setup();
     expect(await hostOptions()).toEqual(["Todos os hosts", "alfa", "beta"]);
-    await settle(() => total() === "US$ 6.00");
-    expect(total()).toBe("US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
+    expect(total()).toBe("US$ 6,00");
   });
 
   test("all hosts adds the hosts up, and splits the spend by client, with what no client claims", async () => {
     await setup();
-    await settle(() => total() === "US$ 6.00");
-    expect(total()).toBe("US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
+    expect(total()).toBe("US$ 6,00");
     await settle(() => rowsOf("Por cliente").length === 3);
     const rows = rowsOf("Por cliente");
-    expect(rows).toEqual(["BetaUS$ 3.00", "AcmeUS$ 2.00", "Sem clienteUS$ 1.00"]);
+    expect(rows).toEqual(["BetaUS$ 3,00", "AcmeUS$ 2,00", "Sem clienteUS$ 1,00"]);
   });
 
   test("a summary that names no model shows the totals without a top-model card", async () => {
     const { store } = await setup();
-    await settle(() => total() === "US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
     expect(screen.queryByText("Modelo principal")).not.toBeNull();
     const ask = store.hostCommand.bind(store);
     (store as unknown as { hostCommand: unknown }).hostCommand = async (
@@ -161,43 +161,43 @@ describe("clients-costs: the Costs screen across hosts", () => {
     };
     await pickHost("alfa");
     await settle(() => screen.queryByText("Modelo principal") === null);
-    expect(total()).toBe("US$ 3.00");
+    expect(total()).toBe("US$ 3,00");
   });
 
   test("one host splits its own spend by client too", async () => {
     await setup();
     await pickHost("alfa");
     await settle(() => rowsOf("Por cliente").length === 2);
-    expect(rowsOf("Por cliente")).toEqual(["AcmeUS$ 2.00", "Sem clienteUS$ 1.00"]);
+    expect(rowsOf("Por cliente")).toEqual(["AcmeUS$ 2,00", "Sem clienteUS$ 1,00"]);
   });
 
   test("the selected client narrows the totals and the breakdowns, and the split by client is not shown", async () => {
     const { store } = await setup();
-    await settle(() => total() === "US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
     await act(async () => store.setClientSelection("beta"));
-    await settle(() => total() === "US$ 3.00");
-    expect(total()).toBe("US$ 3.00");
-    expect(rowsOf("Por projeto")).toEqual(["github.com/beta/appUS$ 3.00"]);
+    await settle(() => total() === "US$ 3,00");
+    expect(total()).toBe("US$ 3,00");
+    expect(rowsOf("Por projeto")).toEqual(["github.com/beta/appUS$ 3,00"]);
     expect(screen.queryByRole("region", { name: "Por cliente" })).toBeNull();
     expect(screen.queryByText("Só o cliente Beta.")).not.toBeNull();
     await act(async () => store.setClientSelection(UNASSIGNED));
-    await settle(() => total() === "US$ 1.00");
-    expect(total()).toBe("US$ 1.00");
+    await settle(() => total() === "US$ 1,00");
+    expect(total()).toBe("US$ 1,00");
   });
 
   test("with no client defined there is no split by client, and all hosts still adds up", async () => {
     await setup([]);
-    await settle(() => total() === "US$ 6.00");
-    expect(total()).toBe("US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
+    expect(total()).toBe("US$ 6,00");
     expect(screen.queryByRole("region", { name: "Por cliente" })).toBeNull();
   });
 
   test("the CSV export is offered across hosts as well as for one (the file itself is in costs-scope)", async () => {
     await setup();
-    await settle(() => total() === "US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
     expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeNull();
     await pickHost("alfa");
-    await settle(() => total() === "US$ 3.00");
+    await settle(() => total() === "US$ 3,00");
     expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeNull();
   });
 
@@ -214,12 +214,12 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await settle(() => screen.queryByText("Sem resposta de: delta.") !== null);
     expect(screen.queryByText("Sem resposta de: delta.")).not.toBeNull();
     expect(screen.queryByText("Sem custos de: gama.")).not.toBeNull();
-    expect(total()).toBe("US$ 6.00");
+    expect(total()).toBe("US$ 6,00");
   });
 
   test("a selected client costs one round of requests, not two, when no filter is set", async () => {
     const { store } = await setup();
-    await settle(() => total() === "US$ 6.00");
+    await settle(() => total() === "US$ 6,00");
     const asked: string[] = [];
     const ask = store.hostCommand.bind(store);
     store.hostCommand = ((hostId: string, type: string, payload: unknown) => {
@@ -228,7 +228,7 @@ describe("clients-costs: the Costs screen across hosts", () => {
       return ask(hostId, type as never, payload as never);
     }) as typeof store.hostCommand;
     await act(async () => store.setClientSelection("acme"));
-    await settle(() => total() === "US$ 2.00");
+    await settle(() => total() === "US$ 2,00");
     await uiIdle();
     expect(asked.sort()).toEqual(['"*"', '"*"', '"github.com/acme/api"']);
   });

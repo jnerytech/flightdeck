@@ -92,13 +92,13 @@ for (const [lang, t] of [
       const byName = Object.fromEntries(rows.map((r) => [cellsOf(r)[0], cellsOf(r)] as const));
       expect(byName.shop?.[2]).toBe("3");
       expect(byName.shop?.[3]).toBe("3");
-      expect(byName.shop?.[4]).toContain("4.00");
+      expect(byName.shop?.[4]).toContain(lang === "en" ? "4.00" : "4,00");
       expect(byName.blog?.[2]).toBe("0");
       expect(byName.blog?.[4]).toBe("—");
       expect(byName.blog?.[7]).toBe("—");
       const footer = rows.at(-1);
       expect(cellsOf(footer as HTMLElement)[0]).toBe(t.roiUi.table.total);
-      expect(cellsOf(footer as HTMLElement)[1]).toContain("15.00");
+      expect(cellsOf(footer as HTMLElement)[1]).toContain(lang === "en" ? "15.00" : "15,00");
       expect(cellsOf(footer as HTMLElement)[2]).toBe("3");
     });
 

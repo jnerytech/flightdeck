@@ -23,7 +23,7 @@ const COLUMNS: RoiColumn[] = [
 const DASH = "—";
 /** The first column stays in view while the table scrolls sideways. */
 const STICKY = " sticky left-0 z-1 bg-background";
-const money = (n: number | null) => (n === null ? DASH : usd(n));
+const money = (n: number | null, lang: string) => (n === null ? DASH : usd(n, lang));
 const REFRESH_MS = 30_000;
 
 /** The `aria-sort` of a column header: ascending or descending when it is the sorted one. */
@@ -79,6 +79,7 @@ export function RoiTable(
     inScope: (key) => scope.includes(selection, key),
     moneyOf: (key) => store.roiMoneyOf(key),
     nameOf: (key, name) => projectName(key) || name,
+    lang: t.lang,
   });
   const shown = sort ? sortRows(rows, sort.column, sort.direction) : sortRows(rows, "cost", "desc");
   const totals = totalsOf(rows);
@@ -143,13 +144,13 @@ export function RoiTable(
                   <th scope="row" className={`py-1 pr-3 font-normal${STICKY}`}>
                     {row.name}
                   </th>
-                  <td className="pr-3">{usd(row.figures.costUsd)}</td>
+                  <td className="pr-3">{usd(row.figures.costUsd, t.lang)}</td>
                   <td className="pr-3">{row.figures.cards}</td>
                   <td className="pr-3">{row.figures.prsMerged}</td>
-                  <td className="pr-3">{money(row.figures.costPerCard)}</td>
-                  <td className="pr-3">{money(row.figures.costPerPr)}</td>
+                  <td className="pr-3">{money(row.figures.costPerCard, t.lang)}</td>
+                  <td className="pr-3">{money(row.figures.costPerPr, t.lang)}</td>
                   <td className="pr-3">{row.figures.hours}</td>
-                  <td className="pr-3">{money(row.figures.valueUsd)}</td>
+                  <td className="pr-3">{money(row.figures.valueUsd, t.lang)}</td>
                   <td className="pr-3">
                     {row.figures.roi === null ? DASH : row.figures.roi.toFixed(1)}
                   </td>
@@ -161,13 +162,13 @@ export function RoiTable(
                 <th scope="row" className={`py-1 pr-3 text-left${STICKY}`}>
                   {t("roiUi.table.total")}
                 </th>
-                <td className="pr-3">{usd(totals.costUsd)}</td>
+                <td className="pr-3">{usd(totals.costUsd, t.lang)}</td>
                 <td className="pr-3">{totals.cards}</td>
                 <td className="pr-3">{totals.prsMerged}</td>
-                <td className="pr-3">{money(totals.costPerCard)}</td>
-                <td className="pr-3">{money(totals.costPerPr)}</td>
+                <td className="pr-3">{money(totals.costPerCard, t.lang)}</td>
+                <td className="pr-3">{money(totals.costPerPr, t.lang)}</td>
                 <td className="pr-3">{totals.hours}</td>
-                <td className="pr-3">{money(totals.valueUsd)}</td>
+                <td className="pr-3">{money(totals.valueUsd, t.lang)}</td>
                 <td className="pr-3">{totals.roi === null ? DASH : totals.roi.toFixed(1)}</td>
               </tr>
             </tfoot>

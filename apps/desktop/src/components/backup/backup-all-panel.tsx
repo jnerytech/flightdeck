@@ -79,15 +79,15 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   };
 
   const differing = preview
-    ? KINDS.flatMap((kind) =>
-        preview[kind].conflicting.map((name) => `${t(`backupAll.kinds.${kind}` as Key)}: ${name}`),
-      )
+    ? KINDS.flatMap((kind) => {
+        const kindName = t(`backupAll.kinds.${kind}` as Key);
+        return preview[kind].conflicting.map((name) => `${kindName}: ${name}`);
+      })
     : [];
   // Only a new item, or a difference the person chose to replace, changes anything.
-  const changes = preview
-    ? KINDS.reduce((sum, kind) => sum + preview[kind].added.length, 0) +
-      (choice === "overwrite" ? differing.length : 0)
-    : 0;
+  const added = preview ? KINDS.reduce((sum, kind) => sum + preview[kind].added.length, 0) : 0;
+  const replaced = choice === "overwrite" ? differing.length : 0;
+  const changes = added + replaced;
 
   return (
     <Panel title={t("backupAll.title")}>

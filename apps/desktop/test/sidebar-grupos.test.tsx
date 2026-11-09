@@ -79,7 +79,7 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
       ).toBeTruthy();
     }
     expect(groups.slice(0, 4).map((g) => names(g).slice(1))).toEqual([
-      ["Home", "Open Sessions", "Needs you", "Projects", "Board"],
+      ["Home", "Open Sessions", "Needs you", "Projects", "Board", "Pull requests"],
       ["Workflows", "Teams", "Conversations"],
       ["Costs", "Activity", "History"],
       ["Personas", "Snippets", "Plugins", "Vault"],
@@ -132,6 +132,7 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
       "Needs you",
       "Projects",
       "Board",
+      "Pull requests",
     ]);
     const automation = screen.getByRole("group", { name: "Automation" }) as HTMLElement;
     expect(names(automation).slice(1)).toEqual(["Workflows"]);

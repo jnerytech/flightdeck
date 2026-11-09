@@ -66,6 +66,7 @@ const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
 const ClientsPage = lazyScreen(() => import("./ClientsPage.tsx"), "ClientsPage");
 const ConnectionsPage = lazyScreen(() => import("./ConnectionsPage.tsx"), "ConnectionsPage");
 const ConversationsPage = lazyScreen(() => import("./ConversationsPage.tsx"), "ConversationsPage");
+const PullRequestsPage = lazyScreen(() => import("./PullRequestsPage.tsx"), "PullRequestsPage");
 const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
 const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
@@ -276,7 +277,9 @@ function ManagedSession(
                 });
                 return found.ok ? found.data.files.length : 0;
               },
-              onCommitFirst: () => void store.sessionViews.select("changes"),
+              onCommitFirst: () => {
+                store.sessionViews.select("changes");
+              },
             }
           : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
@@ -926,6 +929,8 @@ function routeScreen(props: ScreenProps): ReactNode {
           }}
         />
       );
+    case "pull-requests":
+      return <PullRequestsPage store={store} go={go} />;
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":

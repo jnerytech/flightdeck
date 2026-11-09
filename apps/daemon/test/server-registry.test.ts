@@ -84,7 +84,7 @@ describe("server-registry", () => {
   });
 
   // Issue #1288: the host's own controls left the switch of server.ts (host.info follows later).
-  test("the host domain owns the host, daemon, maintenance and hooks controls", () => {
+  test("the host domain owns the host, daemon, maintenance, hooks and memory-hold controls", () => {
     expect(Object.keys(DOMAINS.host ?? {}).sort()).toEqual(
       [
         "daemon.shutdown",
@@ -100,6 +100,44 @@ describe("server-registry", () => {
         "maintenance.backup",
         "maintenance.prune",
         "maintenance.status",
+        "resources.setPauseAt",
+      ].sort(),
+    );
+  });
+
+  // Issue #1288: the external session commands left the switch of server.ts.
+  test("the external domain owns the external.* commands", () => {
+    expect(Object.keys(DOMAINS.external ?? {}).sort()).toEqual(
+      ["external.list", "external.message", "external.watch"].sort(),
+    );
+  });
+
+  // Issue #1288: the session commands left the switch of server.ts (external.* and assistant.* follow).
+  test("the session domain owns the session.*, sessions.watch, permission.respond and history.list commands", () => {
+    expect(Object.keys(DOMAINS.session ?? {}).sort()).toEqual(
+      [
+        "history.list",
+        "permission.respond",
+        "session.applyPersona",
+        "session.clearPersona",
+        "session.close",
+        "session.create",
+        "session.files",
+        "session.fork",
+        "session.interrupt",
+        "session.interrupted",
+        "session.list",
+        "session.meta.set",
+        "session.resume",
+        "session.send",
+        "session.setEffort",
+        "session.setMode",
+        "session.setModel",
+        "session.sleep",
+        "session.subscribe",
+        "session.summary",
+        "session.unsubscribe",
+        "sessions.watch",
       ].sort(),
     );
   });
@@ -115,6 +153,37 @@ describe("server-registry", () => {
         "teleport.read",
         "teleport.receive",
         "teleport.write",
+      ].sort(),
+    );
+  });
+
+  // Issue #1288: the card commands left the switch of server.ts (board.*, pr.comments follow later).
+  test("the card domain owns the card.* commands", () => {
+    expect(Object.keys(DOMAINS.card ?? {}).sort()).toEqual(
+      [
+        "card.arena",
+        "card.chooseVariant",
+        "card.complete",
+        "card.create",
+        "card.delete",
+        "card.diff",
+        "card.discard",
+        "card.dismissUnblocked",
+        "card.get",
+        "card.manage",
+        "card.mergeLocal",
+        "card.message",
+        "card.move",
+        "card.pr.create",
+        "card.pr.merge",
+        "card.spec",
+        "card.start",
+        "card.startArena",
+        "card.stop",
+        "card.templates",
+        "card.update",
+        "card.updateFromBase",
+        "card.validationTemplate",
       ].sort(),
     );
   });

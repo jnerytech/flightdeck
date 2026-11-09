@@ -34,7 +34,7 @@ export type PaletteTarget =
   | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" }
   /** A screen with no host: Sessions, Needs you or the Projects overview. */
-  | { kind: "go"; to: "hub" | "needs-you" | "all-projects" | "activity" }
+  | { kind: "go"; to: "hub" | "needs-you" | "all-projects" | "activity" | "pull-requests" }
   /** The `?` sheet of shortcuts. */
   | { kind: "shortcuts" }
   /** Issue #107: a view of the session page on screen. */
@@ -450,6 +450,7 @@ export function paletteSections(
       undefined,
       "go-activity",
     ),
+    action("go:pull-requests", t("palette.goPullRequests"), { kind: "go", to: "pull-requests" }),
   ];
 
   // The clients have a section of their own, shown whole: one switches between all of them (#147).

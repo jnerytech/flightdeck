@@ -10,7 +10,14 @@
  */
 import { Database } from "bun:sqlite";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, inSequence, parseServerMessage } from "@flightdeck/protocol";
@@ -32,6 +39,8 @@ import {
   DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
   DEMO_GATE_CARD,
+  DEMO_PR_BETA_CARD,
+  DEMO_PR_BETA_URL,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
@@ -124,6 +133,8 @@ export interface DemoIds {
   notesFolder: string;
   /** A git repository of the first host that is no project yet: the New project journey adds it (issue #931). */
   freshRepo: string;
+  /** The file that sets the share of memory alfa reads as in use; deleting it leaves alfa with no reading (issue #1364). */
+  memoryFile: string;
   /** A long conversation with a code block and a summary: where it opens and what keeps it still (issue #112). */
   scrollSession: string;
   /** A session in a folder with a long path, whose first message holds a long unbroken id (issue #103). */
@@ -411,11 +422,23 @@ interface HostRun {
   claudeProjects: string;
   /** The daemon's data folder: where it publishes its OTLP receiver (phase 23). */
   dataDir: string;
+  /** The host's memory reading (issue #1364): a file with the share in use (0 to 1); none means no reading. */
+  memoryFile: string;
   stop(): Promise<void>;
+}
+
+/** The memory the demo host reports: the share in use that its file holds, or no reading without it. */
+function demoMemory(file: string): { totalBytes: number; freeBytes: number } | null {
+  if (!existsSync(file)) return null;
+  const used = Number(readFileSync(file, "utf8").trim());
+  return Number.isFinite(used)
+    ? { totalBytes: 1000, freeBytes: Math.round((1 - used) * 1000) }
+    : null;
 }
 
 async function host(work: string, name: string): Promise<HostRun> {
   const base = join(work, name);
+  const memoryFile = join(base, "memory");
   const projects = join(base, "projects");
   const history = join(base, "claude-projects");
   mkdirSync(projects, { recursive: true });
@@ -486,7 +509,13 @@ async function host(work: string, name: string): Promise<HostRun> {
     quiet,
     // The health check asks the machine's service manager; the demo says what no machine can change
     // (issue #1200): the service is not installed, and linger is on, so every run reads the same.
-    { serviceInstalled: async () => false, linger: async () => "on" },
+    {
+      serviceInstalled: async () => false,
+      linger: async () => "on",
+      // Issue #1364: the memory the hold on new cards reads is a file the journeys write, never the
+      // machine's own (a busy runner would hold every card). No file is no reading, so nothing waits.
+      memoryReading: () => demoMemory(memoryFile),
+    },
   );
   const client = await Client.open(daemon.url, token);
   return {
@@ -497,6 +526,7 @@ async function host(work: string, name: string): Promise<HostRun> {
     projects,
     claudeProjects: history,
     dataDir: join(base, "data"),
+    memoryFile,
     stop: async () => {
       client.close();
       await daemon.stop();
@@ -680,6 +710,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
         args: ["pr", "checks", DEMO_PR_URL],
         stdout: JSON.stringify([{ name: "build", bucket: "pass", link: "" }]),
       },
+      // Issue #1345: beta's PR is open and mergeable, and the host's merge goes through. The fake keeps
+      // saying "open" afterwards (its answers do not change), so the card stays on the page.
+      {
+        args: ["pr", "view", DEMO_PR_BETA_URL, "state,statusCheckRollup"],
+        stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
+      },
+      { args: ["pr", "merge", DEMO_PR_BETA_URL], stdout: "Merged\n" },
       {
         args: ["pr", "merge", DEMO_PR_URL],
         code: 1,
@@ -1246,7 +1283,24 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     tool_input: { repo: "acme/flightdeck-web", title: "Login falha com SSO", labels: ["bug"] },
   });
 
-  // beta: a quieter host.
+  // beta: a quieter host, with one session and one open PR (issue #1345: the Pull requests page lists
+  // the PRs of both hosts).
+  const betaApi = repo(join(beta.projects, "flightdeck-api"), {
+    "README.md": "# flightdeck-api\n",
+  });
+  const apiProject = await beta.client.call<{ id: string }>("project.add", { path: betaApi });
+  await beta.client.call("project.update", { projectId: apiProject.id, prProvider: "github" });
+  const apiCard = await beta.client.call<{ id: string }>("card.create", {
+    projectId: apiProject.id,
+    title: DEMO_PR_BETA_CARD,
+    description: "A route that says the service is up.",
+    column: "review",
+  });
+  const betaPrs = new Database(join(beta.dataDir, "flightdeck.db"));
+  betaPrs
+    .query("UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = 'passing' WHERE id = ?")
+    .run(DEMO_PR_BETA_URL, apiCard.id);
+  betaPrs.close();
   await beta.client.call("session.create", {
     cwd: beta.projects,
     name: "Rotina de backup",
@@ -1316,6 +1370,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       traceSession: TRACE_SESSION,
       notesFolder: join(alfa.projects, "notes"),
       freshRepo: join(alfa.projects, "fresh-app"),
+      memoryFile: alfa.memoryFile,
       scrollSession: long.sessionId,
       longSession: longSession.sessionId,
       longTitleSession: longTitle.sessionId,

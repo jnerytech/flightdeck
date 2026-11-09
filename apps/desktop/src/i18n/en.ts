@@ -928,7 +928,8 @@ export const en: Dictionary = {
     clearSelection: "Clear selection",
     selectCard: "Select card",
     deselectCard: "Deselect card",
-    selectedCard: "selected",
+    /** #1354: the check on each card while a selection exists. */
+    selectCardNamed: "Select {title}",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
     /** What a column asks of a card before it gets there (issue #78). */
@@ -971,7 +972,7 @@ export const en: Dictionary = {
     countMany: "{n} cards",
     /** The board's keys, said by each card's title (#1198). */
     keysHint:
-      "Arrows move between the cards, Enter opens one, S starts it and M shows its actions.",
+      "Arrows move between the cards, Enter opens one, S starts it, M shows its actions, X selects it and Shift with an arrow selects a range. Esc clears the selection.",
     /** A narrow board shows one column at a time, picked here (#1198). */
     columns: "Columns",
     showColumn: "{column}, {count}",
@@ -1045,6 +1046,7 @@ export const en: Dictionary = {
     projects: "Projects",
     needsYou: "Needs you",
     activity: "Activity",
+    pullRequests: "Pull requests",
     board: "Board",
     workflows: "Workflows",
     costs: "Costs",
@@ -1279,6 +1281,7 @@ export const en: Dictionary = {
     newSessionAs: "New session as {persona}",
     goCosts: "Go to Costs",
     goActivity: "Go to Activity",
+    goPullRequests: "Go to Pull requests",
     connectTo: "Connect to {name}",
     snippet: "Snippet: {name}",
     useSnippet: "Use",
@@ -1633,6 +1636,7 @@ export const en: Dictionary = {
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
     quotaPause: "the quota guard for new cards",
+    memoryPause: "the memory hold for new cards",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
@@ -3097,6 +3101,17 @@ export const en: Dictionary = {
     passing: "checks passing",
     failing: "checks failing",
   },
+  pullRequests: {
+    title: "Pull requests",
+    subtitle: "Every open pull request on your hosts, with what to do next.",
+    list: "Open pull requests",
+    loading: "Reading the pull requests…",
+    empty: "No open pull requests.",
+    emptyDetail: "A card's PR shows up here while it is open.",
+    refused: "{title}: {reason}",
+    noHosts: "No host is online.",
+    watchOff: "Watch and fix is off",
+  },
   cardMergePr: {
     action: "Merge PR",
     message:
@@ -4026,6 +4041,7 @@ export const en: Dictionary = {
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
+    waitingMemory: "waiting for memory",
     addCard: "Add card",
     addCardTo: "Add card to {column}",
     empty: "Empty",
@@ -5255,6 +5271,12 @@ export const en: Dictionary = {
   },
   resources: {
     title: "Resources",
+    guard: {
+      label: "New cards wait from memory at",
+      labelFor: "New cards wait from memory at, on {host}",
+      off: "Never",
+      hint: "Only new cards wait, and start once memory frees up; sessions already running are never stopped.",
+    },
     memory: "Memory",
     disk: "Disk",
     load: "Load {n}%",

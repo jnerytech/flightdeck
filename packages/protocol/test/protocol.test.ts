@@ -173,6 +173,7 @@ const validCommands: Record<CommandType, unknown> = {
   "session.sleep": { sessionId: "s" },
   "host.sleep": { minutes: 30 },
   "resources.get": {},
+  "resources.setPauseAt": { pauseAt: 0.8 },
   "resources.endOrphan": { pid: 1234, startTicks: 99 },
   "worktree.list": {},
   "worktree.remove": { items: [{ projectId: "p", path: "/x" }], confirm: true },

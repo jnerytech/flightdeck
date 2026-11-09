@@ -1066,6 +1066,14 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
   cache e o modelo principal com o que ele custou.
+- **Pull requests** (na barra lateral, em Trabalho, depois de Board; ou **Ir para Pull requests**
+  na paleta) lista todo card com PR aberto nos hosts conectados, primeiro os que pedem atenção
+  (checks falhando, ou uma vigia que precisa de você). Cada linha diz o card, o host e o projeto, os
+  checks, se **Vigiar e consertar** está desligado, vigiando ou precisa de você, e um link para o
+  PR. **Fazer merge do PR** pergunta antes, com a mesma confirmação da página do card, e só aparece
+  quando o host faz merge e os checks não estão falhando; **Atualizar com a base** faz o rebase da
+  branch do card, e um conflito fica na tela com os arquivos. O título abre o card. A linha ainda
+  não diz se o PR tem conflito ou espera revisão, nem a idade dele: os hosts não informam isso.
 - **Atividade** (na barra lateral, depois de Custos; `g a`, ou **Ir para Atividade** na paleta)
   mostra todas as sessões ao vivo de todos os hosts em quatro colunas: **Precisa de você** (a
   sessão está pedindo algo), **Trabalhando**, **Concluídas** (um turno terminou nas últimas 2 horas
@@ -1100,9 +1108,14 @@ aparece mascarado e como **Oculto**, e não abre.
 
 - **Selecionar.** `Ctrl`-clique (`⌘`-clique no Mac) num card para selecioná-lo ou desmarcá-lo;
   `Shift`-clique seleciona o intervalo desde o último card escolhido, dentro da coluna. O menu do
-  card tem **Selecionar card** para o teclado, e um card selecionado diz "selecionado" a um leitor
-  de tela. `Esc` limpa a seleção. Um filtro esconde cards mas os mantém selecionados; o que você
-  faz então vale só para os cards que aparecem, e a barra diz quantos estão escondidos.
+  card tem **Selecionar card** também. Enquanto há uma seleção, cada card mostra uma caixa que o
+  seleciona ou desmarca, e um leitor de tela ouve o estado dela e a contagem.
+- **Selecionar pelo teclado** (#1354). Num card, `X` seleciona ou desmarca, e `Shift` com uma seta,
+  `Home` ou `End` anda e seleciona o trecho desde o primeiro card escolhido, na ordem do board.
+  Enquanto há uma seleção, `M` abre o **Mover para…** da barra e `S` não inicia um card sozinho. `Esc`
+  limpa a seleção e deixa o foco no card; sem seleção, faz o que fazia antes (uma tela dividida
+  fecha). Um filtro esconde cards mas os mantém selecionados; o que você faz então vale só para os
+  cards que aparecem, e a barra diz quantos estão escondidos.
 - **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
   **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
@@ -1365,6 +1378,14 @@ interrompida ou fica ociosa.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+- **Pouca memória** (#1343): enquanto a memória em uso do host estiver em `resources.pauseAt` ou
+  acima (90% por padrão, o **Crítico** do painel Recursos), um card novo espera com "aguardando
+  memória" e começa sozinho quando a memória fica 2 pontos abaixo; o host olha de novo a cada 15 segundos.
+  Execuções que já estão rodando nunca são paradas. Troque no painel **Recursos** da página do host
+  (**Cartões novos esperam com a memória em**, ou **Nunca**), ou no `config.json`
+  (`{ "resources": { "pauseAt": 0.9 } }`, `null` desliga). Quando o host não consegue ler a
+  memória, nada espera; o macOS, que conta o cache como memória em uso, não é lido.
 
 ### Dependências entre cards
 

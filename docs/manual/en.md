@@ -1063,6 +1063,14 @@ live; the list is the project's, so a session of another project never shows her
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
   the top model with what it cost.
+- **Pull requests** (in the sidebar under Work, after Board; or **Go to Pull requests** in the
+  palette) lists every card with an open PR on the connected hosts, the ones that need a look first
+  (failing checks, or a watch that needs you). A row names the card, its host and project, its
+  checks, whether **Watch and fix** is off, watching or needs you, and a link to the PR. **Merge
+  PR** asks first, with the same confirm as the card page, and is offered only when the host can
+  merge and the checks are not failing; **Update from the base** rebases the card's branch, and a
+  conflict stays on screen with the files. The title opens the card. The row does not yet say
+  whether the PR conflicts or waits for a review, nor how old it is: the hosts do not report that.
 - **Activity** (in the sidebar after Costs; `g a`, or **Go to Activity** in the palette) shows every
   live session of every host in four columns: **Needs you** (the session is asking), **Working**,
   **Done** (a turn ended in the last 2 hours and you have not opened the session) and **Idle**,
@@ -1096,9 +1104,14 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 
 - **Select.** `Ctrl`-click (`⌘`-click on a Mac) a card to select it or unselect it; `Shift`-click
   selects the range from the last card you picked, within its column. A card's menu has **Select
-  card** for the keyboard, and a selected card says "selected" to a screen reader. `Esc` clears the
-  selection. A filter hides cards but keeps them selected; what you do then applies only to the
-  cards you can see, and the bar says how many are hidden.
+  card** too. While a selection exists, every card shows a check that selects or unselects it, and a
+  screen reader hears its state and the count.
+- **Select from the keyboard** (#1354). On a card, `X` selects it or unselects it, and `Shift` with an
+  arrow, `Home` or `End` moves and selects the range from the first card picked, in the board's order.
+  While a selection exists, `M` opens the bar's **Move to…** and `S` starts no single card. `Esc` clears
+  the selection and leaves the focus on the card; with none, it does what it did before (a split view
+  closes). A filter hides cards but keeps them selected; what you do then applies only to the cards
+  you can see, and the bar says how many are hidden.
 - **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
   **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
@@ -1356,6 +1369,14 @@ interrupted or goes idle.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+- **Short of memory** (#1343): while the host's memory in use is at or above `resources.pauseAt`
+  (90% by default, the Resources panel's **Critical**), a new card waits with "waiting for memory"
+  and starts on its own once memory is 2 points under it; the host looks again every 15 seconds. Runs already
+  going are never stopped. Change it in the host page's **Resources** panel (**New cards wait from
+  memory at**, or **Never**), or in `config.json` (`{ "resources": { "pauseAt": 0.9 } }`, `null`
+  to turn it off). When the host cannot read its memory, nothing waits; macOS, which counts its
+  cache as used memory, is not read.
 
 ### Card dependencies
 

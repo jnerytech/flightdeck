@@ -102,14 +102,14 @@ describe("orcamentos-ui", () => {
     await choose("Limite (US$)", "10");
     await click("Criar orçamento");
     await settle(() => rows().length === 1);
-    expect(rows()).toEqual(["orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)"]);
+    expect(rows()).toEqual(["orçamento do host (dia) · notificar · US$ 6,00 de US$ 10,00 (60%)"]);
     await click("Editar orçamento do host (dia)");
     await choose("Limite (US$)", "20");
     await choose("Ao passar do limite", "queue");
     await click("Salvar orçamento");
     await settle(() => rows()[0]?.includes("(30%)") === true);
     expect(rows()).toEqual([
-      "orçamento do host (dia) · segurar cards novos · US$ 6.00 de US$ 20.00 (30%)",
+      "orçamento do host (dia) · segurar cards novos · US$ 6,00 de US$ 20,00 (30%)",
     ]);
     await choose("Escopo", "project");
     await settle(() => projectOptions().includes("kA"));
@@ -118,7 +118,7 @@ describe("orcamentos-ui", () => {
     await choose("Limite (US$)", "100");
     await click("Criar orçamento");
     await settle(() => rows().length === 2);
-    expect(rows()[1]).toBe("orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)");
+    expect(rows()[1]).toBe("orçamento de kA (mês) · notificar · US$ 6,00 de US$ 100,00 (6%)");
     await click("Remover orçamento do host (dia)");
     // The confirmation comes first: Cancelar removes nothing.
     await click("Cancelar");
@@ -126,7 +126,7 @@ describe("orcamentos-ui", () => {
     await click("Remover orçamento do host (dia)");
     await click("Remover orçamento");
     await settle(() => rows().length === 1);
-    expect(rows()).toEqual(["orçamento de kA (mês) · notificar · US$ 6.00 de US$ 100.00 (6%)"]);
+    expect(rows()).toEqual(["orçamento de kA (mês) · notificar · US$ 6,00 de US$ 100,00 (6%)"]);
   });
 
   test("o formulário tem rótulos, diz o que cada ação faz e só salva com um limite", async () => {
@@ -207,7 +207,7 @@ describe("orcamentos-ui", () => {
     await click("Criar orçamento");
     await settle(() => rows().length === 1);
     expect(rows()).toEqual([
-      "orçamento de flightdeck-web (dia) · notificar · US$ 1.00 de US$ 10.00 (10%)",
+      "orçamento de flightdeck-web (dia) · notificar · US$ 1,00 de US$ 10,00 (10%)",
     ]);
     const title = section()?.querySelector("li [data-row-title] span") as HTMLElement;
     expect(title.title).toBe("/srv/work/flightdeck-web");
@@ -339,17 +339,17 @@ describe("orcamentos-ui", () => {
     });
     await settle(() => mem.notifications.length > 0);
     expect(mem.notifications).toEqual([
-      { title: "Orçamento", body: "alfa: orçamento do host (dia) em 50% de US$ 10.00" },
+      { title: "Orçamento", body: "alfa: orçamento do host (dia) em 50% de US$ 10,00" },
     ]);
-    const alert = "alfa · orçamento do host (dia): 60% de US$ 10.00";
+    const alert = "alfa · orçamento do host (dia): 60% de US$ 10,00";
     await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: alert }) !== null);
     expect(screen.queryByRole("heading", { name: "Precisa de você" })).not.toBeNull();
     spend(3);
     await act(async () => budgets.evaluate());
     await settle(() => mem.notifications.length > 1);
-    expect(mem.notifications[1]?.body).toBe("alfa: orçamento do host (dia) em 80% de US$ 10.00");
-    await sidebar.queueItem("alfa · orçamento do host (dia): 90% de US$ 10.00");
+    expect(mem.notifications[1]?.body).toBe("alfa: orçamento do host (dia) em 80% de US$ 10,00");
+    await sidebar.queueItem("alfa · orçamento do host (dia): 90% de US$ 10,00");
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
     // The alert opens Settings on the budgets, not at the top (issue #190, J7).
@@ -431,7 +431,7 @@ describe("orcamentos-ui", () => {
     });
     await settle(() => mem.notifications.length > 0);
     expect(mem.notifications).toEqual([
-      { title: "Orçamento", body: "alfa: orçamento de repo (dia) em 50% de US$ 10.00" },
+      { title: "Orçamento", body: "alfa: orçamento de repo (dia) em 50% de US$ 10,00" },
     ]);
   });
 

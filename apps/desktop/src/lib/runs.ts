@@ -1,5 +1,6 @@
 import type { StepRun, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
+import { usd } from "./costs.ts";
 
 const PT = translator("pt-BR");
 
@@ -12,7 +13,7 @@ export function stepDuration(step: StepRun, now = Date.now()): string {
 
 /** What an agent step's turns spent: `1 turno · US$ 0.50`. */
 export function stepUsage(usage: NonNullable<StepRun["usage"]>, t: T = PT): string {
-  return `${t("runUi.turns", { n: usage.turns })} · US$ ${usage.costUsd.toFixed(2)}`;
+  return `${t("runUi.turns", { n: usage.turns })} · ${usd(usage.costUsd, t.lang)}`;
 }
 
 export interface BudgetLine {
@@ -53,9 +54,9 @@ export function budgetLines(run: WorkflowRun, t: T = PT): BudgetLine[] {
     line(
       t("runUi.budgetCost"),
       usage.costUsd,
-      `US$ ${usage.costUsd.toFixed(2)}`,
+      usd(usage.costUsd, t.lang),
       budget.maxCostUsd,
-      `US$ ${budget.maxCostUsd?.toFixed(2)}`,
+      usd(budget.maxCostUsd ?? 0, t.lang),
     ),
   ];
 }
