@@ -34,8 +34,10 @@ function keepAwakeOf(hosts: HostView[]): Pick<StatusBarSummary, "keepAwake" | "k
 }
 
 /** The first online host whose new runs are paused (#1404); null when none is. */
-function pausedOf(_hosts: HostView[]): StatusBarSummary["paused"] {
-  return null;
+function pausedOf(hosts: HostView[]): StatusBarSummary["paused"] {
+  const host = hosts.find((h) => h.status === "online" && h.hostInfo?.pause?.paused);
+  const pause = host?.hostInfo?.pause;
+  return host && pause ? { hostId: host.id, hostName: host.name, running: pause.running } : null;
 }
 
 /** The app's own update: ready to install, then on offer, then a failed check. */

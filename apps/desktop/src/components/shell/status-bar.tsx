@@ -1,6 +1,7 @@
 import {
   ArrowUpCircle,
   CircleAlert,
+  CirclePause,
   Coffee,
   Ellipsis,
   Moon,
@@ -166,6 +167,19 @@ export function StatusBar(
     setOpen(false);
     action();
   };
+  // Issue #1404: a paused host stays in sight, so the pause is not forgotten.
+  const paused = summary.paused;
+  const pausedVars = { host: paused?.hostName ?? "", n: String(paused?.running ?? 0) };
+  const pausedKind = paused?.running ? "running" : "idle";
+  const pause = paused ? (
+    <Item
+      name={t(`statusBar.paused.${pausedKind}`, pausedVars)}
+      onClick={() => props.onOpenPause?.(paused.hostId)}
+    >
+      <CirclePause aria-hidden="true" />
+      <span className="status-short">{t(`statusBar.pausedShort.${pausedKind}`, pausedVars)}</span>
+    </Item>
+  ) : null;
   const keepAwake =
     awake && summary.keepAwakeHostId ? (
       <Item
@@ -214,6 +228,7 @@ export function StatusBar(
       <div className="status-bar-group">
         {compact ? (
           <>
+            {pause}
             {keepAwake}
             <Popover open={open} onOpenChange={setOpen}>
               <IconTip label={t("statusBar.more")}>
@@ -261,6 +276,7 @@ export function StatusBar(
                 </span>
               </Item>
             )}
+            {pause}
             {keepAwake}
             <Item name={terminalsName} onClick={props.onOpenTerminals}>
               <SquareTerminal aria-hidden="true" />
@@ -324,6 +340,7 @@ export function StatusBarSlot(
       onRefreshQuota={props.onRefreshQuota}
       onOpenQuota={toHost}
       onOpenKeepAwake={toHost}
+      onOpenPause={toHost}
       onOpenTerminals={props.onOpenTerminals}
       onOpenHosts={() => go(hostsRoute(state.hosts, props.currentHostId ?? null))}
       onOpenUpdate={() => go({ name: "settings" })}

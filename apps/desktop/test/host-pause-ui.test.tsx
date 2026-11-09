@@ -161,7 +161,7 @@ describe("host pause on the board, the host page and the status bar (#1404)", ()
     ).not.toBeNull();
     await press("Resume new runs");
     await settleMaybe(() => screen.queryByText("New runs start as usual.") !== null);
-    expect(asked.at(-2)).toEqual(["host.pause", { paused: false }]);
+    expect(asked.at(-1)).toEqual(["host.pause", { paused: false }]);
   });
 
   test("while sessions still run, the page counts them; in Portuguese too; none on an older host", async () => {

@@ -1017,6 +1017,11 @@ export const ptBR = {
       off: "Manter acordado: desligado",
     },
     keepAwakeShort: { holding: "Acordado", on: "Manter acordado", off: "Pode dormir" },
+    paused: {
+      running: "Novas execuções pausadas em {host}: {n} ainda rodando",
+      idle: "Novas execuções pausadas em {host}: ocioso, pode atualizar",
+    },
+    pausedShort: { running: "Pausado · {n} rodando", idle: "Pausado · ocioso" },
     terminals: "{n} terminais abertos",
     terminalsOne: "1 terminal aberto",
     hosts: "{online} de {total} hosts online",
@@ -4108,6 +4113,7 @@ export const ptBR = {
     waitingQuotaUntil: "aguardando cota até {time}",
     waitingQuota: "aguardando cota",
     waitingMemory: "aguardando memória",
+    waitingPaused: "aguardando: host pausado",
     addCard: "Adicionar card",
     addCardTo: "Adicionar card em {column}",
     empty: "Vazio",
@@ -5516,6 +5522,14 @@ export const ptBR = {
     bypassAllowMessage:
       "Permitir que as sessões em {host} rodem sem pedidos de permissão? O Claude poderá editar e apagar arquivos e rodar comandos em qualquer pasta permitida sem perguntar. Só faça isso numa máquina e em pastas em que você aceite esse risco.",
     bypassTurnOff: "Desligar",
+    pauseTitle: "Pausar novas execuções",
+    pauseHint:
+      "Antes de reiniciar ou atualizar este host: os cartões novos esperam na fila, e as execuções em andamento terminam. Retome para liberar a fila.",
+    pauseOff: "Novas execuções começam normalmente.",
+    pauseOnRunning: "Novas execuções pausadas. {n} sessões ainda rodando.",
+    pauseOnIdle: "Novas execuções pausadas. Nada está rodando: pode reiniciar ou atualizar.",
+    pauseTurnOn: "Pausar novas execuções",
+    pauseTurnOff: "Retomar novas execuções",
     keepAwakeTitle: "Manter este computador acordado",
     keepAwakeHint:
       "Enquanto uma sessão deste host roda ou espera a sua resposta, o host pede ao computador para não dormir, e assim aprovações e avisos continuam chegando. A tela ainda pode apagar, e fechar a tampa segue as configurações de energia do sistema.",
