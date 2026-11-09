@@ -131,6 +131,8 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     expect(row("Card b").textContent).toContain("Watching the PR");
     expect(row("Card c").textContent).toContain("Needs you: the checks kept failing");
     // Not read yet (or not readable): the row claims nothing, rather than "off".
+    // row() gives an empty box for a missing row: the row must be there for "not" to mean anything.
+    expect(row("Card d").textContent).toContain("Card d");
     expect(row("Card d").textContent).not.toContain("Watch and fix");
     expect(row("Card d").textContent).not.toContain("Watching");
   });
@@ -170,6 +172,7 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
 
   test("a PR with failing checks, or on a host that cannot merge, has no Merge PR button", () => {
     open();
+    expect(row("Card a").textContent).toContain("Card a");
     expect(inRow("Card b").queryByRole("button", { name: "Merge PR" })).not.toBeNull();
     expect(inRow("Card a").queryByRole("button", { name: "Merge PR" })).toBeNull();
     cleanup();
