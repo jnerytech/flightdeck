@@ -14,6 +14,7 @@ import { projectHandlers } from "./project.ts";
 import { reviewHandlers } from "./review.ts";
 import { runsHandlers } from "./runs.ts";
 import { securityHandlers } from "./security.ts";
+import { sessionHandlers } from "./session.ts";
 import { teleportHandlers } from "./teleport.ts";
 import { terminalHandlers } from "./terminal.ts";
 import { watchHandlers } from "./watch.ts";
@@ -34,6 +35,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   files: filesHandlers,
   teleport: teleportHandlers,
   project: projectHandlers,
+  session: sessionHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));
