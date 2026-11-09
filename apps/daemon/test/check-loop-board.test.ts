@@ -324,8 +324,14 @@ describe("check-loop: what the card says about its loop", () => {
     const ctx = await setup([FAILED, PASSED]);
     ctx.switchOn(ctx.card.id);
     const seen: Array<string | null> = [];
+    let lastSent: { active: string | null; state: string | null } | null = null;
     ctx.board.watch((card) => {
-      if (card.id === ctx.card.id) seen.push(card.checkLoop?.active ?? null);
+      if (card.id !== ctx.card.id) return;
+      seen.push(card.checkLoop?.active ?? null);
+      lastSent = {
+        active: card.checkLoop?.active ?? null,
+        state: card.checkLoop?.last?.state ?? null,
+      };
     });
     const open = ctx.holdChecks();
     await ctx.board.startCard(ctx.card.id);
@@ -348,12 +354,61 @@ describe("check-loop: what the card says about its loop", () => {
       ],
       [ended?.active, ended?.last?.state, ended?.last?.reason],
       seen.includes("checking") && seen.includes("fixing"),
+      // The last card the app was sent agrees with the end: not active any more.
+      lastSent,
     ]).toEqual([
       "checking",
       ["fixing", 1, 3, "sent", "bun test", 1],
       [null, "ended", "passed"],
       true,
+      { active: null, state: "ended" },
     ]);
+  });
+
+  test("an end with no placement (a stop) still sends a card that is no longer active", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    let lastSent: { active: string | null; reason: string | null } | null = null;
+    ctx.board.watch((card) => {
+      if (card.id !== ctx.card.id) return;
+      lastSent = {
+        active: card.checkLoop?.active ?? null,
+        reason: card.checkLoop?.last?.reason ?? null,
+      };
+    });
+    ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    await ctx.board.stopCard(ctx.card.id);
+    expect(lastSent).toEqual({ active: null, reason: "stopped_by_you" });
+  });
+
+  test("a session that ends while its checks run sends a last card that is no longer active", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    let lastSent: { active: string | null; reason: string | null } | null = null;
+    ctx.board.watch((card) => {
+      if (card.id !== ctx.card.id) return;
+      lastSent = {
+        active: card.checkLoop?.active ?? null,
+        reason: card.checkLoop?.last?.reason ?? null,
+      };
+    });
+    ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    await ctx.manager.close(ctx.board.getCard(ctx.card.id).sessionId as string);
+    await poll(() => lastSent?.reason === "session_ended", 5000);
+    expect(lastSent).toEqual({ active: null, reason: "session_ended" });
+  });
+
+  test("a card with the switch off carries no loop line, so reading it asks the rounds table nothing", async () => {
+    const ctx = await setup();
+    expect(ctx.board.getCard(ctx.card.id).checkLoop).toEqual({
+      on: false,
+      rounds: null,
+      confirmed: false,
+    });
   });
 });
 
