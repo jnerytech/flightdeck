@@ -2,6 +2,7 @@ import type { Budget, Card } from "@flightdeck/protocol";
 import type { T } from "../i18n/index.ts";
 import { answerOf, type BulkRefusal } from "./board-select.ts";
 import { cardStartBlock } from "./card-start-block.ts";
+import { reasonText } from "./notice-text.ts";
 
 /** Start N and Stop N of the selection (#1354): what each can take, and why the rest stay out. */
 export interface BulkSplit {
@@ -10,23 +11,37 @@ export interface BulkSplit {
   skipStart: Array<{ card: Card; reason: string }>;
   stop: Card[];
   skipStop: Card[];
+  /** #1406: Update from the base takes the idle cards with a branch; the rest stay out, named. */
+  update: Card[];
+  skipUpdate: Array<{ card: Card; reason: string }>;
 }
+
+const skipReason = (t: T, block: "queued" | "running") =>
+  t(block === "queued" ? "board.startQueued" : "board.startRunning");
 
 /** Start takes the cards neither running nor queued; Stop takes the ones that are (`stopCard`). */
 export function bulkSplit(cards: Card[], t: T): BulkSplit {
-  const split: BulkSplit = { start: [], skipStart: [], stop: [], skipStop: [] };
+  const split: BulkSplit = {
+    start: [],
+    skipStart: [],
+    stop: [],
+    skipStop: [],
+    update: [],
+    skipUpdate: [],
+  };
   for (const card of cards) {
     const block = cardStartBlock(card);
     if (block === null) {
       split.start.push(card);
       split.skipStop.push(card);
     } else {
-      split.skipStart.push({
-        card,
-        reason: t(block === "queued" ? "board.startQueued" : "board.startRunning"),
-      });
+      split.skipStart.push({ card, reason: skipReason(t, block) });
       split.stop.push(card);
     }
+    if (block !== null) split.skipUpdate.push({ card, reason: skipReason(t, block) });
+    else if (!card.branch || !card.worktreePath) {
+      split.skipUpdate.push({ card, reason: t("board.updateNoBranch") });
+    } else split.update.push(card);
   }
   return split;
 }
@@ -92,4 +107,86 @@ export function holdLines(
   if (overBudget || reported("budget")) lines.push(t("board.startBudgetHold", { host }));
   if (input.memoryOver || reported("memory")) lines.push(t("board.startMemoryHold", { host }));
   return lines;
+}
+
+/** #1406: what Update from the base did to one card. */
+export type UpdateOutcome = "updated" | "current" | "conflicted" | "failed";
+
+export interface UpdateResult {
+  card: Card;
+  outcome: UpdateOutcome;
+  /** The host's refusal, for a conflicted or failed card. */
+  message?: string;
+  reason?: string;
+  params?: Record<string, string | number>;
+}
+
+export interface UpdateSteps {
+  /** How many commits of its base the card lacks; null when the host could not say. */
+  behind(card: Card): Promise<number | null>;
+  /** Rebases the card on its base (`card.updateFromBase`). */
+  update: CardRequest;
+  /** After each card: how many are done, of how many. */
+  onProgress?(done: number, total: number): void;
+}
+
+/** Updates the cards from their base one after the other; a conflict stops only its own card. */
+export async function updateMany(cards: Card[], steps: UpdateSteps): Promise<UpdateResult[]> {
+  const results: UpdateResult[] = [];
+  for (const card of cards) {
+    results.push(await updateOne(card, steps)); // NOSONAR: one card at a time, so the host never runs two rebases at once
+    steps.onProgress?.(results.length, cards.length);
+  }
+  return results;
+}
+
+/** A card already on its base is not rebased; one whose count is unknown is tried. */
+async function updateOne(card: Card, steps: UpdateSteps): Promise<UpdateResult> {
+  if ((await steps.behind(card)) === 0) return { card, outcome: "current" };
+  const answer = await steps.update(card);
+  if (answer.ok) return { card, outcome: "updated" };
+  const { ok: _, ...refusal } = answer;
+  return {
+    card,
+    outcome: refusal.reason === "rebase_conflict" ? "conflicted" : "failed",
+    ...refusal,
+  };
+}
+
+/** The summary after Update from the base: updated, already current, conflicted, not updated. */
+export function updateSummary(t: T, results: UpdateResult[]): string {
+  const named = (outcome: UpdateOutcome, why: boolean) =>
+    results
+      .filter((r) => r.outcome === outcome)
+      .map((r) => {
+        if (!why) return r.card.title;
+        // The reason is a sentence; inside the brackets it loses its full stop.
+        const text = reasonText(t, r.message ?? "", r.reason, r.params).replace(/\.$/, "");
+        return `${r.card.title} (${text})`;
+      })
+      .join(", ");
+  const groups: Array<
+    [
+      UpdateOutcome,
+      boolean,
+      (
+        | "board.updatedNames"
+        | "board.currentNames"
+        | "board.conflictedNames"
+        | "board.notUpdatedNames"
+      ),
+    ]
+  > = [
+    ["updated", false, "board.updatedNames"],
+    ["current", false, "board.currentNames"],
+    ["conflicted", true, "board.conflictedNames"],
+    ["failed", true, "board.notUpdatedNames"],
+  ];
+  return groups
+    .map(([outcome, why, key]) => {
+      const names = named(outcome, why);
+      return names ? t(key, { names }) : "";
+    })
+    .filter(Boolean)
+    .join(" ");
 }

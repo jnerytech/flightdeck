@@ -960,6 +960,14 @@ export const ptBR = {
     selectCard: "Selecionar card",
     deselectCard: "Desmarcar card",
     selectCardNamed: "Selecionar {title}",
+    /** #1406: Atualizar com a base para a seleção, e o resumo. */
+    updateSelected: "Atualizar {n} com a base",
+    updateNoBranch: "o card ainda não tem branch",
+    updating: "Atualizando {done} de {total}…",
+    updatedNames: "Atualizados: {names}.",
+    currentNames: "Já em dia: {names}.",
+    conflictedNames: "Conflito, ficou como estava: {names}.",
+    notUpdatedNames: "Não atualizados: {names}.",
     stayedOne: "1 card ficou onde estava: {names}",
     stayed: "{count} cards ficaram onde estavam: {names}",
     contract: {
