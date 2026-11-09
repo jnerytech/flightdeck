@@ -28,7 +28,8 @@ export interface StallOptions {
   unitMs?: number;
 }
 
-/** How often the watcher looks, while it is on. */
+const MINUTE_MS = 60_000;
+/** How often the watcher looks, while it is on (half a unit when the unit is short). */
 const CHECK_EVERY_MS = 30_000;
 
 /**
@@ -40,12 +41,14 @@ export class StallWatcher {
   private readonly timers: StallTimers;
   private timer: ReturnType<typeof setInterval> | null = null;
   private current = 0;
+  private readonly unitMs: number;
   /** The sessions marked quiet and not yet cleared. */
   private readonly marked = new Set<string>();
 
   constructor(private readonly opts: StallOptions) {
     this.now = opts.now ?? Date.now;
     this.timers = opts.timers ?? globalThis;
+    this.unitMs = opts.unitMs ?? MINUTE_MS;
     this.setMinutes(opts.minutes);
   }
 
@@ -57,7 +60,11 @@ export class StallWatcher {
   setMinutes(minutes: number): void {
     this.current = minutes;
     this.stop();
-    if (minutes > 0) this.timer = this.timers.setInterval(() => this.tick(), CHECK_EVERY_MS);
+    if (minutes > 0)
+      this.timer = this.timers.setInterval(
+        () => this.tick(),
+        Math.min(CHECK_EVERY_MS, Math.max(250, this.unitMs / 2)),
+      );
     else this.clearAll();
   }
 
@@ -92,7 +99,7 @@ export class StallWatcher {
     if (session.status !== "running") return null;
     const { lastEventAt, tool } = this.opts.host.activity(session.id);
     if (lastEventAt === null) return null;
-    const limit = this.current * 60_000 * (tool.inFlight ? 2 : 1);
+    const limit = this.current * this.unitMs * (tool.inFlight ? 2 : 1);
     if (this.now() - lastEventAt < limit) return null;
     return { since: new Date(lastEventAt).toISOString(), tool: tool.name };
   }

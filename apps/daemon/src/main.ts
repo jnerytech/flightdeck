@@ -1473,7 +1473,14 @@ export async function startDaemon(
   // Idle sessions give back their process after N minutes (off by default: no timer then).
   const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
   // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
-  const stall = new StallWatcher({ host: manager, minutes: config.stall.afterMinutes });
+  const stall = new StallWatcher({
+    host: manager,
+    minutes: config.stall.afterMinutes,
+    // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
+    ...(Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
+      ? { unitMs: Number(process.env.FLIGHTDECK_STALL_UNIT_MS) }
+      : {}),
+  });
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
