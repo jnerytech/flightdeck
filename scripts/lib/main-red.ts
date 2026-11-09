@@ -115,11 +115,14 @@ export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
   // Read at once: the SessionStart hook gives the whole lookup 6 seconds.
   const [scheduled, dispatched] = await Promise.all([
     finishedOn(deps, "schedule", 3),
-    finishedOn(deps, "workflow_dispatch", 10),
+    finishedOn(deps, "workflow_dispatch", 5),
   ]);
   // A dispatch with only=screenshots runs no test suite: only one that did is a full run. Only a
   // dispatch newer than the latest scheduled run can be the latest full run.
-  const newer = dispatched.filter((r) => !scheduled[0] || r.createdAt > scheduled[0].createdAt);
+  // At most 5 have their jobs read: the warning runs on every SessionStart and pr open.
+  const newer = dispatched
+    .filter((r) => !scheduled[0] || r.createdAt > scheduled[0].createdAt)
+    .slice(0, 5);
   const jobsOf = new Map(
     await Promise.all(
       newer.map(async (r) => [r.databaseId, await runJobs(deps, r.databaseId)] as const),
@@ -127,11 +130,16 @@ export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
   );
   // A screenshots dispatch lists its test suite job too, skipped: only one that ran counts, timed
   // out or cancelled included (its red is a full run's red).
-  const fullDispatch = newer.find((r) =>
-    (jobsOf.get(r.databaseId) ?? []).some(
-      (j) => /^test suite/i.test(j.name) && Boolean(j.conclusion) && j.conclusion !== "skipped",
-    ),
-  );
+  // Jobs gh cannot read make the dispatch the full run, red: unread never hides a red.
+  const fullDispatch = newer.find((r) => {
+    const jobs = jobsOf.get(r.databaseId);
+    return (
+      jobs === null ||
+      (jobs ?? []).some(
+        (j) => /^test suite/i.test(j.name) && Boolean(j.conclusion) && j.conclusion !== "skipped",
+      )
+    );
+  });
   const full = [scheduled[0], fullDispatch]
     .filter((r): r is RunRow => r !== undefined)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
@@ -139,11 +147,12 @@ export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
   // Windows gates nothing (#534): a full run red only there is green. Jobs gh cannot read leave
   // a failed run red: the verdict fails closed, as the push run's does. A green run needs no jobs.
   let red = false;
-  if (full.conclusion === "failure") {
+  if (full.conclusion !== "success") {
     const jobs = jobsOf.has(full.databaseId)
       ? (jobsOf.get(full.databaseId) ?? null)
       : await runJobs(deps, full.databaseId);
-    red = jobs === null || failed(jobs).length > 0;
+    // A run GitHub timed out or could not start may have no failed job to show: red as it is.
+    red = full.conclusion !== "failure" || jobs === null || failed(jobs).length > 0;
   }
   const greens = [...scheduled, ...(fullDispatch ? [fullDispatch] : [])]
     .filter((r) => r.conclusion === "success")
@@ -196,8 +205,12 @@ async function finishedOn(
   const runs = listed.code === 0 ? parsed(listed.stdout) : null;
   // Unread is not none: with no full run known, a green push run would close a claim (#1381).
   if (!Array.isArray(runs)) throw new Error(`gh could not list main's ${event} runs`);
-  return (runs as RunRow[]).filter((r) => r.conclusion === "success" || r.conclusion === "failure");
+  // A run a person cancelled says nothing; one GitHub timed out or could not start is a red.
+  return (runs as RunRow[]).filter((r) => ENDED.has(r.conclusion));
 }
+
+/** The conclusions of a full run that give a verdict. */
+const ENDED = new Set(["success", "failure", "timed_out", "startup_failure"]);
 
 /** A run's jobs, or null when gh cannot say. */
 async function runJobs(deps: Pick<MainRedDeps, "gh">, id: number): Promise<Job[] | null> {
