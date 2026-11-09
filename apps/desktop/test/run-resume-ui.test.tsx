@@ -60,6 +60,8 @@ function setup(
     check?: Answer;
     confirm?: Answer;
     file?: WorkflowInfo;
+    /** Every request but the check waits for it. */
+    hold?: Promise<void>;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -69,8 +71,9 @@ function setup(
   const sent: Array<[string, unknown]> = [];
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
-    if (type !== "run.resume") return { ok: true, data: { id: "c1" } };
     const confirm = (payload as { confirm?: boolean }).confirm === true;
+    if (options.hold && (type !== "run.resume" || confirm)) await options.hold;
+    if (type !== "run.resume") return { ok: true, data: { id: "c1" } };
     return confirm ? (options.confirm ?? offer) : (options.check ?? offer);
   }) as never;
   const tree = (shown: WorkflowRun) => (
@@ -172,6 +175,10 @@ describe("run-resume-ui: Run again from the failed step (#1266)", () => {
     });
     render(busy.tree(run()));
     await settleMaybe(() => busy.sent.length === 1, 5000);
+    // The answer lands before the absence counts: the request leaving is not its answer shown.
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect([near, text(/Only a run that failed/), button("Run again") !== null]).toEqual([
       true,
       false,
@@ -197,6 +204,25 @@ describe("run-resume-ui: Run again from the failed step (#1266)", () => {
     await click(button("Run again from c"));
     const far = await settleMaybe(() => alerted(/only works over a near connection/), 5000);
     expect([said, gone, far]).toEqual([true, null, true]);
+  });
+
+  test("while one request is going, the other button waits: no resume and start of the same card at once", async () => {
+    let release = () => {};
+    const resuming = setup({ hold: new Promise<void>((done) => (release = done)) });
+    render(resuming.tree(run()));
+    await settleMaybe(() => button("Run again from c") !== null, 5000);
+    await click(button("Run again from c"));
+    const startOff = button("Run again")?.disabled === true;
+    await act(async () => release());
+    cleanup();
+    let releaseStart = () => {};
+    const starting = setup({ hold: new Promise<void>((done) => (releaseStart = done)) });
+    render(starting.tree(run()));
+    await settleMaybe(() => button("Run again from c") !== null, 5000);
+    await click(button("Run again"));
+    const resumeOff = button("Run again from c")?.disabled === true;
+    await act(async () => releaseStart());
+    expect([startOff, resumeOff]).toEqual([true, true]);
   });
 
   test("an untrusted file keeps its own reason: no resume is checked or offered", async () => {
