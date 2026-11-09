@@ -650,14 +650,15 @@ export const BoardView = memo(function BoardView(props: {
   };
   /** #1354: what Start N and Stop N take from the selection. */
   const split = bulkSplit(actingCards, t);
-  /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
   /**
    * #1426: what had the focus when a selection's confirm opened (a card, the bar's button). Closing
    * the confirm puts it back there, or on the board when it is gone.
    */
   const opener = useRef<HTMLElement | null>(null);
   const rememberOpener = () => {
-    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const el = document.activeElement;
+    // Nothing focused is the body, which takes no focus: the board is the fallback then.
+    opener.current = el instanceof HTMLElement && el !== document.body ? el : null;
   };
   const restoreOpener = () => {
     const el = opener.current;
@@ -665,6 +666,7 @@ export const BoardView = memo(function BoardView(props: {
     if (el?.isConnected) el.focus();
     else boardRef.current?.focus();
   };
+  /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
   const askStart = () => {
     if (busy || split.start.length === 0) return;
     rememberOpener();
