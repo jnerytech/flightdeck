@@ -502,6 +502,14 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "custos", route: { name: "costs" } },
+    // Issue #1345: the Pull requests page, with the open PRs of both hosts.
+    {
+      name: "pull-requests",
+      route: { name: "pull-requests" },
+      prepare: async (page) => {
+        await page.locator("[data-slot='pr-row']").nth(1).waitFor({ timeout: 8000 });
+      },
+    },
     // Issue #151: the Activity board, its columns and cards (axe checks it in both themes).
     { name: "atividade", route: { name: "activity" } },
     // Phase 36: the ROI card of the web project, and the project and people tables of Costs.
