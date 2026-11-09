@@ -25,6 +25,19 @@ export interface MemoryGateOptions {
 /** The default share of used memory from which new runs wait. */
 export const MEMORY_PAUSE_AT = 0.9;
 
+/**
+ * The OS's memory as the hold reads it, or null where it would mislead. Linux (WSL too) gives
+ * MemAvailable through Bun's free memory and Windows its available physical memory, both with the
+ * reclaimable cache counted as free; macOS counts that cache as used, so a Mac would sit above 90%.
+ */
+export function osMemoryReading(_os: {
+  platform: NodeJS.Platform;
+  totalmem(): number;
+  freemem(): number;
+}): MemoryReading | null {
+  return null;
+}
+
 /** The share of memory in use, or null when the reading cannot be trusted. */
 function usedShare(read: () => MemoryReading | null): number | null {
   let reading: MemoryReading | null;

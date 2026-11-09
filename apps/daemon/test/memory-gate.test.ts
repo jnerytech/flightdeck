@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ResourcesSnapshot } from "@flightdeck/protocol";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
-import { MemoryGate, type MemoryReading } from "../src/resources/memory-gate.ts";
+import { MemoryGate, type MemoryReading, osMemoryReading } from "../src/resources/memory-gate.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -67,6 +67,21 @@ describe("memory-gate: new cards wait while the host's memory is at or above res
       },
     });
     expect(throwing.blocked()).toBeNull();
+  });
+
+  test("Linux, WSL and Windows readings count; macOS, which counts its cache as used, does not", () => {
+    const os = (platform: NodeJS.Platform) => ({
+      platform,
+      totalmem: () => 16 * GB,
+      freemem: () => 6 * GB,
+    });
+    for (const platform of ["linux", "win32"] as const) {
+      expect([platform, osMemoryReading(os(platform))]).toEqual([
+        platform,
+        { totalBytes: 16 * GB, freeBytes: 6 * GB },
+      ]);
+    }
+    expect(osMemoryReading(os("darwin"))).toBeNull();
   });
 
   test("a new threshold applies at once and tells the watchers", () => {
