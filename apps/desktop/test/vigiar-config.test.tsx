@@ -249,7 +249,7 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
       await refuses(
         env,
         "GITHUB_TOKEN",
-        "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+        "GITHUB_TOKEN: só onde fica uma ferramenta, como JAVA_HOME, nunca um segredo.",
       ),
       await refuses(
         env,
@@ -293,5 +293,47 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
     await openSettings();
     await settle(() => screen.queryByLabelText("Rodadas por PR") !== null);
     expect(screen.queryByLabelText("Rodadas do laço de checks") === null).toBe(true);
+  });
+
+  test("#1499: the check loop has its own heading and a sentence on what it does, and Rounds per PR says it counts CI rounds", async () => {
+    await loopHost();
+    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
+    const area = section() ? within(section() as HTMLElement) : null;
+    expect([
+      area?.queryByRole("heading", { name: "Laço de checks" }) !== null && area !== null,
+      area?.queryByText(/Quando o turno de um card termina, ele roda estes checks/) != null,
+      area?.queryByText("Rodadas para consertar a CI de um PR que falha.") != null,
+    ]).toEqual([true, true, true]);
+  });
+
+  test("#1498: the variables field says it takes names only, and a NAME=value line is shown under it, with the fix", async () => {
+    await loopHost();
+    const label = "Variáveis extras dos checks (uma por linha)";
+    await settleMaybe(() => screen.queryByLabelText(label) !== null);
+    const hint = section()
+      ? within(section() as HTMLElement).queryByText(
+          "Só os nomes, como JAVA_HOME: o valor vem do ambiente do host. Nunca um segredo.",
+        ) !== null
+      : false;
+    await act(async () => fireIf(maybe(label), { target: { value: "JAVA_HOME=/opt/jdk" } }));
+    const field = maybe(label);
+    const error = section()
+      ? within(section() as HTMLElement).queryByText(
+          "JAVA_HOME=/opt/jdk: escreva só o nome (JAVA_HOME).",
+        )
+      : null;
+    const described = (field?.getAttribute("aria-describedby") ?? "").split(" ");
+    const save = section()
+      ? within(section() as HTMLElement).queryByRole("button", { name: "Salvar" })
+      : null;
+    expect([
+      hint,
+      field?.getAttribute("aria-invalid"),
+      error !== null && described.includes(error.id),
+      (save as HTMLButtonElement | null)?.disabled,
+      section()
+        ? within(section() as HTMLElement).queryByText("Corrija o campo marcado.") !== null
+        : false,
+    ]).toEqual([true, "true", true, true, true]);
   });
 });
