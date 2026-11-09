@@ -1,5 +1,5 @@
 import type { Card, CardReviewResult, ChangesResult } from "@flightdeck/protocol";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Stack } from "@/components/layout/stack";
@@ -40,10 +40,19 @@ export function CardSecondOpinion(
   const reasonId = useId();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const askButton = useRef<HTMLButtonElement>(null);
+  const asking = useRef(false);
+  /** Answers received: the button was off while the host read, so focus goes back once it is on (#1495). */
+  const [answered, setAnswered] = useState(0);
+  useEffect(() => {
+    if (answered > 0) askButton.current?.focus();
+  }, [answered]);
   const off = whyOff(card, changes, t);
 
   const ask = async () => {
-    if (busy) return;
+    // A ref too: two clicks in the same event see the first one before React renders it.
+    if (busy || asking.current) return;
+    asking.current = true;
     setBusy(true);
     setOutcome(null);
     let next: Outcome;
@@ -61,7 +70,9 @@ export function CardSecondOpinion(
     }
     // The result and the button come back together: no moment with neither the result nor the wait.
     setOutcome(next);
+    asking.current = false;
     setBusy(false);
+    setAnswered((count) => count + 1);
     if (next.kind === "result" && next.result.anchored > 0) await props.onReviewed();
   };
 
@@ -72,11 +83,13 @@ export function CardSecondOpinion(
         <p className="text-muted-foreground text-sm">{t("secondOpinion.intro")}</p>
         <div>
           <ActionButton
+            ref={askButton}
             variant="outline"
             size="sm"
             disabled={off !== null || busy}
             aria-describedby={off ? reasonId : undefined}
-            onClick={ask}
+            // The wait is this component's own (busy), so the button is on again with the answer.
+            onClick={() => void ask()}
           >
             {t("secondOpinion.ask")}
           </ActionButton>
