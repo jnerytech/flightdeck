@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useContext, useEffect, useRef, useState 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
+import { usePageFocus } from "@/hooks/use-page-focus";
 import { cn } from "@/lib/utils";
 
 /** Where the top bar lets the tab strip sit, once the shell has drawn it (null before, and in tests). */
@@ -61,6 +62,7 @@ export function AppShell(
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const menu = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLElement>(null);
+  usePageFocus(navKey, content);
   // biome-ignore lint/correctness/useExhaustiveDependencies: closes on a new key and on a wider window
   useEffect(() => setSheet(false), [navKey, wide]);
   const open = wide && !folded;

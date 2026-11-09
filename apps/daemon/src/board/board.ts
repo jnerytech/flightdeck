@@ -6,8 +6,6 @@ import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
-  CheckLoopReason,
-  type ContractOverrides,
   contractOf,
   type EffortLevel,
   inSequence,
@@ -26,32 +24,25 @@ import {
   type WorkflowTemplate,
   type WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError, refusalOf } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside } from "../paths.ts";
-import { withoutPersonas } from "../personas/prepare.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { ulid } from "../ulid.ts";
-import { runChecks } from "../watch/check-run.ts";
 import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
-import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
-import { cardMode } from "./check-loop.ts";
-import {
-  CheckLoopEngine,
-  type LoopCard,
-  type RoundRecord,
-  roundsCap,
-} from "./check-loop-engine.ts";
+import type { CheckLoopEngine } from "./check-loop-engine.ts";
+import { CheckLoopHost } from "./check-loop-host.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { cardDiff } from "./diff.ts";
+import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import {
   aheadBehind,
   assertLocalBranch,
@@ -59,7 +50,6 @@ import {
   pendingFiles,
   rebaseOnto,
 } from "./merge.ts";
-import { pinnedPrompt } from "./pins.ts";
 import { type PrComment, prMessage, prProvider } from "./pr.ts";
 import { Projects } from "./projects.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
@@ -67,18 +57,12 @@ import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
 import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
-import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
-  hasTddSkill,
   projectTemplate,
-  renderSpec,
-  specFirstLine,
   type TemplateIgnored,
   type TemplateName,
   untrustedTemplate,
-  wantsSpec,
-  writeSpec,
 } from "./spec-template.ts";
 import type {
   BoardColumn,
@@ -94,13 +78,7 @@ import type {
   PrState,
   RunRow,
 } from "./types.ts";
-import {
-  addWorktree,
-  excludeLocalSettingsAsync,
-  freshBase,
-  must,
-  WORKTREE_INCLUDE_LIMIT,
-} from "./worktree.ts";
+import { must } from "./worktree.ts";
 
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
@@ -108,8 +86,6 @@ export type { BoardOptions } from "./types.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
-
-const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
 
 /** Issue #79: a card done this recently still covers the key of the finding it was raised from. */
 const DONE_COVERS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -170,22 +146,6 @@ const BUSY: ReadonlySet<string> = new Set(["starting", "running", "awaiting_perm
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
  */
-/** The notice for files the worktree copy left out because they passed the size limit. */
-function skippedNotice(left: number, limit: number): string {
-  const files =
-    left === 1
-      ? "1 arquivo do .worktreeinclude não copiado"
-      : left + " arquivos do .worktreeinclude não copiados";
-  return `${files}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
-}
-
-/** The reason and params of a refusal; `null` for any other error. */
-export function refusalOf(
-  error: unknown,
-): { reason: string; params?: Record<string, string | number> } | null {
-  if (!(error instanceof FlightdeckError) || !error.reason) return null;
-  return error.params ? { reason: error.reason, params: error.params } : { reason: error.reason };
-}
 
 export class Board {
   private readonly db: Database;
@@ -197,6 +157,8 @@ export class Board {
   private readonly sessions: SessionFollow;
   /** The runs' slots and what holds the queue (issue #1523). */
   private readonly queue: RunQueue;
+  /** Launching and ending the cards' runs (issue #1523). */
+  private readonly launcher: Launcher;
   private readonly waits: Array<() => Promise<unknown>> = [];
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
@@ -221,10 +183,8 @@ export class Board {
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
-  /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
-  private readonly loop: CheckLoopEngine | null;
-  /** Issue #1361: projects whose watch settings could not be read, logged once each. */
-  private readonly unreadableLoopSettings = new Set<string>();
+  /** Issue #1361: the check loop's engine, switch and rounds (board/check-loop-host.ts). */
+  private readonly loopHost: CheckLoopHost;
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
@@ -273,12 +233,39 @@ export class Board {
       checks: opts.checks ?? shellCheckRunner(),
       clock: opts.clock ?? Date.now,
     });
+    this.loopHost = new CheckLoopHost({
+      db: opts.db,
+      opts,
+      workflows: this.workflows,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      budgetBlocked: (projectId) => this.budgetBlocked(projectId),
+      release: (id) => this.release(id),
+      place: (id, event) => this.place(id, event),
+      changed: (id) => this.changed(id),
+    });
+    this.launcher = new Launcher({
+      db: opts.db,
+      opts,
+      workflows: this.workflows,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      place: (id, event) => this.place(id, event),
+      release: (id) => this.release(id),
+      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
+      settleFix: (id, result) => this.settleFix(id, result),
+      follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
+      templateFor: (cwd, name) => this.templateFor(cwd, name),
+      dropConflicts: (id) => this.dropConflicts(id),
+      loop: () => this.loop,
+      settle: () => this.settle(),
+    });
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.queue.watchLimits();
     this.armPoll();
-    this.loop = opts.checkLoop ? this.checkLoopEngine(opts.checkLoop) : null;
     // Issue #1361: a round a restart left open is closed; the loop never resumes by itself.
-    this.sweepCheckLoops();
+    this.loopHost.sweep();
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
       .query<RunRow, []>(
@@ -455,7 +442,7 @@ export class Board {
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
-      checkLoop: this.checkLoopOf(row),
+      checkLoop: this.loopHost.of(row),
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
       startWorkflow: row.start_workflow,
@@ -1053,24 +1040,12 @@ export class Board {
       confirmedHash: string | null;
     },
   ): Card {
-    const card = this.getCard(id);
-    // Switched on: the session's events so far are history, never a turn for the loop to check.
-    // Read before anything is written: a session that cannot be read throws here, so the switch is
-    // never saved without its mark.
-    const switching = value.on && card.checkLoop?.on !== true;
-    const mark = switching && card.sessionId ? this.opts.manager.get(card.sessionId).lastSeq : null;
-    this.db.transaction(() => {
-      this.db
-        .query(
-          `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
-           check_loop_confirmed_hash = ? WHERE id = ?`,
-        )
-        .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
-      if (switching) {
-        this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(mark, id);
-      }
-    })();
-    return this.changed(id);
+    return this.loopHost.store(id, value);
+  }
+
+  /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
+  private get loop(): CheckLoopEngine | null {
+    return this.loopHost.engine;
   }
 
   /** "Pedir ajuste": a message to the session of the active run. */
@@ -1257,167 +1232,21 @@ export class Board {
 
   /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
   private failRun(id: string, runId: string, notice: string, why?: unknown): void {
-    this.settleFix(id, { isError: true, error: notice });
-    this.workflows.fail(runId, notice, refusalOf(why));
-    this.setNotice(id, notice, why);
-    this.place(id, { type: "failed" });
-    this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
-    this.changed(id);
-    this.release(id);
+    this.launcher.failRun(id, runId, notice, why);
   }
 
-  private async launch(id: string, runId: string): Promise<void> {
-    const card = this.getCard(id);
-    const project = this.getProject(card.projectId);
-    let worktree = card.worktreePath;
-    if (!worktree) {
-      const limit = this.opts.worktreeIncludeLimit ?? WORKTREE_INCLUDE_LIMIT;
-      // A card that waited for blockers starts from the base as it is after they merged.
-      const from =
-        card.blockedBy.length > 0
-          ? await freshBase(project.path, refArg(project.baseBranch))
-          : { ref: project.baseBranch, notice: null };
-      const added = await addWorktree(project.path, card.title, from.ref, limit);
-      worktree = added.path;
-      const left = added.skipped.length;
-      const skipped = left === 0 ? null : skippedNotice(left, limit);
-      const notice = [from.notice, skipped].filter((part) => part !== null).join("; ") || null;
-      this.db
-        .query(
-          "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, notice = ?, updated_at = ? WHERE id = ?",
-        )
-        .run(added.slug, added.branch, added.path, notice, now(), id);
-      this.changed(id);
-    }
-    if (this.opts.folderLocks?.isHeld(worktree)) throw folderRemoving(worktree);
-    await excludeLocalSettingsAsync(project.path);
-    if (project.setupScript) await runSetup(project.setupScript, worktree);
-    // The newest run is the active one: older sessions of the card are closed.
-    await this.closeRuns(id, runId);
-    // A workflow run executes its steps instead of sending the description to one session.
-    if (this.workflows.has(runId)) return this.workflows.begin(runId, worktree);
-    const specLine = this.firstSession(id, runId)
-      ? await this.startSpec(id, project.contractByColumn, worktree)
-      : null;
-    const pins = await pinnedPrompt(worktree, card.pinnedDocs);
-    const prompt = [card.description, specLine ?? "", pins, project.promptTemplate]
-      .filter((part) => part.trim())
-      .join("\n\n");
-    const { variant } = card;
-    const run = this.db
-      .query<{ persona: string | null; fix_prompt: string | null }, [string]>(
-        "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
-      )
-      .get(runId);
-    const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
-    const prepared = await (this.opts.preparePersonas ?? withoutPersonas)(personaRef, worktree);
-    const { sessionId } = await this.opts.manager.create(
-      {
-        cwd: worktree,
-        prompt: run?.fix_prompt ?? prompt,
-        name: card.title,
-        ...(variant?.model ? { model: variant.model } : {}),
-        ...(variant?.effort ? { effort: variant.effort } : {}),
-        ...(variant?.permissionMode ? { permissionMode: variant.permissionMode } : {}),
-        ...(personaRef ? { persona: personaRef } : {}),
-      },
-      { unattended: run?.fix_prompt != null, prepared },
-    );
-    this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
-    this.changed(id);
-    this.follow(id, sessionId, 0);
-  }
-
-  /**
-   * Issue #78: on a card's first run, when its project asks for a spec, writes the spec from the
-   * template into the new worktree (never over one that is there) and gives the line that sends the
-   * session to it first. A spec that cannot be written is said on the card; the run starts anyway.
-   */
-  private async startSpec(
-    id: string,
-    contracts: ContractOverrides,
-    worktree: string,
-  ): Promise<string | null> {
-    const card = this.getCard(id);
-    const path = specExpectedPath(card);
-    if (path === null || !wantsSpec(contracts, card.specPath)) return null;
-    // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
-    const template = await this.templateFor(worktree, "spec");
-    const result = await writeSpec(worktree, path, renderSpec(card, template.body ?? undefined));
-    if (result === "failed") {
-      // The app says it in its language; the prompt sends the agent to no spec that is not there.
-      const why = new FlightdeckError(
-        "invalid_state",
-        `spec template not written: ${path}`,
-        "spec_template_failed",
-        { path },
-      );
-      this.setNotice(id, why.message, why);
-      this.changed(id);
-      return null;
-    }
-    const ignored = template.ignored;
-    if (ignored && result === "written") {
-      // The built-in template was used; the project's own is named by its reason, never quoted.
-      const why = new FlightdeckError(
-        "invalid_state",
-        `the project's spec template was not used (${ignored})`,
-        `spec_template_${ignored}`,
-      );
-      this.setNotice(id, why.message, why);
-      this.changed(id);
-    }
-    return specFirstLine(path, await hasTddSkill(worktree));
-  }
-
-  /**
-   * No earlier run of the card reached a session: the card's first start, the one a spec template
-   * is for. A first start that failed before its session (a setup script) still counts as first.
-   */
-  private firstSession(id: string, runId: string): boolean {
-    const earlier = this.db
-      .query("SELECT 1 FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL")
-      .get(id, runId);
-    return earlier === null;
+  private launch(id: string, runId: string): Promise<void> {
+    return this.launcher.launch(id, runId);
   }
 
   /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */
-  private async closeRuns(id: string, keep = ""): Promise<void> {
-    const open = this.db
-      .query<RunRow, [string, string]>(
-        "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND ended_at IS NULL",
-      )
-      .all(id, keep);
-    await inSequence(open, async (run) => {
-      if (run.session_id) await this.opts.manager.close(run.session_id);
-      this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
-    });
-    this.workflows.abandon(id, "execução encerrada com o card", keep);
-    await this.workflows.closeSessions(id, keep);
+  private closeRuns(id: string, keep = ""): Promise<void> {
+    return this.launcher.closeRuns(id, keep);
   }
 
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
-  private async finish(id: string): Promise<void> {
-    this.dropConflicts(id);
-    // Issue #1361: the worktree goes only once a check killed in it has exited.
-    await this.loop?.onStop(id);
-    await this.closeRuns(id);
-    await this.removeCleanWorktree(id);
-    this.changed(id);
-  }
-
-  private async removeCleanWorktree(id: string): Promise<void> {
-    const card = this.getCard(id);
-    if (!card.worktreePath) return;
-    const pending = must(await git(card.worktreePath, "status", "--porcelain"), "git status");
-    if (pending.stdout.trim()) {
-      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(PENDING_NOTICE, id);
-      return;
-    }
-    const repo = this.getProject(card.projectId).path;
-    await this.settle();
-    must(await git(repo, "worktree", "remove", card.worktreePath), "git worktree remove");
-    this.db.query("UPDATE cards SET worktree_path = NULL, notice = NULL WHERE id = ?").run(id);
+  private finish(id: string): Promise<void> {
+    return this.launcher.finish(id);
   }
 
   /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
@@ -2310,174 +2139,5 @@ export class Board {
   /** Issue #1361: the person wrote into a card's session, or answered it: the loop steps aside. */
   personTurnOfSession(sessionId: string): void {
     this.sessions.personTurnOfSession(sessionId);
-  }
-
-  /** Issue #1361: the loop's effects on this board. */
-  private checkLoopEngine(options: NonNullable<BoardOptions["checkLoop"]>): CheckLoopEngine {
-    return new CheckLoopEngine({
-      card: (cardId) => this.loopCard(cardId),
-      settings: (projectId) => options.settings(projectId),
-      mode: (cardId) => cardMode(this.getCard(cardId), this.opts.manager),
-      trusted: (cardId) => options.isTrusted(this.getProject(this.getCard(cardId).projectId).path),
-      limit: (cardId) => this.loopLimit(cardId),
-      runChecks: (input) => runChecks({ ...input, runner: options.runner }),
-      // The round goes into the session as the board's own write, never through a person's command.
-      send: (cardId, text) => {
-        const { sessionId } = this.getCard(cardId);
-        if (sessionId) this.opts.manager.send(sessionId, text);
-      },
-      release: (cardId) => this.release(cardId),
-      place: (cardId) => this.place(cardId, { type: "turn", isError: false }),
-      record: (cardId, record) => this.recordRound(cardId, record),
-      notify: (cardId) => this.changed(cardId),
-      timer: {
-        set: (fn, ms) => setTimeout(fn, ms),
-        clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-      },
-    });
-  }
-
-  /** Issue #1361: the card's switch and how its loop goes, for the app. */
-  private checkLoopOf(row: CardRow): Card["checkLoop"] {
-    const own = {
-      on: row.check_loop === 1,
-      rounds: row.check_rounds,
-      confirmed: row.check_loop_confirmed_at !== null,
-    };
-    // Every card read comes here: a card with the switch off asks the rounds table nothing.
-    if (!own.on) return own;
-    const last = this.db
-      .query<
-        {
-          status: "sent" | "ended";
-          reason: string | null;
-          command: string | null;
-          exit_code: number | null;
-          at: string;
-        },
-        [string]
-      >(
-        "SELECT status, reason, command, exit_code, at FROM card_check_rounds WHERE card_id = ? ORDER BY id DESC LIMIT 1",
-      )
-      .get(row.id);
-    // A board that starts before its watch settings can be read shows the loop without its cap.
-    let project: number | undefined;
-    try {
-      project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
-    } catch (error) {
-      project = undefined;
-      // Said once per project: a row that cannot be read would otherwise go unnoticed.
-      if (!this.unreadableLoopSettings.has(row.project_id)) {
-        this.unreadableLoopSettings.add(row.project_id);
-        const what = error instanceof Error ? error.name : "error";
-        this.opts.log?.(
-          `check loop: the watch settings of project ${row.project_id} could not be read (${what})`,
-        );
-      }
-    }
-    const max = project === undefined ? undefined : roundsCap(row.check_rounds, project);
-    const reason = CheckLoopReason.safeParse(last?.reason);
-    return {
-      ...own,
-      active: this.loop?.phaseOf(row.id) ?? null,
-      round: this.loop?.sentOf(row.id) ?? 0,
-      ...(max === undefined ? {} : { max }),
-      last: last
-        ? {
-            state: last.status,
-            reason: reason.success ? reason.data : null,
-            command: last.command,
-            exitCode: last.exit_code,
-            at: last.at,
-          }
-        : null,
-    };
-  }
-
-  /** What the loop needs of a card; null when the card is gone. */
-  private loopCard(cardId: string): LoopCard | null {
-    const row = this.db
-      .query<
-        {
-          loop_on: number;
-          rounds: number | null;
-          hash: string | null;
-          worktree: string | null;
-          project: string;
-        },
-        [string]
-      >(
-        `SELECT check_loop AS loop_on, check_rounds AS rounds, check_loop_confirmed_hash AS hash,
-         worktree_path AS worktree, project_id AS project FROM cards WHERE id = ?`,
-      )
-      .get(cardId);
-    if (!row) return null;
-    const run = this.db
-      .query<{ id: string; fix_prompt: string | null }, [string]>(
-        "SELECT id, fix_prompt FROM card_runs WHERE card_id = ? ORDER BY rowid DESC LIMIT 1",
-      )
-      .get(cardId);
-    // A watch's fixing run and a workflow run have checks of their own.
-    const plainRun = run !== null && run.fix_prompt === null && !this.workflows.has(run.id);
-    return {
-      on: row.loop_on === 1,
-      rounds: row.rounds,
-      confirmedHash: row.hash,
-      plainRun,
-      worktree: row.worktree,
-      projectId: row.project,
-    };
-  }
-
-  /** The limit that stops a round now: the quota, the host's memory, or the project's budget. */
-  private loopLimit(cardId: string): "budget" | "quota" | "memory" | null {
-    if (this.opts.quota?.blocked()) return "quota";
-    if (this.opts.memory?.blocked()) return "memory";
-    return this.budgetBlocked(this.getCard(cardId).projectId) ? "budget" : null;
-  }
-
-  /** One line of a card's loop: a round sent, or the loop's end with its reason. */
-  private recordRound(cardId: string, record: RoundRecord): void {
-    const run = this.db
-      .query<{ id: string }, [string]>(
-        "SELECT id FROM card_runs WHERE card_id = ? ORDER BY rowid DESC LIMIT 1",
-      )
-      .get(cardId);
-    this.db
-      .query(
-        `INSERT INTO card_check_rounds
-         (card_id, run_id, n, at, status, reason, command, exit_code, timed_out)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        cardId,
-        run?.id ?? "",
-        record.n,
-        now(),
-        record.status,
-        record.reason ?? null,
-        record.command ?? null,
-        record.exitCode ?? null,
-        record.timedOut ? 1 : 0,
-      );
-    this.changed(cardId);
-  }
-
-  /** Issue #1361: rounds a restart left open are closed as interrupted, one end line each. */
-  private sweepCheckLoops(): void {
-    const open = this.db
-      .query<{ card_id: string; run_id: string; n: number }, []>(
-        `SELECT card_id, run_id, n FROM card_check_rounds r
-         WHERE status = 'sent' AND id = (SELECT MAX(id) FROM card_check_rounds WHERE card_id = r.card_id)`,
-      )
-      .all();
-    for (const row of open) {
-      this.db
-        .query(
-          `INSERT INTO card_check_rounds (card_id, run_id, n, at, status, reason)
-           VALUES (?, ?, ?, ?, 'ended', 'interrupted')`,
-        )
-        .run(row.card_id, row.run_id, row.n, now());
-    }
   }
 }

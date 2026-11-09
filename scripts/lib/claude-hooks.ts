@@ -2,7 +2,7 @@
  * The rules behind the project's Claude Code hooks (.claude/hooks), kept here to be tested.
  * The hooks only read the tool call from stdin and apply these.
  */
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits, uncommentedOffLinux } from "./tdd-audit.ts";
@@ -173,6 +173,79 @@ export function checkoutRoot(filePath: string, projectDir: string): string | nul
     if (parent === dir) return null;
     dir = parent;
   }
+}
+
+/** What the biome-on-edit hook found in the file it checked: `ok` when nothing is left to fix. */
+export interface EditedFileCheck {
+  ok: boolean;
+  output: string;
+}
+
+/** Whether the file still holds exactly these bytes (it can be gone or changed while Biome runs). */
+function sameBytes(file: string, bytes: Buffer): boolean {
+  try {
+    return readFileSync(file).equals(bytes);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The biome-on-edit hook's check of one edited file (#1566): formatting, import order and safe
+ * fixes are written into the file, and what is left is returned.
+ *
+ * `biome check <file>` scans the whole project before it checks one file, 3 to 13 s per edit. Two
+ * runs do not: `check --write` over stdin (it fixes, it does not report) and `lint` with the
+ * `project` and `types` domains skipped. Those domains hold the two type-aware rules
+ * (noFloatingPromises, useArraySortCompare), which stay in `bun run lint`, run by CI and by
+ * `handoff:check`. `biome` is the command that starts Biome, `bun x biome` by default.
+ */
+export function checkEditedFile(
+  root: string,
+  rel: string,
+  biome: string[] = ["bun", "x", "biome"],
+): EditedFileCheck {
+  const run = (args: string[], input?: string) => {
+    const proc = Bun.spawnSync([...biome, ...args], {
+      cwd: root,
+      stdout: "pipe",
+      stderr: "pipe",
+      ...(input === undefined ? {} : { stdin: Buffer.from(input) }),
+    });
+    return { code: proc.exitCode, out: proc.stdout.toString(), err: proc.stderr.toString() };
+  };
+  const file = join(root, rel);
+  let bytes: Buffer;
+  try {
+    // A symlink is not written through, and a file that is gone has nothing to report.
+    if (lstatSync(file).isSymbolicLink()) return { ok: true, output: "" };
+    bytes = readFileSync(file);
+  } catch {
+    return { ok: true, output: "" };
+  }
+  const before = bytes.toString("utf8");
+  const fixed = run(["check", "--write", `--stdin-file-path=${rel}`], before);
+  // Only a file that still holds what Biome was given (valid UTF-8, no edit since) is replaced.
+  if (
+    fixed.code === 0 &&
+    fixed.out !== "" &&
+    fixed.out !== before &&
+    Buffer.from(before).equals(bytes) &&
+    sameBytes(file, bytes)
+  ) {
+    writeFileSync(file, fixed.out);
+  }
+  const left = run([
+    "lint",
+    "--skip=project",
+    "--skip=types",
+    "--no-errors-on-unmatched",
+    "--files-ignore-unknown=true",
+    "--",
+    rel,
+  ]);
+  if (left.code === 0) return { ok: true, output: "" };
+  return { ok: false, output: `${left.out}${left.err}`.trim() };
 }
 
 /**

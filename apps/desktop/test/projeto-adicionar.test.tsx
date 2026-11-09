@@ -47,6 +47,16 @@ describe("suggestFolders", () => {
     expect(suggestFolders(sessions, ["c:/work"], [{ path: "c:/work/a" }])).toEqual(["C:\\Work\\B"]);
   });
 
+  test("a card's worktree or an agent's is not suggested, with either slash (#1544)", () => {
+    const sessions = [
+      session("/r/web/.flightdeck/worktrees/first-card", "2026-01-05T10:00:00Z"),
+      session("C:\\R\\Web\\.flightdeck\\worktrees\\cart", "2026-01-04T10:00:00Z"),
+      session("/r/web/.claude/worktrees/agent-1", "2026-01-03T10:00:00Z"),
+      session("/r/web", "2026-01-02T10:00:00Z"),
+    ];
+    expect(suggestFolders(sessions, ["/r", "c:/r"], [])).toEqual(["/r/web"]);
+  });
+
   test("at most five", () => {
     const sessions = Array.from({ length: 8 }, (_, i) =>
       session(`/r/p${i}`, `2026-01-0${i + 1}T00:00:00Z`),

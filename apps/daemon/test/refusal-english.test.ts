@@ -159,6 +159,7 @@ const MSGS3_FILES = [
   "board/board.ts",
   "board/projects.ts",
   "board/rule-writes.ts",
+  "board/launch.ts",
   "central/wrapper.ts",
 ];
 
@@ -191,11 +192,6 @@ const MSGS3_SHOWN: Record<string, string[]> = {
     "Os comandos de verificação do time",
   ],
   "board/board.ts": [
-    "worktree com alterações pendentes",
-    "arquivo do .worktreeinclude",
-    "arquivos do .worktreeinclude",
-    ": passou do limite de ",
-    "execução encerrada com o card",
     "card parado antes de começar",
     "a pasta da worktree ficou em",
     "ficou (",
@@ -204,6 +200,13 @@ const MSGS3_SHOWN: Record<string, string[]> = {
   // Issue #1523: the board split moved these with their code.
   "board/projects.ts": ["Trabalhe somente nesta worktree", "com mensagens descritivas"],
   "board/rule-writes.ts": ["regra não gravada no "],
+  "board/launch.ts": [
+    "worktree com alterações pendentes",
+    "arquivo do .worktreeinclude",
+    "arquivos do .worktreeinclude",
+    ": passou do limite de ",
+    "execução encerrada com o card",
+  ],
 };
 
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
