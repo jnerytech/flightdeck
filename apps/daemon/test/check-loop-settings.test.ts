@@ -121,6 +121,42 @@ describe("check-loop: the loop's settings and who may change them", () => {
     expect(watcher.settings(projectId).checkEnv).toEqual(["JAVA_HOME"]);
   });
 
+  test("every settings field is classified: only the switch and the spend brakes change from far", async () => {
+    const { far, save } = await setup();
+    // A value that differs from the default for every field; a new field fails here until it is
+    // added, and so until someone decides whether far clients may change it.
+    const changed: Record<string, unknown> = {
+      enabled: true,
+      maxRounds: 5,
+      maxTurns: 10,
+      maxFailures: 4,
+      budgetUsd: 9,
+      dailyUsd: 30,
+      checks: ["bun test"],
+      checkTimeoutMin: 20,
+      checkRounds: 5,
+      checkEnv: ["JAVA_HOME"],
+      checkLoopDefault: true,
+      persona: "dev",
+      driftAllow: ["**"],
+    };
+    const farOk = ["enabled", "maxRounds", "maxTurns", "maxFailures", "budgetUsd", "dailyUsd"];
+    const answers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(changed)) {
+      const answer = await save(far, { [key]: value });
+      answers[key] = typeof answer === "string" ? answer : "saved";
+    }
+    expect([Object.keys(changed).sort(), answers]).toEqual([
+      Object.keys(WatchSettings.shape).sort(),
+      Object.fromEntries(
+        Object.keys(changed).map((key) => [
+          key,
+          farOk.includes(key) ? "saved" : "transport_refused",
+        ]),
+      ),
+    ]);
+  });
+
   test("a stored checkEnv that is not a list reads back as none", async () => {
     const { watcher, projectId, store } = await setup();
     store.db
@@ -173,6 +209,37 @@ describe("check-loop: the loop's settings and who may change them", () => {
       "GIT_DIR",
       "CLAUDE_HOME",
       "XDG_CONFIG_HOME",
+      // Shaped like a location, so only the refused shapes and prefixes stop them: one per term.
+      "SECRET_HOME",
+      "TOKEN_ROOT",
+      "MY_KEY_HOME",
+      "DB_PASSWORD_HOME",
+      "PASSWD_ROOT",
+      "CREDENTIAL_HOME",
+      "AUTH_HOME",
+      "COOKIE_ROOT",
+      "SESSION_HOME",
+      "JWT_HOME",
+      "BEARER_ROOT",
+      "SAS_HOME",
+      "SIGNATURE_HOME",
+      "WEBHOOK_HOME",
+      "SENTRY_DSN_HOME",
+      "DB_CONN_ROOT",
+      "PRIVATE_ROOT",
+      "CERT_HOME",
+      "ANTHROPIC_HOME",
+      "OPENAI_ROOT",
+      "AWS_HOME",
+      "AZURE_ROOT",
+      "GH_HOME",
+      "GITHUB_ROOT",
+      "GIT_HOME",
+      "NPM_HOME",
+      "LD_ROOT",
+      "DYLD_HOME",
+      "FLIGHTDECK_HOME",
+      "flightdeck_home",
     ];
     expect([
       accepts([
