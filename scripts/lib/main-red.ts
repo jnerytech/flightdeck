@@ -110,6 +110,7 @@ export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
  * other than Windows failed; null when there is none or gh failed.
  */
 export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<MainRun | null> {
+  // Throws when gh cannot list the full runs: the caller tells unread from none.
   // A run on main ran on one of main's commits, and main is never rewritten: it stays in history.
   // Read at once: the SessionStart hook gives the whole lookup 6 seconds.
   const [scheduled, dispatched] = await Promise.all([
@@ -124,11 +125,11 @@ export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
       newer.map(async (r) => [r.databaseId, await runJobs(deps, r.databaseId)] as const),
     ),
   );
-  // A screenshots dispatch lists its test suite job too, skipped: only one that ran counts.
+  // A screenshots dispatch lists its test suite job too, skipped: only one that ran counts, timed
+  // out or cancelled included (its red is a full run's red).
   const fullDispatch = newer.find((r) =>
     (jobsOf.get(r.databaseId) ?? []).some(
-      (j) =>
-        /^test suite/i.test(j.name) && (j.conclusion === "success" || j.conclusion === "failure"),
+      (j) => /^test suite/i.test(j.name) && Boolean(j.conclusion) && j.conclusion !== "skipped",
     ),
   );
   const full = [scheduled[0], fullDispatch]
@@ -193,9 +194,9 @@ async function finishedOn(
     "databaseId,conclusion,createdAt,url",
   ]);
   const runs = listed.code === 0 ? parsed(listed.stdout) : null;
-  return (Array.isArray(runs) ? (runs as RunRow[]) : []).filter(
-    (r) => r.conclusion === "success" || r.conclusion === "failure",
-  );
+  // Unread is not none: with no full run known, a green push run would close a claim (#1381).
+  if (!Array.isArray(runs)) throw new Error(`gh could not list main's ${event} runs`);
+  return (runs as RunRow[]).filter((r) => r.conclusion === "success" || r.conclusion === "failure");
 }
 
 /** A run's jobs, or null when gh cannot say. */
@@ -246,8 +247,15 @@ function age(createdAt: string, now: number): string {
  * schedule): a later green push run tests only what its merge changed, so it does not clear it.
  */
 async function mainState(deps: Pick<MainRedDeps, "gh">) {
-  const [push, full] = await Promise.all([latestMainRun(deps), latestFullRun(deps)]);
-  return { push, full, red: redOf(push, full) };
+  let fullUnread = false;
+  const [push, full] = await Promise.all([
+    latestMainRun(deps),
+    latestFullRun(deps).catch(() => {
+      fullUnread = true;
+      return null;
+    }),
+  ]);
+  return { push, full, red: redOf(push, full), fullUnread };
 }
 
 /** The run that makes main red: the push run first, then the full run. */
@@ -392,7 +400,7 @@ export async function mainRedWithin(
 
 /** Prints main's state; on green, closes the claims made before that run. Red is exit 1. */
 async function status(deps: MainRedDeps): Promise<number> {
-  const { push, full, red } = await mainState(deps);
+  const { push, full, red, fullUnread } = await mainState(deps);
   const run = red ?? push ?? full;
   if (!run) {
     deps.log("main's CI state is unknown: gh found no finished run, or could not answer");
@@ -419,11 +427,19 @@ async function status(deps: MainRedDeps): Promise<number> {
     for (const claim of claims) deps.log(`claimed: ${owned(claim)}`);
     return 1;
   }
+  if (fullUnread) {
+    // A full run's red may still be there: nothing closes on the push run alone.
+    deps.log(`main is green: ${run.url} (the full runs could not be read: the claims stay open)`);
+    return 0;
+  }
   deps.log(`main is green: ${run.url}`);
+  // The newest green run, push or full: a claim made on a red full run closes on a newer one.
+  const greenAt =
+    [push?.createdAt ?? "", full?.createdAt ?? ""].sort((a, b) => b.localeCompare(a))[0] ?? "";
   for (const claim of claims) {
     // Only a run newer than the red one the claim was about closes it, and only a claim the tool
     // wrote (it has its run's time): an issue labelled by hand stays for a person.
-    if (!claim.runAt || claim.runAt >= run.createdAt) continue;
+    if (!claim.runAt || claim.runAt >= greenAt) continue;
     const closing = deps.gh([
       "issue",
       "close",
