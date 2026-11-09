@@ -660,9 +660,26 @@ export const BoardView = memo(function BoardView(props: {
   };
   /** #1354: what Start N and Stop N take from the selection. */
   const split = bulkSplit(actingCards, t);
+  /**
+   * #1426: what had the focus when a selection's confirm opened (a card, the bar's button). Closing
+   * the confirm puts it back there, or on the board when it is gone.
+   */
+  const opener = useRef<HTMLElement | null>(null);
+  const rememberOpener = () => {
+    const el = document.activeElement;
+    // Nothing focused is the body, which takes no focus: the board is the fallback then.
+    opener.current = el instanceof HTMLElement && el !== document.body ? el : null;
+  };
+  const restoreOpener = () => {
+    const el = opener.current;
+    opener.current = null;
+    if (el?.isConnected) el.focus();
+    else boardRef.current?.focus();
+  };
   /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
   const askStart = () => {
     if (busy || split.start.length === 0) return;
+    rememberOpener();
     // Each open asks again; a reply to an earlier open is dropped (#1390's review).
     const asked = ++startAsked.current;
     setQueueMax(undefined);
@@ -691,6 +708,7 @@ export const BoardView = memo(function BoardView(props: {
   };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;
+    rememberOpener();
     setBulk("stop");
   };
   /** A card whose workflow asks for inputs starts from its own dialog, where they are typed. */
@@ -1004,7 +1022,10 @@ export const BoardView = memo(function BoardView(props: {
                   shown={acting.length}
                   hidden={selection.length - acting.length}
                   onMove={(column) => void moveSelected(column)}
-                  onDiscard={() => setDiscardingMany(true)}
+                  onDiscard={() => {
+                    rememberOpener();
+                    setDiscardingMany(true);
+                  }}
                   onClear={clearSelection}
                   busy={busy}
                   onEscape={clearSelection}
@@ -1361,6 +1382,7 @@ export const BoardView = memo(function BoardView(props: {
           t={t}
           onCancel={() => setDiscardingMany(false)}
           onConfirm={() => void discardSelected()}
+          onRestoreFocus={restoreOpener}
         />
       )}
       {bulk && (
@@ -1394,6 +1416,7 @@ export const BoardView = memo(function BoardView(props: {
           confirmDisabled={bulk === "start" && (!startReady || startable.length === 0)}
           onCancel={() => setBulk(null)}
           onConfirm={() => void runSelected(bulk)}
+          onRestoreFocus={restoreOpener}
         />
       )}
       {issuesOpen && project && (
