@@ -4,7 +4,7 @@ import { en } from "../src/i18n/en.ts";
 import { translator } from "../src/i18n/index.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
@@ -209,14 +209,16 @@ for (const [lang, t] of [
 
     test("a project with no templates shows nothing at all", async () => {
       const { asked } = await show({ templates: [], dropped: 0, ignored: null });
-      await act(async () => {});
+      await stays(() => select() === null);
       expect([select() === null, asked]).toEqual([true, ["card.templates"]]);
     });
 
     test("a host that does not announce templates is not asked, and a refused ask shows nothing", async () => {
       const off = await show(OFFER(), { enabled: false });
+      await stays(() => select() === null);
       cleanup();
       const refused = await show("refused");
+      await stays(() => select() === null);
       expect([off.asked, select() === null, refused.asked]).toEqual([[], true, ["card.templates"]]);
     });
   });

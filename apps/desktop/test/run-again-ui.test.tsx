@@ -234,7 +234,14 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     render(refused.view);
     await click(button("Run again"));
     const shown = await settleMaybe(
-      () => screen.queryAllByRole("alert").some((box) => (box.textContent ?? "") !== ""),
+      () =>
+        screen
+          .queryAllByRole("alert")
+          .some((box) =>
+            /The workflow feature is not trusted\. Trust it on the Workflows screen first\./.test(
+              box.textContent ?? "",
+            ),
+          ),
       5000,
     );
     cleanup();
