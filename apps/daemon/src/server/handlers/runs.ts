@@ -4,7 +4,7 @@
  */
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import { startTemplate } from "../../templates/start.ts";
-import { requireVaultTransport } from "../../vault/vault.ts";
+import { isVaultTransport, requireVaultTransport } from "../../vault/vault.ts";
 import { workflowTemplates } from "../../workflows/templates.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 
@@ -70,10 +70,14 @@ export const runsHandlers = {
     return server.need("board").workflows.getRun(payload.runId);
   },
   // #1266: the check answers anywhere; the resume runs the project's commands again, so only a
-  // near connection may confirm it.
+  // near connection may confirm it. A far check says so before it runs (no git for a far caller),
+  // so the app offers no resume that fails.
   "run.resume": async (payload, { ws, server }) => {
     const confirm = payload.confirm === true;
     if (confirm) requireVaultTransport(ws.data.origin, "run.resume", server.opts.log);
+    else if (!isVaultTransport(ws.data.origin)) {
+      return { from: "", ok: false, reason: "transport_refused" };
+    }
     return await server.need("board").resumeRun(payload.runId, confirm);
   },
   "webhook.send": async (payload, { ws, server }) => {
