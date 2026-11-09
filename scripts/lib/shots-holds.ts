@@ -16,6 +16,9 @@ type Data = Record<string, unknown> & { memory?: { totalBytes?: number }; budget
  *
  * It goes into the page as its source (`holdsScript`), so it uses nothing outside its own body.
  */
+// Not instrumented: its source goes into the page, where an istanbul counter would not exist
+// (the istanbul shard of a full run, #1492).
+/* istanbul ignore next */
 export function holdsRewriter(used = 0.95, pauseAt = 0.9): FrameRewriter {
   const parse = (frame: string): Record<string, unknown> | null => {
     try {
@@ -81,6 +84,9 @@ export function holdsRewriter(used = 0.95, pauseAt = 0.9): FrameRewriter {
  * Wraps `target.WebSocket` so each socket's frames go through a rewriter `make` builds: what the app
  * sends is noted, and its `message` listeners get the host's frames rewritten. Runs in the page.
  */
+// Not instrumented: its source goes into the page, where an istanbul counter would not exist
+// (the istanbul shard of a full run, #1492).
+/* istanbul ignore next */
 export function installHolds(
   target: { WebSocket: typeof WebSocket },
   make: () => FrameRewriter,
