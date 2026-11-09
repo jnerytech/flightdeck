@@ -160,7 +160,7 @@ export function boundedCheckRunner(
   outputMax: number = CHECK_OUTPUT_MAX,
 ): BoundedCheckRunner {
   return {
-    async run(command, cwd, timeoutMs = DEFAULT_CHECK_TIMEOUT_MS, signal, envNames = []) {
+    async run(command, cwd, timeoutMs, signal, envNames = []) {
       const guard = env[CHECK_GUARD_ENV];
       if (guard && !(await allowedByGuard(command, guard))) {
         return {
@@ -171,7 +171,8 @@ export function boundedCheckRunner(
       // A time limit always: only a timed or signalled command gets its own process group, which
       // is what the kill reaches. Stdout and stderr together count toward the bound; stderr keeps
       // its first 64 KB.
-      const result = await runLimited(shellCommand(command), cwd, outputMax, timeoutMs, killTree, {
+      const limit = timeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
+      const result = await runLimited(shellCommand(command), cwd, outputMax, limit, killTree, {
         signal,
         baseEnv: checkEnvironment(env, process.platform, envNames),
         overflowKillsTree: true,
