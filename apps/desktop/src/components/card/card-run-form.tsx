@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -135,6 +135,18 @@ export function CardRunForm(
   // A project with no PR provider (no remote) cannot open one: say so, instead of asking for the text first (#1543).
   const provider = store.getState().projects[hostId]?.find((one) => one.id === card.projectId);
   const noRemote = canOpenPr && provider?.prProvider === "none";
+  /** #1568: what the host found when it looked at the remote, for the note. */
+  const [looked, setLooked] = useState<{ outcome: string; host: string | null } | null>(null);
+  const lookAtRemote = async () => {
+    const found = await store.detectPrProvider(hostId, card.projectId);
+    if (found) setLooked({ outcome: found.outcome, host: found.host });
+  };
+  // A project with no provider: the host reads it from the remote when the card shows, in case one was added since.
+  const lookOnShow = noRemote && features.prDetect === true;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked once for each card and project that shows it
+  useEffect(() => {
+    if (lookOnShow) void lookAtRemote();
+  }, [lookOnShow, card.projectId]);
   const step = nextStep(card, {
     tab: props.tab,
     canMerge: props.canMerge,
@@ -251,7 +263,18 @@ export function CardRunForm(
         </FieldRow>
         {noRemote && (
           <Stack gap={1}>
-            <p className="text-sm">{t("cardUi.noRemote")}</p>
+            <p className="text-sm">
+              {looked?.outcome === "unsupported" && looked.host
+                ? t("cardUi.noRemoteOther", { host: looked.host })
+                : t("cardUi.noRemote")}
+            </p>
+            {features.prDetect && (
+              <div>
+                <ActionButton variant="outline" onClick={lookAtRemote}>
+                  {t("cardUi.checkRemote")}
+                </ActionButton>
+              </div>
+            )}
             {card.branch && (
               <p className="text-muted-foreground text-sm">
                 {t("cardUi.noRemoteBranch", { branch: card.branch })}

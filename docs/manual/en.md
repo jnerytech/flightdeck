@@ -1399,8 +1399,7 @@ title and description:
 A project whose provider is **none** (the default for a new project, and what a repository with no
 remote has) has no Open PR: the card's panel says so, with the steps (set the provider in the project's
 settings; if the repository has no remote, `git remote add origin <url>` first, then `gh auth login`
-or `az login`) and the branch the card's work is on, to push by hand. **Review changes** stays. Adding a
-remote does not set the provider by itself. A PR the host refuses keeps the dialog open with the text
+or `az login`) and the branch the card's work is on, to push by hand. **Review changes** stays. The card page reads the provider from the repository's `origin` when it shows, and **Check the remote again** reads it once more after a `git remote add`: a GitHub or Azure DevOps remote is saved as the provider (and Open PR comes); another service is named, and the branch is yours to push. The provider is still yours to set in the project's settings. A PR the host refuses keeps the dialog open with the text
 you wrote, and the reason shown in it.
 
 The CLI must be installed and authenticated on the daemon's host (`gh auth login`, `az login`

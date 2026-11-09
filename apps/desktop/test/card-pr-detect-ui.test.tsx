@@ -128,7 +128,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     expect(w.store.getState().projects.h1?.[0]?.prProvider).toBe("none");
   });
 
-  test("the same in Portuguese, Azure DevOps included", async () => {
+  test("the same in Portuguese: Azure DevOps found", async () => {
     const w = setup({
       language: "pt-BR",
       answers: [{ outcome: "set", host: null, prProvider: "azure-devops" }],
@@ -137,13 +137,16 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     expect(w.store.getState().notices.map((notice) => notice.text)).toEqual([
       "Provedor de PR definido pelo remote: Azure DevOps.",
     ]);
-    const other = setup({
+  });
+
+  test("the same in Portuguese: another service", async () => {
+    const w = setup({
       language: "pt-BR",
       answers: [{ outcome: "unsupported", host: "gitlab.com" }],
     });
     await settle(() => panel().includes("gitlab.com"));
     expect(panel()).toContain("não é do GitHub nem do Azure DevOps");
-    expect(other.asked).toHaveLength(1);
+    expect(w.asked).toHaveLength(1);
   });
 
   test("a host that cannot detect is not asked, and there is no button to ask", async () => {

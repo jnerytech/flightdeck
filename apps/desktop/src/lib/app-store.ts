@@ -4937,7 +4937,27 @@ export class AppStore {
 
   /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
   async detectPrProvider(hostId: string, projectId: string): Promise<ProjectDetectResult | null> {
-    return null;
+    const result = await this.hostRequest(hostId, "project.detectProvider", { projectId });
+    if (!result.ok) return null;
+    const { project, outcome } = result.data;
+    this.update({
+      projects: {
+        ...this.state.projects,
+        [hostId]: (this.state.projects[hostId] ?? []).map((one) =>
+          one.id === project.id ? project : one,
+        ),
+      },
+    });
+    // The button that appears is not a surprise: the change is said.
+    if (outcome === "set") {
+      const { t } = this.i18n;
+      this.success(
+        t("cardUi.providerDetected", {
+          provider: t(`cardUi.providerName.${project.prProvider}` as Key),
+        }),
+      );
+    }
+    return result.data;
   }
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */

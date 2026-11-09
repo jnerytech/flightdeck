@@ -242,6 +242,7 @@ export const CardDetail = memo(function CardDetail(props: {
                     bg: has("bg"),
                     watch: withWatch,
                     secondOpinion: has("cardReview"),
+                    prDetect: has("prDetect"),
                   }}
                   tab={tab}
                   arenaStart={arena.start}

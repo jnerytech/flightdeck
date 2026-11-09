@@ -1413,7 +1413,7 @@ Um projeto com o provedor **nenhum** (o padrão de um projeto novo, e o que um r
 tem) não tem Abrir PR: o painel do card diz isso, com os passos (defina o provedor nas configurações
 do projeto; se o repositório não tem remote, `git remote add origin <url>` antes, depois `gh auth
 login` ou `az login`) e a branch em que está o trabalho do card, para enviar à mão. **Revisar
-mudanças** continua. Adicionar um remote não define o provedor sozinho. Um PR que o host recusa mantém
+mudanças** continua. A página do card lê o provedor do `origin` do repositório ao aparecer, e **Verificar o remote de novo** o lê outra vez depois de um `git remote add`: um remote do GitHub ou do Azure DevOps vira o provedor (e o Abrir PR aparece); outro serviço é nomeado, e a branch fica por sua conta. O provedor continua podendo ser definido nas configurações do projeto. Um PR que o host recusa mantém
 o diálogo aberto com o texto que você escreveu, e o motivo aparece nele.
 
 O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a

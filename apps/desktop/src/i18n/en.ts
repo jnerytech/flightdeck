@@ -4381,6 +4381,11 @@ export const en: Dictionary = {
     openPr: "Open PR",
     noRemote:
       "No PR can be opened: this project has no PR provider set. Set it in the project's settings (GitHub or Azure DevOps). If the repository has no remote yet, add one first (git remote add origin <url>) and sign in (gh auth login for GitHub, az login for Azure DevOps). Then Open PR.",
+    checkRemote: "Check the remote again",
+    noRemoteOther:
+      "This project's remote ({host}) is not GitHub or Azure DevOps, the only services Flightdeck opens PRs on. Push the branch by hand.",
+    providerDetected: "PR provider set from the remote: {provider}.",
+    providerName: { github: "GitHub", "azure-devops": "Azure DevOps", none: "—" },
     noRemoteBranch: "The card's work is on the branch {branch}: you can push it by hand.",
     reviewChanges: "Review changes",
     startWith: "Start with a workflow or persona…",
