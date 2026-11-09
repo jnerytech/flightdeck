@@ -3108,6 +3108,8 @@ export const ptBR = {
     loading: "Lendo os pull requests…",
     empty: "Nenhum pull request aberto.",
     emptyDetail: "O PR de um card aparece aqui enquanto está aberto.",
+    refused: "{title}: {reason}",
+    noHosts: "Nenhum host está online.",
     watchOff: "Vigiar e consertar está desligado",
   },
   cardMergePr: {

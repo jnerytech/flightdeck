@@ -3105,6 +3105,8 @@ export const en: Dictionary = {
     loading: "Reading the pull requests…",
     empty: "No open pull requests.",
     emptyDetail: "A card's PR shows up here while it is open.",
+    refused: "{title}: {reason}",
+    noHosts: "No host is online.",
     watchOff: "Watch and fix is off",
   },
   cardMergePr: {

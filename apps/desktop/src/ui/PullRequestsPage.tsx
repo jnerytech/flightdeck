@@ -52,11 +52,12 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
     for (const row of toWatch) void store.loadWatch(row.hostId, row.card.id);
   }, [store, watchKey]);
 
-  const update = async (hostId: string, cardId: string) => {
+  const update = async (hostId: string, cardId: string, title: string) => {
     setRefusal(null);
     const result = await store.hostRequest(hostId, "card.updateFromBase", { cardId });
     if (!result.ok) {
-      setRefusal(refusalText(result.code, result.message, t, result));
+      const reason = refusalText(result.code, result.message, t, result);
+      setRefusal(t("pullRequests.refused", { title, reason }));
       return;
     }
     store.success(t("cardReview.updated"));
@@ -90,12 +91,14 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
                 setMerging({ hostId: row.hostId, cardId: row.card.id });
                 setConfirming(true);
               }}
-              onUpdate={() => update(row.hostId, row.card.id)}
+              onUpdate={() => update(row.hostId, row.card.id, row.card.title)}
             />
           );
         })}
       </Stack>
     );
+  } else if (!state.hosts.some((host) => host.status === "online")) {
+    body = <EmptyState icon={GitPullRequest} title={t("pullRequests.noHosts")} />;
   } else if (!loaded) {
     body = <LoadingState label={t("pullRequests.loading")} />;
   } else {
