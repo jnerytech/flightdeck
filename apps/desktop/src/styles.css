@@ -464,6 +464,11 @@ html:not(:has([data-slot="status-bar"])) {
   /* #1325: a disabled action's reason is a line of the row, not hung out of the flow (#38): hung,
      it ran past the card (#1270) or, wrapped, drew over the line under the row. The button's box
      gives way, so the reason takes a whole line under the field and every button (Use theirs too). */
+  /* #1338's review: the field shrinks before the row wraps, so its buttons stay beside it. */
+  & > :first-child {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
   & > .action-button-box {
     display: contents;
   }
