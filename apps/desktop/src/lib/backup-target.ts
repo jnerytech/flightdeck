@@ -3,7 +3,7 @@ import type { Platform } from "../platform/types.ts";
 
 /** Issue #1444: where a backup goes. The folder of #1264 and Google Drive both implement it. */
 export interface BackupTarget {
-  /** Stores `text` (the already-encrypted bundle) under `name`, replacing a file of that name. */
+  /** Stores `text` (the already-encrypted bundle) under `name`. */
   put(name: string, text: string): Promise<void>;
   /** The names of the backups held, in no particular order. */
   list(): Promise<string[]>;
