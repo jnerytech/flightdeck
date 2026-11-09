@@ -444,6 +444,15 @@ export const BoardView = memo(function BoardView(props: {
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(props.newCard === true);
+  // The ask is used up once the dialog is open, so coming back to this entry shows no dialog (#1582).
+  const { newCard } = props;
+  useEffect(() => {
+    if (newCard !== true) return;
+    // Only while the focused tab still shows this ask, so another screen is never replaced.
+    const now = store.router.current;
+    if (now.name === "board" && now.host === hostId && now.projectId === projectId && now.newCard)
+      store.router.replace({ name: "board", host: hostId, projectId });
+  }, [newCard, store, hostId, projectId]);
   const [starting, setStarting] = useState<Card | null>(null);
   /** The card whose Delete… is asking for confirmation. */
   const [deleting, setDeleting] = useState<Card | null>(null);
