@@ -225,7 +225,12 @@ export class CheckLoopEngine {
     } catch {
       // A spawn or a write that failed: the loop ends and hands back its slot, never left held.
       if (!signal.aborted && this.loops.get(cardId) === loop) {
-        this.end(cardId, loop, "check_error", { release: true, place: true });
+        try {
+          this.end(cardId, loop, "check_error", { release: true, place: true });
+        } catch {
+          // Even a record that fails must not keep the slot: hand it back with nothing else.
+          this.close(cardId, loop, { release: true });
+        }
       }
     }
   }
