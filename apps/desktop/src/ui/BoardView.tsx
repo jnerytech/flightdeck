@@ -53,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useStartAsk } from "@/hooks/use-start-ask";
+import { useStartElsewhere } from "@/hooks/use-start-elsewhere";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
@@ -109,6 +110,7 @@ import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { onSubscription, quotaBars } from "../lib/quota.ts";
+import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -483,6 +485,8 @@ export const BoardView = memo(function BoardView(props: {
     null,
   );
   const [workflowsFailed, setWorkflowsFailed] = useState(false);
+  /** #1414: the host's memory was at or over its hold when the confirm opened. */
+  const [memoryOver, setMemoryOver] = useState(false);
   /** Which open of Start N's confirm the host's replies belong to. */
   const startAsked = useRef(0);
   const suggestedPersona = useSuggestedPersona(store, hostId, "dev");
@@ -524,6 +528,15 @@ export const BoardView = memo(function BoardView(props: {
   const splitWidth = useWidth(splitRef);
   const narrow = splitWidth > 0 && splitWidth < 900;
   const { t } = store.i18n;
+  /** #1422: the other hosts a Start that would wait can go to. */
+  const elsewhere = useStartElsewhere({
+    store,
+    hostId,
+    sourceKey: project ? store.projectKeyOf(hostId, project) : null,
+    hosts: state.hosts,
+    cards: state.cards,
+    t,
+  });
 
   useEffect(() => {
     void store.hostCommand(hostId, "board.get", { projectId }).then((board) => {
@@ -685,12 +698,28 @@ export const BoardView = memo(function BoardView(props: {
     setQueueMax(undefined);
     setWorkflows(null);
     setWorkflowsFailed(false);
+    setMemoryOver(false);
     setBulk("start");
+    elsewhere.load();
     // Start waits for both (the confirm's button is off): the queue line and each card's workflow.
     void store.hostCommand(hostId, "project.list", {}).then((list) => {
       if (asked !== startAsked.current) return;
       setQueueMax(typeof list?.maxParallelRuns === "number" ? list.maxParallelRuns : null);
     });
+    // The memory hold, read now: with nothing queued yet no card carries its reason (#1414). It
+    // fails open: a host that does not answer gets no line, and Start does not wait for it.
+    const features = state.hosts.find((h) => h.id === hostId)?.hostInfo?.features;
+    if (hasFeature(features, "memoryPause", false)) {
+      // The host's own verdict (#1418's review): the share alone is wrong a margin under the hold,
+      // and on a host with no reading (macOS). An older host that does not say gets no line.
+      void store
+        .hostRequest(hostId, "resources.get", {})
+        .then((answer) => {
+          if (asked !== startAsked.current || !answer.ok) return;
+          setMemoryOver(answer.data.memoryHolding === true);
+        })
+        .catch(() => {});
+    }
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
       if (asked !== startAsked.current) return;
       // A read that failed is not an empty list: Start stays off and the confirm says why.
@@ -759,38 +788,71 @@ export const BoardView = memo(function BoardView(props: {
     setBusy(false);
     boardRef.current?.focus();
   };
-  /** The confirm's lines: the host's queue and quota for Start, where the cards land for Stop. */
+  const hostName = state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+  /**
+   * The host's quota lines, and every hold that keeps new cards waiting (the quota's pause limit, a
+   * budget, the host's memory). A hold keeps every new card waiting, so the queue line then says they
+   * all join the queue, never "N start now" (#1414).
+   */
+  const quotaLines: string[] = [];
+  const holds: string[] = [];
+  const quota = state.quota[hostId];
+  if (onSubscription(quota, state.account[hostId])) {
+    const bars = quotaBars(quota, Date.now(), (iso) => store.formatTime(iso), t);
+    const fiveHour = bars[0];
+    if (fiveHour?.hasReading) {
+      quotaLines.push(
+        t("board.startQuota", {
+          host: hostName,
+          percent: fiveHour.percent,
+          reset: fiveHour.reset,
+        }),
+      );
+    }
+    if (bars.some((bar) => bar.hot)) holds.push(t("board.startQuotaHold", { host: hostName }));
+  }
+  holds.push(
+    ...holdLines(t, hostName, {
+      budgets: state.budgets[hostId] ?? [],
+      projectKey: project ? store.projectKeyOf(hostId, project) : null,
+      cards: all,
+      memoryOver,
+    }),
+  );
+  /** #1422: the startable cards that would wait here, and the hosts they could start on. */
+  const hostPaused = state.hosts.find((h) => h.id === hostId)?.hostInfo?.pause?.paused === true;
+  const waiting = waitingCards(startable, {
+    held: hostPaused || holds.length > 0,
+    max: queueMax ?? null,
+    running: runningOnHost,
+  });
+  const otherHosts = bulk === "start" && startReady ? elsewhere.offers(waiting) : [];
+  /** Hands the cards that would wait to another host: made and started there, then Done here. */
+  const startOnOther = async (hostIdOther: string) => {
+    const target = otherHosts.find((o) => o.hostId === hostIdOther);
+    if (busy || !target) return;
+    setBulk(null);
+    setBusy(true);
+    const outcome = await elsewhere.run(target, waiting);
+    const went = new Set(outcome.moved.map((m) => m.card.id));
+    setPicked((before) => before.filter((id) => !went.has(id)));
+    setNotice(elsewhereNotice(t, outcome, target.name, nameRefusals));
+    setBusy(false);
+    boardRef.current?.focus();
+  };
+  /** The confirm's lines: the host's queue, quota and holds for Start, where the cards land for Stop. */
   const bulkLines = (): string[] => {
     if (bulk === "stop") return [t("board.stopBody")];
     const lines: string[] = workflowsFailed ? [t("board.workflowsUnread")] : [];
-    const hostName = state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
     if (queueMax !== undefined) {
-      lines.push(
-        queueLine(t, queueSplit(startable.length, queueMax ?? 0, runningOnHost), queueMax),
-      );
+      const split =
+        holds.length > 0
+          ? { now: 0, later: startable.length }
+          : queueSplit(startable.length, queueMax ?? 0, runningOnHost);
+      lines.push(queueLine(t, split, queueMax));
     }
-    const quota = state.quota[hostId];
-    if (onSubscription(quota, state.account[hostId])) {
-      const bars = quotaBars(quota, Date.now(), (iso) => store.formatTime(iso), t);
-      const fiveHour = bars[0];
-      if (fiveHour?.hasReading) {
-        lines.push(
-          t("board.startQuota", {
-            host: hostName,
-            percent: fiveHour.percent,
-            reset: fiveHour.reset,
-          }),
-        );
-      }
-      if (bars.some((bar) => bar.hot)) lines.push(t("board.startQuotaHold", { host: hostName }));
-    }
-    lines.push(
-      ...holdLines(t, hostName, {
-        budgets: state.budgets[hostId] ?? [],
-        projectKey: project ? store.projectKeyOf(hostId, project) : null,
-        cards: all,
-      }),
-    );
+    lines.push(...quotaLines, ...holds);
+    if (otherHosts.length > 0) lines.push(t("board.startOnHint", { n: waiting.length }));
     const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
     if (lacking > 0) {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
@@ -1404,6 +1466,11 @@ export const BoardView = memo(function BoardView(props: {
               : t("board.stopSelected", { n: split.stop.length })
           }
           confirmDisabled={bulk === "start" && (!startReady || startable.length === 0)}
+          alternatives={otherHosts.map((o) => ({
+            id: o.hostId,
+            label: t("board.startOn", { host: o.name }),
+          }))}
+          onAlternative={(id) => void startOnOther(id)}
           onCancel={() => setBulk(null)}
           onConfirm={() => void runSelected(bulk)}
           onRestoreFocus={restoreOpener}

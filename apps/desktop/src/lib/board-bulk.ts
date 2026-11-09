@@ -70,13 +70,14 @@ export async function runMany(cards: Card[], request: CardRequest): Promise<Bulk
 
 /**
  * The Start confirm's lines about what keeps new cards waiting on the host (#1393): a budget that
- * holds new cards and is at its limit, and the host's own memory hold, which only a queued card's
- * reason reports. A hold the host does not report adds no line.
+ * holds new cards and is at its limit, and the host's own memory hold. The memory hold comes from the
+ * host's own verdict when the confirm opened (`memoryOver`, #1414) or a queued card's reason, since the
+ * host goes on holding a margin under its share. A hold the host does not report adds no line.
  */
 export function holdLines(
   t: T,
   host: string,
-  input: { budgets: Budget[]; projectKey: string | null; cards: Card[] },
+  input: { budgets: Budget[]; projectKey: string | null; cards: Card[]; memoryOver?: boolean },
 ): string[] {
   const reported = (reason: Card["queueReason"]) =>
     input.cards.some((card) => card.queued && card.queueReason === reason);
@@ -89,6 +90,6 @@ export function holdLines(
   );
   const lines: string[] = [];
   if (overBudget || reported("budget")) lines.push(t("board.startBudgetHold", { host }));
-  if (reported("memory")) lines.push(t("board.startMemoryHold", { host }));
+  if (input.memoryOver || reported("memory")) lines.push(t("board.startMemoryHold", { host }));
   return lines;
 }

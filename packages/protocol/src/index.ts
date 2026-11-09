@@ -5577,6 +5577,11 @@ export const ResourcesSnapshot = z.object({
   orphans: z.array(ResourceOrphan),
   /** Issue #1343: the share of used memory from which new cards wait; null when off, absent on older hosts. */
   memoryPauseAt: z.number().min(0).max(1).nullable().optional(),
+  /**
+   * Issue #1414: whether the memory hold keeps new cards waiting now, by the host's own gate (its
+   * release margin, and never where the host has no reading, as on macOS); absent on older hosts.
+   */
+  memoryHolding: z.boolean().optional(),
 });
 export type ResourcesSnapshot = z.infer<typeof ResourcesSnapshot>;
 export type ResourceRow = z.infer<typeof ResourceRow>;

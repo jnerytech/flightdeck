@@ -472,6 +472,34 @@ html:not(:has([data-slot="status-bar"])) {
 }
 
 /* A field and its own button on one line: the field takes the width, the button keeps its size. */
+/* #1430: the shell's first Tab stop, "Skip to content". Out of sight and of the layout until it has
+   the focus, then a chip over the top-left corner of the title bar. */
+@utility skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  &:not(:focus) {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
 @utility field-with-action {
   display: flex;
   flex-wrap: wrap;

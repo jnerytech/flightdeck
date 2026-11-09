@@ -74,18 +74,28 @@ export class MemoryGate {
    * holding until memory is `MEMORY_RELEASE_MARGIN` under the threshold.
    */
   blocked(): { used: number } | null {
+    const share = this.share(this.holding);
+    this.holding = share !== null;
+    this.poll();
+    return share === null ? null : { used: share };
+  }
+
+  /** The share in use when it holds (from the margin when `holding`), else null. */
+  private share(holding: boolean): number | null {
     const used = this.threshold === null ? null : usedShare(this.opts.read);
-    if (this.threshold === null || used === null) {
-      this.holding = false;
-      this.poll();
-      return null;
-    }
+    if (this.threshold === null || used === null) return null;
     // To a tenth of a percent, the panel's precision: 90% in use is at a 0.9 threshold.
     const share = Math.round(used * 1000) / 1000;
-    const from = this.holding ? this.threshold - MEMORY_RELEASE_MARGIN : this.threshold;
-    this.holding = share >= from;
-    this.poll();
-    return this.holding ? { used: share } : null;
+    const from = holding ? this.threshold - MEMORY_RELEASE_MARGIN : this.threshold;
+    return share >= from ? share : null;
+  }
+
+  /**
+   * Whether the gate holds now, by its rule and margin, without changing what it remembers: a client
+   * that asks (issue #1414) never takes a release from the watchers, who hear it on the next look.
+   */
+  holds(): boolean {
+    return this.share(this.holding) !== null;
   }
 
   /** The threshold in force (0 to 1), or null when the hold is off. */

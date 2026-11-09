@@ -280,6 +280,39 @@ function CostsNotices(
 }
 
 /**
+ * The data scope (#126) says whose costs these are: every host, one, or one project (slice 4). A
+ * route's own host or project (an alert, a Home card) wins for this visit and never rewrites it;
+ * choosing in the scope menu ends that choice.
+ */
+function useCostsRoute(
+  store: AppStore,
+  state: { hosts: readonly { id: string }[]; hostsLoaded: boolean },
+  route: { host?: string; projectKey?: string },
+) {
+  const keptScope = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
+  const [routeHost, setRouteHost] = useState<string | null>(route.host ?? null);
+  const [routeProject, setRouteProject] = useState<string | null>(route.projectKey ?? null);
+  // Home opens Costs with `__all__` when several hosts have costs: every host, for this visit.
+  const routeScope = routeScopeOf(routeHost);
+  const kept = activeScope(keptScope, state.hosts, state.hostsLoaded);
+  /** The project whose costs these are, if one: the route's, else the kept scope's. */
+  const projectKey =
+    routeProject ?? (routeScope === null && kept.kind === "project" ? kept.projectKey : null);
+  // A project keeps every host; the route's host still narrows an alert to its host.
+  const hostSide = routeScope ?? (kept.kind === "project" ? ALL_SCOPE : kept);
+  const dataScope: DataScope = projectKey ? { kind: "project", projectKey } : hostSide;
+  const endVisit = () => {
+    setRouteHost(null);
+    setRouteProject(null);
+  };
+  const showAllHosts = () => {
+    endVisit();
+    store.dataScope.set({ kind: "all" });
+  };
+  return { setRouteHost, setRouteProject, projectKey, hostSide, dataScope, endVisit, showAllHosts };
+}
+
+/**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
  * transcripts, in API prices: totals, a daily chart stacked by project, breakdowns, the most
  * expensive sessions and a CSV export.
@@ -301,31 +334,10 @@ export const CostsPage = memo(function CostsPage(props: {
   const hosts = state.hosts.filter(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
   );
-  // The data scope (#126) says whose costs these are: every host, one, or one project (slice 4). A
-  // route's own host or project (an alert, a Home card) wins for this visit and never rewrites it;
-  // choosing in the scope menu ends that choice.
-  const keptScope = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
-  const [routeHost, setRouteHost] = useState<string | null>(props.host ?? null);
-  const [routeProject, setRouteProject] = useState<string | null>(props.projectKey ?? null);
-  // Home opens Costs with `__all__` when several hosts have costs: every host, for this visit.
-  const routeScope = routeScopeOf(routeHost);
-  const kept = activeScope(keptScope, state.hosts, state.hostsLoaded);
-  /** The project whose costs these are, if one: the route's, else the kept scope's. */
-  const projectKey =
-    routeProject ?? (routeScope === null && kept.kind === "project" ? kept.projectKey : null);
-  // A project keeps every host; the route's host still narrows an alert to its host.
-  const hostSide = routeScope ?? (kept.kind === "project" ? ALL_SCOPE : kept);
-  const dataScope: DataScope = projectKey ? { kind: "project", projectKey } : hostSide;
+  const { setRouteHost, setRouteProject, projectKey, hostSide, dataScope, endVisit, showAllHosts } =
+    useCostsRoute(store, state, props);
   const { acrossHosts, hostId, hostIds } = hostScope(hostSide, hosts);
   const away = awayHost(hostSide, state.hosts, hosts);
-  const endVisit = () => {
-    setRouteHost(null);
-    setRouteProject(null);
-  };
-  const showAllHosts = () => {
-    endVisit();
-    store.dataScope.set({ kind: "all" });
-  };
   const personaHosts = hosts.filter(
     (h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "personas", false),
   );
@@ -359,7 +371,7 @@ export const CostsPage = memo(function CostsPage(props: {
     setRouteProject(alertProject ?? null);
     setFilters({});
     if (alertClient) store.setClientSelection(alertClient);
-  }, [store, alertHost, alertProject, alertClient]);
+  }, [store, alertHost, alertProject, alertClient, setRouteHost, setRouteProject]);
   const days = period === "range" ? range : periodRange(period, today);
   const filter: CostsFilter = { ...days, ...filters, ...(projectKey ? { projectKey } : {}) };
   const selection = state.clientSelection;
