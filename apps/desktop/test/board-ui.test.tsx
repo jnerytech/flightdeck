@@ -681,11 +681,9 @@ describe("board-ui", () => {
     await click("Unificada");
     expect(screen.queryByRole("region", { name: "Diff unificado" })).not.toBeNull();
 
-    // No PR provider: the daemon refuses with a reason, and the toast says it in the app's language.
-    await click("Abrir PR");
-    await settle(() => screen.queryByRole("alert") !== null);
-    const toast = screen.queryByRole("alert") as HTMLElement;
-    expect(toast.textContent ?? "").toContain("O projeto não tem provedor de PR.");
+    // No PR provider (#1543): there is no Open PR to press, and the panel says why, in the app's language.
+    expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true);
+    expect(document.body.textContent ?? "").toContain("o provedor de PR deste projeto é nenhum");
     await click("Conversa");
     expect(screen.queryByRole("log")).not.toBeNull();
   });

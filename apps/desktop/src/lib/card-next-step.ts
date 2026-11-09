@@ -22,8 +22,9 @@ export function nextStep(
     return open && view.canMerge ? "merge-pr" : null;
   }
   if (!card.worktreePath) return "start";
-  // A project that cannot open a PR (#1543): the changes are reviewed, and nothing else leads.
-  if (view.noPr) return view.tab === "diff" ? null : "review";
+  // A project that cannot open a PR (#1543): the changes are what leads, on their own tab too, so
+  // the button the person pressed is still there with the focus on it.
+  if (view.noPr) return "review";
   return view.tab === "diff" ? "open-pr" : "review";
 }
 

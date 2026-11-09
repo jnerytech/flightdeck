@@ -43,7 +43,13 @@ function setup(provider: string | null, language: "en" | "pt-BR" = "en", refuseP
   store.hostRequest = (async (_host: string, type: string) => {
     commands.push(type);
     return refusePr && type === "card.pr.create"
-      ? { ok: false, code: "project_no_pr_provider", message: "the project has no PR provider" }
+      ? {
+          ok: false,
+          code: "refused",
+          message: "the project has no PR provider",
+          reason: "project_no_pr_provider",
+          params: {},
+        }
       : { ok: true, data: {} };
   }) as never;
   store.describePr = (async () => {
@@ -92,16 +98,17 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     const w = setup("none");
     render(w.form("diff"));
     expect(button("Open PR") === null).toBe(true);
-    expect(panel()).toContain("no GitHub or Azure DevOps remote");
+    expect(panel()).toContain("PR provider is none");
     expect(panel()).toContain("git remote add origin");
     expect(panel()).toContain("gh auth login");
+    expect(panel()).toContain("az login");
     expect(panel()).toContain("card/cart-screen");
+    // The changes stay the card's lead on its own tab: nothing unmounts under the person's focus.
+    expect(button("Review changes") !== null).toBe(true);
     await openMenu();
     expect(screen.queryByRole("menuitem", { name: "Open PR" }) === null).toBe(true);
     // Nothing was asked of the host: no description, no form.
     expect(w.commands).toEqual([]);
-    // The changes stay the card's lead on its own tab: nothing unmounts under the person's focus.
-    expect(button("Review changes") !== null).toBe(true);
   });
 
   test("pressing Review changes keeps the focus on that same button when the changes open", async () => {
@@ -124,7 +131,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     render(w.form("conversation"));
     expect(button("Review changes") !== null).toBe(true);
     expect(button("Open PR") === null).toBe(true);
-    expect(panel()).toContain("no GitHub or Azure DevOps remote");
+    expect(panel()).toContain("PR provider is none");
     await act(async () => {
       fireEvent.click(button("Review changes") as HTMLElement);
     });
@@ -135,7 +142,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     const w = setup("none", "pt-BR");
     render(w.form("diff"));
     expect(button("Abrir PR") === null).toBe(true);
-    expect(panel()).toContain("não tem remote do GitHub nem do Azure DevOps");
+    expect(panel()).toContain("provedor de PR deste projeto é nenhum");
     expect(panel()).toContain("card/cart-screen");
   });
 

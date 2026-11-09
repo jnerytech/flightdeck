@@ -3,6 +3,7 @@ import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
@@ -17,6 +18,7 @@ import {
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
+import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { findingsNote } from "@/lib/second-opinion";
 import { nextStep } from "../../lib/card-next-step.ts";
@@ -84,6 +86,9 @@ export function CardRunForm(
     /** #1446: the reviewer findings still open, when a blocker or a high one is. */
     note: string | null;
   } | null>(null);
+
+  /** Why the host refused the PR, shown in the description dialog (#1543). */
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -270,18 +275,25 @@ export function CardRunForm(
             source: { kind: "card", cardId },
             openSettings: store.openAssistantSettings,
           }}
-          onCancel={() => setDraft(null)}
+          onCancel={() => {
+            setRefusal(null);
+            setDraft(null);
+          }}
           onConfirm={async (description, title) => {
-            // The dialog closes once the host took it: a refusal leaves the text for the person to keep (#1543).
-            const opened = await store.hostCommand(
-              hostId,
-              "card.pr.create",
-              { cardId, description, title },
-              { retry: false },
-            );
-            if (opened !== null) setDraft(null);
+            // The dialog closes once the host took it. A refusal is read here, where the person is
+            // (a toast sits behind the modal), and the text stays for another try (#1543).
+            const result = await store.hostRequest(hostId, "card.pr.create", {
+              cardId,
+              description,
+              title,
+            });
+            if (result.ok) {
+              setRefusal(null);
+              setDraft(null);
+            } else setRefusal(refusalText(result.code, result.message, t, result));
           }}
         >
+          {refusal && <InlineNotice tone="error">{refusal}</InlineNotice>}
           {draft.note && <p className="text-status-needs-you text-sm">{draft.note}</p>}
         </PrDescriptionDialog>
       )}
