@@ -3,6 +3,8 @@
  * refused. Every issue's assignee is the same account, so the owner lives in a hidden marker of the
  * issue's comments, written by `issue-note.sh` and by `bun run claim`:
  * `<!-- flightdeck-owner: <session> status: <progress|reassign|ready|done|todo> -->`.
+ * It is a collaboration guard, not access control: the session names are self-declared and anyone
+ * who can comment can write a marker, so it only changes who the tool says owns an issue.
  */
 import type { GhResult } from "./ci-branch.ts";
 
