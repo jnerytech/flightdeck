@@ -136,9 +136,18 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
   const issue = /^\d+$/.test(words[0] ?? "") ? Number(words[0]) : 0;
   const by = words.indexOf("--by");
   const session = by === -1 ? deps.session : words[by + 1];
-  if (issue <= 0 || !session || !SESSION.test(session)) {
+  // Every word is the issue, --by and its session, --reassign or --release: a typo never claims.
+  const known = words.every(
+    (w, i) => i === 0 || w === "--reassign" || w === "--release" || w === "--by" || i === by + 1,
+  );
+  if (issue <= 0 || !session || !SESSION.test(session) || !known || (by !== -1 && by < 1)) {
     deps.log(USAGE);
     return 2;
+  }
+  // fd-coordinator's marks release any issue: only its own session may write them.
+  if (session === COORDINATOR && !deps.coordinator) {
+    deps.log("only fd-coordinator's own session acts as fd-coordinator");
+    return 1;
   }
   const reassign = words.includes("--reassign");
   if (reassign && words.includes("--release")) {
