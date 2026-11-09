@@ -229,7 +229,8 @@ export async function runLimited(
   const chunks: Uint8Array[] = [];
   let size = 0;
   let truncated = false;
-  let failure: unknown = null;
+  let failed = false;
+  let failure: unknown;
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -246,18 +247,25 @@ export async function runLimited(
     }
   } catch (error) {
     // Reading failed: the tree goes too, and the cleanup below still runs before the error.
+    failed = true;
     failure = error;
     killTreeNow();
   } finally {
     // Past the limit, or when reading failed: the program does not go on writing to nobody.
     proc.kill();
   }
-  const [stderr, code] = await Promise.all([errors.text, proc.exited]);
-  if (timer) clearTimeout(timer);
-  if (grace) clearTimeout(grace);
-  signal?.removeEventListener("abort", onAbort);
-  await killing;
-  if (failure) throw failure;
+  let stderr: string;
+  let code: number;
+  try {
+    [stderr, code] = await Promise.all([errors.text, proc.exited]);
+  } finally {
+    // Even when reading stderr failed: no timer may fire a kill at a pid that was given back.
+    if (timer) clearTimeout(timer);
+    if (grace) clearTimeout(grace);
+    signal?.removeEventListener("abort", onAbort);
+    await killing;
+  }
+  if (failed) throw failure;
   const all = Buffer.concat(chunks);
   const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
   return {
