@@ -2287,14 +2287,21 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await panel
       .getByText("Two findings on the changes, one general note.", { exact: true })
       .waitFor({ timeout: WAIT * 2 });
-    // Every reviewer draft says so, with its severity in words, and can be dismissed by name.
-    const drafts = c.page.getByRole("listitem").filter({ hasText: c.t("secondOpinion.reviewer") });
-    const count = await drafts.count();
+    // The reviewer's comments are in the list (drafts, or sent ones when the other language's run
+    // already sent them): the first is waited for, so the check below cannot run over nothing,
+    // and each says so with its severity in words.
+    const reviewer = c.page
+      .getByRole("listitem")
+      .filter({ hasText: c.t("secondOpinion.reviewer") });
+    await reviewer.first().waitFor({ timeout: WAIT * 2 });
+    const severity = new RegExp(
+      (["blocker", "high", "medium", "low"] as const)
+        .map((level) => c.t(`secondOpinion.severity.${level}`))
+        .join("|"),
+    );
+    const count = await reviewer.count();
     for (let i = 0; i < count; i++) {
-      const draft = drafts.nth(i);
-      await draft
-        .getByRole("button", { name: new RegExp(`^${c.t("secondOpinion.dismiss")}`) })
-        .waitFor({ timeout: WAIT });
+      await reviewer.nth(i).getByText(severity).first().waitFor({ timeout: WAIT });
     }
   },
 
