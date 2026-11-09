@@ -109,7 +109,7 @@ function ReviewOutcome(props: Readonly<{ result: CardReviewResult }>) {
         </p>
       ))}
       {result.loose.length > 0 && (
-        <section aria-label={t("secondOpinion.loose", { n: result.loose.length })}>
+        <div>
           <h4 className="font-medium text-xs">
             {t("secondOpinion.loose", { n: result.loose.length })}
           </h4>
@@ -125,11 +125,11 @@ function ReviewOutcome(props: Readonly<{ result: CardReviewResult }>) {
                   </span>
                   <FindingSeverity severity={finding.severity} />
                 </span>
-                <span className="whitespace-pre-wrap">{finding.body}</span>
+                <span className="whitespace-pre-wrap break-words">{finding.body}</span>
               </li>
             ))}
           </ul>
-        </section>
+        </div>
       )}
     </div>
   );

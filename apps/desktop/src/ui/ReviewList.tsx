@@ -72,7 +72,7 @@ export function ReviewList(
                   </Button>
                 </div>
               ) : (
-                <p className="whitespace-pre-wrap">{comment.body}</p>
+                <p className="whitespace-pre-wrap break-words">{comment.body}</p>
               )}
               {comment.state === "draft" && editing?.id !== comment.id && (
                 <div className="flex gap-1">

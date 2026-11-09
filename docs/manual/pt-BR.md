@@ -1514,7 +1514,7 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   o texto do card e o diff, com os segredos mascarados; o diff vai para a Anthropic, como a sessão
   do próprio card já o envia. Cada achado que cai numa linha alterada vira um rascunho marcado
   **Revisor**, com a gravidade (Bloqueante, Alto, Médio ou Baixo): edite (aí ele passa a ser seu),
-  **Dispense**, ou deixe, e **Enviar revisão** o manda ao card junto com os seus comentários, como
+  **Dispensar**, ou deixe, e **Enviar revisão** o manda ao card junto com os seus comentários, como
   uma sugestão a conferir. Os achados fora de uma linha alterada ficam listados sob o botão, como
   texto. **Abrir PR** diz quantos achados do revisor continuam abertos quando um é bloqueante ou
   alto, e abre o PR do mesmo jeito.
