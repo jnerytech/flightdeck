@@ -6,7 +6,6 @@ import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
-  CheckLoopReason,
   contractOf,
   type EffortLevel,
   inSequence,
@@ -31,19 +30,13 @@ import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.t
 import { isInside } from "../paths.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { ulid } from "../ulid.ts";
-import { runChecks } from "../watch/check-run.ts";
 import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { parseCardTemplates } from "./card-templates.ts";
-import { cardMode } from "./check-loop.ts";
-import {
-  CheckLoopEngine,
-  type LoopCard,
-  type RoundRecord,
-  roundsCap,
-} from "./check-loop-engine.ts";
+import type { CheckLoopEngine } from "./check-loop-engine.ts";
+import { CheckLoopHost } from "./check-loop-host.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
@@ -190,10 +183,8 @@ export class Board {
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
-  /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
-  private readonly loop: CheckLoopEngine | null;
-  /** Issue #1361: projects whose watch settings could not be read, logged once each. */
-  private readonly unreadableLoopSettings = new Set<string>();
+  /** Issue #1361: the check loop's engine, switch and rounds (board/check-loop-host.ts). */
+  private readonly loopHost: CheckLoopHost;
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
@@ -242,6 +233,17 @@ export class Board {
       checks: opts.checks ?? shellCheckRunner(),
       clock: opts.clock ?? Date.now,
     });
+    this.loopHost = new CheckLoopHost({
+      db: opts.db,
+      opts,
+      workflows: this.workflows,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      budgetBlocked: (projectId) => this.budgetBlocked(projectId),
+      release: (id) => this.release(id),
+      place: (id, event) => this.place(id, event),
+      changed: (id) => this.changed(id),
+    });
     this.launcher = new Launcher({
       db: opts.db,
       opts,
@@ -262,9 +264,8 @@ export class Board {
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.queue.watchLimits();
     this.armPoll();
-    this.loop = opts.checkLoop ? this.checkLoopEngine(opts.checkLoop) : null;
     // Issue #1361: a round a restart left open is closed; the loop never resumes by itself.
-    this.sweepCheckLoops();
+    this.loopHost.sweep();
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
       .query<RunRow, []>(
@@ -441,7 +442,7 @@ export class Board {
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
-      checkLoop: this.checkLoopOf(row),
+      checkLoop: this.loopHost.of(row),
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
       startWorkflow: row.start_workflow,
@@ -1039,24 +1040,12 @@ export class Board {
       confirmedHash: string | null;
     },
   ): Card {
-    const card = this.getCard(id);
-    // Switched on: the session's events so far are history, never a turn for the loop to check.
-    // Read before anything is written: a session that cannot be read throws here, so the switch is
-    // never saved without its mark.
-    const switching = value.on && card.checkLoop?.on !== true;
-    const mark = switching && card.sessionId ? this.opts.manager.get(card.sessionId).lastSeq : null;
-    this.db.transaction(() => {
-      this.db
-        .query(
-          `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
-           check_loop_confirmed_hash = ? WHERE id = ?`,
-        )
-        .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
-      if (switching) {
-        this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(mark, id);
-      }
-    })();
-    return this.changed(id);
+    return this.loopHost.store(id, value);
+  }
+
+  /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
+  private get loop(): CheckLoopEngine | null {
+    return this.loopHost.engine;
   }
 
   /** "Pedir ajuste": a message to the session of the active run. */
@@ -2150,174 +2139,5 @@ export class Board {
   /** Issue #1361: the person wrote into a card's session, or answered it: the loop steps aside. */
   personTurnOfSession(sessionId: string): void {
     this.sessions.personTurnOfSession(sessionId);
-  }
-
-  /** Issue #1361: the loop's effects on this board. */
-  private checkLoopEngine(options: NonNullable<BoardOptions["checkLoop"]>): CheckLoopEngine {
-    return new CheckLoopEngine({
-      card: (cardId) => this.loopCard(cardId),
-      settings: (projectId) => options.settings(projectId),
-      mode: (cardId) => cardMode(this.getCard(cardId), this.opts.manager),
-      trusted: (cardId) => options.isTrusted(this.getProject(this.getCard(cardId).projectId).path),
-      limit: (cardId) => this.loopLimit(cardId),
-      runChecks: (input) => runChecks({ ...input, runner: options.runner }),
-      // The round goes into the session as the board's own write, never through a person's command.
-      send: (cardId, text) => {
-        const { sessionId } = this.getCard(cardId);
-        if (sessionId) this.opts.manager.send(sessionId, text);
-      },
-      release: (cardId) => this.release(cardId),
-      place: (cardId) => this.place(cardId, { type: "turn", isError: false }),
-      record: (cardId, record) => this.recordRound(cardId, record),
-      notify: (cardId) => this.changed(cardId),
-      timer: {
-        set: (fn, ms) => setTimeout(fn, ms),
-        clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-      },
-    });
-  }
-
-  /** Issue #1361: the card's switch and how its loop goes, for the app. */
-  private checkLoopOf(row: CardRow): Card["checkLoop"] {
-    const own = {
-      on: row.check_loop === 1,
-      rounds: row.check_rounds,
-      confirmed: row.check_loop_confirmed_at !== null,
-    };
-    // Every card read comes here: a card with the switch off asks the rounds table nothing.
-    if (!own.on) return own;
-    const last = this.db
-      .query<
-        {
-          status: "sent" | "ended";
-          reason: string | null;
-          command: string | null;
-          exit_code: number | null;
-          at: string;
-        },
-        [string]
-      >(
-        "SELECT status, reason, command, exit_code, at FROM card_check_rounds WHERE card_id = ? ORDER BY id DESC LIMIT 1",
-      )
-      .get(row.id);
-    // A board that starts before its watch settings can be read shows the loop without its cap.
-    let project: number | undefined;
-    try {
-      project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
-    } catch (error) {
-      project = undefined;
-      // Said once per project: a row that cannot be read would otherwise go unnoticed.
-      if (!this.unreadableLoopSettings.has(row.project_id)) {
-        this.unreadableLoopSettings.add(row.project_id);
-        const what = error instanceof Error ? error.name : "error";
-        this.opts.log?.(
-          `check loop: the watch settings of project ${row.project_id} could not be read (${what})`,
-        );
-      }
-    }
-    const max = project === undefined ? undefined : roundsCap(row.check_rounds, project);
-    const reason = CheckLoopReason.safeParse(last?.reason);
-    return {
-      ...own,
-      active: this.loop?.phaseOf(row.id) ?? null,
-      round: this.loop?.sentOf(row.id) ?? 0,
-      ...(max === undefined ? {} : { max }),
-      last: last
-        ? {
-            state: last.status,
-            reason: reason.success ? reason.data : null,
-            command: last.command,
-            exitCode: last.exit_code,
-            at: last.at,
-          }
-        : null,
-    };
-  }
-
-  /** What the loop needs of a card; null when the card is gone. */
-  private loopCard(cardId: string): LoopCard | null {
-    const row = this.db
-      .query<
-        {
-          loop_on: number;
-          rounds: number | null;
-          hash: string | null;
-          worktree: string | null;
-          project: string;
-        },
-        [string]
-      >(
-        `SELECT check_loop AS loop_on, check_rounds AS rounds, check_loop_confirmed_hash AS hash,
-         worktree_path AS worktree, project_id AS project FROM cards WHERE id = ?`,
-      )
-      .get(cardId);
-    if (!row) return null;
-    const run = this.db
-      .query<{ id: string; fix_prompt: string | null }, [string]>(
-        "SELECT id, fix_prompt FROM card_runs WHERE card_id = ? ORDER BY rowid DESC LIMIT 1",
-      )
-      .get(cardId);
-    // A watch's fixing run and a workflow run have checks of their own.
-    const plainRun = run !== null && run.fix_prompt === null && !this.workflows.has(run.id);
-    return {
-      on: row.loop_on === 1,
-      rounds: row.rounds,
-      confirmedHash: row.hash,
-      plainRun,
-      worktree: row.worktree,
-      projectId: row.project,
-    };
-  }
-
-  /** The limit that stops a round now: the quota, the host's memory, or the project's budget. */
-  private loopLimit(cardId: string): "budget" | "quota" | "memory" | null {
-    if (this.opts.quota?.blocked()) return "quota";
-    if (this.opts.memory?.blocked()) return "memory";
-    return this.budgetBlocked(this.getCard(cardId).projectId) ? "budget" : null;
-  }
-
-  /** One line of a card's loop: a round sent, or the loop's end with its reason. */
-  private recordRound(cardId: string, record: RoundRecord): void {
-    const run = this.db
-      .query<{ id: string }, [string]>(
-        "SELECT id FROM card_runs WHERE card_id = ? ORDER BY rowid DESC LIMIT 1",
-      )
-      .get(cardId);
-    this.db
-      .query(
-        `INSERT INTO card_check_rounds
-         (card_id, run_id, n, at, status, reason, command, exit_code, timed_out)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        cardId,
-        run?.id ?? "",
-        record.n,
-        now(),
-        record.status,
-        record.reason ?? null,
-        record.command ?? null,
-        record.exitCode ?? null,
-        record.timedOut ? 1 : 0,
-      );
-    this.changed(cardId);
-  }
-
-  /** Issue #1361: rounds a restart left open are closed as interrupted, one end line each. */
-  private sweepCheckLoops(): void {
-    const open = this.db
-      .query<{ card_id: string; run_id: string; n: number }, []>(
-        `SELECT card_id, run_id, n FROM card_check_rounds r
-         WHERE status = 'sent' AND id = (SELECT MAX(id) FROM card_check_rounds WHERE card_id = r.card_id)`,
-      )
-      .all();
-    for (const row of open) {
-      this.db
-        .query(
-          `INSERT INTO card_check_rounds (card_id, run_id, n, at, status, reason)
-           VALUES (?, ?, ?, ?, 'ended', 'interrupted')`,
-        )
-        .run(row.card_id, row.run_id, row.n, now());
-    }
   }
 }
