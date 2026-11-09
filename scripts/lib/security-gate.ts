@@ -312,11 +312,11 @@ const KEY = String.raw`["']?[\w.-]+["']?`;
 const TEXT_LINE = new RegExp(
   [
     // `key: "text",` or a long value on a line of its own: `"text",`
-    String.raw`^\s*(?:${KEY}\s*:\s*)?${STR}\s*,?\s*$`,
+    String.raw`^\s*(?:${KEY}\s*:\s*)?${STR}(?:\s*,)?\s*$`,
     // a key whose value comes on the next line, or opens a group: `share:`, `tokens: {`
     String.raw`^\s*${KEY}\s*:\s*\{?\s*$`,
     // a group of entries on one line: `title: { password: "Password", passphrase: "Passphrase" },`
-    String.raw`^\s*${KEY}\s*:\s*\{\s*(?:${KEY}\s*:\s*${STR}\s*,?\s*)+\}\s*,?\s*$`,
+    String.raw`^\s*${KEY}\s*:\s*\{\s*(?:${KEY}\s*:\s*${STR}(?:\s*,)?\s*)+\}(?:\s*,)?\s*$`,
   ].join("|"),
 );
 /** What a secret value looks like (a word saying "token" is not one). */
