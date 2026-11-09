@@ -32,6 +32,8 @@ function rig(
     trusted?: boolean;
     limit?: "budget" | "quota" | "memory" | null;
     outcomes?: CheckOutcome[];
+    /** The card reads as gone after this many reads (the card discarded under the loop). */
+    vanishAfter?: number;
   } = {},
 ) {
   const settings = {
@@ -60,8 +62,13 @@ function rig(
   const timers: Array<{ fn: () => void; ms: number; cleared: boolean }> = [];
   /** Lets a test hold a check until it says so. */
   let gate: Promise<void> | null = null;
+  let reads = 0;
   const engine = new CheckLoopEngine({
-    card: () => card,
+    card: () => {
+      reads += 1;
+      // A copy per read, as the store gives one.
+      return over.vanishAfter !== undefined && reads > over.vanishAfter ? null : { ...card };
+    },
     // A copy per read, as the store gives: a test that edits the settings sees what a new read sees.
     settings: () => ({
       ...settings,
@@ -468,6 +475,70 @@ describe("check-loop: the security review's cases", () => {
     const hidden =
       "a\ufe0fb\u{E0100}c\u00add\u034fe\u061cf\u115fg\u180eh\u2028i\u2061j\u206ak\u3164l\uffa0m\ufff9n";
     expect(roundMessage(1, 3, { ...FAIL, output: hidden }).includes("abcdefghijklmn")).toBe(true);
+  });
+
+  test("an idle that comes after the round was sent does not end it: the session going busy clears the wait", async () => {
+    const r = rig({ outcomes: [FAIL, PASS] });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    r.engine.onIdle("c");
+    const armed = r.timers.at(-1);
+    r.engine.onBusy("c");
+    const clearedByBusy = armed?.cleared;
+    r.engine.onTurnResult("c", ok);
+    r.engine.onIdle("c");
+    await r.checksDone();
+    expect([clearedByBusy, r.log, r.records.at(-1)?.reason]).toEqual([
+      true,
+      ["send", "place", "release"],
+      "passed",
+    ]);
+  });
+
+  test("an idle after the loop already ended neither holds nor releases the slot again", async () => {
+    const r = rig();
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    const late = r.engine.onIdle("c");
+    expect([late, r.log, r.timers.length]).toEqual(["released", ["place", "release"], 0]);
+  });
+
+  test("a card gone while its checks start is placed and released", async () => {
+    const r = rig({ vanishAfter: 1 });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    expect(r.log).toEqual(["place", "release"]);
+  });
+
+  test("the card's own cap changed during the checks counts before the round", async () => {
+    const r = rig({ outcomes: [FAIL, FAIL] });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    r.card.rounds = 1;
+    open();
+    await r.checksDone();
+    await Promise.resolve();
+    expect([r.sent.length, r.records.at(-1)?.reason]).toEqual([1, "rounds_spent"]);
+  });
+
+  test("a round that never starts a turn is not waited on forever: the watchdog ends it, busy clears it", async () => {
+    const stuck = rig({ outcomes: [FAIL] });
+    stuck.engine.onTurnResult("c", ok);
+    await stuck.checksDone();
+    const watchdog = stuck.timers.at(-1);
+    watchdog?.fn();
+    const started = rig({ outcomes: [FAIL] });
+    started.engine.onTurnResult("c", ok);
+    await started.checksDone();
+    started.engine.onBusy("c");
+    expect([
+      watchdog !== undefined,
+      stuck.log,
+      stuck.records.at(-1)?.reason,
+      started.timers.at(-1)?.cleared,
+    ]).toEqual([true, ["send", "release"], "no_result", true]);
   });
 
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
