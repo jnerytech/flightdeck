@@ -104,6 +104,7 @@ import {
   toggleSelection,
 } from "../lib/board-select.ts";
 import { cardStartBlock } from "../lib/card-start-block.ts";
+import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { onSubscription, quotaBars } from "../lib/quota.ts";
@@ -192,6 +193,7 @@ function CardTile(
 ) {
   const t = useT();
   const { card } = props;
+  const radar = radarBadge(card, t);
   /** The card's menu, opened by its ⋯ or by `m` (#1198). */
   const [menuOpen, setMenuOpen] = useState(false);
   const titleRef = useRef<HTMLButtonElement>(null);
@@ -327,6 +329,11 @@ function CardTile(
             {card.quotaUntil
               ? t("kanban.waitingQuotaUntil", { time: props.formatTime(card.quotaUntil) })
               : t("kanban.waitingQuota")}
+          </Badge>
+        )}
+        {radar && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {radar}
           </Badge>
         )}
         {card.queueReason === "memory" && (

@@ -1366,7 +1366,9 @@ commit or a squash), then runs `gh pr merge` with that way and nothing else: no 
 `--auto`, no branch delete, so required checks and reviews still apply. If GitHub refuses, the
 card says why (review required, checks failing or still running, a conflict, or GitHub's own
 words) with a link to the PR, and the card stays where it is; when it merges, the card moves to
-Done. It works over a near connection (this computer or Tailscale), and Azure DevOps cards merge
+Done. When the host's conflict radar finds other cards of the project that change the same files,
+the card shows **May conflict with …** on the board, lists those cards and the shared files under
+**May conflict with other cards** in its details, and the merge confirm names them. It works over a near connection (this computer or Tailscale), and Azure DevOps cards merge
 in Azure DevOps. Cards with an open PR are polled every 60 s, or every
 `board.prPollIntervalMs` from the config. A merged PR moves the card to Done; closed without a
 merge, to Needs you.
