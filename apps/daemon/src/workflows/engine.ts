@@ -346,11 +346,9 @@ export class WorkflowEngine {
         if (!card?.worktreePath || card.discarded || card.workflowRunId !== run.id) {
           return "run_resume_card";
         }
-        if (
-          hashOf(run.definition) !== run.workflow_hash ||
-          !this.trusted(card.projectId, run.workflow_name, run.workflow_hash)
-        ) {
-          return "run_resume_workflow_changed";
+        if (hashOf(run.definition) !== run.workflow_hash) return "run_resume_workflow_changed";
+        if (!this.trusted(card.projectId, run.workflow_name, run.workflow_hash)) {
+          return "workflow_not_trusted";
         }
         return run.head ? null : "run_resume_no_head";
       })();
@@ -362,9 +360,15 @@ export class WorkflowEngine {
         this.setReasonKey(
           run.id,
           key,
-          key === "run_resume_workflow_changed" ? { name: run.workflow_name } : {},
+          key === "run_resume_workflow_changed" || key === "workflow_not_trusted"
+            ? { name: run.workflow_name }
+            : {},
         );
-        if (card) this.host.place(run.card_id, { type: "workflow", state: "waiting" });
+        // Only a card that is still this run's goes to waiting: one that moved on to another
+        // run stays where that run put it.
+        if (card?.workflowRunId === run.id) {
+          this.host.place(run.card_id, { type: "workflow", state: "waiting" });
+        }
         continue;
       }
       this.resuming.add(run.id);
