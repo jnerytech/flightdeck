@@ -629,6 +629,13 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     if (!handler) throw new Error(`unknown argument: ${arg}\n${USAGE}`);
     handler(args, reader, value);
   }
+  if (
+    args.command !== "card" &&
+    (args.json || args.description !== undefined || args.workflow !== undefined)
+  )
+    throw new Error(
+      `--json, --description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
+    );
   return args;
 }
 
