@@ -40,18 +40,11 @@ import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
-import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
-import type { Quota } from "../quota/quota.ts";
+import { withoutPersonas } from "../personas/prepare.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
-import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { runChecks } from "../watch/check-run.ts";
-import {
-  type BoundedCheckRunner,
-  type CheckRunner,
-  shellCheckRunner,
-} from "../workflows/check-runner.ts";
+import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
@@ -77,7 +70,7 @@ import {
   rebaseOnto,
 } from "./merge.ts";
 import { pinnedPrompt } from "./pins.ts";
-import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
+import { type PrComment, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
 import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
@@ -96,18 +89,18 @@ import {
 } from "./spec-template.ts";
 import type {
   BoardColumn,
+  BoardOptions,
   Card,
   CardDiff,
+  CardRow,
   CardRun,
-  ChecksState,
   MayConflict,
   NewProject,
-  PrMergeable,
   Project,
   ProjectPatch,
-  PrProviderKind,
-  PrReview,
+  ProjectRow,
   PrState,
+  RunRow,
 } from "./types.ts";
 import {
   addWorktree,
@@ -117,6 +110,8 @@ import {
   WORKTREE_INCLUDE,
   WORKTREE_INCLUDE_LIMIT,
 } from "./worktree.ts";
+
+export type { BoardOptions } from "./types.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
@@ -141,85 +136,6 @@ const raisedBy = (origin: { workflow: string; runId: string }) =>
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
   "com mensagens descritivas a cada passo concluído.";
-
-export interface BoardOptions {
-  db: Database;
-  manager: SessionManager;
-  /** Reads the personas for a session about to open; none when absent. */
-  preparePersonas?: Prepare;
-  allowedRoots: readonly string[];
-  /** Folders being removed (issue #152): no card starts in one. */
-  folderLocks?: { isHeld(cwd: string): boolean };
-  /** 2 when absent. */
-  maxParallelRuns?: number;
-  prPollIntervalMs?: number;
-  /** Persists host-wide settings changed through `board.settings`. */
-  onSettingsChange?: (settings: { maxParallelRuns: number }) => void | Promise<void>;
-  /** Runs workflow `check` commands; the real shell runner when absent. */
-  checks?: CheckRunner;
-  /** Milliseconds now, for the workflow budget's minutes; `Date.now` when absent. */
-  clock?: () => number;
-  /** The host's plan quota: over `pauseAt`, new cards and workflow turns wait (phase 7). */
-  quota?: Quota;
-  /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
-  budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
-  /** Issue #1343: while the host's memory is at or above `resources.pauseAt`, new cards wait. */
-  memory?: { blocked(): unknown; watch(listener: () => void): () => void };
-  /** Issue #1404: while the person has paused new runs on the host, new cards wait. */
-  pause?: { blocked(): unknown; watch(listener: () => void): () => void };
-  /** Issue #1361: the check loop (a project's checks after a card's turn); off when absent. */
-  checkLoop?: {
-    settings(projectId: string): {
-      checks: string[];
-      checkTimeoutMin: number;
-      checkRounds: number;
-      checkEnv: string[];
-    };
-    isTrusted(path: string): boolean;
-    runner: Pick<BoundedCheckRunner, "run">;
-  };
-  /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
-  cardCost?: (cardId: string) => number | null;
-  /** Phase 22: refuses a PR description that carries a secret. */
-  scanner?: Pick<SecretScanner, "scan">;
-  /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
-  prProvider?: (kind: PrProviderKind) => PrProvider | null;
-  /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
-  projectKeys?: { known(path: string): string; resolve?(path: string): Promise<string> };
-  /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
-  worktreeIncludeLimit?: number;
-  /**
-   * Issue #78: the folder a card's spec template may be read from (the trusted checkout of the
-   * worktree's project), or null when the project is not trusted: its template would reach the
-   * agent before the person trusted it. `own` says `cwd` is the project's own folder, not a worktree
-   * (a card with no worktree).
-   */
-  specTemplateRoot?: (cwd: string, own?: true) => Promise<string | null>;
-  /** Lines for the daemon's log (no card content goes there). */
-  log?: (line: string) => void;
-  /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
-  idle?: () => Promise<void>;
-  /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
-  suspendApproval?: (cardId: string, reason: string) => void;
-}
-
-interface ProjectRow {
-  id: string;
-  path: string;
-  name: string;
-  base_branch: string;
-  pr_provider: PrProviderKind;
-  setup_script: string | null;
-  prompt_template: string;
-  auto_approve: string | null;
-  issues: string | null;
-  persona_by_column: string | null;
-  contract_by_column: string | null;
-  persona_subagents: PersonaSubagentsMode | null;
-  default_hours: number | null;
-  roi_commits: number;
-  roi_issues: number;
-}
 
 /** The fields of a patch that were given, so a missing one keeps its value. */
 const definedOnly = <T extends object>(patch: T | undefined): Partial<T> =>
@@ -343,62 +259,6 @@ function judgePins(pins: string[]): void {
 /** The auto-start as the cards table keeps it. */
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
-
-interface CardRow {
-  id: string;
-  project_id: string;
-  title: string;
-  description: string;
-  board_column: BoardColumn;
-  column_locked: number;
-  position: number;
-  slug: string | null;
-  branch: string | null;
-  worktree_path: string | null;
-  pr_url: string | null;
-  pr_state: PrState | null;
-  checks_state: ChecksState | null;
-  pr_mergeable: PrMergeable | null;
-  pr_review: PrReview | null;
-  pr_opened_at: string | null;
-  notice: string | null;
-  notice_reason: string | null;
-  notice_params: string | null;
-  issue_ref: string | null;
-  issue_external: number;
-  external_url: string | null;
-  external_gone: number;
-  estimate_hours: number | null;
-  validation_note: string | null;
-  spec_path: string | null;
-  pinned_docs: string | null;
-  start_workflow: string | null;
-  start_persona: string | null;
-  spec_checked_path: string | null;
-  spec_found: number;
-  spec_heading: string | null;
-  spec_draft: number;
-  arena_of: string | null;
-  variant: string | null;
-  unblock_when: UnblockWhen;
-  auto_start: string | null;
-  unblocked_at: string | null;
-  waiting: number;
-  check_loop: number;
-  check_rounds: number | null;
-  check_loop_confirmed_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface RunRow {
-  id: string;
-  card_id: string;
-  session_id: string | null;
-  queued_at: string;
-  started_at: string | null;
-  ended_at: string | null;
-}
 
 const now = () => new Date().toISOString();
 
