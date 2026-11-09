@@ -6,6 +6,7 @@ import type { Handlers } from "../dispatch.ts";
 import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
 import { assistantHandlers } from "./assistant.ts";
+import { boardHandlers } from "./board.ts";
 import { cardHandlers } from "./card.ts";
 import { costsHandlers } from "./costs.ts";
 import { externalHandlers } from "./external.ts";
@@ -15,6 +16,7 @@ import { hostHandlers } from "./host.ts";
 import { issuesHandlers } from "./issues.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
 import { messagingHandlers } from "./messaging.ts";
+import { prCommentsHandlers } from "./prComments.ts";
 import { projectHandlers } from "./project.ts";
 import { reviewHandlers } from "./review.ts";
 import { runsHandlers } from "./runs.ts";
@@ -44,10 +46,12 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   card: cardHandlers,
   project: projectHandlers,
   session: sessionHandlers,
+  board: boardHandlers,
   issues: issuesHandlers,
   worktrees: worktreesHandlers,
   external: externalHandlers,
   assistant: assistantHandlers,
+  prComments: prCommentsHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));

@@ -1121,8 +1121,9 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 - **The selection bar** above the board shows "3 selected" with **Start N** (the cards that can start),
   **Stop N** (while some of them run or wait in the queue), **Move to…** (a column), **Discard…** and
   **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
-  many wait in the host's queue, the host's 5-hour window on a subscription, and the cards it skips and
-  why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
+  many wait in the host's queue, the host's 5-hour window on a subscription, a line for each hold that
+  keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory),
+  and the cards it skips and why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
   one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
   the ones that went leave the selection, and the bar names any the host refused. In a narrow window
   the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
@@ -1738,6 +1739,15 @@ column's default persona, and the earlier run stays in the card's history. It is
 changed since you trusted it, it has errors, or it is not on the base branch any more. If the host
 refuses the start, the refusal shows in place.
 
+A run that failed can also go on from where it stopped (#1266): **Run again from <step>** sits
+next to **Run again**. The same run continues: the steps that finished keep their output and are
+not run again, an approved gate is not asked again, and the failed step runs from scratch with
+everything after it. The card's run waits for a slot like any run. It is offered only when it is
+safe, otherwise the reason shows under **Run again**: the workflow changed since the run, the
+card's branch changed since it stopped (a commit, reset or rebase), the card is gone or runs something else, or the
+run ended before Flightdeck kept where the code was. It needs a near connection (this computer or
+Tailscale): over a far one, that is the reason shown, and only **Run again** is offered.
+
 ### Templates
 
 Three workflows ship with Flightdeck, for recurring work:
@@ -2307,7 +2317,9 @@ after each backup the oldest files go, and only files named like a Flightdeck ba
 touched. The backup is encrypted like the one above, so Flightdeck asks for a passphrase once each
 time it starts; it stays in memory until you close the app and is never saved. Until you give it, a
 backup that is due waits, and the section says so. A backup that could not be saved is shown there
-too, and the date of the last good one stays.
+too, and the date of the last good one stays. The bell says it too, once per start, when a backup
+cannot go: the passphrase is missing, no folder is chosen, or a backup failed. A click on the notice
+opens **Settings**, section **Backup** (#1327).
 
 ## Actions: Claude uses a secret without seeing it
 
@@ -2943,6 +2955,9 @@ app, cards and workflows, subagents included.
 
 > **Estimate:** the value is the API-price equivalent, estimated. On a Claude subscription,
 > none of it is charged.
+
+Dollars follow the app's language everywhere a cost shows: `US$ 1,234.50` in English,
+`US$ 1.234,50` in Portuguese (#1332).
 
 - **Source:** the Claude Code transcripts in `~/.claude/projects`, the same as the history.
   - Each message counts once, even when the transcript repeats it across several lines.
