@@ -4,6 +4,7 @@ import { stat } from "node:fs/promises";
 import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import {
+  DEFAULT_MODELS,
   formatPairingLink,
   PROTOCOL_VERSION,
   type ServiceInstallResult,
@@ -25,6 +26,7 @@ import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { HostPause } from "./board/host-pause.ts";
+import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -105,6 +107,7 @@ import { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./names/t
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
+import { credential } from "./permissions/sensitive-paths.ts";
 import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { type Prepare, preparePersonas } from "./personas/prepare.ts";
@@ -120,6 +123,7 @@ import { ReleaseFeed } from "./releases/releases.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createResources } from "./resources/wiring.ts";
+import { CardReviews, reviewHold } from "./review/card-review.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
@@ -197,6 +201,7 @@ import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
+import { ulid } from "./ulid.ts";
 import {
   binaryVersion,
   refusedAddress,
@@ -216,7 +221,7 @@ import { Vault } from "./vault/vault.ts";
 import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
 import { Traces } from "./watch/trace.ts";
-import { PrWatcher } from "./watch/watch.ts";
+import { PrWatcher, readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
@@ -771,6 +776,59 @@ async function terminalInfo(env: Record<string, string | undefined>) {
   };
 }
 
+/**
+ * The release checker, the daemon's updater and, with both, the auto updater (#280): a newer
+ * version is applied by itself, only while nothing runs on the host. The checker is made first and
+ * tells the auto updater after each check; it is checked in the background, so a slow or
+ * unreachable release server never delays the boot.
+ */
+function createUpdates(config: Config, host: { idle: () => boolean; log: (line: string) => void }) {
+  let autoUpdater: AutoUpdater | undefined;
+  const updates = config.updates.manifestUrl
+    ? new UpdateChecker({
+        manifestUrl: config.updates.manifestUrl,
+        checkIntervalH: config.updates.checkIntervalH,
+        currentVersion: DAEMON_VERSION,
+        onChecked: () => autoUpdater?.checked(),
+      })
+    : undefined;
+  const updater = updates
+    ? new DaemonUpdater({
+        manifest: () => updates.latest(),
+        dataDir: config.dataDir,
+        ctx: osServiceContext(false),
+      })
+    : undefined;
+  if (updates && updater) {
+    autoUpdater = new AutoUpdater({
+      enabled: () => config.updates.auto,
+      currentVersion: DAEMON_VERSION,
+      latest: updates.latest.bind(updates),
+      idle: host.idle,
+      apply: (proceed) => updater.apply(true, { proceed }),
+      log: host.log,
+    });
+  }
+  return { updates, updater, autoUpdater };
+}
+
+/** The supervisor of the WSL distributions the config lists, if any. */
+function createWsl(config: Config, options: { wslCommand?: (item: WslItem) => string[] }) {
+  if (config.wsl.length === 0) return null;
+  return new WslSupervisor(config.wsl, {
+    logDir: join(config.dataDir, "logs"),
+    ...present({ command: options.wslCommand }),
+  });
+}
+
+/** Without an allowed root no session can be created: the log says so at the start. */
+function warnIfNoRoots(config: Config, logger: Logger): void {
+  if (config.allowedRoots.length > 0) return;
+  logger.error(
+    'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
+  );
+}
+
 /** Loads the config, opens the store and starts serving. The token is never logged. */
 export async function startDaemon(
   args: CliArgs,
@@ -981,7 +1039,7 @@ export async function startDaemon(
     log: (m) => logger.log(m),
     // Issue #605: the name Claude Code gave a session (`--name`, `/rename`) is its name here too.
     onTitle: adoptTitles(names, manager),
-    ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
+    ...present({ scanIntervalMs: config.history.scanIntervalMs || undefined }),
   });
   history.start();
   // Issue #100: the packages of the sessions this host teleports to another; none outlives a run.
@@ -1043,7 +1101,8 @@ export async function startDaemon(
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
     checkLoop: {
-      settings: (projectId) => prWatcher.settings(projectId),
+      // From the database alone: the board reads them while it starts, before the watcher exists.
+      settings: (projectId) => readWatchSettings(store.db, projectId),
       isTrusted: (path) => projectTrust.isTrusted(path),
       runner: boundedCheckRunner(),
     },
@@ -1058,7 +1117,7 @@ export async function startDaemon(
     idle: snapshots.idle.bind(snapshots),
     // A card raised from an agent's findings keeps automatic approval off (issue #79).
     suspendApproval: autoApprove.suspendCard.bind(autoApprove),
-    ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
+    ...present({ prPollIntervalMs: config.board.prPollIntervalMs || undefined }),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
@@ -1154,35 +1213,10 @@ export async function startDaemon(
     snapshots,
   });
   await maintenance.start();
-  // Issue #280: a newer version is applied by itself, only while nothing runs on the host. Made
-  // after the checker, which tells it after each check.
-  let autoUpdater: AutoUpdater | undefined;
-  // Checked in the background: a slow or unreachable release server never delays the boot.
-  const updates = config.updates.manifestUrl
-    ? new UpdateChecker({
-        manifestUrl: config.updates.manifestUrl,
-        checkIntervalH: config.updates.checkIntervalH,
-        currentVersion: DAEMON_VERSION,
-        onChecked: () => autoUpdater?.checked(),
-      })
-    : undefined;
-  const updater = updates
-    ? new DaemonUpdater({
-        manifest: () => updates.latest(),
-        dataDir: config.dataDir,
-        ctx: osServiceContext(false),
-      })
-    : undefined;
-  if (updates && updater) {
-    autoUpdater = new AutoUpdater({
-      enabled: () => config.updates.auto,
-      currentVersion: DAEMON_VERSION,
-      latest: updates.latest.bind(updates),
-      idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
-      apply: (proceed) => updater.apply(true, { proceed }),
-      log: logger.log.bind(logger),
-    });
-  }
+  const { updates, updater, autoUpdater } = createUpdates(config, {
+    idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
+    log: logger.log.bind(logger),
+  });
   void updates?.start();
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
   const telemetryStore = new TelemetryStore(store.db);
@@ -1470,6 +1504,57 @@ export async function startDaemon(
     const stale = manager.staleSessions(path);
     return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
   };
+  // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
+  const reviewComments = new ReviewComments({ db: store.db, changes, manager, board, central });
+  const complete = runtime.complete?.bind(runtime);
+  const reviewScanner = new SecretScanner(() => heldValues());
+  const cardReviews = complete
+    ? new CardReviews({
+        db: store.db,
+        card: (id) => {
+          const card = board.getCard(id);
+          return {
+            id: card.id,
+            projectId: card.projectId,
+            title: card.title,
+            description: card.description,
+            worktreePath: card.worktreePath,
+            running:
+              card.queued ||
+              ["starting", "running", "awaiting_permission"].includes(card.sessionStatus ?? ""),
+          };
+        },
+        diff: (id) => board.diff(id),
+        // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
+        // link on the way, no hard link), never a credential file, at most 20 KB.
+        spec: async (id) => {
+          const { specPath, worktreePath } = board.getCard(id);
+          if (!specPath || !worktreePath || credential(specPath)) return undefined;
+          return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
+        },
+        hold: (projectId) =>
+          reviewHold({
+            paused: hostPause.blocked() !== null,
+            quota: quota.blocked() !== null,
+            memory: memoryGate.blocked() !== null,
+            budget: board.budgetHeld(projectId),
+          }),
+        complete,
+        comments: reviewComments,
+        redact: (text) => reviewScanner.redact(text, false),
+        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
+        model: DEFAULT_MODELS.host.careful,
+        record: (cardId, worktree, tokens) =>
+          usageIndex.record({
+            at: new Date().toISOString(),
+            model: tokens.model,
+            tokens,
+            projectPath: worktree,
+            messageId: `card-review-${cardId}-${ulid()}`,
+            origin: "card",
+          }),
+      })
+    : undefined;
   const server = startServer({
     manager,
     opencode: {
@@ -1583,7 +1668,9 @@ export async function startDaemon(
     harnessApply: (path, parts, digests, options) =>
       applyHarness(path, parts, digests, { ...options, drafts: harnessDrafts }),
     // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
-    ...(runtime.complete ? { harnessDraft: (path: string) => harnessDrafts.draft(path) } : {}),
+    ...present({
+      harnessDraft: runtime.complete && ((path: string) => harnessDrafts.draft(path)),
+    }),
     harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
     harnessTemplates: new HarnessTemplates(
       join(config.dataDir, "harness-templates"),
@@ -1747,7 +1834,8 @@ export async function startDaemon(
     changes,
     sessionCommits,
     sessionPrs,
-    review: new ReviewComments({ db: store.db, changes, manager, board, central }),
+    review: reviewComments,
+    ...(cardReviews ? { cardReview: cardReviews } : {}),
     sessionFiles: new SessionFiles({ db: store.db }),
     ssh: sshTargets,
     // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
@@ -1852,13 +1940,7 @@ export async function startDaemon(
     terminal: await terminalInfo(env),
   });
 
-  const wsl =
-    config.wsl.length > 0
-      ? new WslSupervisor(config.wsl, {
-          logDir: join(config.dataDir, "logs"),
-          ...present({ command: options.wslCommand }),
-        })
-      : null;
+  const wsl = createWsl(config, options);
   await wsl?.start();
 
   // `pair --rotate` runs in another process: follow the token in the config file.
@@ -1876,11 +1958,7 @@ export async function startDaemon(
     `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
   );
   boardLoop.start();
-  if (config.allowedRoots.length === 0) {
-    logger.error(
-      'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
-    );
-  }
+  warnIfNoRoots(config, logger);
 
   let stopped: Promise<void> | null = null;
   return {

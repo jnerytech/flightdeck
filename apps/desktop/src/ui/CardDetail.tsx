@@ -240,6 +240,7 @@ export const CardDetail = memo(function CardDetail(props: {
                   features={{
                     bg: has("bg"),
                     watch: withWatch,
+                    secondOpinion: has("cardReview"),
                   }}
                   tab={tab}
                   arenaStart={arena.start}
@@ -343,6 +344,7 @@ export const CardDetail = memo(function CardDetail(props: {
           session={session}
           alwaysAllow={alwaysAllow}
           withReview={withReview}
+          withSecondOpinion={has("cardReview")}
         />
       </div>
     </Page>

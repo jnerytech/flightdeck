@@ -14,6 +14,7 @@ import { PrComments } from "../../ui/PrComments.tsx";
 import { SessionView } from "../../ui/SessionView.tsx";
 import { StatusBadge } from "../../ui/StatusBadge.tsx";
 import { TerminalButton } from "../../ui/TerminalButton.tsx";
+import { CardSecondOpinion } from "./card-second-opinion.tsx";
 
 /** The card's header actions: back, its state, its issue and synced item, its PR and checks, the terminal. */
 export function CardHeaderActions(
@@ -80,9 +81,20 @@ export type CardTab = "conversation" | "diff";
 
 /** What goes above a card's files: its review, given the changes it shows. */
 const reviewPanel =
-  (store: AppStore, hostId: string, card: Card) =>
+  (store: AppStore, hostId: string, card: Card, secondOpinion: boolean) =>
   (changes: ChangesResult, refresh: () => Promise<void>) => (
-    <CardReview store={store} hostId={hostId} card={card} changes={changes} refresh={refresh} />
+    <>
+      <CardReview store={store} hostId={hostId} card={card} changes={changes} refresh={refresh} />
+      {secondOpinion && (
+        <CardSecondOpinion
+          store={store}
+          hostId={hostId}
+          card={card}
+          changes={changes}
+          onReviewed={refresh}
+        />
+      )}
+    </>
   );
 
 /**
@@ -104,6 +116,8 @@ export function CardWork(
     session: SessionState | null;
     alwaysAllow: boolean;
     withReview: boolean;
+    /** The host offers the second-opinion review (#1446). */
+    withSecondOpinion: boolean;
   }>,
 ) {
   const t = useT();
@@ -137,7 +151,7 @@ export function CardWork(
             store={store}
             hostId={hostId}
             target={`card:${cardId}`}
-            extra={reviewPanel(store, hostId, card)}
+            extra={reviewPanel(store, hostId, card, props.withSecondOpinion)}
           />
         </div>
       );

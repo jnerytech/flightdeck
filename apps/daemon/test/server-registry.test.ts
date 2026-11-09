@@ -186,6 +186,7 @@ describe("server-registry", () => {
         "card.move",
         "card.pr.create",
         "card.pr.merge",
+        "card.review",
         "card.spec",
         "card.start",
         "card.startArena",

@@ -809,13 +809,52 @@ const CardDeps = {
   autoStart: z.object({ workflow: z.string().nullable() }).nullable().optional(),
 };
 
-/** Issue #1361: a card's switch for "keep going until the checks pass". */
+/** Issue #1361: why a card's check loop ended; the app names each in its language. */
+export const CheckLoopReason = z.enum([
+  "passed",
+  "rounds_spent",
+  "budget",
+  "quota",
+  "memory",
+  "person_turn",
+  "stopped_by_you",
+  "session_ended",
+  "no_result",
+  "check_loop_confirm",
+  "check_loop_untrusted",
+  "check_loop_mode",
+  "check_refused",
+  "check_error",
+  "turn_error",
+  "interrupted",
+]);
+export type CheckLoopReason = z.infer<typeof CheckLoopReason>;
+
+/** Issue #1361: the last line of a card's loop: a round sent, or how the loop ended. */
+export const CheckLoopLine = z.object({
+  state: z.enum(["sent", "ended"]),
+  /** On an end; a reason a newer app does not know reads as `null`. */
+  reason: CheckLoopReason.nullable().catch(null),
+  /** The failed check's command, masked; `null` when no check failed. */
+  command: z.string().nullable(),
+  exitCode: z.number().int().nullable(),
+  at: z.string(),
+});
+export type CheckLoopLine = z.infer<typeof CheckLoopLine>;
+
+/** Issue #1361: a card's switch for "keep going until the checks pass", and how its loop goes. */
 export const CheckLoopSwitch = z.object({
   on: z.boolean(),
   /** The card's own cap on rounds, below the project's; `null` takes the project's. */
   rounds: z.number().int().min(1).max(10).nullable(),
   /** The person confirmed that the checks run the card's code outside its permission mode. */
   confirmed: z.boolean(),
+  /** What the loop does now: its checks run, or a round it sent is being worked on. */
+  active: z.enum(["checking", "fixing"]).nullable().optional(),
+  /** Rounds sent in the loop going on, and the most it may send. */
+  round: z.number().int().min(0).optional(),
+  max: z.number().int().min(1).optional(),
+  last: CheckLoopLine.nullable().optional(),
 });
 export type CheckLoopSwitch = z.infer<typeof CheckLoopSwitch>;
 
@@ -1015,6 +1054,26 @@ export interface FileListing {
 
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
+
+/** Issue #1439: a finding of a second-opinion review. */
+export const ReviewFinding = z.object({
+  path: z.string(),
+  line: z.number().int().positive(),
+  severity: z.enum(["blocker", "high", "medium", "low"]),
+  body: z.string(),
+});
+export type ReviewFinding = z.infer<typeof ReviewFinding>;
+
+/** Issue #1439: a card's review: its findings are reviewer drafts; `loose` anchored nowhere. */
+export const CardReviewResult = z.object({
+  state: z.enum(["done", "failed"]),
+  summary: z.string(),
+  anchored: z.number().int().nonnegative(),
+  loose: z.array(ReviewFinding),
+  cached: z.boolean(),
+  moved: z.boolean(),
+});
+export type CardReviewResult = z.infer<typeof CardReviewResult>;
 
 // Phase 11: review of the changes of any session or card.
 /**
@@ -1965,6 +2024,9 @@ export const ReviewComment = z.object({
   sentAt: z.string().nullable(),
   /** The quoted lines are no longer in the file. */
   outdated: z.boolean(),
+  /** Issue #1439: a second opinion's finding, until the person edits it. */
+  author: z.literal("reviewer").optional(),
+  severity: z.enum(["blocker", "high", "medium", "low"]).optional(),
 });
 export type ReviewComment = z.infer<typeof ReviewComment>;
 
@@ -3648,6 +3710,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.validationTemplate", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Issue #1439: a second-opinion review of the card's diff; near only. */
+  cmd(
+    "card.review",
+    z.object({ cardId: z.string(), language: z.enum(["en", "pt-BR"]).optional() }).strict(),
+  ),
   /** Issue #100: teleport, the source side (feature `teleport`). */
   cmd("teleport.prepare", TeleportPreparePayload),
   cmd("teleport.read", TeleportReadPayload),
@@ -5721,6 +5788,7 @@ export interface CommandResults {
   "card.start": Card;
   "card.stop": Card;
   "card.diff": CardDiff;
+  "card.review": CardReviewResult;
   "assistant.run": AssistantResult;
   "assistant.cancel": undefined;
   "assistant.context": AssistantContextBundle;
