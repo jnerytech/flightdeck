@@ -151,6 +151,10 @@ export const Config = z.object({
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
     .default(() => ({ pauseAt: 0.9 })),
+  /** Issue #1343: from `pauseAt` (a share of used memory) on, new cards wait for memory to free up. */
+  resources: z
+    .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
+    .default(() => ({ pauseAt: 0.9 })),
   /** How the host presents itself (phase 33): the default mode and whether the app offers the switch. */
   ui: z
     .object({

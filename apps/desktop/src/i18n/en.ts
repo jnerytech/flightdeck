@@ -1635,6 +1635,7 @@ export const en: Dictionary = {
     harnessTemplates: "sharing the Claude Code setup as a template",
     keepAwake: "keeping the computer awake",
     quotaPause: "the quota guard for new cards",
+    memoryPause: "the memory hold for new cards",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
@@ -4039,6 +4040,7 @@ export const en: Dictionary = {
     queued: "queued",
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
+    waitingMemory: "waiting for memory",
     addCard: "Add card",
     addCardTo: "Add card to {column}",
     empty: "Empty",
@@ -5268,6 +5270,12 @@ export const en: Dictionary = {
   },
   resources: {
     title: "Resources",
+    guard: {
+      label: "New cards wait from memory at",
+      labelFor: "New cards wait from memory at, on {host}",
+      off: "Never",
+      hint: "Only new cards wait, and start once memory frees up; sessions already running are never stopped.",
+    },
     memory: "Memory",
     disk: "Disk",
     load: "Load {n}%",
