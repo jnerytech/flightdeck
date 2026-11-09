@@ -15,6 +15,6 @@ process.exit(
   await sonarLeft(process.argv.slice(2), {
     fetch: (url) => fetch(url, { signal: AbortSignal.timeout(30_000) }),
     git,
-    log: (line) => console.log(line),
+    log: (line) => console.log(line), // NOSONAR: lib/sonar-left.ts passes API and git text through oneLine (no control or bidi characters) and checks the analysed revision is hex
   }),
 );
