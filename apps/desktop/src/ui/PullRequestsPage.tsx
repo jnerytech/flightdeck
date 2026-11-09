@@ -77,6 +77,11 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
   const [summary, setSummary] = useState("");
   const updateAll = useRef<HTMLButtonElement>(null);
+  /** Runs finished: the button was off while each ran, so the focus goes back once it is on. */
+  const [ran, setRan] = useState(0);
+  useEffect(() => {
+    if (ran > 0) updateAll.current?.focus();
+  }, [ran]);
   const updateEvery = async () => {
     if (updating) return;
     const hostOf = new Map(rows.map((row) => [row.card, row.hostId]));
@@ -101,8 +106,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
     });
     setSummary(updateSummary(t, results));
     setUpdating(null);
-    // The button was off while it ran: the focus goes back to it.
-    updateAll.current?.focus();
+    setRan((n) => n + 1);
   };
 
   const target = merging ? state.cards[sessionKey(merging.hostId, merging.cardId)] : undefined;
@@ -164,7 +168,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
               variant="outline"
               size="sm"
               disabled={updating !== null}
-              onClick={() => updateEvery()}
+              onClick={() => void updateEvery()}
             >
               {t("board.updateSelected", { n: updatable.length })}
             </ActionButton>
