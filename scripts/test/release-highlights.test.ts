@@ -109,10 +109,14 @@ function fakeGh(
 async function draft(args: string[], gh: HighlightsDeps["gh"]) {
   const out: string[] = [];
   const err: string[] = [];
+  // A crash is a result too, so a test sees it as a wrong value, not as its own error.
   const code = await releaseHighlights(args, {
     gh,
     log: (line) => out.push(line),
     warn: (line) => err.push(line),
+  }).catch((error: unknown) => {
+    err.push(`threw ${String(error)}`);
+    return -1;
   });
   return { code, out: out.join("\n"), err };
 }
@@ -156,7 +160,7 @@ describe("release highlights draft (#1334)", () => {
     const { gh } = fakeGh({
       titles: { code: 1, stdout: JSON.stringify(partial), stderr: "NOT_FOUND" },
     });
-    const { code, out } = await draft([], gh);
+    const { code, out, err } = await draft([], gh);
     expect(code).toBe(0);
     expect(out).toBe(
       DRAFT.replace(
@@ -164,6 +168,10 @@ describe("release highlights draft (#1334)", () => {
         "- scheduled backups (#14, #6)",
       ),
     );
+    // The coordinator is told which number GitHub did not find.
+    expect(err).toEqual([
+      "release-highlights: GitHub did not find #6; its bullet uses the PR title",
+    ]);
   });
 
   test("--since names the tag; a tag that is not a version is refused before any gh call", async () => {
@@ -204,6 +212,21 @@ describe("release highlights draft (#1334)", () => {
     const { code, out, err } = await draft([], garbled.gh);
     expect([code, out, err.length]).toEqual([1, "", 1]);
     expect(err[0]?.startsWith("release-highlights: could not read the merged PRs: ")).toBe(true);
+    // A long answer is cut, so an HTML page does not flood the terminal.
+    const long = fakeGh({ page2: ok(`<html>${"x".repeat(500)}`) });
+    expect((await draft([], long.gh)).err[0]?.length).toBeLessThanOrEqual(260);
+  });
+
+  test("a search result that is not a PR is a GitHub read error, not a crash", async () => {
+    for (const node of [{}, null]) {
+      const search = { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [node] };
+      const odd = fakeGh({ page2: ok(JSON.stringify({ data: { search } })) });
+      expect(await draft([], odd.gh)).toEqual({
+        code: 1,
+        out: "",
+        err: ["release-highlights: could not read the merged PRs: a result is not a PR"],
+      });
+    }
   });
 });
 
@@ -283,6 +306,7 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
     expect(areaOf("Something else entirely")).toBe("Other");
     // Short words match whole words only.
     expect(areaOf("A crosshair cursor in the bootstrap view")).toBe("Other");
+    expect(areaOf("Personal notes in a forked unlinted chatter view")).toBe("Other");
   });
 
   test("a title GitHub gives for a PR number drops its type(scope): prefix", () => {
