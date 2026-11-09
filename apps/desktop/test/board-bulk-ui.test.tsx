@@ -99,6 +99,21 @@ function setup(
     cards?: object[];
     /** workflow.list fails: hostCommand answers null, as it does after raising the banner. */
     noWorkflows?: boolean;
+    /** The five-hour window's use, 0.42 by default; 0.9 and over is the host's pause limit. */
+    used?: number;
+    /**
+     * #1414: what resources.get answers on a host that offers memoryPause: its memory, its hold, and
+     * whether the hold holds now (absent: an older host that does not say).
+     */
+    memory?: { totalBytes: number; freeBytes: number; pauseAt: number | null; holding?: boolean };
+    /** #1406: how many commits of its base each card lacks, as changes.get says. */
+    behind?: Record<string, number>;
+    /** #1406: the cards whose update conflicts (the host aborts the rebase). */
+    conflict?: string[];
+    /** #1406: each card.updateFromBase waits until this resolves. */
+    holdUpdate?: Promise<void>;
+    /** #1406: changes.get throws, as a dropped link may. */
+    throwChanges?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -106,7 +121,8 @@ function setup(
   });
   store.i18n.start();
   const internals = store as unknown as { update(p: object): void };
-  internals.update({ hosts: [host] });
+  const features = options.memory ? ["resources", "memoryPause"] : [];
+  internals.update({ hosts: [{ ...host, hostInfo: { daemonVersion: "x", features } }] });
   internals.update({
     cards: Object.fromEntries(
       (options.cards ?? CARDS).map((c) => [`h1/${(c as { id: string }).id}`, c]),
@@ -119,7 +135,7 @@ function setup(
           windows: [
             {
               window: "five_hour",
-              utilization: 0.42,
+              utilization: options.used ?? 0.42,
               status: "allowed",
               resetsAt: "2026-11-09T15:00:00Z",
               readAt: new Date().toISOString(),
@@ -133,6 +149,8 @@ function setup(
   if (options.budgets) internals.update({ budgets: { h1: options.budgets } });
   const commands: Call[] = [];
   const requests: Call[] = [];
+  /** The answer to resources.get, once asked: a test waits on it before it says what is missing. */
+  const read: { answer: Promise<unknown> } = { answer: Promise.resolve() };
   store.hostCommand = (async (_hostId: string, type: string, payload: unknown) => {
     commands.push([type, payload]);
     if (type === "board.get") return { project: { id: "p1", name: "api" }, cards: [] };
@@ -155,7 +173,32 @@ function setup(
   }) as never;
   store.hostRequest = (async (_hostId: string, type: string, payload: unknown) => {
     requests.push([type, payload]);
+    if (type === "resources.get" && options.memory) {
+      const { totalBytes, freeBytes, pauseAt, holding } = options.memory;
+      const data = { memory: { totalBytes, freeBytes }, memoryPauseAt: pauseAt };
+      read.answer = Promise.resolve({
+        ok: true,
+        data: holding === undefined ? data : { ...data, memoryHolding: holding },
+      });
+      return read.answer;
+    }
     const id = (payload as { cardId?: string }).cardId ?? "";
+    if (type === "changes.get" && options.throwChanges) throw new Error("link dropped");
+    if (type === "changes.get") {
+      const target = (payload as { target: string }).target.replace(/^card:/, "");
+      const behind = options.behind?.[target] ?? 1;
+      return { ok: true, data: { files: [], base: "main", position: { ahead: 1, behind } } };
+    }
+    if (type === "card.updateFromBase") await options.holdUpdate;
+    if (type === "card.updateFromBase" && options.conflict?.includes(id)) {
+      return {
+        ok: false,
+        code: "invalid_state",
+        message: "conflict updating with main: src/a.ts",
+        reason: "rebase_conflict",
+        params: { base: "main", files: "src/a.ts" },
+      };
+    }
     return options.refuse?.includes(id)
       ? { ok: false, message: "the host refused" }
       : { ok: true, data: {} };
@@ -173,7 +216,13 @@ function setup(
       />
     </TContext.Provider>,
   );
-  return { store, commands, requests, ...ro };
+  /** Waits until the confirm has had resources.get's answer, and React has drawn it. */
+  const memoryRead = () =>
+    act(async () => {
+      await read.answer;
+      await Promise.resolve();
+    });
+  return { store, commands, requests, memoryRead, ...ro };
 }
 
 const li = (title: string) => screen.getByLabelText(`Card ${title}`);
@@ -504,6 +553,121 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
   });
 });
 
+/** Opens the Start confirm of A and B and waits for the host's limit. */
+const openStart = async (language: "en" | "pt-BR" = "en") => {
+  await ready();
+  await ctrl("A", "B");
+  const [group, start] = language === "en" ? ["Selection", "Start 2"] : ["Seleção", "Iniciar 2"];
+  await click(button(bar(group), start));
+  await settleMaybe(() => /fila|queue|agora|now/.test(dialogText()));
+};
+const asked = (requests: Call[]) => requests.some(([type]) => type === "resources.get");
+/** The queue line says a card starts now: "1 starts now", "All of them start now", "iniciam agora". */
+const startsNow = () => /\b(now|agora)\b/.test(dialogText());
+
+// #1414: what #1400 left out. The memory hold is read when the confirm opens, not only from a
+// queued card's reason, and with any hold the queue line says they all wait.
+describe("board-bulk-ui: the holds agree with the queue line (#1414)", () => {
+  test("the host's hold holds with nothing queued yet: the memory line, and they all wait", async () => {
+    const memory = { totalBytes: 100, freeBytes: 8, pauseAt: 0.9, holding: true };
+    const en = setup({ memory });
+    await openStart();
+    await en.memoryRead();
+    const english = [
+      asked(en.requests),
+      dialogText().includes("alfa is short of memory: new cards wait until it frees up."),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ];
+    en.restore();
+    cleanup();
+    const pt = setup({ language: "pt-BR", memory });
+    await openStart("pt-BR");
+    await pt.memoryRead();
+    expect([
+      ...english,
+      dialogText().includes("alfa está sem memória: os cards novos esperam ela liberar."),
+      dialogText().includes("Eles entram na fila do board."),
+      startsNow(),
+    ]).toEqual([true, true, true, false, true, true, false]);
+    pt.restore();
+  });
+
+  test("a margin under the share, the host still holds: the line follows the host, not the share", async () => {
+    const { memoryRead, restore } = setup({
+      memory: { totalBytes: 100, freeBytes: 11, pauseAt: 0.9, holding: true },
+    });
+    await openStart();
+    await memoryRead();
+    expect([dialogText().includes("alfa is short of memory"), startsNow()]).toEqual([true, false]);
+    restore();
+  });
+
+  test("over the share but the host does not hold (no reading, as on macOS): no line, the split stands", async () => {
+    const { memoryRead, restore } = setup({
+      memory: { totalBytes: 100, freeBytes: 3, pauseAt: 0.9, holding: false },
+    });
+    await openStart();
+    await memoryRead();
+    expect([dialogText().includes("memory"), startsNow()]).toEqual([false, true]);
+    restore();
+  });
+
+  test("an older host that does not say, or one without the hold: no memory line", async () => {
+    const older = setup({ memory: { totalBytes: 100, freeBytes: 3, pauseAt: 0.9 } });
+    await openStart();
+    await older.memoryRead();
+    const silent = [asked(older.requests), dialogText().includes("memory"), startsNow()];
+    older.restore();
+    cleanup();
+    const none = setup();
+    await openStart();
+    await none.memoryRead();
+    expect([...silent, asked(none.requests), dialogText().includes("memory")]).toEqual([
+      true,
+      false,
+      true,
+      false,
+      false,
+    ]);
+    none.restore();
+  });
+
+  test("the quota over its pause limit: the queue line says they all wait, in both languages", async () => {
+    const en = setup({ quota: true, used: 0.95 });
+    await openStart();
+    const english = [
+      dialogText().includes("alfa is over its pause limit"),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ];
+    en.restore();
+    cleanup();
+    const pt = setup({ language: "pt-BR", quota: true, used: 0.95 });
+    await openStart("pt-BR");
+    expect([
+      ...english,
+      dialogText().includes("alfa passou do limite de pausa"),
+      dialogText().includes("Eles entram na fila do board."),
+      startsNow(),
+    ]).toEqual([true, true, false, true, true, false]);
+    pt.restore();
+  });
+
+  test("a budget that holds: the queue line says they all wait", async () => {
+    const { restore } = setup({
+      budgets: [{ id: "b", scope: "host", projectKey: null, action: "queue", fraction: 1 }],
+    });
+    await openStart();
+    expect([
+      dialogText().includes("alfa reached a budget that holds new cards"),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ]).toEqual([true, true, false]);
+    restore();
+  });
+});
+
 /** The focused element's text and the card or bar it sits in: a check of where the focus went. */
 const focusAt = () => {
   const el = document.activeElement as HTMLElement | null;
@@ -592,6 +756,155 @@ describe("board-bulk-ui: the conflict radar badge on a card (#1405)", () => {
       li("A").textContent?.includes("May conflict with B"),
       li("B").textContent?.includes("May conflict"),
     ]).toEqual([true, false]);
+    restore();
+  });
+});
+
+// #1406: Update from the base for the selection, after main moved. It takes the idle cards with a
+// branch, one after the other, leaves a current card alone, stops only a conflicted card, and the
+// summary names each group.
+const branched = (id: string, position: number, over: object = {}) =>
+  card(id, "review", position, {
+    branch: `fd/${id.toLowerCase()}`,
+    worktreePath: `/w/${id}`,
+    sessionStatus: "idle",
+    sessionId: `s-${id}`,
+    ...over,
+  });
+const UPDATABLE = [...CARDS, branched("F", 1), branched("G", 2), branched("H", 3)];
+const updated = (requests: Call[]) => started(requests, "card.updateFromBase");
+/** The board's notice, without its Dismiss button. */
+const noticeText = () =>
+  screen
+    .queryAllByRole("button", { name: /^Dismiss|^Dispensar/ })
+    .map((b) =>
+      [...(b.parentElement?.childNodes ?? [])]
+        .filter((node) => node !== b)
+        .map((node) => node.textContent ?? "")
+        .join("")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .join("");
+
+describe("board-bulk-ui: Update from the base for the selection (#1406)", () => {
+  test("the bar counts only the idle cards with a branch, and shows the action only when there is one", async () => {
+    const { restore } = setup({ cards: UPDATABLE });
+    await ready();
+    await ctrl("A", "B");
+    const none =
+      within(bar() as HTMLElement).queryByRole("button", { name: /from the base/ }) === null;
+    await ctrl("D", "F", "G");
+    expect([
+      none,
+      within(bar() as HTMLElement).queryByRole("button", { name: "Update 2 from the base" }) !==
+        null,
+    ]).toEqual([true, true]);
+    restore();
+  });
+
+  test("it runs card by card with its progress on the bar, then sums up; a conflicted card stays selected", async () => {
+    let release = () => {};
+    const holdUpdate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { requests, restore } = setup({
+      cards: UPDATABLE,
+      behind: { F: 2, G: 0, H: 1 },
+      conflict: ["H"],
+      holdUpdate,
+    });
+    await ready();
+    await ctrl("F", "G", "H");
+    const update = button(bar(), "Update 3 from the base");
+    update.focus();
+    await click(update);
+    await settleMaybe(() => (bar()?.textContent ?? "").includes("Updating 0 of 3…"));
+    const during = {
+      progress: (bar()?.textContent ?? "").includes("Updating 0 of 3…"),
+      off: update.hasAttribute("disabled"),
+    };
+    await act(async () => {
+      release();
+    });
+    await settleMaybe(() => noticeText().includes("Updated:"));
+    expect({
+      during,
+      // G is on its base already: it is not rebased.
+      asked: updated(requests),
+      notice: noticeText(),
+      selected: selected(),
+      focus: focusAt().text,
+    }).toEqual({
+      during: { progress: true, off: true },
+      asked: ["F", "H"],
+      notice:
+        "Updated: F. Already current: G. Conflict, left as it was: H (Updating with main conflicts in: src/a.ts).",
+      selected: ["H"],
+      focus: "Update 1 from the base",
+    });
+    restore();
+  });
+
+  test("a card the host refuses is named as not updated, with why", async () => {
+    const { restore } = setup({ cards: UPDATABLE, refuse: ["G"] });
+    await ready();
+    await ctrl("F", "G");
+    await click(button(bar(), "Update 2 from the base"));
+    await settleMaybe(() => noticeText().includes("Not updated"));
+    expect([noticeText(), selected()]).toEqual([
+      "Updated: F. Not updated: G (the host refused).",
+      ["G"],
+    ]);
+    restore();
+  });
+
+  test("a request that throws does not leave the bar stuck: the cards are named as not updated", async () => {
+    const { restore } = setup({ cards: UPDATABLE, throwChanges: true });
+    await ready();
+    await ctrl("F", "G");
+    await click(button(bar(), "Update 2 from the base"));
+    await settleMaybe(() => !button(bar(), "Update 2 from the base").hasAttribute("disabled"));
+    expect([
+      button(bar(), "Update 2 from the base").hasAttribute("disabled"),
+      (bar()?.textContent ?? "").includes("Updating"),
+      noticeText(),
+    ]).toEqual([false, false, "Not updated: F (link dropped), G (link dropped)."]);
+    restore();
+  });
+
+  test("at 390 the action is under ⋯ with Move to and Discard", async () => {
+    const { requests, resize, restore } = setup({ cards: UPDATABLE });
+    await ready();
+    await resize(358);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^In review/ }));
+    });
+    await ctrl("F", "G");
+    const more = button(bar(), "More actions for the selection");
+    await act(async () => {
+      fireEvent.pointerDown(more, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const item = screen.queryByRole("menuitem", { name: "Update 2 from the base" });
+    expect(item).not.toBeNull();
+    await click(item as HTMLElement);
+    await settleMaybe(() => noticeText().includes("Updated:"));
+    // Both went: the selection is empty, so the bar is gone.
+    expect([bar() === null, updated(requests), noticeText()]).toEqual([
+      true,
+      ["F", "G"],
+      "Updated: F, G.",
+    ]);
+    restore();
+  });
+
+  test("pt-BR: Atualizar com a base, and the summary in Portuguese", async () => {
+    const { restore } = setup({ language: "pt-BR", cards: UPDATABLE, behind: { G: 0 } });
+    await ready();
+    await ctrl("F", "G");
+    await click(button(bar("Seleção"), "Atualizar 2 com a base"));
+    await settleMaybe(() => noticeText().includes("Atualizados"));
+    expect(noticeText()).toBe("Atualizados: F. Já em dia: G.");
     restore();
   });
 });

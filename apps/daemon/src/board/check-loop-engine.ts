@@ -6,29 +6,12 @@
  * as it always did. Between, the checks run; on a failure a round goes into the same session. Every
  * way out of a loop that holds the slot releases it exactly once.
  */
-import type { PermissionMode } from "@flightdeck/protocol";
+import type { CheckLoopReason, PermissionMode } from "@flightdeck/protocol";
 import { type CheckOutcome, masked } from "../watch/check-run.ts";
 import { confirmationHash } from "./check-loop.ts";
 
-/** Why a loop ended; the app names each in its language, the daemon writes no prose for it. */
-export type CheckLoopReason =
-  | "passed"
-  | "rounds_spent"
-  | "budget"
-  | "quota"
-  | "memory"
-  | "person_turn"
-  | "stopped_by_you"
-  | "session_ended"
-  | "no_result"
-  | "check_loop_confirm"
-  | "check_loop_untrusted"
-  | "check_loop_mode"
-  | "check_refused"
-  /** The checks could not be run (a spawn or a write that failed). */
-  | "check_error"
-  /** The turn the loop waited on ended in an error. */
-  | "turn_error";
+/** Why a loop ended: the protocol's list, so a reason the daemon writes is one the app knows. */
+export type { CheckLoopReason } from "@flightdeck/protocol";
 
 /** What the loop needs of a card. */
 export interface LoopCard {
@@ -78,6 +61,8 @@ export interface CheckLoopEffects {
   place(cardId: string): void;
   record(cardId: string, record: RoundRecord): void;
   timer: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
+  /** The card's loop changed in a way no record says (its checks started): the app is told. */
+  notify?(cardId: string): void;
 }
 
 /** How long a held slot waits for the turn's result after the session went idle. */
@@ -180,6 +165,8 @@ interface Loop {
   abort: AbortController | null;
   timer: unknown;
   running: Promise<void> | null;
+  /** The round messages sent whose echo has not come back yet, by their text. */
+  echoes: string[];
 }
 
 export class CheckLoopEngine {
@@ -188,6 +175,11 @@ export class CheckLoopEngine {
   private readonly released = new Set<string>();
   /** Cards whose turn result already passed without a loop: their idle is the board's to release. */
   private readonly passed = new Set<string>();
+  /**
+   * Every check still running per card, kept until it has exited: a loop that ended, or a run that
+   * a later result replaced, may still have a check exiting in the worktree.
+   */
+  private readonly inflight = new Map<string, Set<Promise<void>>>();
 
   constructor(private readonly fx: CheckLoopEffects) {}
 
@@ -241,14 +233,31 @@ export class CheckLoopEngine {
     current.phase = "checking";
     current.abort = new AbortController();
     current.running = this.check(cardId, current, current.abort.signal);
+    this.track(cardId, current.running);
+    // Told after the check runs: a card that cannot be read now never leaves a loop stuck.
+    try {
+      this.fx.notify?.(cardId);
+    } catch {
+      // Nothing to show; the loop goes on and its end is told as usual.
+    }
     return "hold";
   }
 
   /** The session errored or ended while the loop held its slot. */
-  onSessionGone(cardId: string): void {
+  onSessionGone(cardId: string): boolean {
     const loop = this.loops.get(cardId);
-    if (!loop) return;
+    if (!loop) return false;
     this.end(cardId, loop, "session_ended", { release: true });
+    return true;
+  }
+
+  /** The board is stopping: every loop is forgotten, its check aborted and its timer cleared. */
+  dispose(): void {
+    for (const loop of this.loops.values()) {
+      loop.abort?.abort();
+      this.clearTimer(loop);
+    }
+    this.loops.clear();
   }
 
   /** The person wrote into the session or interrupted it: the loop steps aside, nothing is sent. */
@@ -270,11 +279,52 @@ export class CheckLoopEngine {
     if (loop.phase === "awaiting_result") loop.phase = "fixing";
   }
 
-  /** The person stopped, discarded or moved the card. */
-  onStop(cardId: string): void {
+  /**
+   * The person stopped, discarded or moved the card: the loop ends now. The promise settles when
+   * its aborted check has exited, so a caller that removes the worktree can wait for it.
+   */
+  onStop(cardId: string): Promise<void> {
+    const loop = this.loops.get(cardId);
+    if (loop) this.end(cardId, loop, "stopped_by_you", { release: true });
+    return this.drain(cardId);
+  }
+
+  /**
+   * What the card's loop does now, for the app: checking, or fixing a round it sent (a wait for the
+   * result of a turn counts as what came before it); `null` with no loop.
+   */
+  phaseOf(cardId: string): "checking" | "fixing" | null {
+    const loop = this.loops.get(cardId);
+    if (!loop) return null;
+    if (loop.phase === "awaiting_result") return loop.sent > 0 ? "fixing" : "checking";
+    return loop.phase;
+  }
+
+  /** The rounds the card's loop has sent so far. */
+  sentOf(cardId: string): number {
+    return this.loops.get(cardId)?.sent ?? 0;
+  }
+
+  /** Settles once every check the card still has running has exited. */
+  async drain(cardId: string): Promise<void> {
+    await Promise.all([...(this.inflight.get(cardId) ?? [])]);
+  }
+
+  /**
+   * A user message reached the card's session (its echo, by whatever path wrote it). The loop's own
+   * round is expected once per round sent; anything else is outside input, and the loop steps aside.
+   */
+  onUserMessage(cardId: string, text: string): void {
     const loop = this.loops.get(cardId);
     if (!loop) return;
-    this.end(cardId, loop, "stopped_by_you", { release: true });
+    // Matched by its text: an outside message that reaches the session before a queued round is
+    // never mistaken for the round's echo.
+    const own = loop.echoes.indexOf(text);
+    if (own >= 0) {
+      loop.echoes.splice(own, 1);
+      return;
+    }
+    this.onPersonTurn(cardId);
   }
 
   /** Settles when the card's running checks are done (for the tests and a clean stop). */
@@ -282,8 +332,26 @@ export class CheckLoopEngine {
     await this.loops.get(cardId)?.running;
   }
 
+  private track(cardId: string, running: Promise<void>): void {
+    const set = this.inflight.get(cardId) ?? new Set<Promise<void>>();
+    set.add(running);
+    this.inflight.set(cardId, set);
+    void running.finally(() => {
+      set.delete(running);
+      if (set.size === 0 && this.inflight.get(cardId) === set) this.inflight.delete(cardId);
+    });
+  }
+
   private fresh(): Loop {
-    return { phase: "awaiting_result", runs: 0, sent: 0, abort: null, timer: null, running: null };
+    return {
+      phase: "awaiting_result",
+      runs: 0,
+      sent: 0,
+      abort: null,
+      timer: null,
+      running: null,
+      echoes: [],
+    };
   }
 
   private isLoopCard(cardId: string): boolean {
@@ -345,7 +413,7 @@ export class CheckLoopEngine {
     // Read again: a mid-run edit of the checks or the rounds counts before a round is sent.
     const fresh = this.fx.settings(card.projectId);
     const rounds = this.fx.card(cardId)?.rounds ?? card.rounds;
-    const max = Math.min(rounds ?? fresh.checkRounds, fresh.checkRounds);
+    const max = roundsCap(rounds, fresh.checkRounds);
     const stop = this.gate(cardId, fresh) ?? (loop.sent >= max ? "rounds_spent" : null);
     const limit = stop ?? this.fx.limit(cardId);
     if (limit) return this.end(cardId, loop, limit, { release: true, place: true, outcome });
@@ -359,11 +427,14 @@ export class CheckLoopEngine {
       exitCode: outcome.exitCode,
       timedOut: outcome.timedOut,
     });
-    this.fx.send(cardId, roundMessage(loop.sent, max, outcome));
-    // The round's turn must start: a session that never goes busy does not keep the slot.
+    // The round's turn must start: a session that never goes busy does not keep the slot. Armed
+    // before the send, since the busy and the echo the send causes may come during it.
     loop.timer = this.fx.timer.set(() => {
       if (this.loops.get(cardId) === loop) this.end(cardId, loop, "no_result", { release: true });
     }, ROUND_START_MS);
+    const round = roundMessage(loop.sent, max, outcome);
+    loop.echoes.push(round);
+    this.fx.send(cardId, round);
   }
 
   /**
@@ -433,6 +504,17 @@ export class CheckLoopEngine {
       // A placement that failed leaves the card where it is; the slot still goes back below.
     } finally {
       if (how.release) this.releaseSafely(cardId);
+      // The record told the app while the loop was still going: the card is told again, now idle.
+      try {
+        this.fx.notify?.(cardId);
+      } catch {
+        // A card that cannot be read any more has nothing to show.
+      }
     }
   }
+}
+
+/** The rounds a card's loop may send: the card's own cap when lower, else the project's. */
+export function roundsCap(card: number | null, project: number): number {
+  return Math.min(card ?? project, project);
 }

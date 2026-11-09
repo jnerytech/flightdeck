@@ -244,3 +244,50 @@ describe("memory-pause: the hold is a host setting the app reads and changes (#1
     expect((await loadConfig(file)).resources.pauseAt).toBeNull();
   });
 });
+
+// #1414: the confirm asks whether the gate holds; asking never changes what the gate remembers, so a
+// release the question sees first still reaches the watchers on the gate's next look.
+describe("memory-gate: holds() asks without changing the gate (#1414)", () => {
+  test("holds() follows the margin, and the watcher still hears the release it saw first", () => {
+    const g = gateAt(0.95);
+    let heard = 0;
+    cleanups.push(g.gate.watch(() => heard++));
+    const over = g.gate.holds();
+    g.set(used(0.89));
+    const margin = g.gate.holds();
+    g.set(used(0.5));
+    const under = g.gate.holds();
+    g.advance(15_000);
+    expect([over, margin, under, heard]).toEqual([true, true, false, 1]);
+  });
+
+  test("no threshold or no reading never holds", () => {
+    const off = gateAt(0.99, null);
+    const unread = gateAt(0.99);
+    unread.set(null);
+    expect([off.gate.holds(), unread.gate.holds()]).toEqual([false, false]);
+  });
+});
+
+// #1414: the app's Start confirm reads whether the hold keeps new cards waiting now, from the gate
+// itself: its release margin, and no hold where the host has no reading (macOS counts the cache).
+describe("memory-pause: resources.get says whether the hold holds now (#1414)", () => {
+  test("over the share it holds, a margin under it still holds, well under it does not", async () => {
+    let reading: MemoryReading | null = used(0.95);
+    const { client } = await daemon(() => reading);
+    const holding = async () =>
+      (await client.data<ResourcesSnapshot>("resources.get", {}))?.memoryHolding;
+    const over = await holding();
+    reading = used(0.89);
+    const margin = await holding();
+    reading = used(0.5);
+    const under = await holding();
+    expect([over, margin, under]).toEqual([true, true, false]);
+  });
+
+  test("a host with no memory reading never holds, whatever its share", async () => {
+    const { client } = await daemon(() => null);
+    const snapshot = await client.data<ResourcesSnapshot>("resources.get", {});
+    expect([snapshot?.memoryPauseAt, snapshot?.memoryHolding]).toEqual([0.9, false]);
+  });
+});

@@ -115,6 +115,7 @@ import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
+import { present } from "./present.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -220,7 +221,7 @@ import { Vault } from "./vault/vault.ts";
 import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
 import { Traces } from "./watch/trace.ts";
-import { PrWatcher } from "./watch/watch.ts";
+import { PrWatcher, readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
@@ -775,6 +776,59 @@ async function terminalInfo(env: Record<string, string | undefined>) {
   };
 }
 
+/**
+ * The release checker, the daemon's updater and, with both, the auto updater (#280): a newer
+ * version is applied by itself, only while nothing runs on the host. The checker is made first and
+ * tells the auto updater after each check; it is checked in the background, so a slow or
+ * unreachable release server never delays the boot.
+ */
+function createUpdates(config: Config, host: { idle: () => boolean; log: (line: string) => void }) {
+  let autoUpdater: AutoUpdater | undefined;
+  const updates = config.updates.manifestUrl
+    ? new UpdateChecker({
+        manifestUrl: config.updates.manifestUrl,
+        checkIntervalH: config.updates.checkIntervalH,
+        currentVersion: DAEMON_VERSION,
+        onChecked: () => autoUpdater?.checked(),
+      })
+    : undefined;
+  const updater = updates
+    ? new DaemonUpdater({
+        manifest: () => updates.latest(),
+        dataDir: config.dataDir,
+        ctx: osServiceContext(false),
+      })
+    : undefined;
+  if (updates && updater) {
+    autoUpdater = new AutoUpdater({
+      enabled: () => config.updates.auto,
+      currentVersion: DAEMON_VERSION,
+      latest: updates.latest.bind(updates),
+      idle: host.idle,
+      apply: (proceed) => updater.apply(true, { proceed }),
+      log: host.log,
+    });
+  }
+  return { updates, updater, autoUpdater };
+}
+
+/** The supervisor of the WSL distributions the config lists, if any. */
+function createWsl(config: Config, options: { wslCommand?: (item: WslItem) => string[] }) {
+  if (config.wsl.length === 0) return null;
+  return new WslSupervisor(config.wsl, {
+    logDir: join(config.dataDir, "logs"),
+    ...present({ command: options.wslCommand }),
+  });
+}
+
+/** Without an allowed root no session can be created: the log says so at the start. */
+function warnIfNoRoots(config: Config, logger: Logger): void {
+  if (config.allowedRoots.length > 0) return;
+  logger.error(
+    'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
+  );
+}
+
 /** Loads the config, opens the store and starts serving. The token is never logged. */
 export async function startDaemon(
   args: CliArgs,
@@ -956,7 +1010,7 @@ export async function startDaemon(
     keepAwake: (session) =>
       awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
     baseEnv: env,
-    ...(opencode.runtime ? { opencode: opencode.runtime } : {}),
+    ...present({ opencode: opencode.runtime }),
     onQuota: (readings) => {
       quota.record(readings);
       quotaHistory.sample(readings);
@@ -985,7 +1039,7 @@ export async function startDaemon(
     log: (m) => logger.log(m),
     // Issue #605: the name Claude Code gave a session (`--name`, `/rename`) is its name here too.
     onTitle: adoptTitles(names, manager),
-    ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
+    ...present({ scanIntervalMs: config.history.scanIntervalMs || undefined }),
   });
   history.start();
   // Issue #100: the packages of the sessions this host teleports to another; none outlives a run.
@@ -1044,6 +1098,14 @@ export async function startDaemon(
     quota,
     memory: memoryGate,
     pause: hostPause,
+    // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
+    // below is ready by then) and the project's trust, through the bounded runner.
+    checkLoop: {
+      // From the database alone: the board reads them while it starts, before the watcher exists.
+      settings: (projectId) => readWatchSettings(store.db, projectId),
+      isTrusted: (path) => projectTrust.isTrusted(path),
+      runner: boundedCheckRunner(),
+    },
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
     scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
@@ -1055,7 +1117,7 @@ export async function startDaemon(
     idle: snapshots.idle.bind(snapshots),
     // A card raised from an agent's findings keeps automatic approval off (issue #79).
     suspendApproval: autoApprove.suspendCard.bind(autoApprove),
-    ...(config.board.prPollIntervalMs ? { prPollIntervalMs: config.board.prPollIntervalMs } : {}),
+    ...present({ prPollIntervalMs: config.board.prPollIntervalMs || undefined }),
     // Changed from the app: kept in the config file, like the rest of the host settings.
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
@@ -1151,35 +1213,10 @@ export async function startDaemon(
     snapshots,
   });
   await maintenance.start();
-  // Issue #280: a newer version is applied by itself, only while nothing runs on the host. Made
-  // after the checker, which tells it after each check.
-  let autoUpdater: AutoUpdater | undefined;
-  // Checked in the background: a slow or unreachable release server never delays the boot.
-  const updates = config.updates.manifestUrl
-    ? new UpdateChecker({
-        manifestUrl: config.updates.manifestUrl,
-        checkIntervalH: config.updates.checkIntervalH,
-        currentVersion: DAEMON_VERSION,
-        onChecked: () => autoUpdater?.checked(),
-      })
-    : undefined;
-  const updater = updates
-    ? new DaemonUpdater({
-        manifest: () => updates.latest(),
-        dataDir: config.dataDir,
-        ctx: osServiceContext(false),
-      })
-    : undefined;
-  if (updates && updater) {
-    autoUpdater = new AutoUpdater({
-      enabled: () => config.updates.auto,
-      currentVersion: DAEMON_VERSION,
-      latest: updates.latest.bind(updates),
-      idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
-      apply: (proceed) => updater.apply(true, { proceed }),
-      log: logger.log.bind(logger),
-    });
-  }
+  const { updates, updater, autoUpdater } = createUpdates(config, {
+    idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
+    log: logger.log.bind(logger),
+  });
   void updates?.start();
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
   const telemetryStore = new TelemetryStore(store.db);
@@ -1234,7 +1271,7 @@ export async function startDaemon(
       (await resolveSshPath({ platform: process.platform, exists, which: whichOnPath })),
     run: processRun(),
     exec: processExec(),
-    ...(sshAskpass ? { askpass: sshAskpass } : {}),
+    ...present({ askpass: sshAskpass }),
     // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
     delivery: chooseDelivery({
       platform: process.platform,
@@ -1365,7 +1402,7 @@ export async function startDaemon(
       return card ? (teams?.personaOfCard(card) ?? null) : null;
     },
     // Issue #101: a worker's session is named with its team, role and number from the start.
-    ...(teams ? { teamOfCard: teams.teamOfCard.bind(teams) } : {}),
+    ...present({ teamOfCard: teams?.teamOfCard.bind(teams) }),
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
@@ -1408,7 +1445,7 @@ export async function startDaemon(
   const cardPorts = new CardPorts({
     db: store.db,
     base: config.run.portBase,
-    ...(options.portProbe ? { isFree: options.portProbe } : {}),
+    ...present({ isFree: options.portProbe }),
   });
   const runManager = new RunManager({
     db: store.db,
@@ -1524,7 +1561,7 @@ export async function startDaemon(
       info: () => opencode.info,
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
-    ...(assistant ? { assistant } : {}),
+    ...present({ assistant }),
     teleport,
     teleportInbox,
     teleportImport: teleportImportDeps({
@@ -1538,7 +1575,7 @@ export async function startDaemon(
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
-    ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
+    ...present({ rootsPlatform: options.rootsPlatform }),
     bypass: {
       allowed: () => config.allowBypassPermissions,
       set: async (allow) => {
@@ -1572,6 +1609,7 @@ export async function startDaemon(
     },
     memoryPause: {
       pauseAt: () => memoryGate.pauseAt(),
+      holding: () => memoryGate.holds(),
       set: async (pauseAt) => {
         // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
         await updateConfigFile(configFile, (raw) => ({
@@ -1630,7 +1668,9 @@ export async function startDaemon(
     harnessApply: (path, parts, digests, options) =>
       applyHarness(path, parts, digests, { ...options, drafts: harnessDrafts }),
     // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
-    ...(runtime.complete ? { harnessDraft: (path: string) => harnessDrafts.draft(path) } : {}),
+    ...present({
+      harnessDraft: runtime.complete && ((path: string) => harnessDrafts.draft(path)),
+    }),
     harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
     harnessTemplates: new HarnessTemplates(
       join(config.dataDir, "harness-templates"),
@@ -1809,6 +1849,7 @@ export async function startDaemon(
       snippets,
       terminals,
       manager,
+      onPersonInput: (sessionId) => board.personTurnOfSession(sessionId),
       central,
       exec: spawnExec,
       allowedRoots: config.allowedRoots,
@@ -1857,7 +1898,7 @@ export async function startDaemon(
       // With the terminal off there are none to list, and the read must not fail on it (#937).
       terminals: () => (terminals.enabled ? terminals.list() : []),
       pidOf: terminals.pidOf.bind(terminals),
-      ...(options.resourcesProc ? { proc: options.resourcesProc } : {}),
+      ...present({ proc: options.resourcesProc }),
     }),
     worktrees: createWorktrees({
       board,
@@ -1867,7 +1908,7 @@ export async function startDaemon(
       externals: central.external,
       locks: folderLocks,
     }),
-    ...(updates ? { updates } : {}),
+    ...present({ updates }),
     snapshots,
     rewinder,
     forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
@@ -1885,27 +1926,21 @@ export async function startDaemon(
     memory: new ProjectMemory({
       record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
     }),
-    ...(updater ? { updater } : {}),
-    ...(autoUpdater ? { autoUpdate: autoUpdateOf(autoUpdater, config, configFile) } : {}),
+    ...present({
+      updater,
+      autoUpdate: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
+    }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
     token: config.token,
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
-    ...(claude ? { claude } : {}),
-    ...(account ? { account } : {}),
-    ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
+    ...present({ claude, account, onShutdown: options.onShutdown }),
     terminal: await terminalInfo(env),
   });
 
-  const wsl =
-    config.wsl.length > 0
-      ? new WslSupervisor(config.wsl, {
-          logDir: join(config.dataDir, "logs"),
-          ...(options.wslCommand ? { command: options.wslCommand } : {}),
-        })
-      : null;
+  const wsl = createWsl(config, options);
   await wsl?.start();
 
   // `pair --rotate` runs in another process: follow the token in the config file.
@@ -1923,11 +1958,7 @@ export async function startDaemon(
     `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
   );
   boardLoop.start();
-  if (config.allowedRoots.length === 0) {
-    logger.error(
-      'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
-    );
-  }
+  warnIfNoRoots(config, logger);
 
   let stopped: Promise<void> | null = null;
   return {

@@ -14,6 +14,8 @@ export interface SnippetUseOptions {
   terminals?: Pick<TerminalManager, "write" | "open">;
   /** The managed sessions a prompt can be sent to. */
   manager: Pick<SessionManager, "send">;
+  /** Issue #1361: told when the person sends into a managed session (a card's check loop steps aside). */
+  onPersonInput?: (sessionId: string) => void;
   /** Terminal sessions with a channel (phase 5). */
   central?: Pick<Central, "external" | "receptor">;
   /** Runs `git` to read the branch of a cwd. */
@@ -116,6 +118,7 @@ export class SnippetUse {
       );
     }
     if (req.sessionId !== undefined) {
+      this.opts.onPersonInput?.(req.sessionId);
       this.opts.manager.send(req.sessionId, text);
       return;
     }

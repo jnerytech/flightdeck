@@ -198,6 +198,56 @@ function readCapped(
 }
 
 /**
+ * Stops a program at its time limit or when the caller's signal fires (#905): the whole tree is
+ * killed, one kill after the other, and the readers get a short grace before `cutReaders` stops
+ * them (#1361). `release` clears the timers and waits for the kills, whatever happened.
+ */
+function stopOnLimit(
+  pid: number,
+  kill: (pid: number) => Promise<void>,
+  when: { timeoutMs?: number; signal?: AbortSignal },
+  cutReaders: () => void,
+) {
+  const { timeoutMs, signal } = when;
+  const state = { timedOut: false, aborted: false };
+  let killing: Promise<void> = Promise.resolve();
+  let grace: ReturnType<typeof setTimeout> | null = null;
+  const killTree = () => {
+    killing = killing.then(() => kill(pid)).catch(() => {});
+    grace ??= setTimeout(cutReaders, KILL_GRACE_MS);
+  };
+  // An abort kills the whole tree like the time limit does (#905).
+  const onAbort = () => {
+    state.aborted = true;
+    killTree();
+  };
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+  const timer =
+    timeoutMs === undefined
+      ? null
+      : setTimeout(() => {
+          state.timedOut = true;
+          killTree();
+        }, timeoutMs);
+  return {
+    killTree,
+    get timedOut() {
+      return state.timedOut;
+    },
+    get aborted() {
+      return state.aborted;
+    },
+    async release() {
+      if (timer) clearTimeout(timer);
+      if (grace) clearTimeout(grace);
+      signal?.removeEventListener("abort", onAbort);
+      await killing;
+    },
+  };
+}
+
+/**
  * Runs a program, never through a shell, and reads at most `limit` bytes of its output: past it the
  * program is killed and the result says `truncated`, cut after the last `separator`. With
  * `timeoutMs`, a program still running at the limit is killed with everything it started and the
@@ -225,9 +275,6 @@ export async function runLimited(
     // Its own process group (outside Windows), so the whole tree can be killed at the limit.
     detached: (timeoutMs !== undefined || signal !== undefined) && process.platform !== "win32",
   });
-  let timedOut = false;
-  let aborted = false;
-  let killing: Promise<void> = Promise.resolve();
   let size = 0;
   let truncated = false;
   const reader = proc.stdout.getReader();
@@ -235,7 +282,7 @@ export async function runLimited(
   const overflow = () => {
     if (truncated) return;
     truncated = true;
-    killTreeNow();
+    stopper.killTree();
     void reader.cancel().catch(() => {});
   };
   // Read at the same time as stdout: a program that fills the pipe's buffer with stderr would stall.
@@ -251,28 +298,10 @@ export async function runLimited(
   );
   // Once the tree is killed, the readers get a short grace, then stop: what kept a pipe open
   // outside the group is not waited for (#1361).
-  let grace: ReturnType<typeof setTimeout> | null = null;
-  const killTreeNow = () => {
-    killing = killing.then(() => kill(proc.pid)).catch(() => {});
-    grace ??= setTimeout(() => {
-      void reader.cancel().catch(() => {});
-      errors.cancel();
-    }, KILL_GRACE_MS);
-  };
-  // An abort kills the whole tree like the time limit does (#905).
-  const onAbort = () => {
-    aborted = true;
-    killTreeNow();
-  };
-  if (signal?.aborted) onAbort();
-  else signal?.addEventListener("abort", onAbort, { once: true });
-  const timer =
-    timeoutMs === undefined
-      ? null
-      : setTimeout(() => {
-          timedOut = true;
-          killTreeNow();
-        }, timeoutMs);
+  const stopper = stopOnLimit(proc.pid, kill, { timeoutMs, signal }, () => {
+    void reader.cancel().catch(() => {});
+    errors.cancel();
+  });
   const chunks: Uint8Array[] = [];
   let failed = false;
   let failure: unknown;
@@ -294,7 +323,7 @@ export async function runLimited(
     // Reading failed: the tree goes too, and the cleanup below still runs before the error.
     failed = true;
     failure = error;
-    killTreeNow();
+    stopper.killTree();
   } finally {
     // Past the limit, or when reading failed: the program does not go on writing to nobody.
     proc.kill();
@@ -305,10 +334,7 @@ export async function runLimited(
     [stderr, code] = await Promise.all([errors.text, proc.exited]);
   } finally {
     // Even when reading stderr failed: no timer may fire a kill at a pid that was given back.
-    if (timer) clearTimeout(timer);
-    if (grace) clearTimeout(grace);
-    signal?.removeEventListener("abort", onAbort);
-    await killing;
+    await stopper.release();
   }
   if (failed) throw failure;
   const all = Buffer.concat(chunks);
@@ -320,7 +346,7 @@ export async function runLimited(
     stdout: kept.toString("utf8"),
     stderr,
     truncated,
-    ...(timedOut ? { timedOut } : {}),
-    ...(aborted ? { aborted } : {}),
+    ...(stopper.timedOut ? { timedOut: true } : {}),
+    ...(stopper.aborted ? { aborted: true } : {}),
   };
 }

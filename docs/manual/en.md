@@ -1126,11 +1126,22 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
   many wait in the host's queue, the host's 5-hour window on a subscription, a line for each hold that
   keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory),
-  and the cards it skips and why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
+  with every card in the queue while one of them holds, and the cards it skips and why. When some of the cards would wait (the host is full, paused or held)
+  and another online host has the same project (the same repository) with enough free places, the
+  confirm also offers **Start on <host>**: it makes each of those cards on that host and starts it
+  there, then marks the card here "Started on <host> as <card>" and moves it to **Done**. Nothing is
+  deleted: move the card back to **Backlog** to undo it. A card whose template names a workflow or a
+  persona, a card waiting on a blocker and a card that holds others up are not offered: they would
+  start differently there, or going to Done would free the others too soon. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
   one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
-  the ones that went leave the selection, and the bar names any the host refused. In a narrow window
-  the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
-  under ⋯. Dragging a selected card drags the whole selection into the
+  the ones that went leave the selection, and the bar names any the host refused. **Update N from the
+  base** shows while a selected card has a branch and is not running: after the base branch moves, it
+  rebases those cards on it, one at a time, with "Updating 2 of 5…" on the bar. A card already on its
+  base is left alone, and a conflict stops only that card: the host aborts its rebase, so its worktree
+  stays as it was. The summary then names the updated, already current and conflicted cards, and any
+  the host refused, with why; the conflicted and refused ones stay selected. In a narrow window the bar
+  says how many selected cards are in columns not shown, and **Move to…**, **Update N from the base**
+  and **Discard…** sit under ⋯. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
 - **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
   **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's
@@ -2343,6 +2354,14 @@ backup that is due waits, and the section says so. A backup that could not be sa
 too, and the date of the last good one stays. The bell says it too, once per start, when a backup
 cannot go: the passphrase is missing, no folder is chosen, or a backup failed. A click on the notice
 opens **Settings**, section **Backup** (#1327).
+
+When the build carries a Google client, **Where to save** also offers **Google Drive**. It keeps the
+backups in Flightdeck's own hidden folder in your Drive, which only this app can see, and each file is
+still encrypted with your passphrase. **Sign in with Google** opens Google's page in your browser and
+the app waits for the answer on this computer only. Flightdeck keeps the token in the vault, never in
+a file or a log; **Sign out** removes it. If Google stops accepting the sign-in, the section and the
+bell say so and no backup is made until you sign in again. Without a client in the build, the choice
+is not shown (#1444).
 
 ## Actions: Claude uses a secret without seeing it
 
@@ -3639,6 +3658,9 @@ and then a letter within about a second and a half: `g s` Sessions, `g n` Needs 
 Projects, `g c` Costs, `g a` Activity, `g ,` Settings. Other shortcuts: `Ctrl+K` palette, `Alt+←`/`Alt+→` back and
 forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
 `A`/`N` on a request. None of them fires while you type in a field.
+
+The first `Tab` on any screen shows **Skip to content** at the top left; `Enter` moves the focus past
+the title bar and the sidebar to the screen itself (#1430).
 
 ### Global shortcut
 

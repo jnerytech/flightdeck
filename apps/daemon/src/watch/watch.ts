@@ -80,6 +80,32 @@ const DEFAULT_SETTINGS: WatchSettings = {
   ],
 };
 
+/**
+ * A project's watch settings, read from the database alone, so what reads them needs no watcher
+ * made first (#1361: the board reads them for a looping card while it starts).
+ */
+export function readWatchSettings(db: Database, projectId: string): WatchSettings {
+  const row = db
+    .query<{ settings: string }, [string]>(
+      "SELECT settings FROM pr_watch_project WHERE project_id = ?",
+    )
+    .get(projectId);
+  const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
+  // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
+  const names: unknown[] = Array.isArray(stored.checkEnv) ? stored.checkEnv : [];
+  // A cap stored by hand or by an older daemon is read inside the range the protocol allows.
+  const rounds = Number.isInteger(stored.checkRounds)
+    ? stored.checkRounds
+    : DEFAULT_SETTINGS.checkRounds;
+  return {
+    ...stored,
+    checkRounds: Math.min(10, Math.max(1, rounds)),
+    checkEnv: names.filter(
+      (name): name is string => typeof name === "string" && isCheckEnvName(name),
+    ),
+  };
+}
+
 /** What the last look found, to tell what got worse at the next one. */
 interface Snapshot {
   /** The failing builds, by name and build id: a new run that fails is news. */
@@ -104,20 +130,7 @@ export class PrWatcher {
   constructor(private readonly opts: PrWatcherOptions) {}
 
   settings(projectId: string): WatchSettings {
-    const row = this.opts.db
-      .query<{ settings: string }, [string]>(
-        "SELECT settings FROM pr_watch_project WHERE project_id = ?",
-      )
-      .get(projectId);
-    const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
-    // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
-    const names: unknown[] = Array.isArray(stored.checkEnv) ? stored.checkEnv : [];
-    return {
-      ...stored,
-      checkEnv: names.filter(
-        (name): name is string => typeof name === "string" && isCheckEnvName(name),
-      ),
-    };
+    return readWatchSettings(this.opts.db, projectId);
   }
 
   setSettings(projectId: string, patch: Partial<WatchSettings>): WatchSettings {

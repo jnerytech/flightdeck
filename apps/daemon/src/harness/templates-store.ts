@@ -189,6 +189,13 @@ export class HarnessTemplates {
     if (this.scanner.scan(title).length > 0) {
       throw refuse("harness_template_title_secret", "the title holds a secret: nothing was shared");
     }
+    const files = await this.shareable(root);
+    await this.place(id, title, files);
+    return info(id, title, files);
+  }
+
+  /** The harness files of the project at `root` that may be shared: none may hold a secret. */
+  private async shareable(root: string): Promise<Array<[string, string]>> {
     const files: Array<[string, string]> = [];
     for (const [name, from] of await parts(root, ".claude/")) {
       // CLAUDE.md is at the project's top, not under .claude.
@@ -208,6 +215,11 @@ export class HarnessTemplates {
         "the project has no CLAUDE.md, agent or skill to share",
       );
     }
+    return files;
+  }
+
+  /** Writes the files into a new template folder `id`, all or nothing. */
+  private async place(id: string, title: string, files: Array<[string, string]>): Promise<void> {
     // The host's own: no other user of the machine reads a template, or plants one.
     await mkdir(this.dir, { recursive: true, mode: 0o700 });
     const at = join(this.dir, id);
@@ -230,7 +242,6 @@ export class HarnessTemplates {
       await rm(at, { recursive: true, force: true });
       throw error;
     }
-    return info(id, title, files);
   }
 
   /**

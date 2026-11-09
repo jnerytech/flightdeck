@@ -1130,11 +1130,24 @@ aparece mascarado e como **Oculto**, e não abre.
   **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
   quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
   uma linha para cada trava que segura os cards novos (o limite de pausa da cota, um orçamento no limite,
-  o host sem memória) e os cards que ficam de fora e por quê. Parar também pergunta: o turno de um card rodando é
+  o host sem memória), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
+  está cheio, pausado ou travado) e outro host online tem o mesmo projeto (o mesmo repositório) com
+  vagas para todos eles, a confirmação também oferece **Iniciar em <host>**: ela cria cada um desses
+  cards nesse host e o inicia lá, depois marca o card daqui "Iniciado em <host> como <card>" e o move
+  para **Concluído**. Nada é apagado: mova o card de volta para o **Backlog** para desfazer. Não são
+  oferecidos o card cujo modelo nomeia um workflow ou uma persona, o card que espera um bloqueio e o
+  card que segura outros: iniciariam de outro jeito lá, ou ir para Concluído liberaria os outros cedo demais.
+  Parar também pergunta: o turno de um card rodando é
   interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
-  os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que
-  não aparecem, e **Mover para…** e **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
+  os que o host recusou. **Atualizar N com a base** aparece quando um card selecionado tem branch e
+  não está rodando: depois que a branch base anda, ele faz o rebase desses cards sobre ela, um de cada
+  vez, com "Atualizando 2 de 5…" na barra. Um card que já está na base fica como está, e um conflito
+  para só aquele card: o host aborta o rebase, então o worktree dele fica como estava. O resumo então
+  nomeia os cards atualizados, os já em dia e os com conflito, e os que o host recusou, com o motivo;
+  os com conflito e os recusados continuam selecionados. Numa janela estreita a barra diz quantos
+  selecionados estão em colunas que não aparecem, e **Mover para…**, **Atualizar N com a base** e
+  **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
 - **O que uma coluna pede de um card** (#78). **Em revisão** pede um link de PR e verificações
   passando; **Em andamento** pede critérios de aceite, um item de checklist (`- [ ] …`) na
@@ -2361,6 +2374,14 @@ der, um backup devido espera, e a seção avisa. Um backup que não pôde ser sa
 a data do último bom continua. O sino também avisa, uma vez por abertura, quando um backup não pode
 sair: falta a frase-senha, não há pasta escolhida ou um backup falhou. Um clique no aviso abre
 **Configurações**, seção **Backup** (#1327).
+
+Quando o build traz um cliente do Google, **Onde salvar** também oferece **Google Drive**. Ele guarda
+os backups na pasta oculta do próprio Flightdeck no seu Drive, que só este app enxerga, e cada
+arquivo continua criptografado com a sua frase-senha. **Entrar com o Google** abre a página do Google
+no navegador e o app espera a resposta só neste computador. O Flightdeck guarda o token no cofre,
+nunca num arquivo nem num log; **Sair** o remove. Se o Google deixar de aceitar a entrada, a seção e
+o sino avisam e nenhum backup é feito até você entrar de novo. Sem um cliente no build, a escolha não
+aparece (#1444).
 
 ## Ações: o Claude usa um segredo sem vê-lo
 
@@ -3654,6 +3675,9 @@ para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões
 você, `g p` Projetos, `g c` Custos, `g a` Atividade, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
 `Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
 `j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
+
+O primeiro `Tab` em qualquer tela mostra **Pular para o conteúdo** no canto superior esquerdo; `Enter`
+leva o foco além da barra de título e da barra lateral, para a própria tela (#1430).
 
 ### Atalho global
 
