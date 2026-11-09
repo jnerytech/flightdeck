@@ -1872,6 +1872,7 @@ export const ptBR = {
       "Esta execução terminou antes de o Flightdeck guardar onde o código estava, então ela só roda de novo do começo.",
     run_resume_workflow_changed:
       "O workflow {name} mudou desde esta execução, então ela só roda de novo do começo.",
+    run_card_gone: "O card desta execução sumiu, então ela parou quando o Flightdeck reiniciou.",
     run_resume_branch_moved:
       "O branch do card mudou desde que esta execução parou, então ela só roda de novo do começo.",
     workflow_input_required: "O workflow precisa do input {input}.",

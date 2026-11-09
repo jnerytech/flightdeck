@@ -329,6 +329,7 @@ const REASONS = [
   "run_resume_no_head",
   "run_resume_workflow_changed",
   "run_resume_branch_moved",
+  "run_card_gone",
   "workflow_input_required",
   "workflow_input_unknown",
   "workflow_gate_closed",

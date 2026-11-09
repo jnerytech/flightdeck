@@ -322,6 +322,7 @@ export class WorkflowEngine {
       const card = this.cardOrNull(run.card_id);
       if (!card?.worktreePath) {
         this.end(run.id, "failed", "the run's card is gone");
+        this.setReasonKey(run.id, "run_card_gone", {});
         continue;
       }
       // At a gate the run holds no slot; it takes one again once the gate is approved.
@@ -354,8 +355,15 @@ export class WorkflowEngine {
         return run.head ? null : "run_resume_no_head";
       })();
       if (why || !card?.worktreePath || !run.head) {
+        // The HEAD stays: asked again, the run gives the same reason, not that it has none.
+        this.restoreHead(run.id, run.head);
         this.end(run.id, "failed", "the resume cannot go on after the restart");
-        this.setReasonKey(run.id, why ?? "run_resume_card", {});
+        const key = why ?? "run_resume_card";
+        this.setReasonKey(
+          run.id,
+          key,
+          key === "run_resume_workflow_changed" ? { name: run.workflow_name } : {},
+        );
         if (card) this.host.place(run.card_id, { type: "workflow", state: "waiting" });
         continue;
       }
@@ -512,7 +520,7 @@ export class WorkflowEngine {
       this.resuming.delete(run.id);
       throw error;
     }
-    this.setStatus(run.id, "queued", null);
+    this.emit(run.id);
     void this.afterSlot(run.id, run.card_id, worktree, head);
     return check;
   }
@@ -549,7 +557,7 @@ export class WorkflowEngine {
       this.db
         .query(
           `UPDATE workflow_runs SET ended_at = NULL, head_at_end = NULL, status_reason_key = NULL,
-           status_reason_params = NULL WHERE id = ?`,
+           status_reason_params = NULL, status = 'queued', status_reason = NULL WHERE id = ?`,
         )
         .run(run.id);
     })();
