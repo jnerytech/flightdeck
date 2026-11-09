@@ -20,9 +20,7 @@ const hosts = [
   { id: "h2", name: "beta" },
 ];
 const away = (over: object = {}) =>
-  ({ since: SINCE, hosts: [], dismissed: false, unreached: [], ...over }) as AwayState & {
-    unreached?: string[];
-  };
+  ({ since: SINCE, hosts: [], dismissed: false, unreached: [], ...over }) as AwayState;
 
 describe("away-summary: what the hosts say happened while the app was closed (#1344)", () => {
   test("lists the hosts that have news, in the order they answered, with their names", () => {

@@ -25,7 +25,7 @@ const newsOf = (result: ActivitySinceResult) =>
  * is named.
  */
 export function awayView(
-  away: AwayState & { unreached?: string[] },
+  away: AwayState,
   hosts: ReadonlyArray<{ id: string; name: string }>,
 ): AwayView | null {
   if (away.since === null || away.dismissed) return null;
@@ -33,7 +33,7 @@ export function awayView(
   const news = away.hosts
     .filter((host) => newsOf(host.result) > 0)
     .map((host) => ({ hostId: host.hostId, hostName: nameOf(host.hostId), result: host.result }));
-  const unreached = (away.unreached ?? []).map(nameOf);
+  const unreached = away.unreached.map(nameOf);
   if (news.length === 0 && unreached.length === 0) return null;
   return { since: away.since, news, unreached };
 }
