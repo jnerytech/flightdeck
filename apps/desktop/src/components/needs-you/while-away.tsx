@@ -52,7 +52,7 @@ function Line(props: Readonly<{ text: string; to: Route | null; go(route: Route)
   return (
     <Button
       variant="link"
-      className="h-auto whitespace-normal p-0 text-left text-sm"
+      className="h-auto min-h-6 whitespace-normal p-0 text-left text-sm"
       onClick={() => props.go(to)}
     >
       {props.text}
