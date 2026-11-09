@@ -1445,6 +1445,8 @@ export const en: Dictionary = {
     plainWaiting: "{label}: waiting for your answer",
     turnDone: "{label}: turn finished",
     turnDoneBody: "idle",
+    quiet: "{label}: gone quiet",
+    quietBody: "Nothing has happened for a while. Open it to see where it stopped.",
     externalTitle: "Needs you",
     quotaTitle: "Plan quota",
     quotaBody: "{host}: {window} at {percent}%",

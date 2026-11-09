@@ -1436,6 +1436,8 @@ export const ptBR = {
     plainWaiting: "{label}: esperando a sua resposta",
     turnDone: "{label}: turno concluído",
     turnDoneBody: "ociosa",
+    quiet: "{label}: em silêncio",
+    quietBody: "Nada aconteceu há um tempo. Abra para ver onde parou.",
     externalTitle: "Precisa de você",
     quotaTitle: "Cota do plano",
     quotaBody: "{host}: {window} em {percent}%",

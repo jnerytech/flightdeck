@@ -68,6 +68,15 @@ export function summaryNotifications(
       ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
     });
   }
+  // Issue #1478: a stall is told once, when the host first marks the session quiet.
+  if (!prev.quietSince && next.quietSince) {
+    notifications.push({
+      event: "needs-you",
+      title: t("notify.quiet", { label }),
+      body: t("notify.quietBody"),
+      ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
+    });
+  }
   // A turn that ends in an error is news of its own.
   if (IN_TURN.has(prev.status) && next.status === "error") {
     notifications.push({
