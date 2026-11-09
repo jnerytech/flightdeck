@@ -54,18 +54,14 @@ function setup(options: { language?: "en" | "pt-BR"; cards?: number; refused?: b
   store.i18n.start();
   store.loadProjects = (async () => []) as never;
   store.refreshHub = (async () => {}) as never;
+  const asked = { board: false };
   store.hostCommand = (async (_host: string, type: string) => {
     if (type === "project.trust.state") {
       return { items: [{ path: "/work/api", trusted: false, via: null }] };
     }
-    return null;
-  }) as never;
-  const asked = { board: false };
-  store.hostRequest = (async (_host: string, type: string) => {
-    if (type !== "board.get") return { ok: false, code: "unknown", message: type };
+    if (type !== "board.get") return null;
     asked.board = true;
-    if (options.refused) return { ok: false, code: "offline", message: "down" };
-    return { ok: true, data: board(options.cards ?? 0) };
+    return options.refused ? null : board(options.cards ?? 0);
   }) as never;
   const appState = {
     ...store.getState(),
