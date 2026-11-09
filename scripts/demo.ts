@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun run demo` (phase 10): seeds two fake-runtime daemons (scripts/demo-seed.ts) and serves the
+ * `bun run demo` (phase 10): seeds three fake-runtime daemons (scripts/demo-seed.ts) and serves the
  * app's web entry with Vite, already paired with them, at http://localhost:1420 (`DEMO_PORT` picks
  * another; the e2e run and the prints take a free one, so no session's demo blocks another's run).
  * Ctrl+C stops it. With `DEMO_BUILD=1` (CI's e2e and prints jobs, #444) it serves a production

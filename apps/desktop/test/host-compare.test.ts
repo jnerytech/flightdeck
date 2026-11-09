@@ -4,16 +4,33 @@ import {
   type CompareValues,
   compareHosts,
   type HostFacts,
+  hasFix,
   hostFacts,
 } from "../src/lib/host-compare.ts";
 
 const NONE: CompareValues = {
+  os: null,
   daemon: null,
   claude: null,
   hooks: null,
   signin: null,
+  gh: null,
+  az: null,
+  boot: null,
   features: null,
 };
+
+const FIELDS = [
+  "os",
+  "daemon",
+  "claude",
+  "hooks",
+  "signin",
+  "gh",
+  "az",
+  "boot",
+  "features",
+] as const;
 
 const facts = (hostId: string, values: Partial<CompareValues>): HostFacts => ({
   hostId,
@@ -34,8 +51,8 @@ const markedIds = (hosts: HostFacts[], field: (typeof COMPARE_FIELDS)[number]) =
 describe("host-compare: the table's rows and cells", () => {
   test("there is one row per field, in the order shown, and one cell per host in the order given", () => {
     const rows = compareHosts([facts("a", {}), facts("b", {}), facts("c", {})]);
-    expect(rows.map((r) => r.field)).toEqual(["daemon", "claude", "hooks", "signin", "features"]);
-    expect(COMPARE_FIELDS).toEqual(["daemon", "claude", "hooks", "signin", "features"]);
+    expect(rows.map((r) => r.field)).toEqual([...FIELDS]);
+    expect(COMPARE_FIELDS).toEqual(FIELDS);
     for (const row of rows) expect(row.cells.map((c) => c.hostId)).toEqual(["a", "b", "c"]);
   });
 
@@ -115,7 +132,7 @@ describe("host-compare: the majority rule", () => {
     const hosts = [
       facts("a", { hooks: "ok" }),
       facts("b", { hooks: "ok" }),
-      facts("c", { hooks: "warn" }),
+      facts("c", { hooks: "outdated" }),
       facts("d", { hooks: null }),
     ];
     expect(markedIds(hosts, "hooks")).toEqual(["c"]);
@@ -139,8 +156,8 @@ describe("host-compare: the majority rule", () => {
 
   test("no hosts give a row per field with no cells", () => {
     const rows = compareHosts([]);
-    expect(rows.map((r) => r.field)).toEqual(["daemon", "claude", "hooks", "signin", "features"]);
-    expect(rows.map((r) => r.cells.length)).toEqual([0, 0, 0, 0, 0]);
+    expect(rows.map((r) => r.field)).toEqual([...FIELDS]);
+    expect(rows.map((r) => r.cells.length)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
   });
 });
 
@@ -149,6 +166,7 @@ describe("host-compare: what a host reports for each field", () => {
     hostId: "alfa",
     online: true,
     info: {
+      os: "linux",
       daemonVersion: "1.4.0",
       claudeVersion: "2.1.0",
       features: ["central", "account", "doctor.run"],
@@ -156,28 +174,55 @@ describe("host-compare: what a host reports for each field", () => {
     doctor: {
       checks: [
         { id: "daemon" as const, status: "ok" as const, detail: "running" },
-        { id: "hooks" as const, status: "warn" as const, detail: "outdated" },
+        { id: "hooks" as const, status: "warn" as const, detail: "outdated: limited" },
       ],
     },
     deps: {
       items: [
         { id: "git" as const, state: "ok" as const },
         { id: "claudeAuth" as const, state: "missing" as const },
+        { id: "service" as const, state: "missing" as const },
+        { id: "gh" as const, state: "ok" as const },
+        { id: "az" as const, state: "outdated" as const },
+        { id: "hooks" as const, state: "outdated" as const },
       ],
     },
   };
 
-  test("the versions come from host.info, hooks from the doctor's hooks check, the sign-in from the dependencies", () => {
+  test("the OS and versions come from host.info, the rest from the dependencies the app already holds", () => {
     expect(hostFacts(input)).toEqual({
       hostId: "alfa",
       values: {
+        os: "linux",
         daemon: "1.4.0",
         claude: "2.1.0",
-        hooks: "warn",
+        hooks: "outdated",
         signin: "missing",
+        gh: "ok",
+        az: "outdated",
+        boot: "missing",
         features: "account,central,doctor.run",
       },
     });
+  });
+
+  test("hooks are outdated or absent as the dependency says, never the doctor's Warning", () => {
+    const absent = {
+      ...input,
+      deps: { items: [{ id: "hooks" as const, state: "missing" as const }] },
+    };
+    expect(hostFacts(absent).values.hooks).toBe("missing");
+    expect(hostFacts(input).values.hooks).toBe("outdated");
+  });
+
+  test("without the dependencies, hooks fall back to the doctor only when it says they are fine", () => {
+    const doctor = (status: "ok" | "warn") => ({
+      checks: [{ id: "hooks" as const, status, detail: "x" }],
+    });
+    expect(hostFacts({ ...input, deps: undefined, doctor: doctor("ok") }).values.hooks).toBe("ok");
+    expect(
+      hostFacts({ ...input, deps: undefined, doctor: doctor("warn") }).values.hooks,
+    ).toBeNull();
   });
 
   test("the features are the same text however the host orders them", () => {
@@ -192,11 +237,11 @@ describe("host-compare: what a host reports for each field", () => {
     const bare = hostFacts({
       hostId: "old",
       online: true,
-      info: { daemonVersion: "1.0.0", claudeVersion: null },
+      info: { os: "linux", daemonVersion: "1.0.0", claudeVersion: null },
       doctor: undefined,
       deps: undefined,
     });
-    expect(bare.values).toEqual({ ...NONE, daemon: "1.0.0" });
+    expect(bare.values).toEqual({ ...NONE, os: "linux", daemon: "1.0.0" });
   });
 
   test("a check or dependency that is not in the answer is missing", () => {
@@ -207,9 +252,35 @@ describe("host-compare: what a host reports for each field", () => {
     });
     expect(partial.values.hooks).toBeNull();
     expect(partial.values.signin).toBeNull();
+    expect(partial.values.gh).toBeNull();
+    expect(partial.values.az).toBeNull();
+    expect(partial.values.boot).toBeNull();
   });
 
   test("a host that is not online has nothing to compare, so every field is missing", () => {
     expect(hostFacts({ ...input, online: false }).values).toEqual(NONE);
+  });
+});
+
+describe("host-compare: which marked cells have a fix to link to", () => {
+  test("a lacking hook, sign-in, tool or boot service links to the fix the host's page already has", () => {
+    for (const field of ["hooks", "signin", "gh", "az", "boot"] as const) {
+      expect(hasFix(field, "missing")).toBe(true);
+      expect(hasFix(field, "outdated")).toBe(true);
+      expect(hasFix(field, "ok")).toBe(false);
+      expect(hasFix(field, "na")).toBe(false);
+    }
+  });
+
+  test("an older daemon links to its update, and what the app has no fix for does not link", () => {
+    expect(hasFix("daemon", "1.3.0")).toBe(true);
+    for (const field of ["os", "claude", "features"] as const) {
+      expect(hasFix(field, "missing")).toBe(false);
+    }
+  });
+
+  test("a value the host does not report has nothing to fix", () => {
+    expect(hasFix("hooks", null)).toBe(false);
+    expect(hasFix("daemon", null)).toBe(false);
   });
 });

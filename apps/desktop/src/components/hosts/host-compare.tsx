@@ -15,6 +15,7 @@ import {
   type CompareField,
   type CompareRow,
   compareHosts,
+  hasFix,
   hostFacts,
 } from "../../lib/host-compare.ts";
 
@@ -27,8 +28,8 @@ const ROW_HEADER = `py-1 pr-3 align-top font-normal${STICKY}`;
 
 const HOOK_WORDS: Record<string, Key> = {
   ok: "hostCompare.hooks.ok",
-  warn: "hostCompare.hooks.warn",
-  fail: "hostCompare.hooks.fail",
+  outdated: "hostCompare.hooks.outdated",
+  missing: "hostCompare.hooks.missing",
 };
 const SIGNIN_WORDS: Record<string, Key> = {
   ok: "hostCompare.signin.ok",
@@ -36,17 +37,50 @@ const SIGNIN_WORDS: Record<string, Key> = {
   missing: "hostCompare.signin.missing",
   na: "hostCompare.signin.na",
 };
+const TOOL_WORDS: Record<string, Key> = {
+  ok: "hostCompare.tool.ok",
+  outdated: "hostCompare.tool.outdated",
+  missing: "hostCompare.tool.missing",
+  na: "hostCompare.tool.na",
+};
+const BOOT_WORDS: Record<string, Key> = {
+  ok: "hostCompare.boot.ok",
+  outdated: "hostCompare.boot.outdated",
+  missing: "hostCompare.boot.missing",
+  na: "hostCompare.boot.na",
+};
+const OS_WORDS: Record<string, Key> = {
+  linux: "hostCompare.os.linux",
+  darwin: "hostCompare.os.darwin",
+  win32: "hostCompare.os.win32",
+};
+/** The words of the fields whose value is a status; an unknown one reads as not known. */
+const WORDS: Partial<Record<CompareField, Record<string, Key>>> = {
+  hooks: HOOK_WORDS,
+  signin: SIGNIN_WORDS,
+  gh: TOOL_WORDS,
+  az: TOOL_WORDS,
+  boot: BOOT_WORDS,
+};
 
 /** A value as the person reads it: the word for a status, the count of a feature set, a version as is. */
 function shown(field: CompareField, value: string, t: T): string {
-  if (field === "hooks") return t(HOOK_WORDS[value] ?? "hostCompare.unknown");
-  if (field === "signin") return t(SIGNIN_WORDS[value] ?? "hostCompare.unknown");
   if (field === "features") return String(value === "" ? 0 : value.split(",").length);
-  return value;
+  if (field === "os") return t(OS_WORDS[value] ?? "hostCompare.unknown");
+  const words = WORDS[field];
+  return words ? t(words[value] ?? "hostCompare.unknown") : value;
 }
 
-function Cell(props: Readonly<{ cell: CompareCell; row: CompareRow; t: T }>) {
-  const { cell, row, t } = props;
+function Cell(
+  props: Readonly<{
+    cell: CompareCell;
+    row: CompareRow;
+    t: T;
+    fix: (() => void) | null;
+    host: string;
+  }>,
+) {
+  const { cell, row, t, fix, host } = props;
   const padding = "py-1 pr-3 align-top";
   if (cell.value === null) {
     return (
@@ -69,6 +103,11 @@ function Cell(props: Readonly<{ cell: CompareCell; row: CompareRow; t: T }>) {
         {value}
       </span>
       <span className="block text-muted-foreground text-xs">{why}</span>
+      {fix && hasFix(row.field, cell.value) && (
+        <Button variant="link" size="sm" onClick={fix}>
+          {t("hostCompare.fix", { host })}
+        </Button>
+      )}
     </td>
   );
 }
@@ -79,7 +118,13 @@ function Cell(props: Readonly<{ cell: CompareCell; row: CompareRow; t: T }>) {
  * the table shows is what the app already holds; the hosts are asked again (the health read, which
  * is where `doctor.run` runs) only when it is opened and on Refresh, never on a render.
  */
-export const HostCompare = memo(function HostCompare(props: Readonly<{ store: AppStore }>) {
+export const HostCompare = memo(function HostCompare(
+  props: Readonly<{
+    store: AppStore;
+    /** The host whose page this is: its Health section is on the same page, so its fix scrolls there. */
+    hostId?: string;
+  }>,
+) {
   const { store } = props;
   const t = useT();
   const state = useStoreSlice(store, COMPARE_KEYS);
@@ -106,6 +151,13 @@ export const HostCompare = memo(function HostCompare(props: Readonly<{ store: Ap
   const toggle = () => {
     setOpen(!open);
     if (!open) void refresh();
+  };
+  const fixFor = (hostId: string) => () => {
+    if (hostId === props.hostId) {
+      document.querySelector("[data-slot='host-health']")?.scrollIntoView?.({ block: "start" });
+    } else {
+      store.router.push({ name: "host", host: hostId });
+    }
   };
   return (
     <Panel title={t("hostCompare.title")} label={t("hostCompare.title")} slot="host-compare">
@@ -142,14 +194,38 @@ export const HostCompare = memo(function HostCompare(props: Readonly<{ store: Ap
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {rows.map((row, index) => (
                     <tr key={row.field} className="border-t">
                       <th scope="row" className={ROW_HEADER}>
                         {t(`hostCompare.fields.${row.field}` as Key)}
                       </th>
-                      {row.cells.map((cell) => (
-                        <Cell key={cell.hostId} cell={cell} row={row} t={t} />
-                      ))}
+                      {row.cells.map((cell, column) => {
+                        const host = hosts[column];
+                        if (host && host.status !== "online") {
+                          // One cell that says so, spanning every row, instead of a dash in each.
+                          return index === 0 ? (
+                            <td
+                              key={cell.hostId}
+                              rowSpan={rows.length}
+                              className="py-1 pr-3 align-top text-muted-foreground"
+                            >
+                              {t("hostCompare.down", {
+                                status: t(`hosts.status.${host.status}` as Key),
+                              })}
+                            </td>
+                          ) : null;
+                        }
+                        return (
+                          <Cell
+                            key={cell.hostId}
+                            cell={cell}
+                            row={row}
+                            t={t}
+                            host={host?.name ?? cell.hostId}
+                            fix={fixFor(cell.hostId)}
+                          />
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>

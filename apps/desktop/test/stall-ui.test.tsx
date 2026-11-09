@@ -181,6 +181,6 @@ describe("stall-ui: the Needs you badge counts the quiet rows (issue #1478)", ()
     expect(entry()).toContain("Needs you1");
     store.snoozeQuiet("h1", "s1");
     await act1(() => shown.rerender(tree()));
-    expect(entry()).not.toContain("Needs you1");
+    expect(entry()).toBe("Needs you");
   });
 });

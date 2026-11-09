@@ -32,6 +32,17 @@ describe("stall in the session manager (issue #1478)", () => {
     expect(manager.activity(sessionId).lastEventAt ?? 0).toBeGreaterThan(first ?? 0);
   });
 
+  test("an ended session is forgotten: it has no last activity left to go quiet from", async () => {
+    const { manager, sessionId } = await idleSession();
+    expect(manager.activity(sessionId).lastEventAt).not.toBeNull();
+    await manager.close(sessionId);
+    expect(manager.get(sessionId).status).toBe("ended");
+    expect(manager.activity(sessionId)).toEqual({
+      lastEventAt: null,
+      tool: { name: null, inFlight: false },
+    });
+  });
+
   test("a session marked quiet lists when and with which tool, and says so to the watchers", async () => {
     const { manager, sessionId } = await idleSession();
     const seen: Array<ReturnType<typeof summaryOf>> = [];

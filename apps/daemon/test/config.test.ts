@@ -47,6 +47,9 @@ describe("config", () => {
     expect(await read(undefined)).toBe(15);
     expect(await read({ afterMinutes: 30 })).toBe(30);
     expect(await read({ afterMinutes: 0 })).toBe(0);
+    expect(await read({ afterMinutes: 1440 })).toBe(1440);
+    expect(await read({ afterMinutes: 1441 })).toBe(15);
+    expect(await read({ afterMinutes: -1 })).toBe(15);
     expect(await read({ afterMinutes: 5000 })).toBe(15);
     expect(await read({ afterMinutes: 1.5 })).toBe(15);
     expect(await read({})).toBe(15);
