@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { checkEditedFile } from "../lib/claude-hooks.ts";
 import { realTempDir } from "./temp-dir.ts";
@@ -74,5 +74,50 @@ describe.skipIf(process.platform === "win32")("biome-on-edit: what the hook find
     expect(ok).toBe(true);
     expect(output).not.toContain("noFloatingPromises");
     expect(output).not.toContain("useArraySortCompare");
+  });
+
+  test("a path that starts with a dash is a file, not a Biome option", () => {
+    const dir = realTempDir("biome-on-edit-");
+    try {
+      writeFileSync(join(dir, "biome.json"), CONFIG.replace('["src/**"]', '["**"]'));
+      writeFileSync(join(dir, "--verbose.ts"), "debugger;\n");
+      const { ok, output } = checkEditedFile(dir, "--verbose.ts", [BIOME]);
+      expect(ok).toBe(false);
+      expect(output).toContain("lint/suspicious/noDebugger");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a file that is gone is nothing to report", () => {
+    const dir = realTempDir("biome-on-edit-");
+    try {
+      writeFileSync(join(dir, "biome.json"), CONFIG);
+      let result: unknown = null;
+      try {
+        result = checkEditedFile(dir, "src/gone.ts", [BIOME]);
+      } catch {
+        result = "threw";
+      }
+      expect(result).toEqual({ ok: true, output: "" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a symlink is not written through: its target keeps its text", () => {
+    const dir = realTempDir("biome-on-edit-");
+    const outside = realTempDir("biome-on-edit-out-");
+    try {
+      writeFileSync(join(dir, "biome.json"), CONFIG);
+      mkdirSync(join(dir, "src"));
+      writeFileSync(join(outside, "t.ts"), "export const z = {a:1}\n");
+      symlinkSync(join(outside, "t.ts"), join(dir, "src", "link.ts"));
+      checkEditedFile(dir, "src/link.ts", [BIOME]);
+      expect(readFileSync(join(outside, "t.ts"), "utf8")).toBe("export const z = {a:1}\n");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
