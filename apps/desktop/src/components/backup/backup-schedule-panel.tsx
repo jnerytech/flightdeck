@@ -29,6 +29,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
 
   const schedule = scheduler.schedule();
   const report = scheduler.report;
+  // #1329: what was typed stays, and says why it is not saved, until it is a whole number from 1.
+  const keepValid = /^\d+$/.test(keepText.trim()) && Number(keepText) >= 1;
   const waiting = schedule.cadence !== "off" && !scheduler.hasPassphrase;
 
   return (
@@ -68,14 +70,20 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </div>
         </Stack>
         <Form variant="inline" onSubmit={() => {}}>
-          <Field label={t("backupSchedule.keep")}>
+          <Field
+            label={t("backupSchedule.keep")}
+            error={
+              keepValid
+                ? undefined
+                : t("backupSchedule.keepInvalid", { count: String(schedule.keep) })
+            }
+          >
             {(control) => (
               <Input
                 {...control}
                 type="number"
                 min={1}
                 value={keepText}
-                onBlur={() => setKeepText(String(scheduler.schedule().keep))}
                 onChange={(event) => {
                   setKeepText(event.target.value);
                   const keep = Number(event.target.value);
