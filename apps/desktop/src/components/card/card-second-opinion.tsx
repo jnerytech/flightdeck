@@ -86,7 +86,8 @@ export function CardSecondOpinion(
       try {
         await props.onReviewed();
       } catch {
-        // The panel could not read its comments again; it shows that on its own next read.
+        // The review itself succeeded and its result is shown. Only this read failed (a dropped
+        // connection): the drafts appear on the panel's next read, a change on disk or Refresh.
       }
     }
   };
