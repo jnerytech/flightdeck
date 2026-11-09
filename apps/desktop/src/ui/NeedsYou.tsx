@@ -36,6 +36,10 @@ import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
 import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
+/** A key pressed on a control of the "While you were away" summary is that control's, not the list's. */
+const inSummary = (target: EventTarget | null) =>
+  (target as HTMLElement | null)?.closest?.("[data-slot='while-away']") != null;
+
 const NOTE = `${ROW_PAD} text-muted-foreground text-sm`;
 const HEADING = `${ROW_PAD} font-medium text-muted-foreground text-xs`;
 
@@ -351,7 +355,7 @@ export function NeedsYou(
   // J and K move the cursor, Enter opens the row under it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target) || inSummary(e.target)) return;
       if (e.key === "j") setCursor(Math.min(entries.length - 1, cursor + 1));
       else if (e.key === "k") setCursor(Math.max(0, cursor - 1));
       else if (e.key === "Enter" && entries[cursor]) open(entries[cursor] as Entry);

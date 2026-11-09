@@ -152,25 +152,27 @@ export function WhileAway(
     <section
       aria-label={t("away.title")}
       data-slot="while-away"
-      className="flex max-h-[45%] flex-col gap-3 overflow-y-auto border-b p-4"
+      className="max-h-[45%] overflow-y-auto border-b p-4"
     >
-      <Inline gap={2}>
-        <h2 className="font-semibold text-base">{t("away.title")}</h2>
-        <span className="text-muted-foreground text-xs">
-          {t("away.lastActive", { ago: formatAgo(store.now() - Date.parse(view.since), t) })}
-        </span>
-        <Button variant="ghost" size="sm" onClick={() => store.dismissAway()}>
-          {t("away.dismiss")}
-        </Button>
-      </Inline>
-      {view.news.map((news) => (
-        <HostNews key={news.hostId} store={store} news={news} go={go} />
-      ))}
-      {view.unreached.map((host) => (
-        <p key={host} role="note" className="text-sm">
-          {t("away.unreached", { host })}
-        </p>
-      ))}
+      <Stack gap={3}>
+        <Inline gap={2}>
+          <h2 className="font-semibold text-base">{t("away.title")}</h2>
+          <span className="text-muted-foreground text-xs">
+            {t("away.lastActive", { ago: formatAgo(store.now() - Date.parse(view.since), t) })}
+          </span>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => store.dismissAway()}>
+            {t("away.dismiss")}
+          </Button>
+        </Inline>
+        {view.news.map((news) => (
+          <HostNews key={news.hostId} store={store} news={news} go={go} />
+        ))}
+        {view.unreached.map((host) => (
+          <p key={host} role="note" className="text-sm">
+            {t("away.unreached", { host })}
+          </p>
+        ))}
+      </Stack>
     </section>
   );
 }
