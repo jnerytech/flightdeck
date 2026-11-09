@@ -52,6 +52,13 @@ describe("check-loop: when the switch may turn on", () => {
   });
 });
 
+/** The switch's own fields; how the loop goes (active, round, last) is another test's. */
+type SwitchFields = { on: boolean; rounds: number | null; confirmed: boolean };
+const switchOf = (value: SwitchFields | undefined) =>
+  value
+    ? { on: value.on, rounds: value.rounds, confirmed: value.confirmed }
+    : "no switch on the card";
+
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
@@ -97,7 +104,7 @@ async function setup(over: { mode?: PermissionMode; trusted?: boolean; checks?: 
     const ack = await client.request("card.checkLoop", { cardId: card.id, ...request });
     const error = ack.error as { reason?: string; code?: string } | undefined;
     return ack.ok === true
-      ? ((ack.data as { checkLoop?: unknown }).checkLoop ?? "no switch on the card")
+      ? switchOf((ack.data as { checkLoop?: SwitchFields }).checkLoop)
       : (error?.reason ?? error?.code ?? "refused");
   };
   return { near, far, set, board, cardId: card.id, store };
@@ -138,7 +145,7 @@ describe("check-loop: the card's switch over the protocol", () => {
       await none.set(none.near, { on: true }),
       await untrusted.set(untrusted.near, { on: true }),
       await plan.set(plan.near, { on: true, confirm: true }),
-      (await none.board.getCard(none.cardId)).checkLoop,
+      switchOf((await none.board.getCard(none.cardId)).checkLoop),
     ]).toEqual([
       "check_loop_no_checks",
       "check_loop_untrusted",
