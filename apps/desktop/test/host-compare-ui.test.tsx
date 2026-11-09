@@ -173,7 +173,7 @@ describe("host-compare-ui: the table", () => {
     mount(THREE);
     await open();
     const columns = [...(table()?.querySelectorAll("thead th") ?? [])].map((th) => th.textContent);
-    expect(columns).toEqual(["", "alfa", "beta", "gama"]);
+    expect(columns).toEqual(["alfa", "beta", "gama"]);
     const fields = [...(table()?.querySelectorAll("tbody th") ?? [])].map((th) => th.textContent);
     expect(fields).toEqual([
       "Daemon version",
