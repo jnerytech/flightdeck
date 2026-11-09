@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -38,6 +38,8 @@ export interface CardRunFeatures {
   watch: boolean;
   /** #1446: the host offers the second-opinion review, so the PR description says what is open. */
   secondOpinion?: boolean;
+  /** #1568: the host reads a project's PR provider from its remote (`project.detectProvider`). */
+  prDetect?: boolean;
 }
 
 /**
@@ -133,6 +135,38 @@ export function CardRunForm(
   // A project with no PR provider (no remote) cannot open one: say so, instead of asking for the text first (#1543).
   const provider = store.getState().projects[hostId]?.find((one) => one.id === card.projectId);
   const noRemote = canOpenPr && provider?.prProvider === "none";
+  /** #1568: what the host found when it looked at the remote, for the note. */
+  const [looked, setLooked] = useState<{ outcome: string; host: string | null } | null>(null);
+  /** The note: why there is no Open PR, as far as the host could tell. */
+  const noteText = () => {
+    if (looked?.outcome === "unsupported")
+      return looked.host
+        ? t("cardUi.noRemoteOther", { host: looked.host })
+        : t("cardUi.noRemoteElsewhere");
+    if (looked?.outcome === "unreadable") return t("cardUi.remoteUnreadable");
+    return t("cardUi.noRemote");
+  };
+  const lookAtRemote = async (pressed = false) => {
+    const found = await store.detectPrProvider(hostId, card.projectId, pressed);
+    if (found) setLooked({ outcome: found.outcome, host: found.host });
+    return found;
+  };
+  /** The lead button, and whether the focus is owed to it: the press that found the provider removed the button it was on. */
+  const leadRef = useRef<HTMLButtonElement>(null);
+  const focusLead = useRef(false);
+  useEffect(() => {
+    if (noRemote || !focusLead.current) return;
+    focusLead.current = false;
+    leadRef.current?.focus();
+  }, [noRemote]);
+  // A project with no provider: the host reads it from the remote when the card shows, in case one was added since.
+  const lookOnShow = noRemote && features.prDetect === true;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked once for each card and project that shows it
+  useEffect(() => {
+    // What was found for another card's project is not this one's.
+    setLooked(null);
+    if (lookOnShow) void lookAtRemote();
+  }, [lookOnShow, card.projectId]);
   const step = nextStep(card, {
     tab: props.tab,
     canMerge: props.canMerge,
@@ -186,7 +220,7 @@ export function CardRunForm(
         <FieldRow align="end">
           {lead && (
             // One element whatever the step is, so the focus stays on it when its name changes.
-            <ActionButton variant={lead.variant} onClick={lead.run}>
+            <ActionButton ref={leadRef} variant={lead.variant} onClick={lead.run}>
               {lead.label}
             </ActionButton>
           )}
@@ -249,7 +283,22 @@ export function CardRunForm(
         </FieldRow>
         {noRemote && (
           <Stack gap={1}>
-            <p className="text-sm">{t("cardUi.noRemote")}</p>
+            <p className="text-sm">{noteText()}</p>
+            {features.prDetect && (
+              <div>
+                <ActionButton
+                  variant="outline"
+                  onClick={async () => {
+                    // The note and this button go as soon as the provider is saved, before the answer returns here.
+                    focusLead.current = true;
+                    const found = await lookAtRemote(true);
+                    if (found?.outcome !== "set") focusLead.current = false;
+                  }}
+                >
+                  {t("cardUi.checkRemote")}
+                </ActionButton>
+              </div>
+            )}
             {card.branch && (
               <p className="text-muted-foreground text-sm">
                 {t("cardUi.noRemoteBranch", { branch: card.branch })}

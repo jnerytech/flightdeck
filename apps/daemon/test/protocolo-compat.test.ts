@@ -117,6 +117,7 @@ describe("protocolo-compat", () => {
       "workflows",
       "workflowTemplateAdd",
       "rules",
+      "prDetect",
       "arena",
       "deps",
       "cardPins",

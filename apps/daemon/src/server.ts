@@ -43,6 +43,7 @@ import type { Board } from "./board/board.ts";
 import type { CheckLoopSwitch } from "./board/check-loop.ts";
 import type { BoardSyncService } from "./boardsync/service.ts";
 import type { Central } from "./central/central.ts";
+import type { AsyncGitRunner } from "./central/project-key.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
@@ -153,6 +154,8 @@ export interface ServerOptions {
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
   /** Issue #1478: the stall watcher: its presence announces the host feature `stall`. */
   stall?: { minutes(): number };
+  /** Issue #1568: the git behind `project.detectProvider` (the real one when absent; a test fakes it). */
+  projectGit?: AsyncGitRunner;
   /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
   hostPause?: { status(): HostPauseStatus; set(paused: boolean): void | Promise<void> };
   /** Issue #1439: the cards' second-opinion review, for the near-only `card.review`. */

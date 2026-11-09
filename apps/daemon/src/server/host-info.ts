@@ -92,6 +92,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.account, "account"),
     // Project rules live in the board's projects.
     ...when(opts.board, "rules"),
+    // Issue #1568: a project with no PR provider can have it read from its remote.
+    ...when(opts.board, "prDetect"),
     ...when(opts.costs, "costs"),
     ...when(opts.telemetry, "telemetry"),
     ...when(opts.trace, "trace"),

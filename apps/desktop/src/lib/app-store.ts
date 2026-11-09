@@ -34,6 +34,7 @@ import type {
   PersonaRef,
   PlainInfo,
   Project,
+  ProjectDetectResult,
   QuotaBudgetInput,
   QuotaState,
   ReleaseNote,
@@ -1030,6 +1031,13 @@ function permissionResponse(requestId: string, decision: "allow" | "deny", answe
     ...(updatedInput ? { updatedInput } : {}),
     ...(decision === "allow" && held ? { held: true } : {}),
   };
+}
+
+/** The list with this project in the place of the one of its id, or at the end when it was not there. */
+function replaceOrAdd(projects: Project[], project: Project): Project[] {
+  return projects.some((one) => one.id === project.id)
+    ? projects.map((one) => (one.id === project.id ? project : one))
+    : [...projects, project];
 }
 
 export class AppStore {
@@ -4965,6 +4973,47 @@ export class AppStore {
     );
     this.update({ loopAlerts: [...others, alert] });
     this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+  }
+
+  /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
+  async detectPrProvider(
+    hostId: string,
+    projectId: string,
+    /** A press of the person's: a host that cannot answer, or finds nothing yet, is said. */
+    report = false,
+  ): Promise<ProjectDetectResult | null> {
+    const result = await this.hostRequest(hostId, "project.detectProvider", { projectId });
+    if (!result.ok) {
+      if (report)
+        this.fail(
+          new RequestError(
+            result.code,
+            result.message,
+            result.reason,
+            result.params,
+            result.items,
+            hostId,
+          ),
+        );
+      return null;
+    }
+    const { project, outcome } = result.data;
+    this.update({
+      projects: {
+        ...this.state.projects,
+        [hostId]: replaceOrAdd(this.state.projects[hostId] ?? [], project),
+      },
+    });
+    const { t } = this.i18n;
+    // The button that appears is not a surprise: the change is said.
+    if (outcome === "set")
+      this.success(
+        t("cardUi.providerDetected", {
+          provider: t(`cardUi.providerName.${project.prProvider}` as Key),
+        }),
+      );
+    else if (report && outcome === "no_remote") this.success(t("cardUi.remoteNone"));
+    return result.data;
   }
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */

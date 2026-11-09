@@ -91,6 +91,7 @@ const validCommands: Record<CommandType, unknown> = {
     personaByColumn: { review: "revisor", backlog: null },
     personaSubagents: "project",
   },
+  "project.detectProvider": { projectId: "p" },
   "board.get": { projectId: "p" },
   "board.settings": { maxParallelRuns: 3 },
   "roots.add": { path: "/work/new", confirm: true },

@@ -3,6 +3,7 @@
  * setup (harness) and its templates, and finding or cloning repositories. The board itself
  * (`board.*`) and the allowed roots (`roots.add`) are separate.
  */
+import { detectProvider } from "../../board/pr-provider.ts";
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import type { TemplateMarkdown } from "../../harness/templates-store.ts";
 import { resolveAllowedCwd, rootNames } from "../../paths.ts";
@@ -39,6 +40,20 @@ export const projectHandlers = {
     const { projectId, ...patch } = payload;
     const board = server.need("board");
     return await board.forWire(board.updateProject(projectId, patch));
+  },
+  "project.detectProvider": async (payload, { server }) => {
+    const board = server.need("board");
+    const project = board.getProject(payload.projectId);
+    const found = await detectProvider(project, server.opts.projectGit);
+    // The project form may have saved while git was reading: what the person set stays.
+    const fresh = board.getProject(payload.projectId);
+    if (fresh.prProvider !== "none")
+      return { project: await board.forWire(fresh), outcome: "kept" as const, host: null };
+    // Saved the way the project form saves it, so the board and every window see the new provider.
+    const now = found.provider
+      ? board.updateProject(payload.projectId, { prProvider: found.provider })
+      : fresh;
+    return { project: await board.forWire(now), outcome: found.outcome, host: found.host };
   },
   "project.trust.state": async (payload, { server }) => {
     const trust = server.opts.projectTrust;

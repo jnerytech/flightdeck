@@ -206,6 +206,7 @@ describe("server-registry", () => {
         "harness.templates.delete",
         "harness.templates.list",
         "project.add",
+        "project.detectProvider",
         "project.harness.apply",
         "project.harness.commit",
         "project.harness.draft",

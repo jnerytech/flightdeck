@@ -1613,6 +1613,7 @@ export async function startDaemon(
       })
     : undefined;
   const server = startServer({
+    ...(options.projectGit ? { projectGit: options.projectGit } : {}),
     manager,
     opencode: {
       info: () => opencode.info,
