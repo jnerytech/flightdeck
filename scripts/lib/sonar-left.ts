@@ -30,10 +30,17 @@ interface Issue {
   message: string;
 }
 
-/** One printable line: no control character, whitespace runs folded (the message is data). */
-const oneLine = (text: string) =>
-  [...text]
-    .map((c) => ((c.codePointAt(0) ?? 0) < 32 || c === "\u007f" ? " " : c))
+/** Controls (C0, DEL, C1) and bidi overrides: a terminal would act on them. */
+const unsafe = (code: number) =>
+  code < 0x20 ||
+  (code >= 0x7f && code <= 0x9f) ||
+  (code >= 0x202a && code <= 0x202e) ||
+  (code >= 0x2066 && code <= 0x2069);
+
+/** One printable line: no control or bidi character, whitespace runs folded (API text is data). */
+const oneLine = (text: unknown) =>
+  [...String(text)]
+    .map((c) => (unsafe(c.codePointAt(0) ?? 0) ? " " : c))
     .join("")
     .replace(/\s+/g, " ")
     .trim();
@@ -137,7 +144,7 @@ export async function sonarLeft(args: string[], deps: SonarLeftDeps): Promise<nu
       const where = i.line ? `${i.file}:${i.line}` : i.file;
       const by = changedBy.get(i.file);
       const stale = by ? ` STALE? (changed by ${by})` : "";
-      deps.log(`${i.severity} ${i.rule} ${where} ${oneLine(i.message)}${stale}`);
+      deps.log(oneLine(`${i.severity} ${i.rule} ${where} ${i.message}${stale}`));
     }
     return 0;
   } catch (error) {

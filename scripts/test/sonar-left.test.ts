@@ -135,6 +135,15 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
     const lines: string[] = [];
     await sonarLeft([], { fetch, git, log: (l) => lines.push(l) });
     const printed = lines.slice(1).join("\n");
-    expect(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/.test(printed)).toBe(false);
+    const bad = [...printed].filter((c) => {
+      const code = c.codePointAt(0) ?? 0;
+      return (
+        (code < 0x20 && c !== "\n") ||
+        (code >= 0x7f && code <= 0x9f) ||
+        (code >= 0x202a && code <= 0x202e) ||
+        (code >= 0x2066 && code <= 0x2069)
+      );
+    });
+    expect(bad).toEqual([]);
   });
 });
