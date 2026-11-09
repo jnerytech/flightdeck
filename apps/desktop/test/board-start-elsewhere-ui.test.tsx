@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -164,9 +164,7 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     ]);
     const create = calls.find(([, type]) => type === "card.create");
     expect(create?.[2]).toEqual({ projectId: "p2", title: "A", description: "about A" });
-    await settle(() => screen.queryByRole("alertdialog") === null);
-    const said = (document.body.textContent ?? "").includes("2 cards started on beta");
-    expect(said).toBe(true);
+    await settle(() => (document.body.textContent ?? "").includes("2 cards started on beta"));
   });
 
   test("a paused host makes every card wait and offers the other host too", async () => {
@@ -178,17 +176,23 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
   });
 
   test("no offer when nothing waits, when the other host holds another repository, or has no places", async () => {
-    for (const options of [{ sourceMax: 5 }, { otherKey: "git:acme/other" }, { otherMax: 1 }]) {
+    // The first case is the control: the same setup with nothing flipped offers the host.
+    for (const options of [{}, { sourceMax: 5 }, { otherKey: "git:acme/other" }, { otherMax: 1 }]) {
+      const offered = Object.keys(options).length === 0;
       const { calls } = setup(options);
       await ready();
       await pickBoth();
-      await settle(
-        () =>
-          calls.some(([host, type]) => host === "h2" && type === "project.list") ||
-          options.sourceMax === 5,
-      );
-      await act1(() => {});
-      expect(elsewhere("Start on beta")).toBeNull();
+      // The confirm is ready (its Start button is on) and the other host's reply has come.
+      await settle(() => {
+        const start = within(dialog()).queryByRole("button", { name: "Start 2" });
+        return start !== null && !start.hasAttribute("disabled");
+      });
+      await settle(() => calls.some(([host, type]) => host === "h2" && type === "project.list"));
+      if (offered) {
+        await settle(() => elsewhere("Start on beta") !== null);
+      } else {
+        await stays(() => elsewhere("Start on beta") === null, 400);
+      }
       cleanup();
     }
   });

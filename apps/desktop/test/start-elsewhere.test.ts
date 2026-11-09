@@ -80,9 +80,10 @@ describe("start-elsewhere: which hosts are offered", () => {
 
   test("a card whose template names a workflow or a persona is not offered: it would start differently", () => {
     expect([
+      offer([host("ok")], [card("a")]),
       offer([host("ok")], [card("a", { startWorkflow: "review" })]),
       offer([host("ok")], [card("a", { startPersona: "reviewer" })]),
-    ]).toEqual([[], []]);
+    ]).toEqual([["ok"], [], []]);
   });
 });
 
