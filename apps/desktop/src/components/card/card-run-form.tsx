@@ -38,6 +38,8 @@ export interface CardRunFeatures {
   watch: boolean;
   /** #1446: the host offers the second-opinion review, so the PR description says what is open. */
   secondOpinion?: boolean;
+  /** #1568: the host reads a project's PR provider from its remote (`project.detectProvider`). */
+  prDetect?: boolean;
 }
 
 /**

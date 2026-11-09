@@ -34,6 +34,7 @@ import type {
   PersonaRef,
   PlainInfo,
   Project,
+  ProjectDetectResult,
   QuotaBudgetInput,
   QuotaState,
   ReleaseNote,
@@ -4932,6 +4933,11 @@ export class AppStore {
     );
     this.update({ loopAlerts: [...others, alert] });
     this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+  }
+
+  /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
+  async detectPrProvider(hostId: string, projectId: string): Promise<ProjectDetectResult | null> {
+    return null;
   }
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
