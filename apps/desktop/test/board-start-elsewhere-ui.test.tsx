@@ -62,6 +62,9 @@ function setup(
     sourcePaused?: boolean;
     sourceMax?: number;
     otherMax?: number;
+    /** Cards running on the other host now: they take its places. */
+    otherRunning?: number;
+    otherPaused?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -75,11 +78,26 @@ function setup(
       hostOf("h1", "alfa", {
         hostInfo: { daemonVersion: "x", features: [], ...(pause ? { pause } : {}) },
       }),
-      hostOf("h2", "beta"),
+      hostOf("h2", "beta", {
+        hostInfo: {
+          daemonVersion: "x",
+          features: [],
+          ...(options.otherPaused ? { pause: { paused: true, running: 0 } } : {}),
+        },
+      }),
     ],
   });
   const cards = [card("A", "backlog", 1), card("B", "backlog", 2), running("R")];
-  internals.update({ cards: Object.fromEntries(cards.map((c) => [`h1/${c.id}`, c])) });
+  const away = Array.from({ length: options.otherRunning ?? 0 }, (_, n) => ({
+    ...running(`X${n}`),
+    projectId: "p3",
+  }));
+  internals.update({
+    cards: {
+      ...Object.fromEntries(cards.map((c) => [`h1/${c.id}`, c])),
+      ...Object.fromEntries(away.map((c) => [`h2/${c.id}`, c])),
+    },
+  });
   const calls: Call[] = [];
   /** The boards the app loaded to count the other host's running cards. */
   const loaded: string[] = [];
@@ -187,7 +205,15 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
 
   test("no offer when nothing waits, when the other host holds another repository, or has no places", async () => {
     // The first case is the control: the same setup with nothing flipped offers the host.
-    for (const options of [{}, { sourceMax: 5 }, { otherKey: "git:acme/other" }, { otherMax: 1 }]) {
+    for (const options of [
+      {},
+      { sourceMax: 5 },
+      { otherKey: "git:acme/other" },
+      { otherMax: 1 },
+      // Its places are taken by cards running in its other project: 3 - 2 = 1 free for 2 waiting.
+      { otherRunning: 2 },
+      { otherPaused: true },
+    ]) {
       const offered = Object.keys(options).length === 0;
       const { calls } = setup(options);
       await ready();
