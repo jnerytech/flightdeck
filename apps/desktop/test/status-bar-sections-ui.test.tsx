@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { settleMaybe, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -9,6 +9,10 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { StatusBarSlot } = await import("../src/components/shell/status-bar.tsx");
+const { HostPage } = await import("../src/ui/HostPage.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
+const { Router } = await import("../src/lib/router.ts");
+const { en } = await import("../src/i18n/en.ts");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
@@ -133,5 +137,123 @@ describe("status bar items open their host section (#1484)", () => {
     await act(async () => ask());
     await settle(() => hiddenAtFocus.length > 1);
     expect([hiddenAtFocus, tab("Settings")]).toEqual([[false, false], "true"]);
+  });
+
+  test("Router.replace swaps the current screen with no new history entry", () => {
+    const router = new Router();
+    router.push({ name: "hub" });
+    router.push({ name: "host", host: "h1", section: "pause" });
+    let emitted = 0;
+    router.subscribe(() => {
+      emitted++;
+    });
+    router.replace({ name: "host", host: "h1" });
+    // The same route again changes nothing.
+    router.replace({ name: "host", host: "h1" });
+    router.back();
+    const afterBack = router.current;
+    router.forward();
+    expect([emitted, afterBack, router.current]).toEqual([
+      3,
+      { name: "hub" },
+      { name: "host", host: "h1" },
+    ]);
+  });
+
+  /** A host that announces both features, shown with no daemon behind it. */
+  const fakeHost = {
+    id: "h1",
+    name: "pi",
+    url: "ws://x",
+    token: "",
+    status: "online",
+    info: null,
+    hostInfo: {
+      daemonVersion: "x",
+      features: ["hostPause", "keepAwake"],
+      pause: { paused: false, running: 0 },
+      keepAwake: { enabled: false, held: false, method: null, reason: null },
+    },
+    incompatibility: null,
+    daemonUpdate: null,
+    sessions: [],
+  };
+  const fakeStore = () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    cleanups.push(() => store.dispose());
+    store.i18n.start();
+    // Nothing answers behind this host: the page's own reads come back empty.
+    store.hostRequest = (async () => ({ ok: false, code: "x", message: "no" })) as never;
+    store.hostCommand = (async () => null) as never;
+    store.refreshHub = (async () => {}) as never;
+    (store as unknown as { update(p: object): void }).update({ hosts: [fakeHost] });
+    return store;
+  };
+
+  /** The host page alone, asked for its Pause section; `decoy` puts another page's panel first. */
+  const hostPage = (
+    store: ReturnType<typeof fakeStore>,
+    onSectionDone: () => void,
+    decoy = false,
+  ) => (
+    <TContext.Provider value={store.i18n.t}>
+      {decoy && (
+        <div data-slot="host-section-pause">
+          <h3>Another host</h3>
+          <button type="button">Elsewhere</button>
+        </div>
+      )}
+      <HostPage
+        store={store}
+        host={fakeHost as never}
+        section="pause"
+        onSectionDone={onSectionDone}
+        onRename={() => null}
+        onReconnect={() => {}}
+        onOpenAutoApprovals={() => {}}
+        onOpenHistory={() => {}}
+        onOpenSession={() => {}}
+        onOpenProject={() => {}}
+        onSeeAllSessions={() => {}}
+        onSeeAllProjects={() => {}}
+        onNewSession={() => {}}
+        onRemove={() => {}}
+      />
+    </TContext.Provider>
+  );
+
+  test("the Pause item's section opens the same way: Settings, the focus on its heading", async () => {
+    const store = fakeStore();
+    let done = 0;
+    render(hostPage(store, () => void done++));
+    await settleMaybe(() => done > 0);
+    const settings = screen.queryByRole("tab", { name: "Settings" });
+    expect([
+      document.activeElement?.textContent,
+      settings?.getAttribute("aria-selected"),
+      done,
+    ]).toEqual([en.hostPage.pauseTitle, "true", 1]);
+  });
+
+  test("from the review: the page looks only in itself, and a new render never takes the focus back", async () => {
+    const store = fakeStore();
+    const done: number[] = [];
+    // Another page's panel with the same section sits earlier in the document.
+    const page = (onSectionDone: () => void) => hostPage(store, onSectionDone, true);
+    const view = render(page(() => void done.push(1)));
+    await settleMaybe(() => done.length > 0);
+    const focused = document.activeElement?.textContent;
+    // The route kept its section (the ask was not used up): the person moves on, the page renders again.
+    await act(async () => {
+      screen.getByRole("button", { name: "Elsewhere" }).focus();
+    });
+    await act(async () => {
+      view.rerender(page(() => void done.push(2)));
+    });
+    expect([focused, document.activeElement?.textContent, done]).toEqual([
+      en.hostPage.pauseTitle,
+      "Elsewhere",
+      [1],
+    ]);
   });
 });
