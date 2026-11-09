@@ -13,6 +13,7 @@ import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
+  DEMO_GATE_CARD,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
@@ -1793,6 +1794,34 @@ step(
       throw new Error(`the quota of ${host} does not lead the page`);
   },
 );
+
+// A card waiting at a gate leads with the gate's Approve, never with Open PR or Review changes (issue #1269).
+step(When, "I open the card that waits at a workflow gate", async (c) => {
+  mine(c).card = DEMO_GATE_CARD;
+  await tile(c).getByRole("button", { name: DEMO_GATE_CARD, exact: true }).click({ timeout: WAIT });
+});
+
+step(Then, "the gate offers Approve and Deny", async (c) => {
+  const gate = c.page.getByRole("region", { name: pattern(dictionary(c).runUi.gate) });
+  await gate
+    .getByRole("button", { name: dictionary(c).approval.approve, exact: true })
+    .waitFor({ timeout: WAIT });
+  await gate
+    .getByRole("button", { name: dictionary(c).approval.deny, exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card's run panel has no main button, only its menu", async (c) => {
+  const run = c.page.locator('[data-slot="card-run"]');
+  const menu = c.t("board.cardActions", { title: DEMO_GATE_CARD });
+  await run.getByRole("button", { name: menu, exact: true }).waitFor({ timeout: WAIT });
+  const names = await run
+    .getByRole("button")
+    .evaluateAll((buttons) =>
+      buttons.map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim() ?? ""),
+    );
+  if (names.join("|") !== menu) throw new Error(`the run panel has more than its menu: ${names}`);
+});
 
 // Scheduled backups that cannot go reach the bell, once per start, and a press opens the schedule (issue #1327).
 // A schedule a past session left on is put in the page's storage, as the app keeps it; the next load is the restart.
