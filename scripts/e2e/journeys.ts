@@ -282,9 +282,17 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByLabel(c.t("changes.commentLabel"), { exact: true })
       .fill("Explique esta linha");
     await c.page.getByRole("button", { name: c.t("changes.addComment"), exact: true }).click();
-    await c.page.getByRole("button", { name: c.t("changes.send", { n: 1 }), exact: true }).click();
-    // The demo keeps what the other language sent: the history may hold more than one.
-    await c.page.getByText(c.t("changes.sent"), { exact: true }).first().waitFor({ timeout: WAIT });
+    // The reviewer's drafts of the second-opinion journey may be in the list too (#1446): the
+    // count in the button is whatever there is.
+    const send = new RegExp(
+      `^${c.t("changes.send", { n: 1 }).replace(/[()]/g, "\\$&").replace("1", "\\d+")}$`,
+    );
+    // The demo keeps what the other language sent: the history may hold more than one sent
+    // comment already, so what is waited for is one more than before the click.
+    const sent = c.page.getByText(c.t("changes.sent"), { exact: true });
+    const before = await sent.count();
+    await c.page.getByRole("button", { name: send }).click();
+    await expect.poll(() => sent.count(), { timeout: WAIT * 2 }).toBeGreaterThan(before);
   },
 
   // 5. Open the palette, search the history and open the reader.
@@ -2320,6 +2328,38 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await summary.waitFor({ timeout: WAIT });
     await summary.getByRole("button", { name: c.t("away.dismiss"), exact: true }).click();
     await summary.waitFor({ state: "detached", timeout: WAIT });
+  },
+
+  // Issue #1446: on a card's Changes, a second-opinion review comes back from the host (the demo's
+  // fake runtime answers with a canned one) as a summary and reviewer drafts with their severity.
+  // The other language's run may already have asked (the same diff shows that review, and its
+  // drafts may be sent or dismissed), so what the journey holds to is the summary and the shape of
+  // every reviewer draft on screen.
+  "segunda-opiniao": async (c) => {
+    await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });
+    await c.page.getByRole("button", { name: c.t("cardUi.diff"), exact: true }).click();
+    const panel = c.page.getByRole("region", { name: c.t("secondOpinion.title"), exact: true });
+    await panel.waitFor({ timeout: WAIT });
+    await panel.getByRole("button", { name: c.t("secondOpinion.ask"), exact: true }).click();
+    await panel
+      .getByText("Two findings on the changes, one general note.", { exact: true })
+      .waitFor({ timeout: WAIT * 2 });
+    // The reviewer's comments are in the list (drafts, or sent ones when the other language's run
+    // already sent them): the first is waited for, so the check below cannot run over nothing,
+    // and each says so with its severity in words.
+    const reviewer = c.page
+      .getByRole("listitem")
+      .filter({ hasText: c.t("secondOpinion.reviewer") });
+    await reviewer.first().waitFor({ timeout: WAIT * 2 });
+    const severity = new RegExp(
+      (["blocker", "high", "medium", "low"] as const)
+        .map((level) => c.t(`secondOpinion.severity.${level}`))
+        .join("|"),
+    );
+    const count = await reviewer.count();
+    for (let i = 0; i < count; i++) {
+      await reviewer.nth(i).getByText(severity).first().waitFor({ timeout: WAIT });
+    }
   },
 
   "escopo-dados": async (c) => {

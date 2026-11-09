@@ -2968,6 +2968,8 @@ export const en: Dictionary = {
       "A second Claude call reads the diff and leaves its findings as reviewer drafts. The diff, with secrets masked, goes to Anthropic, as the card's own session sends it.",
     ask: "Get a second opinion",
     running: "A run is going: wait for it to end.",
+    queued: "The card waits for a free slot: wait for it to start and end.",
+    unreachable: "The host did not answer: the review may not have run. Try again.",
     noChanges: "The card has no changes to review.",
     reading: "Reading the diff… this can take a minute.",
     draftsOne:
@@ -3252,6 +3254,8 @@ export const en: Dictionary = {
     loading: "Reading the pull requests…",
     empty: "No open pull requests.",
     emptyDetail: "A card's PR shows up here while it is open.",
+    /** #1500: the PRs Update N from the base leaves out, each with its reason. */
+    updateLeftOut: "Left out: {items}.",
     refused: "{title}: {reason}",
     noHosts: "No host is online.",
     watchOff: "Watch and fix is off",
@@ -4144,6 +4148,34 @@ export const en: Dictionary = {
     draftOne: "Update {path}",
     draftMany: "Update {n} files",
     prFiles: "Files:",
+  },
+  checkLoopUi: {
+    switch: "Keep going until the checks pass",
+    confirm:
+      "The checks will run the code this card writes, without asking you each time. That code can read your files and reach the network, as the session itself can.",
+    confirmAction: "Turn on",
+    ready: "On: when a turn ends, the project's checks run.",
+    checking: "Running the checks…",
+    fixing: "Round {round} of {max}: the session is fixing what the checks found.",
+    ended: {
+      passed: "The checks passed.",
+      rounds_spent: "The checks still failed after {max} rounds: {command}.",
+      budget: "Stopped: the project's budget is reached.",
+      quota: "Stopped: the plan's quota is reached.",
+      memory: "Stopped: the host is short of memory.",
+      person_turn: "You took over, so the loop stepped aside.",
+      stopped_by_you: "Stopped: the card was stopped, moved or the switch turned off.",
+      session_ended: "Stopped: the session ended.",
+      no_result: "Stopped: the session gave no answer in time.",
+      check_loop_confirm:
+        "Stopped: confirm the switch again for this permission mode or these checks.",
+      check_loop_untrusted: "Stopped: the project is not trusted.",
+      check_loop_mode: "Stopped: in plan mode the session cannot fix anything.",
+      check_refused: "Stopped: a check command is not allowed to run on its own.",
+      check_error: "Stopped: the checks could not be run.",
+      turn_error: "Stopped: the turn ended in an error.",
+      interrupted: "Stopped: Flightdeck restarted while a round was out.",
+    },
   },
   watchUi: {
     switch: "Watch and fix",

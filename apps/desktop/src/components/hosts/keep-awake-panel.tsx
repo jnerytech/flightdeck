@@ -28,7 +28,7 @@ export function KeepAwakePanel(props: Readonly<{ store: AppStore; host: HostView
     await store.reloadHostInfo(host.id);
   };
   return (
-    <Panel title={t("hostPage.keepAwakeTitle")}>
+    <Panel title={t("hostPage.keepAwakeTitle")} slot="host-section-keep-awake">
       <p className="text-muted-foreground text-xs">{t("hostPage.keepAwakeHint")}</p>
       <p className="text-sm">
         {t(status.enabled ? "hostPage.keepAwakeOn" : "hostPage.keepAwakeOff")}

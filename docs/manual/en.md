@@ -1079,13 +1079,15 @@ live; the list is the project's, so a session of another project never shows her
   conflict stays on screen with the files. With two or more PRs that can take it (a branch, and not
   running), **Update N from the base** above the list updates them all, one at a time, each on its
   own host, as the board's selection bar does: a PR already on its base is left alone, a conflict
-  stops only that card, and a line names the updated, already current and conflicted cards. The title opens the card. A line under the title says
-  its review (approved, changes requested, review required) and how long it has been open, as the host's PR poll reports them (about every minute); a host that
-  does not report them, or has not polled yet, adds nothing. A PR that conflicts with its base
-  has no **Merge PR** (GitHub would refuse it): the conflict is a badge by the checks, **Update from
-  the base** leads, and a card with no worktree here says to bring the branch up to date. A PR that
-  is blocked by the branch rules, or waits for a review or for changes, keeps **Merge PR** as a
-  secondary button and says why GitHub may refuse it.
+  stops only that card, and a line names the updated, already current and conflicted cards. Under the button, a line names the listed PRs it leaves out and why (no
+  branch on its host, or running). The title opens the card. A line under the title says
+  its review (approved, changes requested, review required) and how long it has been open, as the
+  host's PR poll reports them (about every minute); a host that does not report them, or has not
+  polled yet, adds nothing. A PR that conflicts with its base has no **Merge PR** (GitHub would
+  refuse it): the conflict is a badge by the checks, **Update from the base** leads, and a card with
+  no worktree here says to bring the branch up to date. A PR that is blocked by the branch rules, or
+  waits for a review or for changes, keeps **Merge PR** as a secondary button and says why GitHub
+  may refuse it.
 - **Activity** (in the sidebar after Costs; `g a`, or **Go to Activity** in the palette) shows every
   live session of every host in four columns: **Needs you** (the session is asking), **Working**,
   **Done** (a turn ended in the last 2 hours and you have not opened the session) and **Idle**,
