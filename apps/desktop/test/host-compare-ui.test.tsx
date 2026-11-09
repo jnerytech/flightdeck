@@ -15,19 +15,39 @@ const { TContext } = await import("../src/i18n/context.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
+type DepState = "ok" | "outdated" | "missing" | null;
+
 interface Fixture {
   id: string;
+  os?: string;
   daemon?: string;
   claude?: string | null;
-  hooks?: "ok" | "warn" | "fail" | null;
-  signin?: "ok" | "missing" | null;
+  hooks?: DepState;
+  signin?: DepState;
+  gh?: DepState;
+  az?: DepState;
+  boot?: DepState;
   features?: string[];
   status?: string;
 }
 
+/** The dependencies a fixture's host answers `deps.check` with; a null one is left out. */
+function depItems(f: Fixture | undefined) {
+  const wanted: Array<[string, DepState | undefined]> = [
+    ["claudeAuth", f?.signin],
+    ["hooks", f?.hooks],
+    ["gh", f?.gh],
+    ["az", f?.az],
+    ["service", f?.boot],
+  ];
+  return wanted.flatMap(([id, state]) =>
+    state ? [{ id, group: "optional", state, breaks: [], fix: [] }] : [],
+  );
+}
+
 const BASE_FEATURES = ["doctor.run", "depsCheck"];
 
-function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en") {
+function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en", hostId?: string) {
   const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const asked: string[] = [];
@@ -35,16 +55,8 @@ function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en") {
   store.hostRequest = (async (hostId: string, type: string) => {
     asked.push(`${hostId}:${type}`);
     const f = byId.get(hostId);
-    if (type === "doctor.run") {
-      const checks = f?.hooks ? [{ id: "hooks", status: f.hooks, detail: "x" }] : [];
-      return { ok: true, data: { ok: true, checks } };
-    }
-    if (type === "deps.check") {
-      const items = f?.signin
-        ? [{ id: "claudeAuth", group: "required", state: f.signin, breaks: [], fix: [] }]
-        : [];
-      return { ok: true, data: { items } };
-    }
+    if (type === "doctor.run") return { ok: true, data: { ok: true, checks: [] } };
+    if (type === "deps.check") return { ok: true, data: { items: depItems(f) } };
     return { ok: false, message: "unexpected" };
   }) as never;
   const hosts = fixtures.map((f) => ({
@@ -53,7 +65,7 @@ function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en") {
     status: f.status ?? "online",
     sessions: [],
     hostInfo: {
-      os: "linux",
+      os: f.os ?? "linux",
       daemonVersion: f.daemon ?? "1.4.0",
       claudeVersion: f.claude === undefined ? "2.1.0" : f.claude,
       features: [...BASE_FEATURES, ...(f.features ?? [])],
@@ -65,15 +77,15 @@ function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en") {
   const view = (
     <TContext.Provider value={store.i18n.t}>
       <TooltipProvider>
-        <HostCompare store={store} />
+        <HostCompare store={store} {...(hostId ? { hostId } : {})} />
       </TooltipProvider>
     </TContext.Provider>
   );
   return { view, asked, push, hosts, store };
 }
 
-const mount = (fixtures: Fixture[], lang: "en" | "pt-BR" = "en") => {
-  const mounted = setup(fixtures, lang);
+const mount = (fixtures: Fixture[], lang: "en" | "pt-BR" = "en", hostId?: string) => {
+  const mounted = setup(fixtures, lang, hostId);
   render(mounted.view);
   return mounted;
 };
@@ -169,7 +181,7 @@ describe("host-compare-ui: the table", () => {
   const THREE: Fixture[] = [
     { id: "alfa", daemon: "1.4.0", hooks: "ok", signin: "ok" },
     { id: "beta", daemon: "1.4.0", hooks: "ok", signin: "ok" },
-    { id: "gama", daemon: "1.3.0", hooks: "warn", signin: "missing" },
+    { id: "gama", daemon: "1.3.0", hooks: "outdated", signin: "missing" },
   ];
 
   test("one column per host and one row per field, each row named in its header", async () => {
@@ -179,10 +191,14 @@ describe("host-compare-ui: the table", () => {
     expect(columns).toEqual(["alfa", "beta", "gama"]);
     const fields = [...(table()?.querySelectorAll("tbody th") ?? [])].map((th) => th.textContent);
     expect(fields).toEqual([
+      "Operating system",
       "Daemon version",
       "Claude Code version",
       "Hooks",
       "Claude sign-in",
+      "GitHub CLI (gh)",
+      "Azure CLI (az)",
+      "Start at boot",
       "Features",
     ]);
   });
@@ -202,13 +218,14 @@ describe("host-compare-ui: the table", () => {
     const { store } = mount(THREE);
     await open();
     expect(await answered(store, 3)).toBe(true);
-    expect(cells("Hooks")[0]).toBe("OK");
-    expect(cells("Hooks")[2]).toContain("Warning");
-    expect(cells("Hooks")[2]).toContain("which have OK");
+    expect(cells("Hooks")[0]).toBe("Installed");
+    expect(cells("Hooks")[2] ?? "").toContain("Outdated");
+    expect(cells("Hooks")[2] ?? "").not.toContain("Warning");
+    expect(cells("Hooks")[2] ?? "").toContain("which have Installed");
     expect(await answered(store, 3)).toBe(true);
     expect(cells("Claude sign-in")[0]).toBe("Signed in");
-    expect(cells("Claude sign-in")[2]).toContain("Not signed in");
-    expect(cells("Claude sign-in")[2]).toContain("which have Signed in");
+    expect(cells("Claude sign-in")[2] ?? "").toContain("Not signed in");
+    expect(cells("Claude sign-in")[2] ?? "").toContain("which have Signed in");
   });
 
   test("a tie marks nothing: two hosts that differ both look the same, with no reason", async () => {
@@ -236,12 +253,117 @@ describe("host-compare-ui: the table", () => {
     expect(gama).not.toContain("Differs");
   });
 
-  test("an offline host is a column of dashes", async () => {
+  test("a host that is absent from the hooks says Absent, not a warning", async () => {
+    const { store } = mount([
+      { id: "alfa", hooks: "ok" },
+      { id: "beta", hooks: "ok" },
+      { id: "gama", hooks: "missing" },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    expect(cells("Hooks")[2] ?? "").toContain("Absent");
+    expect(cells("Hooks")[2] ?? "").toContain("which have Installed");
+  });
+
+  test("the operating system, gh, az and Start at boot are rows of their own, said in words", async () => {
+    const { store } = mount([
+      { id: "alfa", os: "linux", gh: "ok", az: "ok", boot: "missing" },
+      { id: "beta", os: "linux", gh: "ok", az: "ok", boot: "missing" },
+      { id: "gama", os: "win32", gh: "missing", az: "outdated", boot: "ok" },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    expect(cells("Operating system").map((c) => c.split("Differs")[0])).toEqual([
+      "Linux",
+      "Linux",
+      "Windows",
+    ]);
+    expect(cells("Operating system")[2] ?? "").toContain("which have Linux");
+    expect(cells("GitHub CLI (gh)")[0]).toBe("Installed");
+    expect(cells("GitHub CLI (gh)")[2]).toContain("Not installed");
+    expect(cells("Azure CLI (az)")[2]).toContain("Outdated");
+    expect(cells("Start at boot")[0]).toBe("Off");
+    expect(cells("Start at boot")[2] ?? "").toContain("On");
+    expect(cells("Start at boot")[2] ?? "").toContain("which have Off");
+  });
+
+  test("an offline host says so once, in place of a column of dashes", async () => {
     const { store } = mount([{ id: "alfa" }, { id: "beta" }, { id: "gama", status: "offline" }]);
     await open();
     expect(await answered(store, 2)).toBe(true);
-    expect(cells("Daemon version")[2]).toContain("Not known");
-    expect(cells("Features")[2]).toContain("Not known");
+    const rows = [...(table()?.querySelectorAll("tbody tr") ?? [])];
+    const first = [...(rows[0]?.querySelectorAll("td") ?? [])];
+    expect(first.map((td) => td.textContent).slice(2)).toEqual(["Not compared: offline."]);
+    expect(first[2]?.getAttribute("rowspan")).toBe(String(rows.length));
+    // The other rows have no cell for it: the first one spans them.
+    expect(rows.slice(1).map((row) => row.querySelectorAll("td").length)).toEqual(
+      rows.slice(1).map(() => 2),
+    );
+    expect(table()?.textContent).not.toContain("Not known");
+    expect(table()?.textContent).not.toContain("—");
+  });
+
+  test("a host being reached again, or refused, says that in the same place", async () => {
+    const { store } = mount([
+      { id: "alfa" },
+      { id: "beta" },
+      { id: "gama", status: "connecting" },
+      { id: "delta", status: "unauthorized" },
+    ]);
+    await open();
+    expect(await answered(store, 2)).toBe(true);
+    const first = [...(table()?.querySelectorAll("tbody tr")[0]?.querySelectorAll("td") ?? [])];
+    expect(first.map((td) => td.textContent).slice(2)).toEqual([
+      "Not compared: reconnecting.",
+      "Not compared: token refused.",
+    ]);
+  });
+
+  test("a marked cell that is lacking links to the fix on its host, and one with no fix has no link", async () => {
+    const { store } = mount([
+      { id: "alfa", os: "linux", hooks: "ok", gh: "ok" },
+      { id: "beta", os: "linux", hooks: "ok", gh: "ok" },
+      { id: "gama", os: "win32", hooks: "missing", gh: "ok" },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    const link = screen.queryByRole("button", { name: "Fix on gama" });
+    expect(link !== null).toBe(true);
+    // Hooks is the only marked cell with a fix: the OS differs too, and has none.
+    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1);
+    await act(async () => {
+      if (link) fireEvent.click(link);
+    });
+    expect(store.router.current).toEqual({ name: "host", host: "gama" });
+  });
+
+  test("on the page of the host itself, the link takes the person to its Health section", async () => {
+    const { store } = mount(
+      [
+        { id: "alfa", gh: "ok" },
+        { id: "beta", gh: "ok" },
+        { id: "gama", gh: "missing" },
+      ],
+      "en",
+      "gama",
+    );
+    const health = document.createElement("section");
+    health.dataset.slot = "host-health";
+    let scrolled = 0;
+    health.scrollIntoView = () => {
+      scrolled += 1;
+    };
+    document.body.append(health);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    const before = store.router.current;
+    await act(async () => {
+      const link = screen.queryByRole("button", { name: "Fix on gama" });
+      if (link) fireEvent.click(link);
+    });
+    health.remove();
+    expect(scrolled).toBe(1);
+    expect(store.router.current).toEqual(before);
   });
 
   test("features show as a count, and a different set is marked even with the same count", async () => {
@@ -264,19 +386,36 @@ describe("host-compare-ui: in Portuguese", () => {
   test("the headings, the words and the reason come from the pt-BR dictionary", async () => {
     const { store } = mount(
       [
-        { id: "alfa", daemon: "1.4.0", signin: "ok" },
-        { id: "beta", daemon: "1.4.0", signin: "ok" },
-        { id: "gama", daemon: "1.3.0", signin: "missing", claude: null },
+        { id: "alfa", daemon: "1.4.0", signin: "ok", hooks: "ok", gh: "ok", boot: "missing" },
+        { id: "beta", daemon: "1.4.0", signin: "ok", hooks: "ok", gh: "ok", boot: "missing" },
+        {
+          id: "gama",
+          daemon: "1.3.0",
+          signin: "missing",
+          hooks: "outdated",
+          gh: "missing",
+          boot: "ok",
+          os: "win32",
+          claude: null,
+        },
+        { id: "delta", status: "offline" },
       ],
       "pt-BR",
     );
     expect(panel("pt-BR") !== null).toBe(true);
     await open("pt-BR");
     expect(await answered(store, 3)).toBe(true);
-    expect(cells("Versão do daemon", "pt-BR")[2]).toContain(
+    expect(cells("Sistema operacional", "pt-BR")[2] ?? "").toContain("Windows");
+    expect(cells("Hooks", "pt-BR")[2] ?? "").toContain("Desatualizados");
+    expect(cells("GitHub CLI (gh)", "pt-BR")[2]).toContain("Não instalado");
+    expect(cells("Iniciar no boot", "pt-BR")[2] ?? "").toContain("Ligado");
+    expect(screen.queryByRole("button", { name: "Corrigir em gama" }) !== null).toBe(true);
+    const first = table("pt-BR")?.querySelectorAll("tbody tr")[0]?.querySelectorAll("td");
+    expect(first?.[3]?.textContent).toBe("Não comparado: offline.");
+    expect(cells("Versão do daemon", "pt-BR")[2] ?? "").toContain(
       "Difere da maioria dos hosts, que têm 1.4.0",
     );
-    expect(cells("Login do Claude", "pt-BR")[2]).toContain("Sem login");
-    expect(cells("Versão do Claude Code", "pt-BR")[2]).toContain("Desconhecido");
+    expect(cells("Login do Claude", "pt-BR")[2] ?? "").toContain("Sem login");
+    expect(cells("Versão do Claude Code", "pt-BR")[2] ?? "").toContain("Desconhecido");
   });
 });
