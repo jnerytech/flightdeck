@@ -3082,16 +3082,22 @@ export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 export const isWatchCheck = (line: string): boolean =>
   /^[\w@+=:,./-]+(?: [\w@+=:,./-]+)*$/.test(line);
 
-/** Issue #1361: names that look like a secret's, or Flightdeck's own; any case (Windows reads both). */
+/**
+ * Issue #1361: names that look like a secret's (connection strings and key files too), Flightdeck's
+ * own, or a loader's or interpreter's, which runs code before the check does; any case (Windows
+ * reads both). `PATH` comes from the allowlist with the daemon's own value, never from a project.
+ */
 const SECRET_SHAPED_ENV =
-  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|^(ANTHROPIC|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK)_/i;
+  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|DSN|DATABASE_URL|CONN|PRIVATE|CERT|^(ANTHROPIC|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK)_/i;
+const LOADER_ENV =
+  /^(LD_|DYLD_)|^(NODE_OPTIONS|BASH_ENV|ENV|PYTHONSTARTUP|PYTHONPATH|PERL5OPT|PERL5LIB|RUBYOPT|PATH)$/i;
 
 /**
  * Issue #1361: a variable a project adds to its checks' environment. A name only (the value stays
  * the daemon's), and never one shaped like a secret: a check that needs one does not run unattended.
  */
 export const isCheckEnvName = (name: string): boolean =>
-  /^[A-Za-z_]\w*(\(x86\))?$/.test(name) && !SECRET_SHAPED_ENV.test(name);
+  /^[A-Za-z_]\w*(\(x86\))?$/.test(name) && !SECRET_SHAPED_ENV.test(name) && !LOADER_ENV.test(name);
 
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({
