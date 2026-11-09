@@ -78,17 +78,19 @@ export function statusLine(
     const level = status === "online" || status === "connecting" ? "info" : "warn";
     return { level, text: `${name}: ${status}` };
   }
-  const silent = `${Math.round(drop.silentMs / 1000)} s silent`;
+  const seconds = (ms: number) => `${Math.round(ms / 1000)} s`;
+  const silent = `${seconds(drop.silentMs)} silent`;
+  const ping = drop.pingMs === null ? "no ping heard" : `last ping ${seconds(drop.pingMs)} ago`;
+  const clocks = `up ${seconds(drop.upMs)}, ${ping}`;
   // 1006 is the browser's own code for a link that ended without a close frame.
   const by = drop.code === 1006 ? "" : " by the host";
   const reason = drop.reason ? ` ${drop.reason}` : "";
-  const close = `${drop.code}${reason}`;
-  const why = drop.byWatchdog
-    ? `given up by the app after ${silent}`
-    : `closed${by} (${close}), ${silent}`;
+  let why = `closed${by} (${drop.code}${reason}), ${silent}, ${clocks}`;
+  if (drop.byWatchdog) why = `given up by the app after ${silent}, ${clocks}`;
+  else if (drop.byApp) why = `closed by the app, ${silent}, ${clocks}`;
   // A line of the app's own log, not text on a screen: it stays in English, as every log line does.
   const line = `${name}: offline, ${why}`;
-  return { level: drop.wasOnline ? "warn" : "info", text: line };
+  return { level: drop.wasOnline && !drop.byApp ? "warn" : "info", text: line };
 }
 
 /** Silence after which a link counts as dead: three of the daemon's 15 s heartbeats. */
@@ -224,6 +226,9 @@ export class HostConnection {
   /** Stops the check that the host still speaks; set while a socket is open. */
   private stopCheck: (() => void) | null = null;
   private lastHeard = 0;
+  /** #1532: when this socket's watchdog started, and when the host's last heartbeat ping came. */
+  private connectedAt = 0;
+  private lastPingAt: number | null = null;
   /** The last check found the link silent for too long; the next one that does gives it up. */
   private suspect = false;
   private readonly pending = new Map<string, Pending>();
@@ -298,6 +303,7 @@ export class HostConnection {
       const message = parseServerMessage(String(msg.data));
       if (this.forward(message)) return;
       if (message.type === "ping") {
+        this.lastPingAt = this.lastHeard;
         if (message.lastRttMs !== undefined) this.latencyMs = message.lastRttMs;
         ws.send(JSON.stringify({ type: "pong", id: message.id }));
         this.opts.onPing?.();
@@ -513,9 +519,9 @@ export class HostConnection {
     this.disposed = true;
     if (this.timer) clearTimeout(this.timer);
     this.stopWatchdog();
+    // Letting go of a live link is the app's own close; with none, there is nothing to tell.
+    this.lastDrop = this.ws ? this.dropOf(1000, "", true) : null;
     this.ws?.close();
-    // Letting go of the link is no drop: the log must not tell the last one again.
-    this.lastDrop = null;
     this.setStatus("offline");
   }
 
@@ -550,6 +556,8 @@ export class HostConnection {
     const staleMs = this.opts.staleMs ?? STALE_MS;
     const connectMs = this.opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS;
     this.lastHeard = clock.now();
+    this.connectedAt = this.lastHeard;
+    this.lastPingAt = null;
     this.suspect = false;
     this.stopWatchdog();
     this.stopCheck = clock.repeat(
@@ -577,19 +585,28 @@ export class HostConnection {
     this.stopCheck = null;
   }
 
-  private onClose(ws: WebSocket, code: number, reason = ""): void {
-    if (ws !== this.ws) return;
-    this.lastDrop = {
+  /** What the log tells of a link that ended now: the code, who ended it, and the clocks (#939, #1532). */
+  private dropOf(code: number, reason: string, byApp: boolean): Drop {
+    const now = (this.opts.watchdog ?? REAL_WATCHDOG).now();
+    const { token } = this.opts;
+    // The host chooses the reason: one plain line without the token, so it cannot forge lines in the log.
+    const hidden = token ? reason.split(token).join("[token]") : reason;
+    return {
       code,
-      // The host chooses the reason: one plain line, so it cannot forge lines in the log.
-      reason: reason.replaceAll(/\p{Cc}+/gu, " ").slice(0, 123),
+      reason: hidden.replaceAll(/\p{Cc}+/gu, " ").slice(0, 123),
       byWatchdog: this.gaveUp,
-      byApp: false,
-      upMs: 0,
-      pingMs: null,
-      silentMs: (this.opts.watchdog ?? REAL_WATCHDOG).now() - this.lastHeard,
+      byApp,
+      silentMs: now - this.lastHeard,
+      upMs: now - this.connectedAt,
+      pingMs: this.lastPingAt === null ? null : now - this.lastPingAt,
       wasOnline: this.status === "online",
     };
+  }
+
+  private onClose(ws: WebSocket, code: number, reason = ""): void {
+    if (ws !== this.ws) return;
+    // Letting go of the link (dispose) already told its own story.
+    if (!this.disposed) this.lastDrop = this.dropOf(code, reason, false);
     this.ws = null;
     this.stopWatchdog();
     for (const pending of this.pending.values())
