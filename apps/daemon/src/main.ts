@@ -33,6 +33,7 @@ import { GithubBoards } from "./boardsync/github.ts";
 import { BoardSyncLoop } from "./boardsync/loop.ts";
 import { BoardSyncService } from "./boardsync/service.ts";
 import { BoardSyncStore } from "./boardsync/store.ts";
+import { runCardCli } from "./card-cli.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
@@ -345,6 +346,10 @@ const USAGE = [
   "     flightdeckd mcp [--config <file>]   (stdio MCP server for this host's Claude Code)",
   "     flightdeckd statusline [--config <file>]   (one line for Claude Code's statusline)",
   "     flightdeckd message list|send <to> <text>|idle <session>|read <session> [--last N]|team <team>",
+  "     flightdeckd card list [--project <name or id>] [--json] [--config <file>]",
+  "     flightdeckd card show <card> [--json] [--config <file>]",
+  "     flightdeckd card new <title> [--project <name or id>] [--description <text>] [--json] [--config <file>]",
+  "     flightdeckd card start <card> [--workflow <name>] [--json] [--config <file>]",
   "     flightdeckd action list [--project <id>] [--config <file>]",
   "     flightdeckd action run <name> [--project <id>] [--param key=value ...] [--config <file>]",
   "     flightdeckd snippet list [--project-path <folder>] [--query <text>] [--config <file>]",
@@ -535,7 +540,10 @@ const HANDLERS: Record<string, Handler> = {
   },
   card: (args, reader) => {
     args.command = "card";
-    subAction(reader, ["list", "show", "new", "start"], "invalid card action");
+    const action = subAction(reader, ["list", "show", "new", "start"], "invalid card action");
+    args.action = action;
+    if (action === "show" || action === "start") args.cardId = operand(reader, "the card");
+    if (action === "new") args.cardTitle = operand(reader, "the title");
   },
   "--json": setFlag((args) => {
     args.json = true;
@@ -2748,7 +2756,29 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       ),
     );
   },
-  card: async () => 0,
+  card: async (args, deps) => {
+    // The daemon's token is read from the config file and from nowhere else.
+    if (args.token !== undefined)
+      throw new Error("the token of this command is read from the config file only: drop --token");
+    const config = await loadConfig(configPath(args));
+    const result = await runCardCli(
+      {
+        action: args.action as "list" | "show" | "new" | "start",
+        project: args.project,
+        id: args.cardId,
+        title: args.cardTitle,
+        description: args.description,
+        workflow: args.workflow,
+        json: args.json,
+      },
+      config,
+    );
+    return settled(() => {
+      for (const line of result.out) deps.log.log(line);
+      for (const line of result.err) deps.log.error(`flightdeckd: ${line}`);
+      return result.code;
+    });
+  },
   action: async (args, deps) => {
     const config = await loadConfig(configPath(args));
     return printed(
