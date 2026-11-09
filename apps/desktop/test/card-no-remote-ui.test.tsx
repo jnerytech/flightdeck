@@ -28,7 +28,13 @@ const finished = {
   branch: "card/cart-screen",
 };
 
-function setup(provider: string | null, language: "en" | "pt-BR" = "en", refusePr = false) {
+function setup(
+  provider: string | null,
+  language: "en" | "pt-BR" = "en",
+  refusePr = false,
+  /** A host that answers only when the test lets it. */
+  gate?: Promise<void>,
+) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   if (provider !== null)
@@ -42,6 +48,7 @@ function setup(provider: string | null, language: "en" | "pt-BR" = "en", refuseP
   }) as never;
   store.hostRequest = (async (_host: string, type: string) => {
     commands.push(type);
+    if (gate && type === "card.pr.create") await gate;
     return refusePr && type === "card.pr.create"
       ? {
           ok: false,
@@ -98,7 +105,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     const w = setup("none");
     render(w.form("diff"));
     expect(button("Open PR") === null).toBe(true);
-    expect(panel()).toContain("PR provider is none");
+    expect(panel()).toContain("no PR provider set");
     expect(panel()).toContain("git remote add origin");
     expect(panel()).toContain("gh auth login");
     expect(panel()).toContain("az login");
@@ -131,7 +138,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     render(w.form("conversation"));
     expect(button("Review changes") !== null).toBe(true);
     expect(button("Open PR") === null).toBe(true);
-    expect(panel()).toContain("PR provider is none");
+    expect(panel()).toContain("no PR provider set");
     await act(async () => {
       fireEvent.click(button("Review changes") as HTMLElement);
     });
@@ -142,7 +149,7 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     const w = setup("none", "pt-BR");
     render(w.form("diff"));
     expect(button("Abrir PR") === null).toBe(true);
-    expect(panel()).toContain("provedor de PR deste projeto é nenhum");
+    expect(panel()).toContain("sem provedor de PR");
     expect(panel()).toContain("card/cart-screen");
   });
 
@@ -194,7 +201,7 @@ describe("card-no-remote-ui: a refused Open PR keeps what the person wrote (#154
     const reason = screen.queryByRole("alert");
     expect(reason?.textContent ?? "").toContain("The project has no PR provider.");
     expect(reason?.textContent ?? "").toContain("Add a GitHub or Azure DevOps remote");
-    expect(reason?.closest('[role="dialog"]') !== null).toBe(true);
+    expect(reason !== null && reason.closest('[role="dialog"]') !== null).toBe(true);
   });
 
   test("the host accepts: the dialog closes", async () => {
@@ -202,5 +209,34 @@ describe("card-no-remote-ui: a refused Open PR keeps what the person wrote (#154
     await writeAndConfirm(w);
     expect(w.commands).toContain("card.pr.create");
     expect(dialogText()).toBeNull();
+  });
+});
+
+describe("card-no-remote-ui: a late refusal does not outlive its dialog (#1543)", () => {
+  test("cancelled while the host was still answering, the refusal is not shown on the next Open PR", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const w = setup(null, "en", true, gate);
+    render(w.form("diff"));
+    const open = async () => {
+      await act(async () => {
+        fireEvent.click(button("Open PR") as HTMLElement);
+      });
+    };
+    await open();
+    await act(async () => {
+      fireEvent.click(button(/Open the PR/) as HTMLElement);
+    });
+    await act(async () => {
+      fireEvent.click(button("Cancel") as HTMLElement);
+    });
+    await act(async () => {
+      release();
+    });
+    await open();
+    expect(screen.queryByRole("textbox", { name: "PR description" }) !== null).toBe(true);
+    expect(screen.queryByRole("alert") === null).toBe(true);
   });
 });
