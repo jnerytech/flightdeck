@@ -52,9 +52,11 @@ describe("conflict-radar-ui: Details and the Merge PR confirm (#1405)", () => {
       section !== null,
       text.includes("Fix login"),
       text.includes("src/login.ts"),
+      text.includes("src/session.ts"),
       text.includes("Rename user"),
-      within(section ?? document.body).queryAllByRole("listitem").length >= 2,
-    ]).toEqual([true, true, true, true, true]);
+      // Two cards and the three files they list: src/session.ts is named under both.
+      within(section ?? document.body).queryAllByRole("listitem").length,
+    ]).toEqual([true, true, true, true, true, 5]);
   });
 
   test("each title is a button that opens that card, described by the section's heading", () => {

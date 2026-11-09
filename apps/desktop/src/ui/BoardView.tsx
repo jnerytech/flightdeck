@@ -740,6 +740,12 @@ export const BoardView = memo(function BoardView(props: {
       );
     });
   };
+  /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
+  const [updated, setUpdated] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a finished run is the only trigger
+  useEffect(() => {
+    if (updated > 0) restoreOpener();
+  }, [updated]);
   /** #1406: the run of Update from the base, card by card: how far it got. */
   const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
   /**
@@ -777,7 +783,9 @@ export const BoardView = memo(function BoardView(props: {
     setNotice(updateSummary(t, results));
     setUpdating(null);
     setBusy(false);
-    restoreOpener();
+    // The button was disabled while it ran, and a browser takes the focus off a disabled button:
+    // it goes back once the render has turned the button on again.
+    setUpdated((n) => n + 1);
   };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;

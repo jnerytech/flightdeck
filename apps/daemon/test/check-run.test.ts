@@ -12,17 +12,22 @@ import { checkEnvironment } from "../src/workflows/check-runner.ts";
 const TOKEN = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
 
 function runner(answers: Record<string, BoundedCheckResult>) {
-  const calls: Array<{ command: string; names: readonly string[] | undefined }> = [];
+  const calls: Array<{
+    command: string;
+    cwd: string;
+    timeoutMs: number | undefined;
+    names: readonly string[] | undefined;
+  }> = [];
   return {
     calls,
     run: async (
       command: string,
-      _cwd: string,
-      _timeoutMs?: number,
+      cwd: string,
+      timeoutMs?: number,
       _signal?: AbortSignal,
       names?: readonly string[],
     ) => {
-      calls.push({ command, names });
+      calls.push({ command, cwd, timeoutMs, names });
       return answers[command] ?? { exitCode: 0, output: "" };
     },
   };
@@ -48,10 +53,39 @@ describe("check-loop: the checks, run once for the watch and the loop", () => {
         output: `ok\n${REMOVED_LINE}\nbad`,
       },
       [
-        { command: "test", names: ["JAVA_HOME"] },
-        { command: "lint", names: ["JAVA_HOME"] },
+        // In the card's worktree, for the project's timeout in milliseconds.
+        { command: "test", cwd: "/w/tree", timeoutMs: 60_000, names: ["JAVA_HOME"] },
+        { command: "lint", cwd: "/w/tree", timeoutMs: 60_000, names: ["JAVA_HOME"] },
       ],
     ]);
+  });
+
+  test("a command that carries a secret is reported masked, failed or aborted", async () => {
+    const command = `bun test --token ${TOKEN}`;
+    const failed = await runChecks({
+      checks: [command],
+      worktree: "/w/tree",
+      timeoutMin: 1,
+      envNames: [],
+      runner: runner({ [command]: { exitCode: 1, output: "" } }),
+    });
+    const stop = new AbortController();
+    const aborted = await runChecks({
+      checks: [command],
+      worktree: "/w/tree",
+      timeoutMin: 1,
+      envNames: [],
+      runner: {
+        run: async () => ({ exitCode: 0, output: "", aborted: true }),
+      },
+      signal: stop.signal,
+    });
+    expect([
+      failed.kind === "failed" && failed.command.includes(TOKEN),
+      aborted.kind === "aborted" && aborted.command.includes(TOKEN),
+      failed.kind,
+      aborted.kind,
+    ]).toEqual([false, false, "failed", "aborted"]);
   });
 
   test("a refused command never runs, a stop says so, and all passing says passed", async () => {
