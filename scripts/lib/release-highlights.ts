@@ -105,8 +105,11 @@ const AREA_WORDS: [Area, RegExp][] = [
     /\bhosts?\b|\bpairing\b|\bdaemon\b|\bservices?\b|\bboot\b|teleport|\bssh\b|tailscale|\bsetup\b/,
   ],
   ["Board", /\bboard\b|\bcards?\b|\bcolumns?\b|\bpr\b/],
-  ["Sessions", /session|\bteams?\b|chat|transcript|needs you|sidebar|terminal|fork|persona/],
-  ["Quality", /\btests?\b|lint|journey|tdd|hook|harness/],
+  [
+    "Sessions",
+    /\bsessions?\b|\bteams?\b|\bchat\b|transcript|needs you|sidebar|terminal|\bforks?\b|\bpersonas?\b/,
+  ],
+  ["Quality", /\btests?\b|\blint\b|journey|\btdd\b|\bhooks?\b|harness/],
 ];
 
 /** The heading a text (an issue's title, or its commits' scopes) goes under. */
@@ -174,8 +177,10 @@ interface SearchNode {
   commits: { nodes: { commit: { messageHeadline: string; messageBody: string } }[] };
 }
 
+/** A text's first line, cut at 200 characters (an HTML page is one long line). */
+const firstLine = (text: string) => (text.trim().split("\n")[0] ?? "").slice(0, 200);
 /** What gh said when it failed, on one line. */
-const said = (r: GhResult) => (r.stderr || r.stdout).trim().split("\n")[0] ?? "";
+const said = (r: GhResult) => firstLine(r.stderr || r.stdout);
 
 class Unread extends Error {}
 
@@ -203,9 +208,27 @@ interface SearchPage {
 function searchPage(text: string): SearchPage {
   const search = (json(text) as { data?: { search?: SearchPage } } | null)?.data?.search;
   if (!search || !Array.isArray(search.nodes) || !search.pageInfo) {
-    throw new Unread(`could not read the merged PRs: ${text.trim().split("\n")[0] ?? ""}`);
+    throw new Unread(`could not read the merged PRs: ${firstLine(text)}`);
   }
+  if (!search.nodes.every(isPr))
+    throw new Unread("could not read the merged PRs: a result is not a PR");
   return search;
+}
+
+/** A search node with the fields the draft reads; a hit that is not a PR has none of them. */
+function isPr(n: SearchNode | null): n is SearchNode {
+  return (
+    typeof n?.number === "number" &&
+    typeof n.title === "string" &&
+    typeof n.mergedAt === "string" &&
+    typeof n.headRefName === "string" &&
+    Array.isArray(n.closingIssuesReferences?.nodes) &&
+    Array.isArray(n.commits?.nodes) &&
+    n.commits.nodes.every(
+      (c) =>
+        typeof c?.commit?.messageHeadline === "string" && typeof c.commit.messageBody === "string",
+    )
+  );
 }
 
 /** The PRs merged into main after `date`, page by page (at most 20 pages of 50). */
@@ -270,6 +293,11 @@ async function titlesOf(issues: number[], deps: HighlightsDeps): Promise<Map<num
   for (const n of issues) {
     const title = repository[`i${n}`]?.title;
     if (typeof title === "string" && title) titles.set(n, title);
+  }
+  const missing = issues.filter((n) => !titles.has(n));
+  if (missing.length > 0) {
+    const which = missing.map((n) => `#${n}`).join(", ");
+    deps.warn(`release-highlights: GitHub did not find ${which}; its bullet uses the PR title`);
   }
   return titles;
 }
