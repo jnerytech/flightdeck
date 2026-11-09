@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-check.ts";
-import { mergeShards, runShard } from "./lib/shard-gate.ts";
+import { mergeShards, runShard, spawnLogged } from "./lib/shard-gate.ts";
 import type { Timings } from "./lib/test-shards.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -34,19 +34,7 @@ if (command === "run") {
       timings: JSON.parse(readFileSync(join(ROOT, "scripts/test-timings.json"), "utf8")) as Timings,
       mkdir: (path) => mkdirSync(path, { recursive: true }),
       write,
-      spawn: async (argv, env) => {
-        const proc = Bun.spawn(argv, {
-          cwd: ROOT,
-          env: { ...process.env, ...env },
-          stdout: "pipe",
-          stderr: "pipe",
-        }); // NOSONAR: bun comes from the PATH of the developer or the CI runner running the script
-        const [stdout, stderr] = await Promise.all([
-          new Response(proc.stdout).text(),
-          new Response(proc.stderr).text(),
-        ]);
-        return { exit: await proc.exited, log: `${stdout}${stderr}` };
-      },
+      spawn: spawnLogged(ROOT),
       print: (line) => console.log(line),
     }),
   );

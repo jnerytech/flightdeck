@@ -7,6 +7,7 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { istanbulChanged } from "./lib/istanbul-changed.ts";
+import { spawnLogged } from "./lib/shard-gate.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const git = (args: string[]) => Bun.spawnSync(["git", ...args], { cwd: ROOT }); // NOSONAR: git comes from the PATH of the developer or the CI runner running the script
@@ -22,19 +23,7 @@ process.exit(
       return diff.exitCode === 0 ? lines(diff.stdout) : null;
     },
     mkdir: (path) => mkdirSync(path, { recursive: true }),
-    spawn: async (argv, env) => {
-      const proc = Bun.spawn(argv, {
-        cwd: ROOT,
-        env: { ...process.env, ...env },
-        stdout: "pipe",
-        stderr: "pipe",
-      }); // NOSONAR: bun comes from the PATH of the developer or the CI runner running the script
-      const [stdout, stderr] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-      ]);
-      return { exit: await proc.exited, log: `${stdout}${stderr}` };
-    },
+    spawn: spawnLogged(ROOT),
     print: (line) => console.log(line),
   }),
 );
