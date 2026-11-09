@@ -3083,21 +3083,25 @@ export const isWatchCheck = (line: string): boolean =>
   /^[\w@+=:,./-]+(?: [\w@+=:,./-]+)*$/.test(line);
 
 /**
- * Issue #1361: names that look like a secret's (connection strings and key files too), Flightdeck's
- * own, or a loader's or interpreter's, which runs code before the check does; any case (Windows
- * reads both). `PATH` comes from the allowlist with the daemon's own value, never from a project.
+ * Issue #1361: the names a project may add to its checks' environment: where a toolchain lives
+ * (`JAVA_HOME`, `ANDROID_SDK_ROOT`, `GOPATH`), never a variable that runs or redirects code. An
+ * allowlist: a blocklist of the variables that steer code (`GIT_SSH_COMMAND`, `JAVA_TOOL_OPTIONS`,
+ * `npm_config_*`, `RUSTC_WRAPPER`, …) would never be complete.
  */
-const SECRET_SHAPED_ENV =
-  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|DSN|DATABASE_URL|CONN|PRIVATE|CERT|^(ANTHROPIC|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK)_/i;
-const LOADER_ENV =
-  /^(LD_|DYLD_)|^(NODE_OPTIONS|BASH_ENV|ENV|PYTHONSTARTUP|PYTHONPATH|PERL5OPT|PERL5LIB|RUBYOPT|PATH)$/i;
+const TOOLCHAIN_ENV =
+  /^(?:[A-Z][A-Z0-9_]*_(?:HOME|ROOT)|GOPATH|GOROOT|GOCACHE|GOMODCACHE|BUN_INSTALL|NVM_DIR|DENO_DIR|PUB_CACHE|ProgramFiles\(x86\)|CommonProgramFiles(?:\(x86\))?)$/i;
 
 /**
- * Issue #1361: a variable a project adds to its checks' environment. A name only (the value stays
- * the daemon's), and never one shaped like a secret: a check that needs one does not run unattended.
+ * Issue #1361: refused even when shaped like a location: a secret's name (connection strings, key
+ * files, tokens), Flightdeck's own, git's and npm's, or a loader's. Over-blocking is fine: a check
+ * that needs a secret does not run unattended. Any case (Windows reads both).
  */
+const REFUSED_ENV =
+  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|_PASS$|^PWD$|CREDENTIAL|AUTH|COOKIE|SESSION|JWT|BEARER|SAS|SIGNATURE|WEBHOOK|_PAT$|DSN|DATABASE_URL|CONN|PRIVATE|CERT|^(?:ANTHROPIC|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK|GIT|NPM|LD|DYLD)_/i;
+
+/** Issue #1361: a name a project may add to its checks' environment (the value stays the daemon's). */
 export const isCheckEnvName = (name: string): boolean =>
-  /^[A-Za-z_]\w*(\(x86\))?$/.test(name) && !SECRET_SHAPED_ENV.test(name) && !LOADER_ENV.test(name);
+  TOOLCHAIN_ENV.test(name) && !REFUSED_ENV.test(name);
 
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({

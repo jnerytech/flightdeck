@@ -5,8 +5,9 @@ import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 
 /**
- * Issue #1361: the fields that decide what runs unattended in a card's worktree. A patch that
- * changes one needs a near connection; one that sends them unchanged (the whole form) does not.
+ * Issue #1361: the fields that decide what runs unattended in a card's worktree, as whom
+ * (`persona`), and what a round may push outside its PR (`driftAllow`). A patch that changes one
+ * needs a near connection; one that sends them unchanged (the whole form) does not.
  */
 const NEAR_ONLY = [
   "checks",
@@ -14,6 +15,8 @@ const NEAR_ONLY = [
   "checkRounds",
   "checkEnv",
   "checkLoopDefault",
+  "persona",
+  "driftAllow",
 ] as const;
 
 export const watchHandlers = {

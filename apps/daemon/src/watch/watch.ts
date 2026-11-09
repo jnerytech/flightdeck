@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { isCheckEnvName } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type PrCheck, type PrComment, type PrProvider, prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
@@ -108,7 +109,9 @@ export class PrWatcher {
         "SELECT settings FROM pr_watch_project WHERE project_id = ?",
       )
       .get(projectId);
-    return { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
+    const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
+    // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
+    return { ...stored, checkEnv: stored.checkEnv.filter(isCheckEnvName) };
   }
 
   setSettings(projectId: string, patch: Partial<WatchSettings>): WatchSettings {
