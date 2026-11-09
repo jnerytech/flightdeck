@@ -103,7 +103,7 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
       text().includes("Two risks in the cart total."),
       text().includes("2 findings are drafts"),
       seen.reviewed,
-    ]).toEqual([[["card.review", { cardId: "c1" }]], true, true, 1]);
+    ]).toEqual([[["card.review", { cardId: "c1", language: "en" }]], true, true, 1]);
   });
 
   test("a finding that fell on no changed line is listed as plain text with its place and severity", async () => {
@@ -151,7 +151,7 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
     ]).toEqual([true, true, true]);
   });
 
-  test("a refusal says why, with the hold named, and nothing else appears", async () => {
+  test("a refusal says why, and nothing else appears", async () => {
     const { view } = setup({
       answer: {
         ok: false,
@@ -165,7 +165,7 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
     await ask();
     await settle(() => screen.queryByRole("alert") !== null);
     expect([
-      screen.queryByRole("alert")?.textContent?.includes("plan quota") ?? false,
+      screen.queryByRole("alert")?.textContent?.includes("No review now") ?? false,
       text().includes("Two risks"),
     ]).toEqual([true, false]);
   });

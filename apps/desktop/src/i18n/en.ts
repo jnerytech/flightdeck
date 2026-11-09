@@ -2157,10 +2157,11 @@ export const en: Dictionary = {
     card_workflow_running: "The card has a workflow run in progress.",
     rule_remove_confirm: "Confirm removing the rule.",
     card_no_worktree: "The card has no worktree yet.",
-    card_review_held: "No second opinion now: {hold}.",
-    card_review_running: "A review of this card is already running.",
+    card_review_running: "The card is busy, or its review is already running.",
+    card_review_held:
+      "No review now: the host is paused, at its quota guard, short of memory, or the project is at its budget.",
     card_review_no_diff: "The card has no changes to review.",
-    card_review_limit: "At most {max} reviews a card a day: try again tomorrow.",
+    card_review_limit: "This card has had {max} reviews in the last 24 hours, the most a day.",
     pr_secret:
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
     pr_title_secret:
@@ -2939,12 +2940,6 @@ export const en: Dictionary = {
     dismiss: "Dismiss",
     dismissFinding: "Dismiss the finding at {path}, {where}",
     severity: { blocker: "Blocker", high: "High", medium: "Medium", low: "Low" },
-    hold: {
-      paused: "the host is paused",
-      quota: "the plan quota is at its pause limit",
-      memory: "the host is short of memory",
-      budget: "the card's budget is used up",
-    },
     notAddressedOne: "1 reviewer finding not addressed ({high} high)",
     notAddressed: "{n} reviewer findings not addressed ({high} high)",
   },

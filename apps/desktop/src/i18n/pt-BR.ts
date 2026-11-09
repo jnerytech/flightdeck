@@ -2156,10 +2156,11 @@ export const ptBR = {
     card_workflow_running: "O card tem uma execução de workflow em andamento.",
     rule_remove_confirm: "Confirme a remoção da regra.",
     card_no_worktree: "O card ainda não tem worktree.",
-    card_review_held: "Sem segunda opinião agora: {hold}.",
-    card_review_running: "Já há uma revisão deste card rodando.",
+    card_review_running: "O card está ocupado, ou a revisão dele já está rodando.",
+    card_review_held:
+      "Sem revisão agora: o host está pausado, no limite da cota, com pouca memória, ou o projeto está no orçamento.",
     card_review_no_diff: "O card não tem mudanças para revisar.",
-    card_review_limit: "No máximo {max} revisões por card por dia: tente de novo amanhã.",
+    card_review_limit: "Este card já teve {max} revisões nas últimas 24 horas, o máximo por dia.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_push_timeout:
@@ -2940,12 +2941,6 @@ export const ptBR = {
     dismiss: "Dispensar",
     dismissFinding: "Dispensar o achado em {path}, {where}",
     severity: { blocker: "Bloqueante", high: "Alto", medium: "Médio", low: "Baixo" },
-    hold: {
-      paused: "o host está em pausa",
-      quota: "a cota do plano está no limite de pausa",
-      memory: "o host está sem memória",
-      budget: "o orçamento do card acabou",
-    },
     notAddressedOne: "1 achado do revisor sem tratar ({high} alto)",
     notAddressed: "{n} achados do revisor sem tratar ({high} alto)",
   },

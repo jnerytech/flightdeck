@@ -45,7 +45,7 @@ export function CardSecondOpinion(
     setBusy(true);
     setOutcome(null);
     const answer = await store
-      .hostRequest(hostId, "card.review", { cardId: card.id })
+      .hostRequest(hostId, "card.review", { cardId: card.id, language: t.lang })
       .finally(() => setBusy(false));
     if (!answer.ok) {
       setOutcome({ kind: "refused", text: refusalText(answer.code, answer.message, t, answer) });

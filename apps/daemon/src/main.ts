@@ -122,7 +122,7 @@ import { ReleaseFeed } from "./releases/releases.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createResources } from "./resources/wiring.ts";
-import { CardReviews } from "./review/card-review.ts";
+import { CardReviews, reviewHold } from "./review/card-review.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
@@ -1495,16 +1495,17 @@ export async function startDaemon(
           if (!specPath || !worktreePath || credential(specPath)) return undefined;
           return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
         },
-        hold: (projectId) => {
-          if (hostPause.blocked()) return "paused";
-          if (quota.blocked()) return "quota";
-          if (memoryGate.blocked()) return "memory";
-          return board.budgetHeld(projectId) ? "budget" : null;
-        },
+        hold: (projectId) =>
+          reviewHold({
+            paused: hostPause.blocked() !== null,
+            quota: quota.blocked() !== null,
+            memory: memoryGate.blocked() !== null,
+            budget: board.budgetHeld(projectId),
+          }),
         complete,
         comments: reviewComments,
         redact: (text) => reviewScanner.redact(text, false),
-        persona: packPersonas("en").find((p) => p.id === "revisor")?.body ?? "",
+        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
         model: DEFAULT_MODELS.host.careful,
         record: (cardId, worktree, tokens) =>
           usageIndex.record({

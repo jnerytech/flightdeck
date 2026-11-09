@@ -3672,7 +3672,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
   /** Issue #1439: a second-opinion review of the card's diff; near only. */
-  cmd("card.review", CardIdPayload),
+  cmd(
+    "card.review",
+    z.object({ cardId: z.string(), language: z.enum(["en", "pt-BR"]).optional() }).strict(),
+  ),
   /** Issue #100: teleport, the source side (feature `teleport`). */
   cmd("teleport.prepare", TeleportPreparePayload),
   cmd("teleport.read", TeleportReadPayload),

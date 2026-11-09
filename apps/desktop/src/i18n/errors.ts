@@ -37,21 +37,10 @@ function paramsOf(
   t: T,
 ): Record<string, string | number> | undefined {
   if (why.reason && CONTRACT_REASONS.has(why.reason)) return contractNamed(why.params, t);
-  if (why.reason === "card_review_held") return holdNamed(why.params, t);
   const feature = why.params?.feature;
   if (why.reason !== "feature_off" || typeof feature !== "string") return kindsNamed(why, t);
   const named = feature in ptBR.daemonFeature ? t(`daemonFeature.${feature}` as Key) : feature;
   return { ...why.params, feature: named };
-}
-
-/** The hold that refuses a second-opinion review (#1446), named in the app's language. */
-function holdNamed(
-  params: Record<string, string | number> | undefined,
-  t: T,
-): Record<string, string | number> {
-  const hold = String(params?.hold ?? "");
-  const named = hold in ptBR.secondOpinion.hold ? t(`secondOpinion.hold.${hold}` as Key) : hold;
-  return { ...params, hold: named };
 }
 
 /** The reasons about a column's contract (issue #78): they name a column and what a card lacks. */

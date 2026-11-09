@@ -1011,8 +1011,12 @@ export const MIGRATIONS: readonly string[] = [
     loose     TEXT,
     anchored  INTEGER NOT NULL DEFAULT 0,
     moved     INTEGER NOT NULL DEFAULT 0,
-    attempts  INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (card_id, diff_hash)
   );
+  CREATE TABLE card_review_attempts (
+    card_id TEXT NOT NULL,
+    at      TEXT NOT NULL
+  );
+  CREATE INDEX card_review_attempts_card ON card_review_attempts (card_id, at);
   `,
 ];
