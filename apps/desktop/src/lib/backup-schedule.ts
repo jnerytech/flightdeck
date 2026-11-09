@@ -1,6 +1,5 @@
-import { inSequence } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
+import { type BackupFolder, folderTarget, keepNewest } from "./backup-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
 export const SCHEDULE_KEY = "flightdeck.backupSchedule";
@@ -22,8 +21,7 @@ export interface BackupSchedule {
   lastRunAt: number | null;
 }
 
-/** The folder of backups, as the Rust shell offers it: only files named like a backup. */
-export type BackupFolder = NonNullable<Platform["backupFolder"]>;
+export type { BackupFolder };
 
 export type SkipReason = "no-folder" | "no-passphrase" | "failed";
 
@@ -38,9 +36,6 @@ export type RunReport =
     }
   | { status: "skipped"; reason: SkipReason; at: number }
   | { status: "idle" };
-
-/** `flightdeck-backup-YYYYMMDD-HHMMSS.fdbackup`: the UTC time, so names sort by age. */
-const NAME = /^flightdeck-backup-\d{8}-\d{6}\.fdbackup$/;
 
 const OFF: BackupSchedule = { cadence: "off", folder: "", keep: DEFAULT_KEEP, lastRunAt: null };
 
@@ -115,41 +110,19 @@ export async function runScheduledBackup(deps: {
   if (!passphrase) return { status: "skipped", reason: "no-passphrase", at };
   const keep = Math.max(1, Math.floor(schedule.keep));
   const name = backupFileName(now);
+  const target = folderTarget(folder);
   try {
     // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
     const { createBackup } = await import("./backup-bundle.ts");
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
-    await folder.write(name, text);
+    await target.put(name, text);
   } catch {
     return { status: "skipped", reason: "failed", at };
   }
   // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
   // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
-  let removed = 0;
-  try {
-    const others = (await folder.list())
-      .filter((one) => NAME.test(one) && one !== name)
-      .sort(compareNames);
-    const stale = others.slice(0, Math.max(0, others.length - (keep - 1)));
-    await inSequence(stale, async (old) => {
-      await folder.remove(old);
-      removed += 1;
-    });
-    return {
-      status: "done",
-      name,
-      kept: others.length - stale.length + 1,
-      removed,
-      prune: "ok",
-      at,
-    };
-  } catch {
-    return { status: "done", name, kept: 1, removed, prune: "failed", at };
-  }
-}
-
-/** Code-unit order: the names are dates, so the oldest sorts first. */
-function compareNames(a: string, b: string): number {
-  if (a < b) return -1;
-  return a > b ? 1 : 0;
+  const pruned = await keepNewest(target, keep, name);
+  return pruned.ok
+    ? { status: "done", name, kept: pruned.kept, removed: pruned.removed, prune: "ok", at }
+    : { status: "done", name, kept: 1, removed: pruned.removed, prune: "failed", at };
 }
