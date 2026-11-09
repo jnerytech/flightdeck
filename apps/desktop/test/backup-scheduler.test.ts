@@ -36,12 +36,15 @@ function setup(options: { failWrite?: boolean; pick?: string | null } = {}) {
     },
   };
   const clock = { now: T0 };
+  const asked: string[] = [];
   const scheduler = new BackupScheduler(platform, {
     workFactor: 4,
     now: () => clock.now,
     intervalMs: 20,
+    onAttention: (kind) => asked.push(kind),
   });
   return {
+    asked,
     platform,
     scheduler,
     files,
@@ -175,5 +178,50 @@ describe("backup-scheduler (#1264)", () => {
     await scheduler.start();
     scheduler.dispose();
     expect([writes.length, scheduler.folder]).toEqual([2, null]);
+  });
+
+  // Issue #1327: a person who never reopens Settings must still learn that no backup is being made.
+  test("with the schedule on and no passphrase held, the app start asks for it once", async () => {
+    const { scheduler, asked } = setup();
+    await scheduler.chooseFolder();
+    await scheduler.setCadence("daily");
+    await scheduler.start();
+    await scheduler.tick();
+    scheduler.dispose();
+    expect(asked).toEqual(["passphrase"]);
+  });
+
+  test("nothing is asked when the schedule is off or the passphrase is already held", async () => {
+    const off = setup();
+    await off.scheduler.start();
+    off.scheduler.dispose();
+    const held = setup();
+    await held.scheduler.chooseFolder();
+    await held.scheduler.setPassphrase(PASS);
+    await held.scheduler.setCadence("daily");
+    await held.scheduler.start();
+    held.scheduler.dispose();
+    expect([off.asked, held.asked]).toEqual([[], []]);
+  });
+
+  test("a due run with no folder is told once per start, then stays quiet", async () => {
+    const { scheduler, asked, forget } = setup();
+    forget();
+    await scheduler.setPassphrase(PASS);
+    await scheduler.setCadence("daily");
+    await scheduler.start();
+    await scheduler.tick();
+    scheduler.dispose();
+    expect(asked).toEqual(["no-folder"]);
+  });
+
+  test("a write that failed is told once per start", async () => {
+    const { scheduler, asked } = setup({ failWrite: true });
+    await scheduler.chooseFolder();
+    await scheduler.setPassphrase(PASS);
+    await scheduler.setCadence("daily");
+    await scheduler.tick();
+    await scheduler.tick();
+    expect(asked).toEqual(["failed"]);
   });
 });
