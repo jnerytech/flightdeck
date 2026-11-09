@@ -523,10 +523,14 @@ export function cannedReview(prompt: string): string {
   const added: Array<{ path: string; line: number }> = [];
   let path = "";
   let line = 0;
-  for (const text of diff.split("\n")) {
-    if (text.startsWith("+++ ")) path = text.slice(4);
-    else if (text.startsWith("--- ")) continue;
-    else if (text.startsWith("@@")) line = Number(/\+(\d+)/.exec(text)?.[1] ?? 0);
+  const lines = diff.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const text = lines[i] ?? "";
+    // A file header is the pair `--- old` then `+++ new`; any other +/- line is the diff's content.
+    if (text.startsWith("--- ") && lines[i + 1]?.startsWith("+++ ")) {
+      path = (lines[i + 1] ?? "").slice(4);
+      i++;
+    } else if (text.startsWith("@@")) line = Number(/\+(\d+)/.exec(text)?.[1] ?? 0);
     else if (text.startsWith("+")) added.push({ path, line: line++ });
     else if (text.startsWith(" ")) line++;
   }
