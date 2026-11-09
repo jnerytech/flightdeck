@@ -841,6 +841,20 @@ export const en: Dictionary = {
     lastRun: "Last backup: {when}",
     neverRun: "No scheduled backup yet.",
     pruneFailed: "The backup was saved, but the old files could not be removed.",
+    attention: {
+      passphrase: {
+        title: "Scheduled backups need your passphrase",
+        body: "Type it in Settings, section Backup. Until then no backup is made.",
+      },
+      "no-folder": {
+        title: "Scheduled backups have no folder",
+        body: "Choose a folder in Settings, section Backup. Until then no backup is made.",
+      },
+      failed: {
+        title: "A scheduled backup failed",
+        body: "Check that the folder still exists and has room, in Settings, section Backup.",
+      },
+    },
     skipped: {
       "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
       "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
@@ -4066,6 +4080,10 @@ export const en: Dictionary = {
     /** The card's details as a pane of their own once its conversation shows (#641). */
     infoPane: "The card, above its conversation",
     runTitle: "Run",
+    /** The run panel's menu button, in words: its name, "Actions for <card>", contains it. */
+    menu: "Actions",
+    /** A card's tab and breadcrumb while it loads: never its id (#1330). */
+    loadingTitle: "Loading card…",
     saveDescription: "Save description",
     validation: "Validation note",
     saveValidation: "Save validation note",

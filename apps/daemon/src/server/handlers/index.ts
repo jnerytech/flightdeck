@@ -6,6 +6,7 @@ import type { Handlers } from "../dispatch.ts";
 import { agentsHandlers } from "./agents.ts";
 import { costsHandlers } from "./costs.ts";
 import { githubHandlers } from "./github.ts";
+import { hostHandlers } from "./host.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
 import { messagingHandlers } from "./messaging.ts";
 import { reviewHandlers } from "./review.ts";
@@ -24,6 +25,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   runs: runsHandlers,
   review: reviewHandlers,
   github: githubHandlers,
+  host: hostHandlers,
   knowledge: knowledgeHandlers,
   teleport: teleportHandlers,
 };

@@ -741,10 +741,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
-  function maintenance(): Maintenance {
-    return need(opts, "maintenance");
-  }
-
   function fileLog(): FileLog {
     return need(opts, "fileLog");
   }
@@ -877,11 +873,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, {
           result: await manager.sleep(command.payload.sessionId, { manual: true }),
         });
-      case "host.sleep": {
-        if (!opts.sleep) throw featureOff("sleep");
-        await opts.sleep.set(command.payload.minutes);
-        return ok(command.type, { sleepAfterMinutes: command.payload.minutes });
-      }
       case "session.resume":
         await manager.resume(command.payload.sessionId);
         return ok(command.type);
@@ -983,12 +974,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await worktrees().list(command.payload.projectId));
       case "worktree.remove":
         return ok(command.type, await worktrees().remove(command.payload.items));
-      case "maintenance.status":
-        return ok(command.type, await maintenance().status());
-      case "maintenance.backup":
-        return ok(command.type, await maintenance().backupNow());
-      case "maintenance.prune":
-        return ok(command.type, await maintenance().prune(command.payload.dryRun === true));
       case "card.startArena": {
         const { cardId, ...input } = command.payload;
         return ok(command.type, await board().startArena(cardId, input));
@@ -1049,35 +1034,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.forker) throw featureOff("forker");
         return ok(command.type, await opts.forker.fork(command.payload));
       }
-      case "daemon.update.apply": {
-        if (!opts.updater) throw featureOff("updater");
-        return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
-      }
-      case "host.updates.set": {
-        // It lets the host download and run a new binary by itself: only from a near connection,
-        // like host.bypass. Turning it off only lowers risk, but it is the same switch.
-        requireVaultTransport(ws.data.origin, "host.updates.set", opts.log);
-        if (!opts.autoUpdate) throw featureOff("autoUpdate");
-        return ok(command.type, await opts.autoUpdate.set(command.payload.auto));
-      }
-      case "daemon.update.check": {
-        if (!opts.updates) throw featureOff("updater");
-        return ok(command.type, await opts.updates.checkNow());
-      }
-      case "daemon.shutdown": {
-        const shutdown = opts.onShutdown;
-        if (!shutdown) throw featureOff("shutdown");
-        ok(command.type);
-        // Right after the ack is written (a microtask, not a timer tick that may come late).
-        queueMicrotask(shutdown);
-        return;
-      }
-      case "hooks.status":
-        return ok(command.type, await central().hooksStatus());
-      case "hooks.install":
-        return ok(command.type, await central().hooksInstall(command.payload.confirm === true));
-      case "hooks.uninstall":
-        return ok(command.type, await central().hooksUninstall(command.payload.confirm === true));
       case "service.install":
         return ok(
           command.type,
@@ -1318,25 +1274,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         await opts.projectTrust.refresh();
         return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
-      }
-      case "host.bypass": {
-        requireVaultTransport(ws.data.origin, "host.bypass", opts.log);
-        const { allow, confirm } = command.payload;
-        if (!opts.bypass) throw featureOff("bypass");
-        if (allow && confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "allowing sessions without permission prompts needs confirm: true",
-            "bypass_confirm",
-          );
-        }
-        await opts.bypass.set(allow);
-        return ok(command.type, { allowBypassPermissions: allow });
-      }
-      case "host.keepAwake": {
-        if (!opts.keepAwake) throw featureOff("keepAwake");
-        await opts.keepAwake.set(command.payload.enabled);
-        return ok(command.type, opts.keepAwake.status());
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
