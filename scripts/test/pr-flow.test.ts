@@ -1032,11 +1032,33 @@ describe("pr-flow: update and merge", () => {
     const merged = [missing, changes, approved, forced].map(
       ({ f }) => f.writes.filter((w) => w.includes("/merge")).length,
     );
-    expect([codes, merged, missing.f.lines.at(-1), changes.f.lines.at(-1)]).toEqual([
-      [2, 2, 0, 0],
-      [0, 0, 1, 1],
-      "#12 is already mergeable, but its OpenCode review is none yet: merge it now with bun run pr -- auto 12 --now, or wait for the review",
-      "#12 is already mergeable, but its OpenCode review says changes: merge it now with bun run pr -- auto 12 --now, or fix it first",
+    const said = (f: typeof forced.f) =>
+      f.out().includes("#12 is already mergeable: merging it as auto-merge would");
+    expect([codes, merged, said(forced.f), missing.f.lines.at(-1), changes.f.lines.at(-1)]).toEqual(
+      [
+        [2, 2, 0, 0],
+        [0, 0, 1, 1],
+        true,
+        "#12 is already mergeable, but its OpenCode review is none yet: merge it now with bun run pr -- auto 12 --now, or wait for the review",
+        "#12 is already mergeable, but its OpenCode review says changes: merge it now with bun run pr -- auto 12 --now, or fix it first",
+      ],
+    );
+  });
+
+  test("from the OpenCode review: auto-merge turned on before the review says it may merge first (#1526)", async () => {
+    const none = fake({ prs: [pr(12, "a")], review: null });
+    const approved = fake({ prs: [pr(12, "a")], review: "VERDICT: Approve\r\n" });
+    const codes = [
+      await prFlow(["auto", "12"], none.deps),
+      await prFlow(["auto", "12"], approved.deps),
+    ];
+    expect([codes, none.lines.at(-1), approved.lines]).toEqual([
+      [0, 0],
+      "#12 may merge while its OpenCode review is none yet: fix what it finds in a follow-up, or turn auto-merge off",
+      [
+        "OpenCode review: VERDICT approve, 0 blocker/high, 0 medium (pr-reviews/pr-12.md)",
+        "#12 merges by itself, with a merge commit, once its required checks are green",
+      ],
     ]);
   });
 
