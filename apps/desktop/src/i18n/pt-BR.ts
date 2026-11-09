@@ -5360,6 +5360,7 @@ export const ptBR = {
     pairAddress: "O link não traz o endereço do host.",
     pairPort: "A porta do link não é válida.",
     pairToken: "O link não traz o token.",
+    pairElsewhere: "O token não vai para outro endereço: cole o link desse host.",
     pairRefused: "Link de pareamento recusado. {reason}",
     probeTimeout:
       "O host não respondeu a tempo: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",

@@ -6,7 +6,7 @@ import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { keptToken, maskPairingLink } from "../lib/pairing-mask.ts";
+import { maskPairingLink, readLinkEdit } from "../lib/pairing-mask.ts";
 import { pairingErrorText } from "../lib/pairing-text.ts";
 
 export interface HostDraft {
@@ -88,25 +88,24 @@ export function HostForm(
             value={link}
             placeholder="flightdeck://…"
             onChange={(e) => {
-              const parsed = parsePairingLink(e.target.value);
-              setLinkError(parsed.ok || !e.target.value ? null : pairingErrorText(t, parsed.error));
-              if (!parsed.ok) {
-                setLink(e.target.value);
-                return;
+              const inputType = (e.nativeEvent as { inputType?: string }).inputType ?? "";
+              const edit = readLinkEdit(
+                e.target.value,
+                link,
+                draft,
+                inputType.startsWith("insertFrom"),
+              );
+              setLink(edit.shown);
+              setLinkError(edit.problem ? pairingErrorText(t, edit.problem) : null);
+              if (edit.fields) {
+                setDraft({ ...draft, ...edit.fields });
+                setByHand(true);
+              } else if (edit.held !== null) {
+                setDraft({ ...draft, token: edit.held });
               }
-              // A read link is shown with its token as dots (#1548); the real token is in the draft.
-              // Editing the dotted link must not take the dots for the token, or carry it to another host.
-              const next = draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token);
-              const token = keptToken(parsed.value.token, next, draft);
-              if (token === null) {
-                setLink(e.target.value);
-                setLinkError(pairingErrorText(t, "token"));
-                return;
-              }
-              setLink(maskPairingLink(e.target.value));
-              setDraft({ ...next, token });
-              setByHand(true);
             }}
+            // A link that was typed is masked when the field is left (#1548).
+            onBlur={() => setLink(maskPairingLink(link))}
           />
         )}
       </Field>

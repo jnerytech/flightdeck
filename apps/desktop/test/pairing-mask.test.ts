@@ -41,7 +41,7 @@ describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", (
       maskPairingLink("flightdeck://pc:abc?token=A&token=B&name=x"),
     ]).toEqual([
       "flightdeck://pc:abc?name=x&token=••••",
-      "flightdeck://pc:abc?token=••••&name=x",
+      "flightdeck://pc:abc?%74oken=••••&name=x",
       "flightdeck://pc:abc?token=••••&token=••••&name=x",
     ]);
   });
