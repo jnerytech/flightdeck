@@ -24,7 +24,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   coverage run (#674), and a push (or a `bun run pr -- update`) that would cancel the branch's PR run while it is still green (#741:
   younger than 20 minutes with no failed job, or GitHub unread twice; `FLIGHTDECK_PUSH_NOW="<reason>"` in front of the push
   lets it through), and that run
-  Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
+  Biome after each edit, in the main checkout and its worktrees (no project scan, 0.4 s: `noFloatingPromises` and `useArraySortCompare` are left to `bun run lint`, #1566). The hook rules live in `scripts/lib/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took, and lists
   each push-wait override with its reason and the cancelled run's age, and counts the pushes it let through by reason (#741). Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
