@@ -62,7 +62,12 @@ function rig(
   let gate: Promise<void> | null = null;
   const engine = new CheckLoopEngine({
     card: () => card,
-    settings: () => settings,
+    // A copy per read, as the store gives: a test that edits the settings sees what a new read sees.
+    settings: () => ({
+      ...settings,
+      checks: [...settings.checks],
+      checkEnv: [...settings.checkEnv],
+    }),
     mode: () => mode,
     trusted: () => trusted,
     limit: () => limit,
@@ -423,6 +428,46 @@ describe("check-loop: the security review's cases", () => {
     const hidden = "a\u200bb\u200cc\u200dd\u2060e\ufeff\u{E0041}\u{E007F}f";
     const text = roundMessage(1, 3, { ...FAIL, output: hidden });
     expect(text.includes("abcdef")).toBe(true);
+  });
+
+  test("a slot the board released at idle is never the loop's: a switch turned on before the result starts nothing", async () => {
+    const r = rig({ card: { on: false } });
+    const idle = r.engine.onIdle("c");
+    r.card.on = true;
+    const result = r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    // The next turn: busy again, so the slot is the run's once more and the loop may hold it.
+    r.engine.onBusy("c");
+    const next = [r.engine.onTurnResult("c", ok), r.engine.onIdle("c")];
+    await r.checksDone();
+    expect([idle, result, r.signals.length, next, r.log]).toEqual([
+      "release",
+      "place",
+      1,
+      ["hold", "hold"],
+      ["place", "release"],
+    ]);
+  });
+
+  test("settings changed while the checks run are read before the round: a confirmation of the old checks no longer counts", async () => {
+    const r = rig({
+      mode: "default",
+      card: { confirmedHash: confirmationHash(["bun test"], [], "default") },
+      outcomes: [FAIL],
+    });
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    r.settings.checks = ["bun test", "bun run lint"];
+    open();
+    await r.checksDone();
+    await Promise.resolve();
+    expect([r.sent.length, r.records.at(-1)?.reason]).toEqual([0, "check_loop_confirm"]);
+  });
+
+  test("variation selectors and the other invisible fillers are stripped as well", () => {
+    const hidden =
+      "a\ufe0fb\u{E0100}c\u00add\u034fe\u061cf\u115fg\u180eh\u2028i\u2061j\u206ak\u3164l\uffa0m\ufff9n";
+    expect(roundMessage(1, 3, { ...FAIL, output: hidden }).includes("abcdefghijklmn")).toBe(true);
   });
 
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
