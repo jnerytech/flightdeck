@@ -11,6 +11,7 @@ import { externalHandlers } from "./external.ts";
 import { filesHandlers } from "./files.ts";
 import { githubHandlers } from "./github.ts";
 import { hostHandlers } from "./host.ts";
+import { issuesHandlers } from "./issues.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
 import { messagingHandlers } from "./messaging.ts";
 import { projectHandlers } from "./project.ts";
@@ -41,6 +42,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   card: cardHandlers,
   project: projectHandlers,
   session: sessionHandlers,
+  issues: issuesHandlers,
   worktrees: worktreesHandlers,
   external: externalHandlers,
   assistant: assistantHandlers,
