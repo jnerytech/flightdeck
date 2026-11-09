@@ -37,6 +37,10 @@ export function SelectionBar(
     stopCount: number;
     onStart(): void;
     onStop(): void;
+    /** #1406: how many selected cards Update from the base takes, and its run's progress. */
+    updateCount: number;
+    onUpdate(): void;
+    updating: { done: number; total: number } | null;
     /** Selected cards in columns a narrow board does not show (the column switcher). */
     otherColumns: number;
     /** A narrow bar (390): Move to… and Discard… under ⋯, and a short Clear. */
@@ -88,11 +92,23 @@ export function SelectionBar(
         >
           {t("board.startSelected", { n: props.startCount })}
         </ActionButton>
+        {/* #1406: the run's progress, seen on the bar; the summary after it is what is announced. */}
+        {props.updating && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {t("board.updating", props.updating)}
+          </span>
+        )}
         {/* Only while a selected card runs or waits in the queue: most selections have none. */}
         {props.stopCount > 0 && (
           <ActionButton size="sm" variant="outline" disabled={props.busy} onClick={props.onStop}>
             {t("board.stopSelected", { n: props.stopCount })}
           </ActionButton>
+        )}
+        {/* #1406: only while a selected card has a branch to update; under ⋯ on a narrow bar. */}
+        {props.updateCount > 0 && !props.compact && (
+          <Button size="sm" variant="outline" disabled={props.busy} onClick={props.onUpdate}>
+            {t("board.updateSelected", { n: props.updateCount })}
+          </Button>
         )}
         <DropdownMenu
           {...(props.onMoveOpenChange
@@ -128,6 +144,11 @@ export function SelectionBar(
               </DropdownMenuItem>
             ))}
             {props.compact && <DropdownMenuSeparator />}
+            {props.compact && props.updateCount > 0 && (
+              <DropdownMenuItem onSelect={props.onUpdate}>
+                {t("board.updateSelected", { n: props.updateCount })}
+              </DropdownMenuItem>
+            )}
             {props.compact && (
               <DropdownMenuItem onSelect={props.onDiscard}>
                 {t("board.discardSelected")}

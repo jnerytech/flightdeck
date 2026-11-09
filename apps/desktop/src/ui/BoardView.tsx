@@ -78,7 +78,15 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
-import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
+import {
+  bulkSplit,
+  holdLines,
+  queueLine,
+  queueSplit,
+  runMany,
+  updateMany,
+  updateSummary,
+} from "../lib/board-bulk.ts";
 import { cardKey } from "../lib/board-card-keys.ts";
 import {
   askAbout,
@@ -723,6 +731,45 @@ export const BoardView = memo(function BoardView(props: {
       );
     });
   };
+  /** #1406: the run of Update from the base, card by card: how far it got. */
+  const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
+  /**
+   * #1406: updates the selection's idle cards with a branch from their base, one at a time. A card
+   * already on its base is not rebased; a conflicted or refused one stays selected, named.
+   */
+  const updateSelected = async () => {
+    if (busy || split.update.length === 0) return;
+    const cards = split.update;
+    rememberOpener();
+    setBusy(true);
+    setNotice(null);
+    setUpdating({ done: 0, total: cards.length });
+    const results = await updateMany(cards, {
+      behind: async (card) => {
+        const answer = await store.hostRequest(hostId, "changes.get", {
+          target: `card:${card.id}`,
+        });
+        return answer.ok ? (answer.data.position?.behind ?? null) : null;
+      },
+      update: async (card) => {
+        const answer = await store.hostRequest(hostId, "card.updateFromBase", {
+          cardId: card.id,
+        });
+        return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+      },
+      onProgress: (done, total) => setUpdating({ done, total }),
+    });
+    const went = new Set(
+      results
+        .filter((r) => r.outcome === "updated" || r.outcome === "current")
+        .map((r) => r.card.id),
+    );
+    setPicked((before) => before.filter((id) => !went.has(id)));
+    setNotice(updateSummary(t, results));
+    setUpdating(null);
+    setBusy(false);
+    restoreOpener();
+  };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;
     rememberOpener();
@@ -1066,6 +1113,9 @@ export const BoardView = memo(function BoardView(props: {
                   stopCount={split.stop.length}
                   onStart={askStart}
                   onStop={askStop}
+                  updateCount={split.update.length}
+                  onUpdate={() => void updateSelected()}
+                  updating={updating}
                   otherColumns={
                     switcher ? actingCards.filter((card) => card.column !== showing).length : 0
                   }
