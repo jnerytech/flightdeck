@@ -39,6 +39,12 @@ the maintainer: the Google Cloud project (#57).
   nothing reaches Google.
 - **Fakes only.** The tests inject `fetch` with a fake Drive and a fake token endpoint
   (`test/fake-google.ts`). No network, no real token.
-- **Not done here:** revoking the token at Google on sign-out (the vault copy is removed; revoking is
-  a call to Google that can wait), restoring from Drive (needs a list-and-pick screen over `get`), and
+- **The Rust slice owes** (security review of this slice): bind 127.0.0.1 only, check the `Host`
+  header, map `?error=` to null, ignore a request with a foreign `state` instead of ending the wait,
+  and widen the CSP `connect-src` to the two Google hosts and nothing more. The contract is written on
+  `Platform.oauthLoopback`.
+- **Refresh errors:** only Google's `invalid_grant` drops the token; a 5xx, a 429 or a network failure
+  keeps it and the run is retried. A sign-in without the `drive.appdata` scope is refused. Sign-out
+  tells Google to revoke the token (best effort) and then drops the vault copy.
+- **Not done here:** restoring from Drive (needs a list-and-pick screen over `get`), and
   the Rust loopback listener.

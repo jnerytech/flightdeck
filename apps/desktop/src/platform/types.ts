@@ -221,6 +221,12 @@ export interface Platform {
    * answers the browser's single request, shows a short "you can close this" page and gives back the
    * `code` and `state` of the query; null when cancelled or timed out. Absent in a browser, which has
    * no loopback to offer: Google Drive backups are then not offered.
+   *
+   * What the shell's listener must do (#1444): bind to 127.0.0.1 only; accept a request only with the
+   * `Host` header `127.0.0.1:<port>` (DNS rebinding); take one `GET /`; answer `?error=...` (consent
+   * denied) with null, never an empty `code`; and keep waiting past a request whose `state` is not the
+   * one of this sign-in, so a stray local request cannot cancel it. Before it ships, the webview's CSP
+   * `connect-src` must name `https://oauth2.googleapis.com` and `https://www.googleapis.com`, no wider.
    */
   oauthLoopback?: {
     listen(): Promise<{
