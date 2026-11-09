@@ -81,3 +81,51 @@ export function fakeDrive(options: { sessionHost?: string } = {}): FakeDrive {
   };
   return drive;
 }
+
+/** The fake token endpoint of Google's OAuth: a code is exchanged once, a refresh token is checked. */
+export interface FakeOAuth {
+  fetch: typeof fetch;
+  /** The form of every request made to the token endpoint. */
+  requests: Array<Record<string, string>>;
+  /** The codes the fake will exchange. */
+  codes: Set<string>;
+  /** The refresh tokens it still honours. */
+  refreshTokens: Set<string>;
+  /** Makes the next requests fail as the network would. */
+  offline: boolean;
+  /** Counts access tokens handed out: `access-1`, `access-2`... */
+  issued: number;
+}
+
+export function fakeOAuth(): FakeOAuth {
+  const oauth: FakeOAuth = {
+    requests: [],
+    codes: new Set(["the-code"]),
+    refreshTokens: new Set(["refresh-1"]),
+    offline: false,
+    issued: 0,
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (oauth.offline) throw new TypeError("network down");
+      if (url !== "https://oauth2.googleapis.com/token") return new Response("{}", { status: 404 });
+      const form = Object.fromEntries(new URLSearchParams(String(init?.body)));
+      oauth.requests.push(form);
+      const refused = () =>
+        new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 });
+      const access = () => `access-${++oauth.issued}`;
+      if (form.grant_type === "authorization_code") {
+        if (!oauth.codes.has(form.code ?? "")) return refused();
+        oauth.codes.delete(form.code ?? "");
+        return new Response(
+          JSON.stringify({ access_token: access(), expires_in: 3600, refresh_token: "refresh-1" }),
+        );
+      }
+      if (form.grant_type === "refresh_token") {
+        if (!oauth.refreshTokens.has(form.refresh_token ?? "")) return refused();
+        return new Response(JSON.stringify({ access_token: access(), expires_in: 3600 }));
+      }
+      return refused();
+    }) as typeof fetch,
+  };
+  return oauth;
+}
