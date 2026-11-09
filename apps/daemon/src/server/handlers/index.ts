@@ -14,6 +14,7 @@ import { filesHandlers } from "./files.ts";
 import { githubHandlers } from "./github.ts";
 import { hostHandlers } from "./host.ts";
 import { hostChangesHandlers } from "./hostChanges.ts";
+import { hostReadsHandlers } from "./hostReads.ts";
 import { issuesHandlers } from "./issues.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
 import { messagingHandlers } from "./messaging.ts";
@@ -53,6 +54,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   external: externalHandlers,
   assistant: assistantHandlers,
   hostChanges: hostChangesHandlers,
+  hostReads: hostReadsHandlers,
   prComments: prCommentsHandlers,
 };
 

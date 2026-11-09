@@ -26,7 +26,10 @@ describe("engine-pr", () => {
     const gh = fakeGh([
       { args: ["view", "url"], code: 1 },
       { args: ["pr", "create"], stdout: `${PR_URL}\n` },
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "OPEN" }),
+      },
     ]);
     const ctx = await workflowCard(YAML, { prProvider: "github", board: { prPollIntervalMs: 30 } });
     cleanups.push(() => ctx.board.stop());
@@ -42,7 +45,10 @@ describe("engine-pr", () => {
     expect(git(ctx.remote, "branch", "--list", "fd/*")).toContain(card.branch ?? "?");
     expect(gh.calls().find((args) => args.includes("create"))).toContain(card.branch ?? "?");
     gh.respond([
-      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
+      {
+        args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+        stdout: JSON.stringify({ state: "MERGED" }),
+      },
     ]);
     const done = await cardWhen(
       ctx.board,
