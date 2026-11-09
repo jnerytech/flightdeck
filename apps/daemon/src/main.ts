@@ -23,6 +23,7 @@ import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -1670,6 +1671,13 @@ export async function startDaemon(
     idle,
     teams,
     watch: prWatch,
+    // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
+    checkLoop: new CheckLoopSwitch({
+      board,
+      settings: (projectId) => prWatcher.settings(projectId),
+      isTrusted: (path) => projectTrust.isTrusted(path),
+      modeOf: (card) => cardMode(card, manager),
+    }),
     vault,
     log: logger.log.bind(logger),
     actions,

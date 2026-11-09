@@ -1927,6 +1927,14 @@ export const ptBR = {
     run_card_gone: "O card desta execução sumiu, então ela parou quando o Flightdeck reiniciou.",
     run_resume_branch_moved:
       "O branch do card mudou desde que esta execução parou, então ela só roda de novo do começo.",
+    check_loop_no_checks:
+      "O projeto não tem checks para rodar: adicione-os antes nas configurações de Vigiar do projeto.",
+    check_loop_untrusted:
+      "O projeto não é confiável: confie nele antes que os checks rodem sozinhos.",
+    check_loop_mode:
+      "No modo de planejamento a sessão não corrige nada, então os checks não rodam.",
+    check_loop_confirm:
+      "Confirme antes: os checks vão rodar o código que este card escreve, sem perguntar a cada vez.",
     workflow_input_required: "O workflow precisa do input {input}.",
     workflow_input_unknown: "O workflow não tem o input {input}.",
     workflow_gate_closed: "O gate {step} (tentativa {attempt}) não está aberto.",
