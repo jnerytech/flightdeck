@@ -6,7 +6,7 @@ import { confirmationHash } from "../src/board/check-loop.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
-import { PrWatcher } from "../src/watch/watch.ts";
+import { PrWatcher, readWatchSettings } from "../src/watch/watch.ts";
 import type { BoundedCheckResult } from "../src/workflows/check-runner.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
 import { poll, tempDir } from "./helpers.ts";
@@ -415,6 +415,47 @@ describe("check-loop: what the card says about its loop", () => {
       rounds: null,
       confirmed: false,
     });
+  });
+});
+
+describe("check-loop: the board starting with a looping card", () => {
+  test("a board whose watch settings are not readable yet still starts and reads a looping card", async () => {
+    const ctx = await setup([PASSED]);
+    ctx.switchOn(ctx.card.id);
+    await ctx.board.startCard(ctx.card.id);
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    let started = "yes";
+    let again: Board | null = null;
+    try {
+      again = new Board({
+        db: ctx.store.db,
+        manager: ctx.manager,
+        allowedRoots: [ctx.root],
+        checkLoop: {
+          // As main.ts's watcher before it is made: reading it throws.
+          settings: () => {
+            throw new ReferenceError("prWatcher is not initialized");
+          },
+          isTrusted: () => true,
+          runner: { run: async () => PASSED },
+        },
+      });
+      started = again.getCard(ctx.card.id).checkLoop?.on ? "yes" : "no switch";
+    } catch (error) {
+      started = (error as Error).message;
+    } finally {
+      again?.stop();
+    }
+    expect(started).toBe("yes");
+  });
+
+  test("the watch settings can be read from the database alone, as the watcher reads them", async () => {
+    const ctx = await setup();
+    const watcher = new PrWatcher({ db: ctx.store.db, board: ctx.board });
+    watcher.setSettings(ctx.project.id, { checkRounds: 4 });
+    expect(readWatchSettings(ctx.store.db, ctx.project.id)).toEqual(
+      watcher.settings(ctx.project.id),
+    );
   });
 });
 
