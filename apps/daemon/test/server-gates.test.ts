@@ -11,6 +11,7 @@ import type { ServerOptions } from "../src/server.ts";
  */
 const BEFORE_THE_SPLIT: Record<string, string> = {
   account: "account",
+  activity: "activity",
   actions: "actions",
   agentcfg: "agentcfg",
   askpass: "askpass",
