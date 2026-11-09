@@ -1,5 +1,5 @@
 import { byCodeUnit } from "@flightdeck/protocol";
-import { type Route, Router } from "./router.ts";
+import { homeRoute, type Route, Router } from "./router.ts";
 
 export interface Tab {
   id: string;
@@ -56,7 +56,7 @@ export class Tabs {
   private readonly unwatch = new Map<string, () => void>();
 
   constructor(
-    initial: Route | null = { name: "home" },
+    initial: Route | null = homeRoute(),
     private readonly newId: () => string = randomId,
   ) {
     if (initial) {
