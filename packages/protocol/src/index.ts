@@ -215,6 +215,10 @@ export const SessionSummary = z.object({
   persona: SessionPersona.nullable().optional(),
   /** Phase 39: `claude` when absent. */
   runtime: SessionRuntime.optional(),
+  /** Issue #1478 (host `stall`): a running session that went quiet, since when; absent otherwise. */
+  quietSince: z.string().optional(),
+  /** Issue #1478: the last tool it called; `null` when it called none. */
+  quietTool: z.string().nullable().optional(),
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
@@ -484,6 +488,10 @@ export const SessionEvent = z.discriminatedUnion("type", [
     runtime: SessionRuntime.optional(),
     /** Issue #463: its folder's trust was revoked after the run loaded the project's setup; set when true only. */
     trustStale: z.boolean().optional(),
+    /** Issue #1478 (host `stall`): the session went quiet at this time; absent when it did not. */
+    quietSince: z.string().optional(),
+    /** Issue #1478: the last tool it called; `null` when it called none. */
+    quietTool: z.string().nullable().optional(),
   }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;
@@ -5229,6 +5237,11 @@ export const HostInfoResult = z.object({
   uptimeSec: z.number().int().nonnegative(),
   activeSessions: z.number().int().nonnegative(),
   apiKeySanitized: z.boolean(),
+  /**
+   * Issue #1361: whether the app's own connection is near (loopback or Tailscale). Only a near one
+   * may change what runs unattended (the checks, the check loop); absent from a host from before.
+   */
+  near: z.boolean().optional(),
   /** What the daemon offers (`central`, `workflows`, `maintenance`…); absent before phase 7. */
   features: z.array(z.string()).optional(),
   /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */

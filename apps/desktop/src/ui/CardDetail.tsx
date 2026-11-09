@@ -336,7 +336,7 @@ export const CardDetail = memo(function CardDetail(props: {
           {/* Issue #1361: last in the details, so its height moves nothing already on the card
               (a field's reason pushed under the status bar in the 640x800 print). */}
           {withWatch && card.checkLoop && (
-            <CheckLoopPanel store={store} hostId={hostId} card={card} />
+            <CheckLoopPanel store={store} hostId={hostId} card={card} near={host?.hostInfo?.near} />
           )}
         </section>
         <CardWork

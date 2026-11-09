@@ -42,6 +42,8 @@ import type {
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
+import { ActivityClock, type ToolNote } from "./activity-clock.ts";
+import type { QuietInfo } from "./stall.ts";
 
 /** The reason a restart gives the sessions it interrupts: a code (the app words it), not a sentence. */
 export const RESTART_REASON = "daemon_restarted";
@@ -153,6 +155,9 @@ export class SessionManager {
   private readonly broker: PermissionBroker;
   private readonly risk: RiskClassifier;
   private readonly live = new Map<string, LiveSession>();
+  /** Issue #1478: when each session last did anything, and the sessions marked quiet. */
+  private readonly clock = new ActivityClock();
+  private readonly quiet = new Map<string, QuietInfo>();
   /** Phase 22: sessions Flightdeck opened by itself (see `create`). */
   private readonly unattended = new Set<string>();
   /** Phase 13: the effort of a session started with one (arena variants); not kept across restarts. */
@@ -246,7 +251,27 @@ export class SessionManager {
   }
 
   list(): SessionSummary[] {
-    return this.store.listSessions().map((s) => this.withSleep(s));
+    return this.store.listSessions().map((s) => this.withQuiet(this.withSleep(s)));
+  }
+
+  private withQuiet(session: SessionSummary): SessionSummary {
+    const quiet = this.quiet.get(session.id);
+    return quiet ? { ...session, quietSince: quiet.since, quietTool: quiet.tool } : session;
+  }
+
+  /** Issue #1478: when the session last did anything and the tool it has open. */
+  activity(sessionId: string): { lastEventAt: number | null; tool: ToolNote } {
+    return { lastEventAt: this.clock.lastEventAt(sessionId), tool: this.clock.tool(sessionId) };
+  }
+
+  /** Issue #1478: the stall watcher marks a session quiet (or clears it with `null`). */
+  markQuiet(sessionId: string, info: QuietInfo | null): void {
+    if (info === null) {
+      if (!this.quiet.delete(sessionId)) return;
+    } else {
+      this.quiet.set(sessionId, info);
+    }
+    this.emitSummary(sessionId);
   }
 
   /** Idle with no process is asleep: the daemon put it to sleep, or a restart left it so. */
@@ -660,6 +685,7 @@ export class SessionManager {
   /** Ephemeral: the store does not persist it and stamps it with the last persisted seq. */
   private summaryEnvelope(sessionId: string): EventEnvelope {
     const session = this.get(sessionId);
+    const quiet = this.quiet.get(sessionId);
     return this.store.appendEvent(sessionId, {
       type: "session.summary",
       sessionId,
@@ -670,6 +696,7 @@ export class SessionManager {
       updatedAt: session.updatedAt,
       ...(session.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
       ...(this.isStale(sessionId) ? { trustStale: true as const } : {}),
+      ...(quiet ? { quietSince: quiet.since, quietTool: quiet.tool } : {}),
     });
   }
 
@@ -1068,11 +1095,15 @@ export class SessionManager {
     this.store.updateSession(sessionId, { status });
     this.emit(sessionId, { type: "session.status", status, ...(reason ? { reason } : {}) });
     this.emitSummary(sessionId);
+    if (status === "ended" || status === "error") this.clock.forget(sessionId);
     this.opts.onActivity?.(this.activeSessionCount());
   }
 
   private emit(sessionId: string, event: SessionEvent): void {
     const envelope = this.store.appendEvent(sessionId, event);
+    // Issue #1478: any event is a sign of life; a quiet session is quiet no longer, and is told so.
+    this.clock.observe(sessionId, event, Date.now());
+    if (this.quiet.delete(sessionId)) this.emitSummary(sessionId);
     for (const listener of this.listeners.get(sessionId) ?? []) {
       try {
         listener(envelope);

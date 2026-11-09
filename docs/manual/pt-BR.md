@@ -63,6 +63,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Rodar e acompanhar](#rodar-e-acompanhar)
   - [Orçamento de uma execução](#orçamento-de-uma-execução)
   - [O servidor MCP flightdeckd mcp](#o-servidor-mcp-flightdeckd-mcp)
+  - [O comando flightdeckd card](#o-comando-flightdeckd-card)
 - [Histórico](#histórico)
   - [O que é indexado](#o-que-é-indexado)
   - [Excluir pastas](#excluir-pastas)
@@ -1410,6 +1411,13 @@ descrição do card:
 - **Azure DevOps:** `az repos pr create --source-branch fd/<slug> --target-branch <base>`. Estado
   vem de `az repos pr show`, e os checks das políticas, de `az repos pr policy list`.
 
+Um projeto com o provedor **nenhum** (o padrão de um projeto novo, e o que um repositório sem remote
+tem) não tem Abrir PR: o painel do card diz isso, com os passos (defina o provedor nas configurações
+do projeto; se o repositório não tem remote, `git remote add origin <url>` antes, depois `gh auth
+login` ou `az login`) e a branch em que está o trabalho do card, para enviar à mão. **Revisar
+mudanças** continua. Adicionar um remote não define o provedor sozinho. Um PR que o host recusa mantém
+o diálogo aberto com o texto que você escreveu, e o motivo aparece nele.
+
 O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a
 extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge segue as regras
 do provedor: no GitHub, **Fazer merge do PR** num card com PR aberto (e checks que não estejam
@@ -1557,7 +1565,8 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   do próprio card já o envia. Cada achado que cai numa linha alterada vira um rascunho marcado
   **Revisor**, com a gravidade (Bloqueante, Alto, Médio ou Baixo): edite (aí ele passa a ser seu),
   **Dispensar**, ou deixe, e **Enviar revisão** o manda ao card junto com os seus comentários, como
-  uma sugestão a conferir. Os achados fora de uma linha alterada ficam listados sob o botão, como
+  uma sugestão a conferir. Os rascunhos ficam depois do diff inteiro: **Ir para os rascunhos**, ao
+  lado da linha que os conta, leva ao primeiro. Os achados fora de uma linha alterada ficam listados sob o botão, como
   texto. **Abrir PR** diz quantos achados do revisor continuam abertos quando um é bloqueante ou
   alto, e abre o PR do mesmo jeito.
 - **Reverter e editar:**
@@ -1950,6 +1959,33 @@ sessões comuns) já recebem esse servidor, sem configurar nada: o daemon o junt
 dos seus servidores MCP. O comando acima só é preciso para um `claude` aberto num terminal fora do
 Flightdeck. A linha "Ferramentas do time" do Doutor avisa quando o programa do daemon não está mais
 onde as sessões esperam.
+
+### O comando flightdeckd card
+
+`flightdeckd card` conduz o quadro de um terminal, de um alias do git, de um cron ou de um passo de
+CI. Ele fala com o daemon do mesmo host, com o token do arquivo de config, como o servidor MCP
+acima. O daemon aplica as mesmas regras do app: a fila, as retenções e os limites.
+
+```sh
+flightdeckd card list [--project <nome ou id>] [--json]
+flightdeckd card show <card> [--json]
+flightdeckd card new "<título>" [--project <nome ou id>] [--description <texto>] [--json]
+flightdeckd card start <card> [--workflow <nome>] [--json]
+```
+
+- `list` imprime uma linha por card (projeto, id, coluna, título e por que um card espera). Sem
+  `--project` lista todos os projetos. `--project` aceita um id ou um nome; um host com um só
+  projeto dispensa `--project` no `new`.
+- `start` de um card que precisa esperar diz por quê (vaga livre, cota do plano, memória do host,
+  orçamento, host pausado, cards de que ele depende) e sai com 0: o card fica na fila.
+- `--json` imprime a resposta para um script. Descartar e concluir um card ficam no app.
+- **Códigos de saída:** 0 feito, 1 recusado (o motivo vai para o stderr, com o código do daemon), 2
+  sem daemon (parado, ou mudo por 15 s).
+- **O token** vem só do arquivo de config: `--token` é recusado e o ambiente não é lido. Ele nunca
+  é impresso. O comando fala só com um daemon no loopback (`127.0.0.1` ou `::1`); um daemon ligado a
+  outro endereço é recusado. Como no `flightdeckd mcp`, o token vai para o que estiver escutando
+  naquela porta local, então mantenha o daemon rodando ao usar o comando.
+- Com `--json` a resposta é JSON no stdout, mas um erro continua sendo uma linha de texto no stderr.
 
 ## Histórico
 
@@ -3557,6 +3593,15 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
   terminou não entra, e o grupo não soma no contador da barra lateral, que conta pedidos. A
   notificação do sistema de um turno concluído ou de uma falha é a que você já tinha: sai uma vez,
   nunca com o app em foco.
+- **Sessões em silêncio:** uma sessão que consta como rodando mas não produziu nada em 15 minutos
+  (30 enquanto uma chamada de ferramenta está aberta, pois um build pode ficar em silêncio) aparece
+  sob os pedidos como "Em silêncio há 23 min · última: Bash", num daemon que anuncia `stall`.
+  Escolha-a para **Abrir**, **Interromper**, **Enviar "continue"** e **Não travou, adiar 1 h** (que
+  tira essa sessão da lista por uma hora, neste computador). Ela sai da lista no próximo sinal de
+  vida, e uma sessão esperando uma aprovação nunca fica em silêncio. Sai uma notificação do sistema
+  quando ela fica em silêncio, nunca com o app em foco; o cartão Trabalhando do quadro de Atividade
+  traz a marca "Em silêncio 23 min". `stall.afterMinutes` na configuração do daemon define os 15
+  (0 desliga).
 - **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
   responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
 - **Dependências:** a aba Visão geral da página do host tem uma seção **Saúde e dependências** (abaixo) que agrupa o
@@ -3796,6 +3841,14 @@ app. **Configurações > Diagnóstico** tem **Abrir a pasta de logs** e **Copiar
 copia a versão e o sistema do app, o nome, o estado, a versão e os recursos de cada host (nunca um
 endereço ou token) e as últimas 50 linhas do log, para colar numa mensagem. Nenhum dos dois botões
 existe no navegador.
+
+Quando um host fica offline, o log diz por quê, para que uma queda que se repete possa ser lida (#939). O
+app escreve uma linha para cada queda de um link que estava online (um aviso): o código e o motivo do
+fechamento, se o host ou o app o fechou, há quanto tempo o link estava de pé, há quanto tempo nada vinha
+do host e há quanto tempo veio o último ping do heartbeat. O daemon escreve uma linha para cada conexão
+que fecha: o nome que o cliente deu, o código e o motivo, se foi o daemon (tempo do heartbeat, token
+errado, token trocado) ou o cliente que fechou, e os mesmos relógios. Nenhuma das linhas tem token,
+endereço ou mensagem.
 
 O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (também girado), e o
 `host.info` diz onde fica. Na página de um host, **Copiar as últimas linhas de log do host** copia

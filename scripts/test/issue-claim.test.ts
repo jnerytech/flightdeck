@@ -4,6 +4,7 @@ import {
   claimIssue,
   currentOwner,
   marksOf,
+  noteCheck,
   type OwnerMark,
   ownerMark,
 } from "../lib/issue-claim.ts";
@@ -308,5 +309,66 @@ describe("issue-claim: one session owns an issue (#1410)", () => {
     expect(
       await claim(["7", "--by", "fd-coordinator"], coordinator, { coordinator: true }).code,
     ).toBe(0);
+  });
+});
+
+/** issue-note.sh's check before it posts (#1526): the exit code and what it said. */
+async function checkNote(
+  args: string[],
+  fake: ReturnType<typeof fakeGh>,
+  coordinator = false,
+): Promise<{ code: number; lines: string[] }> {
+  const lines: string[] = [];
+  const code = await noteCheck(args, { gh: fake.gh, log: (l) => lines.push(l), coordinator });
+  return { code, lines };
+}
+
+describe("issue-note: a progress note never moves an issue by its prefix (#1526)", () => {
+  test("the owner's note, a note on a free issue, a note with no prefix and a ready note all go", async () => {
+    const owned = fakeGh({ comments: [note("fd-quality", "progress")] });
+    const free = fakeGh({ comments: [] });
+    const plain = fakeGh({ comments: [note("fd-quality", "progress")] });
+    const ready = fakeGh({ comments: [note("fd-quality", "progress")] });
+    const results = [
+      await checkNote(["7", "progress", "fd-quality: more"], owned),
+      await checkNote(["7", "progress", "fd-frontend: starts"], free),
+      await checkNote(["7", "progress", "a note with no session"], plain),
+      await checkNote(["7", "ready", "fd-frontend: shipped"], ready),
+    ];
+    const posted = [owned, free, plain, ready].flatMap((f) => posts(f.asked));
+    expect([results.map((r) => r.code), posted, plain.asked]).toEqual([[0, 0, 0, 0], [], []]);
+  });
+
+  test("another session's progress note is refused with the owner and the reassign command", async () => {
+    const fake = fakeGh({ comments: [note("fd-quality", "progress")] });
+    const { code, lines } = await checkNote(["7", "progress", "fd-frontend: takes it"], fake);
+    expect([code, lines, posts(fake.asked)]).toEqual([
+      1,
+      [
+        "#7 is owned by fd-quality: this note would not make it fd-frontend's. Ask fd-coordinator to reassign it (bun run claim 7 --by fd-frontend --reassign)",
+      ],
+      [],
+    ]);
+  });
+
+  test("a coordinator run reassigns the issue to the note's session first, and says so", async () => {
+    const fake = fakeGh({ comments: [note("fd-quality", "progress")] });
+    const { code, lines } = await checkNote(["7", "progress", "fd-frontend: takes it"], fake, true);
+    expect([
+      code,
+      lines,
+      bodyOf(posts(fake.asked)[0]).endsWith(ownerMark("fd-frontend", "reassign")),
+    ]).toEqual([0, ["reassigned #7 from fd-quality to fd-frontend for this note"], true]);
+  });
+
+  test("when GitHub cannot say who owns it, the note goes on with a warning; a bad issue is usage", async () => {
+    const broken = fakeGh({ commentsText: "not json" });
+    const unread = await checkNote(["7", "progress", "fd-frontend: x"], broken);
+    const bad = await checkNote(["x", "progress", "fd-frontend: x"], fakeGh({}));
+    expect([
+      unread.code,
+      unread.lines[0]?.startsWith("issue-note: could not read #7's owner"),
+      bad.code,
+    ]).toEqual([0, true, 2]);
   });
 });

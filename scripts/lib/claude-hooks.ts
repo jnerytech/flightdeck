@@ -794,6 +794,8 @@ export interface PrRun {
   conflicting: boolean;
   /** Minutes since the run started. */
   minutes: number;
+  /** #1541: the PR's auto-merge is off, so the run decides nothing; absent when on or unknown. */
+  autoMergeOff?: boolean;
 }
 
 /** A branch's latest PR run, "none" when it has none, null when GitHub cannot be read. */
@@ -837,6 +839,11 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
       ),
       conflicting: view.mergeable === "CONFLICTING",
       minutes: Math.floor((now - started) / 60_000),
+      // Only a PR read with the field and none set: an unread PR is not known to be off.
+      // A merged or closed PR's null says nothing (#1560 review): only an open one counts.
+      ...(view.state === "OPEN" && "autoMergeRequest" in view && view.autoMergeRequest === null
+        ? { autoMergeOff: true }
+        : {}),
     };
   } catch {
     return null;
@@ -849,6 +856,8 @@ export function prRunFrom(runs: string | null, pr: string | null, now: number): 
  */
 function parsedView(text: string | null): {
   mergeable?: string;
+  autoMergeRequest?: unknown;
+  state?: string;
   statusCheckRollup?: Array<{ conclusion?: string; state?: string }>;
 } {
   try {
@@ -882,7 +891,10 @@ export function prRunVia(gh: Gh, now: () => number): (branch: string, dir: strin
     if (runs === null) return null;
     if (runs.trim() === "[]") return "none";
     // `--` ends the flags, so the branch is always the PR to view.
-    const pr = gh(["pr", "view", "--json=mergeable,statusCheckRollup", "--", branch], dir);
+    const pr = gh(
+      ["pr", "view", "--json=mergeable,statusCheckRollup,autoMergeRequest,state", "--", branch],
+      dir,
+    );
     return prRunFrom(runs, pr, now());
   };
 }
@@ -994,6 +1006,8 @@ export function pushWaitPass(run: PrRun): PushWaitPass | null {
   // A failed check or a conflict makes the push a fix that must go out (#756 review).
   if (run.failed) return { reason: "failed check" };
   if (run.conflicting) return { reason: "conflicts" };
+  // #1541: with auto-merge off the run merges nothing; every such block of a day was overridden.
+  if (run.autoMergeOff) return { reason: "auto-merge off" };
   if (!run.inProgress) return { reason: "run ended" };
   if (run.minutes >= PUSH_WAIT_MINUTES) return { reason: "old run", minutes: run.minutes };
   return null;
@@ -1058,6 +1072,11 @@ export function withBudget<A extends unknown[], R>(
   return (...args) => (now() > limit ? null : fn(...args));
 }
 
+/** What the guard's log keeps of a refusal (#1541): its first line, printable, secrets hidden, clipped. */
+export function blockDetail(reason: string): string {
+  return redacted(printable(reason.split("\n")[0] ?? "")).slice(0, 160);
+}
+
 /** Text with control, format (bidi, zero-width), surrogate, private-use and line-separator characters out. */
 export function printable(text: string): string {
   return text.replace(/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Zl}\p{Zp}]/gu, "");
@@ -1079,20 +1098,27 @@ const TOKEN_SHAPES: readonly RegExp[] = [
 
 /** A command with the user and password of a URL, and a secret-looking variable's value, hidden. */
 function redacted(text: string): string {
-  return TOKEN_SHAPES.reduce(
-    (out, shape) => out.replace(shape, "***"),
-    text.replace(/:\/\/[^/@\s]+@/g, "://***@"),
-  )
-    .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
-    .replace(
-      /--((?:\w+-)*(?:token|password|passwd|secret|key))([= ])(?:"[^"]*"|'[^']*'|\S+)/gi,
-      "--$1$2***",
+  return (
+    TOKEN_SHAPES.reduce(
+      (out, shape) => out.replace(shape, "***"),
+      text.replace(/:\/\/[^/@\s]+@/g, "://***@"),
     )
-    .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
-    .replace(
-      /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
-      "$1=***",
-    );
+      .replace(/\b(Authorization:)\s*(?:(?:Basic|Bearer|Token)\s+)?\S+/gi, "$1 ***")
+      .replace(
+        /--((?:\w+-)*(?:token|password|passwd|secret|key))([= ])(?:"[^"]*"|'[^']*'|\S+)/gi,
+        "--$1$2***",
+      )
+      .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
+      // A header's whole value, to its closing quote or the end of the line (#1560 review).
+      .replace(
+        /\b((?:Set-)?Cookie|X-(?:Api-Key|Auth-Token|Amz-Security-Token)):\s*[^"'\n]*/gi,
+        "$1: ***",
+      )
+      .replace(
+        /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
+        "$1=***",
+      )
+  );
 }
 
 /**

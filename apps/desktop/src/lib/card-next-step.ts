@@ -12,7 +12,7 @@ type Shape = Pick<
 /** The card's next step, from its state and what the page shows. `null`: nothing is waiting on the person. */
 export function nextStep(
   card: Shape,
-  view: { tab: "conversation" | "diff"; canMerge: boolean; gate: boolean },
+  view: { tab: "conversation" | "diff"; canMerge: boolean; gate: boolean; noPr?: boolean },
 ): NextStep | null {
   if (cardStartBlock(card) !== null) return "stop";
   // A run waiting at a gate is answered at the gate, where Approve and Deny are (#1269).
@@ -22,6 +22,9 @@ export function nextStep(
     return open && view.canMerge ? "merge-pr" : null;
   }
   if (!card.worktreePath) return "start";
+  // A project that cannot open a PR (#1543): the changes are what leads, on their own tab too, so
+  // the button the person pressed is still there with the focus on it.
+  if (view.noPr) return "review";
   return view.tab === "diff" ? "open-pr" : "review";
 }
 

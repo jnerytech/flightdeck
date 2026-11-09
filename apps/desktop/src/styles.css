@@ -341,6 +341,14 @@ html:not(:has([data-slot="status-bar"])) {
   display: flex;
   flex-direction: column;
 }
+/* The name of a project: one line, cut with an ellipsis, left-aligned like the other rows (#1550). */
+@utility project-tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
 @utility project-tree-name {
   display: flex;
   align-items: center;
@@ -3663,6 +3671,13 @@ html:not(:has([data-slot="status-bar"])) {
   border-radius: 0.25rem;
   background: var(--muted);
   color: var(--foreground);
+}
+@utility activity-card-quiet {
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  color: var(--foreground);
+  font-weight: 500;
 }
 @utility activity-card-line {
   display: -webkit-box;

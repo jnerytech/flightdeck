@@ -18,6 +18,8 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
   const refuseWith = new Map<string, Record<string, unknown>>();
   /** Features `host.info` announces (a phase 6 daemon announces none). */
   const features: string[] = [];
+  /** #1361: whether `host.info` calls the app's connection near; absent from older daemons. */
+  const connection: { near?: boolean } = {};
   /** What `vault.report` and `vault.decisions` answer (phase 19). */
   const audit = { rows: [] as unknown[], csv: "", decisions: [] as unknown[] };
   /** The rules of each secret the host holds (phase 19): what `vault.rules.set` replaced them with. */
@@ -144,6 +146,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
             activeSessions: 0,
             apiKeySanitized: true,
             ...(features.length > 0 ? { features } : {}),
+            ...(connection.near === undefined ? {} : { near: connection.near }),
           },
           "hooks.status": { status: "absent", settingsPath: "/s.json" },
           "project.list": { projects: watch.projects, maxParallelRuns: 2 },
@@ -298,6 +301,7 @@ export function legacyDaemon(cleanups: Array<() => unknown>) {
     refuse,
     refuseWith,
     features,
+    connection,
     preview,
     audit,
     vaultRules,

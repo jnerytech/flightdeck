@@ -63,6 +63,7 @@ are written in Portuguese.
   - [Running and following](#running-and-following)
   - [Budget of a run](#budget-of-a-run)
   - [The flightdeckd mcp MCP server](#the-flightdeckd-mcp-mcp-server)
+  - [The flightdeckd card command](#the-flightdeckd-card-command)
 - [History](#history)
   - [What is indexed](#what-is-indexed)
   - [Excluding folders](#excluding-folders)
@@ -1397,6 +1398,13 @@ title and description:
 - **Azure DevOps:** `az repos pr create --source-branch fd/<slug> --target-branch <base>`. State
   comes from `az repos pr show`, and the policy checks from `az repos pr policy list`.
 
+A project whose provider is **none** (the default for a new project, and what a repository with no
+remote has) has no Open PR: the card's panel says so, with the steps (set the provider in the project's
+settings; if the repository has no remote, `git remote add origin <url>` first, then `gh auth login`
+or `az login`) and the branch the card's work is on, to push by hand. **Review changes** stays. Adding a
+remote does not set the provider by itself. A PR the host refuses keeps the dialog open with the text
+you wrote, and the reason shown in it.
+
 The CLI must be installed and authenticated on the daemon's host (`gh auth login`, `az login`
 with the `azure-devops` extension). The daemon only invokes it, looking it up on the PATH. The
 merge stays with the provider's rules: on GitHub, **Merge PR** on a card whose PR is open (and whose
@@ -1539,6 +1547,8 @@ conversation. It is where you check what the agent did and send it back what to 
   finding that falls on a changed line becomes a draft marked **Reviewer**, with its severity
   (Blocker, High, Medium or Low): edit it (then it is yours), **Dismiss** it, or leave it, and
   **Send review** sends it to the card with your own comments, framed as a suggestion to check.
+  The drafts sit after the whole diff: **Go to the drafts**, next to the line that counts them,
+  takes you to the first one.
   Findings on no changed line are listed under the button as text. **Open PR** says how many
   reviewer findings are still open when a blocker or a high one is, and opens the PR all the same.
 - **Revert and edit:**
@@ -1928,6 +1938,33 @@ sessions) get this server with no setup: the daemon adds it to the session, next
 servers. You only need the command above for a `claude` you open in a terminal outside Flightdeck.
 The Doctor's "Team tools" line tells you when the daemon's program is no longer where sessions
 expect it.
+
+### The flightdeckd card command
+
+`flightdeckd card` drives the board from a terminal, a git alias, a cron job or a CI step. It talks
+to the daemon on the same host, with the token of the config file, like the MCP server above. The
+daemon applies the same rules as the app: the queue, the holds and the limits.
+
+```sh
+flightdeckd card list [--project <name or id>] [--json]
+flightdeckd card show <card> [--json]
+flightdeckd card new "<title>" [--project <name or id>] [--description <text>] [--json]
+flightdeckd card start <card> [--workflow <name>] [--json]
+```
+
+- `list` prints one line per card (project, id, column, title, and why a card waits). Without
+  `--project` it lists every project. `--project` takes an id or a name; a host with one project needs
+  no `--project` for `new`.
+- `start` of a card that has to wait says why (a free slot, the plan quota, the host's memory, the
+  budget, a paused host, the cards it waits on) and still exits 0: the card is queued.
+- `--json` prints the answer for a script. Discarding and finishing a card stay in the app.
+- **Exit codes:** 0 done, 1 refused (the reason is on stderr, with the daemon's code), 2 no daemon
+  (not running, or silent for 15 s).
+- **The token** comes only from the config file: `--token` is refused and the environment is not
+  read. It is never printed. The command talks only to a daemon on the loopback (`127.0.0.1` or
+  `::1`); a daemon bound to another address is refused. As with `flightdeckd mcp`, the token goes to
+  whatever listens on that local port, so keep the daemon running when you use it.
+- With `--json` the answer is JSON on stdout, but an error is still a line of text on stderr.
 
 ## History
 
@@ -3529,6 +3566,14 @@ second copy anyway** opens it here all the same.
   the group does not add to the sidebar count, which counts requests. The system notification of
   a finished turn or a failure is the one you already had: it is sent once, never while the app has
   focus.
+- **Quiet sessions:** a session that is marked as running but has produced nothing for 15 minutes
+  (30 while a tool call is still open, since a build can be quiet) is listed under the requests as
+  "Quiet for 23 min · last: Bash", on a daemon that announces `stall`. Choose it for **Open**,
+  **Interrupt**, **Send "continue"** and **Not stuck, snooze 1 h** (which keeps that session out of
+  the list for an hour, on this computer). It leaves the list at the next sign of life, and a session
+  waiting for an approval is never quiet. One system notification is sent when it goes quiet, never
+  while the app has focus; the Working card on the Activity board carries a "Quiet 23 min" badge.
+  `stall.afterMinutes` in the daemon config sets the 15 (0 turns it off).
 - **From a notification:** clicking it opens the session with the request's card focused: one
   key answers it. In the bell, an entry of a request already answered opens its session at that
   request.
@@ -3775,6 +3820,14 @@ result of update checks, and the webview's own errors and console warnings. **Se
 Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copies the app's version
 and system, each host's name, state, version and features (never an address or a token), and the
 last 50 log lines, to paste in a message. Neither button exists in a browser.
+
+When a host goes offline, the log says why, so a drop that repeats can be read (#939). The app writes one
+line for each drop of a link that was online (a warning): the close code and reason, whether the host
+or the app closed it, how long the link had been up, how long nothing had come from the host and how
+long since its last heartbeat ping. The daemon writes one line for each connection that closes: the
+name the client gave, the code and reason, whether the daemon (heartbeat timeout, wrong token, a
+rotated token) or the client closed it, and the same clocks. Neither line holds a token, an address or
+a message.
 
 The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
 `host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.

@@ -10,6 +10,8 @@ export type AboutNotification = Notification & { about?: InboxAbout; event?: Not
 export interface SummarySnapshot {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
+  /** Issue #1478: when the host marked the session quiet; absent when it is not. */
+  quietSince?: string | undefined;
 }
 
 const IN_TURN: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);
@@ -63,6 +65,15 @@ export function summaryNotifications(
       event: "turn-finished",
       title: t("notify.turnDone", { label }),
       body: t("notify.turnDoneBody"),
+      ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
+    });
+  }
+  // Issue #1478: a stall is told once, when the host first marks the session quiet.
+  if (!prev.quietSince && next.quietSince) {
+    notifications.push({
+      event: "needs-you",
+      title: t("notify.quiet", { label }),
+      body: t("notify.quietBody"),
       ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
     });
   }

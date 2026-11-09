@@ -33,6 +33,13 @@ const TOP_LEVEL = {
   settings: "sidebar.settings",
 } as const satisfies Partial<Record<Route["name"], Key>>;
 
+/** The screens the first start (no host) does not replace. */
+const KEEPS_NAME_WITHOUT_HOST: ReadonlySet<Route["name"]> = new Set([
+  "settings",
+  "add-host",
+  "start",
+]);
+
 /** Where the user is, as the header's path. */
 export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
   const hostName = (id: string) => state.hosts.find((h) => h.id === id)?.name ?? id;
@@ -55,6 +62,12 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
     host: hostId,
     ...(focus ? { focus } : {}),
   });
+
+  // With no host the app shows the first-start screen in place of every screen but Settings, Add
+  // host and Start (Screens.routeScreen): its tab and crumb name it (#1551).
+  if (state.hosts.length === 0 && !KEEPS_NAME_WITHOUT_HOST.has(route.name)) {
+    return path({ label: t("welcome.crumb") });
+  }
 
   switch (route.name) {
     case "hub":

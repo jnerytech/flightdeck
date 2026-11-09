@@ -1,8 +1,9 @@
 import type { Card, CardReviewResult, ChangesResult } from "@flightdeck/protocol";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
@@ -33,6 +34,8 @@ export function CardSecondOpinion(
     changes: ChangesResult;
     /** The reviewer drafts are on the host now: the Changes panel reads its comments again. */
     onReviewed(): void | Promise<void>;
+    /** Puts the focus on the first reviewer draft, which sits after the whole diff (#1496). */
+    onGoToDrafts?: () => void;
   }>,
 ) {
   const t = useT();
@@ -40,10 +43,28 @@ export function CardSecondOpinion(
   const reasonId = useId();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const askButton = useRef<HTMLButtonElement>(null);
+  const asking = useRef(false);
+  const section = useRef<HTMLElement>(null);
+  /**
+   * Answers received: the button was off while the host read, so the browser dropped its focus and it
+   * goes back once the button is on (#1495). Focus the person moved somewhere else (a comment they
+   * began) stays where it is.
+   */
+  const [answered, setAnswered] = useState(0);
+  useEffect(() => {
+    if (answered === 0) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || section.current?.contains(active)) {
+      askButton.current?.focus();
+    }
+  }, [answered]);
   const off = whyOff(card, changes, t);
 
   const ask = async () => {
-    if (busy) return;
+    // A ref too: two clicks in the same event see the first one before React renders it.
+    if (busy || asking.current) return;
+    asking.current = true;
     setBusy(true);
     setOutcome(null);
     let next: Outcome;
@@ -61,22 +82,34 @@ export function CardSecondOpinion(
     }
     // The result and the button come back together: no moment with neither the result nor the wait.
     setOutcome(next);
+    asking.current = false;
     setBusy(false);
-    if (next.kind === "result" && next.result.anchored > 0) await props.onReviewed();
+    setAnswered((count) => count + 1);
+    if (next.kind === "result" && next.result.anchored > 0) {
+      try {
+        await props.onReviewed();
+      } catch {
+        // The review itself succeeded and its result is shown. Only this read failed (a dropped
+        // connection): the drafts appear on the panel's next read, a change on disk or Refresh.
+      }
+    }
   };
 
   return (
-    <section aria-label={t("secondOpinion.title")}>
+    <section ref={section} aria-label={t("secondOpinion.title")}>
       <Stack gap={2}>
         <h3 className="font-medium text-sm">{t("secondOpinion.title")}</h3>
         <p className="text-muted-foreground text-sm">{t("secondOpinion.intro")}</p>
         <div>
           <ActionButton
+            ref={askButton}
             variant="outline"
             size="sm"
             disabled={off !== null || busy}
+            pending={busy}
             aria-describedby={off ? reasonId : undefined}
-            onClick={ask}
+            // The wait is this component's own (busy), so the button is on again with the answer.
+            onClick={() => void ask()}
           >
             {t("secondOpinion.ask")}
           </ActionButton>
@@ -94,24 +127,34 @@ export function CardSecondOpinion(
           role="status"
           className="flex flex-col gap-2"
         >
-          {outcome?.kind === "result" && <ReviewOutcome result={outcome.result} />}
+          {outcome?.kind === "result" && (
+            <ReviewOutcome
+              result={outcome.result}
+              {...(props.onGoToDrafts ? { onGoToDrafts: props.onGoToDrafts } : {})}
+            />
+          )}
         </div>
       </Stack>
     </section>
   );
 }
 
+/** How many findings became drafts in the list below, or null when none did. */
+function draftsNote(anchored: number, t: T): string | null {
+  if (anchored === 0) return null;
+  return anchored === 1 ? t("secondOpinion.draftsOne") : t("secondOpinion.drafts", { n: anchored });
+}
+
 /** What the review said: its summary and notes, then the findings that are on no changed line. */
-function ReviewOutcome(props: Readonly<{ result: CardReviewResult }>) {
+function ReviewOutcome(props: Readonly<{ result: CardReviewResult; onGoToDrafts?: () => void }>) {
   const t = useT();
   const { result } = props;
   const notes = [
     result.cached ? t("secondOpinion.cached") : null,
     result.moved ? t("secondOpinion.moved") : null,
     result.state === "failed" ? t("secondOpinion.failed") : null,
-    result.anchored === 1 ? t("secondOpinion.draftsOne") : null,
-    result.anchored > 1 ? t("secondOpinion.drafts", { n: result.anchored }) : null,
   ].filter((note): note is string => note !== null);
+  const drafts = draftsNote(result.anchored, t);
   return (
     <>
       {result.summary && <p className="text-sm">{result.summary}</p>}
@@ -120,6 +163,16 @@ function ReviewOutcome(props: Readonly<{ result: CardReviewResult }>) {
           {note}
         </p>
       ))}
+      {drafts && (
+        <Inline gap={2}>
+          <p className="text-muted-foreground text-xs">{drafts}</p>
+          {props.onGoToDrafts && (
+            <Button variant="outline" size="sm" onClick={props.onGoToDrafts}>
+              {t("secondOpinion.goToDrafts")}
+            </Button>
+          )}
+        </Inline>
+      )}
       {result.loose.length > 0 && (
         <div>
           <h4 className="font-medium text-xs">

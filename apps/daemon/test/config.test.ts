@@ -38,6 +38,24 @@ describe("config", () => {
     expect(await read("often")).toBe(0);
   });
 
+  test("stall: a running session is quiet after 15 minutes unless the file gives 0 (off) or another whole number up to 1440 (#1478)", async () => {
+    const read = async (stall: unknown) => {
+      const file = join(tempDir(), "config.json");
+      writeFileSync(file, JSON.stringify({ token: "x".repeat(32), stall }));
+      return (await loadConfig(file)).stall.afterMinutes;
+    };
+    expect(await read(undefined)).toBe(15);
+    expect(await read({ afterMinutes: 30 })).toBe(30);
+    expect(await read({ afterMinutes: 0 })).toBe(0);
+    expect(await read({ afterMinutes: 1440 })).toBe(1440);
+    expect(await read({ afterMinutes: 1441 })).toBe(15);
+    expect(await read({ afterMinutes: -1 })).toBe(15);
+    expect(await read({ afterMinutes: 5000 })).toBe(15);
+    expect(await read({ afterMinutes: 1.5 })).toBe(15);
+    expect(await read({})).toBe(15);
+    expect(await read("often")).toBe(15);
+  });
+
   test("valida o arquivo existente e expande ~", async () => {
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "x".repeat(32), dataDir: "~/fd", port: 9000 }));

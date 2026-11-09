@@ -1163,6 +1163,15 @@ export const ptBR = {
     versionDiffers: "{host}: versão diferente",
   },
   needsYou: {
+    quietFor: "Em silêncio há {span}",
+    quietTitle: "Esta sessão ficou em silêncio",
+    quietBody:
+      "Ela ainda consta como rodando, mas não produziu nada há um tempo. Um build longo também pode ficar em silêncio.",
+    quietOpen: "Abrir",
+    quietInterrupt: "Interromper",
+    quietContinue: "Enviar “continue”",
+    quietSnooze: "Não travou, adiar 1 h",
+    quietLast: "{quiet} · última: {tool}",
     title: "Precisa de você",
     empty: "Nada espera por você.",
     seeSessions: "Ver as sessões",
@@ -1439,6 +1448,8 @@ export const ptBR = {
     plainWaiting: "{label}: esperando a sua resposta",
     turnDone: "{label}: turno concluído",
     turnDoneBody: "ociosa",
+    quiet: "{label}: em silêncio",
+    quietBody: "Nada aconteceu há um tempo. Abra para ver onde parou.",
     externalTitle: "Precisa de você",
     quotaTitle: "Cota do plano",
     quotaBody: "{host}: {window} em {percent}%",
@@ -2211,7 +2222,8 @@ export const ptBR = {
       "O push falhou, e a saída dele parece ter um segredo ({found}), então ela não aparece: faça o push num terminal para vê-la.",
     merge_message_secret:
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
-    project_no_pr_provider: "O projeto não tem provedor de PR.",
+    project_no_pr_provider:
+      "O projeto não tem provedor de PR. Defina-o nas configurações do projeto (GitHub ou Azure DevOps), depois de adicionar um remote ao repositório se ele não tiver.",
     card_no_pr: "O card não tem PR.",
     card_pr_not_open: "O PR do card não está aberto.",
     card_pr_merge_unsupported:
@@ -2977,6 +2989,7 @@ export const ptBR = {
       "1 achado virou rascunho abaixo: Enviar revisão o manda ao card junto com os seus comentários.",
     drafts:
       "{n} achados viraram rascunhos abaixo: Enviar revisão os manda ao card junto com os seus comentários.",
+    goToDrafts: "Ir para os rascunhos",
     cached: "Este diff já foi revisado: esta é essa revisão.",
     moved:
       "O diff mudou durante a revisão, então nada foi colocado numa linha: todos os achados estão listados aqui.",
@@ -3061,6 +3074,7 @@ export const ptBR = {
     /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
     title: "Conecte seu primeiro host",
     titleMore: "Adicionar um host",
+    crumb: "Conectar um host",
     addHost: "Adicione um host com o endereço e o token do flightdeckd.",
     stepsLabel: "Primeiros passos",
     step1: "No computador que roda o Claude Code, instale e inicie o daemon:",
@@ -4135,6 +4149,8 @@ export const ptBR = {
       "Quando o turno de um card termina, ele roda estes checks e devolve o que falha para a própria sessão, no máximo este número de rodadas, antes de seguir.",
     maxRoundsHelp: "Rodadas para consertar a CI de um PR que falha.",
     fixMarked: "Corrija o campo marcado.",
+    farReadOnly:
+      "Os checks e o laço de checks só mudam por uma conexão próxima: este computador ou o Tailscale.",
     tooManyCheckEnv: "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
   },
   sessionFinish: {
@@ -4168,6 +4184,7 @@ export const ptBR = {
     confirm:
       "Os checks vão rodar o código que este card escreve, sem perguntar a cada vez. Esse código pode ler seus arquivos e acessar a rede, como a própria sessão pode.",
     confirmAction: "Ligar",
+    farOff: "Ligue-o neste computador ou pelo Tailscale.",
     ready: "Ligado: quando um turno termina, os checks do projeto rodam.",
     checking: "Rodando os checks…",
     fixing: "Rodada {round} de {max}: a sessão está corrigindo o que os checks acharam.",
@@ -4366,6 +4383,9 @@ export const ptBR = {
     start: "Iniciar",
     stop: "Parar",
     openPr: "Abrir PR",
+    noRemote:
+      "Nenhum PR pode ser aberto: este projeto está sem provedor de PR. Defina-o nas configurações do projeto (GitHub ou Azure DevOps). Se o repositório ainda não tem remote, adicione um antes (git remote add origin <url>) e entre (gh auth login no GitHub, az login no Azure DevOps). Depois, Abrir PR.",
+    noRemoteBranch: "O trabalho do card está na branch {branch}: você pode enviá-la à mão.",
     reviewChanges: "Revisar mudanças",
     startWith: "Iniciar com workflow ou persona…",
     complete: "Concluir",
@@ -5629,6 +5649,7 @@ export const ptBR = {
     empty: "Nenhuma worktree em .flightdeck/worktrees.",
   },
   activityBoard: {
+    quiet: "Em silêncio {span}",
     title: "Atividade",
     columns: {
       needs_you: "Precisa de você",

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -15,7 +16,12 @@ afterEach(cleanup);
  * connected; `ssh` says that terminal was opened from a ssh destino with those tags.
  */
 async function setup(ssh?: { name: string; tags: string[] }) {
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+  // With no host the first tab reads "Conectar um host" (#1551): the tabs under test come after it.
+  const mem = memoryPlatform(false, "pt-BR");
+  seedDemoHosts(mem.win.localStorage, mem.tokens, [
+    { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+  ]);
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   if (ssh) store.sshTerminals.set("h1/term-1", ssh);
   render(<App store={store} />);
   await act(async () => {

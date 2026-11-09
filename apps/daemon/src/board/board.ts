@@ -1,32 +1,23 @@
 import type { Database } from "bun:sqlite";
-import { stat } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { resolve } from "node:path";
 import {
   type Arena,
   type ArenaVariant,
-  AutoApproveSettings,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
   CheckLoopReason,
-  ColumnContract,
   type ContractOverrides,
   contractOf,
   type EffortLevel,
-  IssuesConfig,
   inSequence,
-  isBranchName,
   missingFor,
   type PermissionMode,
-  type PermissionUpdate,
   type PersonaRef,
-  type PersonaSubagentsMode,
-  PersonaSubagentsMode as PersonaSubagentsModeSchema,
   PINNED_DOCS_MAX,
   pinnedDocProblem,
   type RunResumeCheck,
   type SessionEvent,
-  type SessionStatus,
   type SpecState,
   specExpectedPath,
   specPathProblem,
@@ -38,20 +29,12 @@ import {
 import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
-import { isInside, resolveAllowedCwd } from "../paths.ts";
-import { isProjectRule } from "../permissions/permission-updates.ts";
-import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
-import type { Quota } from "../quota/quota.ts";
+import { isInside } from "../paths.ts";
+import { withoutPersonas } from "../personas/prepare.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
-import type { SessionManager } from "../sessions/session-manager.ts";
-import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { runChecks } from "../watch/check-run.ts";
-import {
-  type BoundedCheckRunner,
-  type CheckRunner,
-  shellCheckRunner,
-} from "../workflows/check-runner.ts";
+import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
@@ -77,10 +60,12 @@ import {
   rebaseOnto,
 } from "./merge.ts";
 import { pinnedPrompt } from "./pins.ts";
-import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
-import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
+import { type PrComment, prMessage, prProvider } from "./pr.ts";
+import { Projects } from "./projects.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
 import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
+import { RuleWrites } from "./rule-writes.ts";
+import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
@@ -96,38 +81,32 @@ import {
 } from "./spec-template.ts";
 import type {
   BoardColumn,
+  BoardOptions,
   Card,
   CardDiff,
+  CardRow,
   CardRun,
-  ChecksState,
   MayConflict,
   NewProject,
-  PrMergeable,
   Project,
   ProjectPatch,
-  PrProviderKind,
-  PrReview,
   PrState,
+  RunRow,
 } from "./types.ts";
 import {
   addWorktree,
   excludeLocalSettingsAsync,
   freshBase,
   must,
-  WORKTREE_INCLUDE,
   WORKTREE_INCLUDE_LIMIT,
 } from "./worktree.ts";
 
+export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
+export type { FixResult } from "./session-follow.ts";
+export type { BoardOptions } from "./types.ts";
+
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
-
-/** How a fix run (phase 22) ended: its first turn's result. */
-export interface FixResult {
-  sessionId: string | null;
-  costUsd: number;
-  isError: boolean;
-  error: string | null;
-}
 
 const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
 
@@ -137,176 +116,6 @@ const DONE_COVERS_MS = 30 * 24 * 60 * 60 * 1000;
 const sameTitle = (title: string) => title.trim().replace(/\s+/g, " ").toLowerCase();
 const raisedBy = (origin: { workflow: string; runId: string }) =>
   `Raised by the workflow ${origin.workflow} (run ${origin.runId}) from what its agent found in the repository. The text below is the agent's and has not been reviewed.`;
-
-export const DEFAULT_PROMPT_TEMPLATE =
-  "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
-  "com mensagens descritivas a cada passo concluído.";
-
-export interface BoardOptions {
-  db: Database;
-  manager: SessionManager;
-  /** Reads the personas for a session about to open; none when absent. */
-  preparePersonas?: Prepare;
-  allowedRoots: readonly string[];
-  /** Folders being removed (issue #152): no card starts in one. */
-  folderLocks?: { isHeld(cwd: string): boolean };
-  /** 2 when absent. */
-  maxParallelRuns?: number;
-  prPollIntervalMs?: number;
-  /** Persists host-wide settings changed through `board.settings`. */
-  onSettingsChange?: (settings: { maxParallelRuns: number }) => void | Promise<void>;
-  /** Runs workflow `check` commands; the real shell runner when absent. */
-  checks?: CheckRunner;
-  /** Milliseconds now, for the workflow budget's minutes; `Date.now` when absent. */
-  clock?: () => number;
-  /** The host's plan quota: over `pauseAt`, new cards and workflow turns wait (phase 7). */
-  quota?: Quota;
-  /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
-  budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
-  /** Issue #1343: while the host's memory is at or above `resources.pauseAt`, new cards wait. */
-  memory?: { blocked(): unknown; watch(listener: () => void): () => void };
-  /** Issue #1404: while the person has paused new runs on the host, new cards wait. */
-  pause?: { blocked(): unknown; watch(listener: () => void): () => void };
-  /** Issue #1361: the check loop (a project's checks after a card's turn); off when absent. */
-  checkLoop?: {
-    settings(projectId: string): {
-      checks: string[];
-      checkTimeoutMin: number;
-      checkRounds: number;
-      checkEnv: string[];
-    };
-    isTrusted(path: string): boolean;
-    runner: Pick<BoundedCheckRunner, "run">;
-  };
-  /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
-  cardCost?: (cardId: string) => number | null;
-  /** Phase 22: refuses a PR description that carries a secret. */
-  scanner?: Pick<SecretScanner, "scan">;
-  /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
-  prProvider?: (kind: PrProviderKind) => PrProvider | null;
-  /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
-  projectKeys?: { known(path: string): string; resolve?(path: string): Promise<string> };
-  /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
-  worktreeIncludeLimit?: number;
-  /**
-   * Issue #78: the folder a card's spec template may be read from (the trusted checkout of the
-   * worktree's project), or null when the project is not trusted: its template would reach the
-   * agent before the person trusted it. `own` says `cwd` is the project's own folder, not a worktree
-   * (a card with no worktree).
-   */
-  specTemplateRoot?: (cwd: string, own?: true) => Promise<string | null>;
-  /** Lines for the daemon's log (no card content goes there). */
-  log?: (line: string) => void;
-  /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
-  idle?: () => Promise<void>;
-  /** Issue #79: keeps automatic approval off a card made from an agent's findings. */
-  suspendApproval?: (cardId: string, reason: string) => void;
-}
-
-interface ProjectRow {
-  id: string;
-  path: string;
-  name: string;
-  base_branch: string;
-  pr_provider: PrProviderKind;
-  setup_script: string | null;
-  prompt_template: string;
-  auto_approve: string | null;
-  issues: string | null;
-  persona_by_column: string | null;
-  contract_by_column: string | null;
-  persona_subagents: PersonaSubagentsMode | null;
-  default_hours: number | null;
-  roi_commits: number;
-  roi_issues: number;
-}
-
-/** The fields of a patch that were given, so a missing one keeps its value. */
-const definedOnly = <T extends object>(patch: T | undefined): Partial<T> =>
-  Object.fromEntries(Object.entries(patch ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
-
-function toProject(row: ProjectRow): Project {
-  return {
-    id: row.id,
-    path: row.path,
-    name: row.name,
-    baseBranch: row.base_branch,
-    prProvider: row.pr_provider,
-    setupScript: row.setup_script,
-    promptTemplate: row.prompt_template,
-    // The file answer needs IO: `forWire` fills it in where a project leaves for the app.
-    worktreeInclude: false,
-    autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
-    issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
-    personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
-    contractByColumn: row.contract_by_column ? JSON.parse(row.contract_by_column) : {},
-    personaSubagents: row.persona_subagents ?? "all",
-    defaultHours: row.default_hours,
-    roiSignals: { commits: row.roi_commits === 1, issues: row.roi_issues === 1 },
-  };
-}
-
-const PERSONA_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
-
-function subagentsMode(mode: string): PersonaSubagentsMode {
-  const parsed = PersonaSubagentsModeSchema.safeParse(mode);
-  if (!parsed.success) {
-    throw new FlightdeckError(
-      "bad_request",
-      "personaSubagents must be all, project or none",
-      "persona_subagents_invalid",
-    );
-  }
-  return parsed.data;
-}
-
-/** The contracts with the patch applied: a known column, a valid contract, `null` takes one away. */
-function mergeContracts(
-  current: Project["contractByColumn"],
-  patch: NonNullable<ProjectPatch["contractByColumn"]>,
-): Project["contractByColumn"] {
-  const merged: ContractOverrides = { ...current };
-  for (const [column, contract] of Object.entries(patch)) {
-    if (!BoardColumnSchema.options.includes(column as BoardColumn)) {
-      throw new FlightdeckError("bad_request", `unknown column: ${column}`, "column_unknown", {
-        column,
-      });
-    }
-    if (contract === null) delete merged[column as BoardColumn];
-    else if (contract === undefined) continue;
-    else {
-      const parsed = ColumnContract.safeParse(contract);
-      if (!parsed.success) {
-        throw new FlightdeckError("bad_request", "invalid contract", "contract_invalid", {
-          column,
-        });
-      }
-      merged[column as BoardColumn] = parsed.data;
-    }
-  }
-  return merged;
-}
-
-/** The default personas with the patch applied: plain ids, existing columns, `null` takes one away. */
-function mergePersonas(
-  current: Project["personaByColumn"],
-  patch: NonNullable<ProjectPatch["personaByColumn"]>,
-): Project["personaByColumn"] {
-  const merged: Record<string, string> = { ...current };
-  for (const [column, id] of Object.entries(patch)) {
-    if (!BoardColumnSchema.options.includes(column as BoardColumn)) {
-      throw new FlightdeckError("bad_request", `unknown column: ${column}`, "column_unknown", {
-        column,
-      });
-    }
-    if (id === null) delete merged[column];
-    else if (id === undefined) continue;
-    else if (!PERSONA_ID.test(id))
-      throw new FlightdeckError("bad_request", "invalid persona id", "persona_id_invalid");
-    else merged[column] = id;
-  }
-  return merged;
-}
 
 /** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
 function pinnedDocsOf(stored: string | null): string[] {
@@ -344,66 +153,7 @@ function judgePins(pins: string[]): void {
 const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) =>
   autoStart ? JSON.stringify(autoStart) : null;
 
-interface CardRow {
-  id: string;
-  project_id: string;
-  title: string;
-  description: string;
-  board_column: BoardColumn;
-  column_locked: number;
-  position: number;
-  slug: string | null;
-  branch: string | null;
-  worktree_path: string | null;
-  pr_url: string | null;
-  pr_state: PrState | null;
-  checks_state: ChecksState | null;
-  pr_mergeable: PrMergeable | null;
-  pr_review: PrReview | null;
-  pr_opened_at: string | null;
-  notice: string | null;
-  notice_reason: string | null;
-  notice_params: string | null;
-  issue_ref: string | null;
-  issue_external: number;
-  external_url: string | null;
-  external_gone: number;
-  estimate_hours: number | null;
-  validation_note: string | null;
-  spec_path: string | null;
-  pinned_docs: string | null;
-  start_workflow: string | null;
-  start_persona: string | null;
-  spec_checked_path: string | null;
-  spec_found: number;
-  spec_heading: string | null;
-  spec_draft: number;
-  arena_of: string | null;
-  variant: string | null;
-  unblock_when: UnblockWhen;
-  auto_start: string | null;
-  unblocked_at: string | null;
-  waiting: number;
-  check_loop: number;
-  check_rounds: number | null;
-  check_loop_confirmed_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface RunRow {
-  id: string;
-  card_id: string;
-  session_id: string | null;
-  queued_at: string;
-  started_at: string | null;
-  ended_at: string | null;
-}
-
 const now = () => new Date().toISOString();
-
-/** A run stops holding its slot when its session goes idle, fails or ends. */
-const FREES_SLOT: ReadonlySet<SessionStatus> = new Set(["idle", "error", "ended"]);
 
 const toRun = (row: RunRow): CardRun => ({
   sessionId: row.session_id,
@@ -414,9 +164,6 @@ const toRun = (row: RunRow): CardRun => ({
 
 /** A card's session in one of these is still working: no rebase or merge under it. */
 const BUSY: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission"]);
-
-/** A blank script means "no script": nothing is ever run unless the user registered one. */
-const script = (value: string | null | undefined) => value?.trim() || null;
 
 /**
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
@@ -441,12 +188,14 @@ export function refusalOf(
 
 export class Board {
   private readonly db: Database;
-  /** Card id → stops following the session of its active run. */
+  /** The projects and their rows (issue #1523). */
+  private readonly projects: Projects;
+  /** The project rules a card's session accepts, written in turn (issue #1523). */
+  private readonly rules: RuleWrites;
+  /** The sessions of the cards' active runs (issue #1523). */
+  private readonly sessions: SessionFollow;
   private readonly waits: Array<() => Promise<unknown>> = [];
-  /** The rule files being written, one after the other: two writes never read the same file. */
-  private ruleWrites: Promise<void> = Promise.resolve();
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
-  private readonly follows = new Map<string, () => void>();
   /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
   private readonly specLooks = new Map<string, number>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
@@ -476,7 +225,6 @@ export class Board {
   /** The radar reads of the cards in flight, and the ones asked again meanwhile. */
   private readonly radarReads = new Map<string, { again: boolean; done: Promise<void> }>();
   /** Phase 22: the fix runs waiting for their first turn to end, by card. */
-  private readonly fixes = new Map<string, (result: FixResult) => void>();
   private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
@@ -488,6 +236,23 @@ export class Board {
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
+    this.projects = new Projects(opts.db, opts);
+    this.sessions = new SessionFollow({
+      db: opts.db,
+      manager: opts.manager,
+      loop: () => this.loop,
+      place: (cardId, event) => this.place(cardId, event),
+      release: (cardId) => this.release(cardId),
+      refreshConflicts: (cardId) => this.refreshConflicts(cardId),
+      startCard: (id, options) => this.startCard(id, options),
+      card: (id) => this.getCard(id),
+    });
+    this.rules = new RuleWrites({
+      db: opts.db,
+      project: (id) => this.getProject(id),
+      card: (id) => this.getCard(id),
+      changed: (id) => this.changed(id),
+    });
     this.workflows = new WorkflowEngine({
       db: opts.db,
       manager: opts.manager,
@@ -510,9 +275,7 @@ export class Board {
       clock: opts.clock ?? Date.now,
     });
     this.limit = opts.maxParallelRuns ?? 2;
-    opts.manager.onPermissionUpdates((sessionId, updates) => {
-      this.ruleWrites = this.ruleWrites.then(() => this.applyProjectRules(sessionId, updates));
-    });
+    opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchMemory = opts.memory?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchPause = opts.pause?.watch(() => this.onLimits()) ?? (() => {});
@@ -545,157 +308,25 @@ export class Board {
   }
 
   listProjects(): Project[] {
-    return this.db
-      .query<ProjectRow, []>("SELECT * FROM projects ORDER BY name, path")
-      .all()
-      .map(toProject);
+    return this.projects.list();
   }
 
-  /**
-   * Phase 29: the project as it leaves for the app: its key and whether it has a `.worktreeinclude`. The key is asked without blocking (`resolve`
-   * answers from a cache and asks git once per folder); a host without it sends none.
-   */
-  async forWire(project: Project): Promise<Project> {
-    const [projectKey, worktreeInclude] = await Promise.all([
-      this.opts.projectKeys?.resolve?.(project.path),
-      stat(join(project.path, WORKTREE_INCLUDE)).then(
-        () => true,
-        () => false,
-      ),
-    ]);
-    return {
-      ...project,
-      worktreeInclude,
-      ...(projectKey ? { projectKey } : {}),
-      // A base an older daemon stored without checking: the person is told to set a real one.
-      ...(project.baseBranch !== "HEAD" && !isBranchName(project.baseBranch)
-        ? { baseBranchInvalid: true }
-        : {}),
-    };
+  /** Phase 29: the project as it leaves for the app (see `Projects.forWire`). */
+  forWire(project: Project): Promise<Project> {
+    return this.projects.forWire(project);
   }
 
   getProject(id: string): Project {
-    const row = this.db.query<ProjectRow, [string]>("SELECT * FROM projects WHERE id = ?").get(id);
-    if (!row)
-      throw new FlightdeckError("not_found", `project ${id} does not exist`, "project_not_found", {
-        id,
-      });
-    return toProject(row);
+    return this.projects.get(id);
   }
 
   /** Registers a git repository that lives inside `allowedRoots`. */
-  async addProject(input: NewProject): Promise<Project> {
-    const path = await resolveAllowedCwd(input.path, this.opts.allowedRoots);
-    const top = await git(path, "rev-parse", "--show-toplevel");
-    if (top.code !== 0) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `not a git repository: ${input.path}`,
-        "repo_not_git",
-        { path: input.path },
-      );
-    }
-    const taken = this.db.query("SELECT 1 FROM projects WHERE path = ?").get(path);
-    if (taken)
-      throw new FlightdeckError(
-        "invalid_state",
-        `project already registered: ${path}`,
-        "project_exists",
-        { path },
-      );
-    const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
-    const project: Omit<
-      Project,
-      | "worktreeInclude"
-      | "personaByColumn"
-      | "contractByColumn"
-      | "personaSubagents"
-      | "defaultHours"
-      | "roiSignals"
-    > = {
-      id: ulid(),
-      path,
-      name: input.name?.trim() || basename(path),
-      baseBranch: input.baseBranch?.trim()
-        ? assertBranchName(input.baseBranch.trim())
-        : head.stdout.trim(),
-      prProvider: input.prProvider ?? "none",
-      setupScript: script(input.setupScript),
-      promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
-      autoApprove: AutoApproveSettings.parse(input.autoApprove ?? {}),
-      issues: input.issues ?? null,
-    };
-    this.db
-      .query(
-        `INSERT INTO projects (id, path, name, base_branch, pr_provider, setup_script, prompt_template,
-           auto_approve, issues)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        project.id,
-        project.path,
-        project.name,
-        project.baseBranch,
-        project.prProvider,
-        project.setupScript,
-        project.promptTemplate,
-        JSON.stringify(project.autoApprove),
-        project.issues ? JSON.stringify(project.issues) : null,
-      );
-    // The key of the project is looked up now, without waiting for git, so the budget check and
-    // the vault find it cached when a card starts.
-    await this.opts.projectKeys?.resolve?.(path);
-    return await this.forWire(this.getProject(project.id));
+  addProject(input: NewProject): Promise<Project> {
+    return this.projects.add(input);
   }
 
   updateProject(id: string, patch: ProjectPatch): Project {
-    const current = this.getProject(id);
-    const next: Project = {
-      ...current,
-      ...(patch.name?.trim() ? { name: patch.name.trim() } : {}),
-      ...(patch.baseBranch?.trim()
-        ? { baseBranch: assertBranchName(patch.baseBranch.trim()) }
-        : {}),
-      ...(patch.prProvider ? { prProvider: patch.prProvider } : {}),
-      ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
-      ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
-      autoApprove: { ...current.autoApprove, ...patch.autoApprove },
-      ...(patch.issues !== undefined ? { issues: patch.issues } : {}),
-      ...(patch.personaByColumn
-        ? { personaByColumn: mergePersonas(current.personaByColumn, patch.personaByColumn) }
-        : {}),
-      ...(patch.contractByColumn
-        ? { contractByColumn: mergeContracts(current.contractByColumn, patch.contractByColumn) }
-        : {}),
-      ...(patch.personaSubagents
-        ? { personaSubagents: subagentsMode(patch.personaSubagents) }
-        : {}),
-      ...(patch.defaultHours !== undefined ? { defaultHours: patch.defaultHours } : {}),
-      roiSignals: { ...current.roiSignals, ...definedOnly(patch.roiSignals) },
-    };
-    this.db
-      .query(
-        `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
-         prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ?,
-         contract_by_column = ?, persona_subagents = ?, default_hours = ?, roi_commits = ?, roi_issues = ? WHERE id = ?`,
-      )
-      .run(
-        next.name,
-        next.baseBranch,
-        next.prProvider,
-        next.setupScript,
-        next.promptTemplate,
-        JSON.stringify(next.autoApprove),
-        next.issues ? JSON.stringify(next.issues) : null,
-        JSON.stringify(next.personaByColumn),
-        JSON.stringify(next.contractByColumn),
-        next.personaSubagents,
-        next.defaultHours,
-        next.roiSignals.commits ? 1 : 0,
-        next.roiSignals.issues ? 1 : 0,
-        id,
-      );
-    return next;
+    return this.projects.update(id, patch);
   }
 
   /**
@@ -1152,8 +783,7 @@ export class Board {
     await inSequence(ids, async (id) => {
       if (id !== variantId) await this.discardCard(id, true);
     });
-    this.follows.get(variantId)?.();
-    this.follows.delete(variantId);
+    this.sessions.unfollow(variantId);
     this.db.transaction(() => {
       for (const table of ["card_runs", "workflow_runs"]) {
         this.db.query(`UPDATE ${table} SET card_id = ? WHERE card_id = ?`).run(cardId, variantId);
@@ -1474,31 +1104,12 @@ export class Board {
    * Phase 22: a run with a prompt of its own (it waits in the same queue, quota and budgets as
    * any run), in a session nobody sits in; settled when its first turn ends.
    */
-  async fixCard(id: string, opts: { prompt: string; persona?: PersonaRef }): Promise<FixResult> {
-    const settled = new Promise<FixResult>((resolve) => this.fixes.set(id, resolve));
-    try {
-      await this.startCard(id, {
-        fix: { prompt: opts.prompt },
-        ...(opts.persona ? { persona: opts.persona } : {}),
-      });
-    } catch (error) {
-      this.fixes.delete(id);
-      throw error;
-    }
-    return settled;
+  fixCard(id: string, opts: { prompt: string; persona?: PersonaRef }): Promise<FixResult> {
+    return this.sessions.fixCard(id, opts);
   }
 
   private settleFix(id: string, result: Partial<FixResult>): void {
-    const done = this.fixes.get(id);
-    if (!done) return;
-    this.fixes.delete(id);
-    done({
-      sessionId: this.getCard(id).sessionId,
-      costUsd: 0,
-      isError: false,
-      error: null,
-      ...result,
-    });
+    this.sessions.settleFix(id, result);
   }
 
   /** Gets every card after each change; returns the function that stops it. */
@@ -2062,49 +1673,17 @@ export class Board {
 
   /** Resolves when every rule accepted so far is in its file. */
   rulesWritten(): Promise<void> {
-    return this.ruleWrites;
+    return this.rules.written();
   }
 
   /** The project's rules: `permissions.allow` of its root `.claude/settings.local.json`. */
   listRules(projectId: string): Promise<string[]> {
-    return readRules(this.getProject(projectId).path);
+    return this.rules.list(projectId);
   }
 
   /** Removes one rule of the project, keeping the rest of the file; only with `confirm`. */
-  async removeRule(projectId: string, rule: string, confirm: boolean): Promise<string[]> {
-    if (!confirm) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "confirm removing the rule",
-        "rule_remove_confirm",
-      );
-    }
-    return removeRule(this.getProject(projectId).path, rule);
-  }
-
-  /**
-   * Project rules accepted in a card's session (its run or a workflow step) also go to the
-   * repository root's settings.local.json, which every new worktree of the project copies.
-   */
-  private async applyProjectRules(sessionId: string, updates: PermissionUpdate[]): Promise<void> {
-    const rules = updates.filter(isProjectRule).flatMap((update) => update.rules.map(ruleString));
-    const card = this.db
-      .query<{ card_id: string }, [string, string]>(
-        `SELECT card_id FROM card_runs WHERE session_id = ?1
-         UNION SELECT r.card_id FROM step_runs s JOIN workflow_runs r ON r.id = s.run_id
-         WHERE s.session_id = ?2 LIMIT 1`,
-      )
-      .get(sessionId, sessionId);
-    if (rules.length === 0 || !card) return;
-    try {
-      const repo = this.getProject(this.getCard(card.card_id).projectId).path;
-      await excludeLocalSettingsAsync(repo);
-      await addRules(repo, rules);
-    } catch (error) {
-      const notice = `regra não gravada no ${LOCAL_SETTINGS}: ${(error as Error).message}`;
-      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, card.card_id);
-      this.changed(card.card_id);
-    }
+  removeRule(projectId: string, rule: string, confirm: boolean): Promise<string[]> {
+    return this.rules.remove(projectId, rule, confirm);
   }
 
   /** Workflows on the project's base branch, with validation and trust. */
@@ -2433,8 +2012,7 @@ export class Board {
       await this.discardCard(variant, true);
     });
     await this.closeRuns(id);
-    this.follows.get(id)?.();
-    this.follows.delete(id);
+    this.sessions.unfollow(id);
     const repo = this.getProject(card.projectId).path;
     if (card.worktreePath) {
       await Promise.all(this.ends.map((end) => end(id)));
@@ -2638,8 +2216,7 @@ export class Board {
     this.unwatchMemory();
     this.unwatchPause();
     this.unwatchBudgets();
-    for (const unfollow of this.follows.values()) unfollow();
-    this.follows.clear();
+    this.sessions.unfollowAll();
   }
 
   // -- internals ------------------------------------------------------------
@@ -2816,86 +2393,21 @@ export class Board {
 
   /** Session events of the card's active run move the card (replay first, then live). */
   private follow(cardId: string, sessionId: string, sinceSeq: number): void {
-    this.follows.get(cardId)?.();
-    const sub = this.opts.manager.subscribe(sessionId, sinceSeq, (envelope) =>
-      this.onSessionEvent(cardId, envelope.event, { live: true, seq: envelope.seq }),
-    );
-    this.follows.set(cardId, sub.unsubscribe);
-    // Replayed events are history: they move the card, but the check loop never acts on them.
-    for (const envelope of sub.replay) {
-      this.onSessionEvent(cardId, envelope.event, { live: false, seq: envelope.seq });
-    }
+    this.sessions.follow(cardId, sessionId, sinceSeq);
   }
 
+  /** A test drives a session event by hand (check-loop-board.test.ts): kept as a delegate. */
   private onSessionEvent(
     cardId: string,
     event: SessionEvent,
-    at: { live: boolean; seq: number } = { live: false, seq: 0 },
+    at: { live: boolean; seq: number },
   ): void {
-    const loop = at.live ? this.loop : null;
-    // Issue #1361: whatever path wrote into the session (a review comment, a message between
-    // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
-    if (loop && event.type === "message.user") loop.onUserMessage(cardId, event.text);
-    if (event.type === "session.status") {
-      this.place(cardId, { type: "session", status: event.status });
-      if (loop && !FREES_SLOT.has(event.status)) loop.onBusy(cardId);
-    }
-    if (event.type === "turn.result") {
-      // Issue #1361: a live turn after the card's mark goes to the loop, which may keep the card
-      // where it is while its checks run (`hold`); otherwise it moves as it always did.
-      const decision =
-        loop && this.newTurn(cardId, at.seq)
-          ? loop.onTurnResult(cardId, { isError: event.isError, interrupted: false })
-          : "place";
-      if (decision === "place") this.place(cardId, { type: "turn", isError: event.isError });
-      void this.refreshConflicts(cardId).catch(() => {});
-      this.settleFix(cardId, {
-        costUsd: event.costUsd ?? 0,
-        isError: event.isError,
-        error: event.isError ? event.subtype : null,
-      });
-    }
-    if (event.type === "session.error") {
-      this.settleFix(cardId, { isError: true, error: event.message });
-    }
-    if (event.type === "session.status" && FREES_SLOT.has(event.status)) {
-      this.releaseAfter(cardId, event.status, loop);
-    }
-  }
-
-  /** The slot a session that went idle, failed or ended frees, unless the check loop holds it. */
-  private releaseAfter(cardId: string, status: SessionStatus, loop: CheckLoopEngine | null): void {
-    let free: boolean;
-    if (!loop) free = true;
-    else if (status === "idle") free = loop.onIdle(cardId) === "release";
-    else free = !loop.onSessionGone(cardId);
-    if (free) this.release(cardId);
-  }
-
-  /**
-   * Issue #1361: whether a turn result is new for the card's check loop (after its mark), moving
-   * the mark to it; a card with the switch off has no mark to keep.
-   */
-  private newTurn(cardId: string, seq: number): boolean {
-    const row = this.db
-      .query<{ loop_on: number; mark: number | null }, [string]>(
-        "SELECT check_loop AS loop_on, check_loop_turn_seq AS mark FROM cards WHERE id = ?",
-      )
-      .get(cardId);
-    if (row?.loop_on !== 1) return true;
-    if (row.mark !== null && seq <= row.mark) return false;
-    this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(seq, cardId);
-    return true;
+    this.sessions.onSessionEvent(cardId, event, at);
   }
 
   /** Issue #1361: the person wrote into a card's session, or answered it: the loop steps aside. */
   personTurnOfSession(sessionId: string): void {
-    const run = this.db
-      .query<{ card_id: string }, [string]>(
-        "SELECT card_id FROM card_runs WHERE session_id = ? ORDER BY rowid DESC LIMIT 1",
-      )
-      .get(sessionId);
-    if (run) this.loop?.onPersonTurn(run.card_id);
+    this.sessions.personTurnOfSession(sessionId);
   }
 
   /** Issue #1361: the loop's effects on this board. */

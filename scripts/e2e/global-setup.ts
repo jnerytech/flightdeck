@@ -26,7 +26,13 @@ export default async function globalSetup() {
   mkdirSync(STATE_DIR, { recursive: true });
   const options = {
     // FLIGHTDECK_FAKE_SLASH: a long list of slash commands, for the layout check of the / menu.
-    env: { ...process.env, E2E_STATE_DIR: STATE_DIR, FLIGHTDECK_FAKE_SLASH: "100" },
+    env: {
+      ...process.env,
+      E2E_STATE_DIR: STATE_DIR,
+      FLIGHTDECK_FAKE_SLASH: "100",
+      // FLIGHTDECK_STALL_UNIT_MS: a session is quiet after 15 "minutes" of one second, not a quarter of an hour (#1478).
+      FLIGHTDECK_STALL_UNIT_MS: "1000",
+    },
     stdio: "inherit",
     detached: process.platform !== "win32",
   } as const;

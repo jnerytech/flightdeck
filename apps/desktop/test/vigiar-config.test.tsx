@@ -37,6 +37,8 @@ async function openSettings(
   features: string[] = ["watch"],
   /** Set on the fake host before the app opens, so its first read already has them. */
   settings: Record<string, unknown> = {},
+  /** What `host.info` says of the app's connection (#1361). */
+  connection: { near?: boolean } = {},
 ) {
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
@@ -45,6 +47,7 @@ async function openSettings(
   daemon.features.push(...features);
   daemon.watch.projects = [project];
   daemon.watch.settings = { ...daemon.watch.settings, ...settings } as typeof daemon.watch.settings;
+  Object.assign(daemon.connection, connection);
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -349,6 +352,57 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
     expect([await shown("GITHUB_TOKEN=abc123"), await shown("JAVA_HOME=abc123")]).toEqual([
       [false, true],
       [false, true],
+    ]);
+  });
+});
+
+describe("vigiar-config: over a far connection (#1361)", () => {
+  const LOOP = { checkRounds: 3, checkEnv: ["JAVA_HOME"], checkLoopDefault: false };
+  const NEAR_ONLY = [
+    "Checks locais (um comando por linha)",
+    "Tempo limite por check (min)",
+    "Rodadas do laço de checks",
+    "Variáveis extras dos checks (uma por linha)",
+    "Ligar o laço de checks em cards novos",
+  ];
+  const FAR_TEXT =
+    "Os checks e o laço de checks só mudam por uma conexão próxima: este computador ou o Tailscale.";
+  /** Whether a field of the section is off; undefined when it is missing. */
+  const disabledOf = (label: string) => {
+    const found = section() ? within(section() as HTMLElement).queryByLabelText(label) : null;
+    return (found as HTMLInputElement | HTMLTextAreaElement | null)?.disabled;
+  };
+
+  test("what runs unattended is read-only, with why, and the PR limits stay editable", async () => {
+    await openSettings(["watch"], LOOP, { near: false });
+    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
+    expect([
+      NEAR_ONLY.map(disabledOf),
+      disabledOf("Rodadas por PR"),
+      section() ? within(section() as HTMLElement).queryByText(FAR_TEXT) !== null : false,
+    ]).toEqual([[true, true, true, true, true], false, true]);
+    // The rest of the PR limits stay editable too, not only the rounds.
+    expect(
+      ["Limite de custo por PR (US$)", "Limite de custo por dia (US$)"].map(disabledOf),
+    ).toEqual([false, false]);
+  });
+
+  test("a host that does not say whether the connection is near keeps every field editable and says nothing", async () => {
+    // An older daemon sends no `connection.near`: the app cannot tell, so it does not lock the fields.
+    await openSettings(["watch"], LOOP, {});
+    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
+    expect([NEAR_ONLY.map(disabledOf), screen.queryByText(FAR_TEXT) === null]).toEqual([
+      [false, false, false, false, false],
+      true,
+    ]);
+  });
+
+  test("a near connection keeps every field editable and says nothing", async () => {
+    await openSettings(["watch"], LOOP, { near: true });
+    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
+    expect([NEAR_ONLY.map(disabledOf), screen.queryByText(FAR_TEXT) === null]).toEqual([
+      [false, false, false, false, false],
+      true,
     ]);
   });
 });

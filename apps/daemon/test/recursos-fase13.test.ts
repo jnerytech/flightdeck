@@ -19,6 +19,7 @@ async function features(parts: {
   issues?: boolean;
   automations?: boolean;
   autoApprove?: boolean;
+  stall?: boolean;
 }) {
   const ctx = newBoard();
   cleanups.push(() => ctx.board.stop());
@@ -28,6 +29,7 @@ async function features(parts: {
     ...(parts.issues ? { issues: {} as Issues } : {}),
     ...(parts.automations ? { automations: {} as Automations } : {}),
     ...(parts.autoApprove ? { autoApprove: {} as AutoApprover } : {}),
+    ...(parts.stall ? { stall: { minutes: () => 15 } } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
@@ -46,6 +48,11 @@ async function features(parts: {
 }
 
 describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
+  test("stall só quando o daemon tem o vigia de sessões paradas (#1478)", async () => {
+    expect(await features({})).toEqual([]);
+    expect(await features({ stall: true })).toEqual(["stall"]);
+  });
+
   test("issues e automation só quando o daemon os tem, e arena junto com o board", async () => {
     expect(await features({})).toEqual([]);
     expect(await features({ issues: true })).toEqual(["issues"]);

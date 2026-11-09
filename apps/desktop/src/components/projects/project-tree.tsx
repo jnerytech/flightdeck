@@ -129,6 +129,7 @@ export function ProjectTree(
               <button
                 type="button"
                 data-project={project.name}
+                title={project.name}
                 aria-expanded={!closed}
                 className="project-tree-name"
                 onClick={() => fold(key)}
@@ -141,7 +142,7 @@ export function ProjectTree(
                   aria-hidden="true"
                   className={cn("size-3 transition-transform duration-150", closed && "-rotate-90")}
                 />
-                {project.name}
+                <span className="project-tree-label">{project.name}</span>
                 {closed && pickedHere && (
                   <Check
                     role="img"

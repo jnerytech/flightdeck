@@ -623,6 +623,65 @@ const finishedRow = (c: Context, session: string) =>
     `main ul li button[aria-label="alfa · ${session}: ${c.t("needsYou.finishedOutcome.done")}"]`,
   );
 
+// Issue #1478: a running session that says nothing is listed in Needs you (the demo counts a "minute" in seconds).
+step(Given, "a session named {string} on {string} is running and says nothing", async (c, name) =>
+  createSession(c, "[quiet] hold", name),
+);
+
+const quietRow = (c: Context, session: string) =>
+  c.page.locator(
+    `main ul li button[aria-label^="alfa · ${session}: ${c.t("needsYou.quietFor", { span: "" }).trim()}"]`,
+  );
+
+step(Then, "the queue lists {string} as quiet", async (c, session = "") =>
+  quietRow(c, session).waitFor({ timeout: SESSION_WAIT }),
+);
+
+step(When, "I choose the quiet session {string}", async (c, session = "") =>
+  quietRow(c, session).click(),
+);
+
+step(Then, "its detail offers to open it, interrupt it, send continue and snooze it", async (c) => {
+  const detail = c.page.locator("main");
+  for (const key of ["quietOpen", "quietInterrupt", "quietContinue", "quietSnooze"] as const) {
+    await detail
+      .getByRole("button", { name: c.t(`needsYou.${key}`), exact: true })
+      .waitFor({ timeout: WAIT });
+  }
+});
+
+step(When, "I interrupt the quiet session", async (c) =>
+  c.page.getByRole("button", { name: c.t("needsYou.quietInterrupt"), exact: true }).click(),
+);
+
+step(Given, "the app counts the interrupts it asks of the hosts", async (c) => {
+  await c.page.addInitScript(() => {
+    const tap = window as unknown as { interruptsAsked: number };
+    tap.interruptsAsked = 0;
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (typeof data === "string" && data.includes('"session.interrupt"'))
+        tap.interruptsAsked += 1;
+      send.call(this, data);
+    };
+  });
+});
+
+step(Then, "one interrupt was asked of the host", async (c) => {
+  // The request leaves the page in the click that interrupts: the count is final by now.
+  const asked = await c.page.evaluate(
+    () => (window as unknown as { interruptsAsked?: number }).interruptsAsked ?? -1,
+  );
+  if (asked !== 1) throw new Error(`the page asked ${asked} interrupts, not 1`);
+});
+
+step(Then, "the queue no longer lists {string} as quiet", async (c, session = "") =>
+  waitFor(
+    async () => (await quietRow(c, session).count()) === 0,
+    "the quiet session left the queue",
+  ),
+);
+
 step(Then, "no request of {string} is waiting any more", async (c, session = "") =>
   waitFor(async () => (await waitingRow(c, session).count()) === 0, "the request left the queue"),
 );
@@ -2954,4 +3013,146 @@ step(Then, "the check the message interrupted is gone", async (c) => {
   const pid = mine(c).checkPid ?? 0;
   if (pid <= 0) throw new Error("the check's process id was not read");
   await waitFor(async () => !alive(pid), "the interrupted check has ended");
+});
+
+// Second opinion: a second Claude call reads the card's diff before Open PR (issues #1439, #1446, #1525).
+/** What the demo's canned review says (daemon fake runtime): not UI text, so the same in both languages. */
+const CANNED_SUMMARY = "Two findings on the changes, one general note.";
+const secondOpinion = (c: Context) =>
+  c.page.getByRole("region", { name: c.t("secondOpinion.title"), exact: true });
+
+step(Given, "the app holds the second-opinion request until I let it go", async (c) => {
+  await c.page.addInitScript(() => {
+    const tap = window as unknown as { releaseReview?: () => void };
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (typeof data === "string" && data.includes('"card.review"')) {
+        tap.releaseReview = () => send.call(this, data);
+        return;
+      }
+      send.call(this, data);
+    };
+  });
+});
+
+/** The card's Changes view, where the second opinion and the reviewer drafts are. */
+async function openChanges(c: Context) {
+  const diff = c.page.getByRole("button", { name: c.t("cardUi.diff"), exact: true });
+  await diff.click({ timeout: WAIT });
+  await waitFor(async () => (await diff.getAttribute("aria-pressed")) === "true", "Changes open");
+}
+
+step(When, "I finish a card of my own that changed two lines", async (c) => {
+  // The fake Claude writes the description into a file and commits it: two lines, two added lines.
+  mine(c).card = await startNumberedCard(c, 1, "[commit]\nsecond line");
+  await openChanges(c);
+});
+
+step(When, "I finish a card of my own that changed nothing", async (c) => {
+  mine(c).card = await startNumberedCard(c, 1, "");
+  await openChanges(c);
+});
+
+step(When, "I ask for a second opinion", async (c) => {
+  await secondOpinion(c)
+    .getByRole("button", { name: c.t("secondOpinion.ask"), exact: true })
+    .click({ timeout: WAIT });
+});
+
+step(Then, "the second opinion says it is reading and cannot be asked again", async (c) => {
+  await secondOpinion(c).getByText(c.t("secondOpinion.reading"), { exact: true }).waitFor({
+    timeout: WAIT,
+  });
+  const ask = secondOpinion(c).getByRole("button", { name: c.t("secondOpinion.ask"), exact: true });
+  if (!(await ask.isDisabled())) throw new Error("the button can be pressed while the review runs");
+});
+
+step(When, "I let the held request go", async (c) => {
+  await c.page.evaluate(() => (window as unknown as { releaseReview: () => void }).releaseReview());
+});
+
+step(Then, "the second opinion gives its summary", async (c) => {
+  await secondOpinion(c).getByText(CANNED_SUMMARY, { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(Then, "it says {string} findings are drafts below", async (c, count = "") => {
+  await secondOpinion(c)
+    .getByText(c.t("secondOpinion.drafts", { n: count }), { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+/** The canned review's third finding, on a line the diff does not add. */
+const LOOSE_BODY = "Consider a note in the changelog.";
+
+step(Then, "it lists {string} finding that is on no changed line", async (c, count = "") => {
+  const box = secondOpinion(c);
+  await box
+    .getByRole("heading", { name: c.t("secondOpinion.loose", { n: count }), exact: true })
+    .waitFor({ timeout: WAIT });
+  await box.getByText(LOOSE_BODY, { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the changes hold {string} drafts from the reviewer", async (c, count = "") => {
+  const list = c.page.getByRole("list", { name: c.t("changes.list"), exact: true });
+  await waitFor(
+    async () =>
+      (await list.getByText(c.t("secondOpinion.reviewer"), { exact: true }).count()) ===
+      Number(count),
+    `${count} drafts from the reviewer`,
+  );
+});
+
+step(When, "I ask to open the pull request", async (c) => {
+  await c.page
+    .getByRole("button", { name: c.t("cardUi.openPr"), exact: true })
+    .click({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the dialog says {string} reviewer findings are not addressed, {string} of them high",
+  async (c, open = "", high = "") => {
+    await c.page
+      .getByRole("dialog")
+      .getByText(c.t("secondOpinion.notAddressed", { n: open, high }), { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
+
+step(Then, "the second opinion is off and says the card has no changes to review", async (c) => {
+  const box = secondOpinion(c);
+  await box.getByText(c.t("secondOpinion.noChanges"), { exact: true }).waitFor({ timeout: WAIT });
+  const ask = box.getByRole("button", { name: c.t("secondOpinion.ask"), exact: true });
+  if (!(await ask.isDisabled())) throw new Error("the button can be pressed with nothing to read");
+});
+
+step(When, "I press Go to the drafts", async (c) => {
+  await secondOpinion(c)
+    .getByRole("button", { name: c.t("secondOpinion.goToDrafts"), exact: true })
+    .click({ timeout: WAIT });
+});
+
+step(Then, "the focus is on the reviewer's first draft", async (c) => {
+  await waitFor(
+    () =>
+      c.page.evaluate(() => {
+        const first = document.querySelector('[data-reviewer="draft"]');
+        return first !== null && document.activeElement === first;
+      }),
+    "the focus on the first reviewer draft",
+  );
+});
+
+step(Then, "the focus is on the button that asks for a second opinion", async (c) => {
+  const ask = c.t("secondOpinion.ask");
+  await waitFor(
+    () =>
+      c.page.evaluate(
+        (name) =>
+          document.activeElement?.tagName === "BUTTON" &&
+          (document.activeElement.textContent ?? "").includes(name),
+        ask,
+      ),
+    "the focus on the button that asks for a second opinion",
+  );
 });
