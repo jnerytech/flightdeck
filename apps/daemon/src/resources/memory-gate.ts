@@ -77,12 +77,14 @@ export class MemoryGate {
     const used = this.threshold === null ? null : usedShare(this.opts.read);
     if (this.threshold === null || used === null) {
       this.holding = false;
+      this.poll();
       return null;
     }
     // To a tenth of a percent, the panel's precision: 90% in use is at a 0.9 threshold.
     const share = Math.round(used * 1000) / 1000;
     const from = this.holding ? this.threshold - MEMORY_RELEASE_MARGIN : this.threshold;
     this.holding = share >= from;
+    this.poll();
     return this.holding ? { used: share } : null;
   }
 
@@ -100,31 +102,38 @@ export class MemoryGate {
     for (const listener of this.listeners) listener();
   }
 
-  /** Calls `listener` whenever the hold starts or ends; reads every `everyMs` while watched. */
+  /**
+   * Calls `listener` whenever the hold starts or ends. While it holds and is watched, it reads every
+   * `everyMs` to see the hold end; released, nothing waits for memory and the next start reads
+   * afresh, so an idle daemon keeps no timer.
+   */
   watch(listener: () => void): () => void {
     this.listeners.add(listener);
-    if (this.listeners.size === 1) {
-      this.blocked();
-      this.schedule();
-    }
+    if (this.listeners.size === 1) this.blocked();
     return () => {
       this.listeners.delete(listener);
-      if (this.listeners.size === 0 && this.timer !== null) {
-        this.timers.clear(this.timer);
-        this.timer = null;
-      }
+      this.poll();
     };
   }
 
-  /** The next look, while someone watches. */
-  private schedule(): void {
-    this.timer = this.timers.set(() => {
+  /** Keeps the timer running exactly while the gate holds and someone watches. */
+  private poll(): void {
+    if (this.holding && this.listeners.size > 0) {
+      if (this.timer === null)
+        this.timer = this.timers.set(() => this.look(), this.opts.everyMs ?? 15_000);
+      return;
+    }
+    if (this.timer !== null) {
+      this.timers.clear(this.timer);
       this.timer = null;
-      if (this.listeners.size === 0) return;
-      const before = this.holding;
-      this.blocked();
-      if (this.holding !== before) for (const listener of this.listeners) listener();
-      this.schedule();
-    }, this.opts.everyMs ?? 15_000);
+    }
+  }
+
+  /** One timed look: the watchers hear only of a change. */
+  private look(): void {
+    this.timer = null;
+    const before = this.holding;
+    this.blocked();
+    if (this.holding !== before) for (const listener of this.listeners) listener();
   }
 }
