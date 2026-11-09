@@ -1066,6 +1066,12 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
   cache e o modelo principal com o que ele custou.
+- **Enquanto você esteve fora** (no topo de **Precisa de você**) resume o que aconteceu nos seus
+  hosts desde a última vez que o app esteve ativo, quando isso foi há pelo menos 30 minutos: por
+  host, as sessões que terminaram, os cards que chegaram à revisão, os PRs com merge feito ou com
+  checks falhando, as execuções de workflow que falharam e a cota usada. Cada linha leva à sessão
+  ou ao card; um grupo mostra as três primeiras linhas e diz quantas faltam. Um host que não
+  respondeu é citado. Só aparece quando há novidade, e **Dispensar** o fecha até o próximo início.
 - **Pull requests** (na barra lateral, em Trabalho, depois de Board; ou **Ir para Pull requests**
   na paleta) lista todo card com PR aberto nos hosts conectados, primeiro os que pedem atenção
   (checks falhando, ou uma vigia que precisa de você). Cada linha diz o card, o host e o projeto, os

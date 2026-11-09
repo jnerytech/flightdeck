@@ -1063,6 +1063,12 @@ live; the list is the project's, so a session of another project never shows her
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
   the top model with what it cost.
+- **While you were away** (at the top of **Needs you**) summarises what happened on your hosts since
+  the app was last active, when that was at least 30 minutes ago: per host, the sessions that
+  finished, the cards that reached review, the PRs merged or with failing checks, the failed
+  workflow runs and the quota used. Each line goes to the session or the card; a group shows its
+  first three lines and says how many more there are. A host that did not answer is named. It
+  shows only when something is new, and **Dismiss** closes it until the next start.
 - **Pull requests** (in the sidebar under Work, after Board; or **Go to Pull requests** in the
   palette) lists every card with an open PR on the connected hosts, the ones that need a look first
   (failing checks, or a watch that needs you). A row names the card, its host and project, its
