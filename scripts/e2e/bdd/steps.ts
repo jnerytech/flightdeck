@@ -2294,3 +2294,58 @@ step(Then, "the summary says beta did not answer", async (c) => {
     .getByText(dictionary(c).away.unreached.replace("{host}", "beta"), { exact: true })
     .waitFor({ timeout: WAIT });
 });
+
+// Pull requests: every open PR of the hosts on one page, and what can be done to each (issue #1345).
+const prList = (c: Context) =>
+  c.page.getByRole("list", { name: dictionary(c).pullRequests.list, exact: true });
+const prRow = (c: Context, title: string) =>
+  prList(c)
+    .locator("[data-slot='pr-row']")
+    .filter({ has: c.page.getByRole("heading", { name: title, exact: true }) });
+
+step(When, "I open the Pull requests page", async (c) => open(c, { name: "pull-requests" }));
+
+step(Then, "it lists the pull request of the card on alfa that can be merged", async (c) => {
+  const row = prRow(c, DEMO_PR_CARD);
+  await row.waitFor({ timeout: WAIT });
+  await row.getByText(/^alfa/).waitFor({ timeout: WAIT });
+});
+
+step(Then, "it lists the pull request of the card on beta with failing checks", async (c) => {
+  const row = prRow(c, DEMO_AWAY_FAILING_CARD);
+  await row.waitFor({ timeout: WAIT });
+  await row.getByText(/^beta/).waitFor({ timeout: WAIT });
+  await row.getByText(c.t("checks.failing"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+const prMerge = (c: Context, title: string) =>
+  prRow(c, title).getByRole("button", { name: dictionary(c).cardMergePr.action, exact: true });
+
+step(Then, "the pull request on alfa offers Merge PR", async (c) => {
+  await prMerge(c, DEMO_PR_CARD).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the pull request on beta with failing checks does not", async (c) => {
+  // The row is there, so its missing button is not a missing row.
+  await prRow(c, DEMO_AWAY_FAILING_CARD).waitFor({ timeout: WAIT });
+  if ((await prMerge(c, DEMO_AWAY_FAILING_CARD).count()) > 0)
+    throw new Error("a pull request whose checks fail offers Merge PR");
+});
+
+step(When, "I ask to merge the pull request on alfa", async (c) => {
+  await prMerge(c, DEMO_PR_CARD).click({ timeout: WAIT });
+});
+
+step(Then, "the dialog shows the address of that pull request", async (c) => {
+  await c.page
+    .getByRole("alertdialog")
+    .getByText(DEMO_PR_URL, { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(Then, "the page says the merge waits for a review", async (c) => {
+  await c.page
+    .getByRole("alert")
+    .filter({ hasText: c.t("daemonRefusal.card_pr_review_required") })
+    .waitFor({ timeout: WAIT });
+});
