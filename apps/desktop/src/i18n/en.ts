@@ -2976,6 +2976,7 @@ export const en: Dictionary = {
       "1 finding is a draft below: Send review sends it to the card with your own comments.",
     drafts:
       "{n} findings are drafts below: Send review sends them to the card with your own comments.",
+    goToDrafts: "Go to the drafts",
     cached: "This diff was reviewed already: this is that review.",
     moved:
       "The diff changed during the review, so nothing was placed on a line: every finding is listed here.",

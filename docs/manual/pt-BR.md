@@ -1533,7 +1533,8 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   do próprio card já o envia. Cada achado que cai numa linha alterada vira um rascunho marcado
   **Revisor**, com a gravidade (Bloqueante, Alto, Médio ou Baixo): edite (aí ele passa a ser seu),
   **Dispensar**, ou deixe, e **Enviar revisão** o manda ao card junto com os seus comentários, como
-  uma sugestão a conferir. Os achados fora de uma linha alterada ficam listados sob o botão, como
+  uma sugestão a conferir. Os rascunhos ficam depois do diff inteiro: **Ir para os rascunhos**, ao
+  lado da linha que os conta, leva ao primeiro. Os achados fora de uma linha alterada ficam listados sob o botão, como
   texto. **Abrir PR** diz quantos achados do revisor continuam abertos quando um é bloqueante ou
   alto, e abre o PR do mesmo jeito.
 - **Reverter e editar:**

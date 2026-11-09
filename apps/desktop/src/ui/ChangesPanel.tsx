@@ -38,7 +38,12 @@ export function ChangesPanel(
     /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
     target: string;
     /** Something above the files (a card's position against its base, its PR); gets the answer. */
-    extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
+    /** Above the diff; `goToDrafts` puts the focus on the first reviewer draft of the list below. */
+    extra?: (
+      changes: ChangesResult,
+      refresh: () => Promise<void>,
+      goToDrafts: () => void,
+    ) => ReactNode;
     /** Where the collected review can be put to be edited and sent (a session's message box). */
     onCompose?: (text: string) => void;
   }>,
@@ -52,6 +57,11 @@ export function ChangesPanel(
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  // Focus brings the draft into view: it sits after the whole diff (#1496).
+  const goToDrafts = useCallback(() => {
+    panel.current?.querySelector<HTMLElement>("[data-reviewer-draft]")?.focus();
+  }, []);
   /** The line button that started the comment, to give the focus back when the box closes. */
   const picker = useRef<HTMLElement | null>(null);
   const closeComposer = () => {
@@ -262,8 +272,8 @@ export function ChangesPanel(
       }
     : {};
   return (
-    <section aria-label={t("changes.region")} className="flex flex-col gap-4">
-      {props.extra?.(changes, refresh)}
+    <section ref={panel} aria-label={t("changes.region")} className="flex flex-col gap-4">
+      {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => void refresh()}>
           {t("changes.refresh")}
