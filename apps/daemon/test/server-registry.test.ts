@@ -86,4 +86,35 @@ describe("server-registry", () => {
       ].sort(),
     );
   });
+
+  // Issue #1288: the card commands left the switch of server.ts (board.*, pr.comments follow later).
+  test("the card domain owns the card.* commands", () => {
+    expect(Object.keys(DOMAINS.card ?? {}).sort()).toEqual(
+      [
+        "card.arena",
+        "card.chooseVariant",
+        "card.complete",
+        "card.create",
+        "card.delete",
+        "card.diff",
+        "card.discard",
+        "card.dismissUnblocked",
+        "card.get",
+        "card.manage",
+        "card.mergeLocal",
+        "card.message",
+        "card.move",
+        "card.pr.create",
+        "card.pr.merge",
+        "card.spec",
+        "card.start",
+        "card.startArena",
+        "card.stop",
+        "card.templates",
+        "card.update",
+        "card.updateFromBase",
+        "card.validationTemplate",
+      ].sort(),
+    );
+  });
 });
