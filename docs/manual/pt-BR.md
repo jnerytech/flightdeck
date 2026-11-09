@@ -2349,6 +2349,14 @@ a data do último bom continua. O sino também avisa, uma vez por abertura, quan
 sair: falta a frase-senha, não há pasta escolhida ou um backup falhou. Um clique no aviso abre
 **Configurações**, seção **Backup** (#1327).
 
+Quando o build traz um cliente do Google, **Onde salvar** também oferece **Google Drive**. Ele guarda
+os backups na pasta oculta do próprio Flightdeck no seu Drive, que só este app enxerga, e cada
+arquivo continua criptografado com a sua frase-senha. **Entrar com o Google** abre a página do Google
+no navegador e o app espera a resposta só neste computador. O Flightdeck guarda o token no cofre,
+nunca num arquivo nem num log; **Sair** o remove. Se o Google deixar de aceitar a entrada, a seção e
+o sino avisam e nenhum backup é feito até você entrar de novo. Sem um cliente no build, a escolha não
+aparece (#1444).
+
 ## Ações: o Claude usa um segredo sem vê-lo
 
 Uma **ação** é um comando que você declara, com lugares para segredos do cofre e para parâmetros.

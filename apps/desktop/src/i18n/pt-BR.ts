@@ -827,6 +827,15 @@ export const ptBR = {
     folder: "Pasta",
     noFolder: "Nenhuma pasta escolhida",
     chooseFolder: "Escolher pasta",
+    targetLegend: "Onde salvar",
+    target: { folder: "Uma pasta", drive: "Google Drive" },
+    driveHelp:
+      "Os backups vão para a pasta oculta do Flightdeck no seu Google Drive. Só este app a enxerga, e cada arquivo continua criptografado com a sua frase-senha.",
+    driveSignedIn: "Conectado ao Google",
+    driveSignedOut: "Não conectado ao Google",
+    driveSignIn: "Entrar com o Google",
+    driveSignOut: "Sair",
+    driveRefused: "O Google não aceitou a entrada. Tente de novo.",
     keep: "Arquivos a manter",
     keepInvalid:
       "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
