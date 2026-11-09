@@ -74,12 +74,18 @@ describe("istanbul-changed (#1493)", () => {
       log: "ReferenceError: cov_1otmt125mr is not defined\n 0 pass\n 1 fail",
     });
     const counted = fakes(["scripts/test/shots-holds.test.ts"], { exit: 0, log: " 2 fail" });
+    // A crash or a kill (137) says nothing in the log: the exit code alone fails the step.
+    const killed = fakes(["scripts/test/shots-holds.test.ts"], {
+      exit: 137,
+      log: " 4 pass\n 0 fail",
+    });
     const codes = [
       await istanbulChanged("abc123", OUT, red.deps),
       await istanbulChanged("abc123", OUT, counted.deps),
+      await istanbulChanged("abc123", OUT, killed.deps),
     ];
     expect([codes, red.printed.includes("ReferenceError: cov_1otmt125mr is not defined")]).toEqual([
-      [1, 1],
+      [1, 1, 1],
       true,
     ]);
   });

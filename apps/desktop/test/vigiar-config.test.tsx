@@ -381,6 +381,20 @@ describe("vigiar-config: over a far connection (#1361)", () => {
       disabledOf("Rodadas por PR"),
       section() ? within(section() as HTMLElement).queryByText(FAR_TEXT) !== null : false,
     ]).toEqual([[true, true, true, true, true], false, true]);
+    // The rest of the PR limits stay editable too, not only the rounds.
+    expect(
+      ["Limite de custo por PR (US$)", "Limite de custo por dia (US$)"].map(disabledOf),
+    ).toEqual([false, false]);
+  });
+
+  test("a host that does not say whether the connection is near keeps every field editable and says nothing", async () => {
+    // An older daemon sends no `connection.near`: the app cannot tell, so it does not lock the fields.
+    await openSettings(["watch"], LOOP, {});
+    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
+    expect([NEAR_ONLY.map(disabledOf), screen.queryByText(FAR_TEXT) === null]).toEqual([
+      [false, false, false, false, false],
+      true,
+    ]);
   });
 
   test("a near connection keeps every field editable and says nothing", async () => {

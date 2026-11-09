@@ -25,6 +25,11 @@ describe("stall-notify: one notification when a session goes quiet (issue #1478)
     ).toEqual([]);
   });
 
+  test("a quiet summary stamped again (the host re-marks the same stall) is not a new stall", () => {
+    const later = { ...quiet, quietSince: "2026-11-09T12:07:00.000Z" };
+    expect(summaryNotifications(quiet, later, "alfa · api", false, { t: en })).toEqual([]);
+  });
+
   test("it moves again and goes quiet later: a new stall is a new notification", () => {
     expect(summaryNotifications(quiet, running, "x", false, { t: en })).toEqual([]);
     expect(summaryNotifications(running, quiet, "x", false, { t: en })).toHaveLength(1);

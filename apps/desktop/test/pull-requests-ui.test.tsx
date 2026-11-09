@@ -263,6 +263,18 @@ describe("pull-requests-ui: the action a PR's state leads to (#1482)", () => {
     ]).toEqual([true, "default", true, true, false, true, "default"]);
   });
 
+  test("a PR that does not conflict keeps its merge fact in the row: only a conflict moves to the badge", () => {
+    open({
+      cards: {
+        "h1/a": card("a", { prMergeable: "blocked" }),
+        "h2/b": card("b", { prMergeable: "clean" }),
+      },
+    });
+    const facts = (title: string) =>
+      row(title).querySelector("[data-slot='pr-facts']")?.textContent ?? "";
+    expect([facts("Card a"), facts("Card b")]).toEqual(["Blocked from merging", "No conflicts"]);
+  });
+
   test("a PR that conflicts and has no worktree has no Merge PR and says what to do", () => {
     open({
       cards: {
