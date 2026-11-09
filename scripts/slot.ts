@@ -21,7 +21,26 @@ import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
 import { logHook } from "../.claude/hooks/log.ts";
 import { offerToOomKiller } from "./lib/oom-guard.ts";
-import { type ProcessInfo, type ProcReader, parseStat, run, type SlotEnv } from "./lib/slot.ts";
+import {
+  type ProcessInfo,
+  type ProcReader,
+  parseStat,
+  run,
+  type SlotEnv,
+  timingsFrom,
+} from "./lib/slot.ts";
+
+/** The CI timings file as `{ timings, root }`, or nothing when it cannot be read (#1541). */
+function timingsOf(path: string): { timings?: Record<string, number>; root?: string } {
+  let text: string | null = null;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    // No file: the 60-file limit applies.
+  }
+  const timings = timingsFrom(text);
+  return timings ? { timings, root: join(import.meta.dir, "..") } : {};
+}
 
 const LOCK = process.env.FLIGHTDECK_SLOT_LOCK || join(tmpdir(), "flightdeck-slot.lock");
 
@@ -143,6 +162,8 @@ const env: SlotEnv = {
   // #833: a run over the file limit gives its reason here; refusals, waivers and long holds go to
   // the hook log that harness:stats reads.
   heavyReason: process.env.FLIGHTDECK_SLOT_HEAVY,
+  // #1541: the suite's CI timings make the limit time, not files; without them it stays 60 files.
+  ...timingsOf(join(import.meta.dir, "test-timings.json")),
   record: (rule, decision, extra) => logHook("slot", rule, decision, extra),
   after: (ms, fn) => {
     const timer = setTimeout(fn, ms);

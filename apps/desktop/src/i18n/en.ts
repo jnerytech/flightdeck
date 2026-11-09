@@ -1191,9 +1191,10 @@ export const en: Dictionary = {
     quietBody:
       "It is still marked as running but has produced nothing for a while. A long build can be quiet too.",
     quietOpen: "Open",
-    quietInterrupt: "Interrupt",
+    quietInterrupt: "Stop the turn",
     quietContinue: "Send “continue”",
     quietSnooze: "Not stuck, snooze 1 h",
+    quietSnoozed: "Hidden until {time}.",
     quietLast: "{quiet} · last: {tool}",
     finishedFilesOne: "1 file changed",
     finishedFilesMany: "{n} files changed",
@@ -5356,6 +5357,7 @@ export const en: Dictionary = {
     pairAddress: "The link has no host address.",
     pairPort: "The link's port is not valid.",
     pairToken: "The link has no token.",
+    pairElsewhere: "The token is not carried to another address: paste that host's link.",
     pairRefused: "Pairing link refused. {reason}",
     probeTimeout:
       "The host did not answer in time: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
@@ -5444,14 +5446,17 @@ export const en: Dictionary = {
   hostCompare: {
     title: "Compare hosts",
     intro:
-      "The system, versions, hooks, sign-in, tools and features of every host side by side. A cell that differs from what most hosts have is marked.",
+      "The system, versions, hooks, sign-in, tools and features of every host side by side. A cell that differs from what most hosts have is marked, and the features row names the ones a host lacks or adds.",
     show: "Show comparison",
     hide: "Hide comparison",
     refresh: "Refresh",
     table: "Hosts compared",
     unknown: "Not known",
     differs: "Differs from most hosts, which have {value}",
-    differsFeatures: "Not the same features as most hosts",
+    featureMissing: "no {name}",
+    featureExtra: "has {name}",
+    featuresMore: "and {n} more",
+    featuresFewer: "Show fewer",
     down: "Not compared: {status}.",
     fix: "Fix on {host}",
     fields: {

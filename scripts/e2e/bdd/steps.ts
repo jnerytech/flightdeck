@@ -436,6 +436,16 @@ async function addOwnProject(
   files: Record<string, string> = {},
   options: { origin?: boolean } = {},
 ) {
+  const folder = makeOwnRepo(c, files, options);
+  await addFolderToHost(c, ALFA, folder);
+}
+
+/** A git repository of the scenario's own, in the folder the demo host allows; `origin` gives it a bare remote. */
+function makeOwnRepo(
+  c: Context,
+  files: Record<string, string> = {},
+  options: { origin?: boolean } = {},
+): string {
   const name = unique(c, "setup");
   const folder = join(dirname(c.ids.freshRepo), name);
   mkdirSync(folder, { recursive: true });
@@ -461,7 +471,7 @@ async function addOwnProject(
     mine(c).origin = bare;
   }
   mine(c).project = name;
-  await addFolderToHost(c, ALFA, folder);
+  return folder;
 }
 
 /** Adds a folder as a project of one host through the Add project dialog. */
@@ -618,9 +628,9 @@ step(Then, "the status says {string} was {string}", async (c, session = "", deci
 /** The row of a request that waits, found by what it asks (a finished turn has the same session name). */
 const waitingRow = (c: Context, session: string) =>
   c.page.locator(`main ul li button[aria-label*="${session}: Bash"]`);
-const finishedRow = (c: Context, session: string) =>
+const finishedRow = (c: Context, session: string, host = "alfa") =>
   c.page.locator(
-    `main ul li button[aria-label="alfa · ${session}: ${c.t("needsYou.finishedOutcome.done")}"]`,
+    `main ul li button[aria-label="${host} · ${session}: ${c.t("needsYou.finishedOutcome.done")}"]`,
   );
 
 // Issue #1478: a running session that says nothing is listed in Needs you (the demo counts a "minute" in seconds).
@@ -2507,8 +2517,13 @@ const tileOf = (c: Context, title: string) =>
 
 /** Makes and starts a card of the scenario's own project, and waits until its run is over. */
 async function startNumberedCard(c: Context, n: number, description: string): Promise<string> {
-  const title = unique(c, `bdd card ${n}`);
   await openOwnBoard(c);
+  return startCardHere(c, n, description);
+}
+
+/** Makes and starts a card on the board that is open, and waits until its run is over. */
+async function startCardHere(c: Context, n: number, description: string): Promise<string> {
+  const title = unique(c, `bdd card ${n}`);
   await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
   await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
   if (description) {
@@ -3155,4 +3170,150 @@ step(Then, "the focus is on the button that asks for a second opinion", async (c
       ),
     "the focus on the button that asks for a second opinion",
   );
+});
+
+// The first hour: a first start with no host, the pairing link of a real host, the first project, card and PR (issue #1562).
+step(Given, "the app starts with no host", async (c) => {
+  // `hosts=none` is the first-run screen's address (#1052); the page stays on it, because a reload
+  // would lose the token the pairing keeps in memory.
+  await c.page.goto(`${c.url}?hosts=none&lang=${c.lang}&theme=light&reconnect=fast`);
+  await c.page.getByRole("heading", { name: c.t("welcome.title"), exact: true }).waitFor({
+    timeout: WAIT,
+  });
+});
+
+step(Then, "the screen asks to connect the first host", async (c) => {
+  await c.page.getByRole("heading", { name: c.t("welcome.title"), exact: true }).waitFor({
+    timeout: WAIT,
+  });
+  // No host is listed yet: the sidebar has no host dot.
+  const dots = await c.page.getByRole("img", { name: /^(alfa|beta|gama): / }).count();
+  if (dots !== 0) throw new Error(`the first start lists ${dots} hosts`);
+});
+
+step(
+  When,
+  "I paste the pairing link of the first demo host named {string}",
+  async (c, name = "") => {
+    const link = formatPairingLink({ ...c.ids.alfaPairing, name });
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill(link);
+  },
+);
+
+step(When, "I press Test and add", async (c) =>
+  c.page.getByRole("button", { name: c.t("hostForm.submit"), exact: true }).click(),
+);
+
+step(Then, "the host {string} shows online in the sidebar", async (c, name = "") =>
+  c.page
+    .getByRole("img", {
+      name: c.t("sidebar.hostState", { host: name, state: c.t("hosts.status.online") }),
+      exact: true,
+    })
+    .waitFor({ timeout: SESSION_WAIT }),
+);
+step(When, "I add a git repository of my own as my first project from the host page", async (c) =>
+  addFirstProject(c, makeOwnRepo(c)),
+);
+
+step(
+  When,
+  "I add a git repository of my own with a remote as my first project from the host page",
+  async (c) => addFirstProject(c, makeOwnRepo(c, {}, { origin: true })),
+);
+
+/** The first project, added from the paired host's page without leaving the page. */
+async function addFirstProject(c: Context, folder: string) {
+  await c.page
+    .getByRole("button", { name: c.t("hostHome.seeAllProjects"), exact: true })
+    .or(c.page.getByRole("link", { name: c.t("hostHome.seeAllProjects"), exact: true }))
+    .click({ timeout: WAIT });
+  await c.page
+    .getByRole("button", { name: c.t("projectsOverview.newProject"), exact: true })
+    .click({ timeout: WAIT });
+  const dialog = c.page.getByRole("dialog", { name: c.t("addProject.title"), exact: true });
+  await dialog.getByLabel(c.t("addProject.folder"), { exact: true }).fill(folder);
+  await dialog.getByRole("button", { name: c.t("addProject.add"), exact: true }).click();
+  await dialog.waitFor({ state: "detached", timeout: WAIT });
+}
+
+step(When, "I open the board of my first project from its page", async (c) =>
+  c.page
+    .getByRole("main")
+    .getByRole("button", { name: c.t("sidebar.board"), exact: true })
+    .click({ timeout: WAIT }),
+);
+
+step(When, "I make and start my first card, which commits a file", async (c) => {
+  mine(c).card = await startCardHere(c, 1, "[commit]");
+});
+
+step(When, "I open the changes of my first card", async (c) => {
+  await c.page
+    .getByRole("button", { name: c.t("cardUi.reviewChanges"), exact: true })
+    .click({ timeout: WAIT });
+});
+
+/** The host a first start names when it pairs the demo's first host. */
+const FIRST_HOST = "orange pi";
+
+step(Then, "Needs you lists my first card as finished", async (c) => {
+  await c.page
+    .getByRole("heading", { name: c.t("needsYou.finished"), exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+  await finishedRow(c, mine(c).card ?? "", FIRST_HOST).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(When, "I choose GitHub as the PR host of my first project in its settings", async (c) => {
+  const name = mine(c).project ?? "";
+  await c.page
+    .getByRole("button", { name: c.t("projectsUi.edit", { name }), exact: true })
+    .click({ timeout: WAIT });
+  await c.page.getByLabel(c.t("projectsUi.prProvider"), { exact: true }).selectOption("github");
+  await c.page.getByRole("button", { name: c.t("projectsUi.save"), exact: true }).click();
+  await c.page
+    .getByText(c.t("projectsUi.editTitle"), { exact: true })
+    .waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I open the settings of my first project from its page", async (c) =>
+  c.page
+    .getByRole("main")
+    .getByRole("button", { name: c.t("sidebar.settings"), exact: true })
+    .click({ timeout: WAIT }),
+);
+
+step(When, "I open the board of my first project from the projects list", async (c) =>
+  c.page
+    .getByRole("button", { name: c.t("projectsUi.openBoard", { name: mine(c).project ?? "" }) })
+    .click({ timeout: WAIT }),
+);
+
+const prDialog = (c: Context) =>
+  c.page.getByRole("dialog", { name: c.t("watchUi.descriptionTitle"), exact: true });
+
+step(
+  Then,
+  "the dialog offers the PR's title and description to read before it opens",
+  async (c) => {
+    const dialog = prDialog(c);
+    await dialog.waitFor({ timeout: WAIT });
+    for (const field of [c.t("watchUi.prTitle"), c.t("watchUi.descriptionTitle")]) {
+      await dialog.getByLabel(field, { exact: true }).waitFor({ timeout: WAIT });
+    }
+  },
+);
+
+step(When, "I open the PR with that text", async (c) =>
+  prDialog(c)
+    .getByRole("button", { name: c.t("watchUi.confirm"), exact: true })
+    .click(),
+);
+
+step(Then, "the card says its PR is open and offers Merge PR", async (c) => {
+  await c.page
+    .getByText(c.t("pr.open"), { exact: true })
+    .first()
+    .waitFor({ timeout: SESSION_WAIT });
+  await mergeButton(c).waitFor({ timeout: WAIT });
 });

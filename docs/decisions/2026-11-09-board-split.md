@@ -50,12 +50,12 @@ a domain module is the stateful part that uses them.
 | `rule-writes.ts` | `ruleWrites`, list/remove rules, `applyProjectRules` | 2064–2110 | 60 |
 | `arena.ts` | `startArena`, `arena`, variants, `chooseVariant` | 994–1183 | 190 |
 | `blockers.ts` | blockers, `unsatisfied`, `dismissUnblocked`, `afterBlockerChange`, waiting | 1258–1402 | 150 |
-| `run-queue.ts` | `running`, `waiters`, `quotaWaiters`, `limit`, the four unwatchers; `startCard`, `pump`, `queueState`, holds (`budgetHeld`, `budgetBlocked`, `waitQuota`, `onLimits`), `acquire`, `takeSlots`, `release`, `maxParallelRuns` | 1535–1727, 2616–2627 | 260 |
+| `run-queue.ts` | `running`, `waiters`, `quotaWaiters`, `limit`, the four unwatchers; `pump`, `queueState`, holds (`budgetBlocked`, `waitQuota`, `onLimits`), `acquire`, `takeSlots`, `release`, `maxParallelRuns` (done, move 3a). `startCard` checks blockers and workflows before it queues, so it goes with `cards.ts` | 1535–1727, 2616–2627 | 260 |
 | `launch.ts` | `launch`, `startSpec`, `firstSession`, `closeRuns`, `finish`, `removeCleanWorktree`, `failRun` | 1742–1906 | 170 |
 | `card-pr-flow.ts` | `diff`, `createPr`, `mergePr`, PR comments and their cache, `updateFromBase`, `mergeLocal`, `removeMerged`, `commentOnIssue` | 2141–2412 | 280 |
-| `pr-poll.ts` | the poll timer and round, `onPrRound`, `pollPrs`, `readPr` | 2495–2615 | 125 |
+| `pr-poll.ts` | the poll timer and round, `onPrRound`, `pollPrs`, `readPr`; `checkWatchers` and `onChecksFailing`, which only `readPr` fires | 2495–2615 | 125 |
 | `radar-feed.ts` | `radar`, `radarReads`; refresh, read, drop, `mayConflictOf` | 2686–2773 | 90 |
-| `session-follow.ts` | `follows`, `fixes`, `checkWatchers`; `follow`, `onSessionEvent`, `newTurn`, `releaseAfter`, `personTurnOfSession`, `fixCard`, `onChecksFailing` | 1468–1504, 2818–2900 | 170 |
+| `session-follow.ts` | `follows`, `fixes`; `follow`, `onSessionEvent`, `newTurn`, `releaseAfter`, `personTurnOfSession`, `fixCard` (done, #1523 move 2) | 1477–1504, 2818–2900 | 170 |
 | `check-loop-host.ts` | `loop`, `unreadableLoopSettings`; `storeCheckLoop`, the engine's port, `checkLoopOf`, `loopCard`, `loopLimit`, `recordRound`, `sweepCheckLoops` | 1422–1451, 2902–3069 | 200 |
 | `card-lifecycle.ts` | `moveCard`, `moveByHand`, templates, `refreshSpec`, `stopCard`, complete, discard, delete | 1907–2063, 2413–2494 | 250 |
 
@@ -76,14 +76,17 @@ delegate, so about 700 to 750 lines. `cards.ts` is needed for that, not optional
 - **`stop()` owns teardown**, as `close()` did in the server split: each collaborator with state
   has a `dispose()`, and `stop()` calls them in today's order (timers, unwatchers, the `stopped`
   flag, the follows).
-- **Tests stay unchanged.** The one test that reaches a private, `sync-git.test.ts:205`
-  (`budgetBlocked`), keeps it as a private delegate on `Board`.
+- **Tests stay unchanged.** The two tests that reach a private through a cast keep it as a private
+  delegate on `Board`: `sync-git.test.ts:205` (`budgetBlocked`) and `check-loop-board.test.ts:616`
+  (`onSessionEvent`).
 - **The pinned caller lists move with their callers.** `deps-gate.test.ts` lists, exactly, the files
   that match `.startCard(`; `board-contracts.test.ts` the files that contain `moveByHand(`. Calls
   through a port match too. Three moves add a `startCard` caller: `arena.ts` (the arena, 1046),
   `blockers.ts` (the auto-start of an unblocked card, 1323) and `session-follow.ts` (the fix run,
   1480). `card-lifecycle.ts` joins the `moveByHand` list, since it defines it. Each list changes in
   the move's own commit: it is a consequence of the move, and a test commit before it would fail.
+  `refusal-english.test.ts` pins each Portuguese string the board shows to its file; the string
+  and the new file go into its lists in the move's commit too.
 - **Coverage per file.** The 80% gate holds each new file to itself. Before a move, run
   `bun run coverage:funcs <file> --tests <its tests>` on the extracted module. If it is under, add
   the missing test first, in a `test(board-split)` commit.
@@ -102,7 +105,7 @@ quiet. Moving them last, as #1288 did, would only make them conflict longer.
    and `board.ts` re-exports `BoardOptions`, so no import elsewhere changes.
 1. `projects.ts` and `rule-writes.ts`: no shared state. These prove the port and the facade.
 2. `session-follow.ts`, with the S3776 cut in a second commit.
-3. `run-queue.ts` and `launch.ts`: the queue and the holds.
+3. `run-queue.ts` (3a), then `launch.ts` (3b) in a PR of its own: the queue and the holds.
 4. `check-loop-host.ts`.
 5. `card-pr-flow.ts` and `pr-poll.ts`.
 6. `radar-feed.ts`, `arena.ts` and `blockers.ts`.

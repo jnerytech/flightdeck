@@ -45,8 +45,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   waiters take it first come, first served. `bun run slot -- --status` shows the holder (with a
   warning past `--max-age`, 90 min by default) and each waiter in queue order with its age, folder
   and an `ORPHAN` mark. Past 20 min a hold is LONG for the holder, its waiters and `--status`, and
-  harness:stats lists it; a run of more than 60 test files needs `FLIGHTDECK_SLOT_HEAVY="<reason>"`
-  (#833). A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
+  harness:stats lists it; a run over 60 s of CI time by `scripts/test-timings.json` needs
+  `FLIGHTDECK_SLOT_HEAVY="<reason>"` (#833, #1541). A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
   launch detached on purpose in the queue), and `--reap` (the coordinator) stops orphan waiters by
   process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
@@ -104,7 +104,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `package.json`; never `smoke:real` unless asked).
 - Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
   `main`), the same as `-- --since auto`; `-- --since <tag or commit>` picks the start. CI runs it.
-- Screens: `bun run demo` (two fake hosts and the web entry at http://localhost:1420; `DEMO_PORT` picks
+- Screens: `bun run demo` (the fake hosts and the web entry at http://localhost:1420; `DEMO_PORT` picks
   another, and the e2e run and `demo:shots` take a free one, so an open demo never blocks them;
   `DEMO_BUILD=1` serves a production build through `vite preview`, as CI's e2e and prints do, #444),
   `bun run slot -- bun run demo:shots` (prints in both themes and languages, plus axe),

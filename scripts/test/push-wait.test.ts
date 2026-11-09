@@ -219,6 +219,8 @@ describe("push-wait: a push does not cancel a PR run that is still green (#741)"
     expect(passes({ ...green, inProgress: false }).passes).toEqual([{ reason: "run ended" }]);
     expect(passes({ ...green, minutes: 25 }).passes).toEqual([{ reason: "old run", minutes: 25 }]);
     expect(passes("none").passes).toEqual([{ reason: "no run" }]);
+    // #1541: with auto-merge off, the run decides nothing: every block of a day was overridden.
+    expect(passes({ ...green, autoMergeOff: true }).passes).toEqual([{ reason: "auto-merge off" }]);
     expect(passes(green)).toEqual({
       violation: pushWaitViolation("git push origin fix-x", CWD, deps(green)),
       passes: [],
@@ -520,6 +522,19 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
     ).toBe(false);
   });
 
+  test("#1541: a PR whose auto-merge is off says so; one armed, or a PR not read, does not", () => {
+    const view = (extra: object) =>
+      JSON.stringify({ mergeable: "MERGEABLE", statusCheckRollup: [], ...extra });
+    expect([
+      read(list("in_progress"), view({ autoMergeRequest: null, state: "OPEN" }))?.autoMergeOff,
+      read(list("in_progress"), view({ autoMergeRequest: null, state: "MERGED" }))?.autoMergeOff,
+      read(list("in_progress"), view({ autoMergeRequest: { enabledAt: "2026-11-09T00:00:00Z" } }))
+        ?.autoMergeOff,
+      read(list("in_progress"), view({}))?.autoMergeOff,
+      prRunFrom(list("in_progress"), null, now) === "none",
+    ]).toEqual([true, undefined, undefined, undefined, false]);
+  });
+
   test("an empty list is no run; output gh could not give, or that does not parse, is GitHub unread (null, #741)", () => {
     expect(prRunFrom("[]", pr("MERGEABLE"), now)).toBe("none");
     expect(prRunFrom("[]\n", null, now)).toBe("none");
@@ -560,7 +575,7 @@ describe("push-wait: the gh calls the guard makes (#756 review)", () => {
     expect(prRunVia(gh, () => now)("fix-x", CWD)).toEqual(green);
     expect(calls).toEqual([
       `${CWD}: run list --branch=fix-x --event=pull_request --limit=1 --json=databaseId,status,startedAt,url`,
-      `${CWD}: pr view --json=mergeable,statusCheckRollup -- fix-x`,
+      `${CWD}: pr view --json=mergeable,statusCheckRollup,autoMergeRequest,state -- fix-x`,
     ]);
   });
 

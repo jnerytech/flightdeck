@@ -155,6 +155,8 @@ export interface DemoIds {
   knowledgeProject: string;
   /** The card with no PR in that project's backlog: the stage-contract and card-pins journeys use it (issues #78, #76). */
   contractCard: string;
+  /** What `flightdeckd pair` prints for the first host, to pair it again from a first start (issue #1562). */
+  alfaPairing: { address: string; port: number; token: string };
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -1471,6 +1473,11 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       knowledgeProject: projectIds["design-system"] as string,
       updateProject: projectIds.billing as string,
       contractCard: contractCard.id,
+      alfaPairing: {
+        address: new URL(alfa.url).hostname,
+        port: Number(new URL(alfa.url).port),
+        token: alfa.token,
+      },
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
