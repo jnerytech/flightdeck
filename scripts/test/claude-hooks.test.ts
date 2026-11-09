@@ -158,5 +158,9 @@ describe("the guard logs what each refusal was for (#1541)", () => {
       blockDetail(long).length,
       blockDetail(long).startsWith("bun run test:related holds the slot"),
     ]).toEqual(["first line", "run [2Jit with GH_TOKEN=***", 160, true]);
+    // From the security review: credential headers an echoed command may carry.
+    expect(blockDetail('curl -H "Cookie: sid=abc123" -H "X-Api-Key: k-999" x')).toBe(
+      'curl -H "Cookie: ***" -H "X-Api-Key: ***" x',
+    );
   });
 });

@@ -469,10 +469,13 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     ]);
     const leaked = new Map([[EN, ['    example: "ghp_abcdefghijklmnopqrstuvwxyz0123456789",']]]);
     const code = new Map([[PT, ['    run: () => Bun.spawn(["sh"]),']]]);
-    expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code)]).toEqual([
+    // From the security review: an npm token, and a secret pasted in a comment, count too.
+    const npm = new Map([[EN, ["    // npm_abcdefghijklmnopqrstuvwxyz0123456789"]]]);
+    expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code), riskyFiles(npm)]).toEqual([
       [{ path: "apps/desktop/src/i18n/index.ts", why: ["secret"] }],
       [{ path: EN, why: ["secret"] }],
       [{ path: PT, why: ["spawn"] }],
+      [{ path: EN, why: ["secret"] }],
     ]);
   });
 
