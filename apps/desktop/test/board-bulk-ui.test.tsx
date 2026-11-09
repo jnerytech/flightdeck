@@ -151,10 +151,14 @@ const click = (el: Element, init: object = {}) =>
   act(async () => {
     fireEvent.click(el, init);
   });
-const ctrl = (...titles: string[]) =>
-  act(async () => {
-    for (const title of titles) fireEvent.click(li(title), { ctrlKey: true });
-  });
+/** Ctrl-click each card in turn: one act per click, so each sees the selection the last one left. */
+const ctrl = async (...titles: string[]) => {
+  for (const title of titles) {
+    await act(async () => {
+      fireEvent.click(li(title), { ctrlKey: true });
+    });
+  }
+};
 const press = (key: string) =>
   act(async () => {
     fireEvent.keyDown(document.activeElement as Element, { key });
@@ -245,7 +249,7 @@ describe("board-bulk-ui: the Start confirm (#1354)", () => {
     await settleMaybe(() => dialog() !== null);
     await click(button(dialog(), "Start 2"));
     await settleMaybe(() => selected().length === 1);
-    expect([selected(), screen.queryByText(/1 card did not start: C/) !== null]).toEqual([
+    expect([selected(), screen.queryAllByText(/1 card did not start: C/).length > 0]).toEqual([
       ["C"],
       true,
     ]);
@@ -309,12 +313,14 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
     const { restore } = setup({ language: "pt-BR" });
     await ready();
     await ctrl("A", "B");
+    // The bar before the dialog opens: an open dialog hides the page from the accessibility tree.
+    const stop = bar("Seleção")?.querySelectorAll("button")[1]?.textContent ?? "";
     await click(button(bar("Seleção"), "Iniciar 2"));
     await settleMaybe(() => dialog() !== null);
-    expect([
-      screen.queryByRole("heading", { name: "Iniciar 2 cards?" }) !== null,
-      within(bar("Seleção") as HTMLElement).queryByRole("button", { name: "Parar 0" }) !== null,
-    ]).toEqual([true, true]);
+    expect([screen.queryByRole("heading", { name: "Iniciar 2 cards?" }) !== null, stop]).toEqual([
+      true,
+      "Parar 0",
+    ]);
     restore();
   });
 });
