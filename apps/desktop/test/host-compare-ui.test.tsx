@@ -82,6 +82,7 @@ const names = {
   en: {
     title: "Compare hosts",
     show: "Show comparison",
+    hide: "Hide comparison",
     refresh: "Refresh",
     table: "Hosts compared",
   },
@@ -162,6 +163,27 @@ describe("host-compare-ui: when the panel shows and when the hosts are asked", (
       "beta:doctor.run",
       "beta:doctor.run",
     ]);
+  });
+
+  test("hiding the panel asks nobody and removes the table; showing it again asks again", async () => {
+    const { view, asked } = setup([{ id: "alfa" }, { id: "beta" }]);
+    render(view);
+    await open();
+    const doctorAsks = () => asked.filter((a) => a.endsWith(":doctor.run")).length;
+    expect([doctorAsks(), table() !== null]).toEqual([2, true]);
+    await act(async () => {
+      const hide = screen.queryByRole("button", { name: names.en.hide });
+      if (hide) fireEvent.click(hide);
+    });
+    // Closing is not a reason to ask: the count stays, the table is gone, the toggle offers Show.
+    await act(async () => {});
+    expect([
+      doctorAsks(),
+      table() === null,
+      screen.queryByRole("button", { name: names.en.show })?.getAttribute("aria-expanded"),
+    ]).toEqual([2, true, "false"]);
+    await open();
+    expect(await settleMaybe(() => doctorAsks() === 4, 1500)).toBe(true);
   });
 });
 
