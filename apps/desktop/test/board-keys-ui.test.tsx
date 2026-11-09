@@ -153,7 +153,13 @@ describe("board-keys-ui: each column is one Tab stop, and the arrows move betwee
     const { restore } = setup();
     await ready();
     const hint = document.getElementById(title("A")?.getAttribute("aria-describedby") ?? "");
-    expect(hint?.textContent ?? "").toContain("S starts it and M shows its actions");
+    expect([
+      hint?.textContent ?? "",
+      title("A")?.getAttribute("aria-keyshortcuts"),
+    ]).toEqual([
+      "Arrows move between the cards, Enter opens one, S starts it, M shows its actions, X selects it and Shift with an arrow selects a range. Esc clears the selection.",
+      "S M X",
+    ]);
     restore();
   });
 

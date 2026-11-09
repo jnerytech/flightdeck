@@ -69,20 +69,20 @@ describe("board-keys: the arrows move between the board's cards (#1198)", () => 
 });
 
 describe("board-keys: what the board leaves alone (#1198)", () => {
-  test("a key with Ctrl, Alt, Meta or Shift keeps its own meaning", () => {
-    const mods = ["ctrlKey", "altKey", "metaKey", "shiftKey"] as const;
+  // #1354: Shift with an arrow now selects a range (below); Ctrl, Alt and Meta still leave it alone.
+  test("a key with Ctrl, Alt or Meta keeps its own meaning, and so does Shift with a letter", () => {
+    const mods = ["ctrlKey", "altKey", "metaKey"] as const;
     expect(mods.map((m) => boardKey(board, "a1", key("ArrowDown", { [m]: true }), false))).toEqual([
       null,
       null,
       null,
-      null,
     ]);
-    expect(mods.map((m) => boardKey(board, "a1", key("s", { [m]: true }), false))).toEqual([
-      null,
-      null,
-      null,
-      null,
-    ]);
+    expect(boardKey(board, "a1", key("x", { ctrlKey: true }), false)).toBeNull();
+    expect(
+      [...mods, "shiftKey" as const].map((m) =>
+        boardKey(board, "a1", key("s", { [m]: true }), false),
+      ),
+    ).toEqual([null, null, null, null]);
   });
 
   test("after g, the next key is the go-to chord's: g s goes to Sessions, it does not start the card", () => {
@@ -95,7 +95,46 @@ describe("board-keys: what the board leaves alone (#1198)", () => {
   test("a card that is not on the board, or another key, does nothing", () => {
     expect([
       boardKey(board, "zz", key("ArrowDown"), false),
-      boardKey(board, "a1", key("x"), false),
+      boardKey(board, "a1", key("q"), false),
+    ]).toEqual([null, null]);
+  });
+});
+
+/**
+ * #1354 (docs/decisions/2026-11-09-board-bulk-actions.md): acting on several cards. `x` toggles the
+ * focused card in the selection, Shift with an arrow, Home or End moves and selects the range from
+ * the anchor, and Esc clears the selection. The board decides what each does with the selection.
+ */
+describe("board-keys: selecting several cards (#1354)", () => {
+  test("x toggles the focused card, and Esc clears", () => {
+    expect([
+      boardKey(board, "a2", key("x"), false),
+      boardKey(board, "a2", key("Escape"), false),
+      boardKey(board, "a2", key("x"), true),
+    ]).toEqual([{ kind: "toggle" }, { kind: "clear" }, null]);
+  });
+
+  test("Shift with an arrow, Home or End moves the focus as the key does, and extends the selection there", () => {
+    const extend = (at: string, k: string) => boardKey(board, at, key(k, { shiftKey: true }), false);
+    expect([
+      extend("a1", "ArrowDown"),
+      extend("a3", "ArrowUp"),
+      extend("a1", "End"),
+      extend("a2", "ArrowRight"),
+      extend("c1", "ArrowLeft"),
+    ]).toEqual([
+      { kind: "extend", cardId: "a2" },
+      { kind: "extend", cardId: "a2" },
+      { kind: "extend", cardId: "a3" },
+      { kind: "extend", cardId: "c1" },
+      { kind: "extend", cardId: "a1" },
+    ]);
+  });
+
+  test("Shift with an arrow at the board's edge goes nowhere and selects nothing", () => {
+    expect([
+      boardKey(board, "a1", key("ArrowUp", { shiftKey: true }), false),
+      boardKey(board, "e2", key("ArrowDown", { shiftKey: true }), false),
     ]).toEqual([null, null]);
   });
 });

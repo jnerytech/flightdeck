@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -143,11 +143,13 @@ describe("board-multi-ui: selecting cards (issue #161)", () => {
     expect(selected()).toEqual(["A", "B", "C"]);
   });
 
+  // #1354: the check carries the state, so a screen reader hears it once (the sr-only "selected" is gone).
   test("a selected card says so to a screen reader, and the card menu can select it too", async () => {
     setup();
     await ready();
     await ctrl("A");
-    expect(within(li("A")).getByText("selected")).toBeTruthy();
+    const check = within(li("A")).queryByRole("checkbox", { name: "Select A" }) as HTMLInputElement | null;
+    expect([check?.checked, within(li("A")).queryByText("selected") === null]).toEqual([true, true]);
     await act(async () => {
       fireEvent.pointerDown(within(li("B")).getByRole("button", { name: "Actions for B" }), {
         button: 0,
@@ -516,5 +518,106 @@ describe("board-multi-ui: it reads in Portuguese too", () => {
     expect(within(bar).getByText("1 selecionado")).toBeTruthy();
     expect(within(bar).getByRole("button", { name: "Descartar…" })).toBeTruthy();
     expect(screen.getAllByRole("separator", { name: "Redimensionar as colunas" })).toHaveLength(5);
+  });
+});
+
+/**
+ * #1354 (docs/decisions/2026-11-09-board-bulk-actions.md): the selection from the keyboard, inside
+ * #1198's roving Tab stop, and a check on each card while a selection exists.
+ */
+describe("board-multi-ui: selecting with the keys and the checks (#1354)", () => {
+  const titleOf = (name: string) => li(name).querySelector<HTMLElement>("[data-card-open]");
+  const focused = () => document.activeElement?.closest("li")?.getAttribute("aria-label") ?? "";
+  const press = (key: string, init: object = {}) =>
+    act(async () => {
+      fireEvent.keyDown(document.activeElement as Element, { key, ...init });
+    });
+  const live = () => document.querySelector("[data-slot='selection-live']")?.textContent ?? null;
+
+  test("x toggles the focused card, and a polite live region says the count", async () => {
+    setup();
+    await ready();
+    titleOf("A")?.focus();
+    await press("x");
+    const once = [selected(), live()];
+    await press("x");
+    expect([...once, selected(), live()]).toEqual([["A"], "1 selected", [], ""]);
+  });
+
+  test("Shift+Down moves the focus and selects from the anchor; with no anchor the card left is it", async () => {
+    setup();
+    await ready();
+    titleOf("A")?.focus();
+    await press("ArrowDown", { shiftKey: true });
+    const first = [selected(), focused()];
+    await press("ArrowDown", { shiftKey: true });
+    expect([...first, selected(), focused()]).toEqual([["A", "B"], "Card B", ["A", "B", "C"], "Card C"]);
+  });
+
+  test("Esc clears the selection, keeps the focus on the card and goes no further; with none it passes on", async () => {
+    setup();
+    await ready();
+    let reached = 0;
+    const count = (e: KeyboardEvent) => {
+      if (e.key === "Escape") reached++;
+    };
+    document.addEventListener("keydown", count);
+    try {
+      titleOf("B")?.focus();
+      await press("x");
+      await press("Escape");
+      const cleared = [selected(), focused(), reached];
+      await press("Escape");
+      expect([...cleared, reached]).toEqual([[], "Card B", 0, 1]);
+    } finally {
+      document.removeEventListener("keydown", count);
+    }
+  });
+
+  test("with a selection, s starts no single card and m opens the bar's Move to…", async () => {
+    const { commands, requests } = setup();
+    await ready();
+    titleOf("A")?.focus();
+    await press("x");
+    titleOf("C")?.focus();
+    await press("s");
+    const started = [...commands, ...requests].filter(([, type]) => type === "card.start");
+    const dialog = screen.queryByRole("dialog") !== null;
+    await press("m");
+    await settleMaybe(() => screen.queryByRole("menuitem", { name: "Done" }) !== null);
+    expect([
+      started.length,
+      dialog,
+      screen.queryByRole("menuitem", { name: "Done" }) !== null,
+      screen.queryByRole("menuitem", { name: "Move to Done" }) !== null,
+    ]).toEqual([0, false, true, false]);
+  });
+
+  test("while a selection exists every card has a check, not a Tab stop, that toggles it", async () => {
+    setup();
+    await ready();
+    const before = document.querySelectorAll("li[data-card] input[type='checkbox']").length;
+    await ctrl("A");
+    const checks = [...document.querySelectorAll<HTMLInputElement>("li[data-card] input[type='checkbox']")];
+    const b = within(li("B")).queryByRole("checkbox", { name: "Select B" });
+    if (b) await click(b);
+    expect([
+      before,
+      checks.length,
+      checks.every((check) => check.tabIndex === -1),
+      checks.every((check) => check.closest(".hit-control") !== null),
+      selected(),
+    ]).toEqual([0, 5, true, true, ["A", "B"]]);
+  });
+
+  test("pt-BR: the check is named Selecionar and the live region counts in Portuguese", async () => {
+    setup({ language: "pt-BR" });
+    await settle(() => screen.queryByLabelText("Card A") !== null);
+    titleOf("A")?.focus();
+    await press("x");
+    expect([
+      within(li("A")).queryByRole("checkbox", { name: "Selecionar A" }) !== null,
+      live(),
+    ]).toEqual([true, "1 selecionado"]);
   });
 });
