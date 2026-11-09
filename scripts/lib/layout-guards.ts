@@ -689,11 +689,23 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       }
       return false;
     };
+    /** The outermost floating layer (a dialog, a sheet) that holds the reason: it floats with it. */
+    const layerOf = (reason: Element) => {
+      let layer: Element | null = null;
+      for (let up = reason.parentElement; up && up !== document.body; up = up.parentElement) {
+        const position = getComputedStyle(up).position;
+        if (position === "fixed" || position === "absolute") layer = up;
+      }
+      return layer;
+    };
     for (const reason of shown.filter((el) => el.classList.contains("action-reason"))) {
       const box = rectOf(reason);
       if (box.width <= 0 || box.height <= 0) continue;
+      // A reason in a dialog is drawn over the page behind it with the dialog: only the dialog's text counts.
+      const layer = layerOf(reason);
       for (const other of texts) {
         if (other.contains(reason) || floatsOver(other, reason)) continue;
+        if (layer && !layer.contains(other)) continue;
         const over = textBoxes(other).find(
           (line) =>
             Math.min(box.right, line.right) - Math.max(box.left, line.left) > 2 &&
