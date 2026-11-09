@@ -10,6 +10,8 @@ export type AboutNotification = Notification & { about?: InboxAbout; event?: Not
 export interface SummarySnapshot {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
+  /** Issue #1478: when the host marked the session quiet; absent when it is not. */
+  quietSince?: string | undefined;
 }
 
 const IN_TURN: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);
