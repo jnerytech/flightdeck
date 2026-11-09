@@ -88,4 +88,50 @@ describe("status bar items open their host section (#1484)", () => {
     const settings = screen.queryByRole("tab", { name: "Settings" });
     expect(settings?.getAttribute("aria-selected")).toBe("true");
   });
+
+  test("on a host page already open, the focus lands once Settings shows, and each ask works once", async () => {
+    const d = makeDaemon(cleanups, { keepAwake: {} });
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.hostInfo?.keepAwake !== undefined);
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await act(async () => store.router.push({ name: "host", host: hostId }));
+    const tab = (name: string) =>
+      screen.queryByRole("tab", { name })?.getAttribute("aria-selected");
+    await settle(() => tab("Overview") === "true");
+    // A browser does not move the focus into a hidden panel, so each focus records whether its
+    // panel was still hidden at that moment.
+    const hiddenAtFocus: boolean[] = [];
+    const onFocus = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.textContent !== "Keep this computer awake") return;
+      // The panels stay mounted and a CSS rule hides the inactive ones (data-state="inactive").
+      const panel = target.closest('[role="tabpanel"]');
+      hiddenAtFocus.push(panel?.getAttribute("data-state") !== "active");
+    };
+    document.addEventListener("focusin", onFocus);
+    cleanups.push(() => document.removeEventListener("focusin", onFocus));
+    const ask = () => store.router.push({ name: "host", host: hostId, section: "keep-awake" });
+    await act(async () => ask());
+    await settle(() => hiddenAtFocus.length > 0);
+    // The ask is used up: the route goes back to the plain host page, so a restart reopens it plain.
+    expect([hiddenAtFocus, tab("Settings"), store.router.current]).toEqual([
+      [false],
+      "true",
+      { name: "host", host: hostId },
+    ]);
+    // Back on Overview, the same item asked again opens the section again.
+    await act(async () => {
+      fireEvent.mouseDown(screen.getByRole("tab", { name: "Overview" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    });
+    await settle(() => tab("Overview") === "true");
+    await act(async () => ask());
+    await settle(() => hiddenAtFocus.length > 1);
+    expect([hiddenAtFocus, tab("Settings")]).toEqual([[false, false], "true"]);
+  });
 });
