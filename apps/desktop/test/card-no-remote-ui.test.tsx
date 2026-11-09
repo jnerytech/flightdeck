@@ -200,7 +200,7 @@ describe("card-no-remote-ui: a refused Open PR keeps what the person wrote (#154
     // The reason is in the dialog, where the person is, not in a toast behind it.
     const reason = screen.queryByRole("alert");
     expect(reason?.textContent ?? "").toContain("The project has no PR provider.");
-    expect(reason?.textContent ?? "").toContain("Add a GitHub or Azure DevOps remote");
+    expect(reason?.textContent ?? "").toContain("Set it in the project's settings");
     expect(reason !== null && reason.closest('[role="dialog"]') !== null).toBe(true);
   });
 

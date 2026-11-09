@@ -683,7 +683,7 @@ describe("board-ui", () => {
 
     // No PR provider (#1543): there is no Open PR to press, and the panel says why, in the app's language.
     expect(screen.queryByRole("button", { name: "Abrir PR" }) === null).toBe(true);
-    expect(document.body.textContent ?? "").toContain("o provedor de PR deste projeto é nenhum");
+    expect(document.body.textContent ?? "").toContain("este projeto está sem provedor de PR");
     await click("Conversa");
     expect(screen.queryByRole("log")).not.toBeNull();
   });

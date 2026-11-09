@@ -2223,7 +2223,7 @@ export const ptBR = {
     merge_message_secret:
       "A mensagem do merge parece ter um segredo ({found}): tire-o antes de mesclar.",
     project_no_pr_provider:
-      "O projeto não tem provedor de PR. Adicione um remote do GitHub ou do Azure DevOps, ou defina o provedor nas configurações do projeto.",
+      "O projeto não tem provedor de PR. Defina-o nas configurações do projeto (GitHub ou Azure DevOps), depois de adicionar um remote ao repositório se ele não tiver.",
     card_no_pr: "O card não tem PR.",
     card_pr_not_open: "O PR do card não está aberto.",
     card_pr_merge_unsupported:
@@ -4383,7 +4383,7 @@ export const ptBR = {
     stop: "Parar",
     openPr: "Abrir PR",
     noRemote:
-      "Nenhum PR pode ser aberto: o provedor de PR deste projeto é nenhum. Se o repositório tem um remote do GitHub ou do Azure DevOps, defina o provedor nas configurações do projeto. Se não tem remote, adicione um (git remote add origin <url>) e entre (gh auth login no GitHub, az login no Azure DevOps), depois Abrir PR.",
+      "Nenhum PR pode ser aberto: este projeto está sem provedor de PR. Defina-o nas configurações do projeto (GitHub ou Azure DevOps). Se o repositório ainda não tem remote, adicione um antes (git remote add origin <url>) e entre (gh auth login no GitHub, az login no Azure DevOps). Depois, Abrir PR.",
     noRemoteBranch: "O trabalho do card está na branch {branch}: você pode enviá-la à mão.",
     reviewChanges: "Revisar mudanças",
     startWith: "Iniciar com workflow ou persona…",

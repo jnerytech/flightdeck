@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -89,6 +89,8 @@ export function CardRunForm(
 
   /** Why the host refused the PR, shown in the description dialog (#1543). */
   const [refusal, setRefusal] = useState<string | null>(null);
+  /** Counts the PR dialogs opened or cancelled: a late answer for an earlier one is ignored. */
+  const prDialog = useRef(0);
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -121,6 +123,8 @@ export function CardRunForm(
   const openPr = async () => {
     if (!features.watch) return store.hostCommand(hostId, "card.pr.create", { cardId });
     const offered = await store.describePr(hostId, cardId);
+    prDialog.current += 1;
+    setRefusal(null);
     if (offered) setDraft({ ...offered, note: await openFindingsNote() });
     return undefined;
   };
@@ -276,17 +280,21 @@ export function CardRunForm(
             openSettings: store.openAssistantSettings,
           }}
           onCancel={() => {
+            prDialog.current += 1;
             setRefusal(null);
             setDraft(null);
           }}
           onConfirm={async (description, title) => {
             // The dialog closes once the host took it. A refusal is read here, where the person is
             // (a toast sits behind the modal), and the text stays for another try (#1543).
+            const mine = prDialog.current;
             const result = await store.hostRequest(hostId, "card.pr.create", {
               cardId,
               description,
               title,
             });
+            // Cancelled meanwhile: the dialog it was for is gone, and so is its answer.
+            if (prDialog.current !== mine) return;
             if (result.ok) {
               setRefusal(null);
               setDraft(null);
