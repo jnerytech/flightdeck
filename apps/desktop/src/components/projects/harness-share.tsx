@@ -72,7 +72,7 @@ export function HarnessShare(props: Readonly<HarnessShareProps>) {
           {t("projectPage.harness.share.action")}
         </ActionButton>
       </div>
-      <div
+      <div // NOSONAR: holds flow content (a paragraph), which <output> may not
         role="status"
         ref={said}
         tabIndex={-1}

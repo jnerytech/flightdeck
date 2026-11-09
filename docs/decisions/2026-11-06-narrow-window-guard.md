@@ -15,8 +15,10 @@
   - `overflow-x`:
     - the page scrolls sideways (by how many px), with the widest box that can push it: not fixed, and not inside a box that clips or scrolls on x;
     - the outermost box past the right of a parent that neither clips nor scrolls, for example a table past its card. A fixed or absolute box and a `display: contents` wrapper are skipped.
+    - text out of the flow (an absolute box with text, such as a disabled button's hanging reason) past the right of the nearest box that clips, scrolls or draws a right border (#1270).
   - `nested-scroll`: a box that hides content and scrolls, inside another that does, or inside the page when the page itself scrolls. The detail gives the px each one hides.
   - `header-clipped`: the page header (`data-slot="page-header"`) starts under the tab row (`role="tablist"`), or the page title (`data-slot="page-title"`) is cut.
+  - `sheet-actions` (#1271): in a dialog that fills the window (the sheet below 640 px), a form's buttons (`data-slot="form-actions"`) end above the sheet's bottom (by how many px), or a field the sheet scrolls is still under them at the end of its scroll. A field inside a scroller of its own is not counted.
 - **Ratchet.** The baseline is `apps/desktop/responsive-baseline.json`. Each key is the rule, `theme lang WxH print` and the path with no numbers; its value is how many findings share it.
   - More findings than the count fails the prints, naming each one by its numbered path and px.
   - Fewer fails too, until the count is lowered (or the key removed at 0).

@@ -158,7 +158,7 @@ export function ActionForm(
           </DialogTitle>
         </DialogHeader>
         <Form variant="dialog" onSubmit={() => saving.run(save)}>
-          <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1">
+          <div className="dialog-fields">
             {field("actionsUi.form.name", draft.name, (name) => set({ name }), initial !== null)}
             {field("actionsUi.form.description", draft.description, (description) =>
               set({ description }),

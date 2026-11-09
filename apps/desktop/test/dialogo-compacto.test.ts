@@ -72,6 +72,45 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
     }
   });
 
+  // #1271: a Form's own buttons (FormActions) are the sheet's footer too. New action's stopped
+  // mid-sheet, under its fields, with the bottom of the sheet empty.
+  test("a form's own buttons rest on the sheet's bottom edge, and the fields scroll clear of them", () => {
+    const actions = compactRule(
+      '[data-slot="dialog-content"] > form > :has(> [data-slot="form-actions"])',
+    );
+    for (const declaration of [
+      "position: sticky",
+      "bottom: -1.5rem",
+      "margin: auto -1.5rem -1.5rem",
+      "padding: 1rem 1.5rem 1.5rem",
+      "background-color: var(--background)",
+    ]) {
+      expect(`${declaration}: ${actions.includes(declaration)}`).toBe(`${declaration}: true`);
+    }
+  });
+
+  // #1271: a field that takes focus under the footer is scrolled clear of it (WCAG 2.4.11, focus
+  // not obscured): the sheet keeps room at its bottom for the buttons and a reason under them.
+  test("a focused field is scrolled clear of the footer, not left under it", () => {
+    const content = compactRule('[data-slot="dialog-content"]');
+    // 8rem: the bar is about 5rem, a reason line or a wrapped button row adds 1.5 to 3rem.
+    expect(content.includes("scroll-padding-bottom: 8rem")).toBe(true);
+  });
+
+  // #1271: a dialog's fields may scroll in a box of their own, so its buttons stay in view. In the
+  // sheet that box would stop the buttons mid-sheet: there the sheet is the only scroller.
+  test("a dialog's own fields box scrolls in a centered dialog and lets the sheet scroll below 640 px", () => {
+    const at = css.indexOf("@utility dialog-fields {");
+    const utility = at < 0 ? "" : css.slice(at, css.indexOf("\n}\n", at));
+    const narrow = utility.slice(utility.indexOf("@media (width < 40rem) {"));
+    expect([
+      utility.includes("max-height: 70vh"),
+      utility.includes("overflow-y: auto"),
+      narrow.includes("max-height: none"),
+      narrow.includes("overflow: visible"),
+    ]).toEqual([true, true, true, true]);
+  });
+
   test("a confirmation is not part of the sheet: a two-line question stays a centered box", () => {
     const start = css.indexOf("@media (width < 40rem) {");
     expect(start >= 0).toBe(true);
