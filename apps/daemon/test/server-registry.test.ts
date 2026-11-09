@@ -252,4 +252,11 @@ describe("server-registry", () => {
       ["pr.comments", "pr.comments.send"].sort(),
     );
   });
+
+  // Issue #1288: the commands that change the host left the switch of server.ts.
+  test("the hostChanges domain owns the commands that change the host", () => {
+    expect(Object.keys(DOMAINS.hostChanges ?? {}).sort()).toEqual(
+      ["resources.endOrphan", "roots.add", "service.install", "ui.set"].sort(),
+    );
+  });
 });
