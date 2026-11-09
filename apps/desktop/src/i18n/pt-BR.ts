@@ -4385,6 +4385,8 @@ export const ptBR = {
     openPr: "Abrir PR",
     noRemote:
       "Nenhum PR pode ser aberto: este projeto está sem provedor de PR. Defina-o nas configurações do projeto (GitHub ou Azure DevOps). Se o repositório ainda não tem remote, adicione um antes (git remote add origin <url>) e entre (gh auth login no GitHub, az login no Azure DevOps). Depois, Abrir PR.",
+    remoteNone:
+      "Nenhum remote ainda: adicione um com git remote add origin <url> e verifique de novo.",
     checkRemote: "Verificar o remote de novo",
     noRemoteOther:
       "O remote deste projeto ({host}) não é do GitHub nem do Azure DevOps, os únicos em que o Flightdeck abre PR. Envie a branch à mão.",

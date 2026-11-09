@@ -4936,9 +4936,27 @@ export class AppStore {
   }
 
   /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
-  async detectPrProvider(hostId: string, projectId: string): Promise<ProjectDetectResult | null> {
+  async detectPrProvider(
+    hostId: string,
+    projectId: string,
+    /** A press of the person's: a host that cannot answer, or finds nothing yet, is said. */
+    report = false,
+  ): Promise<ProjectDetectResult | null> {
     const result = await this.hostRequest(hostId, "project.detectProvider", { projectId });
-    if (!result.ok) return null;
+    if (!result.ok) {
+      if (report)
+        this.fail(
+          new RequestError(
+            result.code,
+            result.message,
+            result.reason,
+            result.params,
+            result.items,
+            hostId,
+          ),
+        );
+      return null;
+    }
     const { project, outcome } = result.data;
     this.update({
       projects: {
@@ -4948,15 +4966,15 @@ export class AppStore {
         ),
       },
     });
+    const { t } = this.i18n;
     // The button that appears is not a surprise: the change is said.
-    if (outcome === "set") {
-      const { t } = this.i18n;
+    if (outcome === "set")
       this.success(
         t("cardUi.providerDetected", {
           provider: t(`cardUi.providerName.${project.prProvider}` as Key),
         }),
       );
-    }
+    else if (report && outcome === "no_remote") this.success(t("cardUi.remoteNone"));
     return result.data;
   }
 

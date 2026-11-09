@@ -137,10 +137,19 @@ export function CardRunForm(
   const noRemote = canOpenPr && provider?.prProvider === "none";
   /** #1568: what the host found when it looked at the remote, for the note. */
   const [looked, setLooked] = useState<{ outcome: string; host: string | null } | null>(null);
-  const lookAtRemote = async () => {
-    const found = await store.detectPrProvider(hostId, card.projectId);
+  const lookAtRemote = async (pressed = false) => {
+    const found = await store.detectPrProvider(hostId, card.projectId, pressed);
     if (found) setLooked({ outcome: found.outcome, host: found.host });
+    return found;
   };
+  /** The lead button, and whether the focus is owed to it: the press that found the provider removed the button it was on. */
+  const leadRef = useRef<HTMLButtonElement>(null);
+  const focusLead = useRef(false);
+  useEffect(() => {
+    if (noRemote || !focusLead.current) return;
+    focusLead.current = false;
+    leadRef.current?.focus();
+  }, [noRemote]);
   // A project with no provider: the host reads it from the remote when the card shows, in case one was added since.
   const lookOnShow = noRemote && features.prDetect === true;
   // biome-ignore lint/correctness/useExhaustiveDependencies: asked once for each card and project that shows it
@@ -200,7 +209,7 @@ export function CardRunForm(
         <FieldRow align="end">
           {lead && (
             // One element whatever the step is, so the focus stays on it when its name changes.
-            <ActionButton variant={lead.variant} onClick={lead.run}>
+            <ActionButton ref={leadRef} variant={lead.variant} onClick={lead.run}>
               {lead.label}
             </ActionButton>
           )}
@@ -270,7 +279,15 @@ export function CardRunForm(
             </p>
             {features.prDetect && (
               <div>
-                <ActionButton variant="outline" onClick={lookAtRemote}>
+                <ActionButton
+                  variant="outline"
+                  onClick={async () => {
+                    // The note and this button go as soon as the provider is saved, before the answer returns here.
+                    focusLead.current = true;
+                    const found = await lookAtRemote(true);
+                    if (found?.outcome !== "set") focusLead.current = false;
+                  }}
+                >
                   {t("cardUi.checkRemote")}
                 </ActionButton>
               </div>
