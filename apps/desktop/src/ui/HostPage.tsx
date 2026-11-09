@@ -6,6 +6,7 @@ import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
+import { HostCompare } from "@/components/hosts/host-compare";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostHealth } from "@/components/hosts/host-health";
 import { HostLogs } from "@/components/hosts/host-logs";
@@ -294,6 +295,7 @@ export function HostPage(
                     </p>
                   )}
                 </Panel>
+                <HostCompare store={store} />
               </div>
               <div data-slot="host-overview-work" className="host-overview-column">
                 <HostOverview

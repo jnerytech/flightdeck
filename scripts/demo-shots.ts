@@ -733,6 +733,16 @@ function shots(ids: DemoIds): Shot[] {
       prepare: showSection(/^(Health & dependencies|Saúde e dependências)$/),
     },
     {
+      // #1501: the Compare hosts table opened on alfa's page, with the demo's other hosts beside it.
+      name: "host-comparar",
+      route: { name: "host", host: ALFA },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Mostrar comparação|Show comparison)$/ }).click();
+        await page.waitForTimeout(1500);
+        await showSection(/^(Compare hosts|Comparar hosts)$/)(page);
+      },
+    },
+    {
       name: "host-manutencao",
       route: { name: "host", host: ALFA },
       prepare: async (page) => {

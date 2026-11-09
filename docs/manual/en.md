@@ -319,6 +319,18 @@ systemd the **service** row says there is no service to install here and to star
 login with the system's own tools, instead of offering a command that fails. The same checks run in
 a terminal with `flightdeckd doctor`.
 
+#### Comparing hosts
+
+With two or more hosts, the host's **Overview** tab also has **Compare hosts**. **Show comparison**
+opens one table with a column per host and a row each for the daemon version, the Claude Code
+version, the hooks, the Claude sign-in and the features. Opening it (and **Refresh**) reads each
+online host again, which runs the same checks as **Health & dependencies**; nothing else asks the
+hosts. A cell that differs from what most hosts have is marked, and it says why in words ("Differs
+from most hosts, which have 1.4.0"). With no majority (two hosts that differ, or an even split)
+nothing is marked, and a value a host does not report, or any value of a host that is offline,
+shows as a dash and is never marked. The features are counted; two hosts with the same count but
+different features are still told apart.
+
 ### Trusting a project
 
 A project (a repository) can carry its own configuration: hooks that run commands by themselves,

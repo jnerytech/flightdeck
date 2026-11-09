@@ -5416,6 +5416,32 @@ export const ptBR = {
     copy: "Copiar o comando de {name}",
     badge: "{host}: está faltando uma dependência obrigatória",
   },
+  hostCompare: {
+    title: "Comparar hosts",
+    intro:
+      "Versões, hooks, login e recursos de cada host lado a lado. A célula que difere do que a maioria dos hosts tem fica marcada.",
+    show: "Mostrar comparação",
+    hide: "Ocultar comparação",
+    refresh: "Atualizar",
+    table: "Hosts comparados",
+    unknown: "Desconhecido",
+    differs: "Difere da maioria dos hosts, que têm {value}",
+    differsFeatures: "Recursos diferentes dos da maioria dos hosts",
+    fields: {
+      daemon: "Versão do daemon",
+      claude: "Versão do Claude Code",
+      hooks: "Hooks",
+      signin: "Login do Claude",
+      features: "Recursos",
+    },
+    hooks: { ok: "OK", warn: "Aviso", fail: "Falhou" },
+    signin: {
+      ok: "Conectado",
+      outdated: "Desatualizado",
+      missing: "Sem login",
+      na: "Não se aplica",
+    },
+  },
   hostHome: {
     tabs: "Seções do host",
     overview: "Visão geral",
