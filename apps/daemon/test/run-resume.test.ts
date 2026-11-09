@@ -121,7 +121,7 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
     ]);
   });
 
-  test("over the protocol, the check answers anywhere, and only a near connection resumes", async () => {
+  test("over the protocol, a far check says transport_refused, and only a near connection resumes", async () => {
     const { board, manager, root, runId, runWhen } = await failedAtC();
     const token = "run-resume-token-0123456789abcd";
     const base = {
@@ -144,11 +144,14 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
         const error = ack.error as { reason?: string } | undefined;
         return ack.ok === true ? ack.data : (error?.reason ?? null);
       };
-      const checked = await send(far, false);
+      // A far check says what the confirm would answer, so the app offers no button that fails.
+      const checkedFar = await send(far, false);
+      const checkedNear = await send(near, false);
       const refused = await send(far, true);
       const resumed = await send(near, true);
       const done = await runWhen((run) => run.status === "completed");
-      expect([checked, refused, resumed, done?.status]).toEqual([
+      expect([checkedFar, checkedNear, refused, resumed, done?.status]).toEqual([
+        { from: "c", ok: false, reason: "transport_refused" },
         { from: "c", ok: true },
         "transport_refused",
         { from: "c", ok: true },
