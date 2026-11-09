@@ -10,6 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { HostCompare } = await import("../src/components/hosts/host-compare.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -62,9 +63,11 @@ function setup(fixtures: Fixture[], lang: "en" | "pt-BR" = "en") {
     (store as unknown as { update(patch: Partial<AppState>): void }).update(patch);
   push({ hosts: hosts as never, hostsLoaded: true });
   const view = (
-    <TooltipProvider>
-      <HostCompare store={store} />
-    </TooltipProvider>
+    <TContext.Provider value={store.i18n.t}>
+      <TooltipProvider>
+        <HostCompare store={store} />
+      </TooltipProvider>
+    </TContext.Provider>
   );
   return { view, asked, push, hosts, store };
 }
