@@ -729,12 +729,12 @@ export const BoardView = memo(function BoardView(props: {
     setPicked((before) => before.filter((id) => !went.has(id)));
     const one = kind === "start" ? "board.startFailedOne" : "board.stopFailedOne";
     const many = kind === "start" ? "board.startFailed" : "board.stopFailed";
-    let notice: string | null = null;
-    if (refused.length === 1) notice = t(one, { names: nameRefusals(refused) });
+    let outcome: string | null = null;
+    if (refused.length === 1) outcome = t(one, { names: nameRefusals(refused) });
     else if (refused.length > 1) {
-      notice = t(many, { count: refused.length, names: nameRefusals(refused) });
+      outcome = t(many, { count: refused.length, names: nameRefusals(refused) });
     }
-    setNotice(notice);
+    setNotice(outcome);
     setBusy(false);
     boardRef.current?.focus();
   };
