@@ -497,6 +497,13 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     expect([added, edits]).toEqual([[], []]);
   });
 
+  test("from the security review: a long run of spaces in a dictionary line is quick", () => {
+    const started = performance.now();
+    const line = `    a: { b: "x"${" ".repeat(50_000)}!`;
+    const found = riskyFiles(new Map([[EN, [line]]]));
+    expect([found, performance.now() - started < 500]).toEqual([[], true]);
+  });
+
   test("code beside that text is still read: a template with an expression, a call, a spawn", () => {
     const removed = new Map([[EN, ['      "Old text",']]]);
     const heads = [
