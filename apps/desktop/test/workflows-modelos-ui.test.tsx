@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -230,7 +230,10 @@ describe("workflow templates on the Workflows screen (issue #79)", () => {
     await press("Copy the file");
     await settleMaybe(() => copied.length === 1);
     expect(copied).toEqual([FIXER.yaml]);
-    expect(screen.queryByText(/^Copied\./) === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    // The refusal is the answer: once it shows, the success note must still be absent.
+    await settleMaybe(() => screen.queryByRole("alert") !== null);
+    expect(screen.queryByRole("alert")).not.toBeNull();
+    await stays(() => screen.queryByText(/^Copied\./) === null); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("when the copy fails, an alert says the clipboard refused and to copy the text by hand", async () => {
