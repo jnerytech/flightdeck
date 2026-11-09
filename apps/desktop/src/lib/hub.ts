@@ -49,6 +49,9 @@ export interface HubRow {
   asleep?: boolean;
   /** Phase 39: set for an OpenCode session only. */
   runtime?: "opencode";
+  /** Issue #1478: the host marked this running session quiet, since when; and its last tool. */
+  quietSince?: string;
+  quietTool?: string | null;
 }
 
 export interface HubFilter {

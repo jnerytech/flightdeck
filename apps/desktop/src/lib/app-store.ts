@@ -272,6 +272,10 @@ export interface SidebarSession {
   runtime?: SessionRuntime;
   /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
   trustStale?: boolean;
+  /** Issue #1478: the host marked it quiet (a running session that says nothing), since when. */
+  quietSince?: string;
+  /** Issue #1478: the last tool it called before it went quiet. */
+  quietTool?: string | null;
 }
 
 export interface HostView extends HostConfig {
@@ -390,6 +394,8 @@ export interface AppState {
   names: Record<string, SessionNameInfo[]>;
   /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */
   loopAlerts: LoopAlert[];
+  /** Issue #1478: quiet sessions the person snoozed, by `host/session`, until this time (ms). */
+  quietSnooze: Record<string, number>;
   /** Phase 22: the PR watch of each card that has been looked at or changed, by `sessionKey(hostId, cardId)`. */
   watches: Record<string, WatchInfo>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
@@ -1160,6 +1166,7 @@ export class AppStore {
       personas: {},
       background: {},
       loopAlerts: [],
+      quietSnooze: {},
       watches: {},
       names: {},
       askpass: [],
@@ -4920,6 +4927,12 @@ export class AppStore {
     this.update({ loopAlerts: [...others, alert] });
     this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
   }
+
+  /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
+  snoozeQuiet(_hostId: string, _sessionId: string): void {}
+
+  /** Issue #1478: interrupts any session of a host, open or not. */
+  async interruptSession(_hostId: string, _sessionId: string): Promise<void> {}
 
   /**
    * Phase 21: frees a paused pair (its `loopPairKey`), keeping the host's messaging policy as it
