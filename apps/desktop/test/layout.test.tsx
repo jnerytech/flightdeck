@@ -39,6 +39,7 @@ const LABELS = {
   sidebar: "Barra lateral",
   collapse: "Recolher barra lateral",
   expand: "Mostrar barra lateral",
+  skip: "Pular para o conteúdo",
 };
 
 function shell() {

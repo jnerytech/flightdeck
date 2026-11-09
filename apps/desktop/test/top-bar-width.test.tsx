@@ -69,7 +69,7 @@ for (const [lang, dict] of [
           header={<span>Flightdeck</span>}
           sidebar={() => <p>hosts</p>}
           drawerTop={<p>history</p>}
-          labels={{ sidebar: "Side", collapse: "Collapse", expand: "Expand" }}
+          labels={{ sidebar: "Side", collapse: "Collapse", expand: "Expand", skip: "Skip" }}
         >
           <p>content</p>
         </AppShell>
