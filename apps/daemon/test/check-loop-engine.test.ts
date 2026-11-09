@@ -390,6 +390,41 @@ describe("check-loop: the security review's cases", () => {
     expect(r.records.map((x) => x.n)).toEqual([1]);
   });
 
+  test("a turn that errs or is interrupted closes a loop with its own end line", async () => {
+    const reasons: Array<string | undefined> = [];
+    for (const turn of [
+      { isError: true, interrupted: false },
+      { isError: false, interrupted: true },
+    ]) {
+      const r = rig();
+      r.engine.onIdle("c");
+      r.engine.onTurnResult("c", turn);
+      reasons.push(r.records.at(-1)?.reason);
+    }
+    expect(reasons).toEqual(["turn_error", "person_turn"]);
+  });
+
+  test("a switch turned off while the checks run sends no round: the gate reads the card again", async () => {
+    const r = rig({ outcomes: [FAIL] });
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    r.card.on = false;
+    open();
+    await r.checksDone();
+    await Promise.resolve();
+    expect([r.sent.length, r.records.at(-1)?.reason, r.log]).toEqual([
+      0,
+      "stopped_by_you",
+      ["place", "release"],
+    ]);
+  });
+
+  test("invisible characters that could hide text are stripped too: zero-width, word joiner, BOM and tags", () => {
+    const hidden = "a\u200bb\u200cc\u200dd\u2060e\ufeff\u{E0041}\u{E007F}f";
+    const text = roundMessage(1, 3, { ...FAIL, output: hidden });
+    expect(text.includes("abcdef")).toBe(true);
+  });
+
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
     const output =
       "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
