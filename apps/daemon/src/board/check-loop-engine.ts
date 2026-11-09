@@ -7,7 +7,7 @@
  * way out of a loop that holds the slot releases it exactly once.
  */
 import type { PermissionMode } from "@flightdeck/protocol";
-import type { CheckOutcome } from "../watch/check-run.ts";
+import { type CheckOutcome, masked } from "../watch/check-run.ts";
 import { confirmationHash } from "./check-loop.ts";
 
 /** Why a loop ended; the app names each in its language, the daemon writes no prose for it. */
@@ -24,7 +24,9 @@ export type CheckLoopReason =
   | "check_loop_confirm"
   | "check_loop_untrusted"
   | "check_loop_mode"
-  | "check_refused";
+  | "check_refused"
+  /** The checks could not be run (a spawn or a write that failed). */
+  | "check_error";
 
 /** What the loop needs of a card. */
 export interface LoopCard {
@@ -86,7 +88,7 @@ const OUTPUT_MAX = 4000;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC opens the ANSI sequences it removes
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]/g;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
-const CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f]/g;
+const CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
 /**
  * The round sent into the session. The output is the check's, from code the session wrote: it is
@@ -99,7 +101,8 @@ export function roundMessage(n: number, max: number, outcome: CheckOutcome): str
     : outcome.tooLarge
       ? "printed more than 4 MB and was stopped"
       : `failed (exit ${outcome.exitCode})`;
-  const clean = outcome.output.replace(ANSI, "").replace(CONTROL, "");
+  // Stripped first, masked after: a secret split by a colour code is whole again when masked.
+  const clean = masked(outcome.output.replace(ANSI, "").replace(CONTROL, ""));
   const output = clean.length > OUTPUT_MAX ? clean.slice(-OUTPUT_MAX) : clean;
   const longest = Math.max(0, ...(output.match(/`+/g) ?? []).map((run) => run.length));
   const fence = "`".repeat(Math.max(3, longest + 1));
@@ -144,7 +147,11 @@ export class CheckLoopEngine {
     return "hold";
   }
 
-  /** A live turn result: run the checks, or let the card move on. */
+  /**
+   * A live turn result: run the checks (`hold`), or let the card move on (`pass`: the board places
+   * it as it always did; a slot the loop held at idle is released here, so the board must not
+   * release it again).
+   */
   onTurnResult(cardId: string, turn: { isError: boolean; interrupted: boolean }): "hold" | "pass" {
     const loop = this.loops.get(cardId);
     if (turn.isError || turn.interrupted || !this.isLoopCard(cardId)) {
@@ -155,6 +162,8 @@ export class CheckLoopEngine {
     const current = loop ?? this.fresh();
     this.loops.set(cardId, current);
     this.clearTimer(current);
+    // One run at a time: a result that comes while checks run replaces them.
+    current.abort?.abort();
     current.phase = "checking";
     current.abort = new AbortController();
     current.running = this.check(cardId, current, current.abort.signal);
@@ -211,9 +220,24 @@ export class CheckLoopEngine {
   }
 
   private async check(cardId: string, loop: Loop, signal: AbortSignal): Promise<void> {
+    try {
+      await this.checkOnce(cardId, loop, signal);
+    } catch {
+      // A spawn or a write that failed: the loop ends and hands back its slot, never left held.
+      if (!signal.aborted && this.loops.get(cardId) === loop) {
+        this.end(cardId, loop, "check_error", { release: true, place: true });
+      }
+    }
+  }
+
+  private async checkOnce(cardId: string, loop: Loop, signal: AbortSignal): Promise<void> {
     const card = this.fx.card(cardId);
     if (!card?.worktree) return this.end(cardId, loop, "stopped_by_you", { release: true });
     const settings = this.fx.settings(card.projectId);
+    // The gate comes before anything runs: an untrusted project, plan, or no matching
+    // confirmation runs no check at all.
+    const before = this.gate(cardId, card, settings);
+    if (before) return this.end(cardId, loop, before, { release: true, place: true });
     loop.runs += 1;
     const outcome = await this.fx.runChecks({
       checks: settings.checks,
