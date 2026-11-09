@@ -131,6 +131,31 @@ describe("i18n", () => {
     expect(formatAgo(20_000, ptT)).toBe("agora");
   });
 
+  // Issue #1428: a weekend read "52 h 35 min ago"; past a day, an age is told in days.
+  test("an age past a day is told in days, in both languages, and under a day it stays in hours", () => {
+    const H = 3_600_000;
+    const MIN = 60_000;
+    expect([
+      formatAgo(52 * H + 35 * MIN, enT),
+      formatAgo(52 * H + 35 * MIN, ptT),
+      formatAgo(24 * H, enT),
+      formatAgo(24 * H, ptT),
+      formatAgo(23 * H + 59 * MIN, enT),
+      formatAgo(23 * H + 59 * MIN, ptT),
+      formatAgo(10 * 24 * H, enT),
+      formatAgo(10 * 24 * H, ptT),
+    ]).toEqual([
+      "2 days ago",
+      "há 2 dias",
+      "1 day ago",
+      "há 1 dia",
+      "23 h 59 min ago",
+      "há 23 h 59 min",
+      "10 days ago",
+      "há 10 dias",
+    ]);
+  });
+
   test("the credential and connection errors say what to run, in both languages", () => {
     for (const t of [ptT, enT]) {
       expect(translateError("unauthorized", "x", t).title).toContain("flightdeckd pair");

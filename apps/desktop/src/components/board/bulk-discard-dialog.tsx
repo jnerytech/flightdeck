@@ -28,6 +28,8 @@ export function BulkDiscardDialog(
     t: T;
     onCancel(): void;
     onConfirm(): void;
+    /** The dialog closed: where the focus goes (#1426). Left out, the dialog's own default. */
+    onRestoreFocus?(): void;
   }>,
 ) {
   const { t, cards } = props;
@@ -35,7 +37,13 @@ export function BulkDiscardDialog(
   const started = cards.filter(hasStartedWork).length;
   return (
     <AlertDialog open onOpenChange={(open) => !open && props.onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (!props.onRestoreFocus) return;
+          event.preventDefault();
+          props.onRestoreFocus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>
             {n === 1 ? t("board.discardOneTitle") : t("board.discardManyTitle", { n })}

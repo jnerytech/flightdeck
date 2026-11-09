@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import type { T } from "../../i18n/index.ts";
 
 /** One card of the confirm's list: a card the action skips is dimmed, with why. */
@@ -31,14 +32,25 @@ export function BulkRunDialog(
     confirmLabel: string;
     /** What the confirm needs has not come yet: the button waits. */
     confirmDisabled?: boolean;
+    /** #1422: other hosts the cards that would wait can start on; each is a button of its own. */
+    alternatives?: Array<{ id: string; label: string }>;
+    onAlternative?(id: string): void;
     onCancel(): void;
     onConfirm(): void;
+    /** The dialog closed: where the focus goes (#1426). Left out, the dialog's own default. */
+    onRestoreFocus?(): void;
   }>,
 ) {
   const { t } = props;
   return (
     <AlertDialog open onOpenChange={(open) => !open && props.onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (!props.onRestoreFocus) return;
+          event.preventDefault();
+          props.onRestoreFocus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{props.title}</AlertDialogTitle>
           <AlertDialogDescription asChild>
@@ -61,6 +73,15 @@ export function BulkRunDialog(
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          {props.alternatives?.map((alternative) => (
+            <Button
+              key={alternative.id}
+              variant="outline"
+              onClick={() => props.onAlternative?.(alternative.id)}
+            >
+              {alternative.label}
+            </Button>
+          ))}
           <AlertDialogAction disabled={props.confirmDisabled} onClick={props.onConfirm}>
             {props.confirmLabel}
           </AlertDialogAction>

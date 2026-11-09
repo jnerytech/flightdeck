@@ -1,6 +1,5 @@
 import {
   type ActivitySinceResult,
-  ASSISTANT_FEATURE,
   type AutoUpdateStatus,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
@@ -10,16 +9,12 @@ import {
   type CommandType,
   type DepsResult,
   type DoctorResult,
-  FEATURE_HOLD_PROOF,
-  FEATURE_RESUME_OFFER,
-  FEATURE_SERVICE_INSTALL,
   type HarnessApplied,
   type HarnessCommitted,
   type HarnessDraft,
   type HarnessPreview,
   type HarnessStack,
   type HostPauseStatus,
-  type HostRuntime,
   type KeepAwakeStatus,
   type KnowledgeEntry,
   type KnowledgeIndexResult,
@@ -36,7 +31,6 @@ import {
   WS_PATH,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import pkg from "../package.json" with { type: "json" };
 import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
@@ -63,7 +57,6 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { KnowledgeSwitch } from "./knowledge/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
-import { logPathFor } from "./logs/serve.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
@@ -93,8 +86,8 @@ import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { serverContext } from "./server/context.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
-import { need } from "./server/gates.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
+import { DAEMON_VERSION } from "./server/host-info.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
@@ -124,7 +117,7 @@ import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
 import type { Worktrees } from "./worktrees/worktrees.ts";
 
-export const DAEMON_VERSION: string = pkg.version;
+export { DAEMON_VERSION };
 
 /**
  * How often the daemon pings each authenticated client. A client is closed after
@@ -133,18 +126,6 @@ export const DAEMON_VERSION: string = pkg.version;
  */
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
-
-/** What `host.info` says about OpenCode: no executable fingerprint, no finding paths. */
-function hostRuntime(info: OpenCodeInfo): HostRuntime {
-  return {
-    kind: "opencode",
-    available: info.available,
-    ...(info.path ? { path: info.path } : {}),
-    ...(info.version ? { version: info.version } : {}),
-    ...(info.verified !== undefined ? { verified: info.verified } : {}),
-    ...(info.reason ? { reason: info.reason } : {}),
-  };
-}
 
 export interface ServerOptions {
   manager: SessionManager;
@@ -347,7 +328,12 @@ export interface ServerOptions {
   /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
   quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
   /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
-  memoryPause?: { pauseAt(): number | null; set(pauseAt: number | null): void | Promise<void> };
+  memoryPause?: {
+    pauseAt(): number | null;
+    /** Issue #1414: the gate holds new cards now (its margin; never without a reading). */
+    holding?(): boolean;
+    set(pauseAt: number | null): void | Promise<void>;
+  };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -431,120 +417,6 @@ export interface RunningServer {
 
 export { tokenMatches };
 
-/** The names a feature adds when the daemon has it. */
-const when = (has: unknown, ...names: string[]): string[] => (has ? names : []);
-
-/** What this daemon has, as `host.info` announces it; the app hides what is missing. */
-function featuresOf(opts: ServerOptions): string[] {
-  return [
-    // A high-risk permission allow needs `held: true` (issue #251).
-    FEATURE_HOLD_PROOF,
-    // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
-    FEATURE_RESUME_OFFER,
-    // The folder picker of the app browses the host's folders with `fs.dirs`.
-    ...when(opts.fsDirs, "fs.dirs", "fs.files"),
-    // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...when(opts.sessionSettings, "session.settings", "session.effort"),
-    // A message may carry images (`session.send` with `images`).
-    "session.images",
-    ...when(opts.doctor, "doctor.run"),
-    ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
-    ...when(opts.keepAwake, "keepAwake"),
-    ...when(opts.quotaPause, "quotaPause"),
-    ...when(opts.memoryPause, "memoryPause"),
-    ...when(opts.hostPause, "hostPause"),
-    // Budgets can be a share of a plan quota window (issue #1248).
-    ...when(opts.budgets?.opts.quota, "quotaBudgets"),
-    ...when(opts.deps, "depsCheck"),
-    ...when(opts.projectTrust, "projectTrust"),
-    ...when(opts.harnessStack, "harnessStack"),
-    ...when(opts.alerts, "alerts"),
-    // Issue #76: the project's library of documents, with their lifecycle status.
-    ...when(opts.knowledge, "knowledge"),
-    ...when(opts.knowledgeFeedSwitch, "knowledgeFeed"),
-    ...when(opts.knowledgeStatus, "knowledgeStatus"),
-    ...when(opts.knowledgeCreate, "knowledgeCreate"),
-    ...when(opts.harnessPreview, "harnessPreview"),
-    ...when(opts.harnessApply, "harnessApply"),
-    ...when(opts.harnessCommit, "harnessCommit"),
-    ...when(opts.harnessDraft, "harnessDraft"),
-    ...when(opts.harnessTemplates, "harnessTemplates"),
-    ...when(opts.findProjects, "projects.scan", "projects.clone"),
-    ...when(opts.github, "github"),
-    ...when(opts.boardsync, "boardsync"),
-    ...when(opts.roi, "roi"),
-    ...when(opts.activity, "activity"),
-    ...when(opts.central, "central"),
-    ...when(opts.board, "workflows"),
-    // Issue #1221: a template committed on a new branch and opened as a PR.
-    ...when(opts.board, "workflowTemplateAdd"),
-    // Phase 24: the run.yaml of a card and its processes.
-    ...when(opts.runenv && opts.board, "runenv"),
-    ...when(opts.maintenance, "maintenance"),
-    ...when(opts.fileLog, "logs"),
-    ...when(opts.releases, "releases"),
-    ...when(opts.resources, "resources"),
-    ...when(opts.worktrees, "worktrees"),
-    ...when(opts.quota, "quota"),
-    ...when(opts.account, "account"),
-    // Project rules live in the board's projects.
-    ...when(opts.board, "rules"),
-    ...when(opts.costs, "costs"),
-    ...when(opts.telemetry, "telemetry"),
-    ...when(opts.trace, "trace"),
-    ...when(opts.summary, "summary"),
-    ...when(opts.webhook, "webhook"),
-    ...when(opts.bg, "bg"),
-    ...when(opts.changes, "review"),
-    // Issue #506: the file explorer lists the folders of a session's repository.
-    ...when(opts.files, "file.list"),
-    // Issue #797: and searches the whole repository, by name or by content.
-    ...when(opts.files, "file.search"),
-    // Issue #606: a stored tool call opens to its input and result, read from its transcript.
-    ...when(opts.history, "history.tool"),
-    // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
-    ...when(opts.snapshots && opts.rewinder && opts.forker, "checkpoints"),
-    ...when(opts.agentcfg && opts.mcp, "agentcfg"),
-    ...when(opts.memory, "memory"),
-    ...when(opts.plugins, "plugins"),
-    // Phase 13: the arena is the board's; issues and automations are services of their own.
-    ...when(opts.board, "arena"),
-    // Phase 31: card dependencies are the board's.
-    ...when(opts.board, "deps"),
-    // Issue #76: a card pins library documents; the app offers the picker.
-    ...when(opts.board, "cardPins"),
-    // Issue #1201: a project's card templates; New card offers them.
-    ...when(opts.board, "cardTemplates"),
-    // Issue #1196: a card merges its open PR (`card.pr.merge`).
-    ...when(opts.board, "cardPrMerge"),
-    // Issue #1352: the card carries the PR's merge state, review state and open date.
-    ...when(opts.board, "prDetails"),
-    // Issue #1405: cards whose changes touch the same files carry `mayConflict`.
-    ...when(opts.board, "conflictRadar"),
-    ...when(opts.issues, "issues"),
-    ...when(opts.automations, "automation"),
-    ...when(opts.autoApprove, "autoapprove"),
-    // Phase 15: the app shows Conexões for hosts that keep ssh destinos.
-    ...when(opts.ssh, "ssh"),
-    // Phase 17: the actions that use a vault secret without Claude seeing it.
-    ...when(opts.actions, "actions"),
-    // Phase 18: saved commands and prompts of the host and its projects.
-    ...when(opts.snippets, "snippets"),
-    // Phase 20: the engineering personas of the host and its projects.
-    ...when(opts.personas, "personas"),
-    // Phase 21: messages between sessions, teams and the standard session names.
-    ...when(opts.messaging, "messaging"),
-    // Issue #93: `teams.create` and `addMember` take a permission mode per member.
-    ...when(opts.teams, "teams", "teams.permissions"),
-    // Phase 22: watching a card's PR and fixing it.
-    ...when(opts.watch, "watch"),
-    // Issue #77: a card's watch takes more rounds.
-    ...when(opts.watch, "watch.extend"),
-    ...when(opts.watch, "watch.resolveHeld"),
-    ...when(opts.names, "names"),
-  ];
-}
-
 export function startServer(opts: ServerOptions): RunningServer {
   const { manager } = opts;
 
@@ -554,8 +426,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   const context = serverContext(opts);
   const call = (ws: Socket): Call => ({ ws, send: (frame) => send(ws, frame), server: context });
   let currentToken = opts.token;
-  const startedAt = Date.now();
-  const features = featuresOf(opts);
   let pingSeq = 0;
 
   const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
@@ -624,20 +494,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  /** `host.info.update` once the daemon has checked its manifest. */
-  function updateStatus() {
-    const update = opts.updates?.status();
-    return update ? { update } : {};
-  }
-
-  function board(): Board {
-    return need(opts, "board");
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
-    const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
-      send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
-
     // The messaging service lists every endpoint with its project key, read synchronously.
     if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
       await context.warmKeys([
@@ -653,50 +510,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "host.info":
-        return ok(command.type, {
-          hostName: opts.hostName,
-          os: process.platform,
-          arch: process.arch,
-          daemonVersion: DAEMON_VERSION,
-          claudeVersion: (await opts.claude?.version()) ?? null,
-          claudePath: opts.claude?.path ?? null,
-          uptimeSec: Math.floor((Date.now() - startedAt) / 1000),
-          activeSessions: manager.activeSessionCount(),
-          apiKeySanitized: manager.apiKeySanitized(),
-          // The terminal can be turned on and off while the daemon runs: asked each time.
-          features: [
-            ...(opts.features ?? features),
-            ...(opts.terminals?.enabled ? ["terminal"] : []),
-            // Issue #107: `terminal.openSession` opens a shell in a session's folder.
-            ...(opts.terminals?.enabled ? ["terminal.session"] : []),
-            // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
-            ...(opts.terminals?.enabled && opts.files ? ["file.terminal"] : []),
-            ...(opts.ui ? ["ui.mode"] : []),
-            ...(opts.templates ? ["templates"] : []),
-            ...(opts.tasks ? ["tasks"] : []),
-            ...(opts.opencode?.info().available ? ["opencode"] : []),
-            ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
-            ...(opts.teleport || opts.teleportInbox ? ["teleport"] : []),
-            ...(opts.autoUpdate ? ["autoUpdate"] : []),
-          ],
-          ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
-          ...(opts.ui ? { ui: { ...opts.ui } } : {}),
-          ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
-          ...(opts.fileLog ? logPathFor(opts.fileLog, ws.data.origin) : {}),
-          ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
-          ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
-          ...(opts.hostPause ? { pause: opts.hostPause.status() } : {}),
-          ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
-          ...updateStatus(),
-          ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
-          ...opts.terminal,
-        });
-      case "gate.respond": {
-        const { runId, stepId, attempt, decision, note } = command.payload;
-        board().workflows.respond(runId, stepId, attempt, decision, note);
-        return ok(command.type, board().workflows.getRun(runId));
-      }
     }
   }
 
