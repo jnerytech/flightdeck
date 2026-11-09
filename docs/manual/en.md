@@ -1079,7 +1079,11 @@ live; the list is the project's, so a session of another project never shows her
   conflict stays on screen with the files. The title opens the card. A line under the title says
   whether the PR conflicts with the base, its review (approved, changes requested, review required)
   and how long it has been open, as the host's PR poll reports them (about every minute); a host that
-  does not report them, or has not polled yet, adds nothing.
+  does not report them, or has not polled yet, adds nothing. A PR that conflicts with its base
+  has no **Merge PR** (GitHub would refuse it): the conflict is a badge by the checks, **Update from
+  the base** leads, and a card with no worktree here says to bring the branch up to date. A PR that
+  is blocked by the branch rules, or waits for a review or for changes, keeps **Merge PR** as a
+  secondary button and says why GitHub may refuse it.
 - **Activity** (in the sidebar after Costs; `g a`, or **Go to Activity** in the palette) shows every
   live session of every host in four columns: **Needs you** (the session is asking), **Working**,
   **Done** (a turn ended in the last 2 hours and you have not opened the session) and **Idle**,

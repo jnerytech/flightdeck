@@ -227,7 +227,7 @@ describe("pull-requests-ui: what the poll says about each PR (#1352)", () => {
       row("Card a").textContent?.includes("alpha"),
       facts("Card a"),
       facts("Card b"),
-    ]).toEqual([true, "Conflicts with the base · Changes requested · Opened 3 h ago", null]);
+    ]).toEqual([true, "Changes requested · Opened 3 h ago", null]);
   });
 });
 

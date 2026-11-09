@@ -1,5 +1,5 @@
 import type { WatchInfo } from "@flightdeck/protocol";
-import { CircleAlert, CircleCheck, CircleDashed } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, TriangleAlert } from "lucide-react";
 import { useId } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import { canMergeCardPr } from "@/lib/card-merge-pr";
-import { type PullRequestRow, prFacts } from "@/lib/pull-requests";
+import { mergeStance, type PullRequestRow, prFacts } from "@/lib/pull-requests";
 
 const CHECK_ICONS = { passing: CircleCheck, pending: CircleDashed, failing: CircleAlert } as const;
 
@@ -43,7 +43,9 @@ export function PrRow(
   const titleId = useId();
   const { card } = props.row;
   const Checks = card.checksState ? CHECK_ICONS[card.checksState] : null;
-  const facts = prFacts(card, props.now, t);
+  const stance = mergeStance(card);
+  const facts = prFacts(card, props.now, t, stance.kind !== "conflict");
+  const heldId = useId();
   const where = [props.row.hostName, props.row.projectName].filter(Boolean).join(" · ");
   return (
     <li data-slot="pr-row" className="rounded-md border px-3 py-2 text-sm">
@@ -68,6 +70,14 @@ export function PrRow(
                 {t(`checks.${card.checksState}` as Key)}
               </Badge>
             )}
+            {stance.kind === "conflict" && (
+              <span data-slot="pr-conflict">
+                <Badge variant="outline" className="text-status-needs-you">
+                  <TriangleAlert aria-hidden="true" />
+                  {t("pullRequests.conflict")}
+                </Badge>
+              </span>
+            )}
             <a
               href={card.prUrl ?? undefined}
               className="text-sm underline"
@@ -90,14 +100,19 @@ export function PrRow(
           <p className="text-muted-foreground text-xs">{watchText(t, props.watch)}</p>
         )}
         <Inline gap={2}>
-          {props.canMerge && canMergeCardPr(card) && (
-            <ActionButton size="sm" aria-describedby={titleId} onClick={props.onMerge}>
+          {props.canMerge && canMergeCardPr(card) && stance.kind !== "conflict" && (
+            <ActionButton
+              variant={stance.kind === "held" ? "outline" : "default"}
+              size="sm"
+              aria-describedby={stance.kind === "held" ? `${titleId} ${heldId}` : titleId}
+              onClick={props.onMerge}
+            >
               {t("cardMergePr.action")}
             </ActionButton>
           )}
           {card.worktreePath && (
             <ActionButton
-              variant="outline"
+              variant={stance.kind === "conflict" ? "default" : "outline"}
               size="sm"
               aria-describedby={titleId}
               onClick={props.onUpdate}
@@ -106,6 +121,14 @@ export function PrRow(
             </ActionButton>
           )}
         </Inline>
+        {stance.kind === "held" && (
+          <p id={heldId} className="text-muted-foreground text-xs">
+            {t("pullRequests.heldHint", { why: t(`pullRequests.heldWhy.${stance.why}` as Key) })}
+          </p>
+        )}
+        {stance.kind === "conflict" && !card.worktreePath && (
+          <p className="text-muted-foreground text-xs">{t("pullRequests.conflictHint")}</p>
+        )}
       </Stack>
     </li>
   );

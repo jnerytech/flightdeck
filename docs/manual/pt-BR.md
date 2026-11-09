@@ -1082,7 +1082,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   branch do card, e um conflito fica na tela com os arquivos. O título abre o card. Uma linha sob o título diz se o PR
   conflita com a base, a revisão (aprovado, mudanças pedidas, revisão pendente) e há quanto tempo está
   aberto, como a checagem de PRs do host informa (a cada cerca de um minuto); um host que não informa,
-  ou que ainda não checou, não acrescenta nada.
+  ou que ainda não checou, não acrescenta nada. Um PR que conflita com a base não tem **Fazer merge
+  do PR** (o GitHub o recusaria): o conflito é um selo ao lado dos checks, **Atualizar com a base**
+  passa a liderar, e um card sem worktree aqui diz para atualizar a branch com a base. Um PR bloqueado
+  pelas regras da branch, ou que espera uma revisão ou mudanças, mantém **Fazer merge do PR** como botão
+  secundário e diz por que o GitHub pode recusá-lo.
 - **Atividade** (na barra lateral, depois de Custos; `g a`, ou **Ir para Atividade** na paleta)
   mostra todas as sessões ao vivo de todos os hosts em quatro colunas: **Precisa de você** (a
   sessão está pedindo algo), **Trabalhando**, **Concluídas** (um turno terminou nas últimas 2 horas
