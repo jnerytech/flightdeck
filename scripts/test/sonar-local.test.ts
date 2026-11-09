@@ -82,6 +82,15 @@ describe("sonar-left --local: Sonar's complexity rule over the tracked sources (
     ]);
   });
 
+  test("a --path that matches no source lints nothing and says 0, it does not fail", async () => {
+    const { done, linted, lines } = run(["--path", "docs/"], []);
+    expect(await done).toBe(0);
+    expect(linted).toEqual([]);
+    expect(lines).toEqual([
+      "0 functions over 15 (local run of Sonar's S3776 rule; Sonar's own list is `sonar-left`)",
+    ]);
+  });
+
   test("a linter or git that fails is one line and exit 1, and a hostile path prints as plain text", async () => {
     const lines: string[] = [];
     const broken = await sonarLocal([], {
