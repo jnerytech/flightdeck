@@ -23,6 +23,7 @@ import {
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_REPORT,
+  DEMO_UPDATE_CARDS,
   OVERFLOW_VIEWPORTS,
   REACH_VIEWPORTS,
 } from "../lib/e2e-journeys.ts";
@@ -1541,6 +1542,54 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const focused = await c.page.evaluate(() => document.activeElement?.textContent ?? "");
     if (focused !== titles[1])
       throw new Error(`Esc deveria deixar o foco no card, ficou em "${focused}"`);
+  },
+
+  // #1406: after main moved, three billing cards are updated from it in one go, keyboard only: x
+  // and Shift+Down select them, the bar's Update 3 from the base runs card by card, and the summary
+  // names the one in conflict, which stays selected. A second run (the other language) finds the
+  // other two already current, so either word stands for them.
+  "board-atualizar": async (c) => {
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.updateProject });
+    const [first, second, conflicted] = DEMO_UPDATE_CARDS;
+    await c.page
+      .locator(`li[aria-label="${c.t("kanban.card", { title: first })}"]`)
+      .getByRole("button", { name: first, exact: true })
+      .focus();
+    await c.page.keyboard.press("x");
+    await c.page.keyboard.press("Shift+ArrowDown");
+    await c.page.keyboard.press("Shift+ArrowDown");
+    const bar = c.page.getByRole("group", { name: c.t("board.selection"), exact: true });
+    await bar
+      .getByText(c.t("board.selectedCount", { n: 3 }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await bar
+      .getByRole("button", { name: c.t("board.updateSelected", { n: 3 }), exact: true })
+      .click();
+    // "Conflict, left as it was: Juros por atraso (…)": its reason names the file.
+    const conflict = c.t("board.conflictedNames", { names: conflicted }).replace(/\.$/, " (");
+    // The board's status line repeats the notice for a screen reader: either one says it all.
+    const notice = c.page.getByText(conflict, { exact: false }).first();
+    await notice.waitFor({ timeout: WAIT });
+    const text = (await notice.textContent()) ?? "";
+    const others = `${first}, ${second}`;
+    const named = [
+      c.t("board.updatedNames", { names: others }),
+      c.t("board.currentNames", { names: others }),
+    ];
+    if (!named.some((line) => text.includes(line)))
+      throw new Error(`o resumo deveria nomear ${others} como atualizados ou em dia: "${text}"`);
+    if (!text.includes("README.md"))
+      throw new Error(`o conflito deveria nomear o arquivo: "${text}"`);
+    // The conflicted card stays selected, and the focus is back on the bar's button.
+    await bar.getByText(c.t("board.selectedOne"), { exact: true }).waitFor({ timeout: WAIT });
+    await waitFor(
+      async () =>
+        (await c.page.evaluate(() => document.activeElement?.textContent ?? "")) ===
+        c.t("board.updateSelected", { n: 1 }),
+      "o foco volta ao botão da barra",
+    );
+    await c.page.keyboard.press("Escape");
+    await bar.waitFor({ state: "detached", timeout: WAIT });
   },
 
   // Teams (#754): the form of a new team ends in Create and start, which must be in view and

@@ -55,8 +55,10 @@ export function fakeDrive(options: { sessionHost?: string } = {}): FakeDrive {
         return json({ id, name: session.name });
       }
       if (url.pathname === "/drive/v3/files" && method === "GET") {
+        // As Google does: without `spaces=appDataFolder` the list is the person's Drive, not the app's.
+        const inApp = url.searchParams.get("spaces") === "appDataFolder";
         const all = [...files.entries()]
-          .filter(([, file]) => file.parents.includes("appDataFolder"))
+          .filter(([, file]) => inApp && file.parents.includes("appDataFolder"))
           .map(([id, file]) => ({ id, name: file.name }));
         const from = Number(url.searchParams.get("pageToken") ?? 0);
         const page = all.slice(from, from + drive.pageSize);
@@ -73,6 +75,10 @@ export function fakeDrive(options: { sessionHost?: string } = {}): FakeDrive {
         if (method === "DELETE") {
           files.delete(one[1] ?? "");
           return new Response(null, { status: 204 });
+        }
+        // Without `alt=media` Google answers with the file's metadata, not its content.
+        if (url.searchParams.get("alt") !== "media") {
+          return json({ id: one[1], name: file.name });
         }
         return new Response(file.text, { status: 200 });
       }

@@ -966,9 +966,12 @@ export const ptBR = {
     startBudgetHold:
       "{host} chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
     startMemoryHold: "{host} está sem memória: os cards novos esperam ela liberar.",
+    startPausedHold:
+      "{host} está com novas execuções pausadas: os cards novos esperam até você retomar.",
     startedElsewhere: "Iniciado em {host} como {id}.",
     startOn: "Iniciar em {host}",
-    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles:",
+    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles.",
+    startOnHintOne: "Este card esperaria aqui. Outro host com o mesmo projeto tem vaga para ele.",
     elsewhereOrphaned: "Uma cópia ficou em {host}: {names}",
     elsewhereDoneOne: "1 card iniciado em {host}.",
     elsewhereDone: "{count} cards iniciados em {host}.",
@@ -4118,6 +4121,13 @@ export const ptBR = {
     badCheck:
       "Checks locais: um comando e seus argumentos, sem aspas, pipes, ; & $ nem redirecionamentos",
     badLimit: "{label}: vazio ou maior que zero",
+    checkRounds: "Rodadas do laço de checks",
+    checkEnv: "Variáveis extras dos checks (uma por linha)",
+    checkLoopDefault: "Ligar o laço de checks em cards novos",
+    badCheckRounds: "Rodadas do laço de checks: de 1 a 10",
+    badCheckEnv:
+      "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+    tooManyCheckEnv: "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
   },
   sessionFinish: {
     commit: "Fazer commit num branch novo",
