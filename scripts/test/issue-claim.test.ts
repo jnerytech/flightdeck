@@ -31,13 +31,19 @@ function fakeGh(opts: {
 }) {
   const asked: string[][] = [];
   let posted = false;
+  // As GitHub does, a posted comment is there when the issue is read again.
+  const comments = [...(opts.comments ?? [])];
   const gh = async (args: string[]): Promise<GhResult> => {
     asked.push(args);
     if (args[0] === "issue" && args[1] === "view") {
-      const comments = posted && opts.afterPost ? opts.afterPost : (opts.comments ?? []);
-      return { code: 0, stdout: JSON.stringify({ state: opts.state ?? "OPEN", comments }) };
+      const listed = posted && opts.afterPost ? opts.afterPost : comments;
+      return { code: 0, stdout: JSON.stringify({ state: opts.state ?? "OPEN", comments: listed }) };
     }
     if (args[0] === "issue" && args[1] === "comment") {
+      comments.push({
+        body: args[args.indexOf("--body") + 1] ?? "",
+        createdAt: "2026-11-09T11:00:00Z",
+      });
       posted = true;
       return { code: 0, stdout: "https://github.com/o/r/issues/7#issuecomment-1\n" };
     }
