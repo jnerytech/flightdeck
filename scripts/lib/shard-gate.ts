@@ -273,6 +273,28 @@ export function failedCount(log: string): number {
   return Number(/^\s*(\d+) fail$/m.exec(log)?.[1] ?? 0); // NOSONAR: a bun test log of the run, read by a CI gate
 }
 
+/**
+ * The real `spawn` of the shard and istanbul-changed scripts: runs argv in `cwd` with `env` over
+ * the process's own, and gives its exit code and its stdout then stderr as one log.
+ */
+export function spawnLogged(
+  cwd: string,
+): (argv: string[], env: Record<string, string>) => Promise<{ exit: number; log: string }> {
+  return async (argv, env) => {
+    const proc = Bun.spawn(argv, {
+      cwd,
+      env: { ...process.env, ...env },
+      stdout: "pipe",
+      stderr: "pipe",
+    }); // NOSONAR: bun and git come from the PATH of the developer or the CI runner running the script
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ]);
+    return { exit: await proc.exited, log: `${stdout}${stderr}` };
+  };
+}
+
 /** What `runShard` touches: the checkout, its tracked files and timings, and the effects. */
 export interface RunShardDeps {
   root: string;
