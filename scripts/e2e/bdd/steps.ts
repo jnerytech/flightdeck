@@ -654,6 +654,27 @@ step(When, "I interrupt the quiet session", async (c) =>
   c.page.getByRole("button", { name: c.t("needsYou.quietInterrupt"), exact: true }).click(),
 );
 
+step(Given, "the app counts the interrupts it asks of the hosts", async (c) => {
+  await c.page.addInitScript(() => {
+    const tap = window as unknown as { interruptsAsked: number };
+    tap.interruptsAsked = 0;
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (typeof data === "string" && data.includes('"session.interrupt"'))
+        tap.interruptsAsked += 1;
+      send.call(this, data);
+    };
+  });
+});
+
+step(Then, "one interrupt was asked of the host", async (c) => {
+  // The request leaves the page in the click that interrupts: the count is final by now.
+  const asked = await c.page.evaluate(
+    () => (window as unknown as { interruptsAsked?: number }).interruptsAsked ?? -1,
+  );
+  if (asked !== 1) throw new Error(`the page asked ${asked} interrupts, not 1`);
+});
+
 step(Then, "the queue no longer lists {string} as quiet", async (c, session = "") =>
   waitFor(
     async () => (await quietRow(c, session).count()) === 0,
