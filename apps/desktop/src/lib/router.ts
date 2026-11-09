@@ -39,7 +39,8 @@ export type Route =
       from?: string;
       to?: string;
     }
-  | { name: "host"; host: string }
+  /** `section` (#1484): open the host's Settings at that panel, with the focus on it. */
+  | { name: "host"; host: string; section?: "pause" | "keep-awake" }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
   /** Every project of every host, as cards (issue #9). */
@@ -140,6 +141,13 @@ export class Router {
     if (action) startMeasure(action);
     this.stack = [...this.stack.slice(0, this.index + 1), route];
     this.index = this.stack.length - 1;
+    this.emit();
+  }
+
+  /** Shows `route` in place of the current screen, with no new history entry (#1484). */
+  replace(route: Route): void {
+    if (JSON.stringify(route) === JSON.stringify(this.current)) return;
+    this.stack = this.stack.map((entry, i) => (i === this.index ? route : entry));
     this.emit();
   }
 

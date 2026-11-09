@@ -305,6 +305,26 @@ describe("pull-requests-ui: Update from the base for every listed PR (#1406)", (
     });
   });
 
+  // #1500: on a page of 4 PRs, "Update 3" says which one it leaves out, and why.
+  test("the action names the PRs it leaves out, with the reason, as its description", () => {
+    open({ cards: CARDS, answer });
+    const action = screen.queryByRole("button", { name: "Update 3 from the base" });
+    const described = (action?.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent ?? "")
+      .join(" ");
+    expect(described).toBe("Left out: Card d (the card is already running).");
+  });
+
+  test("with every listed PR in it, the action has no left-out line", () => {
+    open({ cards: { "h1/a": branched("a"), "h2/b": branched("b") }, answer });
+    const action = screen.queryByRole("button", { name: "Update 2 from the base" });
+    expect([action !== null, action?.hasAttribute("aria-describedby") ?? null]).toEqual([
+      true,
+      false,
+    ]);
+  });
+
   test("with one PR to update, its row's own button is enough: no page action", () => {
     open({ cards: { "h1/a": branched("a"), "h2/b": card("b", { worktreePath: null }) } });
     expect(screen.queryByRole("button", { name: /^Update \d+ from the base$/ })).toBeNull();

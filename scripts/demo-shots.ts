@@ -419,6 +419,22 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // #1446: the card's Mudanças tab after a second-opinion review: its summary, the finding on
+      // no changed line, and the reviewer drafts with their severity.
+      name: "card-segunda-opiniao",
+      route: { name: "card", host: ALFA, projectId: ids.project, cardId: ids.diffCard },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Mudanças|Changes)$/ }).click();
+        await page
+          .getByRole("button", { name: /^(Pedir uma segunda opinião|Get a second opinion)$/ })
+          .click();
+        await page
+          .getByText("Two findings on the changes, one general note.", { exact: true })
+          .waitFor();
+        await page.waitForTimeout(500);
+      },
+    },
+    {
       // A session's Mudanças tab: the repository's working tree against HEAD.
       name: "sessao-mudancas",
       route: { name: "session", host: ALFA, id: ids.idleSession },

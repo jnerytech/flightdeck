@@ -1083,7 +1083,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   atualizados (com branch, e sem estar rodando), **Atualizar N com a base** acima da lista atualiza
   todos, um de cada vez, cada um no seu host, como a barra de seleção do board: um PR que já está na
   base fica como está, um conflito para só aquele card, e uma linha nomeia os atualizados, os já em
-  dia e os com conflito. O título abre o card. Uma linha sob o título diz se o PR
+  dia e os com conflito. Sob o botão, uma linha nomeia os PRs da lista que ficam de fora e por quê
+  (sem branch no host, ou rodando). O título abre o card. Uma linha sob o título diz se o PR
   conflita com a base, a revisão (aprovado, mudanças pedidas, revisão pendente) e há quanto tempo está
   aberto, como a checagem de PRs do host informa (a cada cerca de um minuto); um host que não informa,
   ou que ainda não checou, não acrescenta nada.

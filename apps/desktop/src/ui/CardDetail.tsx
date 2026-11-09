@@ -266,10 +266,6 @@ export const CardDetail = memo(function CardDetail(props: {
                 {card.worktreePath && has("runenv") && (
                   <RunPanel store={store} hostId={hostId} card={card} />
                 )}
-                {/* Issue #1361: after the run panel, so its height never moves what comes before. */}
-                {withWatch && card.checkLoop && (
-                  <CheckLoopPanel store={store} hostId={hostId} card={card} />
-                )}
                 {arena.view}
               </>
             )}
@@ -291,7 +287,7 @@ export const CardDetail = memo(function CardDetail(props: {
               library={has("knowledge")}
             />
           )}
-          <CardConflicts card={card} />
+          <CardConflicts card={card} onOpenCard={props.onOpenCard} />
           {withDeps && (
             <CardDeps
               store={store}
@@ -336,6 +332,11 @@ export const CardDetail = memo(function CardDetail(props: {
           )}
           {withSync && card.externalUrl && (
             <CardSyncLog store={store} hostId={hostId} cardId={cardId} />
+          )}
+          {/* Issue #1361: last in the details, so its height moves nothing already on the card
+              (a field's reason pushed under the status bar in the 640x800 print). */}
+          {withWatch && card.checkLoop && (
+            <CheckLoopPanel store={store} hostId={hostId} card={card} />
           )}
         </section>
         <CardWork
