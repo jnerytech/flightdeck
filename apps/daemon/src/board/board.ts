@@ -18,7 +18,6 @@ import {
   pinnedDocProblem,
   type RunResumeCheck,
   type SessionEvent,
-  type SessionStatus,
   type SpecState,
   specExpectedPath,
   specPathProblem,
@@ -66,6 +65,7 @@ import { Projects } from "./projects.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
 import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
+import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
@@ -102,18 +102,11 @@ import {
 } from "./worktree.ts";
 
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
+export type { FixResult } from "./session-follow.ts";
 export type { BoardOptions } from "./types.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
-
-/** How a fix run (phase 22) ended: its first turn's result. */
-export interface FixResult {
-  sessionId: string | null;
-  costUsd: number;
-  isError: boolean;
-  error: string | null;
-}
 
 const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
 
@@ -162,9 +155,6 @@ const autoStartOf = (autoStart: { workflow: string | null } | null | undefined) 
 
 const now = () => new Date().toISOString();
 
-/** A run stops holding its slot when its session goes idle, fails or ends. */
-const FREES_SLOT: ReadonlySet<SessionStatus> = new Set(["idle", "error", "ended"]);
-
 const toRun = (row: RunRow): CardRun => ({
   sessionId: row.session_id,
   queuedAt: row.queued_at,
@@ -202,10 +192,10 @@ export class Board {
   private readonly projects: Projects;
   /** The project rules a card's session accepts, written in turn (issue #1523). */
   private readonly rules: RuleWrites;
-  /** Card id → stops following the session of its active run. */
+  /** The sessions of the cards' active runs (issue #1523). */
+  private readonly sessions: SessionFollow;
   private readonly waits: Array<() => Promise<unknown>> = [];
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
-  private readonly follows = new Map<string, () => void>();
   /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
   private readonly specLooks = new Map<string, number>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
@@ -235,7 +225,6 @@ export class Board {
   /** The radar reads of the cards in flight, and the ones asked again meanwhile. */
   private readonly radarReads = new Map<string, { again: boolean; done: Promise<void> }>();
   /** Phase 22: the fix runs waiting for their first turn to end, by card. */
-  private readonly fixes = new Map<string, (result: FixResult) => void>();
   private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
@@ -248,6 +237,16 @@ export class Board {
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
     this.projects = new Projects(opts.db, opts);
+    this.sessions = new SessionFollow({
+      db: opts.db,
+      manager: opts.manager,
+      loop: () => this.loop,
+      place: (cardId, event) => this.place(cardId, event),
+      release: (cardId) => this.release(cardId),
+      refreshConflicts: (cardId) => this.refreshConflicts(cardId),
+      startCard: (id, options) => this.startCard(id, options),
+      card: (id) => this.getCard(id),
+    });
     this.rules = new RuleWrites({
       db: opts.db,
       project: (id) => this.getProject(id),
@@ -784,8 +783,7 @@ export class Board {
     await inSequence(ids, async (id) => {
       if (id !== variantId) await this.discardCard(id, true);
     });
-    this.follows.get(variantId)?.();
-    this.follows.delete(variantId);
+    this.sessions.unfollow(variantId);
     this.db.transaction(() => {
       for (const table of ["card_runs", "workflow_runs"]) {
         this.db.query(`UPDATE ${table} SET card_id = ? WHERE card_id = ?`).run(cardId, variantId);
@@ -1106,31 +1104,12 @@ export class Board {
    * Phase 22: a run with a prompt of its own (it waits in the same queue, quota and budgets as
    * any run), in a session nobody sits in; settled when its first turn ends.
    */
-  async fixCard(id: string, opts: { prompt: string; persona?: PersonaRef }): Promise<FixResult> {
-    const settled = new Promise<FixResult>((resolve) => this.fixes.set(id, resolve));
-    try {
-      await this.startCard(id, {
-        fix: { prompt: opts.prompt },
-        ...(opts.persona ? { persona: opts.persona } : {}),
-      });
-    } catch (error) {
-      this.fixes.delete(id);
-      throw error;
-    }
-    return settled;
+  fixCard(id: string, opts: { prompt: string; persona?: PersonaRef }): Promise<FixResult> {
+    return this.sessions.fixCard(id, opts);
   }
 
   private settleFix(id: string, result: Partial<FixResult>): void {
-    const done = this.fixes.get(id);
-    if (!done) return;
-    this.fixes.delete(id);
-    done({
-      sessionId: this.getCard(id).sessionId,
-      costUsd: 0,
-      isError: false,
-      error: null,
-      ...result,
-    });
+    this.sessions.settleFix(id, result);
   }
 
   /** Gets every card after each change; returns the function that stops it. */
@@ -2033,8 +2012,7 @@ export class Board {
       await this.discardCard(variant, true);
     });
     await this.closeRuns(id);
-    this.follows.get(id)?.();
-    this.follows.delete(id);
+    this.sessions.unfollow(id);
     const repo = this.getProject(card.projectId).path;
     if (card.worktreePath) {
       await Promise.all(this.ends.map((end) => end(id)));
@@ -2238,8 +2216,7 @@ export class Board {
     this.unwatchMemory();
     this.unwatchPause();
     this.unwatchBudgets();
-    for (const unfollow of this.follows.values()) unfollow();
-    this.follows.clear();
+    this.sessions.unfollowAll();
   }
 
   // -- internals ------------------------------------------------------------
@@ -2416,86 +2393,21 @@ export class Board {
 
   /** Session events of the card's active run move the card (replay first, then live). */
   private follow(cardId: string, sessionId: string, sinceSeq: number): void {
-    this.follows.get(cardId)?.();
-    const sub = this.opts.manager.subscribe(sessionId, sinceSeq, (envelope) =>
-      this.onSessionEvent(cardId, envelope.event, { live: true, seq: envelope.seq }),
-    );
-    this.follows.set(cardId, sub.unsubscribe);
-    // Replayed events are history: they move the card, but the check loop never acts on them.
-    for (const envelope of sub.replay) {
-      this.onSessionEvent(cardId, envelope.event, { live: false, seq: envelope.seq });
-    }
+    this.sessions.follow(cardId, sessionId, sinceSeq);
   }
 
+  /** A test drives a session event by hand (check-loop-board.test.ts): kept as a delegate. */
   private onSessionEvent(
     cardId: string,
     event: SessionEvent,
-    at: { live: boolean; seq: number } = { live: false, seq: 0 },
+    at: { live: boolean; seq: number },
   ): void {
-    const loop = at.live ? this.loop : null;
-    // Issue #1361: whatever path wrote into the session (a review comment, a message between
-    // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
-    if (loop && event.type === "message.user") loop.onUserMessage(cardId, event.text);
-    if (event.type === "session.status") {
-      this.place(cardId, { type: "session", status: event.status });
-      if (loop && !FREES_SLOT.has(event.status)) loop.onBusy(cardId);
-    }
-    if (event.type === "turn.result") {
-      // Issue #1361: a live turn after the card's mark goes to the loop, which may keep the card
-      // where it is while its checks run (`hold`); otherwise it moves as it always did.
-      const decision =
-        loop && this.newTurn(cardId, at.seq)
-          ? loop.onTurnResult(cardId, { isError: event.isError, interrupted: false })
-          : "place";
-      if (decision === "place") this.place(cardId, { type: "turn", isError: event.isError });
-      void this.refreshConflicts(cardId).catch(() => {});
-      this.settleFix(cardId, {
-        costUsd: event.costUsd ?? 0,
-        isError: event.isError,
-        error: event.isError ? event.subtype : null,
-      });
-    }
-    if (event.type === "session.error") {
-      this.settleFix(cardId, { isError: true, error: event.message });
-    }
-    if (event.type === "session.status" && FREES_SLOT.has(event.status)) {
-      this.releaseAfter(cardId, event.status, loop);
-    }
-  }
-
-  /** The slot a session that went idle, failed or ended frees, unless the check loop holds it. */
-  private releaseAfter(cardId: string, status: SessionStatus, loop: CheckLoopEngine | null): void {
-    let free: boolean;
-    if (!loop) free = true;
-    else if (status === "idle") free = loop.onIdle(cardId) === "release";
-    else free = !loop.onSessionGone(cardId);
-    if (free) this.release(cardId);
-  }
-
-  /**
-   * Issue #1361: whether a turn result is new for the card's check loop (after its mark), moving
-   * the mark to it; a card with the switch off has no mark to keep.
-   */
-  private newTurn(cardId: string, seq: number): boolean {
-    const row = this.db
-      .query<{ loop_on: number; mark: number | null }, [string]>(
-        "SELECT check_loop AS loop_on, check_loop_turn_seq AS mark FROM cards WHERE id = ?",
-      )
-      .get(cardId);
-    if (row?.loop_on !== 1) return true;
-    if (row.mark !== null && seq <= row.mark) return false;
-    this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(seq, cardId);
-    return true;
+    this.sessions.onSessionEvent(cardId, event, at);
   }
 
   /** Issue #1361: the person wrote into a card's session, or answered it: the loop steps aside. */
   personTurnOfSession(sessionId: string): void {
-    const run = this.db
-      .query<{ card_id: string }, [string]>(
-        "SELECT card_id FROM card_runs WHERE session_id = ? ORDER BY rowid DESC LIMIT 1",
-      )
-      .get(sessionId);
-    if (run) this.loop?.onPersonTurn(run.card_id);
+    this.sessions.personTurnOfSession(sessionId);
   }
 
   /** Issue #1361: the loop's effects on this board. */
