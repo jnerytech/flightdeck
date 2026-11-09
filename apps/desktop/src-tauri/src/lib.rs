@@ -5,6 +5,7 @@
 
 mod assistant;
 mod backup_folder;
+mod oauth_loopback;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -1090,6 +1091,99 @@ async fn backup_folder_remove(app: tauri::AppHandle, name: String) -> Result<(),
     spawn_blocking_result(move || backup_folder::remove_backup(&backup_dir(&app)?, &name)).await
 }
 
+/// The sign-in listeners of the Google Drive backup (#1462), by id. One at a time: a new sign-in
+/// cancels the one before.
+#[derive(Default)]
+struct OauthLoopbacks {
+    next: std::sync::atomic::AtomicU64,
+    sessions: std::sync::Mutex<std::collections::HashMap<u64, OauthSession>>,
+}
+
+struct OauthSession {
+    /// Taken by the wait: the listener serves once.
+    listener: Option<oauth_loopback::Listener>,
+    cancel: std::sync::Arc<AtomicBool>,
+}
+
+#[derive(serde::Serialize)]
+struct OauthListening {
+    id: u64,
+    port: u16,
+}
+
+/// How long the person has to finish Google's consent page.
+const OAUTH_WAIT: std::time::Duration = std::time::Duration::from_secs(5 * 60);
+
+/// Opens a listener on 127.0.0.1 for the sign-in whose `state` is given. Nothing here is logged.
+#[tauri::command]
+async fn oauth_loopback_listen(
+    app: tauri::AppHandle,
+    state: String,
+) -> Result<OauthListening, String> {
+    spawn_blocking_result(move || {
+        let loopbacks = app.state::<OauthLoopbacks>();
+        let listener = oauth_loopback::bind(&state)?;
+        let port = listener.port();
+        let id = loopbacks.next.fetch_add(1, Ordering::SeqCst) + 1;
+        let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
+        for (_, old) in sessions.drain() {
+            old.cancel.store(true, Ordering::SeqCst);
+        }
+        sessions.insert(
+            id,
+            OauthSession {
+                listener: Some(listener),
+                cancel: std::sync::Arc::new(AtomicBool::new(false)),
+            },
+        );
+        Ok(OauthListening { id, port })
+    })
+    .await
+}
+
+/// Waits for the redirect: the code, or `None` when the person refused, it timed out or it was
+/// cancelled. The session is over when this returns.
+#[tauri::command]
+async fn oauth_loopback_wait(app: tauri::AppHandle, id: u64) -> Result<Option<String>, String> {
+    spawn_blocking_result(move || {
+        let loopbacks = app.state::<OauthLoopbacks>();
+        let (listener, cancel) = {
+            let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
+            let session = sessions
+                .get_mut(&id)
+                .ok_or_else(|| "no sign-in is waiting".to_string())?;
+            let listener = session
+                .listener
+                .take()
+                .ok_or_else(|| "the sign-in is already waiting".to_string())?;
+            (listener, session.cancel.clone())
+        };
+        let outcome = listener.wait(OAUTH_WAIT, &cancel);
+        if let Ok(mut sessions) = loopbacks.sessions.lock() {
+            sessions.remove(&id);
+        }
+        Ok(match outcome {
+            oauth_loopback::Outcome::Code(code) => Some(code),
+            _ => None,
+        })
+    })
+    .await
+}
+
+/// Ends a sign-in: a wait in progress returns, and the port closes.
+#[tauri::command]
+async fn oauth_loopback_cancel(app: tauri::AppHandle, id: u64) -> Result<(), String> {
+    spawn_blocking_result(move || {
+        let loopbacks = app.state::<OauthLoopbacks>();
+        let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
+        if let Some(session) = sessions.remove(&id) {
+            session.cancel.store(true, Ordering::SeqCst);
+        }
+        Ok(())
+    })
+    .await
+}
+
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
 #[tauri::command]
 async fn vault_remove_file(path: String, state: State<'_, PickedFile>) -> Result<(), String> {
@@ -1458,6 +1552,7 @@ pub fn run() {
         // webview has no `dialog:*` permission.
         .plugin(tauri_plugin_dialog::init())
         .manage(PickedFile::default())
+        .manage(OauthLoopbacks::default())
         .manage(assistant::Assistant::default())
         .setup(|app| {
             // Registers the scheme at runtime too, so dev builds work without an installer.
@@ -1495,6 +1590,9 @@ pub fn run() {
             backup_folder_write,
             backup_folder_list,
             backup_folder_remove,
+            oauth_loopback_listen,
+            oauth_loopback_wait,
+            oauth_loopback_cancel,
             open_result,
             append_log,
             read_log_tail,

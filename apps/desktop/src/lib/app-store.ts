@@ -88,6 +88,7 @@ import { AwayClock } from "./away.ts";
 import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
+import { BACKUP_NAME } from "./backup-target.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
@@ -111,6 +112,7 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay, usd } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
+import { DriveError } from "./drive-target.ts";
 import {
   type Finish,
   finishOutcome,
@@ -435,7 +437,12 @@ export interface AppUpdateState {
 /** What the restore picker reads at most (PICKED_FILE_MAX_BYTES in src-tauri/src/lib.rs, #1241). */
 const BACKUP_FILE_MAX_BYTES = 1024 * 1024;
 /** What a backup or a read says besides a BackupError code: a cancelled dialog, or any other failure. */
-type BackupOutcomeCode = "cancelled" | "too-big" | "unexpected";
+/** A Drive call that failed, as the restore tells it: the sign-in is gone, or Drive could not be read. */
+function driveCode(error: unknown): "drive-auth" | "drive-failed" {
+  return error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "drive-failed";
+}
+
+type BackupOutcomeCode = "cancelled" | "too-big" | "unexpected" | "drive-auth" | "drive-failed";
 
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
@@ -4592,6 +4599,44 @@ export class AppStore {
       if (!file) return { ok: false, code: "cancelled" };
       const { previewRestore } = await import("./backup-bundle.ts");
       return { ok: true, preview: await previewRestore(this.platform, file.text, passphrase) };
+    } catch (error) {
+      if (error instanceof BackupError) return { ok: false, code: error.code };
+      this.fail(error);
+      return { ok: false, code: "unexpected" };
+    }
+  }
+
+  /** Issue #1462: the backups on Google Drive, newest first. */
+  async listDriveBackups(): Promise<
+    { ok: true; names: string[] } | { ok: false; code: "drive-auth" | "drive-failed" }
+  > {
+    try {
+      const names = (await this.backupScheduler.driveBackups())
+        .filter((name) => BACKUP_NAME.test(name))
+        .sort((a, b) => b.localeCompare(a));
+      return { ok: true, names };
+    } catch (error) {
+      return { ok: false, code: driveCode(error) };
+    }
+  }
+
+  /** Issue #1462: reads one backup from Google Drive into the same preview as a file. */
+  async previewDriveBackup(
+    name: string,
+    passphrase: string,
+  ): Promise<
+    { ok: true; preview: RestorePreview } | { ok: false; code: BackupErrorCode | BackupOutcomeCode }
+  > {
+    let text: string;
+    try {
+      text = await this.backupScheduler.driveBackupText(name);
+    } catch (error) {
+      return { ok: false, code: driveCode(error) };
+    }
+    if (text.length > BACKUP_FILE_MAX_BYTES) return { ok: false, code: "too-big" };
+    try {
+      const { previewRestore } = await import("./backup-bundle.ts");
+      return { ok: true, preview: await previewRestore(this.platform, text, passphrase) };
     } catch (error) {
       if (error instanceof BackupError) return { ok: false, code: error.code };
       this.fail(error);

@@ -2363,6 +2363,11 @@ a file or a log; **Sign out** removes it. If Google stops accepting the sign-in,
 bell say so and no backup is made until you sign in again. Without a client in the build, the choice
 is not shown (#1444).
 
+To restore from Drive, **Back up everything** > **Restore a backup** offers **Restore from**: **A file**
+or **Google Drive** (only with the same Google client, and once you are signed in). **Look in Google
+Drive** lists the backups there, newest first. Pick one, type its passphrase and **Read backup**: you
+get the same preview as for a file, and nothing changes until you confirm (#1462).
+
 ## Actions: Claude uses a secret without seeing it
 
 An **action** is a command you declare, with places for vault secrets and for parameters. Claude
