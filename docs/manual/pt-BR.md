@@ -1133,8 +1133,9 @@ aparece mascarado e como **Oculto**, e não abre.
   está cheio, pausado ou travado) e outro host online tem o mesmo projeto (o mesmo repositório) com
   vagas para todos eles, a confirmação também oferece **Iniciar em <host>**: ela cria cada um desses
   cards nesse host e o inicia lá, depois marca o card daqui "Iniciado em <host> como <card>" e o move
-  para **Concluído**. Nada é apagado: mova o card de volta para o **Backlog** para desfazer. Um card
-  cujo modelo nomeia um workflow ou uma persona não é oferecido, porque iniciaria de outro jeito lá.
+  para **Concluído**. Nada é apagado: mova o card de volta para o **Backlog** para desfazer. Não são
+  oferecidos o card cujo modelo nomeia um workflow ou uma persona, o card que espera um bloqueio e o
+  card que segura outros: iniciariam de outro jeito lá, ou ir para Concluído liberaria os outros cedo demais.
   Parar também pergunta: o turno de um card rodando é
   interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia

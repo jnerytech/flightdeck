@@ -1130,7 +1130,8 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   confirm also offers **Start on <host>**: it makes each of those cards on that host and starts it
   there, then marks the card here "Started on <host> as <card>" and moves it to **Done**. Nothing is
   deleted: move the card back to **Backlog** to undo it. A card whose template names a workflow or a
-  persona is not offered, because it would start differently there. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
+  persona, a card waiting on a blocker and a card that holds others up are not offered: they would
+  start differently there, or going to Done would free the others too soon. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
   one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
   the ones that went leave the selection, and the bar names any the host refused. In a narrow window
   the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
