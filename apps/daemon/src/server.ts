@@ -88,7 +88,7 @@ import type { SessionCommits } from "./review/session-commit.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionPrs } from "./review/session-pr.ts";
 import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
-import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
+import type { PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
@@ -120,7 +120,7 @@ import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
-import { requireVaultTransport, type Vault } from "./vault/vault.ts";
+import type { Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
 import type { Worktrees } from "./worktrees/worktrees.ts";
@@ -684,11 +684,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const pause = opts.memoryPause;
         return ok(command.type, pause ? { ...snapshot, memoryPauseAt: pause.pauseAt() } : snapshot);
       }
-      case "resources.endOrphan":
-        // Like the other commands that change the host: not from beyond loopback and Tailscale.
-        requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
-        await resources().endOrphan(command.payload.pid, command.payload.startTicks);
-        return ok(command.type, { ended: true });
       case "names.list":
         return ok(command.type, {
           names: names()
@@ -697,11 +692,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
       case "idle.subscribe":
         return ok(command.type, idle().subscribe(command.payload));
-      case "service.install":
-        return ok(
-          command.type,
-          await need(opts, "serviceInstall")(command.payload.confirm === true),
-        );
       case "host.info":
         return ok(command.type, {
           hostName: opts.hostName,
@@ -740,19 +730,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...opts.terminal,
         });
-      case "roots.add": {
-        requireVaultTransport(ws.data.origin, "roots.add", opts.log);
-        const { path, confirm } = command.payload;
-        return ok(command.type, {
-          allowedRoots: await addAllowedRoot(
-            opts.allowedRoots as string[],
-            path,
-            confirm === true,
-            opts.persistRoots,
-            opts.rootsPlatform,
-          ),
-        });
-      }
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
@@ -787,25 +764,6 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(claudeSessionId ? { claudeSessionId } : {}),
           }),
         );
-      }
-      case "ui.set": {
-        if (!opts.ui) throw featureOff("ui.mode");
-        const { mode, locked, confirm } = command.payload;
-        if (confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "changing how this host presents itself needs confirm: true",
-            "ui_confirm",
-          );
-        }
-        const next: UiSettings = {
-          mode: mode ?? opts.ui.mode,
-          locked: locked ?? opts.ui.locked,
-        };
-        await opts.onUiSettings?.(next);
-        opts.ui.mode = next.mode;
-        opts.ui.locked = next.locked;
-        return ok(command.type, { ...next });
       }
     }
   }
