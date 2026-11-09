@@ -66,7 +66,7 @@ function PromptBlock(props: Readonly<{ prompt: TelemetryPrompt; n: number; t: T 
   const longest = Math.max(0, ...prompt.items.map((i) => i.durationMs ?? 0));
   const summary = [
     formatDuration(prompt.endedAt - prompt.startedAt, t),
-    ...(prompt.costUsd > 0 ? [usd(prompt.costUsd)] : []),
+    ...(prompt.costUsd > 0 ? [usd(prompt.costUsd, t.lang)] : []),
     ...(prompt.waitMs > 0
       ? [t("telemetry.waited", { wait: formatDuration(prompt.waitMs, t) })]
       : []),

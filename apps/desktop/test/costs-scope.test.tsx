@@ -93,8 +93,8 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
   test("with no scope kept it adds every host up, under the scope menu, with no host select of its own", async () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 7.00");
-    expect(total()).toBe("US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
+    expect(total()).toBe("US$ 7,00");
     expect(menu(ptBR.scope.all)).not.toBeNull();
     expect(screen.queryByLabelText("Host dos custos") === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
@@ -102,10 +102,10 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
   test("choosing a host in the menu scopes the screen to it, and the scope is the store's", async () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
     await pick(ptBR.scope.all, "alfa");
-    await settle(() => total() === "US$ 2.00");
-    expect(total()).toBe("US$ 2.00");
+    await settle(() => total() === "US$ 2,00");
+    expect(total()).toBe("US$ 2,00");
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
     expect(exportButton()).not.toBeNull();
   });
@@ -113,8 +113,8 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
   test("a scope kept from the last run is what the screen opens on", async () => {
     const { store } = await setup({ kind: "host", hostId: "hb" });
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 5.00");
-    expect(total()).toBe("US$ 5.00");
+    await settle(() => total() === "US$ 5,00");
+    expect(total()).toBe("US$ 5,00");
     expect(menu("beta")).not.toBeNull();
   });
 
@@ -122,13 +122,13 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     const { store } = await setup();
     await act(async () => store.dataScope.set({ kind: "host", hostId: "ha" }));
     await act(async () => store.router.push({ name: "costs", host: "hb" }));
-    await settle(() => total() === "US$ 5.00");
-    expect(total()).toBe("US$ 5.00");
+    await settle(() => total() === "US$ 5,00");
+    expect(total()).toBe("US$ 5,00");
     expect(menu("beta")).not.toBeNull();
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
     await pick("beta", "alfa");
-    await settle(() => total() === "US$ 2.00");
-    expect(total()).toBe("US$ 2.00");
+    await settle(() => total() === "US$ 2,00");
+    expect(total()).toBe("US$ 2,00");
     expect(menu("alfa")).not.toBeNull();
   });
 
@@ -136,8 +136,8 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     const { store } = await setup();
     await act(async () => store.dataScope.set({ kind: "host", hostId: "ha" }));
     await act(async () => store.router.push({ name: "costs", host: "__all__" }));
-    await settle(() => total() === "US$ 7.00");
-    expect(total()).toBe("US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
+    expect(total()).toBe("US$ 7,00");
     expect(menu(ptBR.scope.all)).not.toBeNull();
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
   });
@@ -156,15 +156,15 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
     await act(async () => {
       fireEvent.click(all as HTMLElement);
     });
-    await settle(() => total() === "US$ 7.00");
-    expect(total()).toBe("US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
+    expect(total()).toBe("US$ 7,00");
     expect(store.dataScope.value).toEqual({ kind: "all" });
   });
 
   test("on All hosts the CSV export covers every host, with the host's name as its first column", async () => {
     const { store, saved } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
     const button = exportButton();
     expect(button).not.toBeNull();
     await act(async () => {
@@ -180,14 +180,14 @@ describe("costs-scope: the Costs screen reads the data scope", () => {
   test("on All hosts the quota is one line asking for a host, with a button per host that scopes the screen", async () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
     expect(screen.queryByText(ptBR.costsUi.quotaPick)).not.toBeNull();
     const alfa = screen.queryByRole("button", { name: "alfa" });
     expect(alfa).not.toBeNull();
     await act(async () => {
       fireEvent.click(alfa as HTMLElement);
     });
-    await settle(() => total() === "US$ 2.00");
+    await settle(() => total() === "US$ 2,00");
     expect(store.dataScope.value).toEqual({ kind: "host", hostId: "ha" });
     expect(screen.queryByText(ptBR.costsUi.quotaPick) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
@@ -204,7 +204,7 @@ describe("costs-scope: a project scope", () => {
   test("the menu lists the period's projects under Projetos; picking one shows its costs and keeps it", async () => {
     const { store } = await setup(undefined, { other: true });
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 8.00");
+    await settle(() => total() === "US$ 8,00");
     const trigger = menu(ptBR.scope.all) as HTMLElement;
     expect(trigger).not.toBeNull();
     await act(async () => {
@@ -222,7 +222,7 @@ describe("costs-scope: a project scope", () => {
     await act(async () => {
       fireEvent.click(entry as HTMLElement);
     });
-    await settle(() => total() === "US$ 1.00");
+    await settle(() => total() === "US$ 1,00");
     expect({
       listed,
       total: total(),
@@ -230,7 +230,7 @@ describe("costs-scope: a project scope", () => {
       menu: menu(label(Z)) !== null,
     }).toEqual({
       listed: [label(Y), label(Z)],
-      total: "US$ 1.00",
+      total: "US$ 1,00",
       scope: { kind: "project", projectKey: Z },
       menu: true,
     });
@@ -239,9 +239,9 @@ describe("costs-scope: a project scope", () => {
   test("a kept project scope is what the screen opens on", async () => {
     const { store } = await setup({ kind: "project", projectKey: Z }, { other: true });
     await act(async () => store.router.push({ name: "costs" }));
-    await settleMaybe(() => total() === "US$ 1.00");
+    await settleMaybe(() => total() === "US$ 1,00");
     expect({ total: total(), menu: menu(label(Z)) !== null }).toEqual({
-      total: "US$ 1.00",
+      total: "US$ 1,00",
       menu: true,
     });
   });
@@ -249,13 +249,13 @@ describe("costs-scope: a project scope", () => {
   test("a route's project (a Home card) wins for the visit and never rewrites the scope; a pick ends it", async () => {
     const { store } = await setup(undefined, { other: true });
     await act(async () => store.router.push({ name: "costs", projectKey: Z }));
-    await settle(() => total() === "US$ 1.00");
+    await settle(() => total() === "US$ 1,00");
     const visit = { total: total(), menu: menu(label(Z)) !== null, scope: store.dataScope.value };
     await pick(label(Z), ptBR.scope.all);
-    await settle(() => total() === "US$ 8.00");
+    await settle(() => total() === "US$ 8,00");
     expect({ visit, after: total() }).toEqual({
-      visit: { total: "US$ 1.00", menu: true, scope: { kind: "all" } },
-      after: "US$ 8.00",
+      visit: { total: "US$ 1,00", menu: true, scope: { kind: "all" } },
+      after: "US$ 8,00",
     });
   });
 
@@ -283,14 +283,14 @@ describe("costs-scope: a project scope", () => {
     await act(async () => {
       fireEvent.click(all as HTMLElement);
     });
-    await settle(() => total() === "US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
     expect(store.dataScope.value).toEqual({ kind: "all" });
   });
 
   test("Costs has no project select of its own", async () => {
     const { store } = await setup();
     await act(async () => store.router.push({ name: "costs" }));
-    await settle(() => total() === "US$ 7.00");
+    await settle(() => total() === "US$ 7,00");
     expect(screen.queryByRole("combobox", { name: "Projeto" }) === null).toBe(true); // NOSONAR: toBeNull/toBeUndefined would print the DOM node on failure
   });
 });

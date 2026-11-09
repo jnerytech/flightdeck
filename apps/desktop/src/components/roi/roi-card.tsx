@@ -108,9 +108,9 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
     );
   }
   const now = periods.current ?? EMPTY_PERIOD;
-  const f = figures(now, money);
+  const f = figures(now, money, t.lang);
   const verdict = compare(now, periods.previous);
-  const line = headline(now, periods.previous);
+  const line = headline(now, periods.previous, t.lang);
   const movedText = t(`roiUi.moved.${verdict.costPerItemMoved ?? "none"}` as Key);
   const weekCards = now.weeks.map((w) => w.cards);
   const maxWeek = Math.max(1, ...weekCards);
@@ -182,14 +182,16 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <li>{t("roiUi.cardsDone", { n: f.cards })}</li>
             <li>{t("roiUi.prsMerged", { n: f.prsMerged })}</li>
-            <li>{t("roiUi.cost", { cost: usd(f.costUsd) })}</li>
+            <li>{t("roiUi.cost", { cost: usd(f.costUsd, t.lang) })}</li>
             {f.costPerCard !== null && (
-              <li>{t("roiUi.costPerCard", { each: usd(f.costPerCard) })}</li>
+              <li>{t("roiUi.costPerCard", { each: usd(f.costPerCard, t.lang) })}</li>
             )}
-            {f.costPerPr !== null && <li>{t("roiUi.costPerPr", { each: usd(f.costPerPr) })}</li>}
+            {f.costPerPr !== null && (
+              <li>{t("roiUi.costPerPr", { each: usd(f.costPerPr, t.lang) })}</li>
+            )}
             <li>
               {now.fixRounds > 0
-                ? t("roiUi.rework", { rounds: now.fixRounds, cost: usd(now.fixCostUsd) })
+                ? t("roiUi.rework", { rounds: now.fixRounds, cost: usd(now.fixCostUsd, t.lang) })
                 : t("roiUi.noRework")}
             </li>
           </ul>
@@ -203,7 +205,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
             )}
             {f.valueUsd !== null ? (
               <li className="flex items-center gap-1">
-                <span>{t("roiUi.value", { value: usd(f.valueUsd) })}</span>
+                <span>{t("roiUi.value", { value: usd(f.valueUsd, t.lang) })}</span>
                 <Badge variant="outline">{t("roiUi.estimate")}</Badge>
               </li>
             ) : (
@@ -235,7 +237,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
               <li>{t(`roiUi.signals.error.${signals.issuesError}` as Key)}</li>
             )}
             {now.outsideCardsUsd > 0 && (
-              <li>{t("roiUi.outside", { cost: usd(now.outsideCardsUsd) })}</li>
+              <li>{t("roiUi.outside", { cost: usd(now.outsideCardsUsd, t.lang) })}</li>
             )}
           </ul>
           <div>

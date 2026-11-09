@@ -45,7 +45,9 @@ export const BgPanel = memo(function BgPanel(props: {
             {[
               t(`bg.state.${session.state}` as Key),
               session.waitingFor ? t("bg.waitingFor", { what: session.waitingFor }) : null,
-              session.costUsd === null ? null : t("bg.cost", { cost: usd(session.costUsd) }),
+              session.costUsd === null
+                ? null
+                : t("bg.cost", { cost: usd(session.costUsd, t.lang) }),
             ]
               .filter((part) => part !== null)
               .join(" · ")}

@@ -35,7 +35,9 @@ export function ProjectCardTile(
               : t("projectsOverview.noActivity")}
           </span>
           <span title={t("projectsOverview.costWeek")}>
-            {card.costWeekUsd === null ? t("projectsOverview.noCost") : usd(card.costWeekUsd)}
+            {card.costWeekUsd === null
+              ? t("projectsOverview.noCost")
+              : usd(card.costWeekUsd, t.lang)}
           </span>
         </span>
       </button>

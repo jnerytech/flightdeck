@@ -179,7 +179,7 @@ describe("bg-ui: the actions of a session", () => {
     await openPanel();
     expect(panel()?.textContent).toContain("esperando você");
     expect(panel()?.textContent).toContain("permission prompt");
-    expect(panel()?.textContent).toContain("US$ 0.50");
+    expect(panel()?.textContent).toContain("US$ 0,50");
   });
 
   test("Parar and Reiniciar ask the host, Trazer para o terminal opens claude attach in a tab", async () => {

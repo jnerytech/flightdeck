@@ -116,7 +116,7 @@ describe("tempo-ui: the Tempo tab of a session", () => {
       name: /^Prompt \d/,
     });
     expect(prompts.map((p) => p.getAttribute("aria-label"))).toEqual(["Prompt 1", "Prompt 2"]);
-    expect(text).toContain("US$ 0.03");
+    expect(text).toContain("US$ 0,03");
     expect(text).toContain("esperou 7 s por você");
     expect(text).toContain("Read · 150 ms");
     expect(text).toContain("Bash · 2.9 s");
@@ -259,7 +259,7 @@ describe("tempo-ui: Custos", () => {
     await costs(true);
     await settle(() => screen.queryByText(/o custo da telemetria difere/) !== null);
     const notice = screen.queryByText(/o custo da telemetria difere/)?.textContent ?? "";
-    expect(notice).toContain("s-1 (transcripts US$ 1.00, telemetria US$ 5.00)");
+    expect(notice).toContain("s-1 (transcripts US$ 1,00, telemetria US$ 5,00)");
   });
 
   test("a host without telemetry shows no such panel", async () => {
