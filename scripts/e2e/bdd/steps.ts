@@ -3,7 +3,7 @@
  * the dictionaries, in the language of the run (the same scenarios run in en and pt-BR).
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
@@ -1103,23 +1103,27 @@ step(
   async (c) => addOwnProject(c, { [`.flightdeck/workflows/${FLOW}.yaml`]: BREAKS }),
 );
 
-step(Given, "I trust its workflow", async (c) => {
+/** The project's Workflows page: the workflow `name` is trusted there. */
+async function trustWorkflow(c: Context, name: string) {
   await open(c, { name: "projects", host: ALFA });
   await c.page
     .getByRole("button", { name: c.t("projectsUi.workflows", { name: mine(c).project ?? "" }) })
     .click({ timeout: WAIT });
-  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name: FLOW }) }).click();
+  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name }) }).click();
   await c.page
     .getByRole("alertdialog")
     .getByRole("button", { name: c.t("workflowsUi.trustConfirm"), exact: true })
     .click();
   await c.page
-    .getByRole("listitem", { name: c.t("workflowsUi.item", { name: FLOW }) })
+    .getByRole("listitem", { name: c.t("workflowsUi.item", { name }) })
     .getByText(c.t("workflowsUi.trusted"), { exact: true })
     .waitFor({ timeout: WAIT });
-});
+}
 
-step(When, "I start a card of my own on that project with its workflow", async (c) => {
+step(Given, "I trust its workflow", async (c) => trustWorkflow(c, FLOW));
+
+/** A card of the scenario's own is created on its project and started with the workflow `flow`. */
+async function startCardWith(c: Context, flow: string) {
   const title = unique(c, "bdd card");
   mine(c).card = title;
   await openOwnBoard(c);
@@ -1131,10 +1135,14 @@ step(When, "I start a card of my own on that project with its workflow", async (
     .click();
   await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
   const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
-  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption(FLOW);
+  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption(flow);
   await start.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
   await start.waitFor({ state: "detached", timeout: WAIT });
-});
+}
+
+step(When, "I start a card of my own on that project with its workflow", async (c) =>
+  startCardWith(c, FLOW),
+);
 
 step(Then, "the card offers Run again once the run has failed", async (c) => {
   await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
@@ -1909,3 +1917,96 @@ step(When, "I press that notice", async (c) => {
 step(Then, "the schedule opens and asks for the passphrase", async (c) => {
   await schedulePassphrase(c).waitFor({ timeout: WAIT });
 });
+
+// Run again from the failed step: the steps that finished are not run again (issues #1266, #1356).
+// The first step leaves a line in a file of the card's worktree each time it runs; the second fails once.
+const RESUMES = "resumes";
+const resumesFlow = (second: string) =>
+  `steps:\n  - id: first\n    check: 'echo ran >> .bdd-first'\n  - id: second\n    check: '${second}'\n`;
+const FAILS_ONCE = "test -e .bdd-attempt || { touch .bdd-attempt; exit 1; }";
+const resumesFile = `.flightdeck/workflows/${RESUMES}.yaml`;
+/** The project's folder, where its base branch is checked out. */
+const projectFolder = (c: Context) => join(dirname(c.ids.freshRepo), mine(c).project ?? "");
+const gitIn = (folder: string, ...args: string[]) =>
+  execFileSync("git", ["-C", folder, ...args], { encoding: "utf8" });
+/** The card's worktree: the one that is not the project's own checkout. */
+const cardWorktree = (c: Context) => {
+  const listed = gitIn(projectFolder(c), "worktree", "list", "--porcelain");
+  const paths = [...listed.matchAll(/^worktree (.+)$/gm)].map((m) => m[1] ?? "");
+  const own = paths.find((path) => path !== projectFolder(c));
+  if (!own) throw new Error(`the card has no worktree: ${listed}`);
+  return own;
+};
+
+step(
+  Given,
+  "a git project of my own with a two-step workflow whose second step fails once is added to host {string}",
+  async (c) => addOwnProject(c, { [resumesFile]: resumesFlow(FAILS_ONCE) }),
+);
+
+step(Given, "I trust its two-step workflow", async (c) => trustWorkflow(c, RESUMES));
+
+step(When, "I start a card of my own on that project with the two-step workflow", async (c) =>
+  startCardWith(c, RESUMES),
+);
+
+const resumeButton = (c: Context) =>
+  c.page.getByRole("button", { name: c.t("runUi.again.resume", { step: "second" }), exact: true });
+
+/** The card of the scenario, opened from its board. */
+async function openOwnCard(c: Context) {
+  await openOwnBoard(c);
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+}
+
+step(Then, "the card offers to run again from the failed step", async (c) => {
+  await openOwnCard(c);
+  await resumeButton(c).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(When, "I press Run again from the failed step", async (c) => resumeButton(c).click());
+
+step(Then, "the run goes on and ends completed", async (c) => {
+  await c.page
+    .getByRole("heading", {
+      name: c.t("runUi.title", { name: RESUMES, status: c.t("runUi.status.completed") }),
+    })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the first step ran once", async (c) => {
+  const lines = readFileSync(join(cardWorktree(c), ".bdd-first"), "utf8")
+    .trim()
+    .split("\n");
+  if (lines.length !== 1) throw new Error(`the first step ran ${lines.length} times`);
+});
+
+step(When, "the workflow file is changed on the base branch and trusted again", async (c) => {
+  const folder = projectFolder(c);
+  writeFileSync(join(folder, resumesFile), resumesFlow(`${FAILS_ONCE}; true`));
+  gitIn(folder, "add", "--", resumesFile);
+  gitIn(folder, "commit", "-q", "-m", "change the workflow");
+  await trustWorkflow(c, RESUMES);
+});
+
+step(When, "the card's branch gets a new commit", async (c) => {
+  const worktree = cardWorktree(c);
+  writeFileSync(join(worktree, "moved.txt"), "moved\n");
+  gitIn(worktree, "add", "--", "moved.txt");
+  gitIn(worktree, "commit", "-q", "-m", "move the branch");
+});
+
+step(
+  Then,
+  "the card says why it cannot go on from the failed step: {string}",
+  async (c, reason = "") => {
+    await openOwnCard(c);
+    const key = `daemonRefusal.${reason}` as Parameters<Context["t"]>[0];
+    await c.page.getByText(c.t(key, { name: RESUMES })).waitFor({ timeout: SESSION_WAIT });
+    if ((await resumeButton(c).count()) > 0)
+      throw new Error("the card still offers to go on from the failed step");
+    await c.page
+      .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
