@@ -10,16 +10,16 @@ import { DaemonClient, DaemonUnreachable, daemonUrl } from "./mcp.ts";
 export interface CardCliArgs {
   action: "list" | "show" | "new" | "start";
   /** `--project`: an id or a name; without it, the only project of the host. */
-  project?: string | undefined;
+  project?: string;
   /** `show` and `start`: the card. */
-  id?: string | undefined;
+  id?: string;
   /** `new`: the title. */
-  title?: string | undefined;
-  description?: string | undefined;
+  title?: string;
+  description?: string;
   /** `start --workflow`. */
-  workflow?: string | undefined;
+  workflow?: string;
   /** `--json`: the daemon's own answer, for a script. */
-  json?: boolean | undefined;
+  json?: boolean;
 }
 
 export interface CardCliResult {
@@ -61,14 +61,14 @@ function waitOf(card: Card): string | null {
     const reason = card.queueReason ?? "slot";
     // A daemon newer than this command may know a reason it does not: say it as it came.
     const base = WAITS[reason] ?? `waiting (${reason})`;
-    return card.queueReason === "quota" && card.quotaUntil
-      ? `${base} (until ${card.quotaUntil})`
-      : base;
+    if (card.queueReason === "quota" && card.quotaUntil)
+      return `${base} (until ${card.quotaUntil})`;
+    return base;
   }
   const blockers = card.waitingOn?.length ?? 0;
-  return blockers > 0
-    ? `waiting for ${blockers} ${blockers === 1 ? "card" : "cards"} to be done first`
-    : null;
+  if (blockers === 0) return null;
+  const noun = blockers === 1 ? "card" : "cards";
+  return `waiting for ${blockers} ${noun} to be done first`;
 }
 
 const names = (projects: Project[]) => projects.map((project) => project.name).join(", ");
@@ -145,7 +145,8 @@ async function perform(
       return said(
         ...rows.map(({ project, column, card }) => {
           const wait = waitOf(card);
-          return `${project}  ${card.id}  ${column}  ${card.title}${wait ? ` (${wait})` : ""}`;
+          const tail = wait === null ? "" : ` (${wait})`;
+          return `${project}  ${card.id}  ${column}  ${card.title}${tail}`;
         }),
       );
     }
@@ -200,13 +201,8 @@ const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
   start: "; the card may or may not have been started: check with `card show` before trying again",
 };
 
-/** The daemon of this host, with the token of its config: never from the arguments or the environment. */
-export async function runCardCli(
-  args: CardCliArgs,
-  config: { bind: string; port: number; token: string },
-  options: CardCliOptions = {},
-): Promise<CardCliResult> {
-  const url = daemonUrl(config);
+/** Why this command will not talk to the address of the config, or null when it is the local daemon. */
+function addressRefusal(config: { bind: string; port: number }, url: string): CardCliResult | null {
   let target: URL;
   try {
     target = new URL(url);
@@ -214,17 +210,48 @@ export async function runCardCli(
     return failure(1, `${config.bind} is not a valid address for the daemon`);
   }
   // The address, and nothing else the bind could smuggle into the URL (a user, a query, another path).
-  const plainAddress =
-    (target.port === String(config.port) || (config.port === 80 && target.port === "")) &&
+  const portOk = target.port === String(config.port) || (config.port === 80 && target.port === "");
+  const plain =
+    portOk &&
     target.pathname === WS_PATH &&
     target.username === "" &&
     target.search === "" &&
     target.hash === "";
-  if (!isLoopbackHost(target.hostname) || !plainAddress)
-    return failure(
-      1,
-      `refusing to talk to ${target.hostname}: this command reaches only a daemon on the loopback (127.0.0.1 or ::1)`,
-    );
+  if (isLoopbackHost(target.hostname) && plain) return null;
+  return failure(
+    1,
+    `refusing to talk to ${target.hostname}: this command reaches only a daemon on the loopback (127.0.0.1 or ::1)`,
+  );
+}
+
+/** What went wrong, as an exit code and a line: a write that may have gone out says so. */
+function explain(
+  error: unknown,
+  context: { url: string; timeoutMs: number; wrote: boolean; action: CardCliArgs["action"] },
+  hide: (text: string) => string,
+): CardCliResult {
+  const message = error instanceof Error ? error.message : String(error);
+  const unsure = context.wrote ? (UNSURE[context.action] ?? "") : "";
+  if (error instanceof TimedOut) {
+    const seconds = Math.ceil(context.timeoutMs / 1000);
+    return failure(2, `the daemon at ${context.url} did not answer in ${seconds} s${unsure}`);
+  }
+  const cut = message === "connection closed";
+  if (cut && context.wrote) return failure(2, `the daemon closed the connection${unsure}`);
+  if (cut || error instanceof DaemonUnreachable)
+    return failure(2, `could not reach the daemon at ${context.url}: is it running?`);
+  return failure(1, hide(message));
+}
+
+/** The daemon of this host, with the token of its config: never from the arguments or the environment. */
+export async function runCardCli(
+  args: CardCliArgs,
+  config: { bind: string; port: number; token: string },
+  options: CardCliOptions = {},
+): Promise<CardCliResult> {
+  const url = daemonUrl(config);
+  const refused = addressRefusal(config, url);
+  if (refused) return refused;
   // Whatever the daemon or the network say, the token is not in it.
   const hide = (text: string) => (config.token ? text.split(config.token).join("[token]") : text);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -244,22 +271,11 @@ export async function runCardCli(
       reject(new TimedOut());
     }, timeoutMs);
   });
-  const unsure = (sent: { wrote: boolean }) => (sent.wrote ? (UNSURE[args.action] ?? "") : "");
   try {
     const done = await Promise.race([work(), clock]);
     return { code: done.code, out: done.out.map(hide), err: done.err.map(hide) };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (error instanceof TimedOut)
-      return failure(
-        2,
-        `the daemon at ${url} did not answer in ${Math.ceil(timeoutMs / 1000)} s${unsure(note)}`,
-      );
-    if (message === "connection closed" && note.wrote)
-      return failure(2, `the daemon closed the connection${unsure(note)}`);
-    if (error instanceof DaemonUnreachable || message === "connection closed")
-      return failure(2, `could not reach the daemon at ${url}: is it running?`);
-    return failure(1, hide(message));
+    return explain(error, { url, timeoutMs, wrote: note.wrote, action: args.action }, hide);
   } finally {
     clearTimeout(timer);
     giveUp.abort();

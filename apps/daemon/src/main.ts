@@ -2771,12 +2771,12 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
     const result = await runCardCli(
       {
         action: args.action as "list" | "show" | "new" | "start",
-        project: args.project,
-        id: args.cardId,
-        title: args.cardTitle,
-        description: args.description,
-        workflow: args.workflow,
-        json: args.json,
+        ...(args.project === undefined ? {} : { project: args.project }),
+        ...(args.cardId === undefined ? {} : { id: args.cardId }),
+        ...(args.cardTitle === undefined ? {} : { title: args.cardTitle }),
+        ...(args.description === undefined ? {} : { description: args.description }),
+        ...(args.workflow === undefined ? {} : { workflow: args.workflow }),
+        ...(args.json ? { json: true } : {}),
       },
       config,
     );

@@ -361,7 +361,7 @@ describe("card: what the daemon's text can do to the terminal, and to the addres
     expect(result.code).toBe(1);
     expect(result.err.join("\n")).toContain("boom");
     for (const line of result.err) expect(CONTROL.test(line)).toBe(false);
-    expect(result.err.length).toBe(1);
+    expect(result.err).toHaveLength(1);
   });
 
   test("a bind that only looks like a loopback (a query, a user, a path) is refused, nothing is sent", async () => {
@@ -459,7 +459,13 @@ describe("card: what is shown is only what the daemon said, cleaned (issue #1507
   });
 
   test("a bidi override, a line separator and a zero-width character cannot reorder or hide text", async () => {
-    const daemon = fakeDaemon(onlyTitle("a‮b⁦c d​e﻿f"));
+    // The characters are named by code point: a literal one in the source is what a reader cannot see.
+    const hidden = [0x202e, 0x2066, 0x2028, 0x200b, 0xfeff].map((code) =>
+      String.fromCodePoint(code),
+    );
+    const daemon = fakeDaemon(
+      onlyTitle(["a", "b", "c", "d", "e", "f"].map((c, n) => c + (hidden[n] ?? "")).join("")),
+    );
     const result = await run({ action: "show", id: "c1" }, daemon);
     expect(result.out[0]).toBe("c1  a b c d e f");
   });
