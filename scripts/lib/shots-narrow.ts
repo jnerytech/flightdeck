@@ -56,6 +56,8 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1354: the selection bar and Start N's confirm, compact at 390.
   "board-selecao",
   "board-selecao-iniciar",
+  // #1446: the second-opinion review on a card's Changes.
+  "card-segunda-opiniao",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

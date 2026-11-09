@@ -182,6 +182,7 @@ describe("demo-prints: axe e CI", () => {
       "merge-pr-recusa",
       "pull-requests",
       "enquanto-fora",
+      "segunda-opiniao",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

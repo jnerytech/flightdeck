@@ -2273,6 +2273,31 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await summary.waitFor({ state: "detached", timeout: WAIT });
   },
 
+  // Issue #1446: on a card's Changes, a second-opinion review comes back from the host (the demo's
+  // fake runtime answers with a canned one) as a summary and reviewer drafts with their severity.
+  // The other language's run may already have asked (the same diff shows that review, and its
+  // drafts may be sent or dismissed), so what the journey holds to is the summary and the shape of
+  // every reviewer draft on screen.
+  "segunda-opiniao": async (c) => {
+    await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });
+    await c.page.getByRole("button", { name: c.t("cardUi.diff"), exact: true }).click();
+    const panel = c.page.getByRole("region", { name: c.t("secondOpinion.title"), exact: true });
+    await panel.waitFor({ timeout: WAIT });
+    await panel.getByRole("button", { name: c.t("secondOpinion.ask"), exact: true }).click();
+    await panel
+      .getByText("Two findings on the changes, one general note.", { exact: true })
+      .waitFor({ timeout: WAIT * 2 });
+    // Every reviewer draft says so, with its severity in words, and can be dismissed by name.
+    const drafts = c.page.getByRole("listitem").filter({ hasText: c.t("secondOpinion.reviewer") });
+    const count = await drafts.count();
+    for (let i = 0; i < count; i++) {
+      const draft = drafts.nth(i);
+      await draft
+        .getByRole("button", { name: new RegExp(`^${c.t("secondOpinion.dismiss")}`) })
+        .waitFor({ timeout: WAIT });
+    }
+  },
+
   "escopo-dados": async (c) => {
     const menuOf = (scope: string) =>
       c.page.getByRole("button", { name: c.t("scope.menu", { scope }), exact: true });

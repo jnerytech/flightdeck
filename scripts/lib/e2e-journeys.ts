@@ -58,6 +58,7 @@ export const JOURNEYS: readonly string[] = [
   "merge-pr-recusa",
   "pull-requests",
   "enquanto-fora",
+  "segunda-opiniao",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
