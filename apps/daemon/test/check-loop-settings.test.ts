@@ -127,7 +127,34 @@ describe("check-loop: the loop's settings and who may change them", () => {
       accepts(["flightdeck_x"]),
       accepts(["A B"]),
       accepts(["1ABC"]),
+      // Credentials hide in connection strings, and loaders run code before the check does.
+      ["DATABASE_URL", "SENTRY_DSN", "DB_CONN", "PRIVATE_PEM", "CERT_FILE"].some((n) =>
+        accepts([n]),
+      ),
+      [
+        "LD_PRELOAD",
+        "DYLD_INSERT_LIBRARIES",
+        "NODE_OPTIONS",
+        "BASH_ENV",
+        "ENV",
+        "PYTHONSTARTUP",
+        "PATH",
+      ].some((n) => accepts([n])),
       accepts(Array.from({ length: 21 }, (_, i) => `V${i}`)),
-    ]).toEqual([true, false, false, false, false, false, false, false, false, false, false]);
+    ]).toEqual([
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 });
