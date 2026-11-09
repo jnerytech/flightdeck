@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { CardDiff, DiffFile } from "@flightdeck/protocol";
 import { FlightdeckError } from "../src/errors.ts";
-import { type CardReviewDeps, CardReviews, REVIEW_BUDGET_USD } from "../src/review/card-review.ts";
+import {
+  type CardReviewDeps,
+  CardReviews,
+  REVIEW_BUDGET_USD,
+  reviewHold,
+} from "../src/review/card-review.ts";
 import { REVIEW_SCHEMA } from "../src/review/second-opinion.ts";
 import { CompleteCutShort } from "../src/runtime/claude-sdk-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../src/runtime/types.ts";
