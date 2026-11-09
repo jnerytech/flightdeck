@@ -201,6 +201,9 @@ describe("vigiar-ado: the watcher", () => {
       persona: "revisor",
       maxFailures: 2,
       dailyUsd: 20,
+      checkRounds: 3,
+      checkEnv: [],
+      checkLoopDefault: false,
       driftAllow: [
         "bun.lock",
         "bun.lockb",
