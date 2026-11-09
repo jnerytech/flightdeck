@@ -13,6 +13,8 @@ export interface AppShellLabels {
   sidebar: string;
   collapse: string;
   expand: string;
+  /** The first Tab stop, which moves the focus to the content (#1430). */
+  skip: string;
 }
 
 /**
@@ -58,6 +60,7 @@ export function AppShell(
   const { labels, navKey } = props;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const menu = useRef<HTMLButtonElement>(null);
+  const content = useRef<HTMLElement>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: closes on a new key and on a wider window
   useEffect(() => setSheet(false), [navKey, wide]);
   const open = wide && !folded;
@@ -65,6 +68,18 @@ export function AppShell(
   const toggle = () => (wide ? setFolded(open) : setSheet((was) => !was));
   return (
     <div className="grid h-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
+      {/* #1430: past the title bar and the sidebar in one key (WCAG 2.4.1); seen only when focused. */}
+      {/* biome-ignore lint/a11y/useValidAnchor: a skip link is a link by convention; following its hash would add a history entry beside the app's own router, so the click only moves the focus */}
+      <a
+        href="#app-content"
+        className="skip-link"
+        onClick={(event) => {
+          event.preventDefault();
+          content.current?.focus();
+        }}
+      >
+        {labels.skip}
+      </a>
       <header className="flex h-12 min-w-0 items-center gap-2 border-b px-3">
         <Button
           ref={menu}
@@ -99,7 +114,12 @@ export function AppShell(
             {props.sidebar(!open)}
           </aside>
         )}
-        <main className="min-h-0 min-w-0 overflow-hidden">
+        <main
+          ref={content}
+          id="app-content"
+          tabIndex={-1}
+          className="min-h-0 min-w-0 overflow-hidden outline-none"
+        >
           <HeaderSlot.Provider value={slot}>{props.children}</HeaderSlot.Provider>
         </main>
       </div>

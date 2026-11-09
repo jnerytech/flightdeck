@@ -943,6 +943,13 @@ export const ptBR = {
     startBudgetHold:
       "{host} chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
     startMemoryHold: "{host} está sem memória: os cards novos esperam ela liberar.",
+    startedElsewhere: "Iniciado em {host} como {id}.",
+    startOn: "Iniciar em {host}",
+    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles:",
+    elsewhereOrphaned: "Uma cópia ficou em {host}: {names}",
+    elsewhereDoneOne: "1 card iniciado em {host}.",
+    elsewhereDone: "{count} cards iniciados em {host}.",
+    elsewhereUnmarked: "Não movidos para Concluído aqui: {names}",
     noCriteriaOne: "1 deles não tem critérios de aceite; ele inicia mesmo assim.",
     noCriteria: "{n} deles não têm critérios de aceite; eles iniciam mesmo assim.",
     skipped: "fica de fora: {reason}",
@@ -1068,6 +1075,7 @@ export const ptBR = {
     breadcrumbMore: "Mostrar os passos do meio",
     collapse: "Recolher barra lateral",
     expand: "Mostrar barra lateral",
+    skip: "Pular para o conteúdo",
   },
   start: {
     title: "Nada aberto",

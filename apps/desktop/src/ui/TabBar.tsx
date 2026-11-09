@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { hostColorVar } from "../lib/host-color.ts";
+import { revealTab } from "../lib/reveal-tab.ts";
 import { isProd } from "../lib/ssh.ts";
 import {
   badgePulses,
@@ -248,12 +249,14 @@ export function TabBar(
     measure();
   };
   const compact = row.length > COMPACT_AT;
-  // The active tab is always in view; the strip is measured again when the tabs change.
+  // The active tab is always in view (scrolled by hand, #1430); the strip is measured again when the
+  // tabs change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the active tab and the count are the triggers
   useEffect(() => {
-    tablist.current
-      ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-      ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const active = tablist.current?.querySelector<HTMLElement>(
+      '[role="tab"][aria-selected="true"]',
+    );
+    if (active && scroller.current) revealTab(scroller.current, active);
     measure();
   }, [tabs.activeId, row.length, sharedActive, shared?.activeId, measure]);
   useEffect(() => {
