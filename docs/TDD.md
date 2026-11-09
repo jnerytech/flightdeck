@@ -340,6 +340,11 @@ em vez de depender de cuidado.
 - The full run's Linux suite runs in 3 shards, each twice: Bun's coverage gives the lines (and
   SonarCloud's lcov), istanbul gives the functions (#296). `scripts/shard-gate.ts` merges the six
   into the 80% gate and fails closed: a missing or failed shard is a red gate, never a pass.
+  A test can pass under Bun and fail under istanbul: a function whose source runs on its own
+  (`new Function`, a page's init script) carries an istanbul counter that is undefined there
+  (#1492). So a PR, and a push to `main`, also runs its changed test files under istanbul
+  (`scripts/istanbul-changed.ts`, #1493). A failed test fails that step; it has no coverage gate.
+  Such a function carries `/* istanbul ignore next */`.
 
 ## Evidência para o /goal
 

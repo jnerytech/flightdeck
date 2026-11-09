@@ -1186,6 +1186,15 @@ export const en: Dictionary = {
     release: "Free the pair",
     finished: "Finished",
     finishedOutcome: { done: "Finished", failed: "Failed", ended: "Ended" },
+    quietFor: "Quiet for {span}",
+    quietTitle: "This session has gone quiet",
+    quietBody:
+      "It is still marked as running but has produced nothing for a while. A long build can be quiet too.",
+    quietOpen: "Open",
+    quietInterrupt: "Interrupt",
+    quietContinue: "Send “continue”",
+    quietSnooze: "Not stuck, snooze 1 h",
+    quietLast: "{quiet} · last: {tool}",
     finishedFilesOne: "1 file changed",
     finishedFilesMany: "{n} files changed",
     finishedNoFiles: "No files changed",
@@ -1448,6 +1457,8 @@ export const en: Dictionary = {
     plainWaiting: "{label}: waiting for your answer",
     turnDone: "{label}: turn finished",
     turnDoneBody: "idle",
+    quiet: "{label}: gone quiet",
+    quietBody: "Nothing has happened for a while. Open it to see where it stopped.",
     externalTitle: "Needs you",
     quotaTitle: "Plan quota",
     quotaBody: "{host}: {window} at {percent}%",
@@ -2978,6 +2989,7 @@ export const en: Dictionary = {
       "1 finding is a draft below: Send review sends it to the card with your own comments.",
     drafts:
       "{n} findings are drafts below: Send review sends them to the card with your own comments.",
+    goToDrafts: "Go to the drafts",
     cached: "This diff was reviewed already: this is that review.",
     moved:
       "The diff changed during the review, so nothing was placed on a line: every finding is listed here.",
@@ -4131,6 +4143,8 @@ export const en: Dictionary = {
       "When a card's turn ends, it runs these checks and sends what fails back to its session, at most this many rounds, before it moves on.",
     maxRoundsHelp: "Rounds of fixing a PR's failing CI.",
     fixMarked: "Fix the marked field.",
+    farReadOnly:
+      "The checks and the check loop change only over a near connection: this computer or Tailscale.",
     tooManyCheckEnv: "Extra variables: at most 20 names, each up to 64 characters",
   },
   sessionFinish: {
@@ -4164,6 +4178,7 @@ export const en: Dictionary = {
     confirm:
       "The checks will run the code this card writes, without asking you each time. That code can read your files and reach the network, as the session itself can.",
     confirmAction: "Turn on",
+    farOff: "Turn it on from this computer or over Tailscale.",
     ready: "On: when a turn ends, the project's checks run.",
     checking: "Running the checks…",
     fixing: "Round {round} of {max}: the session is fixing what the checks found.",
@@ -5599,6 +5614,7 @@ export const en: Dictionary = {
     empty: "No worktrees under .flightdeck/worktrees.",
   },
   activityBoard: {
+    quiet: "Quiet {span}",
     title: "Activity",
     columns: { needs_you: "Needs you", working: "Working", done: "Done", idle: "Idle" },
     none: "None",

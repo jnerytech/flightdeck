@@ -3,7 +3,7 @@
  * the dictionaries, in the language of the run (the same scenarios run in en and pt-BR).
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
@@ -228,6 +228,7 @@ const made = new WeakMap<
     cards?: string[];
     listsBefore?: number;
     head?: string;
+    checkPid?: number;
   }
 >();
 const mine = (c: Context) => {
@@ -621,6 +622,44 @@ const finishedRow = (c: Context, session: string) =>
   c.page.locator(
     `main ul li button[aria-label="alfa · ${session}: ${c.t("needsYou.finishedOutcome.done")}"]`,
   );
+
+// Issue #1478: a running session that says nothing is listed in Needs you (the demo counts a "minute" in seconds).
+step(Given, "a session named {string} on {string} is running and says nothing", async (c, name) =>
+  createSession(c, "[quiet] hold", name),
+);
+
+const quietRow = (c: Context, session: string) =>
+  c.page.locator(
+    `main ul li button[aria-label^="alfa · ${session}: ${c.t("needsYou.quietFor", { span: "" }).trim()}"]`,
+  );
+
+step(Then, "the queue lists {string} as quiet", async (c, session = "") =>
+  quietRow(c, session).waitFor({ timeout: SESSION_WAIT }),
+);
+
+step(When, "I choose the quiet session {string}", async (c, session = "") =>
+  quietRow(c, session).click(),
+);
+
+step(Then, "its detail offers to open it, interrupt it, send continue and snooze it", async (c) => {
+  const detail = c.page.locator("main");
+  for (const key of ["quietOpen", "quietInterrupt", "quietContinue", "quietSnooze"] as const) {
+    await detail
+      .getByRole("button", { name: c.t(`needsYou.${key}`), exact: true })
+      .waitFor({ timeout: WAIT });
+  }
+});
+
+step(When, "I interrupt the quiet session", async (c) =>
+  c.page.getByRole("button", { name: c.t("needsYou.quietInterrupt"), exact: true }).click(),
+);
+
+step(Then, "the queue no longer lists {string} as quiet", async (c, session = "") =>
+  waitFor(
+    async () => (await quietRow(c, session).count()) === 0,
+    "the quiet session left the queue",
+  ),
+);
 
 step(Then, "no request of {string} is waiting any more", async (c, session = "") =>
   waitFor(async () => (await waitingRow(c, session).count()) === 0, "the request left the queue"),
@@ -2803,4 +2842,154 @@ step(Then, "the card in conflict is left as it was", async (c) => {
 step(Then, "the updated card holds the base commit", async (c) => {
   const [, second = ""] = mine(c).cards ?? [];
   if (!hasBase(c, second)) throw new Error("the updated card does not hold the base commit");
+});
+
+// Keep going until the checks pass: the project's check runs when a turn ends, and its output goes back as a round (issue #1361).
+/** What the check does, as a script in the project: the check itself is `sh ./check.sh`. */
+const CHECK_COMMAND = "sh ./check.sh";
+const CHECK_SCRIPTS = {
+  // Fails once and prints the fake Claude's marker for a file: the round carries it, so the file is written.
+  fixed: 'test -e ok.txt || { echo "[result:ok.txt]"; exit 1; }\n',
+  red: 'echo "still red"\nexit 1\n',
+  // Writes its own process id, so a scenario can tell when this very run is gone.
+  slow: "echo $$ > .check-pid\nsleep 45\nexit 1\n",
+};
+/** The first words of a round message: it is data for the session, never UI text. */
+const ROUND = "Round";
+
+step(
+  Given,
+  "a git project of my own with a check that passes once the session has written a file is added to host {string}",
+  async (c) => addOwnProject(c, { "check.sh": CHECK_SCRIPTS.fixed }),
+);
+
+step(
+  Given,
+  "a git project of my own with a check that always fails is added to host {string}",
+  async (c) => addOwnProject(c, { "check.sh": CHECK_SCRIPTS.red }),
+);
+
+step(
+  Given,
+  "a git project of my own with a check that takes a long time is added to host {string}",
+  async (c) => addOwnProject(c, { "check.sh": CHECK_SCRIPTS.slow }),
+);
+
+step(Given, "the project's check is its script", async (c) => {
+  await open(c, { name: "settings" });
+  const section = c.page.getByRole("region", {
+    name: c.t("watchSettingsUi.title", { host: "alfa" }),
+    exact: true,
+  });
+  const block = section
+    .getByRole("heading", { name: mine(c).project ?? "", exact: true })
+    .locator("xpath=..");
+  await block
+    .getByLabel(c.t("watchSettingsUi.checks"), { exact: true })
+    .fill(CHECK_COMMAND, { timeout: WAIT });
+  await block.getByRole("button", { name: c.t("watchSettingsUi.save"), exact: true }).click();
+  await c.page.getByText(c.t("watchSettingsUi.saved"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+const loopSwitch = (c: Context) =>
+  c.page.getByRole("switch", { name: c.t("checkLoopUi.switch"), exact: true });
+
+step(
+  When,
+  "I turn on keep going until the checks pass on a new card of that project and start it",
+  async (c) => {
+    const title = unique(c, "bdd card");
+    mine(c).card = title;
+    await openOwnBoard(c);
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+    await loopSwitch(c).click({ timeout: WAIT });
+    // The card is not in a mode that runs without asking, so the host asks first.
+    await c.page
+      .getByRole("alertdialog")
+      .getByText(c.t("checkLoopUi.confirm"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("checkLoopUi.confirmAction"), exact: true })
+      .click();
+    await waitFor(
+      async () => (await loopSwitch(c).getAttribute("aria-checked")) === "true",
+      "the switch is on",
+    );
+    await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+  },
+);
+
+/** One line of the loop's panel, by the dictionary text it comes from. */
+const loopLine = (c: Context, text: string) => c.page.getByText(text, { exact: true });
+
+step(Then, "the card says the checks passed", async (c) => {
+  await loopLine(c, dictionary(c).checkLoopUi.ended.passed).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(
+  Then,
+  "the card says the checks still failed after {string} rounds",
+  async (c, rounds = "") => {
+    const text = dictionary(c)
+      .checkLoopUi.ended.rounds_spent.replace("{max}", rounds)
+      .replace("{command}", CHECK_COMMAND);
+    await loopLine(c, text).waitFor({ timeout: SESSION_WAIT });
+  },
+);
+
+step(When, "I send the card a message of my own while its checks run", async (c) => {
+  await loopLine(c, dictionary(c).checkLoopUi.checking).waitFor({ timeout: SESSION_WAIT });
+  const file = join(worktreeOf(c, mine(c).card ?? ""), ".check-pid");
+  await waitFor(
+    async () => existsSync(file) && readFileSync(file, "utf8").trim() !== "",
+    "the check started",
+  );
+  mine(c).checkPid = Number(readFileSync(file, "utf8").trim());
+  // `[tool]` makes the fake Claude ask permission and wait: the person's turn stays open while the
+  // scenario looks at the loop, so what it sees is the loop's answer to the message, not the turn's end.
+  const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  await box.fill(`[tool] ${unique(c, "my own message")}`);
+  await box.press("Enter");
+});
+
+step(Then, "the card says the loop stepped aside", async (c) => {
+  await loopLine(c, dictionary(c).checkLoopUi.ended.person_turn).waitFor({
+    timeout: SESSION_WAIT,
+  });
+});
+
+/** How many rounds of the loop the conversation holds: the messages that start with the round text. */
+step(Then, "the session was sent {string} rounds of the loop", async (c, count = "") => {
+  const rounds = c.page.getByText(new RegExp(`^${ROUND} \\d+ of \\d+:`));
+  await waitFor(
+    async () => (await rounds.count()) === Number(count),
+    `${count} rounds in the conversation`,
+  );
+});
+
+step(Then, "the board shows the card in the column {string}", async (c, column = "") => {
+  await openOwnBoard(c);
+  await c.page
+    .getByRole("region", { name: columnName(c, column), exact: true })
+    .locator(`li[aria-label="${c.t("kanban.card", { title: mine(c).card ?? "" })}"]`)
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+const alive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+step(Then, "the check the message interrupted is gone", async (c) => {
+  const pid = mine(c).checkPid ?? 0;
+  if (pid <= 0) throw new Error("the check's process id was not read");
+  await waitFor(async () => !alive(pid), "the interrupted check has ended");
 });

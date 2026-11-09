@@ -150,6 +150,8 @@ export interface ServerOptions {
   sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
+  /** Issue #1478: the stall watcher: its presence announces the host feature `stall`. */
+  stall?: { minutes(): number };
   /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
   hostPause?: { status(): HostPauseStatus; set(paused: boolean): void | Promise<void> };
   /** Issue #1439: the cards' second-opinion review, for the near-only `card.review`. */

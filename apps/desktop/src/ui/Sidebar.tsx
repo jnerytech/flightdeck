@@ -47,6 +47,7 @@ import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
 import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";
+import { quietAlerts } from "../lib/quiet.ts";
 import type { Route } from "../lib/router.ts";
 import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
@@ -293,7 +294,8 @@ export function Sidebar(
     pendingItems.length +
     budgetAlerts(state).length +
     state.loopAlerts.length +
-    watchAlerts(state).length;
+    watchAlerts(state).length +
+    quietAlerts(state, props.store.now()).length;
   // The sidebar redraws on every store update, streaming events included: the rows and the tree
   // recompute only when the parts they are made of change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state

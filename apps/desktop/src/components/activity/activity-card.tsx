@@ -2,7 +2,7 @@ import { HoldButton } from "@/components/approval/hold-button";
 import { ActionButton } from "@/components/feedback/action-button";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
-import { formatAgo } from "../../i18n/format.ts";
+import { formatAgo, formatDuration } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { ActivityCard, ActivityColumn } from "../../lib/activity.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
@@ -69,6 +69,13 @@ export function ActivityCardView(
         <span aria-hidden="true">·</span>
         <span>{row.hostName}</span>
         {row.persona && <span className="activity-card-persona">{row.persona.name}</span>}
+        {row.quietSince && (
+          <span className="activity-card-quiet">
+            {t("activityBoard.quiet", {
+              span: formatDuration(Math.max(0, props.nowMs - Date.parse(row.quietSince)), t),
+            })}
+          </span>
+        )}
       </p>
       {line && <p className="activity-card-line">{line}</p>}
       {pending && (
