@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -284,9 +284,14 @@ describe("pull-requests-ui: Update from the base for every listed PR (#1406)", (
     const { asked } = open({ cards: CARDS, answer });
     const action = screen.queryByRole("button", { name: "Update 3 from the base" });
     expect(action).not.toBeNull();
-    (action as HTMLElement).focus();
+    // The focus starts elsewhere: only the return after the run can put it on the button.
+    (document.activeElement as HTMLElement | null)?.blur();
     await click(action);
-    await settle(() => (summary() ?? "").includes("Updated"));
+    await settleMaybe(
+      () =>
+        (summary() ?? "").includes("Updated") &&
+        document.activeElement?.textContent === "Update 3 from the base",
+    );
     expect({
       // b is on its base already; d is running, so it stays out.
       updates: updates(asked),
