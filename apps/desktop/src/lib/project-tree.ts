@@ -156,3 +156,12 @@ export function activeWorktreeFilter(
   );
   return kept ? picked : null;
 }
+
+/** The picked checkout when it belongs to this project's board; else none (the board shows every card). */
+export function worktreeOfProject(
+  active: WorktreeFilter | null,
+  hostId: string,
+  projectId: string,
+): WorktreeFilter | null {
+  return active?.hostId === hostId && active.projectId === projectId ? active : null;
+}

@@ -1,8 +1,10 @@
-import type { Budget, Card } from "@flightdeck/protocol";
+import type { Budget, Card, ContractOverrides } from "@flightdeck/protocol";
 import type { T } from "../i18n/index.ts";
+import { startNeeds } from "./board-contracts.ts";
 import { answerOf, type BulkRefusal } from "./board-select.ts";
 import { cardStartBlock } from "./card-start-block.ts";
 import { reasonText } from "./notice-text.ts";
+import { onSubscription, quotaBars } from "./quota.ts";
 
 /** Start N and Stop N of the selection (#1354): what each can take, and why the rest stay out. */
 export interface BulkSplit {
@@ -92,7 +94,14 @@ export async function runMany(cards: Card[], request: CardRequest): Promise<Bulk
 export function holdLines(
   t: T,
   host: string,
-  input: { budgets: Budget[]; projectKey: string | null; cards: Card[]; memoryOver?: boolean },
+  input: {
+    budgets: Budget[];
+    projectKey: string | null;
+    cards: Card[];
+    memoryOver?: boolean;
+    /** The host is paused (#1481): a hold like the others. */
+    paused?: boolean;
+  },
 ): string[] {
   const reported = (reason: Card["queueReason"]) =>
     input.cards.some((card) => card.queued && card.queueReason === reason);
@@ -106,6 +115,7 @@ export function holdLines(
   const lines: string[] = [];
   if (overBudget || reported("budget")) lines.push(t("board.startBudgetHold", { host }));
   if (input.memoryOver || reported("memory")) lines.push(t("board.startMemoryHold", { host }));
+  if (input.paused) lines.push(t("board.startPausedHold", { host }));
   return lines;
 }
 
@@ -204,4 +214,131 @@ export function updateSummary(t: T, results: UpdateResult[]): string {
     })
     .filter(Boolean)
     .join(" ");
+}
+
+/** What the board's bulk bar runs on the selection. */
+export type BulkKind = "start" | "stop";
+
+/** The confirm's title: how many cards the action takes. */
+export function bulkTitle(t: T, kind: BulkKind, counts: Record<BulkKind, number>): string {
+  const count = counts[kind];
+  if (kind === "start") {
+    return count === 1 ? t("board.startTitleOne") : t("board.startTitle", { n: count });
+  }
+  return count === 1 ? t("board.stopTitleOne") : t("board.stopTitle", { n: count });
+}
+
+/** Why the action leaves a selected card out, for the confirm's list; undefined when it takes it. */
+export function bulkSkipReason(
+  t: T,
+  kind: BulkKind,
+  split: BulkSplit,
+  card: Card,
+  needsInputs: boolean,
+): string | undefined {
+  if (kind === "stop") {
+    return split.skipStop.some((c) => c.id === card.id) ? t("board.notRunning") : undefined;
+  }
+  const skipped = split.skipStart.find((s) => s.card.id === card.id)?.reason;
+  if (skipped) return skipped;
+  return needsInputs ? t("board.needsInputs") : undefined;
+}
+
+/** What a host's answer to one card's request means to a bulk run: went, or refused with its reason. */
+export function requestResult(
+  answer: { ok: true } | ({ ok: false } & Parameters<typeof answerOf>[0]),
+): Awaited<ReturnType<CardRequest>> {
+  return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+}
+
+/** The notice after a bulk run: the refused cards named, in the one or many wording, or null when none. */
+export function refusalNotice(
+  t: T,
+  refused: BulkRefusal[],
+  names: string,
+  keys: { one: Parameters<T>[0]; many: Parameters<T>[0] },
+): string | null {
+  if (refused.length === 0) return null;
+  if (refused.length === 1) return t(keys.one, { names });
+  return t(keys.many, { count: refused.length, names });
+}
+
+const RUN_FAILED = {
+  start: { one: "board.startFailedOne", many: "board.startFailed" },
+  stop: { one: "board.stopFailedOne", many: "board.stopFailed" },
+} as const;
+
+/** The notice after Start or Stop ran: the refused cards named, or null when none was. */
+export function bulkRunOutcome(
+  t: T,
+  kind: BulkKind,
+  refused: BulkRefusal[],
+  names: string,
+): string | null {
+  return refusalNotice(t, refused, names, RUN_FAILED[kind]);
+}
+
+/** What the Start confirm says about the host's quota, and whether a window is hot enough to hold new cards. */
+export function startQuotaLines(
+  t: T,
+  host: string,
+  input: {
+    quota: Parameters<typeof quotaBars>[0];
+    account: Parameters<typeof onSubscription>[1];
+    now: number;
+    formatTime: (iso: string) => string;
+  },
+): { lines: string[]; holds: string[] } {
+  if (!onSubscription(input.quota, input.account)) return { lines: [], holds: [] };
+  const bars = quotaBars(input.quota, input.now, input.formatTime, t);
+  const fiveHour = bars[0];
+  const lines = fiveHour?.hasReading
+    ? [t("board.startQuota", { host, percent: fiveHour.percent, reset: fiveHour.reset })]
+    : [];
+  const holds = bars.some((bar) => bar.hot) ? [t("board.startQuotaHold", { host })] : [];
+  return { lines, holds };
+}
+
+/** The Start confirm's lines about the cards: the queue, the quota, the holds, the other hosts and the criteria. */
+export function startConfirmLines(
+  t: T,
+  input: {
+    workflowsFailed: boolean;
+    queueMax: number | null | undefined;
+    startable: Card[];
+    runningOnHost: number;
+    quotaLines: string[];
+    holds: string[];
+    /** The cards that would wait here, when another host could take them. */
+    waitingElsewhere: number;
+    contracts: ContractOverrides;
+  },
+): string[] {
+  const { startable, queueMax } = input;
+  const lines: string[] = input.workflowsFailed ? [t("board.workflowsUnread")] : [];
+  if (queueMax !== undefined) {
+    const split =
+      input.holds.length > 0
+        ? { now: 0, later: startable.length }
+        : queueSplit(startable.length, queueMax ?? 0, input.runningOnHost);
+    lines.push(queueLine(t, split, queueMax));
+  }
+  lines.push(...input.quotaLines, ...input.holds);
+  if (input.waitingElsewhere === 1) lines.push(t("board.startOnHintOne"));
+  else if (input.waitingElsewhere > 1) {
+    lines.push(t("board.startOnHint", { n: input.waitingElsewhere }));
+  }
+  const lacking = startable.filter((card) => startNeeds(card, input.contracts).length > 0).length;
+  if (lacking === 1) lines.push(t("board.noCriteriaOne"));
+  else if (lacking > 1) lines.push(t("board.noCriteria", { n: lacking }));
+  return lines;
+}
+
+/** The other hosts a Start that would wait can go to: asked only while the Start confirm is open and ready. */
+export function startOffers<Offer>(
+  kind: BulkKind | null,
+  ready: boolean,
+  offers: () => Offer[],
+): Offer[] {
+  return kind === "start" && ready ? offers() : [];
 }
