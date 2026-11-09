@@ -509,7 +509,7 @@ const focusAt = () => {
     text: el?.textContent ?? "",
   };
 };
-const escape = () =>
+const pressEscape = () =>
   act(async () => {
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
   });
@@ -524,7 +524,7 @@ describe("board-bulk-ui: the focus after a confirm closes (#1426)", () => {
     titleOf("C")?.focus();
     await press("s");
     await settleMaybe(() => dialog() !== null);
-    await escape();
+    await pressEscape();
     await settleMaybe(() => dialog() === null && focusAt().card === "C");
     expect([dialog() === null, focusAt().card, focusAt().open]).toEqual([true, "C", true]);
     restore();
@@ -552,7 +552,7 @@ describe("board-bulk-ui: the focus after a confirm closes (#1426)", () => {
     stop.focus();
     await click(stop);
     await settleMaybe(() => dialog() !== null);
-    await escape();
+    await pressEscape();
     await settleMaybe(() => dialog() === null && focusAt().text === "Stop 1");
     expect([dialog() === null, focusAt().text]).toEqual([true, "Stop 1"]);
     restore();
