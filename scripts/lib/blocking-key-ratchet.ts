@@ -1,7 +1,7 @@
 /** `keyFor(` or `.projectKey(`: the project key read synchronously, which spawns git when cold. */
 export const BLOCKING_KEY = /\b(?:keyFor|\.projectKey)\(/g;
 
-/** The calls in `server.ts` that reach the blocking key path. */
+/** The calls in `server.ts` and its handler modules (`src/server`) that reach the blocking key path. */
 export const SERVER_ALLOWED = 1;
 
 /** How many blocking key reads a source has. */
