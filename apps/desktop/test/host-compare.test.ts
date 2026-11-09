@@ -121,6 +121,18 @@ describe("host-compare: the majority rule", () => {
     expect(markedIds(hosts, "hooks")).toEqual(["c"]);
   });
 
+  test("missing values do not count as a vote that could tie with the real majority", () => {
+    // Two agree, one differs, two are missing: if the dashes voted they would tie the majority.
+    const hosts = [
+      facts("a", { hooks: "ok" }),
+      facts("b", { hooks: "ok" }),
+      facts("c", { hooks: "warn" }),
+      facts("d", { hooks: null }),
+      facts("e", { hooks: null }),
+    ];
+    expect(markedIds(hosts, "hooks")).toEqual(["c"]);
+  });
+
   test("one known value alone has nothing to differ from", () => {
     expect(markedIds([facts("a", { daemon: "1.4.0" }), facts("b", {})], "daemon")).toEqual([]);
     expect(markedIds([facts("a", { daemon: "1.4.0" })], "daemon")).toEqual([]);
