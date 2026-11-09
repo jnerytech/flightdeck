@@ -76,6 +76,8 @@ function fakeGh(opts: {
   logById?: Record<number, string>;
   /** Run ids whose `run view --json jobs` fails. */
   jobsFail?: number[];
+  /** The full runs' lists fail (`run list --event schedule|workflow_dispatch`). */
+  fullFail?: boolean;
 }) {
   let madeOne = false;
   const asked: string[][] = [];
@@ -93,6 +95,9 @@ function fakeGh(opts: {
     asked.push(args);
     const line = args.join(" ");
     const event = args.includes("--event") ? args[args.indexOf("--event") + 1] : undefined;
+    if (line.startsWith("run list") && event && event !== "push" && opts.fullFail) {
+      return { code: 1, stdout: "", stderr: "HTTP 502" };
+    }
     if (line.startsWith("run list") && event && event !== "push") {
       const full = event === "schedule" ? opts.schedule : opts.dispatch;
       return { code: 0, stdout: JSON.stringify(full ?? []) };
@@ -605,6 +610,42 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
       },
     });
     expect((await latestFullRun(passed))?.red).toBe(false);
+  });
+
+  test("a claim made on a red full run closes once a newer full run is green, though the push run is older", async () => {
+    const olderPush = { ...GREEN_RUN, databaseId: 71, createdAt: "2026-11-08T20:00:00Z" };
+    const newerGreen = { ...FULL_GREEN, databaseId: 52, createdAt: "2026-11-09T02:50:00Z" };
+    const fake = fakeGh({
+      runs: [olderPush],
+      schedule: [newerGreen],
+      claims: [issue(30, "fd-qa", ["deps-gate > startCard is the only door"])],
+    });
+    const shown = runAt([], fake);
+    expect(await shown.code).toBe(0);
+    expect(shown.lines).toEqual([`main is green: ${olderPush.url}`, "closed: #30 (fd-qa)"]);
+  });
+
+  test("full runs gh cannot list leave the claims open: green on the push run, and it says so", async () => {
+    const fake = fakeGh({ runs: [GREEN_RUN], fullFail: true, claims: [issue(30, "fd-qa", ["x"])] });
+    const shown = runAt([], fake);
+    expect(await shown.code).toBe(0);
+    expect(shown.lines).toEqual([
+      `main is green: ${GREEN_RUN.url} (the full runs could not be read: the claims stay open)`,
+    ]);
+    expect(fake.asked.some((a) => a[0] === "issue" && a[1] === "close")).toBe(false);
+  });
+
+  test("a dispatch whose test suite timed out or was cancelled is a full run, and red", async () => {
+    for (const conclusion of ["timed_out", "cancelled"]) {
+      const dispatched = { ...FULL_RED, databaseId: 63, createdAt: "2026-11-09T02:00:00Z" };
+      const fake = fakeGh({
+        schedule: [FULL_GREEN],
+        dispatch: [dispatched],
+        jobsById: { 63: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion }] },
+      });
+      const full = await latestFullRun(fake);
+      expect([conclusion, full?.id, full?.red]).toEqual([conclusion, 63, true]);
+    }
   });
 
   test("an age under an hour is told in minutes", async () => {
