@@ -102,4 +102,21 @@ describe("refusal-focus-ui: a refused command puts the focus on its message (#15
     await settle(() => document.activeElement === heading, 5000, "focus on the heading");
     expect(document.activeElement === heading).toBe(true);
   });
+
+  test("a refusal that holds the focus and goes away on its own (the store drops it) gives the focus to the heading", async () => {
+    const store = setup();
+    (document.activeElement as HTMLElement | null)?.blur();
+    await act(async () => {
+      await store.hostCommand("h1", "card.pr.create", { cardId: "c1" } as never, {
+        focusRefusal: true,
+      });
+    });
+    await settle(() => document.activeElement === alert(), 5000, "focus on the refusal");
+    await act(async () => {
+      for (const notice of store.getState().notices) store.dismissNotice(notice.id);
+    });
+    const heading = document.querySelector("[data-slot=page-title]");
+    await settle(() => alert() === null, 5000, "the refusal is gone");
+    expect(document.activeElement === heading).toBe(true);
+  });
 });
