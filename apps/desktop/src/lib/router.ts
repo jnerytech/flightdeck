@@ -144,6 +144,13 @@ export class Router {
     this.emit();
   }
 
+  /** Shows `route` in place of the current screen, with no new history entry (#1484). */
+  replace(route: Route): void {
+    if (JSON.stringify(route) === JSON.stringify(this.current)) return;
+    this.stack = this.stack.map((entry, i) => (i === this.index ? route : entry));
+    this.emit();
+  }
+
   back(): void {
     if (!this.canBack) return;
     this.index--;

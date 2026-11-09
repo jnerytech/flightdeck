@@ -160,6 +160,7 @@ export class HostTabs {
         return active()?.canForward ?? false;
       },
       push: (route) => this.go(route),
+      replace: (route) => active()?.replace(route),
       back: () => {
         const router = active();
         if (router?.canBack) router.back();

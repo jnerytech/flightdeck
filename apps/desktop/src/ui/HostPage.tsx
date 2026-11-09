@@ -97,6 +97,8 @@ export function HostPage(
     onRemove(): void;
     /** Issue #1484: open Settings at this panel, with the focus on its heading. */
     section?: "pause" | "keep-awake";
+    /** The section was shown, or another tab was picked first: the ask is used up. */
+    onSectionDone?(): void;
   }>,
 ) {
   const t = useT();
@@ -137,16 +139,26 @@ export function HostPage(
   const sectionShown =
     (section === "pause" && info?.pause !== undefined) ||
     (section === "keep-awake" && info?.keepAwake !== undefined);
+  // The focus moves once the Settings panel is active (a browser does not focus into a hidden
+  // one), then the ask is used up, so it never pulls the person back later.
+  const onSectionDone = props.onSectionDone;
   useEffect(() => {
-    if (!section) return;
-    setTab("settings");
-    if (!sectionShown) return;
+    if (section) setTab("settings");
+  }, [section]);
+  useEffect(() => {
+    if (!section || tab !== "settings" || !sectionShown) return;
     const heading = document.querySelector<HTMLElement>(`[data-slot="host-section-${section}"] h3`);
     if (!heading) return;
     heading.tabIndex = -1;
     heading.scrollIntoView?.({ block: "center" });
     heading.focus();
-  }, [section, sectionShown]);
+    onSectionDone?.();
+  }, [section, tab, sectionShown, onSectionDone]);
+  // Another tab picked before the section showed drops the ask too.
+  const pickTab = (value: string) => {
+    setTab(value);
+    if (section) onSectionDone?.();
+  };
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;
@@ -217,7 +229,7 @@ export function HostPage(
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={pickTab}>
           <TabsList aria-label={t("hostHome.tabs")}>
             <TabsTrigger value="overview">{t("hostHome.overview")}</TabsTrigger>
             <TabsTrigger value="usage">{t("hostHome.usage")}</TabsTrigger>
