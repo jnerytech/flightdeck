@@ -948,6 +948,14 @@ export const en: Dictionary = {
     startBudgetHold:
       "{host} reached a budget that holds new cards: they wait until its period resets.",
     startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
+    startedElsewhere: "Started on {host} as {id}.",
+    startOn: "Start on {host}",
+    startOnHint:
+      "{n} of them would wait here. Another host with the same project has the places for them:",
+    elsewhereOrphaned: "A copy is left on {host}: {names}",
+    elsewhereDoneOne: "1 card started on {host}.",
+    elsewhereDone: "{count} cards started on {host}.",
+    elsewhereUnmarked: "Not moved to Done here: {names}",
     noCriteriaOne: "1 of them has no acceptance criteria; it starts anyway.",
     noCriteria: "{n} of them have no acceptance criteria; they start anyway.",
     skipped: "skipped: {reason}",
@@ -1067,6 +1075,7 @@ export const en: Dictionary = {
     breadcrumbMore: "Show the steps in between",
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
+    skip: "Skip to content",
   },
   start: {
     title: "Nothing open",
@@ -1368,6 +1377,8 @@ export const en: Dictionary = {
   time: {
     now: "just now",
     ago: "{d} ago",
+    agoDay: "1 day ago",
+    agoDays: "{n} days ago",
     hours: "{n} h",
     minutes: "{n} min",
     seconds: "{n} s",

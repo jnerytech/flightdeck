@@ -99,6 +99,13 @@ function setup(
     cards?: object[];
     /** workflow.list fails: hostCommand answers null, as it does after raising the banner. */
     noWorkflows?: boolean;
+    /** The five-hour window's use, 0.42 by default; 0.9 and over is the host's pause limit. */
+    used?: number;
+    /**
+     * #1414: what resources.get answers on a host that offers memoryPause: its memory, its hold, and
+     * whether the hold holds now (absent: an older host that does not say).
+     */
+    memory?: { totalBytes: number; freeBytes: number; pauseAt: number | null; holding?: boolean };
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -106,7 +113,8 @@ function setup(
   });
   store.i18n.start();
   const internals = store as unknown as { update(p: object): void };
-  internals.update({ hosts: [host] });
+  const features = options.memory ? ["resources", "memoryPause"] : [];
+  internals.update({ hosts: [{ ...host, hostInfo: { daemonVersion: "x", features } }] });
   internals.update({
     cards: Object.fromEntries(
       (options.cards ?? CARDS).map((c) => [`h1/${(c as { id: string }).id}`, c]),
@@ -119,7 +127,7 @@ function setup(
           windows: [
             {
               window: "five_hour",
-              utilization: 0.42,
+              utilization: options.used ?? 0.42,
               status: "allowed",
               resetsAt: "2026-11-09T15:00:00Z",
               readAt: new Date().toISOString(),
@@ -133,6 +141,8 @@ function setup(
   if (options.budgets) internals.update({ budgets: { h1: options.budgets } });
   const commands: Call[] = [];
   const requests: Call[] = [];
+  /** The answer to resources.get, once asked: a test waits on it before it says what is missing. */
+  const read: { answer: Promise<unknown> } = { answer: Promise.resolve() };
   store.hostCommand = (async (_hostId: string, type: string, payload: unknown) => {
     commands.push([type, payload]);
     if (type === "board.get") return { project: { id: "p1", name: "api" }, cards: [] };
@@ -155,6 +165,15 @@ function setup(
   }) as never;
   store.hostRequest = (async (_hostId: string, type: string, payload: unknown) => {
     requests.push([type, payload]);
+    if (type === "resources.get" && options.memory) {
+      const { totalBytes, freeBytes, pauseAt, holding } = options.memory;
+      const data = { memory: { totalBytes, freeBytes }, memoryPauseAt: pauseAt };
+      read.answer = Promise.resolve({
+        ok: true,
+        data: holding === undefined ? data : { ...data, memoryHolding: holding },
+      });
+      return read.answer;
+    }
     const id = (payload as { cardId?: string }).cardId ?? "";
     return options.refuse?.includes(id)
       ? { ok: false, message: "the host refused" }
@@ -173,7 +192,13 @@ function setup(
       />
     </TContext.Provider>,
   );
-  return { store, commands, requests, ...ro };
+  /** Waits until the confirm has had resources.get's answer, and React has drawn it. */
+  const memoryRead = () =>
+    act(async () => {
+      await read.answer;
+      await Promise.resolve();
+    });
+  return { store, commands, requests, memoryRead, ...ro };
 }
 
 const li = (title: string) => screen.getByLabelText(`Card ${title}`);
@@ -500,6 +525,194 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
       labels.includes("Iniciar 2"),
       labels.some((label) => label?.startsWith("Parar")),
     ]).toEqual([true, true, false]);
+    restore();
+  });
+});
+
+/** Opens the Start confirm of A and B and waits for the host's limit. */
+const openStart = async (language: "en" | "pt-BR" = "en") => {
+  await ready();
+  await ctrl("A", "B");
+  const [group, start] = language === "en" ? ["Selection", "Start 2"] : ["Seleção", "Iniciar 2"];
+  await click(button(bar(group), start));
+  await settleMaybe(() => /fila|queue|agora|now/.test(dialogText()));
+};
+const asked = (requests: Call[]) => requests.some(([type]) => type === "resources.get");
+/** The queue line says a card starts now: "1 starts now", "All of them start now", "iniciam agora". */
+const startsNow = () => /\b(now|agora)\b/.test(dialogText());
+
+// #1414: what #1400 left out. The memory hold is read when the confirm opens, not only from a
+// queued card's reason, and with any hold the queue line says they all wait.
+describe("board-bulk-ui: the holds agree with the queue line (#1414)", () => {
+  test("the host's hold holds with nothing queued yet: the memory line, and they all wait", async () => {
+    const memory = { totalBytes: 100, freeBytes: 8, pauseAt: 0.9, holding: true };
+    const en = setup({ memory });
+    await openStart();
+    await en.memoryRead();
+    const english = [
+      asked(en.requests),
+      dialogText().includes("alfa is short of memory: new cards wait until it frees up."),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ];
+    en.restore();
+    cleanup();
+    const pt = setup({ language: "pt-BR", memory });
+    await openStart("pt-BR");
+    await pt.memoryRead();
+    expect([
+      ...english,
+      dialogText().includes("alfa está sem memória: os cards novos esperam ela liberar."),
+      dialogText().includes("Eles entram na fila do board."),
+      startsNow(),
+    ]).toEqual([true, true, true, false, true, true, false]);
+    pt.restore();
+  });
+
+  test("a margin under the share, the host still holds: the line follows the host, not the share", async () => {
+    const { memoryRead, restore } = setup({
+      memory: { totalBytes: 100, freeBytes: 11, pauseAt: 0.9, holding: true },
+    });
+    await openStart();
+    await memoryRead();
+    expect([dialogText().includes("alfa is short of memory"), startsNow()]).toEqual([true, false]);
+    restore();
+  });
+
+  test("over the share but the host does not hold (no reading, as on macOS): no line, the split stands", async () => {
+    const { memoryRead, restore } = setup({
+      memory: { totalBytes: 100, freeBytes: 3, pauseAt: 0.9, holding: false },
+    });
+    await openStart();
+    await memoryRead();
+    expect([dialogText().includes("memory"), startsNow()]).toEqual([false, true]);
+    restore();
+  });
+
+  test("an older host that does not say, or one without the hold: no memory line", async () => {
+    const older = setup({ memory: { totalBytes: 100, freeBytes: 3, pauseAt: 0.9 } });
+    await openStart();
+    await older.memoryRead();
+    const silent = [asked(older.requests), dialogText().includes("memory"), startsNow()];
+    older.restore();
+    cleanup();
+    const none = setup();
+    await openStart();
+    await none.memoryRead();
+    expect([...silent, asked(none.requests), dialogText().includes("memory")]).toEqual([
+      true,
+      false,
+      true,
+      false,
+      false,
+    ]);
+    none.restore();
+  });
+
+  test("the quota over its pause limit: the queue line says they all wait, in both languages", async () => {
+    const en = setup({ quota: true, used: 0.95 });
+    await openStart();
+    const english = [
+      dialogText().includes("alfa is over its pause limit"),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ];
+    en.restore();
+    cleanup();
+    const pt = setup({ language: "pt-BR", quota: true, used: 0.95 });
+    await openStart("pt-BR");
+    expect([
+      ...english,
+      dialogText().includes("alfa passou do limite de pausa"),
+      dialogText().includes("Eles entram na fila do board."),
+      startsNow(),
+    ]).toEqual([true, true, false, true, true, false]);
+    pt.restore();
+  });
+
+  test("a budget that holds: the queue line says they all wait", async () => {
+    const { restore } = setup({
+      budgets: [{ id: "b", scope: "host", projectKey: null, action: "queue", fraction: 1 }],
+    });
+    await openStart();
+    expect([
+      dialogText().includes("alfa reached a budget that holds new cards"),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ]).toEqual([true, true, false]);
+    restore();
+  });
+});
+
+/** The focused element's text and the card or bar it sits in: a check of where the focus went. */
+const focusAt = () => {
+  const el = document.activeElement as HTMLElement | null;
+  return {
+    card: el?.closest("li[data-card]")?.getAttribute("data-card") ?? null,
+    open: el?.hasAttribute("data-card-open") ?? false,
+    text: el?.textContent ?? "",
+  };
+};
+const pressEscape = () =>
+  act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  });
+
+// #1426 (round 10 of #168): closing a confirm left the focus on the page body, so a keyboard user
+// started again from the top. It goes back to where the person was.
+describe("board-bulk-ui: the focus after a confirm closes (#1426)", () => {
+  test("s on a card, then Esc: the focus is back on that card", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "C");
+    titleOf("C")?.focus();
+    await press("s");
+    await settleMaybe(() => dialog() !== null);
+    await pressEscape();
+    await settleMaybe(() => dialog() === null && focusAt().card === "C");
+    expect([dialog() === null, focusAt().card, focusAt().open]).toEqual([true, "C", true]);
+    restore();
+  });
+
+  test("the bar's Start N, then Cancel: the focus is back on Start N", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "B");
+    const start = button(bar(), "Start 2");
+    start.focus();
+    await click(start);
+    await settleMaybe(() => dialog() !== null);
+    await click(button(dialog(), "Cancel"));
+    await settleMaybe(() => dialog() === null && focusAt().text === "Start 2");
+    expect([dialog() === null, focusAt().text]).toEqual([true, "Start 2"]);
+    restore();
+  });
+
+  test("the bar's Stop N, then Esc: the focus is back on Stop N", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "D");
+    const stop = button(bar(), "Stop 1");
+    stop.focus();
+    await click(stop);
+    await settleMaybe(() => dialog() !== null);
+    await pressEscape();
+    await settleMaybe(() => dialog() === null && focusAt().text === "Stop 1");
+    expect([dialog() === null, focusAt().text]).toEqual([true, "Stop 1"]);
+    restore();
+  });
+
+  test("Discard…, then Cancel: the focus is back on Discard…", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "B");
+    const discard = button(bar(), "Discard…");
+    discard.focus();
+    await click(discard);
+    await settleMaybe(() => dialog() !== null);
+    await click(button(dialog(), "Cancel"));
+    await settleMaybe(() => dialog() === null && focusAt().text === "Discard…");
+    expect([dialog() === null, focusAt().text]).toEqual([true, "Discard…"]);
     restore();
   });
 });

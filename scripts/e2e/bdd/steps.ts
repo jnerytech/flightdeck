@@ -225,6 +225,7 @@ const made = new WeakMap<
     budgetWindow?: string;
     backupFiles?: string[];
     origin?: string;
+    cards?: string[];
   }
 >();
 const mine = (c: Context) => {
@@ -2348,4 +2349,135 @@ step(Then, "the page says the merge waits for a review", async (c) => {
     .getByRole("alert")
     .filter({ hasText: c.t("daemonRefusal.card_pr_review_required") })
     .waitFor({ timeout: WAIT });
+});
+
+// Pause new runs on a host: a started card waits, the status bar names the host, resuming releases it (issue #1404).
+const pauseSwitch = (c: Context, paused: boolean) =>
+  c.page.getByRole("button", {
+    name: dictionary(c).hostPage[paused ? "pauseTurnOff" : "pauseTurnOn"],
+    exact: true,
+  });
+
+/** The host page's Settings tab, where the pause switch is. */
+async function openHostSettings(c: Context) {
+  await open(c, { name: "host", host: ALFA });
+  await c.page
+    .getByRole("tab", { name: dictionary(c).hostHome.settings, exact: true })
+    .click({ timeout: WAIT });
+}
+
+step(Given, "new runs are not paused on host alfa", async (c) => {
+  // A scenario that failed half way may have left the host paused.
+  await openHostSettings(c);
+  await pauseSwitch(c, false).or(pauseSwitch(c, true)).waitFor({ timeout: WAIT });
+  if ((await pauseSwitch(c, true).count()) > 0) await pauseSwitch(c, true).click();
+  await pauseSwitch(c, false).waitFor({ timeout: WAIT });
+});
+
+step(When, "I pause new runs on host alfa", async (c) => {
+  await openHostSettings(c);
+  await pauseSwitch(c, false).click({ timeout: WAIT });
+  await pauseSwitch(c, true).waitFor({ timeout: WAIT });
+});
+
+step(When, "I resume new runs on host alfa", async (c) => {
+  await openHostSettings(c);
+  await pauseSwitch(c, true).click({ timeout: WAIT });
+  await pauseSwitch(c, false).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card says it waits because the host is paused", async (c) => {
+  await openOwnBoard(c);
+  await tile(c).getByText(c.t("kanban.waitingPaused"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the status bar names host alfa as paused", async (c) => {
+  const text = dictionary(c).statusBar.paused;
+  const named = (template: string) =>
+    c.page.getByRole("button", { name: pattern(template.replace("{host}", "alfa")) });
+  await named(text.running).or(named(text.idle)).first().waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card starts and no longer waits for the pause", async (c) => {
+  await openOwnBoard(c);
+  await tile(c)
+    .getByText(c.t("kanban.waitingPaused"), { exact: true })
+    .waitFor({ state: "detached", timeout: SESSION_WAIT });
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+});
+
+// Conflict radar: cards of one project that change the same file flag each other (issue #1405).
+/** The file the fake Claude's first commit writes in every card's folder. */
+const SHARED_FILE = "fake-1.txt";
+const tileOf = (c: Context, title: string) =>
+  c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+
+step(When, "I start two cards of my own on that project that each commit a file", async (c) => {
+  const titles: string[] = [];
+  for (const n of [1, 2]) {
+    const title = unique(c, `bdd card ${n}`);
+    titles.push(title);
+    await openOwnBoard(c);
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    // The fake Claude commits a file when the description says [commit]: the same name in each card.
+    await c.page.getByLabel(c.t("kanban.descriptionLabel"), { exact: true }).fill("[commit]");
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    await tileOf(c, title).locator("[data-card-open]").click({ timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+    // Its run is over (changes to review, or the PR to open) before the next card starts.
+    await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+  }
+  mine(c).cards = titles;
+  mine(c).card = titles[0] ?? "";
+});
+
+const badgeOf = (c: Context, other: string) =>
+  dictionary(c).conflictRadar.badgeOne.replace("{title}", other);
+
+step(Then, "each card on the board says it may conflict with the other", async (c) => {
+  const [first = "", second = ""] = mine(c).cards ?? [];
+  await openOwnBoard(c);
+  await tileOf(c, first)
+    .getByText(badgeOf(c, second), { exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+  await tileOf(c, second)
+    .getByText(badgeOf(c, first), { exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the first card lists the other card and the file the two share", async (c) => {
+  const [first = "", second = ""] = mine(c).cards ?? [];
+  await tileOf(c, first).locator("[data-card-open]").click({ timeout: WAIT });
+  const section = c.page.getByRole("region", {
+    name: dictionary(c).conflictRadar.title,
+    exact: true,
+  });
+  await section.getByText(second, { exact: true }).waitFor({ timeout: WAIT });
+  await section.getByText(SHARED_FILE, { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(When, "I open the pull request of the first card", async (c) => {
+  const [first = ""] = mine(c).cards ?? [];
+  await openOwnBoard(c);
+  await tileOf(c, first).locator("[data-card-open]").click({ timeout: WAIT });
+  await c.page
+    .getByRole("button", { name: c.t("cardUi.openPr"), exact: true })
+    .click({ timeout: SESSION_WAIT });
+  // The PR text is shown first: the person opens the PR with it.
+  await c.page
+    .getByRole("dialog")
+    .getByRole("button", { name: c.t("watchUi.confirm"), exact: true })
+    .click({ timeout: WAIT });
+});
+
+step(When, "I ask to merge the first card's pull request", async (c) => {
+  await mergeButton(c).click({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the confirm says the other card changes the same files", async (c) => {
+  const [, second = ""] = mine(c).cards ?? [];
+  const line = dictionary(c).conflictRadar.mergeLine.replace("{titles}", second);
+  await c.page.getByRole("alertdialog").getByText(line, { exact: true }).waitFor({ timeout: WAIT });
 });

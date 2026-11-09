@@ -17,11 +17,20 @@ function fake(name: string, rules: FakeRule[]): FakeCli {
   return cli;
 }
 
-/** Counts the processes started from here on. */
-function spawns(): { count(): number } {
+/**
+ * Counts the `name` processes (gh or az, the fake's path or the real one) started from here on,
+ * wherever they run. The spy sees every `Bun.spawn` of the process, and on CI this file runs after
+ * hundreds of others whose background work may still start git or bun: those are not the provider's.
+ */
+function spawns(name: "gh" | "az"): { count(): number } {
   const spy = spyOn(Bun, "spawn");
   cleanups.push(() => spy.mockRestore());
-  return { count: () => spy.mock.calls.length };
+  const program = (cmd: unknown) =>
+    String(Array.isArray(cmd) ? cmd[0] : cmd)
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.cmd$/, "");
+  return { count: () => spy.mock.calls.filter(([cmd]) => program(cmd) === name).length };
 }
 
 describe("pr-runner: a provider given a command runner starts no process", () => {
@@ -44,7 +53,7 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
       },
     });
     const cwd = tempDir();
-    const started = spawns();
+    const started = spawns("az");
     const url = await provider.create({
       cwd,
       base: "main",
@@ -80,7 +89,7 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
     ]);
     const provider = new GithubCli({ run: gh.run });
     const cwd = tempDir();
-    const started = spawns();
+    const started = spawns("gh");
     const url = await provider.create({ cwd, base: "main", head: "fd/x", title: "t", body: "b" });
     expect(url).toBe(GH_URL);
     expect(await provider.status({ cwd, url })).toEqual({
@@ -117,9 +126,10 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
       { args: ["pr", "show"], stdout: JSON.stringify({ status: "completed" }) },
       { args: ["policy", "list"], stdout: "[]" },
     ]);
-    const started = spawns();
+    const cwd = tempDir();
+    const started = spawns("az");
     const status = await new AzureDevOpsCli().status({
-      cwd: tempDir(),
+      cwd,
       url: `${AZ_WEB}/pullrequest/3`,
     });
     expect(status).toEqual({
@@ -140,8 +150,9 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
         stdout: JSON.stringify({ state: "MERGED" }),
       },
     ]);
-    const started = spawns();
-    const status = await new GithubCli().status({ cwd: tempDir(), url: GH_URL });
+    const cwd = tempDir();
+    const started = spawns("gh");
+    const status = await new GithubCli().status({ cwd, url: GH_URL });
     expect(status).toEqual({
       state: "merged",
       checks: null,

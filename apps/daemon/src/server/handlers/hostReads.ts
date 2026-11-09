@@ -25,8 +25,11 @@ export const hostReadsHandlers = {
   "resources.get": async (_payload, { server }) => {
     const snapshot = await server.need("resources").snapshot();
     // Issue #1343: the memory hold's threshold travels with the reading the panel shows.
+    // Issue #1414: and whether it holds now, by the gate's own rule, so the app need not guess.
     const pause = server.opts.memoryPause;
-    return pause ? { ...snapshot, memoryPauseAt: pause.pauseAt() } : snapshot;
+    if (!pause) return snapshot;
+    const holding = pause.holding ? { memoryHolding: pause.holding() } : {};
+    return { ...snapshot, memoryPauseAt: pause.pauseAt(), ...holding };
   },
   "names.list": (_payload, { server }) => {
     return {

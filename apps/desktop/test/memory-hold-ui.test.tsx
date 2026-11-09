@@ -68,16 +68,18 @@ const hostRow = (features: string[]) => ({
   sessions: [],
 });
 
-function board(language: "en" | "pt-BR") {
+function board(language: "en" | "pt-BR", over: object = {}) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   (store as unknown as { update(p: object): void }).update({
     hosts: [hostRow([])],
     projects: { h1: [{ id: "p1", name: "api", path: "/x/api" }] },
-    cards: { "h1/c1": card() },
+    cards: { "h1/c1": card(over) },
   });
   store.hostCommand = (async (_hostId: string, type: string) =>
-    type === "board.get" ? { project: { id: "p1", name: "api" }, cards: [card()] } : {}) as never;
+    type === "board.get"
+      ? { project: { id: "p1", name: "api" }, cards: [card(over)] }
+      : {}) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
       <BoardView
@@ -139,6 +141,28 @@ describe("memory hold on the board and the host (#1343)", () => {
     board("pt-BR");
     await settleMaybe(() => screen.queryByText("aguardando memória") !== null);
     expect(screen.queryByText("aguardando memória")).not.toBeNull();
+  });
+
+  // Issue #1429: "waiting for memory" already says the card is queued, and why.
+  test("a card waiting for memory shows one badge, the reason, and a card waiting for a slot still says queued", async () => {
+    const shown = async (language: "en" | "pt-BR", over: object, texts: string[]) => {
+      board(language, over);
+      await settleMaybe(() => screen.queryByText(texts[0] ?? "") !== null);
+      const seen = texts.map((text) => screen.queryByText(text) !== null);
+      cleanup();
+      return seen;
+    };
+    expect([
+      await shown("en", {}, ["waiting for memory", "queued"]),
+      await shown("pt-BR", {}, ["aguardando memória", "na fila"]),
+      await shown("en", { queueReason: "slot" }, ["queued", "waiting for memory"]),
+      await shown("pt-BR", { queueReason: "slot" }, ["na fila", "aguardando memória"]),
+    ]).toEqual([
+      [true, false],
+      [true, false],
+      [true, false],
+      [true, false],
+    ]);
   });
 
   test("the Resources panel sets the share from which new cards wait, and Never turns it off", async () => {
