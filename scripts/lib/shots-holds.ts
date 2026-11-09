@@ -51,7 +51,7 @@ export function holdsRewriter(used = 0.95, pauseAt = 0.9): FrameRewriter {
         totalBytes: total,
         freeBytes: Math.round(total * (1 - used)),
       };
-      return { ...data, memory, memoryPauseAt: pauseAt };
+      return { ...data, memory, memoryPauseAt: pauseAt, memoryHolding: true };
     },
     "budget.list": (data) => ({ ...data, budgets: [...(data.budgets ?? []), holding] }),
   };

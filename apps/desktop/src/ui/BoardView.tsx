@@ -78,14 +78,7 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
-import {
-  bulkSplit,
-  holdLines,
-  memoryShare,
-  queueLine,
-  queueSplit,
-  runMany,
-} from "../lib/board-bulk.ts";
+import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
 import {
   askAbout,
   dragNeeds,
@@ -673,12 +666,15 @@ export const BoardView = memo(function BoardView(props: {
     // fails open: a host that does not answer gets no line, and Start does not wait for it.
     const features = state.hosts.find((h) => h.id === hostId)?.hostInfo?.features;
     if (hasFeature(features, "memoryPause", false)) {
-      void store.hostRequest(hostId, "resources.get", {}).then((answer) => {
-        if (asked !== startAsked.current || !answer.ok) return;
-        const used = memoryShare(answer.data.memory);
-        const pauseAt = answer.data.memoryPauseAt;
-        setMemoryOver(typeof pauseAt === "number" && used !== null && used >= pauseAt);
-      });
+      // The host's own verdict (#1418's review): the share alone is wrong a margin under the hold,
+      // and on a host with no reading (macOS). An older host that does not say gets no line.
+      void store
+        .hostRequest(hostId, "resources.get", {})
+        .then((answer) => {
+          if (asked !== startAsked.current || !answer.ok) return;
+          setMemoryOver(answer.data.memoryHolding === true);
+        })
+        .catch(() => {});
     }
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
       if (asked !== startAsked.current) return;

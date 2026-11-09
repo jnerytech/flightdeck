@@ -58,15 +58,6 @@ export type CardRequest = (
   | { ok: false; message: string; reason?: string; params?: Record<string, string | number> }
 >;
 
-/** The share of memory in use, as the host's memory hold reads it (to a tenth of a percent). */
-export function memoryShare(memory: { totalBytes?: number; freeBytes?: number } | undefined) {
-  const total = memory?.totalBytes;
-  const free = memory?.freeBytes;
-  if (typeof total !== "number" || typeof free !== "number") return null;
-  if (!(total > 0) || free < 0 || free > total) return null;
-  return Math.round(((total - free) / total) * 1000) / 1000;
-}
-
 /** Runs `request` for each card, one after the other; the refused ones come back named. */
 export async function runMany(cards: Card[], request: CardRequest): Promise<BulkRefusal[]> {
   const refused: BulkRefusal[] = [];
@@ -80,7 +71,7 @@ export async function runMany(cards: Card[], request: CardRequest): Promise<Bulk
 /**
  * The Start confirm's lines about what keeps new cards waiting on the host (#1393): a budget that
  * holds new cards and is at its limit, and the host's own memory hold. The memory hold comes from the
- * host's reading when the confirm opened (`memoryOver`, #1414) or a queued card's reason, since the
+ * host's own verdict when the confirm opened (`memoryOver`, #1414) or a queued card's reason, since the
  * host goes on holding a margin under its share. A hold the host does not report adds no line.
  */
 export function holdLines(

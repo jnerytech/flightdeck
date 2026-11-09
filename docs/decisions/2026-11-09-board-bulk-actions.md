@@ -110,7 +110,7 @@ confirm, only the column contract's question (#78).
 | Running now | the board's cards (running or queued) | as above |
 | Quota | `state.quota[hostId]`, only when `onSubscription` holds | no quota line (a host on an API key) |
 | A budget holds new cards | the host's budgets with "hold new cards" at or over the limit | no line |
-| Short of memory (#1343, #1414) | `resources.get` when the confirm opens (used share to a tenth of a percent, at or over `memoryPauseAt`), or a card of the board queued with `queueReason: "memory"`, since the host goes on holding a margin under the share | no line: it fails open, and Start does not wait for it |
+| Short of memory (#1343, #1414) | `resources.get`'s `memoryHolding` when the confirm opens: the host's gate says whether it holds now (its release margin, and never on a host with no reading, as on macOS, which counts its cache as used), asked without changing the gate; or a card of the board queued with `queueReason: "memory"` | no line: an older host that does not say, or no answer. It fails open, and Start does not wait for it |
 
 With any hold (the quota's pause limit, a budget, memory) the queue line says they all join the queue,
 never "N start now": the host keeps every new card waiting (#1414).

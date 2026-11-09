@@ -305,6 +305,11 @@ function shots(ids: DemoIds): Shot[] {
           .getByText(/(memory|memória)/)
           .first()
           .waitFor();
+        await page
+          .locator('[role="alertdialog"]')
+          .getByText(/(budget|orçamento)/)
+          .first()
+          .waitFor();
         await page.waitForTimeout(400);
       },
     },
