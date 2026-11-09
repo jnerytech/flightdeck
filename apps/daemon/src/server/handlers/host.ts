@@ -13,6 +13,9 @@ export const hostHandlers = {
     await server.need("memoryPause").set(payload.pauseAt);
     return { pauseAt: payload.pauseAt };
   },
+  "host.pause": (_payload, _call) => {
+    return { paused: false, running: 0 };
+  },
   "host.sleep": async (payload, { server }) => {
     const { sleep } = server.opts;
     if (!sleep) throw featureOff("sleep");

@@ -18,6 +18,7 @@ import {
   type HarnessDraft,
   type HarnessPreview,
   type HarnessStack,
+  type HostPauseStatus,
   type HostRuntime,
   type KeepAwakeStatus,
   type KnowledgeEntry,
@@ -169,6 +170,8 @@ export interface ServerOptions {
   sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
+  /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
+  hostPause?: { status(): HostPauseStatus; set(paused: boolean): void | Promise<void> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
   /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
   peerOf?: (

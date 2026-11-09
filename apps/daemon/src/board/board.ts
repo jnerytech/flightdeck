@@ -148,6 +148,8 @@ export interface BoardOptions {
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
   /** Issue #1343: while the host's memory is at or above `resources.pauseAt`, new cards wait. */
   memory?: { blocked(): unknown; watch(listener: () => void): () => void };
+  /** Issue #1404: while the person has paused new runs on the host, new cards wait. */
+  pause?: { blocked(): unknown; watch(listener: () => void): () => void };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
   /** Phase 22: refuses a PR description that carries a secret. */

@@ -24,6 +24,7 @@ import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
+import { HostPause } from "./board/host-pause.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -863,6 +864,8 @@ export async function startDaemon(
         ? () => null
         : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
   });
+  // Issue #1404: the person's pause of new card runs, kept in the config.
+  const hostPause = new HostPause(config.pauseNewRuns);
   const quotaHistory = new QuotaHistory({ db: store.db });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
@@ -1035,6 +1038,7 @@ export async function startDaemon(
     manager,
     quota,
     memory: memoryGate,
+    pause: hostPause,
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
     scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
@@ -1495,6 +1499,10 @@ export async function startDaemon(
           sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
         }));
       },
+    },
+    hostPause: {
+      status: () => ({ paused: hostPause.paused(), running: manager.activeSessionCount() }),
+      set: async (_paused) => {},
     },
     memoryPause: {
       pauseAt: () => memoryGate.pauseAt(),
