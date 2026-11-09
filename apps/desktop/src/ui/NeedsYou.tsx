@@ -207,13 +207,19 @@ function QuietDetail(
         </Button>
         <ActionButton
           variant="outline"
-          onClick={() => store.interruptSession(alert.hostId, alert.sessionId)}
+          onClick={() => {
+            props.onActed();
+            return store.interruptSession(alert.hostId, alert.sessionId);
+          }}
         >
           {t("needsYou.quietInterrupt")}
         </ActionButton>
         <ActionButton
           variant="outline"
-          onClick={() => store.sendTo(alert.hostId, alert.sessionId, CONTINUATION)}
+          onClick={() => {
+            props.onActed();
+            return store.sendTo(alert.hostId, alert.sessionId, CONTINUATION);
+          }}
         >
           {t("needsYou.quietContinue")}
         </ActionButton>
@@ -413,7 +419,7 @@ export function NeedsYou(
     dismissedHere.current = false;
     (listRef.current?.querySelector<HTMLElement>("button") ?? titleRef.current)?.focus();
   });
-  // Snoozing a quiet session removes the button that had the focus: it goes to the first row or the heading.
+  // Acting on a quiet session can remove the button that had the focus (snooze, or the host clearing the mark): it goes to the first row or the heading.
   const quietActed = useRef(false);
   useEffect(() => {
     if (!quietActed.current || chosen?.kind === "quiet") return;
