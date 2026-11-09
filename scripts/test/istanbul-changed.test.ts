@@ -1,9 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { type IstanbulChangedDeps, istanbulChanged } from "../lib/istanbul-changed.ts";
 import { shardRun } from "../lib/shard-gate.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const OUT = "/tmp/istanbul-out";
@@ -104,7 +103,7 @@ describe("istanbul-changed (#1493)", () => {
 
   test("the istanbul command fails a test that runs an instrumented function's source alone", async () => {
     // A real run of the fixture under the istanbul shard's command, with its source instrumented.
-    const out = mkdtempSync(join(tmpdir(), "istanbul-changed-"));
+    const out = realTempDir("istanbul-changed-");
     const dir = "scripts/test/fixtures/istanbul-serialize";
     const plan = shardRun("istanbul", [`${dir}/serialized.fixture.ts`], out, [
       `${dir}/serialized.ts`,
