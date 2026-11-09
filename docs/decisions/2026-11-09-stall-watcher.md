@@ -29,8 +29,8 @@ watcher, like `hostPause`. An older app ignores the fields; an older daemon neve
 ## The app
 
 - A *Quiet* row in Needs you after the requests, with **Open**, **Interrupt**, **Send "continue"** and
-  **Not stuck, snooze 1 h**. Snoozing is kept in memory only: a restart shows the row again, which is the
-  safe side.
+  **Not stuck, snooze 1 h**. Snoozing was kept in memory only at first; since #1554 it is kept in the app's
+  storage until its time (the first version showed the row again after a restart), and a toast says when it comes back.
 - One system notification when the summary first carries `quietSince` (the existing `needs-you` kind, so
   the person's notification settings apply), never for the first summary seen after a connect and never
   with the app in focus. The event stream clears the quiet state at once, so a later stall is a new one.

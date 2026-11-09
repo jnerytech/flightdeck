@@ -30,6 +30,7 @@ import { ColumnHandle } from "@/components/board/column-handle";
 import { ColumnSwitcher } from "@/components/board/column-switcher";
 import { ContractDialog } from "@/components/board/contract-dialog";
 import { NeedsBadge, needsText } from "@/components/board/needs-badge";
+import { QuietBadge } from "@/components/board/quiet-badge";
 import { RadarBadge } from "@/components/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -63,6 +64,7 @@ import { startPersonaOf, startWorkflowOf } from "../components/board/card-templa
 import { DeleteCardDialog } from "../components/board/delete-card-dialog.tsx";
 import { NewCardDialog } from "../components/board/new-card-dialog.tsx";
 import { useSuggestedPersona } from "../components/personas/persona-picker.tsx";
+import { formatDuration } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import {
@@ -110,6 +112,7 @@ import { cardStartBlock } from "../lib/card-start-block.ts";
 import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter, worktreeOfProject } from "../lib/project-tree.ts";
+import { quietAlerts, quietText } from "../lib/quiet.ts";
 import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
@@ -180,6 +183,8 @@ function CardTile(
     onStartSelection(): void;
     /** What the project's columns ask of a card (issue #78). */
     contracts: ContractOverrides;
+    /** #1553: the card's session says nothing: the badge's words, and its full status line. */
+    quiet: { short: string; full: string } | null;
     /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
     onToggleSelect(): void;
     onRangeSelect(): void;
@@ -336,6 +341,7 @@ function CardTile(
           </Badge>
         )}
         {radar && <RadarBadge text={radar} />}
+        {props.quiet && <QuietBadge short={props.quiet.short} full={props.quiet.full} />}
         {card.queueReason === "memory" && (
           <Badge variant="outline" className="text-status-needs-you">
             {t("kanban.waitingMemory")}
@@ -397,6 +403,9 @@ const BOARDVIEW_KEYS = [
   "account",
   "personas",
   "budgets",
+  "meta",
+  "names",
+  "quietSnooze",
 ] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
@@ -880,6 +889,17 @@ export const BoardView = memo(function BoardView(props: {
     setPicked(rangeSelection(order, anchor.current, card.id, selection));
     anchor.current = card.id;
   };
+  /** #1553: the cards whose session says nothing, by session, with the badge's words. */
+  const nowMs = store.now();
+  const quietBySession = new Map(quietAlerts(state, nowMs, t).map((alert) => [alert.key, alert]));
+  const quietOf = (card: Card) => {
+    const alert = card.sessionId
+      ? quietBySession.get(sessionKey(hostId, card.sessionId))
+      : undefined;
+    if (!alert) return null;
+    const span = formatDuration(Math.max(0, nowMs - Date.parse(alert.since)), t);
+    return { short: t("activityBoard.quiet", { span }), full: quietText(alert, nowMs, t) };
+  };
   const titlesOf = (ids: string[]) =>
     ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 
@@ -1234,6 +1254,7 @@ export const BoardView = memo(function BoardView(props: {
                           key={card.id}
                           card={card}
                           contracts={contracts}
+                          quiet={quietOf(card)}
                           workflow={
                             card.workflowRunId
                               ? state.runs[sessionKey(hostId, card.workflowRunId)]?.workflowName

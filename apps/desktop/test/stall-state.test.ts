@@ -187,3 +187,55 @@ describe("stall-state: Not stuck, and the ways on", () => {
     expect(sent).toEqual([["session.interrupt", { sessionId: "s1" }]]);
   });
 });
+
+describe("stall-state: the snooze says until when, and survives a reload (#1554)", () => {
+  const platform = () => memoryPlatform(false, "en").platform;
+  const later = (minutes: number) => new Date(NOW + minutes * MIN).toISOString();
+
+  test("Not stuck says when the row comes back", () => {
+    const store = new AppStore(platform(), { now: () => NOW });
+    store.i18n.start();
+    store.snoozeQuiet("h", "s1");
+    const hour = store.formatTime(later(60));
+    expect(store.getState().notices.map((notice) => notice.text)).toEqual([
+      `Hidden until ${hour}.`,
+    ]);
+    const pt = new AppStore(memoryPlatform(false, "pt-BR").platform, { now: () => NOW });
+    pt.i18n.start();
+    pt.snoozeQuiet("h", "s1");
+    expect(pt.getState().notices.map((notice) => notice.text)).toEqual([
+      `Oculta até ${pt.formatTime(later(60))}.`,
+    ]);
+  });
+
+  test("a snooze is kept until its time: a new app start sees it, a later one does not", () => {
+    const shared = platform();
+    const first = new AppStore(shared, { now: () => NOW });
+    first.snoozeQuiet("h", "s1");
+    first.snoozeQuiet("h", "s2");
+    const reloaded = new AppStore(shared, { now: () => NOW + 10 * MIN });
+    expect(reloaded.getState().quietSnooze).toEqual({
+      "h/s1": NOW + 60 * MIN,
+      "h/s2": NOW + 60 * MIN,
+    });
+    const muchLater = new AppStore(shared, { now: () => NOW + 61 * MIN });
+    expect(muchLater.getState().quietSnooze).toEqual({});
+  });
+
+  test("what was stored and is no longer a snooze is ignored", () => {
+    const shared = platform();
+    for (const stored of ["not json", "[]", '{"h/s1":"soon","h/s2":null,"h/s3":-1}', "42"]) {
+      shared.storage.setItem("flightdeck.quietSnooze", stored);
+      const store = new AppStore(shared, { now: () => NOW });
+      expect(store.getState().quietSnooze).toEqual({});
+    }
+    // A readable entry beside the broken ones is kept.
+    shared.storage.setItem(
+      "flightdeck.quietSnooze",
+      JSON.stringify({ "h/s1": NOW + 5 * MIN, "h/s2": "soon" }),
+    );
+    expect(new AppStore(shared, { now: () => NOW }).getState().quietSnooze).toEqual({
+      "h/s1": NOW + 5 * MIN,
+    });
+  });
+});

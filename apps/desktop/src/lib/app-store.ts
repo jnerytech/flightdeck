@@ -175,6 +175,7 @@ import { basename, isInside } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
+import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { QuotaNotices } from "./quota-notices.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
@@ -1169,7 +1170,7 @@ export class AppStore {
       personas: {},
       background: {},
       loopAlerts: [],
-      quietSnooze: {},
+      quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
       watches: {},
       names: {},
       askpass: [],
@@ -4936,12 +4937,16 @@ export class AppStore {
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {
-    this.update({
-      quietSnooze: {
-        ...this.state.quietSnooze,
-        [sessionKey(hostId, sessionId)]: this.now() + QUIET_SNOOZE_MS,
-      },
-    });
+    const until = this.now() + QUIET_SNOOZE_MS;
+    const quietSnooze = { ...this.state.quietSnooze, [sessionKey(hostId, sessionId)]: until };
+    this.update({ quietSnooze });
+    saveQuietSnooze(this.platform.storage, quietSnooze);
+    // The row is gone from the list: say when it comes back (#1554).
+    this.success(
+      this.i18n.t("needsYou.quietSnoozed", {
+        time: this.formatTime(new Date(until).toISOString()),
+      }),
+    );
   }
 
   /** Issue #1478: interrupts any session of a host, open or not. */

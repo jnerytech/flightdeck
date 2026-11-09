@@ -1191,9 +1191,10 @@ export const en: Dictionary = {
     quietBody:
       "It is still marked as running but has produced nothing for a while. A long build can be quiet too.",
     quietOpen: "Open",
-    quietInterrupt: "Interrupt",
+    quietInterrupt: "Stop the turn",
     quietContinue: "Send “continue”",
     quietSnooze: "Not stuck, snooze 1 h",
+    quietSnoozed: "Hidden until {time}.",
     quietLast: "{quiet} · last: {tool}",
     finishedFilesOne: "1 file changed",
     finishedFilesMany: "{n} files changed",
