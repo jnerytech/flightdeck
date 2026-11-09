@@ -58,8 +58,8 @@ board, from the watch's parts. No new trust model and no new command language.
    still apply to every round.
 9. **The loop and the person are told apart by where the input comes in, not by its text.**
    - **The person's input** is every protocol command that writes into the card's session:
-     `card.message`, `card.start`, `session.send` and `session.interrupt` on that session's id,
-     and an answer to its permission or question. Each handler tells the board through
+     `card.message`, `card.start`, and `session.send`, `session.interrupt` and
+     `permission.respond` on that session's id. Each handler tells the board through
      `board.personTurn(cardId)`, which aborts the loop and resets its counter.
    - **The loop's round** is sent by the board itself through an internal call that writes the
      same text into the session (`manager.send`). It never goes through those handlers. The board
