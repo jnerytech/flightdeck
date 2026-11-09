@@ -265,11 +265,24 @@ describe("host-compare-ui: the table", () => {
     expect(screen.queryAllByText(/Differs from most hosts/).length).toBe(0);
   });
 
+  test("in a tied daemon row only the older host has a Fix button, and the newest has none", async () => {
+    const { store } = mount([
+      { id: "alfa", daemon: "1.4.0" },
+      { id: "beta", daemon: "1.3.0" },
+    ]);
+    await open();
+    expect(await answered(store, 2)).toBe(true);
+    expect(screen.queryByRole("button", { name: "Fix on alfa" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Fix on beta" }) !== null).toBe(true);
+    expect(screen.queryAllByRole("button", { name: /^Fix on / }).length).toBe(1);
+  });
+
   test("two hosts that match say nothing in any row", async () => {
     const { store } = mount([{ id: "alfa" }, { id: "beta" }]);
     await open();
     expect(await answered(store, 2)).toBe(true);
     expect(cells("Daemon version")).toEqual(["1.4.0", "1.4.0"]);
+    expect(table()).not.toBeNull();
     expect(table()?.textContent).not.toContain("Differs");
   });
 

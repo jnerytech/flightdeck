@@ -156,7 +156,11 @@ function Cell(
             : t("hostCompare.differs", { value: shown(row.field, row.majority ?? cell.value, t) })}
         </span>
       )}
-      {fix && hasFix(row.field, cell.value) && (
+      {fix && hasFix(
+          row.field,
+          cell.value,
+          row.cells.map((c) => c.value),
+        ) && (
         <Button variant="link" size="sm" onClick={fix}>
           {t("hostCompare.fix", { host })}
         </Button>

@@ -312,23 +312,37 @@ describe("host-compare: what a host reports for each field", () => {
 describe("host-compare: which marked cells have a fix to link to", () => {
   test("a lacking hook, sign-in, tool or boot service links to the fix the host's page already has", () => {
     for (const field of ["hooks", "signin", "gh", "az", "boot"] as const) {
-      expect(hasFix(field, "missing")).toBe(true);
-      expect(hasFix(field, "outdated")).toBe(true);
-      expect(hasFix(field, "ok")).toBe(false);
-      expect(hasFix(field, "na")).toBe(false);
+      expect(hasFix(field, "missing", ["missing", "ok"])).toBe(true);
+      expect(hasFix(field, "outdated", ["outdated", "ok"])).toBe(true);
+      expect(hasFix(field, "ok", ["ok", "missing"])).toBe(false);
+      expect(hasFix(field, "na", ["na", "ok"])).toBe(false);
     }
   });
 
   test("an older daemon links to its update, and what the app has no fix for does not link", () => {
-    expect(hasFix("daemon", "1.3.0")).toBe(true);
+    expect(hasFix("daemon", "1.3.0", ["1.4.0", "1.3.0"])).toBe(true);
     for (const field of ["os", "claude", "features"] as const) {
-      expect(hasFix(field, "missing")).toBe(false);
+      expect(hasFix(field, "missing", ["missing", "ok"])).toBe(false);
     }
   });
 
+  test("the newest daemon has nothing to update, whether the row is tied or has a majority", () => {
+    expect(hasFix("daemon", "1.4.0", ["1.4.0", "1.3.0"])).toBe(false);
+    expect(hasFix("daemon", "1.4.0", ["1.4.0", "1.3.0", "1.3.0"])).toBe(false);
+    expect(hasFix("daemon", "1.3.0", ["1.4.0", "1.3.0", "1.3.0"])).toBe(true);
+    expect(hasFix("daemon", "1.10.0", ["1.10.0", "1.9.0"])).toBe(false);
+    expect(hasFix("daemon", "1.9.0", ["1.10.0", "1.9.0"])).toBe(true);
+  });
+
+  test("a daemon before a release of the same number is older, and an unreported one does not count", () => {
+    expect(hasFix("daemon", "1.4.0-rc.1", ["1.4.0", "1.4.0-rc.1"])).toBe(true);
+    expect(hasFix("daemon", "1.4.0", ["1.4.0", "1.4.0-rc.1"])).toBe(false);
+    expect(hasFix("daemon", "1.3.0", ["1.3.0", null])).toBe(false);
+  });
+
   test("a value the host does not report has nothing to fix", () => {
-    expect(hasFix("hooks", null)).toBe(false);
-    expect(hasFix("daemon", null)).toBe(false);
+    expect(hasFix("hooks", null, [null, "ok"])).toBe(false);
+    expect(hasFix("daemon", null, ["1.4.0", null])).toBe(false);
   });
 });
 
@@ -408,6 +422,18 @@ describe("host-compare: which features differ", () => {
     expect(markedIds(hosts, "features")).toEqual(["h0", "h1", "h2", "h3"]);
     expect(featureDiffTied(big, values)).toEqual({ missing: [], extra: ["stall"] });
     expect(featureDiffTied(small, values)).toEqual({ missing: ["stall"], extra: [] });
+  });
+
+  test("in a 3-way tie of distinct sets, a host lacks what any other has and adds what none shares", () => {
+    const a = set("doctor.run", "stall");
+    const b = set("doctor.run", "quota");
+    const c = set("doctor.run");
+    const values = [a, b, c];
+    const hosts = values.map((v, i) => facts(`h${i}`, { features: v }));
+    expect(markedIds(hosts, "features")).toEqual(["h0", "h1", "h2"]);
+    expect(featureDiffTied(a, values)).toEqual({ missing: ["quota"], extra: ["stall"] });
+    expect(featureDiffTied(b, values)).toEqual({ missing: ["stall"], extra: ["quota"] });
+    expect(featureDiffTied(c, values)).toEqual({ missing: ["quota", "stall"], extra: [] });
   });
 
   test("a host that does not report is not named, and does not count as lacking anything", () => {

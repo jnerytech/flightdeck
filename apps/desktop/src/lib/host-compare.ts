@@ -161,7 +161,11 @@ const FIXED_WHEN_LACKING: ReadonlySet<CompareField> = new Set([
  * has its install, sign-in or turn-on there, and an older daemon has its update. The OS, the Claude
  * Code version and the features have none.
  */
-export function hasFix(field: CompareField, value: string | null): boolean {
+export function hasFix(
+  field: CompareField,
+  value: string | null,
+  _row: ReadonlyArray<string | null>,
+): boolean {
   if (value === null) return false;
   if (field === "daemon") return true;
   return FIXED_WHEN_LACKING.has(field) && (value === "missing" || value === "outdated");
