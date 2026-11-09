@@ -88,7 +88,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   for `--tests` and by the script for the tests it picks, with the same override. The script refuses
   for every session, the coordinator too (#725): its environment is the command's, which a worker can set.
 - Sonar: SonarCloud analyses each PR and each full run of main, never a main push (#283, #296);
-  there is no local copy to run before a push. `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
+  `bun run sonar-left` lists the open findings, `STALE?` where main changed since (#1477). `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
   positive there. `sonar-project.properties` keeps SonarCloud's coverage on exactly the files of
   the coverage gate (`sonar-coverage.test.ts`).
 - Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`

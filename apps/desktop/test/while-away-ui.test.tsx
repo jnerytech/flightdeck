@@ -161,7 +161,7 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
       "ship",
       "5 hours 40%",
     ]) {
-      expect(text.includes(part)).toBe(true);
+      expect(text).toContain(part);
     }
     // The page still says nothing waits, below the summary.
     expect(document.body.textContent).toContain("Nothing is waiting for you.");

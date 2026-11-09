@@ -8,6 +8,7 @@ import { CardMergePr } from "@/components/card/card-merge-pr";
 import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
+import { CheckLoopPanel } from "@/components/card/check-loop-panel";
 import { PostMortem } from "@/components/card/post-mortem";
 import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -286,7 +287,7 @@ export const CardDetail = memo(function CardDetail(props: {
               library={has("knowledge")}
             />
           )}
-          <CardConflicts card={card} />
+          <CardConflicts card={card} onOpenCard={props.onOpenCard} />
           {withDeps && (
             <CardDeps
               store={store}
@@ -331,6 +332,11 @@ export const CardDetail = memo(function CardDetail(props: {
           )}
           {withSync && card.externalUrl && (
             <CardSyncLog store={store} hostId={hostId} cardId={cardId} />
+          )}
+          {/* Issue #1361: last in the details, so its height moves nothing already on the card
+              (a field's reason pushed under the status bar in the 640x800 print). */}
+          {withWatch && card.checkLoop && (
+            <CheckLoopPanel store={store} hostId={hostId} card={card} />
           )}
         </section>
         <CardWork
