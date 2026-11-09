@@ -155,6 +155,22 @@ async function names(root: string, dir: string, folders: boolean): Promise<strin
   return out;
 }
 
+/** What the walk does with one entry: go into a folder, keep a header file, say why it is skipped, or ignore it. */
+type Step = { kind: "dir" | "file" | "ignore" } | { kind: "skip"; why: string };
+
+function stepFor(entry: Dirent, shown: string, depth: number, skills: boolean): Step {
+  if (entry.isDirectory()) {
+    return depth < 3 ? { kind: "dir" } : { kind: "skip", why: `${shown} (too deep, not scanned)` };
+  }
+  if (entry.isSymbolicLink() && !entry.name.endsWith(".md")) {
+    return { kind: "skip", why: `${shown} (a link, not followed, not scanned)` };
+  }
+  const named = skills ? entry.name === "SKILL.md" : entry.name.endsWith(".md");
+  return (entry.isFile() || entry.isSymbolicLink()) && named
+    ? { kind: "file" }
+    : { kind: "ignore" };
+}
+
 /**
  * The agent, skill and command files whose header (the `---` block) has hooks, servers or tool
  * grants, with those keys. Only the head of each file is read, and a link out of the project is not.
@@ -181,19 +197,11 @@ async function headers(
         return;
       }
       const full = join(at, entry.name);
-      const shown = relative(root, full).split(sep).join("/");
-      if (entry.isDirectory()) {
-        if (depth < 3)
-          await walk(full, depth + 1); // NOSONAR: depth first in name order: the walk shares the files and skipped lists
-        else skipped.add(`${shown} (too deep, not scanned)`);
-      } else if (entry.isSymbolicLink() && !entry.name.endsWith(".md")) {
-        skipped.add(`${shown} (a link, not followed, not scanned)`);
-      } else if (
-        (entry.isFile() || entry.isSymbolicLink()) &&
-        (skills ? entry.name === "SKILL.md" : entry.name.endsWith(".md"))
-      ) {
-        files.push(full);
-      }
+      const step = stepFor(entry, relative(root, full).split(sep).join("/"), depth, skills);
+      if (step.kind === "dir")
+        await walk(full, depth + 1); // NOSONAR: depth first in name order: the walk shares the files and skipped lists
+      else if (step.kind === "file") files.push(full);
+      else if (step.kind === "skip") skipped.add(step.why);
     }
   };
   await walk(join(root, dir), 0);
@@ -248,6 +256,45 @@ function mcpCommand(server: Record<string, unknown>): string {
   return typeof server.url === "string" ? server.url : "";
 }
 
+/** The commands of the hook events of one settings file, within the cap shared by all files. */
+function readHooks(
+  load: ProjectLoad,
+  hooks: unknown,
+  file: string,
+  shown: { hooks: number },
+): void {
+  if (!isObject(hooks)) return;
+  for (const [event, groups] of Object.entries(hooks)) {
+    const commands = hookCommands(groups);
+    const kept = commands.slice(0, Math.max(0, MAX_ITEMS - shown.hooks));
+    load.omitted.hooks += commands.length - kept.length;
+    shown.hooks += kept.length;
+    if (kept.length > 0) load.hooks.push({ event, file, commands: kept });
+  }
+}
+
+/** The names of the environment variables set, and those that redirect where a tool talks to. */
+function readEnv(load: ProjectLoad, env: unknown, file: string): void {
+  if (!isObject(env)) return;
+  load.envKeys.push(...Object.keys(env));
+  for (const [key, value] of Object.entries(env)) {
+    if (REDIRECT_ENV.has(key.toLowerCase()) && typeof value === "string") {
+      load.redirects.push({ key, file, value: show(value) });
+    }
+  }
+}
+
+/** The allow and deny rules, and the default mode. */
+function readPermissions(load: ProjectLoad, permissions: unknown): void {
+  if (!isObject(permissions)) return;
+  const { allow, deny, defaultMode } = permissions;
+  const rules = (list: unknown) =>
+    Array.isArray(list) ? list.filter((r): r is string => typeof r === "string").map(show) : [];
+  load.allowRules.push(...rules(allow));
+  load.denyRules.push(...rules(deny));
+  if (typeof defaultMode === "string") load.defaultMode = defaultMode;
+}
+
 /** What one settings file adds to the listing. */
 function readSettings(
   load: ProjectLoad,
@@ -256,15 +303,7 @@ function readSettings(
   shown: { hooks: number },
   otherKeys: Set<string>,
 ): void {
-  if (isObject(settings.hooks)) {
-    for (const [event, groups] of Object.entries(settings.hooks)) {
-      const commands = hookCommands(groups);
-      const kept = commands.slice(0, Math.max(0, MAX_ITEMS - shown.hooks));
-      load.omitted.hooks += commands.length - kept.length;
-      shown.hooks += kept.length;
-      if (kept.length > 0) load.hooks.push({ event, file, commands: kept });
-    }
-  }
+  readHooks(load, settings.hooks, file, shown);
   for (const [key, value] of Object.entries(settings)) {
     const command = programOf(key, value);
     if (command !== undefined) load.executables.push({ key, file, command: show(command) });
@@ -274,22 +313,8 @@ function readSettings(
     const value = settings[key];
     if (isObject(value)) load.plugins.push(...Object.keys(value));
   }
-  if (isObject(settings.env)) {
-    load.envKeys.push(...Object.keys(settings.env));
-    for (const [key, value] of Object.entries(settings.env)) {
-      if (REDIRECT_ENV.has(key.toLowerCase()) && typeof value === "string") {
-        load.redirects.push({ key, file, value: show(value) });
-      }
-    }
-  }
-  if (isObject(settings.permissions)) {
-    const { allow, deny, defaultMode } = settings.permissions;
-    const rules = (list: unknown) =>
-      Array.isArray(list) ? list.filter((r): r is string => typeof r === "string").map(show) : [];
-    load.allowRules.push(...rules(allow));
-    load.denyRules.push(...rules(deny));
-    if (typeof defaultMode === "string") load.defaultMode = defaultMode;
-  }
+  readEnv(load, settings.env, file);
+  readPermissions(load, settings.permissions);
 }
 
 /** What the project's own files would bring into a session: read, never run. */

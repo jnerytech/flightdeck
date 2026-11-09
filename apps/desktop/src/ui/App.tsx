@@ -583,6 +583,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             sidebar: t("shell.sidebar"),
             collapse: t("shell.collapse"),
             expand: t("shell.expand"),
+            skip: t("shell.skip"),
           }}
           navKey={route}
           folded={sidebarFolded}

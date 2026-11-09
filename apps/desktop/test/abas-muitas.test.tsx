@@ -111,19 +111,26 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     expect(scroller.scrollLeft).toBeLessThan(away);
   });
 
-  test("the active tab scrolls into view", async () => {
-    const seen: HTMLElement[] = [];
-    (
-      HTMLElement.prototype as unknown as { scrollIntoView: (this: HTMLElement) => void }
-    ).scrollIntoView = function () {
-      seen.push(this);
+  test("the active tab scrolls into view: the strip moves until the tab is inside it (#1430)", async () => {
+    // The strip is 500 px wide; the active tab sits past its right edge, at 800 to 900 px.
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const at = (left: number, right: number) => ({ left, right }) as DOMRect;
+      if (this.classList.contains("tab-scroller")) return at(0, 500);
+      if (this.getAttribute("role") === "tab" && this.getAttribute("aria-selected") === "true")
+        return at(800, 900);
+      return at(0, 0);
     };
-    const { store } = await many();
-    await act(async () => {
-      store.tabs.activate(store.tabs.tabs[3]?.id as string);
-    });
-    expect(seen.at(-1)?.getAttribute("role")).toBe("tab");
-    expect(seen.at(-1)?.getAttribute("aria-selected")).toBe("true");
+    try {
+      const { store, scroller } = await many();
+      scroller.scrollLeft = 0;
+      await act(async () => {
+        store.tabs.activate(store.tabs.tabs[3]?.id as string);
+      });
+      expect(scroller.scrollLeft).toBe(400);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect;
+    }
   });
 
   test("the list of all tabs is a filterable list, not a menu: icon, title, host, the active one marked (#576)", async () => {
