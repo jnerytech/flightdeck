@@ -1632,6 +1632,55 @@ export interface RoiSignalValues {
   issuesError?: string;
 }
 
+/**
+ * Issue #1344: what happened on a host since a time, for "While you were away" in Needs you. Each
+ * list is the newest `limit` items and its true `total`, so a night of runs never grows the answer.
+ */
+export interface ActivityList<T> {
+  items: T[];
+  total: number;
+}
+
+export interface ActivitySession {
+  id: string;
+  name: string | null;
+  cwd: string;
+  /** When the session ended. */
+  at: string;
+}
+
+export interface ActivityCard {
+  cardId: string;
+  projectId: string;
+  title: string;
+  /** When the card last changed. */
+  at: string;
+}
+
+export interface ActivityPr extends ActivityCard {
+  prUrl: string;
+  /** `merged`, or `checks-failed` when the PR is open and its checks fail. */
+  outcome: "merged" | "checks-failed";
+}
+
+export interface ActivityRun {
+  runId: string;
+  cardId: string;
+  workflowName: string;
+  reason: string | null;
+  at: string;
+}
+
+export interface ActivitySinceResult {
+  since: string;
+  sessions: ActivityList<ActivitySession>;
+  reviewCards: ActivityList<ActivityCard>;
+  prs: ActivityList<ActivityPr>;
+  failedRuns: ActivityList<ActivityRun>;
+  /** The plan quota windows now, when this host reads them. */
+  quota: Array<{ window: string; utilization: number | null }>;
+}
+
 export interface RoiSummaryResult {
   from: string;
   to: string;
@@ -4682,6 +4731,16 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Issue #1344: what finished, reached review, merged or failed on this host since a time; read-only and capped. */
+  cmd(
+    "activity.since",
+    z
+      .object({
+        since: z.string().datetime(),
+        limit: z.number().int().min(1).max(50).optional(),
+      })
+      .strict(),
+  ),
   /** Phase 36: what the agents cost and delivered, per project key, for a period and the one before it. */
   cmd(
     "roi.summary",
@@ -5813,6 +5872,7 @@ export interface CommandResults {
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
   "roi.summary": RoiSummaryResult;
+  "activity.since": ActivitySinceResult;
   "boardsync.boards": { boards: BoardSyncBoard[] };
   "boardsync.link": BoardSyncStatus;
   "boardsync.unlink": undefined;
