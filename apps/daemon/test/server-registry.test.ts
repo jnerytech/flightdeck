@@ -105,6 +105,13 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the external session commands left the switch of server.ts.
+  test("the external domain owns the external.* commands", () => {
+    expect(Object.keys(DOMAINS.external ?? {}).sort()).toEqual(
+      ["external.list", "external.message", "external.watch"].sort(),
+    );
+  });
+
   // Issue #1288: the session commands left the switch of server.ts (external.* and assistant.* follow).
   test("the session domain owns the session.*, sessions.watch, permission.respond and history.list commands", () => {
     expect(Object.keys(DOMAINS.session ?? {}).sort()).toEqual(
