@@ -250,15 +250,39 @@ describe("host-compare-ui: the table", () => {
     expect(cells("Claude sign-in")[2] ?? "").toContain("which have Signed in");
   });
 
-  test("a tie marks nothing: two hosts that differ both look the same, with no reason", async () => {
+  test("two hosts that differ both say so in words, with no majority named", async () => {
     const { store } = mount([
       { id: "alfa", daemon: "1.4.0" },
       { id: "beta", daemon: "1.3.0" },
     ]);
     await open();
     expect(await answered(store, 2)).toBe(true);
-    expect(cells("Daemon version")).toEqual(["1.4.0", "1.3.0"]);
+    const [alfa, beta] = cells("Daemon version");
+    expect(alfa).toContain("1.4.0");
+    expect(alfa).toContain("Differs, with no majority among the hosts");
+    expect(beta).toContain("1.3.0");
+    expect(beta).toContain("Differs, with no majority among the hosts");
     expect(screen.queryAllByText(/Differs from most hosts/).length).toBe(0);
+  });
+
+  test("two hosts that match say nothing in any row", async () => {
+    const { store } = mount([{ id: "alfa" }, { id: "beta" }]);
+    await open();
+    expect(await answered(store, 2)).toBe(true);
+    expect(cells("Daemon version")).toEqual(["1.4.0", "1.4.0"]);
+    expect(table()?.textContent).not.toContain("Differs");
+  });
+
+  test("two hosts with different features each name what only it has and what only the other has", async () => {
+    const { store } = mount([
+      { id: "alfa", features: ["stall"] },
+      { id: "beta", features: ["quota"] },
+    ]);
+    await open();
+    expect(await answered(store, 2)).toBe(true);
+    const [alfa, beta] = cells("Features");
+    expect(alfa).toContain("no quota, has stall");
+    expect(beta).toContain("no stall, has quota");
   });
 
   test("a value the host does not report is a dash with a word for it, and is never marked", async () => {
@@ -504,5 +528,22 @@ describe("host-compare-ui: in Portuguese", () => {
       fireEvent.click(screen.getByRole("button", { name: "e mais 2" }));
     });
     expect(cells("Recursos", "pt-BR")[2]).toContain("sem a5, tem zeta");
+  });
+
+  test("two hosts that differ say so in Portuguese, and name their features", async () => {
+    const { store } = mount(
+      [
+        { id: "alfa", daemon: "1.4.0", features: ["stall"] },
+        { id: "beta", daemon: "1.3.0", features: ["quota"] },
+      ],
+      "pt-BR",
+    );
+    await open("pt-BR");
+    expect(await answered(store, 2)).toBe(true);
+    for (const cell of cells("Versão do daemon", "pt-BR")) {
+      expect(cell).toContain("Difere, sem maioria entre os hosts");
+    }
+    expect(cells("Recursos", "pt-BR")[0]).toContain("sem quota, tem stall");
+    expect(cells("Recursos", "pt-BR")[1]).toContain("sem stall, tem quota");
   });
 });
