@@ -281,9 +281,17 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByLabel(c.t("changes.commentLabel"), { exact: true })
       .fill("Explique esta linha");
     await c.page.getByRole("button", { name: c.t("changes.addComment"), exact: true }).click();
-    await c.page.getByRole("button", { name: c.t("changes.send", { n: 1 }), exact: true }).click();
-    // The demo keeps what the other language sent: the history may hold more than one.
-    await c.page.getByText(c.t("changes.sent"), { exact: true }).first().waitFor({ timeout: WAIT });
+    // The reviewer's drafts of the second-opinion journey may be in the list too (#1446): the
+    // count in the button is whatever there is.
+    const send = new RegExp(
+      `^${c.t("changes.send", { n: 1 }).replace(/[()]/g, "\\$&").replace("1", "\\d+")}$`,
+    );
+    // The demo keeps what the other language sent: the history may hold more than one sent
+    // comment already, so what is waited for is one more than before the click.
+    const sent = c.page.getByText(c.t("changes.sent"), { exact: true });
+    const before = await sent.count();
+    await c.page.getByRole("button", { name: send }).click();
+    await expect.poll(() => sent.count(), { timeout: WAIT * 2 }).toBeGreaterThan(before);
   },
 
   // 5. Open the palette, search the history and open the reader.
