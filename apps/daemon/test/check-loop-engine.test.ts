@@ -368,7 +368,7 @@ describe("check-loop: the security review's cases", () => {
       });
       engine.onIdle("c");
       try {
-        if (end === "stop") engine.onStop("c");
+        if (end === "stop") void engine.onStop("c");
         if (end === "gone") engine.onSessionGone("c");
         if (end === "timer") r.timers[0]?.fn();
       } catch {
@@ -376,7 +376,7 @@ describe("check-loop: the security review's cases", () => {
       }
       // A second way out finds no loop: nothing is released twice.
       try {
-        engine.onStop("c");
+        void engine.onStop("c");
       } catch {
         // As above.
       }
@@ -670,7 +670,7 @@ describe("check-loop: what ends a loop early", () => {
     const stopped = rig({ outcomes: [FAIL] });
     stopped.engine.onIdle("c");
     stopped.engine.onTurnResult("c", ok);
-    stopped.engine.onStop("c");
+    void stopped.engine.onStop("c");
     await stopped.checksDone();
     expect([
       gone.log,
