@@ -43,9 +43,9 @@ engine can already continue a run without repeating what finished: after a daemo
   otherwise shows why. With `confirm: true` it checks again, records the resume, puts the card's
   run back to running (it waits for a slot like any run) and executes it. The confirm is
   near-only (`requireVaultTransport`), stricter than starting a card, since it runs the
-  project's commands again. The check answers anywhere, but over a far connection a run that
-  could resume answers `ok: false` with `transport_refused`: the app shows that reason instead
-  of a button whose confirm would be refused. Only the daemon sees the connection's origin; the
+  project's commands again. Over a far connection the check answers `ok: false` with
+  `transport_refused` before it runs (no git for a far caller), whatever the run's state: the
+  app shows that reason instead of a button whose confirm would be refused. Only the daemon sees the connection's origin; the
   app's own guess from the host's address misses a Tailscale name.
 
 - **After a restart.** A resume still waiting for its slot when the daemon stops continues once
