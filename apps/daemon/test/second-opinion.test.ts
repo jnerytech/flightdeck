@@ -146,4 +146,25 @@ describe("second-opinion: the review's pure parts (#1439)", () => {
     ]);
     expect(loose.length).toBe(1);
   });
+
+  test("the fake review reads an added line that starts with ++ as code, not as a file header", async () => {
+    const counter = file("src/count.ts", [
+      ["+", "++ i;"],
+      ["+", "--- j;"],
+      ["+", "return i;"],
+    ]);
+    const prompt = reviewPrompt({ title: "t", description: "" }, [counter], false, (t) => t);
+    const answer = await new FakeRuntime().complete({
+      model: "m",
+      system: "review",
+      prompt,
+      cwd: "/tmp/x",
+      schema: REVIEW_SCHEMA,
+    });
+    const { anchored } = anchorFindings(parseReview(answer.text)?.findings ?? [], [counter]);
+    expect(anchored.map((f) => `${f.path}:${f.line}`)).toEqual([
+      "src/count.ts:10",
+      "src/count.ts:11",
+    ]);
+  });
 });
