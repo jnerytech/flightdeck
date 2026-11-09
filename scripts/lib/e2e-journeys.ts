@@ -39,6 +39,8 @@ export const JOURNEYS: readonly string[] = [
   "nova-sessao-alcance",
   "tabs-por-host",
   "card-start-alcance",
+  // #1354: selecting cards by keyboard and asking to start them.
+  "board-selecao",
   "orcamento-alcance",
   "modo-simples-alcance",
   "layout-medido",

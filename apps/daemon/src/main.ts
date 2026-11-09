@@ -23,6 +23,7 @@ import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -216,7 +217,7 @@ import { Traces } from "./watch/trace.ts";
 import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
-import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
@@ -1117,7 +1118,7 @@ export async function startDaemon(
     db: store.db,
     board,
     watcher: prWatcher,
-    checks: shellCheckRunner(),
+    checks: boundedCheckRunner(),
     onUpdate: (cardId) => prWatch.notify(cardId),
   });
   // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
@@ -1670,6 +1671,13 @@ export async function startDaemon(
     idle,
     teams,
     watch: prWatch,
+    // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
+    checkLoop: new CheckLoopSwitch({
+      board,
+      settings: (projectId) => prWatcher.settings(projectId),
+      isTrusted: (path) => projectTrust.isTrusted(path),
+      modeOf: (card) => cardMode(card, manager),
+    }),
     vault,
     log: logger.log.bind(logger),
     actions,

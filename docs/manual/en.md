@@ -1110,11 +1110,23 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 
 - **Select.** `Ctrl`-click (`⌘`-click on a Mac) a card to select it or unselect it; `Shift`-click
   selects the range from the last card you picked, within its column. A card's menu has **Select
-  card** for the keyboard, and a selected card says "selected" to a screen reader. `Esc` clears the
-  selection. A filter hides cards but keeps them selected; what you do then applies only to the
-  cards you can see, and the bar says how many are hidden.
-- **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
-  **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
+  card** too. While a selection exists, every card shows a check that selects or unselects it, and a
+  screen reader hears its state and the count.
+- **Select from the keyboard** (#1354). On a card, `X` selects it or unselects it, and `Shift` with an
+  arrow, `Home` or `End` moves and selects the range from the first card picked, in the board's order.
+  While a selection exists, `M` opens the bar's **Move to…** and `S` its **Start N**, never a single card. `Esc` clears
+  the selection and leaves the focus on the card; with none, it does what it did before (a split view
+  closes). A filter hides cards but keeps them selected; what you do then applies only to the cards
+  you can see, and the bar says how many are hidden.
+- **The selection bar** above the board shows "3 selected" with **Start N** (the cards that can start),
+  **Stop N** (while some of them run or wait in the queue), **Move to…** (a column), **Discard…** and
+  **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
+  many wait in the host's queue, the host's 5-hour window on a subscription, and the cards it skips and
+  why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
+  one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
+  the ones that went leave the selection, and the bar names any the host refused. In a narrow window
+  the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
+  under ⋯. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
 - **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
   **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's

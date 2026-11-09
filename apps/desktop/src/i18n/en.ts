@@ -926,9 +926,43 @@ export const en: Dictionary = {
     moveSelected: "Move to…",
     discardSelected: "Discard…",
     clearSelection: "Clear selection",
+    /** #1354: Start N and Stop N of the selection, and the Start confirm's queue line. */
+    startSelected: "Start {n}",
+    stopSelected: "Stop {n}",
+    noneCanStart: "None of the selected cards can start",
+    otherColumnOne: "1 in another column",
+    otherColumns: "{n} in other columns",
+    moreSelected: "More actions for the selection",
+    clearShort: "Clear",
+    startTitleOne: "Start 1 card?",
+    startTitle: "Start {n} cards?",
+    startNowOne: "1 starts now",
+    startNow: "{n} start now",
+    waitOne: "1 waits in the board's queue",
+    wait: "{n} wait in the board's queue",
+    startSplit: "{started} and {waiting} (at most {max} at once).",
+    startAllNow: "All of them start now.",
+    startQueue: "They join the board's queue.",
+    startQuota: "{host}: {percent}% of the 5-hour window used, {reset}.",
+    startQuotaHold: "{host} is over its pause limit: new cards wait until the window resets.",
+    noCriteriaOne: "1 of them has no acceptance criteria; it starts anyway.",
+    noCriteria: "{n} of them have no acceptance criteria; they start anyway.",
+    skipped: "skipped: {reason}",
+    stopTitleOne: "Stop 1 card?",
+    stopTitle: "Stop {n} cards?",
+    stopBody:
+      "A running card's turn is cut off and the card waits in Needs you; a queued card goes back to Backlog. Worktrees, branches and commits stay.",
+    notRunning: "not running",
+    needsInputs: "its workflow asks for inputs; start it from its menu",
+    workflowsUnread: "The project's workflows could not be read: start the cards from their menus.",
+    startFailedOne: "1 card did not start: {names}",
+    startFailed: "{count} cards did not start: {names}",
+    stopFailedOne: "1 card did not stop: {names}",
+    stopFailed: "{count} cards did not stop: {names}",
     selectCard: "Select card",
     deselectCard: "Deselect card",
-    selectedCard: "selected",
+    /** #1354: the check on each card while a selection exists. */
+    selectCardNamed: "Select {title}",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
     /** What a column asks of a card before it gets there (issue #78). */
@@ -971,7 +1005,7 @@ export const en: Dictionary = {
     countMany: "{n} cards",
     /** The board's keys, said by each card's title (#1198). */
     keysHint:
-      "Arrows move between the cards, Enter opens one, S starts it and M shows its actions.",
+      "Arrows move between the cards, Enter opens one, S starts it, M shows its actions, X selects it and Shift with an arrow selects a range. Esc clears the selection.",
     /** A narrow board shows one column at a time, picked here (#1198). */
     columns: "Columns",
     showColumn: "{column}, {count}",
@@ -1900,6 +1934,13 @@ export const en: Dictionary = {
     run_card_gone: "The run's card is gone, so the run stopped when Flightdeck started again.",
     run_resume_branch_moved:
       "The card's branch changed since this run stopped, so it can only run again from the start.",
+    check_loop_no_checks:
+      "The project has no checks to run: add them in the project's Watch settings first.",
+    check_loop_untrusted:
+      "The project is not trusted: trust it before its checks run on their own.",
+    check_loop_mode: "In plan mode the session cannot fix anything, so the checks do not run.",
+    check_loop_confirm:
+      "Confirm first: the checks will run the code this card writes, without asking you each time.",
     workflow_input_required: "The workflow needs the input {input}.",
     workflow_input_unknown: "The workflow has no input {input}.",
     workflow_gate_closed: "The gate {step} (attempt {attempt}) is not open.",

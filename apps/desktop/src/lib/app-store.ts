@@ -4402,7 +4402,7 @@ export class AppStore {
         this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
         clientId,
         Math.round(threshold * 100),
-        usd(state?.limitUsd ?? 0),
+        usd(state?.limitUsd ?? 0, this.i18n.t.lang),
       );
       this.notifyUser(
         {
@@ -4410,7 +4410,7 @@ export class AppStore {
           body: this.i18n.t("clients.budgetAlert", {
             name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
             percent: Math.round(threshold * 100),
-            limit: usd(state?.limitUsd ?? 0),
+            limit: usd(state?.limitUsd ?? 0, this.i18n.t.lang),
           }),
         },
         { name: "costs", client: clientId },
@@ -5322,7 +5322,7 @@ export class AppStore {
           percent: Math.round(update.threshold * 100),
           limit: window
             ? share(update.budget.limitPct ?? 0, this.i18n.t.lang)
-            : usd(update.budget.limitUsd),
+            : usd(update.budget.limitUsd, this.i18n.t.lang),
           estimate: estimateNote(update.budget, this.i18n.t),
         }),
       },

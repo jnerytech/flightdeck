@@ -5,20 +5,25 @@
 import type { Handlers } from "../dispatch.ts";
 import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
+import { assistantHandlers } from "./assistant.ts";
 import { cardHandlers } from "./card.ts";
 import { costsHandlers } from "./costs.ts";
+import { externalHandlers } from "./external.ts";
 import { filesHandlers } from "./files.ts";
 import { githubHandlers } from "./github.ts";
 import { hostHandlers } from "./host.ts";
+import { issuesHandlers } from "./issues.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
 import { messagingHandlers } from "./messaging.ts";
 import { projectHandlers } from "./project.ts";
 import { reviewHandlers } from "./review.ts";
 import { runsHandlers } from "./runs.ts";
 import { securityHandlers } from "./security.ts";
+import { sessionHandlers } from "./session.ts";
 import { teleportHandlers } from "./teleport.ts";
 import { terminalHandlers } from "./terminal.ts";
 import { watchHandlers } from "./watch.ts";
+import { worktreesHandlers } from "./worktrees.ts";
 
 /** The domains, by name; no command may sit in two of them (a spread would let the last win). */
 export const DOMAINS: Record<string, Partial<Handlers>> = {
@@ -38,6 +43,11 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   activity: activityHandlers,
   card: cardHandlers,
   project: projectHandlers,
+  session: sessionHandlers,
+  issues: issuesHandlers,
+  worktrees: worktreesHandlers,
+  external: externalHandlers,
+  assistant: assistantHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));

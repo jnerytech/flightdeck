@@ -46,7 +46,7 @@ export const estimateNote = (budget: Budget, t: T) =>
 /** The limit of a budget as text: dollars, or "50% of the plan" for a window one. */
 export const budgetLimitText = (budget: Budget, t: T = PT): string =>
   budget.limitPct === null
-    ? usd(budget.limitUsd)
+    ? usd(budget.limitUsd, t.lang)
     : t("budgets.limitQuota", { limit: share(budget.limitPct, t.lang) });
 
 /** "orçamento do host (dia) · notificar · US$ 6.00 de US$ 10.00 (60%)". */
@@ -64,8 +64,8 @@ export function budgetLine(budget: Budget, t: T = PT): string {
   return t("budgets.line", {
     label: budgetLabel(budget, t),
     action: t(`budgets.${budget.action}` as Key),
-    spent: usd(budget.spentUsd),
-    limit: usd(budget.limitUsd),
+    spent: usd(budget.spentUsd, t.lang),
+    limit: usd(budget.limitUsd, t.lang),
     percent: Math.round(budget.fraction * 100),
   });
 }
@@ -91,7 +91,7 @@ export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
                 host: host.name,
                 label: budgetLabel(b, t),
                 percent: Math.round(b.fraction * 100),
-                limit: usd(b.limitUsd),
+                limit: usd(b.limitUsd, t.lang),
               })
             : t("budgets.alertQuota", {
                 host: host.name,
@@ -111,7 +111,7 @@ export function budgetAlerts(state: AppState, t: T = PT): BudgetAlert[] {
       label: t("clients.budgetAlert", {
         name: state.clientList.find((c) => c.id === b.clientId)?.name ?? b.clientId,
         percent: Math.round(b.fraction * 100),
-        limit: usd(b.limitUsd),
+        limit: usd(b.limitUsd, t.lang),
       }),
     }));
   return [...hosts, ...clients];

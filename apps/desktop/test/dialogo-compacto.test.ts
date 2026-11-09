@@ -98,7 +98,7 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
   test("a focused field is scrolled clear of the footer, not left under it", () => {
     const content = compactRule('[data-slot="dialog-content"]');
     // 8rem: the bar is about 5rem, a reason line or a wrapped button row adds 1.5 to 3rem.
-    expect(content.includes("scroll-padding-bottom: 8rem")).toBe(true);
+    expect(content).toContain("scroll-padding-bottom: 8rem");
   });
 
   // #1271: a dialog's fields may scroll in a box of their own, so its buttons stay in view. In the
@@ -116,8 +116,15 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
   });
 
   test("a confirmation is not part of the sheet: a two-line question stays a centered box", () => {
-    const start = css.indexOf("@media (width < 40rem) {");
-    expect(start >= 0).toBe(true);
-    expect(css.slice(start, css.indexOf("\n}\n", start)).includes("alert-dialog")).toBe(false);
+    // Top-level sheet blocks only (a media query nested in a utility ends at an indented brace),
+    // found by what they hold: the dialog content. An empty list would make the check vacuous.
+    const sheets: string[] = [];
+    for (let at = css.indexOf("\n@media (width < 40rem) {"); at >= 0; ) {
+      const block = css.slice(at, css.indexOf("\n}\n", at + 1));
+      if (block.includes('[data-slot="dialog-content"]')) sheets.push(block);
+      at = css.indexOf("\n@media (width < 40rem) {", at + 1);
+    }
+    expect(sheets.length).toBeGreaterThanOrEqual(1);
+    expect(sheets.map((block) => block.includes("alert-dialog"))).toEqual(sheets.map(() => false));
   });
 });

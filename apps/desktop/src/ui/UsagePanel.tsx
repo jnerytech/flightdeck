@@ -88,8 +88,8 @@ export function UsagePanel(
                 key={group.projectKey}
                 group={group}
                 columns={costs ? 3 : 4}
-                total={usd(group.costUsd)}
-                format={{ cost: usd, number }}
+                total={usd(group.costUsd, t.lang)}
+                format={{ cost: (value) => usd(value, t.lang), number }}
                 onOpenHistory={onOpenHistory}
               />
             ))}

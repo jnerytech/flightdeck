@@ -10,7 +10,14 @@
  */
 import { Database } from "bun:sqlite";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, inSequence, parseServerMessage } from "@flightdeck/protocol";
@@ -129,6 +136,8 @@ export interface DemoIds {
   notesFolder: string;
   /** A git repository of the first host that is no project yet: the New project journey adds it (issue #931). */
   freshRepo: string;
+  /** The file that sets the share of memory alfa reads as in use; deleting it leaves alfa with no reading (issue #1364). */
+  memoryFile: string;
   /** A long conversation with a code block and a summary: where it opens and what keeps it still (issue #112). */
   scrollSession: string;
   /** A session in a folder with a long path, whose first message holds a long unbroken id (issue #103). */
@@ -416,11 +425,23 @@ interface HostRun {
   claudeProjects: string;
   /** The daemon's data folder: where it publishes its OTLP receiver (phase 23). */
   dataDir: string;
+  /** The host's memory reading (issue #1364): a file with the share in use (0 to 1); none means no reading. */
+  memoryFile: string;
   stop(): Promise<void>;
+}
+
+/** The memory the demo host reports: the share in use that its file holds, or no reading without it. */
+function demoMemory(file: string): { totalBytes: number; freeBytes: number } | null {
+  if (!existsSync(file)) return null;
+  const used = Number(readFileSync(file, "utf8").trim());
+  return Number.isFinite(used)
+    ? { totalBytes: 1000, freeBytes: Math.round((1 - used) * 1000) }
+    : null;
 }
 
 async function host(work: string, name: string): Promise<HostRun> {
   const base = join(work, name);
+  const memoryFile = join(base, "memory");
   const projects = join(base, "projects");
   const history = join(base, "claude-projects");
   mkdirSync(projects, { recursive: true });
@@ -491,7 +512,13 @@ async function host(work: string, name: string): Promise<HostRun> {
     quiet,
     // The health check asks the machine's service manager; the demo says what no machine can change
     // (issue #1200): the service is not installed, and linger is on, so every run reads the same.
-    { serviceInstalled: async () => false, linger: async () => "on" },
+    {
+      serviceInstalled: async () => false,
+      linger: async () => "on",
+      // Issue #1364: the memory the hold on new cards reads is a file the journeys write, never the
+      // machine's own (a busy runner would hold every card). No file is no reading, so nothing waits.
+      memoryReading: () => demoMemory(memoryFile),
+    },
   );
   const client = await Client.open(daemon.url, token);
   return {
@@ -502,6 +529,7 @@ async function host(work: string, name: string): Promise<HostRun> {
     projects,
     claudeProjects: history,
     dataDir: join(base, "data"),
+    memoryFile,
     stop: async () => {
       client.close();
       await daemon.stop();
@@ -1376,6 +1404,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       traceSession: TRACE_SESSION,
       notesFolder: join(alfa.projects, "notes"),
       freshRepo: join(alfa.projects, "fresh-app"),
+      memoryFile: alfa.memoryFile,
       scrollSession: long.sessionId,
       longSession: longSession.sessionId,
       longTitleSession: longTitle.sessionId,

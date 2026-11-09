@@ -15,7 +15,8 @@ const FILES = [
 ];
 
 /** The folders of #957: every `.ts` file in them is read, so a new file is covered at once. */
-const FOLDERS = ["../src/updates", "../src/plugins", "../src/runenv"];
+// Issue #1288: the server's handler modules word the refusals that left server.ts.
+const FOLDERS = ["../src/updates", "../src/plugins", "../src/runenv", "../src/server"];
 
 /** Words that only a Portuguese sentence has in a refusal (found by reading the files). */
 const PORTUGUESE =

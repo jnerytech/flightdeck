@@ -10,8 +10,6 @@ import {
   type CommandType,
   type DepsResult,
   type DoctorResult,
-  type ExternalSession,
-  type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
   FEATURE_SERVICE_INSTALL,
@@ -33,10 +31,6 @@ import {
   type ProjectLoad,
   type ProjectTrustState,
   type ServiceInstallResult,
-  type SessionEventOf,
-  type SessionLine,
-  type SessionStatus,
-  type SessionSummary,
   type UiSettings,
   WS_PATH,
 } from "@flightdeck/protocol";
@@ -50,23 +44,22 @@ import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
+import type { CheckLoopSwitch } from "./board/check-loop.ts";
 import type { BoardSyncService } from "./boardsync/service.ts";
-import { type Central, messageExternal } from "./central/central.ts";
+import type { Central } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
-import { userHome } from "./config.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
-import { coalesceDeltas, drainAll } from "./delta-coalescer.ts";
+import { drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import type { AlertList } from "./github/alerts.ts";
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
 import type { HarnessTemplates, TemplateMarkdown } from "./harness/templates-store.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
-import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { KnowledgeSwitch } from "./knowledge/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
@@ -77,13 +70,8 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { resolveAllowedCwd } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
-import { realPathOf, statKind } from "./permissions/path-kind.ts";
-import { rulePaths, ruleReadings } from "./permissions/permission-updates.ts";
-import { pathKinds, realPaths } from "./permissions/rule-risk.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
-import { preparePersonas } from "./personas/prepare.ts";
 import type { Personas } from "./personas/store.ts";
 import type { Plugins } from "./plugins/plugins.ts";
 import type { GitRunner } from "./project-find.ts";
@@ -310,6 +298,8 @@ export interface ServerOptions {
   teams?: Teams;
   /** Phase 22: the PR watch of the cards. */
   watch?: PrWatch;
+  /** Issue #1361: the cards' check loop switch (it reads the watch's checks). */
+  checkLoop?: CheckLoopSwitch;
   /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
   messaging?: Messaging;
   /** Phase 21: the standard names of the sessions (`names.list`, and the rename of a session). */
@@ -439,24 +429,6 @@ export interface RunningServer {
 }
 
 export { tokenMatches };
-
-/** Phase 8: the state of a session's line, from its live status. */
-const MANAGED_LINE: Record<SessionStatus, SessionLine["state"]> = {
-  starting: "running",
-  running: "running",
-  awaiting_permission: "waiting",
-  idle: "idle",
-  ended: "ended",
-  error: "ended",
-};
-
-const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
-  running: "running",
-  awaiting_permission: "waiting",
-  idle: "idle",
-  unknown: "idle",
-  ended: "ended",
-};
 
 /** The names a feature adds when the daemon has it. */
 const when = (has: unknown, ...names: string[]): string[] => (has ? names : []);
@@ -646,56 +618,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function history(): HistoryIndexer {
-    return need(opts, "history");
-  }
-
-  /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
-  async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
-    const keyOf =
-      opts.projectKeyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
-    const cwds = index.distinctCwds();
-    const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
-    return cwds.filter((_, i) => keys[i] === key);
-  }
-
-  function central() {
-    return need(opts, "central");
-  }
-
-  /**
-   * Phase 5: every session list carries its project group and meta (with the hub on). Phase 8:
-   * and its line, with the transcript index on.
-   */
-  function listed<T extends { cwd: string }>(
-    session: T,
-    claudeSessionId: string | null,
-    live: LiveState,
-  ): T {
-    const hub = opts.central;
-    const summary = line(claudeSessionId, live);
-    return {
-      ...session,
-      ...(hub
-        ? { projectKey: hub.projectKey(session.cwd), meta: hub.meta.get(claudeSessionId ?? "") }
-        : {}),
-      ...(summary ? { summary } : {}),
-    };
-  }
-
   function roi(): RoiSummarizer {
     return need(opts, "roi");
-  }
-
-  /**
-   * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
-   * the cache: a cold folder would otherwise cost one blocking git spawn on the event loop, which
-   * on Windows is slow enough to time the list out.
-   */
-  async function warmKeys(cwds: string[]): Promise<void> {
-    if (!opts.central || !opts.warmProjectKey) return;
-    const warm = opts.warmProjectKey;
-    await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
   function names(): Names {
@@ -706,39 +630,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "idle");
   }
 
-  function issues(): Issues {
-    return need(opts, "issues");
-  }
-
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
     const update = opts.updates?.status();
     return update ? { update } : {};
-  }
-
-  function line(claudeSessionId: string | null, live: LiveState): SessionLine | null {
-    if (!opts.history) return null;
-    return sessionLine(claudeSessionId ? opts.history.lastActivity(claudeSessionId) : null, live);
-  }
-
-  const managedLive = (s: SessionSummary): LiveState => ({
-    state: MANAGED_LINE[s.status],
-    waitingTool: manager.pendingPermissions(s.id)[0]?.toolName ?? null,
-    since: s.updatedAt,
-  });
-
-  /** An external session as the lists and `external.updated` send it: with its line and name. */
-  function externalListed(s: ExternalSession): ExternalSession {
-    const waiting = opts.central?.permissions
-      .open()
-      .find((frame) => frame.claudeSessionId === s.claudeSessionId);
-    const summary = line(s.claudeSessionId, {
-      state: EXTERNAL_LINE[s.status],
-      waitingTool: waiting?.toolName ?? null,
-      since: s.lastEventAt,
-    });
-    const meta = opts.central?.meta.get(s.claudeSessionId);
-    return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
   function fileLog(): FileLog {
@@ -753,47 +648,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "resources");
   }
 
-  function worktrees(): Worktrees {
-    return need(opts, "worktrees");
-  }
-
-  function summary(): SummaryService {
-    return need(opts, "summary");
-  }
-
-  function personaSessions(): OpenSessionPersonas {
-    return need(opts, "personaSessions");
-  }
-
-  /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  function sessionFiles(): SessionFiles {
-    return need(opts, "sessionFiles");
-  }
-
   function board(): Board {
     return need(opts, "board");
-  }
-
-  function assistant(): AssistantService {
-    if (!opts.assistant) throw featureOff("assistant");
-    return opts.assistant;
-  }
-
-  function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
-    ws.data.subscriptions.get(sessionId)?.();
-    // The text of a stream goes out a few frames at a time; every other event flushes it first.
-    const coalescer = coalesceDeltas({
-      deliver: (envelope) => send(ws, envelope),
-      backlog: () => ws.getBufferedAmount(),
-    });
-    ws.data.coalescers.add(coalescer);
-    const sub = manager.subscribe(sessionId, sinceSeq, (envelope) => coalescer.push(envelope));
-    ws.data.subscriptions.set(sessionId, () => {
-      sub.unsubscribe();
-      coalescer.stop();
-      ws.data.coalescers.delete(coalescer);
-    });
-    return sub;
   }
 
   async function dispatch(ws: Socket, command: Command): Promise<void> {
@@ -802,7 +658,7 @@ export function startServer(opts: ServerOptions): RunningServer {
 
     // The messaging service lists every endpoint with its project key, read synchronously.
     if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
-      await warmKeys([
+      await context.warmKeys([
         ...manager.list().map((s) => s.cwd),
         ...(opts.central?.external.list() ?? []).flatMap((s) => (s.cwd ? [s.cwd] : [])),
       ]);
@@ -815,136 +671,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "session.list": {
-        const sessions = manager.list();
-        await warmKeys(sessions.map((s) => s.cwd));
-        return ok(command.type, {
-          sessions: sessions.map((s) => listed(s, s.claudeSessionId, managedLive(s))),
-        });
-      }
-      case "session.interrupted":
-        return ok(command.type, { sessions: manager.interrupted() });
-      case "session.create": {
-        // Looked up in git before the session exists, so what names and lists it finds the
-        // project already known; the wait is this request's own, the others are served meanwhile.
-        if (opts.warmProjectKey) {
-          const cwd = await resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
-          await opts.warmProjectKey(cwd);
-        }
-        const prepared = await preparePersonas(
-          opts.personas,
-          command.payload.persona,
-          command.payload.cwd,
-        );
-        return ok(command.type, await manager.create(command.payload, { prepared }));
-      }
-      case "session.send":
-        return ok(
-          command.type,
-          manager.send(command.payload.sessionId, command.payload.text, command.payload.images),
-        );
-      case "session.interrupt":
-        await manager.interrupt(command.payload.sessionId);
-        return ok(command.type);
-      case "session.setMode":
-        await manager.setPermissionMode(command.payload.sessionId, command.payload.permissionMode);
-        return ok(command.type);
-      case "session.setModel":
-        await manager.setModel(command.payload.sessionId, command.payload.model);
-        return ok(command.type);
-      case "session.setEffort":
-        await manager.setEffort(command.payload.sessionId, command.payload.effort);
-        return ok(command.type);
-      case "session.close":
-        await manager.close(command.payload.sessionId);
-        return ok(command.type);
-      case "session.sleep":
-        return ok(command.type, {
-          result: await manager.sleep(command.payload.sessionId, { manual: true }),
-        });
-      case "session.resume":
-        await manager.resume(command.payload.sessionId);
-        return ok(command.type);
-      case "session.subscribe": {
-        // Ack, replay and live registration happen in one synchronous step: no gap, no dupes.
-        const sub = subscribe(ws, command.payload.sessionId, command.payload.sinceSeq ?? 0);
-        ok(command.type, { session: sub.session, replayed: sub.replay.length });
-        for (const envelope of sub.replay) send(ws, envelope);
-        return;
-      }
-      case "session.unsubscribe":
-        ws.data.subscriptions.get(command.payload.sessionId)?.();
-        ws.data.subscriptions.delete(command.payload.sessionId);
-        return ok(command.type);
-      case "permission.respond": {
-        // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-        const { requestId, decision, message, updatedPermissions, updatedInput, held } =
-          command.payload;
-        const external = opts.central?.permissions;
-        // A rule that names a folder covers all it holds (#395): look its paths up first, only for
-        // an allow of a request that is open (an unknown one is refused below anyway).
-        // The file the request itself writes counts as one before it exists. A symlink on the way
-        // makes a rule reach its real path too, so that is rated as well (#528).
-        const { cwd, target } = external?.placeOf(requestId) ?? manager.permissionPlace(requestId);
-        const updates = updatedPermissions ?? [];
-        const home = userHome();
-        const disk =
-          decision === "allow" && cwd
-            ? await Promise.all([
-                pathKinds(rulePaths(updates), cwd, home, statKind, {
-                  ...(target === undefined ? {} : { target }),
-                }),
-                realPaths(ruleReadings(updates), cwd, home, realPathOf),
-              ]).then(([kind, real]) => ({ kind, real }))
-            : undefined;
-        if (
-          !external?.respond(
-            requestId,
-            decision,
-            message,
-            updatedPermissions,
-            updatedInput,
-            held,
-            disk,
-          )
-        ) {
-          manager.respondPermission(command.payload, disk);
-        }
-        return ok(command.type);
-      }
-      case "external.message": {
-        const { claudeSessionId, text } = command.payload;
-        const hub = central();
-        if (!hub.external.get(claudeSessionId)) {
-          throw new FlightdeckError(
-            "not_found",
-            `session ${claudeSessionId} does not exist`,
-            "session_not_found",
-            { id: claudeSessionId },
-          );
-        }
-        if (!messageExternal(hub, claudeSessionId, text)) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "session has no channel: only sessions opened with flightdeckd claude receive messages",
-            "external_no_channel",
-          );
-        }
-        return ok(command.type);
-      }
-      case "session.meta.set": {
-        const { claudeSessionId, ...patch } = command.payload;
-        const meta = central().meta.set(claudeSessionId, patch);
-        // The name the user gives also renames the standard one; the old alias keeps working.
-        const given = patch.name?.trim();
-        if (given && opts.names) {
-          const id =
-            opts.manager.list().find((s) => s.claudeSessionId === claudeSessionId)?.id ??
-            claudeSessionId;
-          if (opts.names.get(id)) opts.names.rename(id, given);
-        }
-        return ok(command.type, { claudeSessionId, ...meta });
-      }
       case "logs.tail":
         return ok(
           command.type,
@@ -963,10 +689,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
         await resources().endOrphan(command.payload.pid, command.payload.startTicks);
         return ok(command.type, { ended: true });
-      case "worktree.list":
-        return ok(command.type, await worktrees().list(command.payload.projectId));
-      case "worktree.remove":
-        return ok(command.type, await worktrees().remove(command.payload.items));
       case "names.list":
         return ok(command.type, {
           names: names()
@@ -975,57 +697,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
       case "idle.subscribe":
         return ok(command.type, idle().subscribe(command.payload));
-      case "issues.list": {
-        const { projectId, query } = command.payload;
-        return ok(command.type, { issues: await issues().list(projectId, query) });
-      }
-      case "issues.get":
-        return ok(command.type, await issues().get(command.payload.projectId, command.payload.id));
-      case "issues.createCard":
-        return ok(
-          command.type,
-          await issues().createCard(command.payload.projectId, command.payload.issueRef),
-        );
-      case "session.fork": {
-        if (!opts.forker) throw featureOff("forker");
-        return ok(command.type, await opts.forker.fork(command.payload));
-      }
       case "service.install":
         return ok(
           command.type,
           await need(opts, "serviceInstall")(command.payload.confirm === true),
         );
-      case "external.list": {
-        const { external, meta } = central();
-        const sessions = external
-          .list()
-          .map((s) => ({ ...externalListed(s), meta: meta.get(s.claudeSessionId) }));
-        return ok(command.type, { sessions });
-      }
-      case "external.watch": {
-        // Ack, then the live sessions and the open requests, then every change: no gap.
-        const { external, permissions } = central();
-        ws.data.unwatchExternal?.();
-        const offSessions = external.onChange((session) =>
-          send(ws, { type: "external.updated", session: externalListed(session) }),
-        );
-        const offPermissions = permissions.watch((frame) => {
-          send(ws, frame);
-          // The session's line names the tool it waits for, known only once the request opens.
-          const session = external.get(frame.claudeSessionId);
-          if (session) send(ws, { type: "external.updated", session: externalListed(session) });
-        });
-        ws.data.unwatchExternal = () => {
-          offSessions();
-          offPermissions();
-        };
-        ok(command.type);
-        for (const session of external.list()) {
-          send(ws, { type: "external.updated", session: externalListed(session) });
-        }
-        for (const frame of permissions.open()) send(ws, frame);
-        return;
-      }
       case "host.info":
         return ok(command.type, {
           hostName: opts.hostName,
@@ -1064,18 +740,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...opts.terminal,
         });
-      case "history.list": {
-        const { projectKey, ...filter } = command.payload;
-        const index = history();
-        const page = index.list(
-          projectKey ? { ...filter, cwds: await foldersOf(index, projectKey) } : filter,
-        );
-        await warmKeys(page.sessions.map((s) => s.cwd));
-        const sessions = page.sessions.map((s) =>
-          listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
-        );
-        return ok(command.type, { ...page, sessions });
-      }
       case "board.get": {
         const found = board().getBoard(command.payload.projectId);
         return ok(command.type, { ...found, project: await board().forWire(found.project) });
@@ -1109,10 +773,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
-      case "session.summary": {
-        const { claudeSessionId, question, state } = command.payload;
-        return ok(command.type, await summary().get(claudeSessionId, { question, state }));
-      }
       case "roi.summary":
         return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
       case "runtime.models": {
@@ -1131,8 +791,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "doctor.run":
         if (!opts.doctor) throw featureOff("doctor.run");
         return ok(command.type, await opts.doctor(command.payload.appVersion));
-      case "session.files":
-        return ok(command.type, { files: sessionFiles().list(command.payload.claudeSessionId) });
       case "statusline.get": {
         const { claudeSessionId } = command.payload;
         return ok(
@@ -1169,42 +827,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "pr.comments.send": {
         const { cardId, ids } = command.payload;
         return ok(command.type, await board().sendPrComments(cardId, ids));
-      }
-      case "session.applyPersona": {
-        const { sessionId, claudeSessionId, persona } = command.payload;
-        return ok(
-          command.type,
-          await personaSessions().apply({ sessionId, claudeSessionId, persona }),
-        );
-      }
-      case "session.clearPersona":
-        return ok(command.type, await personaSessions().clear(command.payload));
-      case "assistant.run":
-        return ok(command.type, await assistant().run(command.payload));
-      case "assistant.cancel":
-        assistant().cancel(command.payload.requestId);
-        return ok(command.type);
-      case "assistant.context":
-        return ok(command.type, await assistant().context(command.payload));
-      case "assistant.record":
-        assistant().record(command.payload);
-        return ok(command.type);
-      case "sessions.watch": {
-        // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.
-        ws.data.unwatch?.();
-        const watch = manager.watchSummaries((envelope) => send(ws, envelope));
-        ws.data.unwatch = watch.unwatch;
-        // #1191: asked to, the current summaries ride in the ack, one frame for them all.
-        if (command.payload.snapshot === "ack") {
-          return ok(command.type, {
-            summaries: watch.snapshot.map(
-              (envelope) => envelope.event as SessionEventOf<"session.summary">,
-            ),
-          });
-        }
-        ok(command.type);
-        for (const envelope of watch.snapshot) send(ws, envelope);
-        return;
       }
     }
   }

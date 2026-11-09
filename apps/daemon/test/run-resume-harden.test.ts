@@ -126,7 +126,10 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
     const broken = await reasonOf(() => made.board.resumeRun(runId, true));
     made.store.db.exec(RESUMES);
     const again = await made.board.resumeRun(runId, false);
-    expect([broken === "ok", again]).toEqual([false, { from: "b", ok: true }]);
+    expect([broken, again]).toEqual([
+      expect.stringContaining("no such table: run_resumes"),
+      { from: "b", ok: true },
+    ]);
   });
 
   test("a resumed run waiting for its slot goes on after a restart", async () => {

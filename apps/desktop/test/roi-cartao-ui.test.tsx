@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
 import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
+import { usd } from "../src/lib/costs.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
@@ -131,6 +132,9 @@ for (const [lang, t] of [
   ["en", en],
   ["pt-BR", ptBR],
 ] as const) {
+  /** A cost as a bare number in this language's marks: the ROI lines print it without the unit. */
+  const dec = (n: number) =>
+    new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
   describe(`roi-cartao-ui (${lang}): the ROI card of a project`, () => {
     test("a host without roi shows no card", async () => {
       await roiPage(lang, { usage: USAGE, done: SHOP }, {});
@@ -142,8 +146,10 @@ for (const [lang, t] of [
       await roiPage(lang, { usage: USAGE, done: SHOP });
       await settle(() => screen.queryByText(plural(t.roiUi.cardsDone, 3)) !== null);
       expect(screen.queryByText(plural(t.roiUi.prsMerged, 2))).not.toBeNull();
-      expect(screen.queryByText(t.roiUi.costPerCard.replace("{each}", "US$ 4.00"))).not.toBeNull();
-      expect(screen.queryByText(t.roiUi.costPerPr.replace("{each}", "US$ 6.00"))).not.toBeNull();
+      expect(
+        screen.queryByText(t.roiUi.costPerCard.replace("{each}", usd(4, lang))),
+      ).not.toBeNull();
+      expect(screen.queryByText(t.roiUi.costPerPr.replace("{each}", usd(6, lang)))).not.toBeNull();
       expect(screen.queryByText(t.roiUi.noRate)).not.toBeNull();
       expect(document.body.textContent).not.toContain(t.roiUi.value.replace(" {value}", ""));
     });
@@ -172,7 +178,7 @@ for (const [lang, t] of [
         .replace("{n}", "3")
         .replace("{planned}", "2")
         .replace("{unplanned}", "1")
-        .replace("{cost}", "12.00")
+        .replace("{cost}", dec(12))
         .replace("{previous}", "2")
         .replace("{movedText}", t.roiUi.moved.lower);
       await settle(() => screen.queryByText(sentence) !== null);
@@ -188,7 +194,7 @@ for (const [lang, t] of [
         });
       });
       await settle(() => screen.queryByText(t.roiUi.hours.replace("{hours}", "6")) !== null);
-      expect(screen.queryByText(t.roiUi.value.replace("{value}", "US$ 360.00"))).not.toBeNull();
+      expect(screen.queryByText(t.roiUi.value.replace("{value}", usd(360, lang)))).not.toBeNull();
       expect(screen.queryByText(t.roiUi.roi.replace("{roi}", "29.0"))).not.toBeNull();
       expect(screen.queryAllByText(t.roiUi.estimate).length).toBeGreaterThan(0);
       expect(screen.queryByText(t.roiUi.noRate)).toBeNull();
@@ -211,7 +217,7 @@ for (const [lang, t] of [
       await settle(
         () =>
           screen.queryByText(
-            t.roiUi.rework.replace("{rounds}", "2").replace("{cost}", "US$ 1.50"),
+            t.roiUi.rework.replace("{rounds}", "2").replace("{cost}", usd(1.5, lang)),
           ) !== null,
       );
     });
@@ -219,14 +225,14 @@ for (const [lang, t] of [
     test("nothing delivered still shows the cost", async () /* NOSONAR: settle() is the assertion: it throws, naming what never showed */ => {
       await roiPage(lang, { usage: [["2026-10-12", 6, 10]] });
       await settle(
-        () => screen.queryByText(t.roiUi.headline.none.replace("{cost}", "6.00")) !== null,
+        () => screen.queryByText(t.roiUi.headline.none.replace("{cost}", dec(6))) !== null,
       );
     });
 
     test("the time requests waited for the person is information, not cost", async () => {
       await roiPage(lang, { usage: USAGE, done: SHOP, waitedHours: 3 });
       await settle(() => screen.queryByText(t.roiUi.waited.replace("{hours}", "3")) !== null);
-      expect(screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 12.00"))).not.toBeNull();
+      expect(screen.queryByText(t.roiUi.cost.replace("{cost}", usd(12, lang)))).not.toBeNull();
     });
 
     test("the trend has eight weeks, as an image with a text alternative", async () => {
@@ -265,9 +271,9 @@ for (const [lang, t] of [
           screen.queryByText(
             t.roiUi.derive.value
               .replace("{hours}", "6")
-              .replace("{rate}", "60.00")
-              .replace("{billed}", "0.00")
-              .replace("{value}", "360.00"),
+              .replace("{rate}", dec(60))
+              .replace("{billed}", dec(0))
+              .replace("{value}", dec(360)),
           ) !== null,
       );
       expect(screen.queryByText(t.roiUi.caveat)).not.toBeNull();
@@ -301,7 +307,7 @@ for (const [lang, t] of [
       expect((screen.getByLabelText(t.roiUi.projectRate) as HTMLInputElement).value).toBe("50");
       await click(t.roiUi.saveRate);
       await settle(
-        () => screen.queryByText(t.roiUi.value.replace("{value}", "US$ 300.00")) !== null,
+        () => screen.queryByText(t.roiUi.value.replace("{value}", usd(300, lang))) !== null,
       );
       expect(Object.values(page.store.roi.data().projectRates)).toEqual([50]);
     });
@@ -319,7 +325,7 @@ for (const [lang, t] of [
       try {
         const { d } = await roiPage(lang, { usage: USAGE, done: SHOP });
         await settle(
-          () => screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 12.00")) !== null,
+          () => screen.queryByText(t.roiUi.cost.replace("{cost}", usd(12, lang))) !== null,
         );
         expect(ticks.length).toBeGreaterThan(0);
         const key = d.keys.known(join(d.root, "shop"));
@@ -330,12 +336,12 @@ for (const [lang, t] of [
              VALUES ('late', '2026-10-12T11:00:00Z', '2026-10-12', ?, 'm', 'app', 'standard', 1, 0, 0, 0, 0, 3)`,
           )
           .run(key);
-        expect(screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 15.00"))).toBeNull();
+        expect(screen.queryByText(t.roiUi.cost.replace("{cost}", usd(15, lang)))).toBeNull();
         await act(async () => {
           for (const tick of ticks) tick();
         });
         await settle(
-          () => screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 15.00")) !== null,
+          () => screen.queryByText(t.roiUi.cost.replace("{cost}", usd(15, lang))) !== null,
         );
       } finally {
         interval.mockRestore();

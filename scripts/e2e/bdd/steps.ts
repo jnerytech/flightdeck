@@ -3,7 +3,7 @@
  * the dictionaries, in the language of the run (the same scenarios run in en and pt-BR).
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
@@ -1763,7 +1763,7 @@ step(
   async (c) => {
     const row = budgetRow(c);
     await row
-      .getByText(/US\$ 10\.00/)
+      .getByText(c.lang === "en" ? /US\$ 10\.00/ : /US\$ 10,00/)
       .first()
       .waitFor({ timeout: WAIT });
     const plan = dictionary(c).budgets.limitQuota.replace("{limit}", "");
@@ -2015,6 +2015,98 @@ step(
       .waitFor({ timeout: WAIT });
   },
 );
+
+// A card waits while the host's memory is at or over the threshold, and starts when it falls (issue #1343).
+// The demo host reads its memory from a file the scenario writes; no file is no reading. The scenario puts
+// the threshold and the file back as it found them.
+const memoryGuardSelect = (c: Context, host: string) =>
+  c.page.getByLabel(c.t("resources.guard.labelFor", { host }), { exact: true });
+
+step(
+  Given,
+  "host alfa holds new cards from {string} of memory and reads {string} in use",
+  async (c, pauseAt = "", used = "") => {
+    await open(c, { name: "host", host: ALFA });
+    const select = memoryGuardSelect(c, "alfa");
+    await select.waitFor({ timeout: WAIT });
+    mine(c).guard = await select.inputValue();
+    await select.selectOption({ label: pauseAt });
+    await waitFor(
+      async () =>
+        (await select.evaluate((node) => (node as HTMLSelectElement).selectedOptions[0]?.text)) ===
+        pauseAt,
+      "the hold is set",
+    );
+    writeFileSync(c.ids.memoryFile, String(Number.parseInt(used, 10) / 100));
+  },
+);
+
+step(
+  Given,
+  "host alfa holds new cards from {string} of memory and has no memory reading",
+  async (c, pauseAt = "") => {
+    await open(c, { name: "host", host: ALFA });
+    const select = memoryGuardSelect(c, "alfa");
+    await select.waitFor({ timeout: WAIT });
+    mine(c).guard = await select.inputValue();
+    await select.selectOption({ label: pauseAt });
+    rmSync(c.ids.memoryFile, { force: true });
+  },
+);
+
+/** A card of the scenario's own on its project, started with its main button. */
+async function startPlainCard(c: Context) {
+  const title = unique(c, "bdd card");
+  mine(c).card = title;
+  await openOwnBoard(c);
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+  await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+  await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+}
+
+step(When, "I start a card of my own on that project from its main button", async (c) =>
+  startPlainCard(c),
+);
+
+step(Then, "the card says it is waiting for memory", async (c) => {
+  await openOwnBoard(c);
+  await tile(c).getByText(c.t("kanban.waitingMemory"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(When, "the memory of host alfa falls to {string} in use", async (c, used = "") => {
+  writeFileSync(c.ids.memoryFile, String(Number.parseInt(used, 10) / 100));
+});
+
+/** What the card leads with once it has started: its changes to review, or the PR to open when it already finished. */
+const startedLead = (c: Context) =>
+  c.page
+    .getByRole("button", { name: c.t("cardUi.reviewChanges"), exact: true })
+    .or(c.page.getByRole("button", { name: c.t("cardUi.openPr"), exact: true }));
+
+step(Then, "the card starts and no longer waits for memory", async (c) => {
+  // The host looks at its memory again every 15 s while it holds.
+  await tile(c)
+    .getByText(c.t("kanban.waitingMemory"), { exact: true })
+    .waitFor({ state: "detached", timeout: SESSION_WAIT });
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the card starts at once and never waits for memory", async (c) => {
+  // Still on the card, whose main button changed from Start.
+  await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+  await openOwnBoard(c);
+  if ((await tile(c).getByText(c.t("kanban.waitingMemory"), { exact: true }).count()) > 0)
+    throw new Error("the card waited for memory");
+});
+
+step(Then, "I put the memory hold of host alfa back to what it was", async (c) => {
+  rmSync(c.ids.memoryFile, { force: true });
+  await open(c, { name: "host", host: ALFA });
+  await memoryGuardSelect(c, "alfa").selectOption(mine(c).guard ?? "");
+});
 
 // While you were away: after a long absence, Needs you opens with what each host did (issues #1344, #1369).
 const summaryOf = (c: Context) =>

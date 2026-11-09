@@ -1,11 +1,41 @@
 /**
  * Issue #1288: the watch domain: a card's pull request watched and fixed (phase 22).
  */
+import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 
+/**
+ * Issue #1361: the fields a far client may change: the switch and the brakes on spending (rounds,
+ * turns, failures, money). Every other field decides what runs unattended in a card's worktree, as
+ * whom, or what a round may push, so a patch that changes it needs a near connection; one that
+ * sends it unchanged (the whole form) does not. A new field is near-only until it is named here.
+ */
+const FAR_EDITABLE: ReadonlySet<string> = new Set([
+  "enabled",
+  "maxRounds",
+  "maxTurns",
+  "maxFailures",
+  "budgetUsd",
+  "dailyUsd",
+]);
+
 export const watchHandlers = {
-  "watch.settings": (payload, { server }) => {
-    return server.need("watch").settings(payload.projectId, payload.patch);
+  "watch.settings": (payload, { ws, server }) => {
+    const watch = server.need("watch");
+    const { projectId, patch } = payload;
+    if (patch) {
+      const current: Record<string, unknown> = { ...watch.settings(projectId) };
+      const changed = Object.entries(patch)
+        .filter(([key]) => !FAR_EDITABLE.has(key))
+        .filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(current[key]))
+        .map(([key]) => key);
+      if (changed.length > 0) {
+        requireVaultTransport(ws.data.origin, "watch.settings", server.opts.log);
+        // The project's trail of who changed what runs unattended: the fields, not their values.
+        server.opts.log?.(`watch.settings: project ${projectId} changed ${changed.join(", ")}`);
+      }
+    }
+    return watch.settings(projectId, patch);
   },
   "watch.set": (payload, { server }) => {
     return server.need("watch").set(payload.cardId, payload.enabled);

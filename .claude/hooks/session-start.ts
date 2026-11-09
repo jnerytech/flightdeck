@@ -31,12 +31,13 @@ try {
   };
   // The local facts first: a slow GitHub never costs the branch, TDD and slot lines.
   const facts = gatherFacts(git, lock, Date.now());
-  // #1246: a red main and its claim, within one 3 s deadline; nothing when gh cannot answer.
+  // #1246: a red main and its claim, within one 6 s deadline; nothing when gh cannot answer.
+  // #1381: 6 s, since the full run's jobs alone take about 2 s to read.
   const gh = async (args: string[]) => {
-    const ran = await runCommand(["gh", ...args], cwd, undefined, 3000);
+    const ran = await runCommand(["gh", ...args], cwd, undefined, 6000);
     return { code: ran.timedOut ? 124 : ran.code, stdout: ran.stdout, stderr: ran.stderr };
   };
-  const mainRed = await mainRedWithin({ gh }, 3000);
+  const mainRed = await mainRedWithin({ gh }, 6000);
   const text = sessionContext(source, { ...facts, mainRed });
   if (text) {
     console.log(

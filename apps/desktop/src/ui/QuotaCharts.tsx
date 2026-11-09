@@ -56,7 +56,7 @@ function WindowChart(props: Readonly<{ store: AppStore; history: QuotaHistory }>
             {history.consumers.map((c) => (
               <li
                 key={c.projectKey}
-              >{`${c.projectKey}: ${Math.round(c.share * 100)}% (${usd(c.costUsd)})`}</li>
+              >{`${c.projectKey}: ${Math.round(c.share * 100)}% (${usd(c.costUsd, t.lang)})`}</li>
             ))}
           </ul>
         </section>

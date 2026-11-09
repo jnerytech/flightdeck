@@ -415,7 +415,7 @@ export function SessionsHub(
     const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
     return {
       costLabel: t("hub.cost", { title: row.title }),
-      ...(cost === undefined ? {} : { cost: usd(cost) }),
+      ...(cost === undefined ? {} : { cost: usd(cost, t.lang) }),
     };
   };
   const active = [
@@ -829,7 +829,7 @@ export function SessionsHub(
                               aria-label={t("hub.cost", { title: row.title })}
                               className="shrink-0 text-muted-foreground text-xs tabular-nums"
                             >
-                              {usd(cost)}
+                              {usd(cost, t.lang)}
                             </output>
                           )}
                           {cacheOf(row)}
