@@ -105,6 +105,43 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the external session commands left the switch of server.ts.
+  test("the external domain owns the external.* commands", () => {
+    expect(Object.keys(DOMAINS.external ?? {}).sort()).toEqual(
+      ["external.list", "external.message", "external.watch"].sort(),
+    );
+  });
+
+  // Issue #1288: the session commands left the switch of server.ts (external.* and assistant.* follow).
+  test("the session domain owns the session.*, sessions.watch, permission.respond and history.list commands", () => {
+    expect(Object.keys(DOMAINS.session ?? {}).sort()).toEqual(
+      [
+        "history.list",
+        "permission.respond",
+        "session.applyPersona",
+        "session.clearPersona",
+        "session.close",
+        "session.create",
+        "session.files",
+        "session.fork",
+        "session.interrupt",
+        "session.interrupted",
+        "session.list",
+        "session.meta.set",
+        "session.resume",
+        "session.send",
+        "session.setEffort",
+        "session.setMode",
+        "session.setModel",
+        "session.sleep",
+        "session.subscribe",
+        "session.summary",
+        "session.unsubscribe",
+        "sessions.watch",
+      ].sort(),
+    );
+  });
+
   // Issue #1288: the teleport commands left the switch of server.ts.
   test("the teleport domain owns the teleport.* commands", () => {
     expect(Object.keys(DOMAINS.teleport ?? {}).sort()).toEqual(

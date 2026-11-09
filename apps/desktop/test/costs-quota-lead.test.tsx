@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Quota } from "../../daemon/src/quota/quota.ts";
+import { usd } from "../src/lib/costs.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
@@ -100,13 +101,14 @@ for (const language of ["en", "pt-BR"] as const) {
   describe(`costs-quota-lead (${language}): on a subscription the Costs screen leads with the quota (#1248)`, () => {
     test("the quota bars come before the dollars, and the dollars are still there", async () => {
       await online(language, [{ name: "alfa", five: 0.2 }]);
-      await settle(() => total(w.total) === "US$ 6.00");
+      await settle(() => total(w.total) === usd(6, language));
       expect(lead(w.lead)).not.toBeNull();
       expect(meter(w.five)?.value).toBeCloseTo(0.2);
       expect(meter(w.week)?.value).toBeCloseTo(0.4);
       const bars = lead(w.lead) as HTMLElement;
       const dollars = screen.queryByLabelText(w.total) as HTMLElement;
-      expect(bars.compareDocumentPosition(dollars) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      // Exactly "follows": a node inside the bars would add CONTAINED_BY and still pass a bit test.
+      expect(bars.compareDocumentPosition(dollars)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     test("with several hosts each one on a subscription has its bars, and one on an API key has none", async () => {
@@ -115,7 +117,7 @@ for (const language of ["en", "pt-BR"] as const) {
         { name: "beta", five: 0.5 },
         { name: "gama" },
       ]);
-      await settle(() => total(w.total) === "US$ 18.00");
+      await settle(() => total(w.total) === usd(18, language));
       expect(meter(w.five)?.value).toBeCloseTo(0.2);
       expect(meter(w.five.replace("alfa", "beta"))?.value).toBeCloseTo(0.5);
       expect(meter(w.five.replace("alfa", "gama"))).toBeNull();
@@ -123,8 +125,8 @@ for (const language of ["en", "pt-BR"] as const) {
 
     test("a host with no plan window reports leads with dollars and shows no quota block", async () => {
       await online(language, [{ name: "alfa" }]);
-      await settle(() => total(w.total) === "US$ 6.00");
-      expect(total(w.total)).toBe("US$ 6.00");
+      await settle(() => total(w.total) === usd(6, language));
+      expect(total(w.total)).toBe(usd(6, language));
       expect(lead(w.lead)).toBeNull();
     });
   });

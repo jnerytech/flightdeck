@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
@@ -175,10 +175,8 @@ describe("run-resume-ui: Run again from the failed step (#1266)", () => {
     });
     render(busy.tree(run()));
     await settleMaybe(() => busy.sent.length === 1, 5000);
-    // The answer lands before the absence counts: the request leaving is not its answer shown.
-    await act(async () => {
-      await Promise.resolve();
-    });
+    // The request leaving is not its answer shown: watch the window, so a later answer is seen.
+    await stays(() => !text(/Only a run that failed/));
     expect([near, text(/Only a run that failed/), button("Run again") !== null]).toEqual([
       true,
       false,

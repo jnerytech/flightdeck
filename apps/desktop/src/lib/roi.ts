@@ -61,7 +61,9 @@ export interface Figures {
   derivation: Array<{ key: string; vars: Record<string, string | number> }>;
 }
 
-const money2 = (n: number) => n.toFixed(2);
+/** A cost as a number in the language's own marks (`1.234,50`); the dictionary adds the unit. */
+const money2 = (n: number, lang: string) =>
+  new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const SUMMED = [
   "costUsd",
@@ -118,30 +120,35 @@ interface Derived {
 }
 
 /** The lines that show how the figures were made, in the order a person reads them. */
-function derivationOf(period: RoiPeriod, money: RoiMoney, d: Derived): Figures["derivation"] {
+function derivationOf(
+  period: RoiPeriod,
+  money: RoiMoney,
+  d: Derived,
+  lang: string,
+): Figures["derivation"] {
   const { costUsd, agentsCostUsd, planShareUsd, reviewCostUsd, costPerCard, costPerPr } = d;
   const { valueUsd, roi } = d;
   const derivation: Figures["derivation"] = [
     {
       key: "roiUi.derive.cost",
       vars: {
-        total: money2(costUsd),
-        agents: money2(agentsCostUsd),
-        plan: money2(planShareUsd),
-        review: money2(reviewCostUsd),
+        total: money2(costUsd, lang),
+        agents: money2(agentsCostUsd, lang),
+        plan: money2(planShareUsd, lang),
+        review: money2(reviewCostUsd, lang),
       },
     },
   ];
   if (costPerCard !== null) {
     derivation.push({
       key: "roiUi.derive.costPerCard",
-      vars: { cost: money2(costUsd), n: period.cards, each: money2(costPerCard) },
+      vars: { cost: money2(costUsd, lang), n: period.cards, each: money2(costPerCard, lang) },
     });
   }
   if (costPerPr !== null) {
     derivation.push({
       key: "roiUi.derive.costPerPr",
-      vars: { cost: money2(costUsd), n: period.prsMerged, each: money2(costPerPr) },
+      vars: { cost: money2(costUsd, lang), n: period.prsMerged, each: money2(costPerPr, lang) },
     });
   }
   derivation.push({ key: "roiUi.derive.hours", vars: { hours: period.hours } });
@@ -153,22 +160,22 @@ function derivationOf(period: RoiPeriod, money: RoiMoney, d: Derived): Figures["
       key: "roiUi.derive.value",
       vars: {
         hours: period.hours,
-        rate: money2(money.rate ?? 0),
-        billed: money2(money.billed ?? 0),
-        value: money2(valueUsd),
+        rate: money2(money.rate ?? 0, lang),
+        billed: money2(money.billed ?? 0, lang),
+        value: money2(valueUsd, lang),
       },
     });
   }
   if (roi !== null && valueUsd !== null) {
     derivation.push({
       key: "roiUi.derive.roi",
-      vars: { value: money2(valueUsd), cost: money2(costUsd), roi: roi.toFixed(1) },
+      vars: { value: money2(valueUsd, lang), cost: money2(costUsd, lang), roi: roi.toFixed(1) },
     });
   }
   return derivation;
 }
 
-export function figures(period: RoiPeriod, money: RoiMoney): Figures {
+export function figures(period: RoiPeriod, money: RoiMoney, lang: string): Figures {
   const agentsCostUsd = period.costUsd;
   const planShareUsd = money.planShareUsd ?? 0;
   // Each decision counts at most the cap: the totals give the most it can come to.
@@ -182,16 +189,21 @@ export function figures(period: RoiPeriod, money: RoiMoney): Figures {
   const roi = costUsd > 0 && valueUsd !== null ? (valueUsd - costUsd) / costUsd : null;
   const costPerCard = period.cards > 0 ? costUsd / period.cards : null;
   const costPerPr = period.prsMerged > 0 ? costUsd / period.prsMerged : null;
-  const derivation = derivationOf(period, money, {
-    costUsd,
-    agentsCostUsd,
-    planShareUsd,
-    reviewCostUsd,
-    costPerCard,
-    costPerPr,
-    valueUsd,
-    roi,
-  });
+  const derivation = derivationOf(
+    period,
+    money,
+    {
+      costUsd,
+      agentsCostUsd,
+      planShareUsd,
+      reviewCostUsd,
+      costPerCard,
+      costPerPr,
+      valueUsd,
+      roi,
+    },
+    lang,
+  );
   return {
     agentsCostUsd,
     planShareUsd,
@@ -272,17 +284,18 @@ export function compare(current: RoiPeriod, previous: RoiPeriod): Comparison {
 export function headline(
   current: RoiPeriod,
   previous: RoiPeriod,
+  lang: string,
 ): { key: string; vars: Record<string, string | number> } {
   const c = compare(current, previous);
   if (c.verdict === "none")
-    return { key: "roiUi.headline.none", vars: { cost: money2(current.costUsd) } };
+    return { key: "roiUi.headline.none", vars: { cost: money2(current.costUsd, lang) } };
   return {
     key: `roiUi.headline.${c.verdict}`,
     vars: {
       n: current.cards,
       planned: current.planned,
       unplanned: current.unplanned,
-      cost: money2(current.costUsd),
+      cost: money2(current.costUsd, lang),
       previous: previous.cards,
       moved: c.costPerItemMoved ?? "none",
     },

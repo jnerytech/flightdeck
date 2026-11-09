@@ -924,7 +924,7 @@ export const ptBR = {
     clearSelection: "Limpar seleção",
     selectCard: "Selecionar card",
     deselectCard: "Desmarcar card",
-    selectedCard: "selecionado",
+    selectCardNamed: "Selecionar {title}",
     stayedOne: "1 card ficou onde estava: {names}",
     stayed: "{count} cards ficaram onde estavam: {names}",
     contract: {
@@ -967,7 +967,7 @@ export const ptBR = {
     countOne: "1 card",
     countMany: "{n} cards",
     keysHint:
-      "As setas passam de um card a outro, Enter abre, S inicia e M mostra as ações do card.",
+      "As setas passam de um card a outro, Enter abre, S inicia, M mostra as ações, X seleciona e Shift com uma seta seleciona um trecho. Esc limpa a seleção.",
     columns: "Colunas",
     showColumn: "{column}, {count}",
     countOfMany: "{shown} de {total} cards",

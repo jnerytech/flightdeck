@@ -60,7 +60,7 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
       parts.push(
         t("roiUi.people.shareOfLimit", {
           share: Math.round(row.costShare * 100),
-          limit: usd(costLimit),
+          limit: usd(costLimit, t.lang),
         }),
       );
     }

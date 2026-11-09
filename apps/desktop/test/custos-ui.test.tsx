@@ -145,15 +145,15 @@ describe("custos-ui", () => {
     const rows = [...(region("Por projeto")?.querySelectorAll("tbody tr") ?? [])].map(
       (r) => r.textContent,
     );
-    expect(rows).toEqual(["b/docs-siteUS$ 2.00", "a/docs-siteUS$ 1.00"]);
+    expect(rows).toEqual(["b/docs-siteUS$ 2,00", "a/docs-siteUS$ 1,00"]);
     expect(errors.filter((line) => line.includes("same key"))).toEqual([]);
   });
 
   test("a fourth tile of the strip names the model that spent the most, with its cost", async () => {
     await online();
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
-    expect(text("Modelo principal")).toBe("claude-opus-5-5 · US$ 3.50");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
+    expect(text("Modelo principal")).toBe("claude-opus-5-5 · US$ 3,50");
     // A model name is longer than a number: its tile writes it smaller, so it keeps to one line.
     const value = screen.queryByLabelText("Modelo principal")?.parentElement;
     expect(value?.className).toContain("text-base");
@@ -165,9 +165,9 @@ describe("custos-ui", () => {
   test("tela Custos: período, totais, economia do cache, gráfico por dia empilhado por projeto, quebras e o aviso de estimativa", async () => {
     await online();
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
-    expect(text("Custo estimado")).toBe("US$ 4.00");
-    expect(text("Economia do cache")).toBe("US$ 3.80");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
+    expect(text("Custo estimado")).toBe("US$ 4,00");
+    expect(text("Economia do cache")).toBe("US$ 3,80");
     expect(text("Tokens")).toBe("1.000.045");
     expect(
       screen.queryByText("equivalente em API, estimado; em assinatura, não é cobrado"),
@@ -177,34 +177,34 @@ describe("custos-ui", () => {
     expect(
       [...(chart?.querySelectorAll("[role=img]") ?? [])].map((s) => s.getAttribute("aria-label")),
     ).toEqual([
-      "2026-10-14 · kA: US$ 2.00",
-      "2026-10-15 · kA: US$ 1.50",
-      "2026-10-15 · kB: US$ 0.50",
+      "2026-10-14 · kA: US$ 2,00",
+      "2026-10-15 · kA: US$ 1,50",
+      "2026-10-15 · kB: US$ 0,50",
     ]);
     const rows = (name: string) =>
       [...(region(name)?.querySelectorAll("tbody tr") ?? [])].map((r) => r.textContent);
-    expect(rows("Por modelo")).toEqual(["claude-opus-5-5US$ 3.50", "claude-sonnet-5-5US$ 0.50"]);
-    expect(rows("Por origem")).toEqual(["cardUS$ 2.00", "terminalUS$ 1.50", "appUS$ 0.50"]);
-    expect(rows("Por projeto")).toEqual(["kAUS$ 3.50", "kBUS$ 0.50"]);
+    expect(rows("Por modelo")).toEqual(["claude-opus-5-5US$ 3,50", "claude-sonnet-5-5US$ 0,50"]);
+    expect(rows("Por origem")).toEqual(["cardUS$ 2,00", "terminalUS$ 1,50", "appUS$ 0,50"]);
+    expect(rows("Por projeto")).toEqual(["kAUS$ 3,50", "kBUS$ 0,50"]);
     const total = async (period: string, expected: string) => {
       await click(period);
       await settle(() => text("Custo estimado") === expected);
       return text("Custo estimado");
     };
-    expect(await total("Hoje", "US$ 2.00")).toBe("US$ 2.00");
-    expect(await total("Mês atual", "US$ 8.00")).toBe("US$ 8.00");
-    expect(await total("30 dias", "US$ 16.00")).toBe("US$ 16.00");
+    expect(await total("Hoje", "US$ 2,00")).toBe("US$ 2,00");
+    expect(await total("Mês atual", "US$ 8,00")).toBe("US$ 8,00");
+    expect(await total("30 dias", "US$ 16,00")).toBe("US$ 16,00");
     await click("Intervalo");
     await choose("De", "2026-10-01");
     await choose("Até", "2026-10-01");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
-    expect(text("Custo estimado")).toBe("US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
+    expect(text("Custo estimado")).toBe("US$ 4,00");
   });
 
   test("o gráfico por dia tem o dia sob cada barra, o total de cada dia, o maior dia e a legenda dos projetos", async () => {
     await online();
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
     const chart = region("Custo por dia") as HTMLElement;
     const days = [...chart.querySelectorAll("[data-day]")];
     expect([...chart.querySelectorAll("[data-day-label]")].map((l) => l.textContent)).toEqual([
@@ -217,18 +217,18 @@ describe("custos-ui", () => {
       "15/10",
     ]);
     expect(days.map((d) => d.getAttribute("aria-label"))).toEqual([
-      "2026-10-09: US$ 0.00",
-      "2026-10-10: US$ 0.00",
-      "2026-10-11: US$ 0.00",
-      "2026-10-12: US$ 0.00",
-      "2026-10-13: US$ 0.00",
-      "2026-10-14: US$ 2.00",
-      "2026-10-15: US$ 2.00",
+      "2026-10-09: US$ 0,00",
+      "2026-10-10: US$ 0,00",
+      "2026-10-11: US$ 0,00",
+      "2026-10-12: US$ 0,00",
+      "2026-10-13: US$ 0,00",
+      "2026-10-14: US$ 2,00",
+      "2026-10-15: US$ 2,00",
     ]);
     expect(within(chart).getAllByRole("group", { name: /^2026-10-\d\d: / })).toHaveLength(
       days.length,
     );
-    expect(chart.textContent).toContain("Maior dia: US$ 2.00");
+    expect(chart.textContent).toContain("Maior dia: US$ 2,00");
     const legend = chart.querySelector("[aria-label='Projetos no gráfico']") as HTMLElement;
     const items = [...legend.querySelectorAll("li")];
     expect(items.map((li) => li.textContent)).toEqual(["kA", "kB"]);
@@ -241,7 +241,7 @@ describe("custos-ui", () => {
       spend(d, { day: "2026-10-14", key, cost: 0.1 });
     }
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.40");
+    await settle(() => text("Custo estimado") === "US$ 4,40");
     const chart = region("Custo por dia") as HTMLElement;
     const tint = (el: Element | null) =>
       (el?.className ?? "").split(" ").find((c) => c.startsWith("chart-series-")) ?? "";
@@ -264,8 +264,8 @@ describe("custos-ui", () => {
     const { store } = await online();
     const host = store.getState().hosts[0]?.id as string;
     await act(async () => store.router.push({ name: "costs", host, projectKey: "kB" }));
-    await settle(() => text("Custo estimado") === "US$ 0.50");
-    expect(text("Custo estimado")).toBe("US$ 0.50");
+    await settle(() => text("Custo estimado") === "US$ 0,50");
+    expect(text("Custo estimado")).toBe("US$ 0,50");
     // The project is the visit's scope (#126 slice 4): the Dados de menu names it.
     expect(screen.queryByRole("button", { name: "Dados de kB" }) === null).toBe(false); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
@@ -273,20 +273,20 @@ describe("custos-ui", () => {
   test("filtros por projeto (no escopo), modelo e origem", async () => {
     await online();
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
     // The project is the data scope's (#126 slice 4), in the Dados de menu.
     await pickScope("kB");
-    await settle(() => text("Custo estimado") === "US$ 0.50");
-    expect(text("Custo estimado")).toBe("US$ 0.50");
+    await settle(() => text("Custo estimado") === "US$ 0,50");
+    expect(text("Custo estimado")).toBe("US$ 0,50");
     await pickScope("Todos os hosts");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
     await choose("Modelo", "claude-opus-5-5");
-    await settle(() => text("Custo estimado") === "US$ 3.50");
-    expect(text("Custo estimado")).toBe("US$ 3.50");
+    await settle(() => text("Custo estimado") === "US$ 3,50");
+    expect(text("Custo estimado")).toBe("US$ 3,50");
     await choose("Modelo", "");
     await choose("Origem", "card");
-    await settle(() => text("Custo estimado") === "US$ 2.00");
-    expect(text("Custo estimado")).toBe("US$ 2.00");
+    await settle(() => text("Custo estimado") === "US$ 2,00");
+    expect(text("Custo estimado")).toBe("US$ 2,00");
   });
 
   test("top sessões abrem a sessão; modelo sem preço e tabela desatualizada aparecem", async () => {
@@ -328,7 +328,7 @@ describe("custos-ui", () => {
     const top = [...(region("Top sessões")?.querySelectorAll("button") ?? [])].map(
       (b) => b.textContent,
     );
-    expect(top[0]).toContain("US$ 9.00");
+    expect(top[0]).toContain("US$ 9,00");
     expect(top[1]).toContain("Lido do histórico");
     await act(async () => {
       fireEvent.click(region("Top sessões")?.querySelectorAll("button")[0] as HTMLElement);
@@ -351,7 +351,7 @@ describe("custos-ui", () => {
   test("Exportar CSV fica nas ações da página, não na barra de filtros (onde quebrava sozinho numa segunda linha)", async () => {
     await online();
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
     const button = screen.queryByRole("button", { name: "Exportar CSV" });
     expect(button?.closest("[data-slot='page-actions']")).not.toBeNull();
     expect(button?.closest("[role='toolbar'], [aria-label='Filtros']")).toBeNull();
@@ -360,7 +360,7 @@ describe("custos-ui", () => {
   test("Exportar CSV salva pelo diálogo do sistema; cancelar não reclama", async () => {
     const { mem, store } = await online();
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
     await click("Exportar CSV");
     await settle(() => mem.saved.length > 0);
     expect(mem.saved[0]?.name).toBe("flightdeck-custos-2026-10-09-a-2026-10-15.csv");
@@ -384,11 +384,11 @@ describe("custos-ui", () => {
         (r) => r.textContent,
       ),
     ).toEqual([
-      "kAUS$ 3.50",
-      "2026-10-15US$ 1.501.000.015",
-      "2026-10-14US$ 2.0015",
-      "kBUS$ 0.50",
-      "2026-10-15US$ 0.5015",
+      "kAUS$ 3,50",
+      "2026-10-15US$ 1,501.000.015",
+      "2026-10-14US$ 2,0015",
+      "kBUS$ 0,50",
+      "2026-10-15US$ 0,5015",
     ]);
   });
 
@@ -457,13 +457,13 @@ describe("custos-ui", () => {
     await settle(() => store.getState().hosts[1]?.hostInfo !== null);
     await click("Custos");
     // The data scope is every host until one is picked (#126).
-    await settle(() => text("Custo estimado") === "US$ 11.00");
+    await settle(() => text("Custo estimado") === "US$ 11,00");
     await pickScope("beta");
-    await settle(() => text("Custo estimado") === "US$ 7.00");
-    expect(text("Custo estimado")).toBe("US$ 7.00");
+    await settle(() => text("Custo estimado") === "US$ 7,00");
+    expect(text("Custo estimado")).toBe("US$ 7,00");
     await pickScope("alfa");
-    await settle(() => text("Custo estimado") === "US$ 4.00");
-    expect(text("Custo estimado")).toBe("US$ 4.00");
+    await settle(() => text("Custo estimado") === "US$ 4,00");
+    expect(text("Custo estimado")).toBe("US$ 4,00");
   });
 
   test("a session that two hosts both report is two rows of the top, and React sees no repeated key", async () => {
@@ -477,7 +477,7 @@ describe("custos-ui", () => {
     });
     await settle(() => store.getState().hosts[1]?.hostInfo !== null);
     await click("Custos");
-    await settle(() => text("Custo estimado") === "US$ 7.00");
+    await settle(() => text("Custo estimado") === "US$ 7,00");
     await settle(() => (region("Top sessões")?.querySelectorAll("li").length ?? 0) === 2);
   });
 

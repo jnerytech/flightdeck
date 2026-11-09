@@ -94,7 +94,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
                 onChange={(event) => {
                   setKeepText(event.target.value);
                   const keep = validKeep(event.target.value);
-                  if (keep !== null) void scheduler.setKeep(keep);
+                  if (keep !== null) scheduler.setKeep(keep);
                 }}
               />
             )}

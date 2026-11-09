@@ -24,7 +24,7 @@ const week = (n: number, over: Partial<RoiWeek> = {}): RoiWeek => ({
 
 describe("roi-calculo: the arithmetic and where each number comes from", () => {
   test("without money typed, the cost per unit shows and no value or ROI does", () => {
-    const f = figures(period({ costUsd: 12, cards: 3, prsMerged: 2 }), NO_MONEY);
+    const f = figures(period({ costUsd: 12, cards: 3, prsMerged: 2 }), NO_MONEY, "en");
     expect(f).toMatchObject({
       costUsd: 12,
       cards: 3,
@@ -37,73 +37,89 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
   });
 
   test("a rate with no estimated hours gives no value and no ROI, instead of a value of zero and an ROI of -1", () => {
-    const f = figures(period({ costUsd: 12, cards: 4, hours: 0, cardsWithoutEstimate: 4 }), {
-      ...NO_MONEY,
-      rate: 60,
-    });
+    const f = figures(
+      period({ costUsd: 12, cards: 4, hours: 0, cardsWithoutEstimate: 4 }),
+      {
+        ...NO_MONEY,
+        rate: 60,
+      },
+      "en",
+    );
     expect(f.valueUsd).toBeNull();
     expect(f.roi).toBeNull();
     // A billed amount alone still makes a value.
-    const billed = figures(period({ costUsd: 10, hours: 0 }), {
-      ...NO_MONEY,
-      rate: 60,
-      billed: 20,
-    });
+    const billed = figures(
+      period({ costUsd: 10, hours: 0 }),
+      {
+        ...NO_MONEY,
+        rate: 60,
+        billed: 20,
+      },
+      "en",
+    );
     expect(billed.valueUsd).toBe(20);
     expect(billed.roi).toBe(1);
   });
 
   test("hours times the rate is the estimated value, and the ROI is (value - cost) / cost", () => {
-    const f = figures(period({ costUsd: 12, cards: 3, hours: 6 }), { ...NO_MONEY, rate: 60 });
+    const f = figures(period({ costUsd: 12, cards: 3, hours: 6 }), { ...NO_MONEY, rate: 60 }, "en");
     expect(f.valueUsd).toBe(360);
     expect(f.roi).toBe(29);
   });
 
   test("a billed amount adds to the value", () => {
-    const f = figures(period({ costUsd: 10, cards: 1, hours: 1 }), {
-      ...NO_MONEY,
-      rate: 50,
-      billed: 100,
-    });
+    const f = figures(
+      period({ costUsd: 10, cards: 1, hours: 1 }),
+      {
+        ...NO_MONEY,
+        rate: 50,
+        billed: 100,
+      },
+      "en",
+    );
     expect(f.valueUsd).toBe(150);
     expect(f.roi).toBe(14);
   });
 
   test("a billed amount alone is a value even without a rate", () => {
-    const f = figures(period({ costUsd: 10, cards: 1 }), { ...NO_MONEY, billed: 40 });
+    const f = figures(period({ costUsd: 10, cards: 1 }), { ...NO_MONEY, billed: 40 }, "en");
     expect(f.valueUsd).toBe(40);
     expect(f.roi).toBe(3);
   });
 
   test("no ROI without a cost, and no cost per unit without a count", () => {
-    const f = figures(period({ costUsd: 0, cards: 0, hours: 5 }), { ...NO_MONEY, rate: 60 });
+    const f = figures(period({ costUsd: 0, cards: 0, hours: 5 }), { ...NO_MONEY, rate: 60 }, "en");
     expect(f).toMatchObject({ valueUsd: 300, roi: null, costPerCard: null, costPerPr: null });
   });
 
   test("the plan's share and the review time (capped per decision) add to the cost when asked", () => {
     const base = period({ costUsd: 10, cards: 2, decisions: 4, waitedSeconds: 4000 });
-    expect(figures(base, { ...NO_MONEY, planShareUsd: 5 })).toMatchObject({
+    expect(figures(base, { ...NO_MONEY, planShareUsd: 5 }, "en")).toMatchObject({
       agentsCostUsd: 10,
       planShareUsd: 5,
       reviewCostUsd: 0,
       costUsd: 15,
     });
     // 4 decisions, at most 300 s each: 1200 s of the 4000 s waited, at 60 an hour: 20.
-    const counted = figures(base, { ...NO_MONEY, rate: 60, countReview: true });
+    const counted = figures(base, { ...NO_MONEY, rate: 60, countReview: true }, "en");
     expect(counted.reviewCostUsd).toBe(20);
     expect(counted.costUsd).toBe(30);
     // The wait is not review time unless asked.
-    expect(figures(base, { ...NO_MONEY, rate: 60 }).reviewCostUsd).toBe(0);
+    expect(figures(base, { ...NO_MONEY, rate: 60 }, "en").reviewCostUsd).toBe(0);
     // Without a rate there is nothing to price the review with.
-    expect(figures(base, { ...NO_MONEY, countReview: true }).reviewCostUsd).toBe(0);
+    expect(figures(base, { ...NO_MONEY, countReview: true }, "en").reviewCostUsd).toBe(0);
   });
 
   test("a short wait counts as it was, not as the cap", () => {
-    const f = figures(period({ costUsd: 0, decisions: 2, waitedSeconds: 120 }), {
-      ...NO_MONEY,
-      rate: 60,
-      countReview: true,
-    });
+    const f = figures(
+      period({ costUsd: 0, decisions: 2, waitedSeconds: 120 }),
+      {
+        ...NO_MONEY,
+        rate: 60,
+        countReview: true,
+      },
+      "en",
+    );
     expect(f.reviewCostUsd).toBe(2);
   });
 
@@ -111,10 +127,11 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
     const f = figures(
       period({ costUsd: 10, prsMerged: 2, fixRounds: 3, fixCostUsd: 1.5 }),
       NO_MONEY,
+      "en",
     );
     expect(f.reworkShare).toBe(0.15);
     expect(f.fixRoundsPerPr).toBe(1.5);
-    const none = figures(period({ costUsd: 0, prsMerged: 0 }), NO_MONEY);
+    const none = figures(period({ costUsd: 0, prsMerged: 0 }), NO_MONEY, "en");
     expect(none.reworkShare).toBeNull();
     expect(none.fixRoundsPerPr).toBeNull();
   });
@@ -151,10 +168,14 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
   });
 
   test("every figure says how it was made, and what is an estimate is named as one", () => {
-    const f = figures(period({ costUsd: 12, cards: 3, hours: 6, cardsWithoutEstimate: 2 }), {
-      ...NO_MONEY,
-      rate: 60,
-    });
+    const f = figures(
+      period({ costUsd: 12, cards: 3, hours: 6, cardsWithoutEstimate: 2 }),
+      {
+        ...NO_MONEY,
+        rate: 60,
+      },
+      "en",
+    );
     const keys = f.derivation.map((line) => line.key);
     expect(keys).toEqual([
       "roiUi.derive.cost",
@@ -184,9 +205,11 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
   });
 
   test("without a rate the derivation stops at the cost per unit and says nothing about value", () => {
-    const keys = figures(period({ costUsd: 12, cards: 3, prsMerged: 2 }), NO_MONEY).derivation.map(
-      (line) => line.key,
-    );
+    const keys = figures(
+      period({ costUsd: 12, cards: 3, prsMerged: 2 }),
+      NO_MONEY,
+      "en",
+    ).derivation.map((line) => line.key);
     expect(keys).toEqual([
       "roiUi.derive.cost",
       "roiUi.derive.costPerCard",

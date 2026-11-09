@@ -81,9 +81,14 @@ describe("backup-schedule-notice (#1327)", () => {
   test("the passphrase is never put in a notice", async () => {
     const { store, mem } = start({ language: "en", folder: true });
     await store.init();
+    // The notice that asks for the passphrase is there first, so the dump below has one to leak from.
+    await waitFor(() => store.getState().inbox.length > 0 || undefined, "the notice");
     await store.backupScheduler.setPassphrase(PASS);
-    await waitFor(() => mem.items.size > 0 || undefined, "storage").catch(() => null);
+    expect(store.backupScheduler.hasPassphrase).toBe(true);
+    const stored = mem.items.get(SCHEDULE_KEY) ?? "";
+    expect(stored).toContain('"cadence":"daily"');
     const kept = JSON.stringify([...mem.items.values(), store.getState().inbox]);
+    expect(kept).toContain("Scheduled backups need your passphrase");
     expect(kept.includes(PASS)).toBe(false);
     store.dispose();
   });

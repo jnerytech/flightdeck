@@ -37,7 +37,7 @@ function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[s
             .filter(Boolean)
             .join(" "),
     ],
-    [t("recap.cost"), recap.costUsd === null ? null : usd(recap.costUsd)],
+    [t("recap.cost"), recap.costUsd === null ? null : usd(recap.costUsd, t.lang)],
     [t("recap.question"), question ?? recap.question],
   ];
   return list.filter((row): row is [string, string] => row[1] !== null);

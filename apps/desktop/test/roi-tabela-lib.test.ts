@@ -31,12 +31,13 @@ const summary = (
 const row = (key: string, name: string, over: Partial<RoiPeriod>, money = MONEY): RoiRow => ({
   key,
   name,
-  figures: figures(period(over), money),
+  figures: figures(period(over), money, "en"),
 });
 
 describe("roi-tabela-ui: the rows", () => {
   test("one row per project in the scope, a project on two hosts is one row", () => {
     const rows = rowsFrom({
+      lang: "en",
       summaries: [
         {
           hostId: "a",
@@ -61,6 +62,7 @@ describe("roi-tabela-ui: the rows", () => {
 
   test("each row uses the money of its own project", () => {
     const rows = rowsFrom({
+      lang: "en",
       summaries: [
         {
           hostId: "a",

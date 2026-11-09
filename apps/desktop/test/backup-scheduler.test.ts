@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { backupFileName, loadSchedule } from "../src/lib/backup-schedule.ts";
 import { BackupScheduler } from "../src/lib/backup-scheduler.ts";
 import { memoryPlatform, waitFor } from "./fixtures.ts";
+import { stays } from "./wait.ts";
 
 /**
  * Issue #1264: the app-side owner of the scheduled backups. The passphrase lives in memory only; a
@@ -140,9 +141,9 @@ describe("backup-scheduler (#1264)", () => {
 
   test("the number to keep is saved, never below one", async () => {
     const { scheduler, platform } = setup();
-    await scheduler.setKeep(8);
+    scheduler.setKeep(8);
     const eight = loadSchedule(platform.storage).keep;
-    await scheduler.setKeep(0);
+    scheduler.setKeep(0);
     expect([eight, loadSchedule(platform.storage).keep, scheduler.schedule().keep]).toEqual([
       8, 1, 1,
     ]);
@@ -155,9 +156,19 @@ describe("backup-scheduler (#1264)", () => {
       heard += 1;
     });
     await scheduler.setCadence("weekly");
+    const afterCadence = heard;
+    const versionAfterCadence = scheduler.version;
+    scheduler.setKeep(2);
+    const afterKeep = heard;
     off();
-    await scheduler.setKeep(2);
-    expect([heard > 0, scheduler.version > 0]).toEqual([true, true]);
+    scheduler.setKeep(3);
+    expect([
+      afterCadence >= 1,
+      afterKeep > afterCadence,
+      heard === afterKeep,
+      versionAfterCadence >= 1,
+      scheduler.version > versionAfterCadence,
+    ]).toEqual([true, true, true, true, true]);
   });
 
   test("start shows the stored folder, runs what is owed, then keeps checking until disposed", async () => {
@@ -170,10 +181,8 @@ describe("backup-scheduler (#1264)", () => {
     await waitFor(() => writes.length === 2 || undefined, "the timer's run").catch(() => null);
     scheduler.dispose();
     clock.now = T0 + 2 * DAY;
-    // Nothing should run now: give a stray timer time to show itself, then look.
-    await waitFor(() => writes.length > 2 || undefined, "a run after dispose", 100).catch(
-      () => null,
-    );
+    // Nothing should run now: watch the window, so a stray timer shows itself the moment it fires.
+    await stays(() => writes.length === 2, 100, "a run after dispose");
     forget();
     await scheduler.start();
     scheduler.dispose();
