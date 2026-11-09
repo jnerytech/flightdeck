@@ -93,8 +93,13 @@ export function readWatchSettings(db: Database, projectId: string): WatchSetting
   const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
   // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
   const names: unknown[] = Array.isArray(stored.checkEnv) ? stored.checkEnv : [];
+  // A cap stored by hand or by an older daemon is read inside the range the protocol allows.
+  const rounds = Number.isInteger(stored.checkRounds)
+    ? stored.checkRounds
+    : DEFAULT_SETTINGS.checkRounds;
   return {
     ...stored,
+    checkRounds: Math.min(10, Math.max(1, rounds)),
     checkEnv: names.filter(
       (name): name is string => typeof name === "string" && isCheckEnvName(name),
     ),

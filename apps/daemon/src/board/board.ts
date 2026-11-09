@@ -483,6 +483,8 @@ export class Board {
 
   /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
   private readonly loop: CheckLoopEngine | null;
+  /** Issue #1361: projects whose watch settings could not be read, logged once each. */
+  private readonly unreadableLoopSettings = new Set<string>();
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
@@ -2943,8 +2945,16 @@ export class Board {
     let project: number | undefined;
     try {
       project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
-    } catch {
+    } catch (error) {
       project = undefined;
+      // Said once per project: a row that cannot be read would otherwise go unnoticed.
+      if (!this.unreadableLoopSettings.has(row.project_id)) {
+        this.unreadableLoopSettings.add(row.project_id);
+        const what = error instanceof Error ? error.name : "error";
+        this.opts.log?.(
+          `check loop: the watch settings of project ${row.project_id} could not be read (${what})`,
+        );
+      }
     }
     const max = project === undefined ? undefined : roundsCap(row.check_rounds, project);
     const reason = CheckLoopReason.safeParse(last?.reason);
