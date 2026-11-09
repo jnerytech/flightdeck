@@ -943,6 +943,7 @@ export const ptBR = {
     startBudgetHold:
       "{host} chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
     startMemoryHold: "{host} está sem memória: os cards novos esperam ela liberar.",
+    startedElsewhere: "Iniciado em {host} como {id}.",
     noCriteriaOne: "1 deles não tem critérios de aceite; ele inicia mesmo assim.",
     noCriteria: "{n} deles não têm critérios de aceite; eles iniciam mesmo assim.",
     skipped: "fica de fora: {reason}",

@@ -948,6 +948,7 @@ export const en: Dictionary = {
     startBudgetHold:
       "{host} reached a budget that holds new cards: they wait until its period resets.",
     startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
+    startedElsewhere: "Started on {host} as {id}.",
     noCriteriaOne: "1 of them has no acceptance criteria; it starts anyway.",
     noCriteria: "{n} of them have no acceptance criteria; they start anyway.",
     skipped: "skipped: {reason}",
