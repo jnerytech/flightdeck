@@ -150,8 +150,9 @@ describe("check-loop: on the board", () => {
     expect([
       reviewed !== null,
       prompts(ctx, ctx.card.id).some((text) => text.startsWith("Round ")),
-      ctx.rounds(ctx.card.id).at(-1)?.reason,
-    ]).toEqual([true, false, "person_turn"]);
+      // The person's own turn then ends and starts a fresh loop, whose check passes.
+      ctx.rounds(ctx.card.id).map((row) => row.reason),
+    ]).toEqual([true, false, ["person_turn", "passed"]]);
   });
 
   test("stopping the card while its checks run ends the loop and gives the slot back", async () => {
