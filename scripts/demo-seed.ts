@@ -29,6 +29,7 @@ import { ulid } from "../apps/daemon/src/ulid.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { demoCardTemplates } from "./lib/demo-card-templates.ts";
+import { laggingBranches } from "./lib/demo-lagging.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
@@ -48,6 +49,7 @@ import {
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
   DEMO_TEAM_REPORT,
+  DEMO_UPDATE_CARDS,
 } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
@@ -132,6 +134,8 @@ export interface DemoIds {
   telemetrySession: string;
   /** A finished terminal session whose transcript has tools and subagents: the Rastro tab (phase 25). */
   traceSession: string;
+  /** #1406: the billing project, whose cards lag behind main (`DEMO_UPDATE_CARDS`). */
+  updateProject: string;
   /** A folder of the first host that simple mode's tasks may work in (phase 33). */
   notesFolder: string;
   /** A git repository of the first host that is no project yet: the New project journey adds it (issue #931). */
@@ -205,6 +209,39 @@ function repo(path: string, files: Record<string, string>): string {
   git(path, "add", ".");
   git(path, "commit", "-q", "-m", "inicial");
   return path;
+}
+
+/**
+ * #1406: the cards of `DEMO_UPDATE_CARDS`, each on a branch that lags behind main, the last in
+ * conflict with it (`laggingBranches`). No session runs: the cards are pointed at the worktrees in
+ * the host's database, as the PR cards are.
+ */
+async function laggingCards(
+  client: Client,
+  where: { projectId: string; repo: string; worktrees: string; db: string },
+): Promise<void> {
+  const ids: string[] = [];
+  for (const title of DEMO_UPDATE_CARDS) {
+    const creating = client.call<{ id: string }>("card.create", {
+      projectId: where.projectId,
+      title,
+      description: "Atualize com a base depois que a main andar.",
+    });
+    const card = await creating; // NOSONAR: one after the other, so the board lists them in this order
+    ids.push(card.id);
+  }
+  const branches = laggingBranches(git, where.repo, where.worktrees, ids.length);
+  const db = new Database(where.db);
+  for (const [i, id] of ids.entries()) {
+    const made = branches[i];
+    if (!made) continue;
+    db.query("UPDATE cards SET branch = ?, worktree_path = ? WHERE id = ?").run(
+      made.branch,
+      made.path,
+      id,
+    );
+  }
+  db.close();
 }
 
 /** A protocol client that answers pings and keeps `external.watch` open (requests stay held). */
@@ -865,6 +902,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     title: CONTRACT_CARD,
     description: "Explain how the design tokens are used.",
   });
+  await laggingCards(client, {
+    projectId: projectIds.billing as string,
+    repo: join(alfa.projects, "billing"),
+    worktrees: join(work, "worktrees"),
+    db: join(alfa.dataDir, "flightdeck.db"),
+  });
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");
@@ -1420,6 +1463,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       longTitleSession: longTitle.sessionId,
       teleportRepo: join(beta.projects, "flightdeck-web"),
       knowledgeProject: projectIds["design-system"] as string,
+      updateProject: projectIds.billing as string,
       contractCard: contractCard.id,
     },
     stop: async () => {

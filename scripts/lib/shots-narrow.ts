@@ -56,6 +56,8 @@ export const NARROW_SHOTS: readonly string[] = [
   // #1354: the selection bar and Start N's confirm, compact at 390.
   "board-selecao",
   "board-selecao-iniciar",
+  // #1406: the bar and the board's notice after Update N from the base.
+  "board-atualizar",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
