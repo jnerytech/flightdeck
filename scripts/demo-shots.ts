@@ -628,6 +628,19 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(400);
       },
     },
+    {
+      // #1328: Settings > Backup schedule, with the demo's folder (#1309): every day, the folder
+      // chosen, and the run that is due waiting for the passphrase. The web build has no folder.
+      name: "configuracoes-backup-agenda",
+      route: { name: "settings", section: "backup" },
+      query: { backupFolder: "demo" },
+      prepare: async (page) => {
+        await page.getByRole("radio", { name: /^(Every day|Todo dia)$/ }).check();
+        await page.getByRole("button", { name: /^(Choose folder|Escolher pasta)$/ }).click();
+        await page.getByText("/demo/backups").first().waitFor();
+        await showSection(/^(Scheduled backups|Backups agendados)$/)(page);
+      },
+    },
     // Phase 29: the clients' screen, the switcher open, Sessões for one client, and Custos by client.
     { name: "clientes", route: { name: "clients" }, clients: {} },
     {
