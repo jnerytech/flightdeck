@@ -95,7 +95,8 @@ const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]/g;
  */
 const CONTROL =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
-  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff\u{E0000}-\u{E007F}]/gu;
+  // biome-ignore lint/suspicious/noMisleadingCharacterClass: each is a character to remove, alone
+  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u00ad\u034f\u061c\u115f\u1160\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffb\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 
 /**
  * The round sent into the session. The output is the check's, from code the session wrote: it is
@@ -137,6 +138,8 @@ interface Loop {
 
 export class CheckLoopEngine {
   private readonly loops = new Map<string, Loop>();
+  /** Cards whose slot the board released at this turn's idle: no loop may hold or release it. */
+  private readonly released = new Set<string>();
 
   constructor(private readonly fx: CheckLoopEffects) {}
 
@@ -150,7 +153,10 @@ export class CheckLoopEngine {
       if (loop.phase === "fixing") this.await(cardId, loop);
       return "hold";
     }
-    if (!this.isLoopCard(cardId)) return "release";
+    if (!this.isLoopCard(cardId)) {
+      this.released.add(cardId);
+      return "release";
+    }
     const fresh = this.fresh();
     this.loops.set(cardId, fresh);
     this.await(cardId, fresh);
@@ -164,6 +170,8 @@ export class CheckLoopEngine {
    */
   onTurnResult(cardId: string, turn: { isError: boolean; interrupted: boolean }): "hold" | "place" {
     const loop = this.loops.get(cardId);
+    // A slot the board already released is not the loop's: the card moves on as it always did.
+    if (!loop && this.released.has(cardId)) return "place";
     if (turn.isError || turn.interrupted || !this.isLoopCard(cardId)) {
       // What happened is the person's to see; a slot held at idle goes back now, with its line.
       if (loop) {
@@ -200,6 +208,11 @@ export class CheckLoopEngine {
     if (!loop) return;
     // The person's turn keeps the session, and with it the slot; the count starts again after it.
     this.end(cardId, loop, "person_turn", { release: false });
+  }
+
+  /** The session went busy (a new turn): its slot is the run's again, for the loop to hold. */
+  onBusy(cardId: string): void {
+    this.released.delete(cardId);
   }
 
   /** The person stopped, discarded or moved the card. */
@@ -272,8 +285,10 @@ export class CheckLoopEngine {
     if (outcome.kind === "refused") {
       return this.end(cardId, loop, "check_refused", { release: true, place: true });
     }
-    const max = Math.min(card.rounds ?? settings.checkRounds, settings.checkRounds);
-    const stop = this.gate(cardId, settings) ?? (loop.sent >= max ? "rounds_spent" : null);
+    // Read again: a mid-run edit of the checks or the rounds counts before a round is sent.
+    const fresh = this.fx.settings(card.projectId);
+    const max = Math.min(card.rounds ?? fresh.checkRounds, fresh.checkRounds);
+    const stop = this.gate(cardId, fresh) ?? (loop.sent >= max ? "rounds_spent" : null);
     const limit = stop ?? this.fx.limit(cardId);
     if (limit) return this.end(cardId, loop, limit, { release: true, place: true, outcome });
     loop.sent += 1;
@@ -334,9 +349,9 @@ export class CheckLoopEngine {
   private close(cardId: string, loop: Loop, how: { release: boolean; place?: boolean }): void {
     if (this.loops.get(cardId) !== loop) return;
     this.loops.delete(cardId);
-    loop.abort?.abort();
-    this.clearTimer(loop);
     try {
+      loop.abort?.abort();
+      this.clearTimer(loop);
       if (how.place) this.fx.place(cardId);
     } catch {
       // A placement that failed leaves the card where it is; the slot still goes back below.
