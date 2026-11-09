@@ -249,70 +249,75 @@ export function HostPage(
           <TabsContent value="overview" forceMount className={PANEL}>
             {/* #785: the host's status first (health, resources, information), its work beside it
                 once the area is 64rem wide; one column, status first, when narrower. */}
-            <div className="host-overview">
-              <div data-slot="host-overview-status" className="host-overview-column">
-                {(hasFeature(info?.features, "depsCheck", false) ||
-                  hasFeature(info?.features, "doctor.run", false)) && (
-                  <HostHealth
-                    store={store}
-                    host={host}
-                    deps={overviewState.deps[host.id] ?? null}
-                    doctor={overviewState.doctor[host.id] ?? null}
-                    checkedAt={overviewState.healthAt[host.id] ?? null}
-                    error={overviewState.healthError[host.id] ?? null}
-                    onCheck={() => store.checkHealth(host.id)}
-                    onAddFolder={() => {
-                      setTab("settings");
-                      setFolderAsk((n) => n + 1);
-                    }}
-                    onHooksChanged={refreshHooks}
-                  />
-                )}
-                <HostResources store={store} host={host} />
-                <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
-                  {info ? (
-                    <ul className="flex flex-col gap-1 text-sm">
-                      <li>{`${info.os} · ${info.arch}`}</li>
-                      <li>{t("hostPage.daemon", { version: info.daemonVersion })}</li>
-                      <li>{t("hostPage.app", { version: APP_VERSION })}</li>
-                      {info.daemonVersion !== APP_VERSION && (
-                        <li className="text-status-needs-you">{t("hostPage.differs")}</li>
-                      )}
-                      <li>
-                        {t("hostPage.claude", {
-                          version: info.claudeVersion ?? t("hostPage.unknown"),
-                        })}
-                      </li>
-                      <li>{t("hostPage.active", { n: info.activeSessions })}</li>
-                      <li>
-                        {t("hostPage.uptime", { n: hostUptime(info.uptimeSec, host.infoAt, now) })}
-                      </li>
-                      <HostLatency store={store} hostId={host.id} />
-                    </ul>
-                  ) : (
-                    <p className="text-muted-foreground text-sm">
-                      {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
-                    </p>
+            <Stack gap={4}>
+              <div className="host-overview">
+                <div data-slot="host-overview-status" className="host-overview-column">
+                  {(hasFeature(info?.features, "depsCheck", false) ||
+                    hasFeature(info?.features, "doctor.run", false)) && (
+                    <HostHealth
+                      store={store}
+                      host={host}
+                      deps={overviewState.deps[host.id] ?? null}
+                      doctor={overviewState.doctor[host.id] ?? null}
+                      checkedAt={overviewState.healthAt[host.id] ?? null}
+                      error={overviewState.healthError[host.id] ?? null}
+                      onCheck={() => store.checkHealth(host.id)}
+                      onAddFolder={() => {
+                        setTab("settings");
+                        setFolderAsk((n) => n + 1);
+                      }}
+                      onHooksChanged={refreshHooks}
+                    />
                   )}
-                </Panel>
-                <HostCompare store={store} />
+                  <HostResources store={store} host={host} />
+                  <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
+                    {info ? (
+                      <ul className="flex flex-col gap-1 text-sm">
+                        <li>{`${info.os} · ${info.arch}`}</li>
+                        <li>{t("hostPage.daemon", { version: info.daemonVersion })}</li>
+                        <li>{t("hostPage.app", { version: APP_VERSION })}</li>
+                        {info.daemonVersion !== APP_VERSION && (
+                          <li className="text-status-needs-you">{t("hostPage.differs")}</li>
+                        )}
+                        <li>
+                          {t("hostPage.claude", {
+                            version: info.claudeVersion ?? t("hostPage.unknown"),
+                          })}
+                        </li>
+                        <li>{t("hostPage.active", { n: info.activeSessions })}</li>
+                        <li>
+                          {t("hostPage.uptime", {
+                            n: hostUptime(info.uptimeSec, host.infoAt, now),
+                          })}
+                        </li>
+                        <HostLatency store={store} hostId={host.id} />
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
+                      </p>
+                    )}
+                  </Panel>
+                </div>
+                <div data-slot="host-overview-work" className="host-overview-column">
+                  <HostOverview
+                    store={store}
+                    state={overviewState}
+                    host={host}
+                    onOpenSession={props.onOpenSession}
+                    onOpenProject={props.onOpenProject}
+                    onSeeAllSessions={props.onSeeAllSessions}
+                    onSeeAllProjects={props.onSeeAllProjects}
+                    onNewSession={props.onNewSession}
+                  />
+                  {hasFeature(info?.features, "account", false) && (
+                    <HostAccount store={store} host={host} />
+                  )}
+                </div>
               </div>
-              <div data-slot="host-overview-work" className="host-overview-column">
-                <HostOverview
-                  store={store}
-                  state={overviewState}
-                  host={host}
-                  onOpenSession={props.onOpenSession}
-                  onOpenProject={props.onOpenProject}
-                  onSeeAllSessions={props.onSeeAllSessions}
-                  onSeeAllProjects={props.onSeeAllProjects}
-                  onNewSession={props.onNewSession}
-                />
-                {hasFeature(info?.features, "account", false) && (
-                  <HostAccount store={store} host={host} />
-                )}
-              </div>
-            </div>
+              {/* #1516: a band of its own, as wide as the Overview: a column is half of it. */}
+              <HostCompare store={store} hostId={host.id} />
+            </Stack>
           </TabsContent>
           <TabsContent value="usage" forceMount className={NARROW_PANEL}>
             <Stack gap={4}>
