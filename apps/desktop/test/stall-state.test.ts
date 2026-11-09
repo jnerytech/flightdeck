@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { AppStore } from "../src/lib/app-store.ts";
-import { hubRows } from "../src/lib/hub.ts";
+import { type HubRowState, hubRows } from "../src/lib/hub.ts";
 import { type QuietState, quietAlerts, quietText } from "../src/lib/quiet.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -32,7 +32,7 @@ const live = (id: string, over: object = {}) => ({
 function state(
   sessions: Array<{ managed: object; live?: object }>,
   quietSnooze: Record<string, number> = {},
-): QuietState {
+): QuietState & HubRowState {
   return {
     hosts: [{ id: "h", name: "alfa", sessions: sessions.flatMap((s) => (s.live ? [s.live] : [])) }],
     hub: { h: { managed: sessions.map((s) => s.managed), history: [] } },

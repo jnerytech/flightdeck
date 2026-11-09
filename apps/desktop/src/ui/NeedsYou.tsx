@@ -75,7 +75,7 @@ function entriesOf(state: AppState, t: T, nowMs: number): Entry[] {
       item,
     })),
     // Issue #1478: a running session that says nothing waits for the person too, after the requests.
-    ...quietAlerts(state, nowMs).map((alert) => ({
+    ...quietAlerts(state, nowMs, t).map((alert) => ({
       kind: "quiet" as const,
       key: `quiet/${alert.key}`,
       alert,
