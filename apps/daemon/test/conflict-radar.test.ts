@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { CommandResult } from "../src/board/command.ts";
-import { ConflictRadar, MAX_SHARED_FILES, type RadarCard } from "../src/board/conflict-radar.ts";
+import {
+  ConflictRadar,
+  MAX_PEERS,
+  MAX_SHARED_FILES,
+  type RadarCard,
+  radarGit,
+} from "../src/board/conflict-radar.ts";
 import { refArg } from "../src/board/ref-arg.ts";
 
 /** A fake git: each worktree has a HEAD, the files its commits changed and the files it edits now. */
@@ -122,6 +128,57 @@ describe("conflict-radar: who edits the same files", () => {
     await radar.update(card("a"));
     await radar.update(card("b"));
     expect(radar.overlaps("a")[0]?.files).toHaveLength(MAX_SHARED_FILES);
+  });
+});
+
+describe("conflict-radar: failures and races", () => {
+  test("a worktree git can no longer read drops the card's flags, and its peers hear of it", async () => {
+    const { radar, edit, trees } = setup();
+    edit("a", ["src/shared.ts"]);
+    edit("b", ["src/shared.ts"]);
+    await radar.update(card("a"));
+    await radar.update(card("b"));
+    trees.delete("/wt/b");
+    expect((await radar.update(card("b"))).sort()).toEqual(["a", "b"]);
+    expect([radar.overlaps("a"), radar.overlaps("b")]).toEqual([[], []]);
+  });
+
+  test("an update the card has moved on from leaves nothing behind", async () => {
+    const { radar, edit } = setup();
+    edit("a", ["src/shared.ts"]);
+    edit("b", ["src/shared.ts"]);
+    await radar.update(card("a"));
+    expect(await radar.update(card("b"), () => false)).toEqual([]);
+    expect(radar.overlaps("a")).toEqual([]);
+  });
+
+  test("a card lists at most MAX_PEERS others", async () => {
+    const { radar, edit } = setup();
+    for (let i = 0; i < MAX_PEERS + 4; i++) {
+      edit(`p${i}`, ["src/shared.ts"]);
+      await radar.update(card(`p${i}`));
+    }
+    expect(radar.overlaps("p0")).toHaveLength(MAX_PEERS);
+  });
+});
+
+describe("conflict-radar: the git it runs", () => {
+  test("every call turns the fsmonitor hook off, and a cut-off read is a failure", async () => {
+    const seen: string[][] = [];
+    const run = async (_cwd: string, _limit: number, args: string[]) => {
+      seen.push(args);
+      return { code: 0, stdout: "x", stderr: "", truncated: args.includes("ls-files") };
+    };
+    const git = radarGit(1024, 5000, run);
+    const diff = await git("/wt", "diff", "--name-only", "-z", "HEAD", "--");
+    const files = await git("/wt", "ls-files", "--others", "-z");
+    expect(seen[0]?.slice(0, 4)).toEqual([
+      "-c",
+      "core.fsmonitor=false",
+      "-c",
+      "core.quotePath=false",
+    ]);
+    expect([diff.code, files.code]).toEqual([0, 1]);
   });
 });
 

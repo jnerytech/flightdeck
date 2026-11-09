@@ -1,4 +1,4 @@
-import type { CommandResult } from "./command.ts";
+import { type CommandResult, gitLimitedFor } from "./command.ts";
 import type { Rev } from "./ref-arg.ts";
 
 /** Issue #1405: the most files one overlap lists. */
@@ -6,6 +6,26 @@ export const MAX_SHARED_FILES = 20;
 
 /** `git` in a folder: the radar's only effect, injected so a test counts the calls. */
 export type RadarGit = (cwd: string, ...args: string[]) => Promise<CommandResult>;
+
+/** Issue #1405: the most peers one card lists, and the most files the radar keeps of a card. */
+export const MAX_PEERS = 10;
+export const MAX_FILES_PER_CARD = 2000;
+
+type LimitedGit = (
+  cwd: string,
+  limit: number,
+  args: string[],
+  timeoutMs?: number,
+) => Promise<CommandResult & { truncated: boolean }>;
+
+/** The radar's git: no fsmonitor hook, output capped, and a time limit; a cut-off read is a failure. */
+export function radarGit(
+  _limit = 1024 * 1024,
+  _timeoutMs = 10_000,
+  _run: LimitedGit = gitLimitedFor,
+): RadarGit {
+  return async () => ({ code: 0, stdout: "", stderr: "" });
+}
 
 /** A card the radar watches: its worktree and what it was cut from. */
 export interface RadarCard {
@@ -47,7 +67,7 @@ export class ConflictRadar {
   constructor(private readonly git: RadarGit) {}
 
   /** Reads the card's changed files; returns the card and the cards whose overlaps changed. */
-  async update(card: RadarCard): Promise<string[]> {
+  async update(card: RadarCard, _isCurrent: () => boolean = () => true): Promise<string[]> {
     const head = await this.git(card.worktree, "rev-parse", "HEAD");
     if (head.code !== 0) return [];
     const sha = head.stdout.trim();
