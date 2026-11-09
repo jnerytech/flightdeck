@@ -1361,6 +1361,8 @@ export const ptBR = {
   time: {
     now: "agora",
     ago: "há {d}",
+    agoDay: "há 1 dia",
+    agoDays: "há {n} dias",
     hours: "{n} h",
     minutes: "{n} min",
     seconds: "{n} s",

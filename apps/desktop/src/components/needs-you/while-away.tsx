@@ -146,7 +146,13 @@ function HostNews(props: Readonly<{ store: AppStore; news: AwayNews; go(route: R
  * each a way to the thing; a host that did not answer is named. Read-only: Dismiss closes it.
  */
 export function WhileAway(
-  props: Readonly<{ store: AppStore; view: AwayView; go(route: Route): void }>,
+  props: Readonly<{
+    store: AppStore;
+    view: AwayView;
+    go(route: Route): void;
+    /** Closes the summary: the page moves the focus on, since the button that had it goes away. */
+    onDismiss(): void;
+  }>,
 ) {
   const { store, view, go } = props;
   const { t } = store.i18n;
@@ -162,7 +168,7 @@ export function WhileAway(
           <span className="text-muted-foreground text-xs">
             {t("away.lastActive", { ago: formatAgo(store.now() - Date.parse(view.since), t) })}
           </span>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => store.dismissAway()}>
+          <Button variant="ghost" size="sm" className="ml-auto" onClick={props.onDismiss}>
             {t("away.dismiss")}
           </Button>
         </Inline>
