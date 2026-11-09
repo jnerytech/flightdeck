@@ -27,21 +27,42 @@ function seeded() {
     id: string,
     column: string,
     at: string,
-    pr: { url?: string; state?: string; checks?: string } = {},
-  ) =>
-    db
+    pr: { url?: string; state?: string; checks?: string; doneAt?: string } = {},
+  ) => {
+    if (pr.doneAt) {
+      db.query(
+        "INSERT INTO card_done (card_id, project_id, done_at, via, pr_url, card_created_at) VALUES (?, 'p1', ?, 'merged', ?, ?)",
+      ).run(id, pr.doneAt, pr.url ?? null, OUT);
+    }
+    return db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, pr_url, pr_state, checks_state, created_at, updated_at)
          VALUES (?, 'p1', ?, '', ?, 1, ?, ?, ?, ?, ?)`,
       )
       .run(id, `title ${id}`, column, pr.url ?? null, pr.state ?? null, pr.checks ?? null, OUT, at);
-  const run = (id: string, cardId: string, status: string, endedAt: string | null, why?: string) =>
+  };
+  const run = (
+    id: string,
+    cardId: string,
+    status: string,
+    endedAt: string | null,
+    why?: { text: string; key: string; params: object },
+  ) =>
     db
       .query(
-        `INSERT INTO workflow_runs (id, card_id, workflow_name, workflow_hash, definition, status, status_reason, budget, usage, inputs, started_at, ended_at)
-         VALUES (?, ?, 'ship', 'h', '', ?, ?, '{}', '{}', '{}', ?, ?)`,
+        `INSERT INTO workflow_runs (id, card_id, workflow_name, workflow_hash, definition, status, status_reason, status_reason_key, status_reason_params, budget, usage, inputs, started_at, ended_at)
+         VALUES (?, ?, 'ship', 'h', '', ?, ?, ?, ?, '{}', '{}', '{}', ?, ?)`,
       )
-      .run(id, cardId, status, why ?? null, OUT, endedAt);
+      .run(
+        id,
+        cardId,
+        status,
+        why?.text ?? null,
+        why?.key ?? null,
+        why ? JSON.stringify(why.params) : null,
+        OUT,
+        endedAt,
+      );
   return { store, db, session, card, run };
 }
 
@@ -78,10 +99,17 @@ describe("activity-since (#1344)", () => {
 
   test("a PR merged, or open with failing checks, since the time; a passing or older one is not", () => {
     const { db, card } = seeded();
-    card("merged", "done", IN, { url: "https://x/pr/1", state: "merged", checks: "passing" });
+    card("merged", "done", IN, {
+      url: "https://x/pr/1",
+      state: "merged",
+      checks: "passing",
+      doneAt: IN,
+    });
     card("failing", "review", IN, { url: "https://x/pr/2", state: "open", checks: "failing" });
     card("passing", "review", IN, { url: "https://x/pr/3", state: "open", checks: "passing" });
-    card("older", "done", OUT, { url: "https://x/pr/4", state: "merged" });
+    card("older", "done", OUT, { url: "https://x/pr/4", state: "merged", doneAt: OUT });
+    // Merged long ago, edited since: the edit moves updated_at, but it did not merge in the absence.
+    card("edited", "done", IN, { url: "https://x/pr/5", state: "merged", doneAt: OUT });
     const digest = activitySince({ db }, SINCE);
     expect(
       digest.prs.items
@@ -96,13 +124,24 @@ describe("activity-since (#1344)", () => {
   test("the failed workflow runs that ended since the time, with their reason", () => {
     const { db, card, run } = seeded();
     card("c", "waiting", IN);
-    run("r1", "c", "failed", IN, "budget_exceeded");
+    run("r1", "c", "failed", IN, {
+      text: "stopped: raw error text with /secret/path",
+      key: "run.budget",
+      params: { limit: 5 },
+    });
     run("r2", "c", "failed", OUT);
     run("r3", "c", "done", IN);
     run("r4", "c", "running", null);
     const digest = activitySince({ db }, SINCE);
     expect(digest.failedRuns.items).toEqual([
-      { runId: "r1", cardId: "c", workflowName: "ship", reason: "budget_exceeded", at: IN },
+      {
+        runId: "r1",
+        cardId: "c",
+        workflowName: "ship",
+        reasonKey: "run.budget",
+        reasonParams: { limit: 5 },
+        at: IN,
+      },
     ]);
   });
 
@@ -136,14 +175,14 @@ describe("activity-since (#1344)", () => {
     ]);
   });
 
-  test("it writes nothing", () => {
-    const { db, session, card } = seeded();
+  test("it writes nothing, in any table", () => {
+    const { db, session, card, run } = seeded();
     session("a", "ended", IN);
     card("c", "review", IN);
-    const before = db.query("PRAGMA data_version").get();
-    const rows = () => db.query("SELECT count(*) AS n FROM sessions").get();
-    const beforeRows = rows();
+    run("r", "c", "failed", IN);
+    const changes = () => (db.query("SELECT total_changes() AS n").get() as { n: number }).n;
+    const before = changes();
     activitySince({ db }, SINCE);
-    expect([db.query("PRAGMA data_version").get(), rows()]).toEqual([before, beforeRows]);
+    expect(changes()).toBe(before);
   });
 });

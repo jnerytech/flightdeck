@@ -95,6 +95,12 @@ describe("activity-protocolo (#1344)", () => {
     ]);
   });
 
+  test("a time without milliseconds is read as the same instant the store compares with", async () => {
+    const h = host(true);
+    await ask(h.server, "activity.since", { since: "2026-11-08T22:00:00Z" });
+    expect(h.calls).toEqual([[SINCE, 20]]);
+  });
+
   test("a host without it refuses with feature_off and does not announce it", async () => {
     const h = host(false);
     const refused = await ask(h.server, "activity.since", { since: SINCE });
