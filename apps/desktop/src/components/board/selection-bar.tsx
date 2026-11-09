@@ -1,5 +1,7 @@
 import type { BoardColumn } from "@flightdeck/protocol";
+import { MoreHorizontal } from "lucide-react";
 import type * as React from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +30,15 @@ export function SelectionBar(
     onMoveOpenChange?(open: boolean): void;
     /** Where the focus goes when that menu closes; false leaves it on the button. */
     onMoveClosed?(): boolean;
+    /** #1354: how many selected cards Start and Stop can take, and what they do. */
+    startCount: number;
+    stopCount: number;
+    onStart(): void;
+    onStop(): void;
+    /** Selected cards in columns a narrow board does not show (the column switcher). */
+    otherColumns: number;
+    /** A narrow bar (390): Move to… and Discard… under ⋯, and a short Clear. */
+    compact: boolean;
   }>,
 ) {
   const { t } = props;
@@ -51,15 +62,52 @@ export function SelectionBar(
           {props.hidden === 1 ? t("board.hiddenOne") : t("board.hiddenCount", { n: props.hidden })}
         </span>
       )}
+      {props.otherColumns > 0 && (
+        <span className="text-muted-foreground text-xs">
+          {props.otherColumns === 1
+            ? t("board.otherColumnOne")
+            : t("board.otherColumns", { n: props.otherColumns })}
+        </span>
+      )}
+      {/* #1354: one primary, Start, while it has a card to take (#1197). */}
+      <ActionButton
+        size="sm"
+        variant={props.startCount > 0 ? "default" : "outline"}
+        disabled={props.startCount === 0 || props.busy}
+        disabledReason={props.startCount === 0 ? t("board.noneCanStart") : undefined}
+        onClick={props.onStart}
+      >
+        {t("board.startSelected", { n: props.startCount })}
+      </ActionButton>
+      <ActionButton
+        size="sm"
+        variant="outline"
+        disabled={props.stopCount === 0 || props.busy}
+        disabledReason={props.stopCount === 0 ? t("board.noneRunning") : undefined}
+        onClick={props.onStop}
+      >
+        {t("board.stopSelected", { n: props.stopCount })}
+      </ActionButton>
       <DropdownMenu
         {...(props.onMoveOpenChange
           ? { open: props.moveOpen ?? false, onOpenChange: props.onMoveOpenChange }
           : {})}
       >
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" disabled={props.shown === 0 || props.busy}>
-            {t("board.moveSelected")}
-          </Button>
+          {props.compact ? (
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={t("board.moreSelected")}
+              disabled={props.shown === 0 || props.busy}
+            >
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" disabled={props.shown === 0 || props.busy}>
+              {t("board.moveSelected")}
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent
           onCloseAutoFocus={(e) => {
@@ -68,21 +116,30 @@ export function SelectionBar(
         >
           {COLUMNS.map(({ id }) => (
             <DropdownMenuItem key={id} onSelect={() => props.onMove(id)}>
-              {t(`kanban.columns.${id}` as Key)}
+              {props.compact
+                ? t("board.moveTo", { column: t(`kanban.columns.${id}` as Key) })
+                : t(`kanban.columns.${id}` as Key)}
             </DropdownMenuItem>
           ))}
+          {props.compact && (
+            <DropdownMenuItem onSelect={props.onDiscard}>
+              {t("board.discardSelected")}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={props.shown === 0 || props.busy}
-        onClick={props.onDiscard}
-      >
-        {t("board.discardSelected")}
-      </Button>
+      {!props.compact && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={props.shown === 0 || props.busy}
+          onClick={props.onDiscard}
+        >
+          {t("board.discardSelected")}
+        </Button>
+      )}
       <Button size="sm" variant="ghost" onClick={props.onClear}>
-        {t("board.clearSelection")}
+        {props.compact ? t("board.clearShort") : t("board.clearSelection")}
       </Button>
     </fieldset>
   );

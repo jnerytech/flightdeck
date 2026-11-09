@@ -58,9 +58,16 @@ import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { AssistField } from "../components/assistant/assist-field.tsx";
+import { BulkRunDialog } from "../components/board/bulk-run-dialog.tsx";
 import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
-import { applyTemplate, CardTemplateField } from "../components/board/card-template-field.tsx";
+import {
+  applyTemplate,
+  CardTemplateField,
+  startPersonaOf,
+  startWorkflowOf,
+} from "../components/board/card-template-field.tsx";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
+import { useSuggestedPersona } from "../components/personas/persona-picker.tsx";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import {
@@ -71,7 +78,14 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
-import { askAbout, dragNeeds, type Lacking, missingFor } from "../lib/board-contracts.ts";
+import { bulkSplit, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
+import {
+  askAbout,
+  dragNeeds,
+  type Lacking,
+  missingFor,
+  startNeeds,
+} from "../lib/board-contracts.ts";
 import { boardFiles } from "../lib/board-files.ts";
 import { type BoardKeyAction, boardKey } from "../lib/board-keys.ts";
 import {
@@ -92,6 +106,7 @@ import {
 import { cardStartBlock } from "../lib/card-start-block.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
+import { onSubscription, quotaBars } from "../lib/quota.ts";
 import { CHORD_TIMEOUT_MS } from "../lib/shortcuts.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
@@ -159,6 +174,8 @@ function CardTile(
     selecting: boolean;
     /** #1354: `m` with a selection opens the bar's Move to…, not the card's menu. */
     onMoveSelection(): void;
+    /** #1354: `s` with a selection asks to start the selection. */
+    onStartSelection(): void;
     /** What the project's columns ask of a card (issue #78). */
     contracts: ContractOverrides;
     /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
@@ -244,8 +261,9 @@ function CardTile(
               if (!action) return;
               e.preventDefault();
               // With a selection, s and m are the selection's (#1354), never a single card's.
-              if (action.kind === "start" && !props.selecting && props.startOff === null) {
-                props.onStart();
+              if (action.kind === "start") {
+                if (props.selecting) props.onStartSelection();
+                else if (props.startOff === null) props.onStart();
               }
               if (action.kind === "menu") {
                 if (props.selecting) props.onMoveSelection();
@@ -357,7 +375,16 @@ function CardTile(
   );
 }
 
-const BOARDVIEW_KEYS = ["runs", "hosts", "projects", "cards", "worktreeFilter"] as const;
+const BOARDVIEW_KEYS = [
+  "runs",
+  "hosts",
+  "projects",
+  "cards",
+  "worktreeFilter",
+  "quota",
+  "account",
+  "personas",
+] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
 /** A card that has a worktree, a branch or a session has work to clean up: it is discarded, not deleted. */
@@ -432,6 +459,11 @@ export const BoardView = memo(function BoardView(props: {
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
   /** A keyboard range (#1354): the selection it started from, so Shift+Up can shrink it back. */
   const rangeBase = useRef<string[] | null>(null);
+  /** #1354: the Start N or Stop N confirm, and the host's limit of runs at once (null: not known). */
+  const [bulk, setBulk] = useState<"start" | "stop" | null>(null);
+  const [queueMax, setQueueMax] = useState<number | null | undefined>(undefined);
+  const workflowNames = useRef<string[]>([]);
+  const suggestedPersona = useSuggestedPersona(store, hostId, "dev");
   /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
   const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
@@ -603,6 +635,94 @@ export const BoardView = memo(function BoardView(props: {
     );
     setBusy(false);
     boardRef.current?.focus();
+  };
+  /** #1354: what Start N and Stop N take from the selection. */
+  const split = bulkSplit(actingCards, t);
+  /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
+  const askStart = () => {
+    if (busy || split.start.length === 0) return;
+    setQueueMax(undefined);
+    setBulk("start");
+    void store.hostCommand(hostId, "project.list", {}).then((list) => {
+      setQueueMax(typeof list?.maxParallelRuns === "number" ? list.maxParallelRuns : null);
+    });
+    void store.hostCommand(hostId, "workflow.list", { projectId }).then((list) => {
+      workflowNames.current = Array.isArray(list) ? list.map((w) => w.name) : [];
+    });
+  };
+  const askStop = () => {
+    if (busy || split.stop.length === 0) return;
+    setBulk("stop");
+  };
+  /** The host's cards holding a run: the queue's places they take. */
+  const runningOnHost = Object.entries(state.cards).filter(
+    ([key, card]) => key.startsWith(`${hostId}/`) && cardStartBlock(card) === "running",
+  ).length;
+  /** Starts or stops the cards one at a time; the ones that went leave the selection. */
+  const runSelected = async (kind: "start" | "stop") => {
+    if (busy) return;
+    const cards = kind === "start" ? split.start : split.stop;
+    setBulk(null);
+    setBusy(true);
+    const personaIds = (state.personas[hostId] ?? []).map((p) => p.id);
+    const refused = await runMany(cards, async (card) => {
+      const workflow = startWorkflowOf(card, workflowNames.current);
+      const persona = store.personaRef(startPersonaOf(card, personaIds) ?? suggestedPersona);
+      const answer =
+        kind === "start"
+          ? await store.hostRequest(hostId, "card.start", {
+              cardId: card.id,
+              ...(workflow ? { workflow, inputs: {} } : {}),
+              ...(persona ? { persona } : {}),
+            })
+          : await store.hostRequest(hostId, "card.stop", { cardId: card.id });
+      return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+    });
+    const stayed = new Set(refused.map((r) => r.card.id));
+    const went = new Set(cards.map((card) => card.id).filter((id) => !stayed.has(id)));
+    setPicked((before) => before.filter((id) => !went.has(id)));
+    const one = kind === "start" ? "board.startFailedOne" : "board.stopFailedOne";
+    const many = kind === "start" ? "board.startFailed" : "board.stopFailed";
+    setNotice(
+      refused.length === 0
+        ? null
+        : refused.length === 1
+          ? t(one, { names: nameRefusals(refused) })
+          : t(many, { count: refused.length, names: nameRefusals(refused) }),
+    );
+    setBusy(false);
+    boardRef.current?.focus();
+  };
+  /** The confirm's lines: the host's queue and quota for Start, where the cards land for Stop. */
+  const bulkLines = (): string[] => {
+    if (bulk === "stop") return [t("board.stopBody")];
+    const lines: string[] = [];
+    if (queueMax !== undefined) {
+      lines.push(
+        queueLine(t, queueSplit(split.start.length, queueMax ?? 0, runningOnHost), queueMax),
+      );
+    }
+    const quota = state.quota[hostId];
+    if (onSubscription(quota, state.account[hostId])) {
+      const bars = quotaBars(quota, Date.now(), (iso) => store.formatTime(iso), t);
+      const hostName = state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+      const fiveHour = bars[0];
+      if (fiveHour?.hasReading) {
+        lines.push(
+          t("board.startQuota", {
+            host: hostName,
+            percent: fiveHour.percent,
+            reset: fiveHour.reset,
+          }),
+        );
+      }
+      if (bars.some((bar) => bar.hot)) lines.push(t("board.startQuotaHold", { host: hostName }));
+    }
+    const lacking = split.start.filter((card) => startNeeds(card, contracts).length > 0).length;
+    if (lacking > 0) {
+      lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
+    }
+    return lines;
   };
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
@@ -834,6 +954,14 @@ export const BoardView = memo(function BoardView(props: {
                   onEscape={clearSelection}
                   moveOpen={moveMenuOpen}
                   onMoveOpenChange={setMoveMenuOpen}
+                  startCount={split.start.length}
+                  stopCount={split.stop.length}
+                  onStart={askStart}
+                  onStop={askStop}
+                  otherColumns={
+                    switcher ? actingCards.filter((card) => card.column !== showing).length : 0
+                  }
+                  compact={boardPx > 0 && boardPx < 480}
                   onMoveClosed={() => {
                     const from = moveFrom.current;
                     moveFrom.current = null;
@@ -1046,6 +1174,7 @@ export const BoardView = memo(function BoardView(props: {
                           locked={busy}
                           selected={selection.includes(card.id)}
                           selecting={selection.length > 0}
+                          onStartSelection={askStart}
                           onMoveSelection={() => {
                             moveFrom.current = card.id;
                             setMoveMenuOpen(true);
@@ -1176,6 +1305,37 @@ export const BoardView = memo(function BoardView(props: {
           t={t}
           onCancel={() => setDiscardingMany(false)}
           onConfirm={() => void discardSelected()}
+        />
+      )}
+      {bulk && (
+        <BulkRunDialog
+          t={t}
+          title={
+            bulk === "start"
+              ? split.start.length === 1
+                ? t("board.startTitleOne")
+                : t("board.startTitle", { n: split.start.length })
+              : split.stop.length === 1
+                ? t("board.stopTitleOne")
+                : t("board.stopTitle", { n: split.stop.length })
+          }
+          lines={bulkLines()}
+          items={actingCards.map((card) => {
+            const skip =
+              bulk === "start"
+                ? split.skipStart.find((s) => s.card.id === card.id)?.reason
+                : split.skipStop.some((c) => c.id === card.id)
+                  ? t("board.notRunning")
+                  : undefined;
+            return { id: card.id, title: card.title, ...(skip ? { skipped: skip } : {}) };
+          })}
+          confirmLabel={
+            bulk === "start"
+              ? t("board.startSelected", { n: split.start.length })
+              : t("board.stopSelected", { n: split.stop.length })
+          }
+          onCancel={() => setBulk(null)}
+          onConfirm={() => void runSelected(bulk)}
         />
       )}
       {issuesOpen && project && (
