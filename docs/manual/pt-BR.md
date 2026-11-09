@@ -1129,7 +1129,13 @@ aparece mascarado e como **Oculto**, e não abre.
   **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
   quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
   uma linha para cada trava que segura os cards novos (o limite de pausa da cota, um orçamento no limite,
-  o host sem memória) e os cards que ficam de fora e por quê. Parar também pergunta: o turno de um card rodando é
+  o host sem memória) e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
+  está cheio, pausado ou travado) e outro host online tem o mesmo projeto (o mesmo repositório) com
+  vagas para todos eles, a confirmação também oferece **Iniciar em <host>**: ela cria cada um desses
+  cards nesse host e o inicia lá, depois marca o card daqui "Iniciado em <host> como <card>" e o move
+  para **Concluído**. Nada é apagado: mova o card de volta para o **Backlog** para desfazer. Um card
+  cujo modelo nomeia um workflow ou uma persona não é oferecido, porque iniciaria de outro jeito lá.
+  Parar também pergunta: o turno de um card rodando é
   interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
   os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que
