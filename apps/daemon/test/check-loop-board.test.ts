@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Board } from "../src/board/board.ts";
 import { confirmationHash } from "../src/board/check-loop.ts";
+import { startServer } from "../src/server.ts";
 import { PrWatcher } from "../src/watch/watch.ts";
 import type { BoundedCheckResult } from "../src/workflows/check-runner.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
 import { poll } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 // Real git (a worktree per card): more than the default 5 s.
 setDefaultTimeout(30_000);
@@ -29,6 +31,8 @@ async function setup(results: BoundedCheckResult[] = [FAILED, PASSED]) {
   let gate: Promise<void> | null = null;
   let during: (() => void) | null = null;
   const finished: string[] = [];
+  /** A killed check takes this long to exit: the test opens it when it says. */
+  let killGate: Promise<void> | null = null;
   const runner = {
     run: async (command: string, _cwd: string, _timeoutMs?: number, signal?: AbortSignal) => {
       ran.push(command);
@@ -40,6 +44,7 @@ async function setup(results: BoundedCheckResult[] = [FAILED, PASSED]) {
           new Promise<void>((done) => signal?.addEventListener("abort", () => done())),
         ]);
       }
+      if (signal?.aborted && killGate) await killGate;
       finished.push(signal?.aborted ? "killed" : "done");
       if (signal?.aborted) return { exitCode: 137, output: "", aborted: true };
       return answers.shift() ?? PASSED;
@@ -74,6 +79,11 @@ async function setup(results: BoundedCheckResult[] = [FAILED, PASSED]) {
     finished,
     switchOn,
     duringCheck: (fn: () => void) => (during = fn),
+    holdKill: () => {
+      let open = () => {};
+      killGate = new Promise<void>((done) => (open = done));
+      return open;
+    },
     holdChecks: () => {
       let open = () => {};
       gate = new Promise<void>((done) => (open = done));
@@ -212,10 +222,74 @@ describe("check-loop: the security review's cases on the board", () => {
     const ctx = await setup([FAILED]);
     ctx.switchOn(ctx.card.id);
     ctx.holdChecks();
+    const exit = ctx.holdKill();
     await ctx.board.startCard(ctx.card.id);
     await poll(() => ctx.ran.length === 1, 10_000);
-    await ctx.board.discardCard(ctx.card.id, true);
-    expect(ctx.finished).toEqual(["killed"]);
+    let discarded = false;
+    const discarding = ctx.board.discardCard(ctx.card.id, true).then(() => {
+      discarded = true;
+    });
+    // The killed check has not exited yet: the discard must still be waiting for it.
+    const early = await poll(() => discarded, 300);
+    exit();
+    await discarding;
+    expect([early, ctx.finished]).toEqual([null, ["killed"]]);
+  });
+
+  test("turning the switch on for a card whose session is gone still saves a mark-less switch, no error", async () => {
+    const ctx = await setup();
+    await ctx.board.startCard(ctx.card.id);
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    const sessionId = ctx.board.getCard(ctx.card.id).sessionId as string;
+    // Foreign keys keep a session a run points at; a store repaired by hand may not have it.
+    ctx.store.db.run("PRAGMA foreign_keys = OFF");
+    ctx.store.db.query("DELETE FROM sessions WHERE id = ?").run(sessionId);
+    ctx.store.db.run("PRAGMA foreign_keys = ON");
+    let thrown = "none";
+    try {
+      ctx.switchOn(ctx.card.id);
+    } catch (error) {
+      thrown = (error as { reason?: string }).reason ?? "error";
+    }
+    const row = ctx.store.db
+      .query<{ loop_on: number; mark: number | null }, [string]>(
+        "SELECT check_loop AS loop_on, check_loop_turn_seq AS mark FROM cards WHERE id = ?",
+      )
+      .get(ctx.card.id);
+    expect([thrown, row?.loop_on, row?.mark]).toEqual(["none", 1, null]);
+  });
+});
+
+describe("check-loop: the person's input over the protocol", () => {
+  test("session.send and a persona switch on a card's session step its loop aside", async () => {
+    const ctx = await setup();
+    await ctx.board.startCard(ctx.card.id);
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    const sessionId = ctx.board.getCard(ctx.card.id).sessionId as string;
+    const stepped: string[] = [];
+    ctx.board.personTurnOfSession = (id: string) => {
+      stepped.push(id);
+    };
+    const token = "check-loop-board-token-0123456789ab";
+    const server = startServer({
+      manager: ctx.manager,
+      board: ctx.board,
+      personaSessions: { apply: async () => ({}), clear: async () => ({}) } as never,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token,
+      allowedRoots: [ctx.root],
+    });
+    const client = new FrameClient(server.url);
+    cleanups.push(async () => {
+      client.close();
+      await server.stop();
+    });
+    await client.request("hello", { token, client: "t" });
+    await client.request("session.send", { sessionId, text: "olha isso" });
+    await client.request("session.applyPersona", { sessionId, persona: { id: "seg" } });
+    expect(stepped).toEqual([sessionId, sessionId]);
   });
 });
 
