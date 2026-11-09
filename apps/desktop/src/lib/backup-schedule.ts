@@ -1,5 +1,6 @@
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
 import { type BackupFolder, type BackupTarget, folderTarget, keepNewest } from "./backup-target.ts";
+import { DriveError } from "./drive-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
 export const SCHEDULE_KEY = "flightdeck.backupSchedule";
@@ -60,7 +61,7 @@ export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule
       raw.cadence === "daily" || raw.cadence === "weekly" ? raw.cadence : "off";
     return {
       cadence,
-      target: "folder",
+      target: raw.target === "drive" ? "drive" : "folder",
       folder: typeof raw.folder === "string" ? raw.folder : "",
       keep:
         Number.isInteger(raw.keep) && (raw.keep as number) >= 1
@@ -79,9 +80,13 @@ export function saveSchedule(storage: BackupPlatform["storage"], schedule: Backu
   storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, target, folder, keep, lastRunAt }));
 }
 
-/** Whether a run is owed: a cadence is set, a folder is chosen, and a period passed since the last. */
+/**
+ * Whether a run is owed: a cadence is set, a folder is chosen (the Drive target needs none), and a
+ * period passed since the last.
+ */
 export function isDue(schedule: BackupSchedule, now: number): boolean {
-  if (schedule.cadence === "off" || schedule.folder === "") return false;
+  if (schedule.cadence === "off") return false;
+  if (schedule.target === "folder" && schedule.folder === "") return false;
   // A last run ahead of now (the clock moved back) cannot stand for a period that passed.
   return (
     schedule.lastRunAt === null ||
@@ -115,22 +120,29 @@ export async function runScheduledBackup(deps: {
   const { platform, folder, schedule, passphrase, now } = deps;
   if (schedule.cadence === "off") return { status: "idle" };
   const at = now;
-  if (schedule.folder === "" || !folder) return { status: "skipped", reason: "no-folder", at };
+  const onDrive = schedule.target === "drive";
+  if (!onDrive && (schedule.folder === "" || !folder)) {
+    return { status: "skipped", reason: "no-folder", at };
+  }
   if (!isDue(schedule, now)) return { status: "idle" };
   // The folder in the saved schedule is only a copy; the one that counts is the stored pick.
-  if (!(await folder.current().catch(() => null)))
+  if (!onDrive && !(await folder?.current().catch(() => null))) {
     return { status: "skipped", reason: "no-folder", at };
+  }
   if (!passphrase) return { status: "skipped", reason: "no-passphrase", at };
+  const target = onDrive ? deps.drive : folder && folderTarget(folder);
+  if (!target) return { status: "skipped", reason: onDrive ? "drive-auth" : "no-folder", at };
   const keep = Math.max(1, Math.floor(schedule.keep));
   const name = backupFileName(now);
-  const target = folderTarget(folder);
   try {
     // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
     const { createBackup } = await import("./backup-bundle.ts");
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
     await target.put(name, text);
-  } catch {
-    return { status: "skipped", reason: "failed", at };
+  } catch (error) {
+    // A sign-in Google no longer honours is the person's to fix; anything else is a failed write.
+    const reason = error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "failed";
+    return { status: "skipped", reason, at };
   }
   // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
   // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
