@@ -515,7 +515,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         </section>
       </div>`);
     expect(narrow()).toEqual([
-      "reason-over: page-body > details > span.action-reason (over page-body > details > p, 284x10 px)",
+      "reason-over: page-body > details > span.action-reason (over page-body > details > p[1], 284x10 px)",
     ]);
   });
 
