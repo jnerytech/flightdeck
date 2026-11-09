@@ -1,5 +1,5 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
@@ -141,14 +141,22 @@ export function HostPage(
     (section === "keep-awake" && info?.keepAwake !== undefined);
   // The focus moves once the Settings panel is active (a browser does not focus into a hidden
   // one), then the ask is used up, so it never pulls the person back later.
+  // It looks only inside this page (another page may show the same section), and moves the focus
+  // once per ask, even when the route keeps the ask.
   const onSectionDone = props.onSectionDone;
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const handled = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (section) setTab("settings");
+    else handled.current = undefined;
   }, [section]);
   useEffect(() => {
-    if (!section || tab !== "settings" || !sectionShown) return;
-    const heading = document.querySelector<HTMLElement>(`[data-slot="host-section-${section}"] h3`);
+    if (!section || handled.current === section || tab !== "settings" || !sectionShown) return;
+    const heading = tabsRef.current?.querySelector<HTMLElement>(
+      `[data-slot="host-section-${section}"] h3`,
+    );
     if (!heading) return;
+    handled.current = section;
     heading.tabIndex = -1;
     heading.scrollIntoView?.({ block: "center" });
     heading.focus();
@@ -157,7 +165,9 @@ export function HostPage(
   // Another tab picked before the section showed drops the ask too.
   const pickTab = (value: string) => {
     setTab(value);
-    if (section) onSectionDone?.();
+    if (!section) return;
+    handled.current = section;
+    onSectionDone?.();
   };
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
@@ -229,7 +239,7 @@ export function HostPage(
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
-        <Tabs value={tab} onValueChange={pickTab}>
+        <Tabs ref={tabsRef} value={tab} onValueChange={pickTab}>
           <TabsList aria-label={t("hostHome.tabs")}>
             <TabsTrigger value="overview">{t("hostHome.overview")}</TabsTrigger>
             <TabsTrigger value="usage">{t("hostHome.usage")}</TabsTrigger>
