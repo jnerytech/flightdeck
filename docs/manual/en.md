@@ -3502,6 +3502,14 @@ second copy anyway** opens it here all the same.
   the group does not add to the sidebar count, which counts requests. The system notification of
   a finished turn or a failure is the one you already had: it is sent once, never while the app has
   focus.
+- **Quiet sessions:** a session that is marked as running but has produced nothing for 15 minutes
+  (30 while a tool call is still open, since a build can be quiet) is listed under the requests as
+  "Quiet for 23 min · last: Bash", on a daemon that announces `stall`. Choose it for **Open**,
+  **Interrupt**, **Send "continue"** and **Not stuck, snooze 1 h** (which keeps that session out of
+  the list for an hour, on this computer). It leaves the list at the next sign of life, and a session
+  waiting for an approval is never quiet. One system notification is sent when it goes quiet, never
+  while the app has focus; the Working card on the Activity board carries a "Quiet 23 min" badge.
+  `stall.afterMinutes` in the daemon config sets the 15 (0 turns it off).
 - **From a notification:** clicking it opens the session with the request's card focused: one
   key answers it. In the bell, an entry of a request already answered opens its session at that
   request.
