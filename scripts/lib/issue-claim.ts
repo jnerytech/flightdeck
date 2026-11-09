@@ -130,8 +130,10 @@ async function release(deps: ClaimDeps, issue: number, session: string, owner: s
   return 0;
 }
 
-/** `claim <n> [--by <session>] [--reassign | --release]`; the exit code. */
-export async function claimIssue(args: string[], deps: ClaimDeps): Promise<number> {
+type ClaimRequest = { issue: number; session: string; reassign: boolean; release: boolean };
+
+/** The words of a `claim` call checked: the request, or the exit code of a refusal (already logged). */
+function parseRequest(args: string[], deps: ClaimDeps): ClaimRequest | number {
   const words = args.filter((a) => a !== "--");
   const issue = /^\d+$/.test(words[0] ?? "") ? Number(words[0]) : 0;
   const by = words.indexOf("--by");
@@ -150,7 +152,8 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
     return 1;
   }
   const reassign = words.includes("--reassign");
-  if (reassign && words.includes("--release")) {
+  const release = words.includes("--release");
+  if (reassign && release) {
     deps.log(USAGE);
     return 2;
   }
@@ -158,34 +161,51 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
     deps.log("only fd-coordinator reassigns an issue");
     return 1;
   }
-  try {
-    const before = await read(deps, issue);
-    if (words.includes("--release")) return await release(deps, issue, session, before.owner);
-    if (!before.open) {
-      deps.log(`#${issue} is closed: there is nothing to claim`);
-      return 1;
-    }
-    if (!reassign && before.owner === session) {
-      deps.log(`#${issue} is already yours (${session})`);
-      return 0;
-    }
-    if (!reassign && before.owner) {
-      deps.log(ownedBy(issue, before.owner));
-      return 1;
-    }
-    const status: ClaimStatus = reassign ? "reassign" : "progress";
-    const text = reassign
-      ? `${session} owns this issue now (reassigned).`
-      : `${session} claims this issue.`;
-    if (!(await post(deps, issue, text, ownerMark(session, status)))) return 1;
-    // Two sessions can claim at the same moment: read again, and only the first claim stands.
-    const after = await read(deps, issue);
-    if (after.owner !== session) {
-      deps.log(ownedBy(issue, after.owner ?? "nobody"));
-      return 1;
-    }
-    deps.log(reassign ? `reassigned #${issue} to ${session}` : `claimed #${issue} for ${session}`);
+  return { issue, session, reassign, release };
+}
+
+/** Takes an issue: refused when it is closed or another session owns it, and the first of two claims at once stands. */
+async function take(
+  deps: ClaimDeps,
+  request: ClaimRequest,
+  before: { open: boolean; owner: string | null },
+): Promise<number> {
+  const { issue, session, reassign } = request;
+  if (!before.open) {
+    deps.log(`#${issue} is closed: there is nothing to claim`);
+    return 1;
+  }
+  if (!reassign && before.owner === session) {
+    deps.log(`#${issue} is already yours (${session})`);
     return 0;
+  }
+  if (!reassign && before.owner) {
+    deps.log(ownedBy(issue, before.owner));
+    return 1;
+  }
+  const status: ClaimStatus = reassign ? "reassign" : "progress";
+  const text = reassign
+    ? `${session} owns this issue now (reassigned).`
+    : `${session} claims this issue.`;
+  if (!(await post(deps, issue, text, ownerMark(session, status)))) return 1;
+  // Two sessions can claim at the same moment: read again, and only the first claim stands.
+  const after = await read(deps, issue);
+  if (after.owner !== session) {
+    deps.log(ownedBy(issue, after.owner ?? "nobody"));
+    return 1;
+  }
+  deps.log(reassign ? `reassigned #${issue} to ${session}` : `claimed #${issue} for ${session}`);
+  return 0;
+}
+
+/** `claim <n> [--by <session>] [--reassign | --release]`; the exit code. */
+export async function claimIssue(args: string[], deps: ClaimDeps): Promise<number> {
+  const request = parseRequest(args, deps);
+  if (typeof request === "number") return request;
+  try {
+    const before = await read(deps, request.issue);
+    if (request.release) return await release(deps, request.issue, request.session, before.owner);
+    return await take(deps, request, before);
   } catch (error) {
     deps.log(`claim: ${(error as Error).message}`);
     return 1;
