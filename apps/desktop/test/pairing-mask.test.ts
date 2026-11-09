@@ -34,26 +34,31 @@ describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", (
     ]);
   });
 
-  test("text that is not a readable link still hides what follows token=, as typed or encoded", () => {
+  test("text that is not a readable link hides every value but the name, however the key is spelled", () => {
     expect([
       maskPairingLink("flightdeck://pc:abc?name=x&token=SECRET"),
       maskPairingLink("flightdeck://pc:abc?%74oken=SECRET&name=x"),
+      maskPairingLink("flightdeck://pc:abc?%54oken=SECRET&t%6Fken=SECRET2&name=x"),
+      maskPairingLink("flightdeck://pc:abc?token=AAA BBB#CCC&name=x"),
       maskPairingLink("flightdeck://pc:abc?token=A&token=B&name=x"),
     ]).toEqual([
       "flightdeck://pc:abc?name=x&token=••••",
       "flightdeck://pc:abc?%74oken=••••&name=x",
+      "flightdeck://pc:abc?%54oken=••••&t%6Fken=••••&name=x",
+      "flightdeck://pc:abc?token=••••&name=x",
       "flightdeck://pc:abc?token=••••&token=••••&name=x",
     ]);
   });
 
-  test("the token in text that may not read: the first one, decoded, or none", () => {
+  test("the token in text that may not read: the first one, as the parser decodes it, or none", () => {
     expect([
       tokenInText("flightdeck://pc:abc?name=x&token=SEC%2BRET"),
       tokenInText("flightdeck://pc:abc?token=A&token=B"),
+      tokenInText("flightdeck://pc:abc?t%6Fken=SPELLED"),
       tokenInText("flightdeck://pc:abc?name=x"),
       tokenInText("http://pc?mytoken=abc"),
       tokenInText("flightdeck://pc:abc?token="),
-    ]).toEqual(["SEC+RET", "A", null, null, null]);
+    ]).toEqual(["SEC+RET", "A", "SPELLED", null, null, null]);
   });
 
   test("a link with no token, or text that is not a link, is left alone", () => {
@@ -71,38 +76,28 @@ describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", (
 
 /** The dots in a shown link are not a token: what the form keeps for the token when the link is edited. */
 describe("pairing-mask: which token a link edited in the form carries (#1548)", () => {
-  const draft = { address: "127.0.0.1", port: "46507", token: "real-token" };
+  const bound = { address: "127.0.0.1", port: "46507", token: "real-token" };
   const same = { address: "127.0.0.1", port: "46507" };
 
-  test("a token typed or pasted in the link is the token", () => {
-    expect(keptToken("new-token", same, draft)).toBe("new-token");
-    expect(keptToken("new-token", { address: "10.0.0.2", port: "7420" }, draft)).toBe("new-token");
+  test("a token typed or pasted in the link is the token, for any host", () => {
+    expect(keptToken("new-token", same, bound)).toBe("new-token");
+    expect(keptToken("new-token", { address: "10.0.0.2", port: "7420" }, null)).toBe("new-token");
   });
 
-  test("any token with dots in it is the shown mask, edited or not: the real one is kept", () => {
+  test("any token with dots in it is the shown mask, edited or not: the token read with this host is kept", () => {
     expect([
-      keptToken("••••", same, draft),
-      keptToken("•••", same, draft),
-      keptToken("••a••", same, draft),
-      keptToken("••••x", same, draft),
+      keptToken("••••", same, bound),
+      keptToken("•••", same, bound),
+      keptToken("••a••", same, bound),
+      keptToken("••••x", same, bound),
     ]).toEqual(["real-token", "real-token", "real-token", "real-token"]);
   });
 
-  test("the real token is not carried to another address or port, and none held means none", () => {
+  test("the token is not carried to another address or port, and a link read with none has none", () => {
     expect([
-      keptToken("••••", { address: "10.0.0.2", port: "46507" }, draft),
-      keptToken("••••", { address: "127.0.0.1", port: "7420" }, draft),
-      keptToken("••••", same, { ...draft, token: "" }),
+      keptToken("••••", { address: "10.0.0.2", port: "46507" }, bound),
+      keptToken("••••", { address: "127.0.0.1", port: "7420" }, bound),
+      keptToken("••••", same, null),
     ]).toEqual([null, null, null]);
-  });
-
-  test("a token read from text that did not read (no address yet) is kept for the link once it does", () => {
-    expect(
-      keptToken(
-        "••••",
-        { address: "pc", port: "7420" },
-        { address: "", port: "7420", token: "held" },
-      ),
-    ).toBe("held");
   });
 });

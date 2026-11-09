@@ -138,35 +138,60 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
     ]);
   });
 
-  test("a pasted link with a real token and a bad part shows no token, and fixing the part keeps it", async () => {
-    const { submitted } = setup();
+  test("a pasted link with a real token and a bad part shows no token and writes it nowhere", async () => {
+    setup();
     await paste("flightdeck://127.0.0.1:abc?name=alfa&token=SECRET");
     const shown = linkField()?.value;
     const refused = screen.queryByText("The link's port is not valid.") !== null;
-    await paste("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Test and add" }));
-    });
     expect([
       shown,
       refused,
       (document.body.textContent ?? "").includes("SECRET"),
-      submitted,
-    ]).toEqual([
-      "flightdeck://127.0.0.1:abc?name=alfa&token=••••",
-      true,
-      false,
-      [{ name: "alfa", address: "127.0.0.1", port: "46507", token: "SECRET" }],
-    ]);
-  });
-
-  test("taking the token out of the link takes it out of the form too", async () => {
-    setup();
-    await paste(LINK);
-    await paste("flightdeck://127.0.0.1:46507?name=alfa");
+      tokenField()?.value,
+    ]).toEqual(["flightdeck://127.0.0.1:abc?name=alfa&token=••••", true, false, ""]);
+    // Fixing the port in the dotted link finds no token read with this host: the link says so.
+    await paste("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
     expect([screen.queryByText("The link has no token.") !== null, tokenField()?.value]).toEqual([
       true,
       "",
     ]);
+  });
+
+  test("a link of another host that does not read leaves the host and token of the one read alone", async () => {
+    const { submitted } = setup();
+    await paste(LINK);
+    await paste("flightdeck://10.0.0.9:99999?name=beta&token=OTHER");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Test and add" }));
+    });
+    expect([(document.body.textContent ?? "").includes("OTHER"), submitted]).toEqual([
+      false,
+      [{ name: "alfa", address: "127.0.0.1", port: "46507", token: SECRET }],
+    ]);
+  });
+
+  test("a token typed in the Token field is never carried to a host named by a dotted link", async () => {
+    setup();
+    await act(async () => {
+      const field = tokenField();
+      if (field) fireEvent.change(field, { target: { value: "typed-by-hand" } });
+    });
+    await paste("flightdeck://evil.example:7420?name=evil&token=••••");
+    const address = screen.queryByLabelText("Address") as HTMLInputElement | null;
+    expect([
+      screen.queryByText("The link has no token.") !== null,
+      address?.value,
+      tokenField()?.value,
+    ]).toEqual([true, "", "typed-by-hand"]);
+  });
+
+  test("taking the token out of the link takes it out of the form too, even with a bad port", async () => {
+    setup();
+    await paste(LINK);
+    await paste("flightdeck://127.0.0.1:46507?name=alfa");
+    const first = [screen.queryByText("The link has no token.") !== null, tokenField()?.value];
+    await paste(LINK);
+    await paste("flightdeck://127.0.0.1:abc?name=alfa");
+    expect([first, tokenField()?.value]).toEqual([[true, ""], ""]);
   });
 });
