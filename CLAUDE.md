@@ -146,12 +146,12 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
   branch, opens its PR (`bun run pr -- open <branch>`, with `--refs <n>` for a slice of an issue so
   it does not close it, #839, titled after the first commit, #909) and turns on auto-merge
-  (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
-  green on its HEAD, even when it is behind `main` (#305: the ruleset is not strict; `main`'s push
-  CI checks the result). Only a PR that conflicts with `main` waits: merge `main` into it.
-  A stacked PR gets auto-merge once its parent is in
-  `main` (`pr auto` retargets it). A session keeps at most 2 branches open (pushed and not merged
-  yet): it finishes one before it starts a third. A release is a tag on a green `main`.
+  (`bun run pr -- auto <n>`; it names the OpenCode review first, and a PR already clean whose
+  review is missing or says changes waits for `--now`, #1526): GitHub merges it with a merge commit
+  once its required checks are green on its HEAD, even behind `main` (#305: the ruleset is not
+  strict; `main`'s push CI checks the result). Only a PR that conflicts with `main` waits: merge
+  `main` into it. A stacked PR gets auto-merge once its parent is in `main` (`pr auto` retargets it).
+  A session keeps at most 2 branches open (pushed, not merged). A release is a tag on a green `main`.
 - Only the coordinator pushes `main`, `rc/*` and tags, merges by hand (`bun run pr -- merge <n>`)
   and publishes releases. The guard hook refuses the rest: pushes of main, `rc/*`, tags,
   `--tags`/`--all`/`--mirror`, a bare `--force`, a `--force-with-lease` to any branch but the one
