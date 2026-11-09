@@ -117,6 +117,29 @@ describe("backup-drive-restore-ui: restore from Google Drive (#1462)", () => {
     expect(platform.storage.getItem("flightdeck.theme")).toBe("dark");
   });
 
+  test("picking another backup drops the preview of the one that was read", async () => {
+    await open();
+    await waitFor(() => control("Google Drive") !== null);
+    await click("Google Drive");
+    await click("Look in Google Drive");
+    await waitFor(() => control(NAME(9)) !== null);
+    await click(NAME(9));
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    await waitFor(() => shown("Settings: 1 new"));
+    await click(NAME(3));
+    expect(shown("Settings: 1 new")).toBe(false);
+    expect(control("Restore")).toBeNull();
+    // Looking again drops it too.
+    await click(NAME(9));
+    await type("File passphrase", PASS);
+    await click("Read backup");
+    await waitFor(() => shown("Settings: 1 new"));
+    await click("Look in Google Drive");
+    await waitFor(() => !shown("Settings: 1 new"));
+    expect(control("Restore")).toBeNull();
+  });
+
   test("a wrong passphrase is said and nothing is restored", async () => {
     const { platform } = await open();
     await waitFor(() => control("Google Drive") !== null);
