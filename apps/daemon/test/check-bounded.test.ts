@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { appendFileSync, chmodSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { runLimited } from "../src/board/command.ts";
 import { checkCommandRefusal } from "../src/watch/check-command.ts";
 import { whichOnPath } from "../src/which.ts";
 import { boundedCheckRunner, checkEnvironment } from "../src/workflows/check-runner.ts";
-import { tempDir } from "./helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 
 setDefaultTimeout(15_000);
 
@@ -109,11 +110,19 @@ describe("check-loop: the environment of a bounded check", () => {
 });
 
 // The runner's own process: POSIX scripts, since the test guard allows only folders the test
-// lists. Windows runs the same runner through cmd.exe and is checked by hand (#14).
+// lists. Windows runs the same runner through cmd.exe and is checked by hand (#14). Each script
+// writes the pid of the child it leaves, so a test asserts that child is gone, not a time.
 describe.skipIf(process.platform === "win32")("check-loop: the bounded runner", () => {
   const savedPath = process.env.PATH;
+  const children: number[] = [];
   afterEach(() => {
     process.env.PATH = savedPath;
+    // Nothing a failed assertion left behind keeps running.
+    for (const pid of children.splice(0)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {}
+    }
   });
 
   /** A script on PATH that the test guard lets through. */
@@ -126,6 +135,21 @@ describe.skipIf(process.platform === "win32")("check-loop: the bounded runner", 
     const guard = process.env.FLIGHTDECK_CHECK_GUARD;
     if (guard) appendFileSync(join(guard, "allowed"), `${dir}\n`);
     return dir;
+  }
+
+  const alive = (pid: number) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  /** The child a script left, and whether it is gone within a second of the run's end. */
+  async function childGone(dir: string): Promise<boolean> {
+    const pid = Number(readFileSync(join(dir, "child.pid"), "utf8").trim());
+    children.push(pid);
+    return (await poll(() => !alive(pid), 1000)) === true;
   }
 
   test("the check gets the allowlist, never the daemon's keys", async () => {
@@ -143,39 +167,52 @@ describe.skipIf(process.platform === "win32")("check-loop: the bounded runner", 
     ]).toEqual([0, true, true, false, false, false]);
   });
 
-  test("past the output bound the check and the child it left are killed, and the result says so", async () => {
+  test("past the output bound on stdout, the check and the child it left are killed, and the result says so", async () => {
     const dir = script(
       "big",
-      "sleep 30 &\ni=0\nwhile [ $i -lt 400 ]; do echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; i=$((i+1)); done\nwait",
+      "sleep 30 &\necho $! > child.pid\ni=0\nwhile [ $i -lt 400 ]; do echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx; i=$((i+1)); done\nwait",
     );
-    const started = Date.now();
     const result = await boundedCheckRunner(process.env, 1024).run("big", dir, 20_000);
     expect([
       result.tooLarge,
       result.output.length <= 1024 + 64 * 1024,
-      Date.now() - started < 5000,
+      await childGone(dir),
     ]).toEqual([true, true, true]);
   });
 
-  test("the caller's signal kills the check and its tree at once", async () => {
-    const dir = script("slow", "sleep 30 &\nwait");
+  test("stderr counts toward the bound too: a check that floods it is stopped, not left to its time limit", async () => {
+    const dir = script(
+      "flood",
+      "sleep 30 &\necho $! > child.pid\ni=0\nwhile [ $i -lt 400 ]; do echo xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx >&2; i=$((i+1)); done\nwait",
+    );
+    const result = await boundedCheckRunner(process.env, 1024).run("flood", dir, 3000);
+    expect([result.tooLarge, result.timedOut ?? false, await childGone(dir)]).toEqual([
+      true,
+      false,
+      true,
+    ]);
+  });
+
+  test("the caller's signal kills the check and its tree", async () => {
+    const dir = script("slow", "sleep 30 &\necho $! > child.pid\nwait");
     const stop = new AbortController();
-    const started = Date.now();
     const running = boundedCheckRunner(process.env).run("slow", dir, 20_000, stop.signal);
-    setTimeout(() => stop.abort(), 200);
+    await poll(() => existsSync(join(dir, "child.pid")), 3000);
+    stop.abort();
     const result = await running;
-    expect([result.aborted, Date.now() - started < 5000]).toEqual([true, true]);
+    expect([result.aborted, await childGone(dir)]).toEqual([true, true]);
   });
 
   // A process that left the group (setsid) keeps the pipes open after the kill: the runner gives
-  // the readers a short grace, then stops reading, instead of hanging until it ends.
+  // the readers a short grace (2 s), then stops reading, instead of waiting the 8 s it lives.
   test.skipIf(!whichOnPath("setsid"))(
     "after the kill, a process that left the group does not hold the runner",
     async () => {
-      const dir = script("escapes", "setsid sleep 8 &\nsleep 8");
+      const dir = script("escapes", "setsid sleep 8 &\necho $! > child.pid\nsleep 8");
       const started = Date.now();
       const result = await boundedCheckRunner(process.env).run("escapes", dir, 300);
-      expect([result.timedOut, Date.now() - started < 5000]).toEqual([true, true]);
+      children.push(Number(readFileSync(join(dir, "child.pid"), "utf8").trim()));
+      expect([result.timedOut, Date.now() - started < 6000]).toEqual([true, true]);
     },
   );
 
@@ -183,5 +220,67 @@ describe.skipIf(process.platform === "win32")("check-loop: the bounded runner", 
     const dir = script("fails", "echo out\necho err >&2\nexit 3");
     const result = await boundedCheckRunner(process.env).run("fails", dir, 5000);
     expect([result.exitCode, result.output]).toEqual([3, "out\nerr\n"]);
+  });
+});
+
+/**
+ * The failure paths of `runLimited`, through its spawn seam: a pipe that fails cannot be provoked
+ * with a real process. The call gives back exactly what was thrown, and leaves no timer or listener
+ * that would kill a pid later.
+ */
+describe("check-loop: runLimited when reading fails", () => {
+  const stream = (fail?: { value: unknown }) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        if (fail) controller.error(fail.value);
+        else controller.close();
+      },
+    });
+  function fakeSpawn(fail: { stdout?: { value: unknown }; stderr?: { value: unknown } }) {
+    return () => ({
+      pid: 4242,
+      stdout: stream(fail.stdout),
+      stderr: stream(fail.stderr),
+      exited: Promise.resolve(0),
+      kill: () => {},
+    });
+  }
+  async function outcome(fail: Parameters<typeof fakeSpawn>[0]) {
+    const kills: number[] = [];
+    const stop = new AbortController();
+    let thrown: unknown = "nothing thrown";
+    try {
+      await runLimited(["x"], "/", 1024, 50, async (pid) => void kills.push(pid), {
+        signal: stop.signal,
+        spawn: fakeSpawn(fail),
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    const atEnd = kills.length;
+    // Past the time limit, and with the signal fired: nothing armed by the call fires now.
+    await Bun.sleep(120);
+    stop.abort();
+    return { thrown, atEnd, later: kills.length - atEnd };
+  }
+
+  test("a stdout read that fails kills the tree once, rethrows what was thrown even when falsy, and leaves nothing armed", async () => {
+    const sentinel = { reason: "pipe" };
+    expect([
+      await outcome({ stdout: { value: sentinel } }),
+      await outcome({ stdout: { value: 0 } }),
+    ]).toEqual([
+      { thrown: sentinel, atEnd: 1, later: 0 },
+      { thrown: 0, atEnd: 1, later: 0 },
+    ]);
+  });
+
+  test("a stderr read that fails is thrown too, with the time limit's timer and the listener cleared", async () => {
+    const sentinel = { reason: "stderr" };
+    expect(await outcome({ stderr: { value: sentinel } })).toEqual({
+      thrown: sentinel,
+      atEnd: 0,
+      later: 0,
+    });
   });
 });

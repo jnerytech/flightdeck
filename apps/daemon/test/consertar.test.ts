@@ -88,8 +88,9 @@ describe("consertar: a round of fixing", () => {
 
   test("#1361: the whole output is masked before it is cut, so a secret across the cut leaves nothing", async () => {
     const token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
-    // The 8 KB kept from the end starts 20 characters into the token's line; more came before it.
-    const output = `${"y".repeat(12_000)}\n${token}\n${"x".repeat(8192 - 20)}`;
+    // The 8 KB kept from the end starts 16 characters into the token's line, so a cut before the
+    // mask would keep its last 24 characters; more came before it.
+    const output = `${"y".repeat(12_000)}\n${token}\n${"x".repeat(8192 - 25)}`;
     const f = await fixture({
       settings: { checks: ["bun test"] },
       checkExit: { "bun test": 1 },
@@ -99,7 +100,7 @@ describe("consertar: a round of fixing", () => {
     await f.fixer.idle();
     const summary = f.fixer.rounds(f.card.id)[0]?.summary ?? "";
     expect([
-      summary.includes("qrstuvwxyz0123456789"),
+      summary.includes("rstuvwxyz0123456789"),
       summary.includes("x".repeat(100)),
       summary.length <= 8192 + 200,
     ]).toEqual([false, true, true]);
