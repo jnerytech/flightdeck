@@ -735,6 +735,8 @@ export interface PendingItem {
   hostName: string;
   sessionId: string;
   sessionName: string;
+  /** Issue #1545: the project of the card that asks, so two cards of one title stay apart. */
+  projectName?: string;
   requestId: string;
   toolName: string;
   createdAt: string;
@@ -793,12 +795,27 @@ export type NeedsYouState = Pick<
   | "personas"
   | "runs"
   | "vaultApprovals"
->;
+> &
+  Partial<Pick<AppState, "projects">>;
 
 /** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
 export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
   const requests: PendingItem[] = state.hosts.flatMap((host) => {
     const names = state.names?.[host.id] ?? [];
+    const projects = state.projects?.[host.id];
+    const projectOf = (card: Card | undefined): { projectName?: string } => {
+      const name = card && projects?.find((p) => p.id === card.projectId)?.name;
+      return name ? { projectName: name } : {};
+    };
+    // Only a host with projects can have a card behind a session.
+    const ofSession = (id: string) =>
+      projects?.length
+        ? projectOf(
+            Object.entries(state.cards).find(
+              ([key, card]) => key.startsWith(`${host.id}/`) && card.sessionId === id,
+            )?.[1],
+          )
+        : {};
     const label = (id: string, metaName: string | null | undefined, createdName?: string | null) =>
       sessionLabel(
         {
@@ -818,6 +835,7 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
           sessionName:
             label(session.id, state.meta[sessionKey(host.id, session.id)]?.name, session.name) ??
             basename(session.cwd),
+          ...ofSession(session.id),
           requestId: p.requestId,
           toolName: p.toolName,
           createdAt: p.createdAt,
@@ -861,6 +879,7 @@ export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
               hostName: host.name,
               sessionId: run.cardId,
               sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
+              ...projectOf(state.cards[sessionKey(host.id, run.cardId)]),
               requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
               toolName: `gate ${step.stepId}`,
               createdAt: step.startedAt,

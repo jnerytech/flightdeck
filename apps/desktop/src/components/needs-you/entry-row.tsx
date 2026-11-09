@@ -6,7 +6,7 @@ import type { Key, T } from "@/i18n/index";
 import type { AppStore, LoopAlert, PendingItem } from "@/lib/app-store";
 import type { ClientColor } from "@/lib/clients";
 import type { Finish } from "@/lib/finished";
-import { pendingText } from "@/lib/pending-text";
+import { pendingText, pendingWhere } from "@/lib/pending-text";
 import { type QuietAlert, quietText } from "@/lib/quiet";
 import type { WatchAlert } from "@/lib/watch-alerts";
 
@@ -166,7 +166,7 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
   const { chip } = props;
   // A workflow gate is not a tool: its line says which step waits (issue #175).
   const what = pendingText(item, t);
-  const who = `${item.hostName} · ${item.sessionName}`;
+  const who = pendingWhere(item);
   return (
     <RowButton active={active} pressed={selected} label={`${who}: ${what}`} onActivate={onActivate}>
       <DotLine t={t} text={who}>
