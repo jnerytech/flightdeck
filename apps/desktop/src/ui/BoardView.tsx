@@ -750,13 +750,12 @@ export const BoardView = memo(function BoardView(props: {
     setPicked((before) => before.filter((id) => !went.has(id)));
     const one = kind === "start" ? "board.startFailedOne" : "board.stopFailedOne";
     const many = kind === "start" ? "board.startFailed" : "board.stopFailed";
-    setNotice(
-      refused.length === 0
-        ? null
-        : refused.length === 1
-          ? t(one, { names: nameRefusals(refused) })
-          : t(many, { count: refused.length, names: nameRefusals(refused) }),
-    );
+    let outcome: string | null = null;
+    if (refused.length === 1) outcome = t(one, { names: nameRefusals(refused) });
+    else if (refused.length > 1) {
+      outcome = t(many, { count: refused.length, names: nameRefusals(refused) });
+    }
+    setNotice(outcome);
     setBusy(false);
     boardRef.current?.focus();
   };
@@ -797,6 +796,27 @@ export const BoardView = memo(function BoardView(props: {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
     }
     return lines;
+  };
+  /** The confirm's title: how many cards the action takes. */
+  const bulkTitle = (): string => {
+    if (bulk === "start") {
+      return startable.length === 1
+        ? t("board.startTitleOne")
+        : t("board.startTitle", { n: startable.length });
+    }
+    return split.stop.length === 1
+      ? t("board.stopTitleOne")
+      : t("board.stopTitle", { n: split.stop.length });
+  };
+  /** Why the action leaves a selected card out, for the confirm's list; undefined when it takes it. */
+  const skipReason = (card: Card): string | undefined => {
+    if (bulk === "start") {
+      return (
+        split.skipStart.find((s) => s.card.id === card.id)?.reason ??
+        (needsInputs(card) ? t("board.needsInputs") : undefined)
+      );
+    }
+    return split.skipStop.some((c) => c.id === card.id) ? t("board.notRunning") : undefined;
   };
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
@@ -1388,24 +1408,10 @@ export const BoardView = memo(function BoardView(props: {
       {bulk && (
         <BulkRunDialog
           t={t}
-          title={
-            bulk === "start"
-              ? startable.length === 1
-                ? t("board.startTitleOne")
-                : t("board.startTitle", { n: startable.length })
-              : split.stop.length === 1
-                ? t("board.stopTitleOne")
-                : t("board.stopTitle", { n: split.stop.length })
-          }
+          title={bulkTitle()}
           lines={bulkLines()}
           items={actingCards.map((card) => {
-            const skip =
-              bulk === "start"
-                ? (split.skipStart.find((s) => s.card.id === card.id)?.reason ??
-                  (needsInputs(card) ? t("board.needsInputs") : undefined))
-                : split.skipStop.some((c) => c.id === card.id)
-                  ? t("board.notRunning")
-                  : undefined;
+            const skip = skipReason(card);
             return { id: card.id, title: card.title, ...(skip ? { skipped: skip } : {}) };
           })}
           confirmLabel={
