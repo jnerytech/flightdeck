@@ -28,7 +28,7 @@ const finished = {
   branch: "card/cart-screen",
 };
 
-function setup(provider: string | null, language: "en" | "pt-BR" = "en") {
+function setup(provider: string | null, language: "en" | "pt-BR" = "en", refusePr = false) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   if (provider !== null)
@@ -38,7 +38,8 @@ function setup(provider: string | null, language: "en" | "pt-BR" = "en") {
   const commands: string[] = [];
   store.hostCommand = (async (_host: string, type: string) => {
     commands.push(type);
-    return {};
+    // A host that refuses answers nothing: the app has shown its banner and the command is over.
+    return refusePr && type === "card.pr.create" ? null : {};
   }) as never;
   store.describePr = (async () => {
     commands.push("describePr");
@@ -132,5 +133,40 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     render(w.form("diff"));
     expect(button("Open PR") !== null).toBe(true);
     expect(panel()).not.toContain("remote");
+  });
+});
+
+describe("card-no-remote-ui: a refused Open PR keeps what the person wrote (#1543)", () => {
+  const dialogText = () =>
+    (screen.queryByRole("textbox", { name: "PR description" }) as HTMLTextAreaElement | null)
+      ?.value ?? null;
+
+  async function writeAndConfirm(w: ReturnType<typeof setup>) {
+    render(w.form("diff"));
+    await act(async () => {
+      fireEvent.click(button("Open PR") as HTMLElement);
+    });
+    const box = screen.queryByRole("textbox", { name: "PR description" });
+    expect(box !== null).toBe(true);
+    await act(async () => {
+      fireEvent.change(box as HTMLElement, { target: { value: "what I wrote for the PR" } });
+    });
+    await act(async () => {
+      fireEvent.click(button(/Open the PR/) as HTMLElement);
+    });
+  }
+
+  test("the host refuses (a project the app did not know had no provider): the dialog stays, with the text", async () => {
+    const w = setup(null, "en", true);
+    await writeAndConfirm(w);
+    expect(w.commands).toContain("card.pr.create");
+    expect(dialogText()).toBe("what I wrote for the PR");
+  });
+
+  test("the host accepts: the dialog closes", async () => {
+    const w = setup(null, "en", false);
+    await writeAndConfirm(w);
+    expect(w.commands).toContain("card.pr.create");
+    expect(dialogText()).toBeNull();
   });
 });
