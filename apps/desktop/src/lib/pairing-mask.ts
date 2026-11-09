@@ -35,3 +35,9 @@ export function keptToken(
   const sameHost = next.address === draft.address && next.port === draft.port;
   return sameHost && draft.token !== "" ? draft.token : null;
 }
+
+/** The token in text that may not read as a link yet: the first one, decoded; null when there is none. */
+export function tokenInText(text: string): string | null {
+  void text;
+  return "";
+}

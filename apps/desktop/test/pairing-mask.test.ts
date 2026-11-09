@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { keptToken, maskPairingLink, TOKEN_MASK } from "../src/lib/pairing-mask.ts";
+import { keptToken, maskPairingLink, TOKEN_MASK, tokenInText } from "../src/lib/pairing-mask.ts";
 
 /** #1548: a pasted pairing link shows its token masked, as the Token field does. */
 describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", () => {
@@ -17,20 +17,43 @@ describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", (
   });
 
   test("no form of the token shows: an encoded key, a repeated one, or a # or space inside it", () => {
-    const shown = [
-      "flightdeck://pc:7420?%74oken=SECRET",
-      "flightdeck://pc:7420?name=a?token=FAKE&token=SECRET",
-      "flightdeck://pc:7420?token=SEC#RET",
-      "flightdeck://pc:7420?token=SEC RET",
-      "flightdeck://pc:7420?token=A&token=B",
-    ].map(maskPairingLink);
-    expect(shown.map((link) => /SECRET|RET|=B/.test(link))).toEqual([
-      false,
-      false,
-      false,
-      false,
-      false,
+    expect(
+      [
+        "flightdeck://pc:7420?%74oken=SECRET",
+        "flightdeck://pc:7420?token=SEC#RET",
+        "flightdeck://pc:7420?token=SEC RET",
+        "flightdeck://pc:7420?token=A&token=B",
+        "flightdeck://pc:7420?name=a?token=FAKE&token=SECRET",
+      ].map(maskPairingLink),
+    ).toEqual([
+      "flightdeck://pc:7420?name=pc&token=••••",
+      "flightdeck://pc:7420?name=pc&token=••••",
+      "flightdeck://pc:7420?name=pc&token=••••",
+      "flightdeck://pc:7420?name=pc&token=••••",
+      "flightdeck://pc:7420?name=a%3Ftoken%3DFAKE&token=••••",
     ]);
+  });
+
+  test("text that is not a readable link still hides what follows token=, as typed or encoded", () => {
+    expect([
+      maskPairingLink("flightdeck://pc:abc?name=x&token=SECRET"),
+      maskPairingLink("flightdeck://pc:abc?%74oken=SECRET&name=x"),
+      maskPairingLink("flightdeck://pc:abc?token=A&token=B&name=x"),
+    ]).toEqual([
+      "flightdeck://pc:abc?name=x&token=••••",
+      "flightdeck://pc:abc?token=••••&name=x",
+      "flightdeck://pc:abc?token=••••&token=••••&name=x",
+    ]);
+  });
+
+  test("the token in text that may not read: the first one, decoded, or none", () => {
+    expect([
+      tokenInText("flightdeck://pc:abc?name=x&token=SEC%2BRET"),
+      tokenInText("flightdeck://pc:abc?token=A&token=B"),
+      tokenInText("flightdeck://pc:abc?name=x"),
+      tokenInText("http://pc?mytoken=abc"),
+      tokenInText("flightdeck://pc:abc?token="),
+    ]).toEqual(["SEC+RET", "A", null, null, null]);
   });
 
   test("a link with no token, or text that is not a link, is left alone", () => {
@@ -71,5 +94,15 @@ describe("pairing-mask: which token a link edited in the form carries (#1548)", 
       keptToken("••••", { address: "127.0.0.1", port: "7420" }, draft),
       keptToken("••••", same, { ...draft, token: "" }),
     ]).toEqual([null, null, null]);
+  });
+
+  test("a token read from text that did not read (no address yet) is kept for the link once it does", () => {
+    expect(
+      keptToken(
+        "••••",
+        { address: "pc", port: "7420" },
+        { address: "", port: "7420", token: "held" },
+      ),
+    ).toBe("held");
   });
 });
