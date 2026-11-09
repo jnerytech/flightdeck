@@ -1,6 +1,6 @@
 import type { Project } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,7 @@ export function AddProject(
   };
   const [path, setPath] = useState("");
   const [browsing, setBrowsing] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
   const host = store.getState().hosts.find((h) => h.id === hostId);
   const suggestions = suggestFolders(
     host?.sessions ?? [],
@@ -74,7 +75,13 @@ export function AddProject(
       )}
       {openState && (
         <Dialog open onOpenChange={(next) => !next && setOpen(false)}>
-          <DialogContent>
+          <DialogContent
+            onOpenAutoFocus={(event) => {
+              // #1544: Radix focuses the first suggestion, where an Enter adds that folder unread.
+              event.preventDefault();
+              field.current?.focus();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>{t("addProject.title")}</DialogTitle>
               <DialogDescription>{t("addProject.description")}</DialogDescription>
@@ -103,6 +110,7 @@ export function AddProject(
               </section>
             )}
             <Input
+              ref={field}
               aria-label={t("addProject.folder")}
               placeholder={t("projects.pathPlaceholder")}
               value={path}
