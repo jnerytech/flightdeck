@@ -29,6 +29,7 @@ import { ulid } from "../apps/daemon/src/ulid.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { demoCardTemplates } from "./lib/demo-card-templates.ts";
+import { demoHostSetup } from "./lib/demo-hosts.ts";
 import { laggingBranches } from "./lib/demo-lagging.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
 import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
@@ -477,6 +478,7 @@ function demoMemory(file: string): { totalBytes: number; freeBytes: number } | n
 }
 
 async function host(work: string, name: string): Promise<HostRun> {
+  const setup = demoHostSetup(name);
   const base = join(work, name);
   const memoryFile = join(base, "memory");
   const projects = join(base, "projects");
@@ -548,9 +550,10 @@ async function host(work: string, name: string): Promise<HostRun> {
     { ...process.env },
     quiet,
     // The health check asks the machine's service manager; the demo says what no machine can change
-    // (issue #1200): the service is not installed, and linger is on, so every run reads the same.
+    // (issue #1200): linger is on, and the service is installed only where the demo says (#1520), so
+    // every run reads the same.
     {
-      serviceInstalled: async () => false,
+      serviceInstalled: async () => setup.serviceInstalled,
       linger: async () => "on",
       // Issue #1364: the memory the hold on new cards reads is a file the journeys write, never the
       // machine's own (a busy runner would hold every card). No file is no reading, so nothing waits.
@@ -840,7 +843,9 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
 
   const alfa = await host(work, "alfa");
   const beta = await host(work, "beta");
-  log(`alfa em ${alfa.url}, beta em ${beta.url}`);
+  // #1520: a third online host that differs, so the Compare hosts print has a majority to mark against.
+  const gama = await host(work, "gama");
+  log(`alfa em ${alfa.url}, beta em ${beta.url}, gama em ${gama.url}`);
   const { client } = alfa;
 
   // Projects: one with cards in every column (and one with a diff), one empty.
@@ -1429,6 +1434,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     hosts: [
       { id: "demo-alfa", name: "alfa", url: alfa.url, token: alfa.token },
       { id: "demo-beta", name: "beta", url: beta.url, token: beta.token },
+      { id: "demo-gama", name: "gama", url: gama.url, token: gama.token },
       { id: "demo-offline", name: "notebook", url: offlineUrl, token: "x".repeat(32) },
       {
         id: "demo-slow",
@@ -1474,6 +1480,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       slow.stop(true);
       await alfa.stop();
       await beta.stop();
+      await gama.stop();
       for (const [name, value] of envBefore) {
         if (value === undefined) delete process.env[name];
         else process.env[name] = value;

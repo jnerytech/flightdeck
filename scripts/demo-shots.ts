@@ -734,6 +734,7 @@ function shots(ids: DemoIds): Shot[] {
     },
     {
       // #1501: the Compare hosts table opened on alfa's page, with the demo's other hosts beside it.
+      // #1520: alfa and beta agree and gama differs (Start at boot), so a cell is marked.
       name: "host-comparar",
       route: { name: "host", host: ALFA },
       prepare: async (page) => {
