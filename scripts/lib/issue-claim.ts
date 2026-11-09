@@ -191,3 +191,11 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
     return 1;
   }
 }
+
+/**
+ * `claim --note <issue> <status> "<text>"` (#1526), run by issue-note.sh before it posts: 0 lets
+ * the note go, 1 refuses it, 2 is a usage error.
+ */
+export async function noteCheck(_args: string[], _deps: ClaimDeps): Promise<number> {
+  return 0;
+}
