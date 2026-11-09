@@ -29,6 +29,32 @@ async function collectUntil(
 const isResult = (e: RuntimeEvent) => e.type === "turn.result";
 
 describe("FakeRuntime", () => {
+  test("[quiet] keeps the turn open and silent until it is interrupted (#1478)", async () => {
+    const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll));
+    const it = run.events[Symbol.asyncIterator]();
+    run.send("[quiet] hold");
+    const seen: RuntimeEvent[] = [];
+    const pump = (async () => {
+      for (;;) {
+        const { value, done } = await it.next();
+        if (done) return;
+        seen.push(value);
+        if (isResult(value)) return;
+      }
+    })();
+    // timing: a silent turn can only be shown by waiting that it does not end
+    await Bun.sleep(100);
+    expect(seen.some(isResult)).toBe(false);
+    expect(seen.some((e) => e.type === "message.assistant" || e.type === "message.delta")).toBe(
+      false,
+    );
+    await run.interrupt();
+    await pump;
+    const result = seen.find(isResult);
+    expect(result?.type === "turn.result" && result.isError).toBe(true);
+    await run.close();
+  });
+
   test("[persona] diz o papel com que a sessão abriu: a primeira linha do corpo, o esforço, as ferramentas e os agentes", async () => {
     const reply = async (extra: Partial<StartOptions>) => {
       const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, extra));
