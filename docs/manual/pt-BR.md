@@ -1112,12 +1112,19 @@ aparece mascarado e como **Oculto**, e não abre.
   seleciona ou desmarca, e um leitor de tela ouve o estado dela e a contagem.
 - **Selecionar pelo teclado** (#1354). Num card, `X` seleciona ou desmarca, e `Shift` com uma seta,
   `Home` ou `End` anda e seleciona o trecho desde o primeiro card escolhido, na ordem do board.
-  Enquanto há uma seleção, `M` abre o **Mover para…** da barra e `S` não inicia um card sozinho. `Esc`
+  Enquanto há uma seleção, `M` abre o **Mover para…** da barra e `S` o **Iniciar N**, nunca um card sozinho. `Esc`
   limpa a seleção e deixa o foco no card; sem seleção, faz o que fazia antes (uma tela dividida
   fecha). Um filtro esconde cards mas os mantém selecionados; o que você faz então vale só para os
   cards que aparecem, e a barra diz quantos estão escondidos.
-- **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
-  **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
+- **A barra de seleção** acima do board mostra "3 selecionados" com **Iniciar N** (os cards que podem
+  iniciar), **Parar N** (quando algum deles roda ou espera na fila), **Mover para…** (uma coluna),
+  **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
+  quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
+  e os cards que ficam de fora e por quê. Parar também pergunta: o turno de um card rodando é
+  interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
+  branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
+  os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que
+  não aparecem, e **Mover para…** e **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
 - **O que uma coluna pede de um card** (#78). **Em revisão** pede um link de PR e verificações
   passando; **Em andamento** pede critérios de aceite, um item de checklist (`- [ ] …`) na
