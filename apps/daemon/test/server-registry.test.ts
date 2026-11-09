@@ -245,4 +245,22 @@ describe("server-registry", () => {
       ["issues.createCard", "issues.get", "issues.list"].sort(),
     );
   });
+
+  // Issue #1288: the host readouts left the switch of server.ts.
+  test("the hostReads domain owns the host readout commands", () => {
+    expect(Object.keys(DOMAINS.hostReads ?? {}).sort()).toEqual(
+      [
+        "deps.check",
+        "doctor.run",
+        "idle.subscribe",
+        "logs.tail",
+        "names.list",
+        "releases.list",
+        "resources.get",
+        "roi.summary",
+        "runtime.models",
+        "statusline.get",
+      ].sort(),
+    );
+  });
 });
