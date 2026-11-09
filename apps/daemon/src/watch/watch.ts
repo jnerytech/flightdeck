@@ -111,7 +111,13 @@ export class PrWatcher {
       .get(projectId);
     const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
     // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
-    return { ...stored, checkEnv: stored.checkEnv.filter(isCheckEnvName) };
+    const names: unknown[] = Array.isArray(stored.checkEnv) ? stored.checkEnv : [];
+    return {
+      ...stored,
+      checkEnv: names.filter(
+        (name): name is string => typeof name === "string" && isCheckEnvName(name),
+      ),
+    };
   }
 
   setSettings(projectId: string, patch: Partial<WatchSettings>): WatchSettings {
