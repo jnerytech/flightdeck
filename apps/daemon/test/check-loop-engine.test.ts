@@ -588,6 +588,13 @@ describe("check-loop: the security review's cases", () => {
     expect([ended, fromTimer]).toEqual(["settled", "quiet"]);
   });
 
+  test("onSessionGone says whether the loop had the slot, so the board releases it only when not", () => {
+    const held = rig();
+    held.engine.onIdle("c");
+    const none = rig({ card: { on: false } });
+    expect([held.engine.onSessionGone("c"), none.engine.onSessionGone("c")]).toEqual([true, false]);
+  });
+
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
     const output =
       "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
