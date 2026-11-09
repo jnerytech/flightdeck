@@ -27,25 +27,27 @@ export interface ClaimDeps {
   coordinator: boolean;
 }
 
+/** The marker as the last line of a comment: a marker quoted in a reply is no marker. */
 const MARK =
-  /<!-- flightdeck-owner: ([\w.-]{1,32}) status: (progress|reassign|ready|done|todo) -->/g;
+  /(?:^|\n)<!-- flightdeck-owner: (\w[\w.-]{0,31}) status: (progress|reassign|ready|done|todo) -->\s*$/;
+/** A session name: a word character first, so a flag can never be one. */
+const SESSION = /^\w[\w.-]{0,31}$/;
 const COORDINATOR = "fd-coordinator";
-const USAGE = "usage: bun run claim <issue> [--by <session>] [--reassign]";
+const USAGE = "usage: bun run claim <issue> [--by <session>] [--reassign | --release]";
 
 /** The marker line for a comment. */
 export function ownerMark(owner: string, status: ClaimStatus): string {
   return `<!-- flightdeck-owner: ${owner} status: ${status} -->`;
 }
 
-/** The markers of an issue's comments, oldest first; a comment without one gives none. */
+/** The markers of an issue's comments, in time order; a comment without one gives none. */
 export function marksOf(comments: Array<{ body: string; createdAt: string }>): OwnerMark[] {
-  return comments.flatMap(({ body, createdAt }) =>
-    [...body.matchAll(MARK)].map((m) => ({
-      owner: m[1] as string,
-      status: m[2] as ClaimStatus,
-      at: createdAt,
-    })),
-  );
+  return [...comments]
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .flatMap(({ body, createdAt }) => {
+      const m = MARK.exec(body);
+      return m ? [{ owner: m[1] as string, status: m[2] as ClaimStatus, at: createdAt }] : [];
+    });
 }
 
 /**
@@ -63,35 +65,77 @@ export function currentOwner(marks: OwnerMark[]): string | null {
   return owner;
 }
 
-/** The issue's state and owner, read from GitHub; throws when gh cannot say. */
+/** gh's answer as JSON, or null when it is not. */
+function json(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/** The issue's state and owner, read from GitHub over every page of comments; throws when gh cannot say. */
 async function read(
   deps: ClaimDeps,
   issue: number,
 ): Promise<{ open: boolean; owner: string | null }> {
-  const viewed = await deps.gh(["issue", "view", String(issue), "--json", "state,comments"]);
-  let answer: { state?: string; comments?: Array<{ body: string; createdAt: string }> } | null =
-    null;
-  try {
-    answer = viewed.code === 0 ? JSON.parse(viewed.stdout) : null;
-  } catch {
-    answer = null;
+  const failed = (why: string) =>
+    new Error(`gh could not read #${issue}: ${why.trim() || "not JSON"}`);
+  const viewed = await deps.gh(["issue", "view", String(issue), "--json", "state"]);
+  const state = (json(viewed.code === 0 ? viewed.stdout : "") as { state?: unknown } | null)?.state;
+  if (state !== "OPEN" && state !== "CLOSED") throw failed(viewed.stderr ?? "");
+  // gh issue view lists at most 100 comments on older gh: page through them all.
+  const listed = await deps.gh([
+    "api",
+    "--paginate",
+    `repos/{owner}/{repo}/issues/${issue}/comments`,
+    "--jq",
+    ".[] | {body: .body, createdAt: .created_at}",
+  ]);
+  if (listed.code !== 0) throw failed(listed.stderr ?? "");
+  const comments: Array<{ body: string; createdAt: string }> = [];
+  for (const line of listed.stdout.split("\n").filter((l) => l.trim() !== "")) {
+    const c = json(line) as { body?: unknown; createdAt?: unknown } | null;
+    if (typeof c?.body !== "string" || typeof c.createdAt !== "string") throw failed("");
+    comments.push({ body: c.body, createdAt: c.createdAt });
   }
-  if (!answer || !Array.isArray(answer.comments)) {
-    throw new Error(`gh could not read #${issue}: ${(viewed.stderr ?? "").trim() || "not JSON"}`);
-  }
-  return { open: answer.state !== "CLOSED", owner: currentOwner(marksOf(answer.comments)) };
+  return { open: state === "OPEN", owner: currentOwner(marksOf(comments)) };
 }
 
 const ownedBy = (issue: number, owner: string) =>
   `#${issue} is owned by ${owner}: ask fd-coordinator to reassign it (bun run claim ${issue} --by <session> --reassign)`;
 
-/** `claim <n> [--by <session>] [--reassign]`; the exit code. */
+/** Posts a marker comment; false (and a line) when gh refuses. */
+async function post(deps: ClaimDeps, issue: number, text: string, mark: string): Promise<boolean> {
+  const posted = await deps.gh(["issue", "comment", String(issue), "--body", `${text}\n\n${mark}`]);
+  if (posted.code === 0) return true;
+  deps.log(`claim: gh could not comment on #${issue}: ${(posted.stderr ?? "").trim()}`);
+  return false;
+}
+
+/** Releases the issue: only its owner or the coordinator does. */
+async function release(deps: ClaimDeps, issue: number, session: string, owner: string | null) {
+  if (owner === null) {
+    deps.log(`#${issue} is not claimed`);
+    return 0;
+  }
+  if (owner !== session && !deps.coordinator) {
+    deps.log(ownedBy(issue, owner));
+    return 1;
+  }
+  if (!(await post(deps, issue, `${session} releases this issue.`, ownerMark(session, "todo"))))
+    return 1;
+  deps.log(`released #${issue} (${session})`);
+  return 0;
+}
+
+/** `claim <n> [--by <session>] [--reassign | --release]`; the exit code. */
 export async function claimIssue(args: string[], deps: ClaimDeps): Promise<number> {
   const words = args.filter((a) => a !== "--");
-  const issue = Number(words[0]);
+  const issue = /^\d+$/.test(words[0] ?? "") ? Number(words[0]) : 0;
   const by = words.indexOf("--by");
   const session = by === -1 ? deps.session : words[by + 1];
-  if (!Number.isInteger(issue) || issue <= 0 || !session || !/^[\w.-]{1,32}$/.test(session)) {
+  if (issue <= 0 || !session || !SESSION.test(session)) {
     deps.log(USAGE);
     return 2;
   }
@@ -102,6 +146,7 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
   }
   try {
     const before = await read(deps, issue);
+    if (words.includes("--release")) return await release(deps, issue, session, before.owner);
     if (!before.open) {
       deps.log(`#${issue} is closed: there is nothing to claim`);
       return 1;
@@ -118,17 +163,7 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
     const text = reassign
       ? `${session} owns this issue now (reassigned).`
       : `${session} claims this issue.`;
-    const posted = await deps.gh([
-      "issue",
-      "comment",
-      String(issue),
-      "--body",
-      `${text}\n\n${ownerMark(session, status)}`,
-    ]);
-    if (posted.code !== 0) {
-      deps.log(`claim: gh could not comment on #${issue}: ${(posted.stderr ?? "").trim()}`);
-      return 1;
-    }
+    if (!(await post(deps, issue, text, ownerMark(session, status)))) return 1;
     // Two sessions can claim at the same moment: read again, and only the first claim stands.
     const after = await read(deps, issue);
     if (after.owner !== session) {

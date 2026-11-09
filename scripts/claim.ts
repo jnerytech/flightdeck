@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun run claim <issue> [--by <session>] [--reassign]` (issue #1410): claim an issue before
+ * `bun run claim <issue> [--by <session>] [--reassign | --release]` (issue #1410): claim an issue before
  * starting it; refused when another session owns it. The logic is in lib/issue-claim.ts. The
  * session is --by, else FLIGHTDECK_SESSION; only FLIGHTDECK_COORDINATOR=1 may reassign.
  */
