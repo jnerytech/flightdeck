@@ -71,7 +71,7 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
     expect(document.body.textContent).not.toContain("Nothing is waiting for you.");
   });
 
-  test("choosing it offers Open, Interrupt, Send continue and Not stuck, and each does its one thing", async () => {
+  test("choosing it offers Open, Stop the turn, Send continue and Not stuck, and each does its one thing", async () => {
     const { store, sent } = setup();
     const went: unknown[] = [];
     page(store, (route) => went.push(route));
@@ -81,7 +81,7 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
     await press("Open");
     expect(went).toEqual([{ name: "session", host: "h1", id: "s1" }]);
 
-    await press("Interrupt");
+    await press("Stop the turn");
     await settle(() => sent.length === 1);
     expect(sent).toEqual([["interrupt", "h1/s1"]]);
 
@@ -102,8 +102,8 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
     expect(document.activeElement === document.body).toBe(false);
   });
 
-  test("Interrupt and Send continue that make the row go also leave the focus on the list, not on the body", async () => {
-    for (const name of ["Interrupt", "Send “continue”"]) {
+  test("Stop the turn and Send continue that make the row go also leave the focus on the list, not on the body", async () => {
+    for (const name of ["Stop the turn", "Send “continue”"]) {
       cleanup();
       const { store } = setup();
       const view = page(store);
@@ -124,7 +124,7 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
     page(store);
     expect(rows()[0] ?? "").toContain("Em silêncio há 23 min · última: Bash");
     await press(/alfa · api/);
-    for (const name of ["Abrir", "Interromper", "Enviar “continue”", "Não travou, adiar 1 h"]) {
+    for (const name of ["Abrir", "Parar o turno", "Enviar “continue”", "Não travou, adiar 1 h"]) {
       expect(screen.queryByRole("button", { name })).not.toBeNull();
     }
   });

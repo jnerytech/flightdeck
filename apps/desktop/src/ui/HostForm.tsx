@@ -1,4 +1,3 @@
-import { parsePairingLink } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useBusy } from "@/components/feedback/busy";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -6,6 +5,7 @@ import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { type BoundToken, maskOnLeave, readLinkEdit } from "../lib/pairing-mask.ts";
 import { pairingErrorText } from "../lib/pairing-text.ts";
 
 export interface HostDraft {
@@ -47,6 +47,8 @@ export function HostForm(
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
   const [link, setLink] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
+  /** The token the pasted link carried and the host it was read with (never the Token field's own). */
+  const [bound, setBound] = useState<BoundToken | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   // The fields to fill by hand are folded; they open on what needs them: a draft (a link from
   // outside), a pasted link they now show, or an error to fix there (#1199).
@@ -62,6 +64,13 @@ export function HostForm(
   return (
     <Form
       onSubmit={() => {
+        // A link typed by hand is masked as the form goes, the field not left (#1548).
+        setLink(maskOnLeave(link));
+        // A link that is refused names a host the form does not hold: it is fixed or emptied first.
+        if (linkError) {
+          setProblem(linkError);
+          return;
+        }
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
           setProblem(t("hostForm.missing"));
           setByHand(true);
@@ -86,15 +95,26 @@ export function HostForm(
             {...control}
             value={link}
             placeholder="flightdeck://…"
+            // A typed link shows its token until the field is left: not for autofill, history or the spellchecker.
+            autoComplete="off"
+            spellCheck={false}
+            autoCapitalize="off"
             onChange={(e) => {
-              setLink(e.target.value);
-              const parsed = parsePairingLink(e.target.value);
-              setLinkError(parsed.ok || !e.target.value ? null : pairingErrorText(t, parsed.error));
-              if (parsed.ok) {
-                setDraft(draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token));
+              const inputType = (e.nativeEvent as { inputType?: string }).inputType ?? "";
+              const edit = readLinkEdit(e.target.value, link, bound, inputType);
+              setLink(edit.shown);
+              setLinkError(edit.problem ? pairingErrorText(t, edit.problem) : null);
+              if (edit.fields) {
+                setDraft({ ...draft, ...edit.fields });
                 setByHand(true);
+              } else if (bound && !edit.bound && draft.token === bound.token) {
+                // The link that carried the token no longer has one: the form does not keep it.
+                setDraft({ ...draft, token: "" });
               }
+              setBound(edit.bound);
             }}
+            // A link that was typed is masked when the field is left (#1548).
+            onBlur={() => setLink(maskOnLeave(link))}
           />
         )}
       </Field>

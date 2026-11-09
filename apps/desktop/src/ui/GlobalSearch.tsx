@@ -18,7 +18,7 @@ import {
   paletteSections,
 } from "../lib/palette.ts";
 import { basename } from "../lib/paths.ts";
-import { pendingText } from "../lib/pending-text.ts";
+import { pendingText, pendingWhere } from "../lib/pending-text.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
@@ -333,7 +333,7 @@ function oldestOf(
   const opens = Boolean(item.gate || item.vault || item.risk === "high");
   return {
     oldest: {
-      text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`,
+      text: `${pendingWhere(item)}: ${pendingText(item, t)}`,
       opens,
       key: `${item.hostId}/${item.requestId}`,
     },

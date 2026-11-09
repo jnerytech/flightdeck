@@ -269,7 +269,16 @@ Para que ele sobreviva a reboot e a SSH fechado, [instale-o como serviço](#inst
 No app, clique em **Adicionar host** e cole o link de pareamento (veja [Pareamento](#pareamento))
 ou informe nome, endereço (`127.0.0.1`, ou o `bind` configurado), porta (`7420`) e token (o valor
 de `token` no `config.json` do daemon). **Testar e adicionar** faz `hello` e `host.info` antes de
-salvar e mostra o motivo quando falha (token recusado, host fora do ar).
+salvar e mostra o motivo quando falha (token recusado, host fora do ar). Depois que o link colado é
+lido, o campo o mostra com o token em pontos (`token=••••`), como o campo **Token**, e uma
+captura ou o compartilhamento da tela do formulário não mostram o token. Um link digitado à mão
+aparece como digitado e é mascarado quando você sai do campo. O link mostrado não pode ser copiado
+com o token: copie-o de novo do daemon. Editar o link com pontos mantém o token com que foi lido, mas
+só para o mesmo endereço e porta: outro endereço pede que você cole o link desse host, e tirar o
+token do link o tira também do formulário. Um link colado que ainda não é lido (uma porta inválida,
+por exemplo) mostra seus valores em pontos e não guarda token: corrija-o e cole de novo. **Testar e
+adicionar** espera enquanto o campo do link mostra um erro: corrija o link ou esvazie o campo. Um token com
+`•` não cabe num link: use os campos à mão.
 
 O token fica no cofre de credenciais do sistema operacional (Windows Credential Manager, Keychain,
 Secret Service), não em texto puro. Depois, use **+** ao lado do host para criar uma sessão: pasta
@@ -1126,10 +1135,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 ## Board
 
 Cada projeto (um repositório git do host) tem um board com cinco colunas: Backlog, Em andamento,
-Esperando você, Em revisão e Concluído. Um card vira uma branch `fd/<slug>`, uma worktree e uma
+Precisa de você, Em revisão e Concluído. Um card vira uma branch `fd/<slug>`, uma worktree e uma
 sessão; o card anda sozinho conforme a sessão e o PR, e também pode ser arrastado à mão.
 Cada coluna tem a sua cor de fundo e uma linha fina no topo (Backlog neutro, Em andamento âmbar,
-Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do status, o número de cards
+Precisa de você laranja, Em revisão verde, Concluído apagado), o ícone do status, o número de cards
 numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
 tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
 
@@ -1166,7 +1175,7 @@ aparece mascarado e como **Oculto**, e não abre.
   oferecidos o card cujo modelo nomeia um workflow ou uma persona, o card que espera um bloqueio e o
   card que segura outros: iniciariam de outro jeito lá, ou ir para Concluído liberaria os outros cedo demais.
   Parar também pergunta: o turno de um card rodando é
-  interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
+  interrompido e ele espera em **Precisa de você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
   os que o host recusou. **Atualizar N com a base** aparece quando um card selecionado tem branch e
   não está rodando: depois que a branch base anda, ele faz o rebase desses cards sobre ela, um de cada
@@ -1289,7 +1298,7 @@ No app, o botão ▦ ao lado do host abre **Projetos de &lt;host&gt;**. Cada pro
 - **Script de preparação** (opcional, por exemplo `bun install`): roda na worktree antes da
   sessão, com `cmd.exe` no Windows e `sh` nos demais. É o único comando de shell que o
   Flightdeck executa por conta própria, e só existe se for cadastrado. Se falhar, o card vai para
-  Esperando você com a saída do erro.
+  Precisa de você com a saída do erro.
 - **Modelo de instruções:** anexado ao prompt de todo card. O padrão pede para trabalhar só na
   worktree e fazer commits com mensagens descritivas.
 
@@ -1353,7 +1362,7 @@ Para hosts que anunciam `boardsync` (precisa do `gh` do host conectado, veja **C
   item põe o card numa coluna. Depois disso o host lê o quadro a cada minuto, e **Sincronizar agora** faz isso na hora.
 - **Mapa de status.** Cada status do quadro tem uma coluna aqui: por padrão Todo e Backlog para Backlog, In Progress para
   Em andamento, In Review para Em revisão, Done para Concluído. Mude uma coluna e aperte **Salvar mapa**; um status
-  *Sem mapa* deixa os cards onde estão. *Esperando você* não tem par no GitHub, então os cards que vão para lá não são
+  *Sem mapa* deixa os cards onde estão. *Precisa de você* não tem par no GitHub, então os cards que vão para lá não são
   enviados.
 - **Só leitura por padrão.** Mover um card aqui não muda nada no quadro até você ligar **Enviar minhas mudanças de card ao
   quadro**. Ligar pede confirmação e precisa da permissão `project`; se o login não a tem, a mensagem diz e nada é
@@ -1372,7 +1381,7 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
 ### Ciclo do card
 
 - **Em revisão:** o card entra quando um turno termina bem. Um turno com erro, interrompido por
-  Parar, ou um pedido de permissão levam a Esperando você.
+  Parar, ou um pedido de permissão levam a Precisa de você.
 - **Conclusão:** Concluir (com confirmação) ou o PR mesclado removem a worktree se `git status`
   estiver limpo. Senão, o card avisa e a worktree fica.
 - **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
@@ -1430,7 +1439,7 @@ arquivos em comum em **Pode conflitar com outros cards** nos detalhes, e a confi
 nomeia. Funciona por uma conexão próxima (este computador ou
 Tailscale), e os cards do Azure DevOps fazem o merge no Azure DevOps. Os cards com PR aberto são consultados a cada 60 s, ou a cada
 `board.prPollIntervalMs` da config. PR mesclado leva o card a Concluído; fechado sem merge, a
-Esperando você.
+Precisa de você.
 
 ### Limite de execuções paralelas
 
@@ -1897,7 +1906,7 @@ No detalhe do card, escolha o workflow (ou **Nenhum**, para o card simples), pre
 
 - **Linha do tempo:** o detalhe mostra cada etapa com status, tentativa, duração e, num `agent`,
   os turnos e o custo estimado. Clicar abre a conversa da etapa ou a saída do `check`.
-- **Gate aberto:** leva o card a Esperando você e libera a vaga do host. Ele aparece no próprio
+- **Gate aberto:** leva o card a Precisa de você e libera a vaga do host. Ele aparece no próprio
   card e em **Precisa de você**, com Aprovar, Recusar e nota.
   - Aprovado, a execução volta à fila do host e segue.
   - Recusado, termina como `rejected`.
@@ -1920,7 +1929,7 @@ No detalhe do card, escolha o workflow (ou **Nenhum**, para o card simples), pre
   - O valor é cumulativo por sessão: vale o último total de cada sessão.
   - Uma sessão retomada conta só a diferença.
 
-O orçamento é conferido antes de cada turno. Estourado, a execução pausa em Esperando você com
+O orçamento é conferido antes de cada turno. Estourado, a execução pausa em Precisa de você com
 o motivo. Uma execução pausada não continua: inicie o card de novo. O medidor no detalhe do
 card mostra turnos, minutos e custo estimado. (Não confundir com os [orçamentos em
 US$](#orçamentos) de host e de projeto.)
@@ -3594,11 +3603,12 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
 - **Sessões em silêncio:** uma sessão que consta como rodando mas não produziu nada em 15 minutos
   (30 enquanto uma chamada de ferramenta está aberta, pois um build pode ficar em silêncio) aparece
   sob os pedidos como "Em silêncio há 23 min · última: Bash", num daemon que anuncia `stall`.
-  Escolha-a para **Abrir**, **Interromper**, **Enviar "continue"** e **Não travou, adiar 1 h** (que
-  tira essa sessão da lista por uma hora, neste computador). Ela sai da lista no próximo sinal de
+  Escolha-a para **Abrir**, **Parar o turno**, **Enviar "continue"** e **Não travou, adiar 1 h** (que
+  tira essa sessão da lista e do cartão dela por uma hora, diz quando ela volta e vale também depois
+  de reiniciar o app, neste computador). Ela sai da lista no próximo sinal de
   vida, e uma sessão esperando uma aprovação nunca fica em silêncio. Sai uma notificação do sistema
   quando ela fica em silêncio, nunca com o app em foco; o cartão Trabalhando do quadro de Atividade
-  traz a marca "Em silêncio 23 min". `stall.afterMinutes` na configuração do daemon define os 15
+  e o cartão do quadro do projeto trazem a marca "Em silêncio 23 min". `stall.afterMinutes` na configuração do daemon define os 15
   (0 desliga).
 - **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
   responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.

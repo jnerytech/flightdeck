@@ -111,7 +111,7 @@ describe("gate-ui", () => {
       hostId: ctx.store.getState().hosts[0]?.id ?? "",
     }));
     // A gate is named by its step (issue #175).
-    const label = "alfa · Somar: A etapa “approve” do workflow espera sua aprovação";
+    const label = "alfa · repo · Somar: A etapa “approve” do workflow espera sua aprovação";
     await sidebar.openQueue();
     expect(screen.queryByRole("heading", { name: "Precisa de você" })).not.toBeNull();
     expect(needsYou(store.getState())[0]).toMatchObject({
@@ -146,7 +146,9 @@ describe("gate-ui", () => {
 
   test("recusar pela fila encerra a execução", async () => {
     const { run } = await atGate();
-    await sidebar.queueItem("alfa · Somar: A etapa “approve” do workflow espera sua aprovação");
+    await sidebar.queueItem(
+      "alfa · repo · Somar: A etapa “approve” do workflow espera sua aprovação",
+    );
     await click("Negar");
     await click("Negar");
     await settle(() => run().status === "rejected");

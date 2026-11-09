@@ -1191,9 +1191,10 @@ export const en: Dictionary = {
     quietBody:
       "It is still marked as running but has produced nothing for a while. A long build can be quiet too.",
     quietOpen: "Open",
-    quietInterrupt: "Interrupt",
+    quietInterrupt: "Stop the turn",
     quietContinue: "Send “continue”",
     quietSnooze: "Not stuck, snooze 1 h",
+    quietSnoozed: "Hidden until {time}.",
     quietLast: "{quiet} · last: {tool}",
     finishedFilesOne: "1 file changed",
     finishedFilesMany: "{n} files changed",
@@ -5356,6 +5357,7 @@ export const en: Dictionary = {
     pairAddress: "The link has no host address.",
     pairPort: "The link's port is not valid.",
     pairToken: "The link has no token.",
+    pairElsewhere: "The token is not carried to another address: paste that host's link.",
     pairRefused: "Pairing link refused. {reason}",
     probeTimeout:
       "The host did not answer in time: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
