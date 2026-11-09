@@ -5,6 +5,7 @@
 import type { Handlers } from "../dispatch.ts";
 import { agentsHandlers } from "./agents.ts";
 import { costsHandlers } from "./costs.ts";
+import { filesHandlers } from "./files.ts";
 import { githubHandlers } from "./github.ts";
 import { hostHandlers } from "./host.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
@@ -14,6 +15,7 @@ import { runsHandlers } from "./runs.ts";
 import { securityHandlers } from "./security.ts";
 import { teleportHandlers } from "./teleport.ts";
 import { terminalHandlers } from "./terminal.ts";
+import { watchHandlers } from "./watch.ts";
 
 /** The domains, by name; no command may sit in two of them (a spread would let the last win). */
 export const DOMAINS: Record<string, Partial<Handlers>> = {
@@ -27,6 +29,8 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   github: githubHandlers,
   host: hostHandlers,
   knowledge: knowledgeHandlers,
+  watch: watchHandlers,
+  files: filesHandlers,
   teleport: teleportHandlers,
 };
 

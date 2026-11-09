@@ -61,7 +61,6 @@ import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
 import { coalesceDeltas, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
-import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { AlertList } from "./github/alerts.ts";
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
@@ -698,10 +697,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "names");
   }
 
-  function watching(): PrWatch {
-    return need(opts, "watch");
-  }
-
   function idle(): Idle {
     return need(opts, "idle");
   }
@@ -763,10 +758,6 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   function personaSessions(): OpenSessionPersonas {
     return need(opts, "personaSessions");
-  }
-
-  function files(): ReviewFiles {
-    return need(opts, "files");
   }
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
@@ -983,33 +974,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.chooseVariant": {
         const { cardId, variantId, confirm } = command.payload;
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
-      }
-      case "watch.settings":
-        return ok(
-          command.type,
-          watching().settings(command.payload.projectId, command.payload.patch),
-        );
-      case "watch.set":
-        return ok(command.type, watching().set(command.payload.cardId, command.payload.enabled));
-      case "watch.get":
-        return ok(command.type, watching().info(command.payload.cardId));
-      case "watch.resolveHeld": {
-        const { cardId, roundId, action } = command.payload;
-        return ok(command.type, await watching().resolveHeld(cardId, roundId, action));
-      }
-      case "watch.extend":
-        return ok(command.type, watching().extend(command.payload.cardId, command.payload.rounds));
-      case "watch.trace":
-        return ok(command.type, watching().trace(command.payload.cardId));
-      case "watch.describe":
-        return ok(command.type, watching().describe(command.payload.cardId));
-      case "watch.byUrl":
-        return ok(command.type, watching().byUrl(command.payload.url));
-      case "watch.watch": {
-        const service = watching();
-        ws.data.unwatchPrs?.();
-        ws.data.unwatchPrs = service.watch((frame) => send(ws, frame));
-        return ok(command.type);
       }
       case "names.list":
         return ok(command.type, {
@@ -1322,15 +1286,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { claudeSessionId, question, state } = command.payload;
         return ok(command.type, await summary().get(claudeSessionId, { question, state }));
       }
-      case "files.sessions":
-        return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
-      case "fs.dirs": {
-        const { path, hidden } = command.payload;
-        return ok(
-          command.type,
-          await listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
-        );
-      }
       case "projects.scan": {
         if (!opts.findProjects) throw featureOff("projects.scan");
         const { depth } = command.payload;
@@ -1360,13 +1315,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "doctor.run":
         if (!opts.doctor) throw featureOff("doctor.run");
         return ok(command.type, await opts.doctor(command.payload.appVersion));
-      case "fs.files": {
-        const { path, hidden } = command.payload;
-        return ok(
-          command.type,
-          await listFiles(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
-        );
-      }
       case "session.files":
         return ok(command.type, { files: sessionFiles().list(command.payload.claudeSessionId) });
       case "statusline.get": {
@@ -1421,25 +1369,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
-      case "file.list":
-        return ok(command.type, await files().list(command.payload.target, command.payload.dir));
-      case "file.read":
-        return ok(command.type, await files().read(command.payload.target, command.payload.path));
-      case "file.search": {
-        // One search at a time per connection: a newer one replaces the one before it (#905).
-        ws.data.search?.abort();
-        const mine = new AbortController();
-        ws.data.search = mine;
-        try {
-          return ok(command.type, await files().search(command.payload, mine.signal));
-        } finally {
-          if (ws.data.search === mine) ws.data.search = undefined;
-        }
-      }
-      case "file.write": {
-        const { target, path, text, expectedHash } = command.payload;
-        return ok(command.type, await files().write(target, path, text, expectedHash));
-      }
       case "card.start": {
         const { cardId, workflow, inputs, persona } = command.payload;
         return ok(command.type, await board().startCard(cardId, { workflow, inputs, persona }));

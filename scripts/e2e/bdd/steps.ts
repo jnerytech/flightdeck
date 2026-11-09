@@ -13,6 +13,7 @@ import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
+  DEMO_GATE_CARD,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
@@ -1793,3 +1794,118 @@ step(
       throw new Error(`the quota of ${host} does not lead the page`);
   },
 );
+
+// A card waiting at a gate leads with the gate's Approve, never with Open PR or Review changes (issue #1269).
+step(When, "I open the card that waits at a workflow gate", async (c) => {
+  mine(c).card = DEMO_GATE_CARD;
+  await tile(c).getByRole("button", { name: DEMO_GATE_CARD, exact: true }).click({ timeout: WAIT });
+});
+
+step(Then, "the gate offers Approve and Deny", async (c) => {
+  const gate = c.page.getByRole("region", { name: pattern(dictionary(c).runUi.gate) });
+  await gate
+    .getByRole("button", { name: dictionary(c).approval.approve, exact: true })
+    .waitFor({ timeout: WAIT });
+  await gate
+    .getByRole("button", { name: dictionary(c).approval.deny, exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card's run panel has no main button, only its menu", async (c) => {
+  const run = c.page.locator('[data-slot="card-run"]');
+  const menu = c.t("board.cardActions", { title: DEMO_GATE_CARD });
+  await run.getByRole("button", { name: menu, exact: true }).waitFor({ timeout: WAIT });
+  const names = await run
+    .getByRole("button")
+    .evaluateAll((buttons) =>
+      buttons.map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim() ?? ""),
+    );
+  if (names.join("|") !== menu) throw new Error(`the run panel has more than its menu: ${names}`);
+});
+
+// Scheduled backups that cannot go reach the bell, once per start, and a press opens the schedule (issue #1327).
+// A schedule a past session left on is put in the page's storage, as the app keeps it; the next load is the restart.
+async function leaveSchedule(c: Context, folder: boolean) {
+  await open(c, { name: "needs-you" }, true, withDemoFolder);
+  await c.page.evaluate(
+    ([scheduleKey, folderKey, chosen, path]) => {
+      window.localStorage.setItem(
+        scheduleKey as string,
+        JSON.stringify({ cadence: "daily", folder: chosen ? path : "", keep: 5, lastRunAt: null }),
+      );
+      if (chosen)
+        window.localStorage.setItem(
+          folderKey as string,
+          JSON.stringify({ chosen: true, files: {} }),
+        );
+      window.localStorage.removeItem("flightdeck.inbox");
+    },
+    [SCHEDULE_KEY, DEMO_BACKUP_FOLDER_KEY, folder, DEMO_BACKUP_FOLDER],
+  );
+}
+
+step(
+  Given,
+  "a daily backup was left scheduled into the demo folder, with no passphrase",
+  async (c) => leaveSchedule(c, true),
+);
+
+step(Given, "a daily backup was left scheduled with no folder", async (c) =>
+  leaveSchedule(c, false),
+);
+
+step(When, "I restart the app on the queue of what needs me", async (c) => {
+  await open(c, { name: "needs-you" }, true, withDemoFolder);
+});
+
+step(When, "I restart the app on Settings > Backup", async (c) => {
+  await open(c, { name: "settings", section: "backup" }, true, withDemoFolder);
+  await cadenceRadio(c, "daily").waitFor({ timeout: WAIT });
+});
+
+step(When, "I turn the schedule off and on again", async (c) => {
+  await cadenceRadio(c, "off").check();
+  await cadenceRadio(c, "daily").check();
+  await c.page
+    .getByText(scheduleText(c).skipped["no-passphrase"], { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I open the bell", async (c) => {
+  // With a notice unread the bell says how many; Settings has a "Notifications" section too.
+  await c.page.getByRole("button", { name: pattern(dictionary(c).inbox.bellUnread) }).click();
+  await bell(c).waitFor({ timeout: WAIT });
+});
+
+/** The bell's entries that carry a title: how many there are, and none says it came more than once. */
+async function oneNotice(c: Context, title: string) {
+  const entries = bell(c).locator("li[data-entry]").filter({ hasText: title });
+  await entries.first().waitFor({ timeout: WAIT });
+  if ((await entries.count()) !== 1)
+    throw new Error(`the bell holds ${await entries.count()} notices titled "${title}"`);
+  if ((await bell(c).locator("li[data-entry]").count()) !== 1)
+    throw new Error("the bell holds more than that notice");
+  return entries;
+}
+
+step(
+  Then,
+  "the bell holds one notice that the scheduled backups need the passphrase",
+  async (c) => {
+    await oneNotice(c, scheduleText(c).attention.passphrase.title);
+  },
+);
+
+step(Then, "the bell holds one notice that the scheduled backups have no folder", async (c) => {
+  await oneNotice(c, scheduleText(c).attention["no-folder"].title);
+});
+
+step(When, "I press that notice", async (c) => {
+  await (await oneNotice(c, scheduleText(c).attention.passphrase.title))
+    .locator(".inbox-pick")
+    .click();
+});
+
+step(Then, "the schedule opens and asks for the passphrase", async (c) => {
+  await schedulePassphrase(c).waitFor({ timeout: WAIT });
+});
