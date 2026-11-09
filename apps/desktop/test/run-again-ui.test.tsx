@@ -95,6 +95,8 @@ function setup(
   const sent: Array<[string, unknown]> = [];
   store.hostRequest = (async (_host: string, type: string, payload: unknown) => {
     sent.push([type, payload]);
+    // #1266: the resume check of a host from before it: Run again stays the only offer.
+    if (type === "run.resume") return { ok: false, code: "invalid_request", message: "unknown" };
     return options.answer ?? { ok: true, data: { id: "c1" } };
   }) as never;
   const opened: string[] = [];
@@ -138,7 +140,10 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     const status = await settleMaybe(() => startedNote()?.textContent === "Started again.", 3000);
     const focused = await settleMaybe(() => document.activeElement === startedNote(), 2000);
     expect([sent, status, focused]).toEqual([
-      [["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }]],
+      [
+        ["run.resume", { runId: "r1" }],
+        ["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }],
+      ],
       true,
       true,
     ]);
@@ -165,8 +170,13 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     view.rerender(tree(run({ id: "r2" })));
     const back = await settleMaybe(() => button("Run again") !== null, 3000);
     await click(button("Run again"));
-    await settleMaybe(() => sent.length === 2, 3000);
-    expect([started, back, sent.length]).toEqual([true, true, 2]);
+    await settleMaybe(() => sent.length === 4, 3000);
+    const start = ["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }];
+    expect([started, back, sent]).toEqual([
+      true,
+      true,
+      [["run.resume", { runId: "r1" }], start, ["run.resume", { runId: "r2" }], start],
+    ]);
   });
 
   test("the run's reason stays above the button, and the button waits for the host's answer on the file", async () => {
