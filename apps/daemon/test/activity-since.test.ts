@@ -137,6 +137,7 @@ describe("activity-since (#1344)", () => {
       {
         runId: "r1",
         cardId: "c",
+        projectId: "p1",
         workflowName: "ship",
         reasonKey: "run.budget",
         reasonParams: { limit: 5 },
