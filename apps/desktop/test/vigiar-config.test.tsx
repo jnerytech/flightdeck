@@ -340,7 +340,10 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
     await settleMaybe(() => screen.queryByLabelText(label) !== null);
     const shown = async (value: string) => {
       await act(async () => fireIf(maybe(label), { target: { value } }));
-      const text = section()?.textContent ?? "";
+      // The text the page says, outside the field the person typed in.
+      const page = section()?.cloneNode(true) as HTMLElement | undefined;
+      for (const control of page?.querySelectorAll("textarea, input") ?? []) control.remove();
+      const text = page?.textContent ?? "";
       return [text.includes("abc123"), text.includes(value.split("=")[0] as string)];
     };
     expect([await shown("GITHUB_TOKEN=abc123"), await shown("JAVA_HOME=abc123")]).toEqual([
