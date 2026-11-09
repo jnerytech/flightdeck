@@ -74,6 +74,8 @@ function fakeGh(opts: {
   /** `run view <id>`'s jobs and failed log, by run id (else `jobs` and `log`). */
   jobsById?: Record<number, object[]>;
   logById?: Record<number, string>;
+  /** Run ids whose `run view --json jobs` fails. */
+  jobsFail?: number[];
 }) {
   let madeOne = false;
   const asked: string[][] = [];
@@ -81,7 +83,7 @@ function fakeGh(opts: {
     asked.push(args);
     const line = args.join(" ");
     const event = args.includes("--event") ? args[args.indexOf("--event") + 1] : undefined;
-    if (line.startsWith("run list") && event) {
+    if (line.startsWith("run list") && event && event !== "push") {
       const full = event === "schedule" ? opts.schedule : opts.dispatch;
       return { code: 0, stdout: JSON.stringify(full ?? []) };
     }
@@ -91,6 +93,9 @@ function fakeGh(opts: {
     const id = Number(args[2]);
     if (line.startsWith("run view") && args.includes("--log-failed")) {
       return { code: 0, stdout: opts.logById?.[id] ?? opts.log ?? "" };
+    }
+    if (line.startsWith("run view") && opts.jobsFail?.includes(id)) {
+      return { code: 1, stdout: "", stderr: "HTTP 502" };
     }
     if (line.startsWith("run view")) {
       return { code: 0, stdout: JSON.stringify({ jobs: opts.jobsById?.[id] ?? opts.jobs ?? [] }) };
@@ -464,26 +469,108 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     expect(shown.lines).toEqual([`main is green: ${GREEN_RUN.url}`, "closed: #30 (fd-qa)"]);
   });
 
-  test("a full run red only on Windows is green; a screenshots dispatch is no full run, a newer full dispatch is", async () => {
+  test("a full run red only on Windows is green", async () => {
     const windowsOnly = fakeGh({
       runs: [GREEN_RUN],
       schedule: [FULL_RED],
       jobsById: { 50: SUITE_GREEN },
     });
     expect(await runAt([], windowsOnly).code).toBe(0);
+  });
+
+  test("a screenshots dispatch, whose test suite job is skipped, is no full run; a newer full dispatch is", async () => {
     const shots = { ...FULL_RED, databaseId: 60, createdAt: "2026-11-09T02:00:00Z" };
     const dispatched = { ...FULL_RED, databaseId: 61, createdAt: "2026-11-09T01:30:00Z" };
+    const skipped = [
+      { name: "screenshots", conclusion: "failure" },
+      { name: "test suite (ubuntu-latest) (dispatch)", conclusion: "skipped" },
+    ];
+    const onlyShots = fakeGh({
+      schedule: [FULL_GREEN],
+      dispatch: [shots],
+      jobsById: { 51: SUITE_GREEN, 60: skipped },
+    });
+    const fallback = await latestFullRun(onlyShots);
+    expect([fallback?.id, fallback?.red]).toEqual([51, false]);
     const fake = fakeGh({
       schedule: [FULL_GREEN],
       dispatch: [shots, dispatched],
-      jobsById: {
-        51: SUITE_GREEN,
-        60: [{ name: "screenshots", conclusion: "failure" }],
-        61: SUITE_FAILED,
-      },
+      jobsById: { 51: SUITE_GREEN, 60: skipped, 61: SUITE_FAILED },
     });
     const full = await latestFullRun(fake);
     expect([full?.id, full?.red]).toEqual([61, true]);
+  });
+
+  test("a dispatch older than the latest scheduled run is not looked at", async () => {
+    const older = { ...FULL_RED, databaseId: 62, createdAt: "2026-11-08T23:00:00Z" };
+    const fake = fakeGh({
+      schedule: [FULL_GREEN],
+      dispatch: [older],
+      jobsById: { 62: SUITE_FAILED },
+    });
+    expect((await latestFullRun(fake))?.id).toBe(51);
+    expect(fake.asked.some((a) => a[0] === "run" && a[1] === "view" && a[2] === "62")).toBe(false);
+  });
+
+  test("a full run that failed but whose jobs cannot be read is red, never green", async () => {
+    const fake = fakeGh({ runs: [GREEN_RUN], schedule: [FULL_RED], jobsFail: [50] });
+    const shown = runAt([], fake);
+    expect(await shown.code).toBe(1);
+    expect(shown.lines[0] ?? "").toStartWith(`main is red: ${FULL_RED.url} (full run, 2h 5m old;`);
+  });
+
+  test("the push run is read from push events only, and each run's jobs once per call", async () => {
+    const fake = fakeGh({
+      runs: [GREEN_RUN],
+      schedule: [FULL_RED],
+      jobsById: { 50: SUITE_FAILED },
+      logById: { 50: FULL_LOG },
+    });
+    await runAt([], fake).code;
+    const pushList = fake.asked.find(
+      (a) =>
+        a[0] === "run" &&
+        a[1] === "list" &&
+        !a.includes("schedule") &&
+        !a.includes("workflow_dispatch"),
+    );
+    expect(pushList?.[pushList.indexOf("--event") + 1]).toBe("push");
+    const views = fake.asked.filter((a) => a.join(" ") === "run view 50 --json jobs");
+    expect(views.length).toBe(1);
+  });
+
+  test("the warning reads no full run when the push run is already red (the hook has 3 s)", async () => {
+    const fake = fakeGh({ runs: [RED_RUN], schedule: [FULL_GREEN], jobsById: { 51: SUITE_GREEN } });
+    expect((await mainRedLine({ ...fake, now: () => NOW })) ?? "").toContain(RED_RUN.url);
+    expect(fake.asked.some((a) => a.includes("schedule"))).toBe(false);
+  });
+
+  test("a full run's red stays until a newer full run is green: a later green push run does not test it", async () => {
+    const pushAfter = { ...GREEN_RUN, databaseId: 70, createdAt: "2026-11-09T02:30:00Z" };
+    const stillRed = fakeGh({
+      runs: [pushAfter],
+      schedule: [FULL_RED],
+      jobsById: { 50: SUITE_FAILED },
+      logById: { 50: FULL_LOG },
+    });
+    expect(await runAt([], stillRed).code).toBe(1);
+    const newerGreen = { ...FULL_GREEN, databaseId: 52, createdAt: "2026-11-09T02:50:00Z" };
+    const claimed = { ...issue(30, "fd-qa", ["deps-gate > startCard is the only door"]) };
+    const fixed = fakeGh({
+      runs: [pushAfter],
+      schedule: [newerGreen, FULL_RED],
+      jobsById: { 52: SUITE_GREEN },
+      claims: [claimed],
+    });
+    const shown = runAt([], fixed);
+    expect(await shown.code).toBe(0);
+    expect(shown.lines).toEqual([`main is green: ${pushAfter.url}`, "closed: #30 (fd-qa)"]);
+  });
+
+  test("an age under an hour is told in minutes", async () => {
+    const recent = { ...FULL_RED, createdAt: "2026-11-09T02:25:00Z" };
+    const fake = fakeGh({ runs: [GREEN_RUN], schedule: [recent], jobsById: { 50: SUITE_FAILED } });
+    expect((await mainRedLine({ ...fake, now: () => NOW })) ?? "").toContain("(full run, 40m old)");
   });
 
   test("a red push run and a green full run: red, and the full run's green verdict is shown", async () => {
