@@ -10,7 +10,8 @@ a field (the `field-with-action` rows of a card's Details and its adjustment) th
 
 Decision: inside `field-with-action` the reason is part of the row. The row wraps, the button's box is
 `display: contents`, and the reason takes a whole line under the field and every button (Use theirs
-too). The row grows by that line while the button is off and shrinks when it turns on, the same as a
+too), from the line's start: #1270 aligned it right only because it hung from the row's right
+edge. The row grows by that line while the button is off and shrinks when it turns on, the same as a
 `FieldRow`'s help line (#732). Covered text is worse than that shift.
 
 Below 40rem (#1326) the field also takes a line of its own, and the buttons go under it, at the end.
