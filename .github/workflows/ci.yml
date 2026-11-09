@@ -191,6 +191,14 @@ jobs:
           FLIGHTDECK_JUNIT: ${{ runner.temp }}/junit.xml
         run: bun run test:related -- --pr --base "$BASE" --keep-coverage coverage
 
+      # #1493: the changed test files again under istanbul, as the full run's istanbul shards run
+      # them, so an istanbul-only red (#1492) shows here. A failed test fails it; no coverage gate.
+      - name: Changed tests under istanbul (#1493)
+        if: always() && needs.quick.outputs.base != ''
+        env:
+          BASE: ${{ needs.quick.outputs.base }}
+        run: bun run scripts/istanbul-changed.ts "$BASE" "$RUNNER_TEMP/istanbul"
+
       # #1003: a test over 5 s or a test file over 60 s fails the PR, from the run above's own times.
       - name: Testes lentos (#1003)
         if: always() && needs.quick.outputs.base != ''
