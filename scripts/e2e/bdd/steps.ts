@@ -623,6 +623,44 @@ const finishedRow = (c: Context, session: string) =>
     `main ul li button[aria-label="alfa · ${session}: ${c.t("needsYou.finishedOutcome.done")}"]`,
   );
 
+// Issue #1478: a running session that says nothing is listed in Needs you (the demo counts a "minute" in seconds).
+step(Given, "a session named {string} on {string} is running and says nothing", async (c, name) =>
+  createSession(c, "[quiet] hold", name),
+);
+
+const quietRow = (c: Context, session: string) =>
+  c.page.locator(
+    `main ul li button[aria-label^="alfa · ${session}: ${c.t("needsYou.quietFor", { span: "" }).trim()}"]`,
+  );
+
+step(Then, "the queue lists {string} as quiet", async (c, session = "") =>
+  quietRow(c, session).waitFor({ timeout: SESSION_WAIT }),
+);
+
+step(When, "I choose the quiet session {string}", async (c, session = "") =>
+  quietRow(c, session).click(),
+);
+
+step(Then, "its detail offers to open it, interrupt it, send continue and snooze it", async (c) => {
+  const detail = c.page.locator("main");
+  for (const key of ["quietOpen", "quietInterrupt", "quietContinue", "quietSnooze"] as const) {
+    await detail
+      .getByRole("button", { name: c.t(`needsYou.${key}`), exact: true })
+      .waitFor({ timeout: WAIT });
+  }
+});
+
+step(When, "I interrupt the quiet session", async (c) =>
+  c.page.getByRole("button", { name: c.t("needsYou.quietInterrupt"), exact: true }).click(),
+);
+
+step(Then, "the queue no longer lists {string} as quiet", async (c, session = "") =>
+  waitFor(
+    async () => (await quietRow(c, session).count()) === 0,
+    "the quiet session left the queue",
+  ),
+);
+
 step(Then, "no request of {string} is waiting any more", async (c, session = "") =>
   waitFor(async () => (await waitingRow(c, session).count()) === 0, "the request left the queue"),
 );

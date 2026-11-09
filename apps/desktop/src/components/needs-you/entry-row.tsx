@@ -7,6 +7,7 @@ import type { AppStore, LoopAlert, PendingItem } from "@/lib/app-store";
 import type { ClientColor } from "@/lib/clients";
 import type { Finish } from "@/lib/finished";
 import { pendingText } from "@/lib/pending-text";
+import { type QuietAlert, quietText } from "@/lib/quiet";
 import type { WatchAlert } from "@/lib/watch-alerts";
 
 /**
@@ -19,6 +20,7 @@ export type Entry =
   | { kind: "alert"; key: string; label: string; clientId?: string }
   | { kind: "loop"; key: string; alert: LoopAlert }
   | { kind: "watch"; key: string; alert: WatchAlert }
+  | { kind: "quiet"; key: string; alert: QuietAlert }
   | { kind: "request"; key: string; item: PendingItem }
   | { kind: "finished"; key: string; finish: Finish };
 
@@ -115,6 +117,23 @@ function EntryRowImpl(props: Readonly<EntryRowProps>) {
     return (
       <RowButton active={active} pressed={selected} onActivate={onActivate}>
         <DotLine t={t} text={text} />
+      </RowButton>
+    );
+  }
+  if (entry.kind === "quiet") {
+    const who = `${entry.alert.hostName} · ${entry.alert.title}`;
+    const what = quietText(entry.alert, store.now(), t);
+    return (
+      <RowButton
+        active={active}
+        pressed={selected}
+        label={`${who}: ${what}`}
+        onActivate={onActivate}
+      >
+        <DotLine t={t} text={who} />
+        <span className="truncate pl-5 text-muted-foreground text-xs" title={what}>
+          {what}
+        </span>
       </RowButton>
     );
   }

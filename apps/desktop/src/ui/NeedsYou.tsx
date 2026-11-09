@@ -33,6 +33,8 @@ import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";
 import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { type QuietAlert, quietAlerts, quietText } from "../lib/quiet.ts";
+import { CONTINUATION } from "../lib/resume-offer.ts";
 import type { Route } from "../lib/router.ts";
 import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
@@ -49,7 +51,7 @@ function DetailColumn(props: Readonly<{ children: ReactNode }>) {
 }
 
 /** Everything that waits for the person, in the list's order: budget alerts, loops, watches, requests. */
-function entriesOf(state: AppState, t: T): Entry[] {
+function entriesOf(state: AppState, t: T, nowMs: number): Entry[] {
   return [
     ...budgetAlerts(state, t).map((a) => ({
       kind: "alert" as const,
@@ -71,6 +73,12 @@ function entriesOf(state: AppState, t: T): Entry[] {
       kind: "request" as const,
       key: `${item.hostId}/${item.requestId}`,
       item,
+    })),
+    // Issue #1478: a running session that says nothing waits for the person too, after the requests.
+    ...quietAlerts(state, nowMs, t).map((alert) => ({
+      kind: "quiet" as const,
+      key: `quiet/${alert.key}`,
+      alert,
     })),
     // What finished since the person last looked comes after what waits for them.
     ...sinceLastLook(state.finished, state.finishedLook).map((finish) => ({
@@ -179,6 +187,56 @@ function LoopDetail(props: Readonly<{ alert: LoopAlert; store: AppStore }>) {
   );
 }
 
+/** A running session that says nothing: how long, and the four ways on (#1478). */
+function QuietDetail(
+  props: Readonly<{ alert: QuietAlert; store: AppStore; go(route: Route): void; onActed(): void }>,
+) {
+  const { alert, store, go } = props;
+  const { t } = store.i18n;
+  return (
+    <DetailColumn>
+      <h2 className="font-semibold text-base">{t("needsYou.quietTitle")}</h2>
+      <p className="text-sm">
+        {alert.hostName} · {alert.title}
+      </p>
+      <p className="text-sm">{quietText(alert, store.now(), t)}</p>
+      <p className="text-muted-foreground text-sm">{t("needsYou.quietBody")}</p>
+      <Inline gap={2}>
+        <Button onClick={() => go({ name: "session", host: alert.hostId, id: alert.sessionId })}>
+          {t("needsYou.quietOpen")}
+        </Button>
+        <ActionButton
+          variant="outline"
+          onClick={() => {
+            props.onActed();
+            return store.interruptSession(alert.hostId, alert.sessionId);
+          }}
+        >
+          {t("needsYou.quietInterrupt")}
+        </ActionButton>
+        <ActionButton
+          variant="outline"
+          onClick={() => {
+            props.onActed();
+            return store.sendTo(alert.hostId, alert.sessionId, CONTINUATION);
+          }}
+        >
+          {t("needsYou.quietContinue")}
+        </ActionButton>
+        <Button
+          variant="outline"
+          onClick={() => {
+            props.onActed();
+            store.snoozeQuiet(alert.hostId, alert.sessionId);
+          }}
+        >
+          {t("needsYou.quietSnooze")}
+        </Button>
+      </Inline>
+    </DetailColumn>
+  );
+}
+
 /** The ways to act on a request besides answering it: its secret rule, or open its session. */
 function RequestActions(
   props: Readonly<{
@@ -283,9 +341,12 @@ function Detail(
     store: AppStore;
     go(route: Route): void;
     onOpenRequest(item: PendingItem): void;
+    onQuietActed(): void;
   }>,
 ) {
   const { chosen, store, go } = props;
+  if (chosen.kind === "quiet")
+    return <QuietDetail alert={chosen.alert} store={store} go={go} onActed={props.onQuietActed} />;
   if (chosen.kind === "watch") return <WatchDetail alert={chosen.alert} store={store} go={go} />;
   if (chosen.kind === "loop") return <LoopDetail alert={chosen.alert} store={store} />;
   if (chosen.kind === "finished")
@@ -313,7 +374,7 @@ export function NeedsYou(
 ) {
   const { store, state, go } = props;
   const { t } = store.i18n;
-  const entries = entriesOf(state, t);
+  const entries = entriesOf(state, t, store.now());
   const waiting = entries.filter((e) => e.kind !== "finished");
   const firstFinished = entries.findIndex((e) => e.kind === "finished");
   const [selected, setSelected] = useState<string | null>(null);
@@ -356,6 +417,13 @@ export function NeedsYou(
   useEffect(() => {
     if (away || !dismissedHere.current) return;
     dismissedHere.current = false;
+    (listRef.current?.querySelector<HTMLElement>("button") ?? titleRef.current)?.focus();
+  });
+  // Acting on a quiet session can remove the button that had the focus (snooze, or the host clearing the mark): it goes to the first row or the heading.
+  const quietActed = useRef(false);
+  useEffect(() => {
+    if (!quietActed.current || chosen?.kind === "quiet") return;
+    quietActed.current = false;
     (listRef.current?.querySelector<HTMLElement>("button") ?? titleRef.current)?.focus();
   });
   const open = (entry: Entry) => {
@@ -477,6 +545,9 @@ export function NeedsYou(
         store={store}
         go={go}
         onOpenRequest={props.onOpenRequest}
+        onQuietActed={() => {
+          quietActed.current = true;
+        }}
       />
     ) : null;
 

@@ -1163,6 +1163,15 @@ export const ptBR = {
     versionDiffers: "{host}: versão diferente",
   },
   needsYou: {
+    quietFor: "Em silêncio há {span}",
+    quietTitle: "Esta sessão ficou em silêncio",
+    quietBody:
+      "Ela ainda consta como rodando, mas não produziu nada há um tempo. Um build longo também pode ficar em silêncio.",
+    quietOpen: "Abrir",
+    quietInterrupt: "Interromper",
+    quietContinue: "Enviar “continue”",
+    quietSnooze: "Não travou, adiar 1 h",
+    quietLast: "{quiet} · última: {tool}",
     title: "Precisa de você",
     empty: "Nada espera por você.",
     seeSessions: "Ver as sessões",
@@ -1439,6 +1448,8 @@ export const ptBR = {
     plainWaiting: "{label}: esperando a sua resposta",
     turnDone: "{label}: turno concluído",
     turnDoneBody: "ociosa",
+    quiet: "{label}: em silêncio",
+    quietBody: "Nada aconteceu há um tempo. Abra para ver onde parou.",
     externalTitle: "Precisa de você",
     quotaTitle: "Cota do plano",
     quotaBody: "{host}: {window} em {percent}%",
@@ -5616,6 +5627,7 @@ export const ptBR = {
     empty: "Nenhuma worktree em .flightdeck/worktrees.",
   },
   activityBoard: {
+    quiet: "Em silêncio {span}",
     title: "Atividade",
     columns: {
       needs_you: "Precisa de você",

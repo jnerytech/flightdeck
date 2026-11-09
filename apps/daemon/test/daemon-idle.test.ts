@@ -26,7 +26,8 @@ const probe = () => {
 
 /**
  * The timers an idle daemon owns, whatever the features: the transcript index, the connection
- * heartbeat, the external sessions' sweep, the messaging sweep and the daily maintenance.
+ * heartbeat, the external sessions' sweep, the messaging sweep, the daily maintenance and the look
+ * for a running session that says nothing (on by default, off with `stall.afterMinutes: 0`, #1478).
  * Adding another is a decision: it goes here, or it starts only when its feature is used.
  */
 const IDLE_TIMERS = [
@@ -35,6 +36,7 @@ const IDLE_TIMERS = [
   "main.ts 300000",
   "maintenance/maintenance.ts 86400000",
   "server.ts 15000",
+  "sessions/stall.ts 30000",
 ];
 
 describe("daemon-idle: what a started daemon keeps running", () => {

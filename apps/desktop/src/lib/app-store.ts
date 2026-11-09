@@ -272,6 +272,10 @@ export interface SidebarSession {
   runtime?: SessionRuntime;
   /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
   trustStale?: boolean;
+  /** Issue #1478: the host marked it quiet (a running session that says nothing), since when. */
+  quietSince?: string;
+  /** Issue #1478: the last tool it called before it went quiet. */
+  quietTool?: string | null;
 }
 
 export interface HostView extends HostConfig {
@@ -390,6 +394,8 @@ export interface AppState {
   names: Record<string, SessionNameInfo[]>;
   /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */
   loopAlerts: LoopAlert[];
+  /** Issue #1478: quiet sessions the person snoozed, by `host/session`, until this time (ms). */
+  quietSnooze: Record<string, number>;
   /** Phase 22: the PR watch of each card that has been looked at or changed, by `sessionKey(hostId, cardId)`. */
   watches: Record<string, WatchInfo>;
   /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
@@ -916,6 +922,9 @@ export const TELEPORT_PREVIEW_KEY = "flightdeck.teleportPreview";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
+/** Issue #1478: how long "Not stuck" keeps a quiet session out of Needs you. */
+export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
+
 const REAL_TIMERS = {
   setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms),
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -1160,6 +1169,7 @@ export class AppStore {
       personas: {},
       background: {},
       loopAlerts: [],
+      quietSnooze: {},
       watches: {},
       names: {},
       askpass: [],
@@ -3679,6 +3689,9 @@ export class AppStore {
         updatedAt: summary.updatedAt,
         ...(summary.runtime ? { runtime: summary.runtime } : {}),
         ...(summary.trustStale ? { trustStale: true } : {}),
+        ...(summary.quietSince
+          ? { quietSince: summary.quietSince, quietTool: summary.quietTool ?? null }
+          : {}),
       };
       const i = at.get(next.id);
       const prev = i === undefined ? undefined : sessions[i];
@@ -4919,6 +4932,25 @@ export class AppStore {
     );
     this.update({ loopAlerts: [...others, alert] });
     this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
+  }
+
+  /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
+  snoozeQuiet(hostId: string, sessionId: string): void {
+    this.update({
+      quietSnooze: {
+        ...this.state.quietSnooze,
+        [sessionKey(hostId, sessionId)]: this.now() + QUIET_SNOOZE_MS,
+      },
+    });
+  }
+
+  /** Issue #1478: interrupts any session of a host, open or not. */
+  async interruptSession(hostId: string, sessionId: string): Promise<void> {
+    try {
+      await this.connections.get(hostId)?.request("session.interrupt", { sessionId });
+    } catch (error) {
+      this.fail(error);
+    }
   }
 
   /**
