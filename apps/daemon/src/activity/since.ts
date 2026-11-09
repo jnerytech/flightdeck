@@ -22,12 +22,18 @@ interface Counted<T> {
 /** The newest `limit` rows of `from ... where` by `at`, and how many rows match in all. */
 function newest<Row, Item>(
   db: Database,
-  { select, from, where, args }: { select: string; from: string; where: string; args: string[] },
+  {
+    select,
+    from,
+    where,
+    args,
+    order = "at DESC, id DESC",
+  }: { select: string; from: string; where: string; args: string[]; order?: string },
   limit: number,
   item: (row: Row) => Item,
 ): Counted<Item> {
   const rows = db
-    .query(`SELECT ${select} FROM ${from} WHERE ${where} ORDER BY at DESC, id DESC LIMIT ?`)
+    .query(`SELECT ${select} FROM ${from} WHERE ${where} ORDER BY ${order} LIMIT ?`)
     .all(...args, limit) as Row[];
   const total = db.query(`SELECT count(*) AS n FROM ${from} WHERE ${where}`).get(...args) as {
     n: number;
@@ -67,6 +73,8 @@ export function activitySince(
     limit,
     cardOf,
   );
+  // A merge is told by when the card was done (`card_done`), which an edit later cannot move; a PR
+  // with failing checks only has the card's own change time.
   const prs = newest<
     {
       cardId: string;
@@ -80,33 +88,47 @@ export function activitySince(
   >(
     db,
     {
-      select: `id AS cardId, project_id AS projectId, title, updated_at AS at, pr_url AS prUrl,
-        CASE WHEN pr_state = 'merged' THEN 'merged' ELSE 'checks-failed' END AS outcome`,
-      from: "cards",
-      where:
-        "pr_url IS NOT NULL AND updated_at >= ? AND (pr_state = 'merged' OR (pr_state = 'open' AND checks_state = 'failing'))",
-      args: [since],
+      select: `cards.id AS cardId, cards.project_id AS projectId, cards.title AS title,
+        CASE WHEN cards.pr_state = 'merged' THEN card_done.done_at ELSE cards.updated_at END AS at,
+        cards.pr_url AS prUrl,
+        CASE WHEN cards.pr_state = 'merged' THEN 'merged' ELSE 'checks-failed' END AS outcome`,
+      from: "cards LEFT JOIN card_done ON card_done.card_id = cards.id",
+      where: `cards.pr_url IS NOT NULL AND (
+        (cards.pr_state = 'merged' AND card_done.done_at >= ?)
+        OR (cards.pr_state = 'open' AND cards.checks_state = 'failing' AND cards.updated_at >= ?))`,
+      args: [since, since],
+      order: "at DESC, cardId DESC",
     },
     limit,
     (row) => row,
   );
+  // Why a run failed is told by its key and params, which the app translates; its free text can
+  // carry arbitrary error output and stays out of the digest.
   const failedRuns = newest(
     db,
     {
       select:
-        "id AS runId, card_id AS cardId, workflow_name AS workflowName, status_reason AS reason, ended_at AS at",
+        "id AS runId, card_id AS cardId, workflow_name AS workflowName, status_reason_key AS reasonKey, status_reason_params AS params, ended_at AS at",
       from: "workflow_runs",
       where: "status = 'failed' AND ended_at IS NOT NULL AND ended_at >= ?",
       args: [since],
     },
     limit,
-    (row: {
+    ({
+      params,
+      ...row
+    }: {
       runId: string;
       cardId: string;
       workflowName: string;
-      reason: string | null;
+      reasonKey: string | null;
+      params: string | null;
       at: string;
-    }) => row,
+    }): ActivitySinceResult["failedRuns"]["items"][number] => ({
+      ...row,
+      reasonParams:
+        params === null ? null : (JSON.parse(params) as Record<string, string | number>),
+    }),
   );
   return {
     since,

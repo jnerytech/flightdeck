@@ -1667,7 +1667,9 @@ export interface ActivityRun {
   runId: string;
   cardId: string;
   workflowName: string;
-  reason: string | null;
+  /** Why it failed, as a key and params the app translates. */
+  reasonKey: string | null;
+  reasonParams: Record<string, string | number> | null;
   at: string;
 }
 
