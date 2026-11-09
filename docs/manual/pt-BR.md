@@ -332,7 +332,8 @@ dos hosts, que têm 1.4.0"). Quando o que está marcado falta (hooks, login, `gh
 boot ausente ou desatualizado) ou é um daemon mais antigo, a célula tem um botão **Corrigir em** com o nome do host, que
 abre a página desse host, onde Saúde e dependências tem a instalação, o ligar ou a atualização; na
 página do próprio host, ele rola até lá. Sem maioria (dois hosts diferentes, ou metade para cada
-lado) nada é marcado. Um host que não está online diz isso uma vez ("Não comparado: offline."), em
+lado) toda célula que difere é marcada e diz isso ("Difere, sem maioria entre os hosts"); a linha de
+recursos nomeia então, em cada host, o que ele não tem e o que tem que outro host não tem. Um host que não está online diz isso uma vez ("Não comparado: offline."), em
 vez de um traço em cada linha, e um valor que um host online não informa aparece como um traço e
 nunca é marcado. A linha de recursos mostra
 quantos recursos o host tem e, quando difere, os nomeia em palavras: os que ele não tem e os que

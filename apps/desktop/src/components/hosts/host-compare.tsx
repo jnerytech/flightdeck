@@ -16,6 +16,7 @@ import {
   type CompareRow,
   compareHosts,
   featureDiff,
+  featureDiffTied,
   hasFix,
   hostFacts,
 } from "../../lib/host-compare.ts";
@@ -107,6 +108,17 @@ function FeatureDiffList(props: Readonly<{ missing: string[]; extra: string[]; t
   );
 }
 
+/** The features a marked cell lacks or adds: against the majority, or against the others when tied. */
+function featureDiffOf(row: CompareRow, value: string) {
+  if (row.field !== "features") return null;
+  return row.tied
+    ? featureDiffTied(
+        value,
+        row.cells.map((c) => c.value),
+      )
+    : featureDiff(value, row.majority);
+}
+
 function Cell(
   props: Readonly<{
     cell: CompareCell;
@@ -128,7 +140,7 @@ function Cell(
   }
   const value = shown(row.field, cell.value, t);
   if (!cell.marked) return <td className={padding}>{value}</td>;
-  const diff = row.field === "features" ? featureDiff(cell.value, row.majority) : null;
+  const diff = featureDiffOf(row, cell.value);
   return (
     <td className={padding}>
       <span className="inline-flex items-center gap-1 font-medium text-status-needs-you">
@@ -139,7 +151,9 @@ function Cell(
         <FeatureDiffList missing={diff.missing} extra={diff.extra} t={t} />
       ) : (
         <span className="block text-muted-foreground text-xs">
-          {t("hostCompare.differs", { value: shown(row.field, row.majority ?? cell.value, t) })}
+          {row.tied
+            ? t("hostCompare.differsTied")
+            : t("hostCompare.differs", { value: shown(row.field, row.majority ?? cell.value, t) })}
         </span>
       )}
       {fix && hasFix(row.field, cell.value) && (
@@ -153,7 +167,7 @@ function Cell(
 
 /**
  * The Compare hosts panel (#1501): each host's versions, hooks, sign-in and features side by side,
- * with the cell that differs from what most hosts have marked and its reason said in words. What
+ * with the cell that differs from what most hosts have marked (every differing cell when there is no majority) and its reason said in words. What
  * the table shows is what the app already holds; the hosts are asked again (the health read, which
  * is where `doctor.run` runs) only when it is opened and on Refresh, never on a render.
  */

@@ -25,14 +25,16 @@ export interface HostFacts {
 export interface CompareCell {
   hostId: string;
   value: string | null;
-  /** Differs from what most hosts have. Never set on a missing value. */
+  /** Differs from what most hosts have, or from the other hosts when none is the majority. Never set on a missing value. */
   marked: boolean;
 }
 
 export interface CompareRow {
   field: CompareField;
-  /** What most hosts have, only when a cell is marked; `null` otherwise. */
+  /** What most hosts have, only when a cell is marked by it; `null` otherwise, and when tied. */
   majority: string | null;
+  /** No majority, and the known values still differ: every known cell is marked. */
+  tied: boolean;
   cells: CompareCell[];
 }
 
@@ -100,20 +102,24 @@ function majorityOf(values: ReadonlyArray<string | null>): string | null {
   return lead[0];
 }
 
-/** One row per field; a cell is marked when its value differs from the one most hosts share. */
+/**
+ * One row per field. A cell is marked when its value differs from the one most hosts share; with no
+ * such value (two hosts, an even split) and known values that still differ, every known cell is.
+ */
 export function compareHosts(hosts: readonly HostFacts[]): CompareRow[] {
   return COMPARE_FIELDS.map((field) => {
     const values = hosts.map((host) => host.values[field]);
     const majority = majorityOf(values);
+    const tied = majority === null && new Set(values.filter((v) => v !== null)).size > 1;
     const cells = hosts.map((host, index) => {
       const value = values[index] ?? null;
       return {
         hostId: host.hostId,
         value,
-        marked: majority !== null && value !== null && value !== majority,
+        marked: value !== null && (tied || (majority !== null && value !== majority)),
       };
     });
-    return { field, majority: cells.some((cell) => cell.marked) ? majority : null, cells };
+    return { field, majority: cells.some((cell) => cell.marked) ? majority : null, tied, cells };
   });
 }
 
@@ -159,4 +165,23 @@ export function hasFix(field: CompareField, value: string | null): boolean {
   if (value === null) return false;
   if (field === "daemon") return true;
   return FIXED_WHEN_LACKING.has(field) && (value === "missing" || value === "outdated");
+}
+
+/**
+ * Which features a host lacks or adds when no set is the majority (two hosts, an even split): it
+ * lacks what any other host has and it does not, and adds what it has and any other host lacks.
+ */
+export function featureDiffTied(
+  value: string | null,
+  values: ReadonlyArray<string | null>,
+): FeatureDiff {
+  if (value === null) return { missing: [], extra: [] };
+  const own = new Set(featureList(value));
+  const others = values.flatMap((other) => (other === null ? [] : [new Set(featureList(other))]));
+  const union = new Set(others.flatMap((set) => [...set]));
+  const shared = [...union].filter((name) => others.every((set) => set.has(name)));
+  return {
+    missing: [...union].filter((name) => !own.has(name)).sort((a, b) => a.localeCompare(b)),
+    extra: [...own].filter((name) => !shared.includes(name)).sort((a, b) => a.localeCompare(b)),
+  };
 }
