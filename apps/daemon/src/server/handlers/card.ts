@@ -33,13 +33,12 @@ export const cardHandlers = {
     // A new spec path is looked at at once, so the card says what was found there.
     return patch.specPath === undefined ? updated : await board.refreshSpec(cardId);
   },
-  // Issue #1361: confirming the loop outside bypassPermissions lets the checks run the card's code
-  // unasked, so the confirmation needs a near connection; turning it off works from anywhere.
+  // Issue #1361: the loop lets the checks run the card's code unasked, so turning it on (with or
+  // without a confirmation: the mode can change right after) needs a near connection; turning it
+  // off works from anywhere.
   "card.checkLoop": (payload, { ws, server }) => {
     const { cardId, on, confirm, rounds } = payload;
-    if (on && confirm === true) {
-      requireVaultTransport(ws.data.origin, "card.checkLoop", server.opts.log);
-    }
+    if (on) requireVaultTransport(ws.data.origin, "card.checkLoop", server.opts.log);
     return server.need("checkLoop").set(cardId, {
       on,
       ...(confirm === undefined ? {} : { confirm }),
