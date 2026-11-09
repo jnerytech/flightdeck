@@ -346,7 +346,12 @@ export interface ServerOptions {
   /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
   quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
   /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
-  memoryPause?: { pauseAt(): number | null; set(pauseAt: number | null): void | Promise<void> };
+  memoryPause?: {
+    pauseAt(): number | null;
+    /** Issue #1414: the gate holds new cards now (its margin; never without a reading). */
+    holding?(): boolean;
+    set(pauseAt: number | null): void | Promise<void>;
+  };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -681,8 +686,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "resources.get": {
         const snapshot = await resources().snapshot();
         // Issue #1343: the memory hold's threshold travels with the reading the panel shows.
+        // Issue #1414: and whether it holds now, by the gate's own rule, so the app need not guess.
         const pause = opts.memoryPause;
-        return ok(command.type, pause ? { ...snapshot, memoryPauseAt: pause.pauseAt() } : snapshot);
+        if (!pause) return ok(command.type, snapshot);
+        const holding = pause.holding ? { memoryHolding: pause.holding() } : {};
+        return ok(command.type, { ...snapshot, memoryPauseAt: pause.pauseAt(), ...holding });
       }
       case "resources.endOrphan":
         // Like the other commands that change the host: not from beyond loopback and Tailscale.
