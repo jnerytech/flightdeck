@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { aheadBehind, rebaseOnto } from "../../apps/daemon/src/board/merge.ts";
+import { refArg } from "../../apps/daemon/src/board/ref-arg.ts";
 import { laggingBranches } from "../lib/demo-lagging.ts";
 import { realTempDir } from "./temp-dir.ts";
 
@@ -31,8 +32,9 @@ function billingRepo(): { repo: string; worktrees: string } {
 }
 
 /** What the host's rebase says of a worktree: updated, or the reason it refused. */
+const MAIN = refArg("main");
 const rebased = (path: string) =>
-  rebaseOnto(path, "main").then(
+  rebaseOnto(path, MAIN).then(
     () => "updated",
     (error: { reason?: string }) => error.reason ?? "error",
   );
@@ -45,7 +47,7 @@ describe("demo-lagging: branches behind main, the last in conflict (#1406)", () 
   test("each branch lags one commit behind main; two rebase cleanly and the last conflicts", async () => {
     const { repo, worktrees } = billingRepo();
     const made = laggingBranches(git, repo, worktrees, 3);
-    const before = await Promise.all(made.map((m) => aheadBehind(m.path, "main")));
+    const before = await Promise.all(made.map((m) => aheadBehind(m.path, MAIN)));
     const outcomes: string[] = [];
     for (const m of made) outcomes.push(await rebased(m.path));
     expect({
