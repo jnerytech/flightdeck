@@ -334,4 +334,46 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     expect(reviewHold({ paused: false, quota: false, memory: false, budget: true })).toBe("budget");
     expect(reviewHold({ paused: false, quota: false, memory: false, budget: false })).toBeNull();
   });
+
+  test("from the second review: the day's limit counts attempts in the last 24 hours, not a diff's lifetime", async () => {
+    let now = Date.parse("2026-11-09T12:00:00Z");
+    const down = () => new FlightdeckError("invalid_state", "down", "assistant_host_unavailable");
+    const { reviews, calls } = setup({ answers: [down(), down(), down(), down()], now: () => now });
+    for (let i = 0; i < 3; i++) await reviews.start("c1").catch(() => null);
+    now += 48 * 60 * 60 * 1000;
+    // One more failed attempt two days later: the window holds one, not four.
+    await reviews.start("c1").catch(() => null);
+    expect((await reviews.start("c1")).state).toBe("done");
+    expect(calls.length).toBe(5);
+  });
+
+  test("from the second review: a second ask while the first still reads the diff is refused, even for a changed card", async () => {
+    let title = "Fix";
+    let release: () => void = () => {};
+    const slow = new Promise<void>((r) => {
+      release = r;
+    });
+    let reads = 0;
+    const { reviews, calls } = setup({
+      card: () => ({
+        id: "c1",
+        projectId: "p1",
+        title,
+        description: "it",
+        worktreePath: "/w/c1",
+        running: false,
+      }),
+      diff: async () => {
+        if (reads++ === 0) await slow;
+        return { base: "main", files: [file("a")] };
+      },
+    });
+    const first = reviews.start("c1");
+    title = "Fix the login";
+    const second = await reviews.start("c1").catch((e) => e);
+    release();
+    await first;
+    expect(reason(second)).toEqual(["card_review_running", {}]);
+    expect(calls.length).toBe(1);
+  });
 });
