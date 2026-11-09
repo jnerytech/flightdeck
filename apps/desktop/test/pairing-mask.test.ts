@@ -61,12 +61,19 @@ describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", (
     ]).toEqual(["SEC+RET", "A", "SPELLED", null, null, null]);
   });
 
-  test("a link with no token, or text that is not a link, is left alone", () => {
+  test("a link with no token, or text with no parameters, is left alone; a stray URL's values are hidden", () => {
     expect([
       maskPairingLink("flightdeck://pc:7420?name=x"),
-      maskPairingLink("http://pc:7420?mytoken=abc"),
+      maskPairingLink("http://pc:7420"),
       maskPairingLink(""),
-    ]).toEqual(["flightdeck://pc:7420?name=x", "http://pc:7420?mytoken=abc", ""]);
+      // Not a pairing link, but a person may paste one with a secret in it by mistake.
+      maskPairingLink("http://pc:7420?mytoken=abc"),
+    ]).toEqual([
+      "flightdeck://pc:7420?name=x",
+      "http://pc:7420",
+      "",
+      "http://pc:7420?mytoken=••••",
+    ]);
   });
 
   test("the mask is dots, never part of a token the app made", () => {

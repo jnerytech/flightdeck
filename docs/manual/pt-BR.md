@@ -275,7 +275,9 @@ captura ou o compartilhamento da tela do formulário não mostram o token. Um li
 aparece como digitado e é mascarado quando você sai do campo. O link mostrado não pode ser copiado
 com o token: copie-o de novo do daemon. Editar o link com pontos mantém o token com que foi lido, mas
 só para o mesmo endereço e porta: outro endereço pede que você cole o link desse host, e tirar o
-token do link o tira também do formulário. Um token com `•` não cabe num link: use os campos à mão.
+token do link o tira também do formulário. Um link colado que ainda não é lido (uma porta inválida,
+por exemplo) mostra seus valores em pontos e não guarda token: corrija-o e cole de novo. Um token com
+`•` não cabe num link: use os campos à mão.
 
 O token fica no cofre de credenciais do sistema operacional (Windows Credential Manager, Keychain,
 Secret Service), não em texto puro. Depois, use **+** ao lado do host para criar uma sessão: pasta
