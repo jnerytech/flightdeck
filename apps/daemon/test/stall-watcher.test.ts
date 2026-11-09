@@ -67,7 +67,7 @@ describe("activity clock: when a session last did something (issue #1478)", () =
 });
 
 /** A clock, a timer and a host the test drives. */
-function rig(minutes: number, status: SessionStatus = "running") {
+function rig(minutes: number, status: SessionStatus = "running", unitMs?: number) {
   const state = {
     now: T0,
     intervals: new Map<number, () => unknown>(),
@@ -89,7 +89,13 @@ function rig(minutes: number, status: SessionStatus = "running") {
     activity: (id) => ({ lastEventAt: activity.lastEventAt(id), tool: activity.tool(id) }),
     markQuiet: (id, info) => void marks.push([id, info]),
   };
-  const watcher = new StallWatcher({ host, minutes, now: () => state.now, timers });
+  const watcher = new StallWatcher({
+    host,
+    minutes,
+    now: () => state.now,
+    timers,
+    ...(unitMs === undefined ? {} : { unitMs }),
+  });
   return { state, activity, marks, watcher };
 }
 
@@ -165,6 +171,15 @@ describe("stall watcher: a running session that says nothing (issue #1478)", () 
     r.state.now = T0 + 11 * MIN;
     expect(r.watcher.tick()).toEqual([]);
     expect(r.marks.at(-1)).toEqual(["s1", null]);
+  });
+
+  test("the demo counts the unit in seconds: 2 units of 1 s are 2 s", () => {
+    const r = rig(2, "running", 1000);
+    r.activity.observe("s1", delta, T0);
+    r.state.now = T0 + 1900;
+    expect(r.watcher.tick()).toEqual([]);
+    r.state.now = T0 + 2000;
+    expect(r.watcher.tick()).toEqual(["s1"]);
   });
 
   test("0 is off: no timer at all, nothing marked, and turning it off clears what was marked", () => {

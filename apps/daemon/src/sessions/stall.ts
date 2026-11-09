@@ -24,6 +24,8 @@ export interface StallOptions {
   minutes: number;
   now?: () => number;
   timers?: StallTimers;
+  /** What one "minute" lasts, in milliseconds; the demo and the journeys shorten it. */
+  unitMs?: number;
 }
 
 /** How often the watcher looks, while it is on. */
