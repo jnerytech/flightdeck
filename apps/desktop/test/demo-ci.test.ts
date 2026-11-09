@@ -181,6 +181,7 @@ describe("demo-prints: axe e CI", () => {
       // Issue #1244: Merge PR on a card asks first, and GitHub's refusal is said in place.
       "merge-pr-recusa",
       "pull-requests",
+      "enquanto-fora",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

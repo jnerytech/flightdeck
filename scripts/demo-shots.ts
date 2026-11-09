@@ -15,7 +15,12 @@ import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from 
 import { launchFirst } from "./lib/browser.ts";
 import { DEMO_CARD_TEMPLATE } from "./lib/demo-card-templates.ts";
 import { demoFinished, demoInbox } from "./lib/demo-seeds.ts";
-import { DEMO_PR_CARD, DEMO_PR_URL, DEMO_TEAM_REPORT } from "./lib/e2e-journeys.ts";
+import {
+  DEMO_AWAY_SINCE,
+  DEMO_PR_CARD,
+  DEMO_PR_URL,
+  DEMO_TEAM_REPORT,
+} from "./lib/e2e-journeys.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -69,6 +74,8 @@ interface Shot {
   inbox?: boolean;
   /** Issue #1168: one session finished since the last look, kept in the page's storage before it loads (Needs you's Finished group). */
   finished?: boolean;
+  /** Issue #1344: the app was last active long ago, so Needs you opens with "While you were away". */
+  away?: boolean;
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
@@ -205,6 +212,17 @@ function shots(ids: DemoIds): Shot[] {
         const request = page.getByRole("button", { name: /Testes do backend: Bash/ });
         await request.click();
         await page.waitForTimeout(500);
+      },
+    },
+    {
+      // Issue #1344: Needs you after a long absence: the summary above the list.
+      name: "precisa-de-voce-fora",
+      away: true,
+      route: { name: "needs-you" },
+      prepare: async (page) => {
+        await page
+          .getByRole("region", { name: /^(While you were away|Enquanto você esteve fora)$/ })
+          .waitFor({ timeout: 8000 });
       },
     },
     {
@@ -1069,6 +1087,8 @@ interface StorageSeed {
   roi: string | null;
   inbox: string | null;
   finished: string | null;
+  /** The time the app was last active, long ago: Needs you shows "While you were away" (#1344). */
+  away: string | null;
   simple: boolean;
 }
 
@@ -1083,6 +1103,7 @@ function seedStorage(seed: StorageSeed): void {
       "flightdeck.uiMode",
       "flightdeck.inbox",
       "flightdeck.finished",
+      "flightdeck.lastActive",
       // The "barra-recolhida" print folds the sidebar, and the fold is kept: not into the next print.
       "flightdeck.sidebarFolded",
       // Every scoped screen reads the data scope (#126): a print that picks a host does not scope the next.
@@ -1105,6 +1126,7 @@ function seedStorage(seed: StorageSeed): void {
     if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
     if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
     if (seed.finished) localStorage.setItem("flightdeck.finished", seed.finished);
+    if (seed.away) localStorage.setItem("flightdeck.lastActive", seed.away);
   } catch {
     // No storage, no clients.
   }
@@ -1155,6 +1177,7 @@ async function printShot(
             new Date(),
           )
         : null,
+      away: shot.away ? DEMO_AWAY_SINCE : null,
       simple: shot.simple === true,
     });
     const query = new URLSearchParams({

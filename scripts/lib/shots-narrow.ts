@@ -43,6 +43,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-novo-modelo",
   "claude-code-preparar",
   "card-fixados",
+  // #1344: Needs you with the "While you were away" summary above its list.
+  "precisa-de-voce-fora",
   // #1345: the Pull requests page, one row per open PR across the hosts.
   "pull-requests",
   // #1271: a Form dialog in the narrow sheet, its buttons at the sheet's bottom.
