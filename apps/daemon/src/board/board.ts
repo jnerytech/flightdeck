@@ -65,6 +65,7 @@ import { Projects } from "./projects.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
 import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
+import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
@@ -194,23 +195,14 @@ export class Board {
   private readonly rules: RuleWrites;
   /** The sessions of the cards' active runs (issue #1523). */
   private readonly sessions: SessionFollow;
+  /** The runs' slots and what holds the queue (issue #1523). */
+  private readonly queue: RunQueue;
   private readonly waits: Array<() => Promise<unknown>> = [];
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
   private readonly specLooks = new Map<string, number>();
-  /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
-  private readonly running = new Set<string>();
-  /** Workflow turns waiting for the plan quota to free up. */
-  private readonly quotaWaiters: Array<() => void> = [];
-  private readonly unwatchQuota: () => void;
-  private readonly unwatchMemory: () => void;
-  private readonly unwatchPause: () => void;
-  private readonly unwatchBudgets: () => void;
   /** Review comments of each card's open PR, from the last poll (phase 11). */
   private readonly prCommentCache = new Map<string, PrComment[]>();
-  /** Workflow runs back from a gate, waiting for a slot; served before queued cards. */
-  private readonly waiters: Array<{ cardId: string; resume(): void }> = [];
-  private limit: number;
   /** Runs while a PR is open or a merge waits to be finished; see `armPoll`. */
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private readonly prRoundListeners = new Set<() => void>();
@@ -237,6 +229,15 @@ export class Board {
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
     this.projects = new Projects(opts.db, opts);
+    this.queue = new RunQueue({
+      db: opts.db,
+      opts,
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      launch: (cardId, runId) => this.launch(cardId, runId),
+      failRun: (cardId, runId, notice, why) => this.failRun(cardId, runId, notice, why),
+      stopped: () => this.stopped,
+    });
     this.sessions = new SessionFollow({
       db: opts.db,
       manager: opts.manager,
@@ -260,12 +261,10 @@ export class Board {
       host: {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
-        hold: (cardId) => {
-          this.running.add(cardId);
-        },
-        acquire: (cardId) => this.acquire(cardId),
-        takeSlots: (cardId, count) => this.takeSlots(cardId, count),
-        waitQuota: () => this.waitQuota(),
+        hold: (cardId) => this.queue.hold(cardId),
+        acquire: (cardId) => this.queue.acquire(cardId),
+        takeSlots: (cardId, count) => this.queue.takeSlots(cardId, count),
+        waitQuota: () => this.queue.waitQuota(),
         createPr: async (cardId) => (await this.createPr(cardId)).prUrl as string,
         raiseCards: (cardId, findings, origin) =>
           this.raiseCards(this.getCard(cardId).projectId, findings, origin),
@@ -274,12 +273,8 @@ export class Board {
       checks: opts.checks ?? shellCheckRunner(),
       clock: opts.clock ?? Date.now,
     });
-    this.limit = opts.maxParallelRuns ?? 2;
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
-    this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
-    this.unwatchMemory = opts.memory?.watch(() => this.onLimits()) ?? (() => {});
-    this.unwatchPause = opts.pause?.watch(() => this.onLimits()) ?? (() => {});
-    this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
+    this.queue.watchLimits();
     this.armPoll();
     this.loop = opts.checkLoop ? this.checkLoopEngine(opts.checkLoop) : null;
     // Issue #1361: a round a restart left open is closed; the loop never resumes by itself.
@@ -646,7 +641,7 @@ export class Board {
         "arena_in_arena",
       );
     }
-    if (card.queued || card.worktreePath || this.running.has(cardId)) {
+    if (card.queued || card.worktreePath || this.queue.has(cardId)) {
       throw new FlightdeckError(
         "invalid_state",
         "the card was already started: an arena starts from a new card",
@@ -771,7 +766,7 @@ export class Board {
     const chosen = this.getCard(variantId);
     const working =
       chosen.queued ||
-      this.running.has(variantId) ||
+      this.queue.has(variantId) ||
       (chosen.workflowRunId !== null && this.workflows.active(chosen.workflowRunId));
     if (working) {
       throw new FlightdeckError(
@@ -1157,7 +1152,7 @@ export class Board {
     const card = this.getCard(id);
     // A fix run answers a PR that exists already: it is never held back by the card's blockers.
     if (!options.fix) this.refuseIfBlocked(card);
-    if (card.queued || this.running.has(id)) {
+    if (card.queued || this.queue.has(id)) {
       throw new FlightdeckError(
         "invalid_state",
         `card ${id} is already queued or running`,
@@ -1197,60 +1192,6 @@ export class Board {
     return this.changed(id);
   }
 
-  /** Starts queued runs, oldest first, while there are free slots. */
-  private pump(): void {
-    while (this.running.size < this.limit) {
-      const waiter = this.waiters.shift();
-      if (waiter) {
-        this.running.add(waiter.cardId);
-        waiter.resume();
-        continue;
-      }
-      // Paused by the person (#1404), queued cards wait for the resume; runs going on finish.
-      if (this.opts.pause?.blocked()) return;
-      // Over the plan quota, queued cards wait for the window to reset (runs going on do not).
-      if (this.opts.quota?.blocked()) return;
-      // Short of memory (#1343), they wait for it to free up; the gate lets them go on any doubt.
-      if (this.opts.memory?.blocked()) return;
-      // The oldest queued card whose budget lets it go: a held project never stalls the others.
-      const next = this.db
-        .query<RunRow & { project_id: string }, []>(
-          `SELECT r.*, c.project_id FROM card_runs r JOIN cards c ON c.id = r.card_id
-           WHERE r.started_at IS NULL AND r.ended_at IS NULL ORDER BY r.queued_at, r.rowid`,
-        )
-        .all()
-        .find((run) => !this.budgetBlocked(run.project_id));
-      if (!next) return;
-      this.running.add(next.card_id);
-      this.db.query("UPDATE card_runs SET started_at = ? WHERE id = ?").run(now(), next.id);
-      this.changed(next.card_id);
-      void this.launch(next.card_id, next.id).catch((error: unknown) => {
-        // After stop() the failure is the shutdown's (a closed database): nothing to record.
-        if (this.stopped) return;
-        this.failRun(
-          next.card_id,
-          next.id,
-          error instanceof Error ? error.message : String(error),
-          error,
-        );
-      });
-    }
-  }
-
-  /** Why a queued card waits, for the card itself: the pause, the quota, memory, a budget, then a slot. */
-  private queueState(queued: boolean, projectId: string): Pick<Card, "queueReason" | "quotaUntil"> {
-    // The person's own pause (#1404) is named first: it is the hold they can lift.
-    if (queued && this.opts.pause?.blocked()) return { queueReason: "paused", quotaUntil: null };
-    const blocked = queued ? this.opts.quota?.blocked() : null;
-    if (blocked) {
-      const until = blocked.until === null ? null : new Date(blocked.until).toISOString();
-      return { queueReason: "quota", quotaUntil: until };
-    }
-    if (queued && this.opts.memory?.blocked()) return { queueReason: "memory", quotaUntil: null };
-    if (queued && this.budgetBlocked(projectId)) return { queueReason: "budget", quotaUntil: null };
-    return { queueReason: queued ? "slot" : null, quotaUntil: null };
-  }
-
   /** Another thing to wait for before a worktree is removed, besides `idle` (the run environment's trees). */
   addIdle(wait: () => Promise<unknown>): void {
     this.waits.push(wait);
@@ -1275,64 +1216,29 @@ export class Board {
     await Promise.all(rows.map((row) => keys.resolve?.(row.path)));
   }
 
+  /** Starts queued runs, oldest first, while there are free slots. */
+  private pump(): void {
+    this.queue.pump();
+  }
+
+  /** Why a queued card waits, for the card itself: the pause, the quota, memory, a budget, then a slot. */
+  private queueState(queued: boolean, projectId: string): Pick<Card, "queueReason" | "quotaUntil"> {
+    return this.queue.queueState(queued, projectId);
+  }
+
   /** Issue #1439: whether the project's budget holds new work now, for the card review's gate. */
   budgetHeld(projectId: string): boolean {
-    return this.budgetBlocked(projectId);
+    return this.queue.budgetBlocked(projectId);
   }
 
-  /** A `queue` budget of the host or of the card's project is at 100%. */
+  /** A `queue` budget of the host or of the card's project is at 100% (sync-git.test.ts reads it). */
   private budgetBlocked(projectId: string): boolean {
-    if (!this.opts.budgets) return false;
-    const { path } = this.getProject(projectId);
-    return this.opts.budgets.blocked(this.opts.projectKeys?.known(path) ?? path);
-  }
-
-  /** A workflow turn about to start over the quota waits for it; `null` when it may go. */
-  private waitQuota(): { until: number | null; done: Promise<void> } | null {
-    const blocked = this.opts.quota?.blocked();
-    if (!blocked) return null;
-    return {
-      until: blocked.until,
-      done: new Promise((resolve) => this.quotaWaiters.push(resolve)),
-    };
-  }
-
-  /** A new quota reading, a reset or a budget change: queued cards may go, or say why not. */
-  private onLimits(): void {
-    if (!this.opts.quota?.blocked()) {
-      for (const resume of this.quotaWaiters.splice(0)) resume();
-    }
-    this.pump();
-    const queued = this.db
-      .query<{ card_id: string }, []>(
-        "SELECT DISTINCT card_id FROM card_runs WHERE started_at IS NULL AND ended_at IS NULL",
-      )
-      .all();
-    for (const { card_id } of queued) this.changed(card_id);
-  }
-
-  /** A slot for a card whose workflow run goes on after a gate. */
-  private acquire(cardId: string): Promise<void> {
-    return new Promise((resume) => {
-      this.waiters.push({ cardId, resume });
-      this.pump();
-    });
-  }
-
-  /** Free slots taken right away for the items of a parallel step, each under its own key. */
-  private takeSlots(cardId: string, count: number): string[] {
-    const keys: string[] = [];
-    while (keys.length < count && this.running.size < this.limit) {
-      const key = `${cardId}/${ulid()}`;
-      this.running.add(key);
-      keys.push(key);
-    }
-    return keys;
+    return this.queue.budgetBlocked(projectId);
   }
 
   /** The card's run stopped holding a slot: the next one in the queue goes. */
   private release(cardId: string): void {
-    if (this.running.delete(cardId)) this.pump();
+    this.queue.release(cardId);
   }
 
   /** A card's notice; one that came from a refusal keeps its reason, which the app translates. */
@@ -2192,13 +2098,12 @@ export class Board {
   }
 
   get maxParallelRuns(): number {
-    return this.limit;
+    return this.queue.maxParallelRuns;
   }
 
   /** A higher limit starts queued cards right away; a lower one lets running ones finish. */
   async setMaxParallelRuns(value: number): Promise<void> {
-    this.limit = value;
-    this.pump();
+    this.queue.setLimit(value);
     await this.opts.onSettingsChange?.({ maxParallelRuns: value });
   }
 
@@ -2212,10 +2117,7 @@ export class Board {
     this.loop?.dispose();
     if (this.pollTimer !== null) clearInterval(this.pollTimer);
     this.pollTimer = null;
-    this.unwatchQuota();
-    this.unwatchMemory();
-    this.unwatchPause();
-    this.unwatchBudgets();
+    this.queue.dispose();
     this.sessions.unfollowAll();
   }
 
@@ -2256,7 +2158,7 @@ export class Board {
 
   /** Whether a card's run is going or waiting: its folder is in use. */
   isActive(cardId: string): boolean {
-    return this.running.has(cardId) || this.getCard(cardId).queued;
+    return this.queue.has(cardId) || this.getCard(cardId).queued;
   }
 
   /** Issue #1405: reads what the card changed and tells the cards that now share files with it. */
