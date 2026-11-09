@@ -240,6 +240,23 @@ describe("check-loop: the security review's cases on the board", () => {
     expect([early, ctx.finished]).toEqual([null, ["killed"]]);
   });
 
+  test("completing the card waits for the killed check to end before its worktree goes", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    ctx.holdChecks();
+    const exit = ctx.holdKill();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    let completed = false;
+    const completing = ctx.board.completeCard(ctx.card.id, true).then(() => {
+      completed = true;
+    });
+    const early = await poll(() => completed, 300);
+    exit();
+    await completing;
+    expect([early, ctx.finished]).toEqual([null, ["killed"]]);
+  });
+
   test("turning the switch on when the card's session cannot be read saves nothing: never a switch without its mark", async () => {
     const ctx = await setup();
     await ctx.board.startCard(ctx.card.id);
@@ -291,9 +308,14 @@ describe("check-loop: the person's input over the protocol", () => {
       await server.stop();
     });
     await client.request("hello", { token, client: "t" });
+    ctx.manager.sessionOfRequest = () => sessionId;
     await client.request("session.send", { sessionId, text: "olha isso" });
     await client.request("session.applyPersona", { sessionId, persona: { id: "seg" } });
-    expect(stepped).toEqual([sessionId, sessionId]);
+    await client.request("session.clearPersona", { sessionId });
+    await client.request("session.interrupt", { sessionId });
+    // An unknown request is refused after the lookup; the person's answer still counts first.
+    await client.request("permission.respond", { requestId: "req-1", decision: "deny" });
+    expect(stepped).toEqual([sessionId, sessionId, sessionId, sessionId, sessionId]);
   });
 });
 
@@ -307,6 +329,37 @@ describe("check-loop: input from any path", () => {
     const sessionId = ctx.board.getCard(ctx.card.id).sessionId as string;
     // As a review comment, a message between sessions or a persona hand-off write it.
     ctx.manager.send(sessionId, "um comentário de revisão");
+    open();
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    expect(ctx.rounds(ctx.card.id)[0]?.reason).toBe("person_turn");
+  });
+});
+
+describe("check-loop: the person's input over the protocol, end to end", () => {
+  test("session.send into a card whose checks run ends its loop as the person's turn", async () => {
+    const ctx = await setup([PASSED]);
+    ctx.switchOn(ctx.card.id);
+    const open = ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    const sessionId = ctx.board.getCard(ctx.card.id).sessionId as string;
+    const token = "check-loop-board-token-0123456789cd";
+    const server = startServer({
+      manager: ctx.manager,
+      board: ctx.board,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token,
+      allowedRoots: [ctx.root],
+    });
+    const client = new FrameClient(server.url);
+    cleanups.push(async () => {
+      client.close();
+      await server.stop();
+    });
+    await client.request("hello", { token, client: "t" });
+    await client.request("session.send", { sessionId, text: "eu mesmo vejo" });
     open();
     await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
     expect(ctx.rounds(ctx.card.id)[0]?.reason).toBe("person_turn");

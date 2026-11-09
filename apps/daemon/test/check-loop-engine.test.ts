@@ -621,6 +621,24 @@ describe("check-loop: the security review's cases", () => {
     expect(r.records.at(-1)?.reason).toBe("person_turn");
   });
 
+  test("a stop waits for every check still exiting on the card: one of a loop already ended, one replaced", async () => {
+    const r = rig({ outcomes: [FAIL, FAIL] });
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    // Replaced while running, then the loop ends by the person's turn: both checks are still out.
+    r.engine.onTurnResult("c", ok);
+    r.engine.onPersonTurn("c");
+    let stopped = false;
+    const stopping = r.engine.onStop("c").then(() => {
+      stopped = true;
+    });
+    await Promise.resolve();
+    const early = stopped;
+    open();
+    await stopping;
+    expect([r.signals.length, early, stopped]).toEqual([2, false, true]);
+  });
+
   test("the watchdog is armed before the send, so the busy the send itself causes clears it", async () => {
     const r = rig({ outcomes: [FAIL] });
     r.duringSend(() => r.engine.onBusy("c"));
