@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Toaster, toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { focusLost } from "@/hooks/use-page-focus";
 import { translateError } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
@@ -20,10 +21,17 @@ function ErrorToast(
     detail: string;
     action: NoticeAction | null;
     retry?: () => void;
+    /** The refusal of a command the person gave: it takes the focus when the step lost it (#1546). */
+    takesFocus?: boolean;
     t: T;
     onClose(): void;
   }>,
 ) {
+  const box = useRef<HTMLDivElement>(null);
+  // The dialog or button that gave the command is gone, and the browser left the focus on the page body.
+  useEffect(() => {
+    if (props.takesFocus && focusLost()) box.current?.focus();
+  }, [props.takesFocus]);
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const { t, store, noticeId } = props;
@@ -34,7 +42,9 @@ function ErrorToast(
   if (!alive) return null;
   return (
     <div
+      ref={box}
       role="alert"
+      tabIndex={-1}
       className="flex w-80 flex-col gap-2 rounded-lg border border-destructive/40 bg-popover p-3 text-popover-foreground text-sm shadow-lg"
     >
       <p className="font-medium">{props.title}</p>
@@ -138,6 +148,7 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
             detail={detail}
             action={noticeAction(notice)}
             {...(notice.retry ? { retry: notice.retry } : {})}
+            takesFocus={notice.answersCommand === true}
             t={t}
             onClose={() => {
               toast.dismiss(id);

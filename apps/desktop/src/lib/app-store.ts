@@ -712,6 +712,8 @@ export interface Notice {
   hostId?: string;
   /** Runs the refused action again (after the person fixed what it needed). */
   retry?: () => void;
+  /** The refusal of a command the person gave: its toast takes the focus when the step lost it (#1546). */
+  answersCommand?: true;
   /** A success toast's button: where the news leads (Open the card). */
   link?: { label: string; run: () => void };
 }
@@ -2600,6 +2602,7 @@ export class AppStore {
         error,
         undefined,
         options.retry === false ? undefined : () => void this.hostCommand(hostId, type, payload),
+        true,
       );
       return null;
     }
@@ -3002,7 +3005,7 @@ export class AppStore {
    * A host's error: a toast titled by its code, with the daemon's message as the detail. `text`
    * replaces the old one-line form kept in `error` (and the detail of a codeless one).
    */
-  private fail(error: unknown, text?: string, retry?: () => void): void {
+  private fail(error: unknown, text?: string, retry?: () => void, answersCommand = false): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
     const prefix = code ? `${code}: ` : "";
@@ -3014,6 +3017,7 @@ export class AppStore {
     }
     if (error instanceof RequestError && error.hostId) notice.hostId = error.hostId;
     if (retry) notice.retry = retry;
+    if (answersCommand) notice.answersCommand = true;
     // The same error again takes the old one's place (#581): one toast, the newest, with a fresh timer.
     this.update({
       error: text ?? describeError(error),
