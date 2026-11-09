@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { inSequence, isWatchCheck } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
@@ -9,7 +9,9 @@ import { FlightdeckError } from "../errors.ts";
 import { settled } from "../settled.ts";
 import { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
-import type { CheckRunner } from "../workflows/check-runner.ts";
+import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
+import { MAX_VALUE } from "../workflows/interpolate.ts";
+import { checkCommandRefusal } from "./check-command.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./drift.ts";
 import { REMOVED_LINE } from "./trace.ts";
 import type { PrWatcher, WatchSettings, WatchTrigger } from "./watch.ts";
@@ -39,7 +41,7 @@ export interface PrFixerOptions {
   watcher: PrWatcher;
   provider?: (kind: PrProviderKind) => PrProvider | null;
   /** Runs the project's local checks in the card's worktree. */
-  checks: CheckRunner;
+  checks: BoundedCheckRunner;
   /** `git` in a folder; the real one when absent (tests record the calls). */
   git?: (cwd: string, ...args: string[]) => Promise<CommandResult>;
   /** Told when a card's watch changes (a round ended, or the card needs you). */
@@ -564,11 +566,20 @@ export class PrFixer {
     }
   }
 
-  /** Why the first local check did not pass (refused, timed out, failed), or null when all passed. */
-  private async failedCheck(settings: WatchSettings, worktree: string): Promise<string | null> {
+  /**
+   * Why the first local check did not pass (refused, timed out, too large, failed), or null when
+   * all passed. A refused command is not the round's to fix (#1361): it says so with `refused`.
+   */
+  private async failedCheck(
+    settings: WatchSettings,
+    worktree: string,
+  ): Promise<{ text: string; refused: boolean } | null> {
     for (const command of settings.checks) {
-      // Stored settings are checked again: only a plain command and its arguments runs unattended.
-      if (!isWatchCheck(command)) return `local check refused: ${masked(command)}`;
+      // Stored settings are checked again: only a plain command and its arguments, in the worktree.
+      const refusal = checkCommandRefusal(command, worktree);
+      if (refusal) {
+        return { text: `local check refused (${refusal}): ${masked(command)}`, refused: true };
+      }
       const result =
         await /* NOSONAR: checks run one after the other and stop at the first that fails */ this.opts.checks.run(
           command,
@@ -576,10 +587,20 @@ export class PrFixer {
           settings.checkTimeoutMin * 60_000,
         );
       if (result.timedOut) {
-        return `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`;
+        const text = `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`;
+        return { text, refused: false };
+      }
+      if (result.tooLarge) {
+        return {
+          text: `local check stopped: ${masked(command)} printed more than 4 MB`,
+          refused: false,
+        };
       }
       if (result.exitCode !== 0) {
-        return `local check failed: ${masked(command)} (exit ${result.exitCode})\n${masked(result.output)}`;
+        // The whole output is masked before it is cut: a secret across the cut is still caught.
+        const shown = masked(result.output).slice(-MAX_VALUE);
+        const text = `local check failed: ${masked(command)} (exit ${result.exitCode})\n${shown}`;
+        return { text, refused: false };
       }
     }
     return null;
@@ -639,7 +660,11 @@ export class PrFixer {
       );
     }
     const failure = await this.failedCheck(settings, worktree);
-    if (failure) return this.failed(cardId, end, failure, spent);
+    if (failure?.refused) {
+      end("failed", failure.text, spent);
+      return this.needsYou(cardId, failure.text);
+    }
+    if (failure) return this.failed(cardId, end, failure.text, spent);
     if (this.stopped) return;
     if (!watcher.enabled(cardId))
       return end("stopped", "Vigiar was turned off: nothing was pushed", spent);

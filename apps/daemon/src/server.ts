@@ -623,10 +623,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "idle");
   }
 
-  function issues(): Issues {
-    return need(opts, "issues");
-  }
-
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
     const update = opts.updates?.status();
@@ -694,17 +690,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
       case "idle.subscribe":
         return ok(command.type, idle().subscribe(command.payload));
-      case "issues.list": {
-        const { projectId, query } = command.payload;
-        return ok(command.type, { issues: await issues().list(projectId, query) });
-      }
-      case "issues.get":
-        return ok(command.type, await issues().get(command.payload.projectId, command.payload.id));
-      case "issues.createCard":
-        return ok(
-          command.type,
-          await issues().createCard(command.payload.projectId, command.payload.issueRef),
-        );
       case "service.install":
         return ok(
           command.type,

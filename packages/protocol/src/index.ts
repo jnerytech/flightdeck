@@ -3082,6 +3082,27 @@ export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 export const isWatchCheck = (line: string): boolean =>
   /^[\w@+=:,./-]+(?: [\w@+=:,./-]+)*$/.test(line);
 
+/**
+ * Issue #1361: the names a project may add to its checks' environment: where a toolchain lives
+ * (`JAVA_HOME`, `ANDROID_SDK_ROOT`, `GOPATH`), never a variable that runs or redirects code. An
+ * allowlist: a blocklist of the variables that steer code (`GIT_SSH_COMMAND`, `JAVA_TOOL_OPTIONS`,
+ * `npm_config_*`, `RUSTC_WRAPPER`, …) would never be complete.
+ */
+const TOOLCHAIN_ENV =
+  /^(?:[A-Z][A-Z0-9_]*_(?:HOME|ROOT)|GOPATH|GOROOT|GOCACHE|GOMODCACHE|BUN_INSTALL|NVM_DIR|DENO_DIR|PUB_CACHE|ProgramFiles\(x86\)|CommonProgramFiles(?:\(x86\))?)$/i;
+
+/**
+ * Issue #1361: refused even when shaped like a location: a secret's name (connection strings, key
+ * files, tokens), Flightdeck's own, git's and npm's, or a loader's. Over-blocking is fine: a check
+ * that needs a secret does not run unattended. Any case (Windows reads both).
+ */
+const REFUSED_ENV =
+  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|_PASS$|^PWD$|CREDENTIAL|AUTH|COOKIE|SESSION|JWT|BEARER|SAS|SIGNATURE|WEBHOOK|_PAT$|DSN|DATABASE_URL|CONN|PRIVATE|CERT|^(?:ANTHROPIC|CLAUDE|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK|GIT|NPM|LD|DYLD|XDG)_/i;
+
+/** Issue #1361: a name a project may add to its checks' environment (the value stays the daemon's). */
+export const isCheckEnvName = (name: string): boolean =>
+  TOOLCHAIN_ENV.test(name) && !REFUSED_ENV.test(name);
+
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({
   enabled: z.boolean(),
@@ -3107,6 +3128,17 @@ export const WatchSettings = z.object({
   maxFailures: z.number().int().min(1).max(10),
   /** Cost of every round of the project in a day, in US$; `null` for no limit. */
   dailyUsd: z.number().positive().nullable(),
+  /** Issue #1361: rounds of the check loop per turn of the person; absent from older daemons. */
+  checkRounds: z.number().int().min(1).max(10).optional(),
+  /** Issue #1361: names added to the checks' allowlisted environment. */
+  checkEnv: z
+    .array(
+      z.string().max(64).refine(isCheckEnvName, "a variable name, not one shaped like a secret"),
+    )
+    .max(20)
+    .optional(),
+  /** Issue #1361: new cards in bypassPermissions start with the check loop on. */
+  checkLoopDefault: z.boolean().optional(),
   /** Issue #77: globs of files a round may change outside its PR (lockfiles); absent from older daemons. */
   driftAllow: z
     .array(
