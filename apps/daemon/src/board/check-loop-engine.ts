@@ -182,8 +182,8 @@ interface Loop {
   abort: AbortController | null;
   timer: unknown;
   running: Promise<void> | null;
-  /** The round messages sent whose echo has not come back yet. */
-  echoes: number;
+  /** The round messages sent whose echo has not come back yet, by their text. */
+  echoes: string[];
 }
 
 export class CheckLoopEngine {
@@ -300,11 +300,14 @@ export class CheckLoopEngine {
    * A user message reached the card's session (its echo, by whatever path wrote it). The loop's own
    * round is expected once per round sent; anything else is outside input, and the loop steps aside.
    */
-  onUserMessage(cardId: string): void {
+  onUserMessage(cardId: string, text: string): void {
     const loop = this.loops.get(cardId);
     if (!loop) return;
-    if (loop.echoes > 0) {
-      loop.echoes -= 1;
+    // Matched by its text: an outside message that reaches the session before a queued round is
+    // never mistaken for the round's echo.
+    const own = loop.echoes.indexOf(text);
+    if (own >= 0) {
+      loop.echoes.splice(own, 1);
       return;
     }
     this.onPersonTurn(cardId);
@@ -323,7 +326,7 @@ export class CheckLoopEngine {
       abort: null,
       timer: null,
       running: null,
-      echoes: 0,
+      echoes: [],
     };
   }
 
@@ -405,8 +408,9 @@ export class CheckLoopEngine {
     loop.timer = this.fx.timer.set(() => {
       if (this.loops.get(cardId) === loop) this.end(cardId, loop, "no_result", { release: true });
     }, ROUND_START_MS);
-    loop.echoes += 1;
-    this.fx.send(cardId, roundMessage(loop.sent, max, outcome));
+    const round = roundMessage(loop.sent, max, outcome);
+    loop.echoes.push(round);
+    this.fx.send(cardId, round);
   }
 
   /**

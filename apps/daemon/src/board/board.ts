@@ -1426,9 +1426,10 @@ export class Board {
   ): Card {
     const card = this.getCard(id);
     // Switched on: the session's events so far are history, never a turn for the loop to check.
-    // Read before anything is written, so a session that is gone fails nothing (no mark, no error).
+    // Read before anything is written: a session that cannot be read throws here, so the switch is
+    // never saved without its mark.
     const switching = value.on && card.checkLoop?.on !== true;
-    const mark = switching ? this.lastSeqOf(card.sessionId) : undefined;
+    const mark = switching && card.sessionId ? this.opts.manager.get(card.sessionId).lastSeq : null;
     this.db.transaction(() => {
       this.db
         .query(
@@ -1436,21 +1437,11 @@ export class Board {
            check_loop_confirmed_hash = ? WHERE id = ?`,
         )
         .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
-      if (mark !== undefined) {
+      if (switching) {
         this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(mark, id);
       }
     })();
     return this.changed(id);
-  }
-
-  /** The last event number of a session, or null with no session (or one no longer stored). */
-  private lastSeqOf(sessionId: string | null): number | null {
-    if (sessionId === null) return null;
-    try {
-      return this.opts.manager.get(sessionId).lastSeq;
-    } catch {
-      return null;
-    }
   }
 
   /** "Pedir ajuste": a message to the session of the active run. */
@@ -2831,7 +2822,7 @@ export class Board {
     const loop = at.live ? this.loop : null;
     // Issue #1361: whatever path wrote into the session (a review comment, a message between
     // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
-    if (loop && event.type === "message.user") loop.onUserMessage(cardId);
+    if (loop && event.type === "message.user") loop.onUserMessage(cardId, event.text);
     if (event.type === "session.status") {
       this.place(cardId, { type: "session", status: event.status });
       if (loop && !FREES_SLOT.has(event.status)) loop.onBusy(cardId);
