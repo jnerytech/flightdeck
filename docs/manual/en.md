@@ -2343,6 +2343,14 @@ too, and the date of the last good one stays. The bell says it too, once per sta
 cannot go: the passphrase is missing, no folder is chosen, or a backup failed. A click on the notice
 opens **Settings**, section **Backup** (#1327).
 
+When the build carries a Google client, **Where to save** also offers **Google Drive**. It keeps the
+backups in Flightdeck's own hidden folder in your Drive, which only this app can see, and each file is
+still encrypted with your passphrase. **Sign in with Google** opens Google's page in your browser and
+the app waits for the answer on this computer only. Flightdeck keeps the token in the vault, never in
+a file or a log; **Sign out** removes it. If Google stops accepting the sign-in, the section and the
+bell say so and no backup is made until you sign in again. Without a client in the build, the choice
+is not shown (#1444).
+
 ## Actions: Claude uses a secret without seeing it
 
 An **action** is a command you declare, with places for vault secrets and for parameters. Claude
