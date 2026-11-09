@@ -998,4 +998,27 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN pr_review TEXT;
   ALTER TABLE cards ADD COLUMN pr_opened_at TEXT;
   `,
+  // Issue #1361: the check loop's rounds keyed by their own id (a loop's end can share its n with
+  // its last round), with the end's reason. Rows the table shipped in v0.37.18 are kept, their
+  // summary as the reason.
+  `
+  CREATE TABLE card_check_rounds_v2 (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id   TEXT NOT NULL,
+    run_id    TEXT NOT NULL,
+    n         INTEGER NOT NULL,
+    at        TEXT NOT NULL,
+    status    TEXT NOT NULL,
+    reason    TEXT,
+    command   TEXT,
+    exit_code INTEGER,
+    timed_out INTEGER NOT NULL DEFAULT 0
+  );
+  INSERT INTO card_check_rounds_v2 (card_id, run_id, n, at, status, reason, command, exit_code, timed_out)
+    SELECT card_id, run_id, n, at, status, summary, command, exit_code, timed_out
+    FROM card_check_rounds ORDER BY at, n;
+  DROP TABLE card_check_rounds;
+  ALTER TABLE card_check_rounds_v2 RENAME TO card_check_rounds;
+  CREATE INDEX card_check_rounds_card ON card_check_rounds (card_id, id);
+  `,
 ];

@@ -114,10 +114,13 @@ export const sessionHandlers = {
     const prepared = await preparePersonas(opts.personas, payload.persona, payload.cwd);
     return await manager.create(payload, { prepared });
   },
+  // Issue #1361: the person's own input into a card's session steps the check loop aside.
   "session.send": (payload, { server }) => {
+    server.opts.board?.personTurnOfSession(payload.sessionId);
     return server.manager.send(payload.sessionId, payload.text, payload.images);
   },
   "session.interrupt": async (payload, { server }) => {
+    server.opts.board?.personTurnOfSession(payload.sessionId);
     await server.manager.interrupt(payload.sessionId);
     return undefined;
   },
@@ -158,6 +161,8 @@ export const sessionHandlers = {
   },
   "permission.respond": async (payload, { server }) => {
     const { manager, opts } = server;
+    const asked = manager.sessionOfRequest(payload.requestId);
+    if (asked) opts.board?.personTurnOfSession(asked);
     // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
     const { requestId, decision, message, updatedPermissions, updatedInput, held } = payload;
     const external = opts.central?.permissions;
@@ -221,11 +226,14 @@ export const sessionHandlers = {
   "session.files": (payload, { server }) => {
     return { files: server.need("sessionFiles").list(payload.claudeSessionId) };
   },
+  // Issue #1361: a persona the person switches in a card's session is their input too.
   "session.applyPersona": async (payload, { server }) => {
     const { sessionId, claudeSessionId, persona } = payload;
+    if (sessionId) server.opts.board?.personTurnOfSession(sessionId);
     return await server.need("personaSessions").apply({ sessionId, claudeSessionId, persona });
   },
   "session.clearPersona": async (payload, { server }) => {
+    if (payload.sessionId) server.opts.board?.personTurnOfSession(payload.sessionId);
     return await server.need("personaSessions").clear(payload);
   },
   "sessions.watch": (payload, { ws, send, server }) => {

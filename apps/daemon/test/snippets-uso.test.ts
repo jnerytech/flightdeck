@@ -42,6 +42,8 @@ function setup() {
   const git: string[][] = [];
   let branch = "main\n";
   const sent: Array<[string, string]> = [];
+  /** #1361: the managed sessions the person wrote into through a snippet. */
+  const personInputs: string[] = [];
   const external: Array<[string, string]> = [];
   let channel = true;
   const use = new SnippetUse({
@@ -63,6 +65,7 @@ function setup() {
         },
       },
     } as never,
+    onPersonInput: (sessionId: string) => personInputs.push(sessionId),
     exec: async (cmd) => {
       git.push(cmd);
       return { code: branch === "" ? 128 : 0, stdout: branch };
@@ -81,6 +84,7 @@ function setup() {
     use,
     git,
     sent,
+    personInputs,
     external,
     writeFile,
     setBranch: (value: string) => {
@@ -259,6 +263,13 @@ describe("snippets-uso: colar e rodar no terminal", () => {
 });
 
 describe("snippets-uso: enviar à sessão", () => {
+  test("#1361: a snippet sent to a managed session is the person's input, so a check loop steps aside", async () => {
+    const s = setup();
+    const snippet = await s.prompt("revisar", "Revise {{file}} com cuidado.");
+    await s.use.use({ id: snippet.id, action: "send", sessionId: "s1", context: { file: "a.ts" } });
+    expect(s.personInputs).toEqual(["s1"]);
+  });
+
   test("um prompt vai à sessão gerenciada ou à sessão de terminal controlável, e conta como uso", async () => {
     const s = setup();
     const snippet = await s.prompt("revisar", "Revise {{file}} com cuidado.");

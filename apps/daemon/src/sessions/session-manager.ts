@@ -575,6 +575,11 @@ export class SessionManager {
     return target === undefined ? { cwd } : { cwd, target };
   }
 
+  /** Issue #1361: the session a pending permission request belongs to, or null. */
+  sessionOfRequest(requestId: string): string | null {
+    return this.broker.sessionOf(requestId) ?? null;
+  }
+
   respondPermission(payload: CommandPayload<"permission.respond">, disk?: DiskView): void {
     const sessionId = this.broker.sessionOf(payload.requestId);
     this.broker.respond(payload, disk);
