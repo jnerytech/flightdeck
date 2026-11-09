@@ -5357,6 +5357,7 @@ export const en: Dictionary = {
     pairAddress: "The link has no host address.",
     pairPort: "The link's port is not valid.",
     pairToken: "The link has no token.",
+    pairElsewhere: "The token is not carried to another address: paste that host's link.",
     pairRefused: "Pairing link refused. {reason}",
     probeTimeout:
       "The host did not answer in time: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
