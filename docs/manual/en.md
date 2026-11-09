@@ -1929,7 +1929,9 @@ flightdeckd card start <card> [--workflow <name>] [--json]
   (not running, or silent for 15 s).
 - **The token** comes only from the config file: `--token` is refused and the environment is not
   read. It is never printed. The command talks only to a daemon on the loopback (`127.0.0.1` or
-  `::1`); a daemon bound to another address is refused.
+  `::1`); a daemon bound to another address is refused. As with `flightdeckd mcp`, the token goes to
+  whatever listens on that local port, so keep the daemon running when you use it.
+- With `--json` the answer is JSON on stdout, but an error is still a line of text on stderr.
 
 ## History
 

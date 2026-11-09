@@ -1950,7 +1950,9 @@ flightdeckd card start <card> [--workflow <nome>] [--json]
   sem daemon (parado, ou mudo por 15 s).
 - **O token** vem só do arquivo de config: `--token` é recusado e o ambiente não é lido. Ele nunca
   é impresso. O comando fala só com um daemon no loopback (`127.0.0.1` ou `::1`); um daemon ligado a
-  outro endereço é recusado.
+  outro endereço é recusado. Como no `flightdeckd mcp`, o token vai para o que estiver escutando
+  naquela porta local, então mantenha o daemon rodando ao usar o comando.
+- Com `--json` a resposta é JSON no stdout, mas um erro continua sendo uma linha de texto no stderr.
 
 ## Histórico
 
