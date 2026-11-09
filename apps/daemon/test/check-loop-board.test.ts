@@ -236,7 +236,7 @@ describe("check-loop: the security review's cases on the board", () => {
     expect([early, ctx.finished]).toEqual([null, ["killed"]]);
   });
 
-  test("turning the switch on for a card whose session is gone still saves a mark-less switch, no error", async () => {
+  test("turning the switch on when the card's session cannot be read saves nothing: never a switch without its mark", async () => {
     const ctx = await setup();
     await ctx.board.startCard(ctx.card.id);
     await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
@@ -256,7 +256,7 @@ describe("check-loop: the security review's cases on the board", () => {
         "SELECT check_loop AS loop_on, check_loop_turn_seq AS mark FROM cards WHERE id = ?",
       )
       .get(ctx.card.id);
-    expect([thrown, row?.loop_on, row?.mark]).toEqual(["none", 1, null]);
+    expect([thrown, row?.loop_on, row?.mark]).toEqual(["session_not_found", 0, null]);
   });
 });
 
