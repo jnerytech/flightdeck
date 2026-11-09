@@ -114,7 +114,7 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
 
   return {
     async signIn() {
-      const listener = await deps.loopback.listen();
+      const listener = await deps.loopback.listen("");
       const redirect = `http://127.0.0.1:${listener.port}`;
       const verifier = random(32);
       const state = random(16);
