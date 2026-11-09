@@ -648,6 +648,42 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     }
   });
 
+  test("a newer dispatch whose jobs gh cannot read is taken as the full run, and red", async () => {
+    const dispatched = { ...FULL_RED, databaseId: 64, createdAt: "2026-11-09T02:00:00Z" };
+    const fake = fakeGh({ schedule: [FULL_GREEN], dispatch: [dispatched], jobsFail: [64] });
+    const full = await latestFullRun(fake);
+    expect([full?.id, full?.red]).toEqual([64, true]);
+  });
+
+  test("a full run GitHub ends as timed_out or startup_failure is red; one a person cancelled is passed over", async () => {
+    for (const conclusion of ["timed_out", "startup_failure"]) {
+      const ended = { ...FULL_RED, conclusion };
+      const fake = fakeGh({ schedule: [ended], jobsById: { 50: [] } });
+      const full = await latestFullRun(fake);
+      expect([conclusion, full?.id, full?.red]).toEqual([conclusion, 50, true]);
+    }
+    const cancelled = {
+      ...FULL_RED,
+      databaseId: 53,
+      conclusion: "cancelled",
+      createdAt: "2026-11-09T02:00:00Z",
+    };
+    const fake = fakeGh({ schedule: [cancelled, FULL_GREEN] });
+    expect((await latestFullRun(fake))?.id).toBe(51);
+  });
+
+  test("at most 5 dispatches have their jobs read", async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({
+      ...FULL_RED,
+      databaseId: 80 + i,
+      createdAt: `2026-11-09T02:0${i}:00Z`,
+    }));
+    const fake = fakeGh({ schedule: [FULL_GREEN], dispatch: many });
+    await latestFullRun(fake);
+    const views = fake.asked.filter((a) => a[0] === "run" && a[1] === "view");
+    expect(views.length).toBe(5);
+  });
+
   test("an age under an hour is told in minutes", async () => {
     const recent = { ...FULL_RED, createdAt: "2026-11-09T02:25:00Z" };
     const fake = fakeGh({ runs: [GREEN_RUN], schedule: [recent], jobsById: { 50: SUITE_FAILED } });
