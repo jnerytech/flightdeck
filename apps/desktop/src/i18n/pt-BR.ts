@@ -4088,6 +4088,8 @@ export const ptBR = {
     /** The card's details as a pane of their own once its conversation shows (#641). */
     infoPane: "O card, acima da conversa",
     runTitle: "Execução",
+    menu: "Ações",
+    loadingTitle: "Carregando card…",
     saveDescription: "Salvar descrição",
     validation: "Nota de validação",
     saveValidation: "Salvar nota de validação",
