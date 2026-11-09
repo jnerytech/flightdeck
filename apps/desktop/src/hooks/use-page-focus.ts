@@ -15,6 +15,10 @@ export const focusLost = () => {
  * page and the next Tab starts at the top of the app (#1546). When `navKey` changes and the focus was
  * lost, it goes to the new page's heading, once the page shows one. A focus the person already has on
  * something that stays is left alone, and so is the first page the app shows.
+ *
+ * The browser may refuse the focus: while the dialog that gave the command is still closing, the page
+ * behind it takes none, and the focus stays on the body once the dialog goes (#1580). So it is tried
+ * again as the document changes, for a short while, until the heading really holds it.
  */
 export function usePageFocus(navKey: unknown, content: RefObject<HTMLElement | null>) {
   const first = useRef(true);
@@ -27,18 +31,20 @@ export function usePageFocus(navKey: unknown, content: RefObject<HTMLElement | n
     const root = content.current;
     if (!root) return;
     const heading = () => root.querySelector<HTMLElement>("[data-slot=page-title]");
+    /** True when there is nothing more to do: the heading holds the focus, or the focus is elsewhere to stay. */
     const take = () => {
       if (!focusLost()) return true;
       const found = heading();
       found?.focus();
-      return found !== null;
+      return found !== null && document.activeElement === found;
     };
     if (take()) return;
-    // The page is still loading: its heading comes in a moment.
+    // The page is still loading, or the browser refused the focus: try again as the page changes.
+    // A dialog sits outside the page, so the whole document is watched.
     const watch = new MutationObserver(() => {
       if (take()) watch.disconnect();
     });
-    watch.observe(root, { childList: true, subtree: true });
+    watch.observe(document.body, { childList: true, subtree: true });
     const stop = setTimeout(() => watch.disconnect(), WAIT_MS);
     return () => {
       clearTimeout(stop);

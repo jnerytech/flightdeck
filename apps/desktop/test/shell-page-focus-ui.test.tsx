@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { useEffect, useState } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
-import { settle, stays } from "./wait.ts";
+import { settle, settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -71,6 +71,58 @@ function Harness() {
   );
 }
 
+/**
+ * Add project in a real browser (#1580): the page opens while the dialog that gave the command is still
+ * closing, and the browser takes no focus on the page behind it until the dialog is gone. The dialog's
+ * button is disabled while the command runs, so the focus is lost when the page opens.
+ */
+function Closing(props: Readonly<{ closeAfter: number }>) {
+  const [route, setRoute] = useState<"list" | "project">("list");
+  const [dialog, setDialog] = useState(true);
+  return (
+    <AppShell
+      header={
+        <>
+          <button type="button">Menu</button>
+          {dialog && (
+            <section role="dialog" aria-label="Add project dialog">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.currentTarget.blur();
+                  setRoute("project");
+                  setTimeout(() => setDialog(false), props.closeAfter);
+                }}
+              >
+                Add
+              </button>
+            </section>
+          )}
+        </>
+      }
+      sidebar={() => <button type="button">Side</button>}
+      labels={LABELS}
+      navKey={route}
+    >
+      <Page key={route} title={route === "list" ? "Projects" : "setup"}>
+        <button type="button">{route === "list" ? "New project" : "Open board"}</button>
+      </Page>
+    </AppShell>
+  );
+}
+
+/** Like a modal dialog in a browser: while one is open, `focus()` on anything outside it does nothing. */
+const realFocus = HTMLElement.prototype.focus;
+function refuseFocusBehindDialogs() {
+  HTMLElement.prototype.focus = function focus(this: HTMLElement, options?: FocusOptions) {
+    if (document.querySelector("[role=dialog]") && !this.closest("[role=dialog]")) return;
+    realFocus.call(this, options);
+  };
+}
+afterEach(() => {
+  HTMLElement.prototype.focus = realFocus;
+});
+
 const title = () => document.querySelector<HTMLElement>("[data-slot=page-title]");
 
 describe("shell-page-focus-ui: a page that opens takes the focus when the step lost it (#1546)", () => {
@@ -132,5 +184,20 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
     menu?.focus();
     await settle(() => title()?.textContent === "beta", 5000, "the heading of the slow page");
     await stays(() => document.activeElement === menu, 300, "focus stays on the control");
+  });
+
+  test("the browser refuses the focus while the dialog that gave the command closes: the heading takes it when the dialog goes", async () => {
+    refuseFocusBehindDialogs();
+    render(<Closing closeAfter={120} />);
+    const add = screen.queryByRole("button", { name: "Add" });
+    add?.focus();
+    await act(async () => {
+      if (add) fireEvent.click(add);
+    });
+    await settle(() => title()?.textContent === "setup", 5000, "the project's page");
+    expect(document.activeElement === title()).toBe(false);
+    await settle(() => screen.queryByRole("button", { name: "Add" }) === null, 5000, "dialog gone");
+    const taken = await settleMaybe(() => document.activeElement === title(), 2000);
+    expect(taken).toBe(true);
   });
 });
