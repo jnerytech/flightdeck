@@ -580,6 +580,7 @@ BoardResult.columns[].cards[].prUrl
 BoardResult.columns[].cards[].projectId
 BoardResult.columns[].cards[].queueReason?
 BoardResult.columns[].cards[].queueReason|0="budget"
+BoardResult.columns[].cards[].queueReason|0="memory"
 BoardResult.columns[].cards[].queueReason|0="quota"
 BoardResult.columns[].cards[].queueReason|0="slot"
 BoardResult.columns[].cards[].queued
@@ -804,6 +805,7 @@ Card.prUrl
 Card.projectId
 Card.queueReason?
 Card.queueReason|0="budget"
+Card.queueReason|0="memory"
 Card.queueReason|0="quota"
 Card.queueReason|0="slot"
 Card.queued
@@ -1020,6 +1022,7 @@ CardUpdated.card.prUrl
 CardUpdated.card.projectId
 CardUpdated.card.queueReason?
 CardUpdated.card.queueReason|0="budget"
+CardUpdated.card.queueReason|0="memory"
 CardUpdated.card.queueReason|0="quota"
 CardUpdated.card.queueReason|0="slot"
 CardUpdated.card.queued
@@ -1235,6 +1238,12 @@ Command[type=actions.trust].payload.name
 Command[type=actions.trust].payload.projectId?
 Command[type=actions.trust].type
 Command[type=actions.trust].type=="actions.trust"
+Command[type=activity.since].id
+Command[type=activity.since].payload
+Command[type=activity.since].payload.limit?
+Command[type=activity.since].payload.since
+Command[type=activity.since].type
+Command[type=activity.since].type=="activity.since"
 Command[type=agentcfg.list].id
 Command[type=agentcfg.list].payload
 Command[type=agentcfg.list].payload.kind
@@ -2949,6 +2958,11 @@ Command[type=resources.get].id
 Command[type=resources.get].payload
 Command[type=resources.get].type
 Command[type=resources.get].type=="resources.get"
+Command[type=resources.setPauseAt].id
+Command[type=resources.setPauseAt].payload
+Command[type=resources.setPauseAt].payload.pauseAt
+Command[type=resources.setPauseAt].type
+Command[type=resources.setPauseAt].type=="resources.setPauseAt"
 Command[type=review.add].id
 Command[type=review.add].payload
 Command[type=review.add].payload.body
@@ -3932,6 +3946,9 @@ Command[type=watch.set].type=="watch.set"
 Command[type=watch.settings].id
 Command[type=watch.settings].payload
 Command[type=watch.settings].payload.patch.budgetUsd?
+Command[type=watch.settings].payload.patch.checkEnv?
+Command[type=watch.settings].payload.patch.checkLoopDefault?
+Command[type=watch.settings].payload.patch.checkRounds?
 Command[type=watch.settings].payload.patch.checkTimeoutMin?
 Command[type=watch.settings].payload.patch.checks?
 Command[type=watch.settings].payload.patch.dailyUsd?
@@ -6272,6 +6289,7 @@ ResourcesSnapshot.measured
 ResourcesSnapshot.memory
 ResourcesSnapshot.memory.freeBytes
 ResourcesSnapshot.memory.totalBytes
+ResourcesSnapshot.memoryPauseAt?
 ResourcesSnapshot.orphans
 ResourcesSnapshot.orphans[].ageSec
 ResourcesSnapshot.orphans[].name
@@ -6630,6 +6648,7 @@ ServerMessage[type=card.updated].card.prUrl
 ServerMessage[type=card.updated].card.projectId
 ServerMessage[type=card.updated].card.queueReason?
 ServerMessage[type=card.updated].card.queueReason|0="budget"
+ServerMessage[type=card.updated].card.queueReason|0="memory"
 ServerMessage[type=card.updated].card.queueReason|0="quota"
 ServerMessage[type=card.updated].card.queueReason|0="slot"
 ServerMessage[type=card.updated].card.queued
@@ -9039,6 +9058,9 @@ WatchInfo.status
 WatchInfo.status="needs_you"
 WatchInfo.status="watching"
 WatchSettings.budgetUsd
+WatchSettings.checkEnv?
+WatchSettings.checkLoopDefault?
+WatchSettings.checkRounds?
 WatchSettings.checkTimeoutMin
 WatchSettings.checks
 WatchSettings.dailyUsd

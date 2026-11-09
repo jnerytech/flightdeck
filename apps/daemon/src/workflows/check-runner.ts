@@ -1,5 +1,6 @@
 import { appendFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isCheckEnvName } from "@flightdeck/protocol";
 import { killTree, runCommand, runLimited } from "../board/command.ts";
 import { shellCommand } from "../board/setup.ts";
 import { whichOnPath } from "../which.ts";
@@ -84,6 +85,8 @@ export interface BoundedCheckRunner {
     cwd: string,
     timeoutMs?: number,
     signal?: AbortSignal,
+    /** The project's extra names (`checkEnv`); only those the rule allows are added. */
+    envNames?: readonly string[],
   ): Promise<BoundedCheckResult>;
 }
 
@@ -133,11 +136,15 @@ const WINDOWS_ENV = new Set([
 export function checkEnvironment(
   source: Record<string, string | undefined>,
   platform: string = process.platform,
+  extra: readonly string[] = [],
 ): Record<string, string> {
   const windows = platform === "win32";
+  // The project's names are checked again at use: the stored list is never trusted blindly.
+  const added = extra.filter(isCheckEnvName).map((name) => (windows ? name.toUpperCase() : name));
   const env: Record<string, string> = {};
   for (const [name, value] of Object.entries(source)) {
-    const kept = windows ? WINDOWS_ENV.has(name.toUpperCase()) : POSIX_ENV.has(name);
+    const key = windows ? name.toUpperCase() : name;
+    const kept = (windows ? WINDOWS_ENV.has(key) : POSIX_ENV.has(name)) || added.includes(key);
     if (kept && value !== undefined) env[name] = value;
   }
   env.CI = "1";
@@ -153,7 +160,7 @@ export function boundedCheckRunner(
   outputMax: number = CHECK_OUTPUT_MAX,
 ): BoundedCheckRunner {
   return {
-    async run(command, cwd, timeoutMs = DEFAULT_CHECK_TIMEOUT_MS, signal) {
+    async run(command, cwd, timeoutMs = DEFAULT_CHECK_TIMEOUT_MS, signal, envNames = []) {
       const guard = env[CHECK_GUARD_ENV];
       if (guard && !(await allowedByGuard(command, guard))) {
         return {
@@ -166,7 +173,7 @@ export function boundedCheckRunner(
       // its first 64 KB.
       const result = await runLimited(shellCommand(command), cwd, outputMax, timeoutMs, killTree, {
         signal,
-        baseEnv: checkEnvironment(env),
+        baseEnv: checkEnvironment(env, process.platform, envNames),
         overflowKillsTree: true,
       });
       return {

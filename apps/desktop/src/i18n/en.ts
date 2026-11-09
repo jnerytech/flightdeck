@@ -945,6 +945,9 @@ export const en: Dictionary = {
     startQueue: "They join the board's queue.",
     startQuota: "{host}: {percent}% of the 5-hour window used, {reset}.",
     startQuotaHold: "{host} is over its pause limit: new cards wait until the window resets.",
+    startBudgetHold:
+      "{host} reached a budget that holds new cards: they wait until its period resets.",
+    startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
     noCriteriaOne: "1 of them has no acceptance criteria; it starts anyway.",
     noCriteria: "{n} of them have no acceptance criteria; they start anyway.",
     skipped: "skipped: {reason}",

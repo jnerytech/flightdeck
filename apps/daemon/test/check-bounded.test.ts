@@ -167,6 +167,20 @@ describe.skipIf(process.platform === "win32")("check-loop: the bounded runner", 
     ]).toEqual([0, true, true, false, false, false]);
   });
 
+  test("#1361: the project's extra names reach the check with the daemon's values, never a refused one", async () => {
+    const dir = script("envdump", "env");
+    const env = { ...process.env, JAVA_HOME: "/jdk", LD_PRELOAD: "/x.so" };
+    const result = await boundedCheckRunner(env).run("envdump", dir, 5000, undefined, [
+      "JAVA_HOME",
+      "LD_PRELOAD",
+    ]);
+    const lines = result.output.split("\n");
+    expect([
+      lines.includes("JAVA_HOME=/jdk"),
+      lines.some((l) => l.startsWith("LD_PRELOAD=")),
+    ]).toEqual([true, false]);
+  });
+
   test("past the output bound on stdout, the check and the child it left are killed, and the result says so", async () => {
     const dir = script(
       "big",

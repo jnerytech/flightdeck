@@ -734,12 +734,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         opts.ui.locked = next.locked;
         return ok(command.type, { ...next });
       }
-      case "pr.comments":
-        return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
-      case "pr.comments.send": {
-        const { cardId, ids } = command.payload;
-        return ok(command.type, await board().sendPrComments(cardId, ids));
-      }
     }
   }
 

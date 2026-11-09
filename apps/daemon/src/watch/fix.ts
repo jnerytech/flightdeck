@@ -7,13 +7,11 @@ import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { settled } from "../settled.ts";
-import { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
 import { MAX_VALUE } from "../workflows/interpolate.ts";
-import { checkCommandRefusal } from "./check-command.ts";
+import { masked, runChecks } from "./check-run.ts";
 import { type Drift, type FileChange, measureDrift, parseNumstat } from "./drift.ts";
-import { REMOVED_LINE } from "./trace.ts";
 import type { PrWatcher, WatchSettings, WatchTrigger } from "./watch.ts";
 
 /** One round of fixing a PR, as it is kept and shown (phase 22). */
@@ -80,16 +78,6 @@ const toRound = (row: RoundRow): FixRound => ({
   endedAt: row.ended_at,
   drift: row.drift ? JSON.parse(row.drift) : null,
 });
-
-/** What a comment of a person keeps in the prompt, and how many comments go in. */
-const scanner = new SecretScanner();
-
-/** What a check printed is kept in the round: a line that looks like a secret is taken out. */
-const masked = (text: string) =>
-  text
-    .split("\n")
-    .map((line) => (scanner.scan(line).length === 0 ? line : REMOVED_LINE))
-    .join("\n");
 
 /** A commit id as git prints it (SHA-1 or SHA-256): the only form a stored one goes back into git as. */
 const COMMIT_ID = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
@@ -574,36 +562,40 @@ export class PrFixer {
     settings: WatchSettings,
     worktree: string,
   ): Promise<{ text: string; refused: boolean } | null> {
-    for (const command of settings.checks) {
-      // Stored settings are checked again: only a plain command and its arguments, in the worktree.
-      const refusal = checkCommandRefusal(command, worktree);
-      if (refusal) {
-        return { text: `local check refused (${refusal}): ${masked(command)}`, refused: true };
-      }
-      const result =
-        await /* NOSONAR: checks run one after the other and stop at the first that fails */ this.opts.checks.run(
-          command,
-          worktree,
-          settings.checkTimeoutMin * 60_000,
-        );
-      if (result.timedOut) {
-        const text = `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`;
-        return { text, refused: false };
-      }
-      if (result.tooLarge) {
+    const outcome = await runChecks({
+      checks: settings.checks,
+      worktree,
+      timeoutMin: settings.checkTimeoutMin,
+      envNames: settings.checkEnv,
+      runner: this.opts.checks,
+    });
+    switch (outcome.kind) {
+      case "passed":
+        return null;
+      case "refused":
         return {
-          text: `local check stopped: ${masked(command)} printed more than 4 MB`,
+          text: `local check refused (${outcome.refusal}): ${outcome.command}`,
+          refused: true,
+        };
+      case "aborted":
+        return { text: `local check stopped: ${outcome.command}`, refused: false };
+      default:
+        if (outcome.timedOut) {
+          const text = `local check timed out: ${outcome.command} (after ${settings.checkTimeoutMin} min)`;
+          return { text, refused: false };
+        }
+        if (outcome.tooLarge) {
+          return {
+            text: `local check stopped: ${outcome.command} printed more than 4 MB`,
+            refused: false,
+          };
+        }
+        // Masked whole by runChecks, so the cut below cannot split a secret's line unmasked.
+        return {
+          text: `local check failed: ${outcome.command} (exit ${outcome.exitCode})\n${outcome.output.slice(-MAX_VALUE)}`,
           refused: false,
         };
-      }
-      if (result.exitCode !== 0) {
-        // The whole output is masked before it is cut: a secret across the cut is still caught.
-        const shown = masked(result.output).slice(-MAX_VALUE);
-        const text = `local check failed: ${masked(command)} (exit ${result.exitCode})\n${shown}`;
-        return { text, refused: false };
-      }
     }
-    return null;
   }
 
   private async play(input: {

@@ -1,4 +1,4 @@
-import type { Card } from "@flightdeck/protocol";
+import type { Budget, Card } from "@flightdeck/protocol";
 import type { T } from "../i18n/index.ts";
 import { answerOf, type BulkRefusal } from "./board-select.ts";
 import { cardStartBlock } from "./card-start-block.ts";
@@ -66,4 +66,29 @@ export async function runMany(cards: Card[], request: CardRequest): Promise<Bulk
     if (!answer.ok) refused.push({ card, ...answerOf(answer) });
   }
   return refused;
+}
+
+/**
+ * The Start confirm's lines about what keeps new cards waiting on the host (#1393): a budget that
+ * holds new cards and is at its limit, and the host's own memory hold, which only a queued card's
+ * reason reports. A hold the host does not report adds no line.
+ */
+export function holdLines(
+  t: T,
+  host: string,
+  input: { budgets: Budget[]; projectKey: string | null; cards: Card[] },
+): string[] {
+  const reported = (reason: Card["queueReason"]) =>
+    input.cards.some((card) => card.queued && card.queueReason === reason);
+  const overBudget = input.budgets.some(
+    (budget) =>
+      budget.action === "queue" &&
+      budget.fraction >= 1 &&
+      (budget.scope === "host" ||
+        (budget.projectKey !== null && budget.projectKey === input.projectKey)),
+  );
+  const lines: string[] = [];
+  if (overBudget || reported("budget")) lines.push(t("board.startBudgetHold", { host }));
+  if (reported("memory")) lines.push(t("board.startMemoryHold", { host }));
+  return lines;
 }

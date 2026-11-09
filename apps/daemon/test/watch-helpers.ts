@@ -142,6 +142,8 @@ export async function fixture(options: FixtureOptions = {}) {
   const ran: Array<{ command: string; cwd: string }> = [];
   /** The time limit each local check was given, in order. */
   const timeouts: Array<number | undefined> = [];
+  /** The extra environment names each local check was given, in order (#1361). */
+  const envNames: Array<readonly string[] | undefined> = [];
   const gitCalls: string[][] = [];
   const fixer = new PrFixer({
     db: store.db,
@@ -149,9 +151,10 @@ export async function fixture(options: FixtureOptions = {}) {
     watcher,
     provider: () => provider,
     checks: {
-      run: async (command, cwd, timeoutMs) => {
+      run: async (command, cwd, timeoutMs, _signal, names) => {
         ran.push({ command, cwd });
         timeouts.push(timeoutMs);
+        envNames.push(names);
         options.duringChecks?.();
         if (options.checkTimedOut?.includes(command)) {
           return { exitCode: 137, output: "", timedOut: true };
@@ -200,6 +203,7 @@ export async function fixture(options: FixtureOptions = {}) {
     commitsAhead,
     ran,
     timeouts,
+    envNames,
     gitCalls,
     worktree,
     branch,
