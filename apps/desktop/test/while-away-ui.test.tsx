@@ -69,6 +69,8 @@ interface Setup {
   /** Something that finished, so the list has a row with the cursor on it. */
   finished?: boolean;
   away?: object;
+  /** Dismiss really marks the summary dismissed, so the page can be rendered again without it. */
+  realDismiss?: boolean;
   lang?: "en" | "pt-BR";
 }
 
@@ -82,6 +84,12 @@ function open(setup: Setup = {}) {
   let dismissed = 0;
   store.dismissAway = () => {
     dismissed += 1;
+    if (setup.realDismiss) {
+      const away = store.getState().away;
+      (store as unknown as { update(patch: object): void }).update({
+        away: { ...away, dismissed: true },
+      });
+    }
   };
   (store as unknown as { update(patch: object): void }).update({
     hosts: [
@@ -113,15 +121,18 @@ function open(setup: Setup = {}) {
       ...setup.away,
     },
   });
-  render(
+  const page = () => (
     <NeedsYou
       store={store}
       state={store.getState()}
       go={(route) => void went.push(route)}
       onOpenRequest={() => {}}
-    />,
+    />
   );
-  return { store, went, dismissed: () => dismissed };
+  const view = render(page());
+  /** The page again with the store's state now, as the screen does when the store changes. */
+  const again = () => act(async () => view.rerender(page()));
+  return { store, went, dismissed: () => dismissed, again };
 }
 
 const panel = () => screen.queryByRole("region", { name: "While you were away" });
@@ -198,6 +209,36 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
     const { dismissed } = open();
     await click(inPanel().queryByRole("button", { name: "Dismiss" }));
     expect(dismissed()).toBe(1);
+  });
+
+  test("Dismiss moves the focus to the first item of the list, which says what it is", async () => {
+    const { again } = open({ finished: true, realDismiss: true });
+    const dismiss = inPanel().queryByRole("button", { name: "Dismiss" });
+    dismiss?.focus();
+    const before = document.activeElement === dismiss;
+    await click(dismiss);
+    await again();
+    const row = screen.queryByRole("button", { name: /Docs rewrite/ });
+    expect([before, panel() === null, row !== null && document.activeElement === row]).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  test("with nothing in the list, Dismiss moves the focus to the Needs you heading", async () => {
+    const { again } = open({ realDismiss: true });
+    const dismiss = inPanel().queryByRole("button", { name: "Dismiss" });
+    dismiss?.focus();
+    const before = document.activeElement === dismiss;
+    await click(dismiss);
+    await again();
+    const heading = screen.queryByRole("heading", { name: "Needs you", level: 1 });
+    expect([
+      before,
+      panel() === null,
+      heading !== null && document.activeElement === heading,
+    ]).toEqual([true, true, true]);
   });
 
   test("Enter on a button of the summary does not also open the row under the list's cursor", async () => {

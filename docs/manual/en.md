@@ -1068,7 +1068,8 @@ live; the list is the project's, so a session of another project never shows her
   finished, the cards that reached review, the PRs merged or with failing checks, the failed
   workflow runs and the quota used. Each line goes to the session or the card; a group shows its
   first three lines and says how many more there are. A host that did not answer is named. It
-  shows only when something is new, and **Dismiss** closes it until the next start.
+  shows only when something is new, and **Dismiss** closes it until the next start (the focus moves to the first item of the list, or
+  to the page title when there is none).
 - **Pull requests** (in the sidebar under Work, after Board; or **Go to Pull requests** in the
   palette) lists every card with an open PR on the connected hosts, the ones that need a look first
   (failing checks, a conflict, changes requested, or a watch that needs you). A row names the card, its host and project, its
@@ -1372,7 +1373,9 @@ commit or a squash), then runs `gh pr merge` with that way and nothing else: no 
 `--auto`, no branch delete, so required checks and reviews still apply. If GitHub refuses, the
 card says why (review required, checks failing or still running, a conflict, or GitHub's own
 words) with a link to the PR, and the card stays where it is; when it merges, the card moves to
-Done. It works over a near connection (this computer or Tailscale), and Azure DevOps cards merge
+Done. When the host's conflict radar finds other cards of the project that change the same files,
+the card shows **May conflict with …** on the board, lists those cards and the shared files under
+**May conflict with other cards** in its details, and the merge confirm names them. It works over a near connection (this computer or Tailscale), and Azure DevOps cards merge
 in Azure DevOps. Cards with an open PR are polled every 60 s, or every
 `board.prPollIntervalMs` from the config. A merged PR moves the card to Done; closed without a
 merge, to Needs you.

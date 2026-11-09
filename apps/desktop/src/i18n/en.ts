@@ -1376,6 +1376,8 @@ export const en: Dictionary = {
   time: {
     now: "just now",
     ago: "{d} ago",
+    agoDay: "1 day ago",
+    agoDays: "{n} days ago",
     hours: "{n} h",
     minutes: "{n} min",
     seconds: "{n} s",
@@ -3193,6 +3195,15 @@ export const en: Dictionary = {
     reviewChanges: "Changes requested",
     reviewRequired: "Review required",
     opened: "Opened {ago}",
+  },
+  conflictRadar: {
+    badgeOne: "May conflict with {title}",
+    badgeMany: "May conflict with {n} cards",
+    title: "May conflict with other cards",
+    intro:
+      "These cards change the same files. Whoever merges second may have to resolve conflicts.",
+    mergeLine:
+      "Other cards change the same files: {titles}. Whoever merges second may have to resolve conflicts.",
   },
   cardMergePr: {
     action: "Merge PR",

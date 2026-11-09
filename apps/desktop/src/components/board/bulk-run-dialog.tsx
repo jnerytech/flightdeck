@@ -37,12 +37,20 @@ export function BulkRunDialog(
     onAlternative?(id: string): void;
     onCancel(): void;
     onConfirm(): void;
+    /** The dialog closed: where the focus goes (#1426). Left out, the dialog's own default. */
+    onRestoreFocus?(): void;
   }>,
 ) {
   const { t } = props;
   return (
     <AlertDialog open onOpenChange={(open) => !open && props.onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (!props.onRestoreFocus) return;
+          event.preventDefault();
+          props.onRestoreFocus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{props.title}</AlertDialogTitle>
           <AlertDialogDescription asChild>

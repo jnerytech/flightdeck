@@ -345,6 +345,19 @@ export function NeedsYou(
   }, []);
   const minute = Math.floor(store.now() / 60_000);
   const away = awayView(state.away, state.hosts);
+  // Dismissing removes the button that had the focus: it goes to the first row, or the heading.
+  const listRef = useRef<HTMLUListElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const dismissedHere = useRef(false);
+  const dismissAway = () => {
+    dismissedHere.current = true;
+    store.dismissAway();
+  };
+  useEffect(() => {
+    if (away || !dismissedHere.current) return;
+    dismissedHere.current = false;
+    (listRef.current?.querySelector<HTMLElement>("button") ?? titleRef.current)?.focus();
+  });
   const open = (entry: Entry) => {
     if (entry.kind === "alert")
       go(entry.clientId ? { name: "clients" } : { name: "settings", section: "budgets" });
@@ -389,8 +402,14 @@ export function NeedsYou(
   if (entries.length === 0) {
     return (
       <section className="flex h-full flex-col gap-4 p-6">
-        <h1 className="font-semibold text-xl">{t("needsYou.title")}</h1>
-        {away && <WhileAway store={store} view={away} go={go} />}
+        <h1
+          ref={titleRef}
+          tabIndex={-1}
+          className="rounded-sm font-semibold text-xl focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {t("needsYou.title")}
+        </h1>
+        {away && <WhileAway store={store} view={away} go={go} onDismiss={dismissAway} />}
         <EmptyState
           icon={CheckCheck}
           title={t("needsYou.empty")}
@@ -407,11 +426,17 @@ export function NeedsYou(
   const list = (
     <section className="flex h-full min-h-0 flex-col">
       <div className="flex items-baseline gap-2 border-b px-4 py-3">
-        <h1 className="font-semibold text-base">{t("needsYou.title")}</h1>
+        <h1
+          ref={titleRef}
+          tabIndex={-1}
+          className="rounded-sm font-semibold text-base focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {t("needsYou.title")}
+        </h1>
         <span className="text-muted-foreground text-xs tabular-nums">{waiting.length}</span>
       </div>
-      {away && <WhileAway store={store} view={away} go={go} />}
-      <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+      {away && <WhileAway store={store} view={away} go={go} onDismiss={dismissAway} />}
+      <ul ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-2">
         {waiting.length === 0 && (
           <li>
             <p className={NOTE}>{t("needsYou.empty")}</p>

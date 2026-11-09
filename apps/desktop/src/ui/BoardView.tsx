@@ -80,6 +80,7 @@ import {
   projectCards,
 } from "../lib/board.ts";
 import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
+import { cardKey } from "../lib/board-card-keys.ts";
 import {
   askAbout,
   dragNeeds,
@@ -88,7 +89,7 @@ import {
   startNeeds,
 } from "../lib/board-contracts.ts";
 import { boardFiles } from "../lib/board-files.ts";
-import { type BoardKeyAction, boardKey } from "../lib/board-keys.ts";
+import type { BoardKeyAction } from "../lib/board-keys.ts";
 import {
   answerOf,
   type BulkRefusal,
@@ -105,10 +106,10 @@ import {
   toggleSelection,
 } from "../lib/board-select.ts";
 import { cardStartBlock } from "../lib/card-start-block.ts";
+import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { onSubscription, quotaBars } from "../lib/quota.ts";
-import { CHORD_TIMEOUT_MS } from "../lib/shortcuts.ts";
 import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
@@ -194,6 +195,7 @@ function CardTile(
 ) {
   const t = useT();
   const { card } = props;
+  const radar = radarBadge(card, t);
   /** The card's menu, opened by its ⋯ or by `m` (#1198). */
   const [menuOpen, setMenuOpen] = useState(false);
   const titleRef = useRef<HTMLButtonElement>(null);
@@ -323,12 +325,20 @@ function CardTile(
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
+        {/* A reason badge below says the card is queued, and why: one badge, not "queued" beside it. */}
+        {card.queued && !["quota", "memory", "paused"].includes(card.queueReason ?? "") && (
+          <Badge variant="outline">{t("kanban.queued")}</Badge>
+        )}
         {card.queueReason === "quota" && (
           <Badge variant="outline" className="text-status-needs-you">
             {card.quotaUntil
               ? t("kanban.waitingQuotaUntil", { time: props.formatTime(card.quotaUntil) })
               : t("kanban.waitingQuota")}
+          </Badge>
+        )}
+        {radar && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {radar}
           </Badge>
         )}
         {card.queueReason === "memory" && (
@@ -661,9 +671,26 @@ export const BoardView = memo(function BoardView(props: {
   };
   /** #1354: what Start N and Stop N take from the selection. */
   const split = bulkSplit(actingCards, t);
+  /**
+   * #1426: what had the focus when a selection's confirm opened (a card, the bar's button). Closing
+   * the confirm puts it back there, or on the board when it is gone.
+   */
+  const opener = useRef<HTMLElement | null>(null);
+  const rememberOpener = () => {
+    const el = document.activeElement;
+    // Nothing focused is the body, which takes no focus: the board is the fallback then.
+    opener.current = el instanceof HTMLElement && el !== document.body ? el : null;
+  };
+  const restoreOpener = () => {
+    const el = opener.current;
+    opener.current = null;
+    if (el?.isConnected) el.focus();
+    else boardRef.current?.focus();
+  };
   /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
   const askStart = () => {
     if (busy || split.start.length === 0) return;
+    rememberOpener();
     // Each open asks again; a reply to an earlier open is dropped (#1390's review).
     const asked = ++startAsked.current;
     setQueueMax(undefined);
@@ -693,6 +720,7 @@ export const BoardView = memo(function BoardView(props: {
   };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;
+    rememberOpener();
     setBulk("stop");
   };
   /** A card whose workflow asks for inputs starts from its own dialog, where they are typed. */
@@ -734,13 +762,12 @@ export const BoardView = memo(function BoardView(props: {
     setPicked((before) => before.filter((id) => !went.has(id)));
     const one = kind === "start" ? "board.startFailedOne" : "board.stopFailedOne";
     const many = kind === "start" ? "board.startFailed" : "board.stopFailed";
-    setNotice(
-      refused.length === 0
-        ? null
-        : refused.length === 1
-          ? t(one, { names: nameRefusals(refused) })
-          : t(many, { count: refused.length, names: nameRefusals(refused) }),
-    );
+    let outcome: string | null = null;
+    if (refused.length === 1) outcome = t(one, { names: nameRefusals(refused) });
+    else if (refused.length > 1) {
+      outcome = t(many, { count: refused.length, names: nameRefusals(refused) });
+    }
+    setNotice(outcome);
     setBusy(false);
     boardRef.current?.focus();
   };
@@ -803,6 +830,27 @@ export const BoardView = memo(function BoardView(props: {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
     }
     return lines;
+  };
+  /** The confirm's title: how many cards the action takes. */
+  const bulkTitle = (): string => {
+    if (bulk === "start") {
+      return startable.length === 1
+        ? t("board.startTitleOne")
+        : t("board.startTitle", { n: startable.length });
+    }
+    return split.stop.length === 1
+      ? t("board.stopTitleOne")
+      : t("board.stopTitle", { n: split.stop.length });
+  };
+  /** Why the action leaves a selected card out, for the confirm's list; undefined when it takes it. */
+  const skipReason = (card: Card): string | undefined => {
+    if (bulk === "start") {
+      return (
+        split.skipStart.find((s) => s.card.id === card.id)?.reason ??
+        (needsInputs(card) ? t("board.needsInputs") : undefined)
+      );
+    }
+    return split.skipStop.some((c) => c.id === card.id) ? t("board.notRunning") : undefined;
   };
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
@@ -929,40 +977,24 @@ export const BoardView = memo(function BoardView(props: {
     pendingFocus.current = null;
     titleOf(cardId)?.focus();
   });
-  /**
-   * A key on a card's title: the arrows move the focus here, `s` and `m` are the card's (or the
-   * selection's, #1354), `x` toggles it, Shift with an arrow extends the selection, Esc clears it.
-   */
-  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) => {
-    const now = Date.now();
-    const afterG = lastKey.current.key === "g" && now - lastKey.current.at < CHORD_TIMEOUT_MS;
-    lastKey.current = { key: e.key, at: now };
-    const action = boardKey(shownIds, cardId, e, afterG);
-    if (action?.kind !== "extend") rangeBase.current = null;
-    if (action?.kind === "focus") focusCard(action.cardId);
-    if (action?.kind === "extend") {
-      // The anchor stays where the range began; with none, the card the focus leaves is it. The
-      // range is laid over the selection it started from, so going back shrinks it.
-      if (rangeBase.current === null) {
-        anchor.current ??= cardId;
-        rangeBase.current = selection;
-      }
-      setPicked(rangeSelection(boardOrder, anchor.current, action.cardId, rangeBase.current));
-      focusCard(action.cardId);
-    }
-    if (action?.kind === "toggle") {
-      const card = all.find((other) => other.id === cardId);
-      if (card) select(card);
-    }
-    if (action?.kind === "clear") {
-      // With no selection Esc goes on (a split view closes); with one it stops here, on the card.
-      if (selection.length === 0) return null;
-      e.stopPropagation();
-      anchor.current = null;
-      setPicked([]);
-    }
-    return action;
-  };
+  /** A key on a card's title (see `cardKey`): the action comes back for what is the board's own. */
+  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) =>
+    cardKey(
+      {
+        lastKey,
+        rangeBase,
+        anchor,
+        shownIds,
+        boardOrder,
+        selection,
+        cards: all,
+        focusCard,
+        select,
+        setPicked,
+      },
+      cardId,
+      e,
+    );
   useEffect(() => {
     const wanted = refocus.current;
     if (!wanted) return;
@@ -1028,7 +1060,10 @@ export const BoardView = memo(function BoardView(props: {
                   shown={acting.length}
                   hidden={selection.length - acting.length}
                   onMove={(column) => void moveSelected(column)}
-                  onDiscard={() => setDiscardingMany(true)}
+                  onDiscard={() => {
+                    rememberOpener();
+                    setDiscardingMany(true);
+                  }}
                   onClear={clearSelection}
                   busy={busy}
                   onEscape={clearSelection}
@@ -1385,29 +1420,16 @@ export const BoardView = memo(function BoardView(props: {
           t={t}
           onCancel={() => setDiscardingMany(false)}
           onConfirm={() => void discardSelected()}
+          onRestoreFocus={restoreOpener}
         />
       )}
       {bulk && (
         <BulkRunDialog
           t={t}
-          title={
-            bulk === "start"
-              ? startable.length === 1
-                ? t("board.startTitleOne")
-                : t("board.startTitle", { n: startable.length })
-              : split.stop.length === 1
-                ? t("board.stopTitleOne")
-                : t("board.stopTitle", { n: split.stop.length })
-          }
+          title={bulkTitle()}
           lines={bulkLines()}
           items={actingCards.map((card) => {
-            const skip =
-              bulk === "start"
-                ? (split.skipStart.find((s) => s.card.id === card.id)?.reason ??
-                  (needsInputs(card) ? t("board.needsInputs") : undefined))
-                : split.skipStop.some((c) => c.id === card.id)
-                  ? t("board.notRunning")
-                  : undefined;
+            const skip = skipReason(card);
             return { id: card.id, title: card.title, ...(skip ? { skipped: skip } : {}) };
           })}
           confirmLabel={
@@ -1423,6 +1445,7 @@ export const BoardView = memo(function BoardView(props: {
           onAlternative={(id) => void startOnOther(id)}
           onCancel={() => setBulk(null)}
           onConfirm={() => void runSelected(bulk)}
+          onRestoreFocus={restoreOpener}
         />
       )}
       {issuesOpen && project && (
