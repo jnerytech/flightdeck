@@ -219,6 +219,11 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1344: "While you were away" reads what happened on the host since a time.
+  test("the activity domain owns activity.since", () => {
+    expect(Object.keys(DOMAINS.activity ?? {}).sort()).toEqual(["activity.since"]);
+  });
+
   // Issue #1288: the worktree commands left the switch of server.ts.
   test("the worktrees domain owns the worktree.* commands", () => {
     expect(Object.keys(DOMAINS.worktrees ?? {}).sort()).toEqual(

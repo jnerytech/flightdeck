@@ -15,6 +15,7 @@ import { SplitView } from "@/components/layout/split-view";
 import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "@/components/needs-you/entry-row";
+import { WhileAway } from "@/components/needs-you/while-away";
 import { Button } from "@/components/ui/button";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
@@ -26,6 +27,7 @@ import {
   needsYou,
   type PendingItem,
 } from "../lib/app-store.ts";
+import { awayView } from "../lib/away-summary.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";
@@ -33,6 +35,10 @@ import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
 import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
+
+/** A key pressed on a control of the "While you were away" summary is that control's, not the list's. */
+const inSummary = (target: EventTarget | null) =>
+  (target as HTMLElement | null)?.closest?.("[data-slot='while-away']") != null;
 
 const NOTE = `${ROW_PAD} text-muted-foreground text-sm`;
 const HEADING = `${ROW_PAD} font-medium text-muted-foreground text-xs`;
@@ -338,6 +344,7 @@ export function NeedsYou(
     latest.current.open(entry);
   }, []);
   const minute = Math.floor(store.now() / 60_000);
+  const away = awayView(state.away, state.hosts);
   const open = (entry: Entry) => {
     if (entry.kind === "alert")
       go(entry.clientId ? { name: "clients" } : { name: "settings", section: "budgets" });
@@ -348,7 +355,7 @@ export function NeedsYou(
   // J and K move the cursor, Enter opens the row under it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target) || inSummary(e.target)) return;
       if (e.key === "j") setCursor(Math.min(entries.length - 1, cursor + 1));
       else if (e.key === "k") setCursor(Math.max(0, cursor - 1));
       else if (e.key === "Enter" && entries[cursor]) open(entries[cursor] as Entry);
@@ -383,6 +390,7 @@ export function NeedsYou(
     return (
       <section className="flex h-full flex-col gap-4 p-6">
         <h1 className="font-semibold text-xl">{t("needsYou.title")}</h1>
+        {away && <WhileAway store={store} view={away} go={go} />}
         <EmptyState
           icon={CheckCheck}
           title={t("needsYou.empty")}
@@ -402,6 +410,7 @@ export function NeedsYou(
         <h1 className="font-semibold text-base">{t("needsYou.title")}</h1>
         <span className="text-muted-foreground text-xs tabular-nums">{waiting.length}</span>
       </div>
+      {away && <WhileAway store={store} view={away} go={go} />}
       <ul className="min-h-0 flex-1 overflow-y-auto p-2">
         {waiting.length === 0 && (
           <li>
