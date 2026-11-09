@@ -42,10 +42,19 @@ export function CardSecondOpinion(
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const askButton = useRef<HTMLButtonElement>(null);
   const asking = useRef(false);
-  /** Answers received: the button was off while the host read, so focus goes back once it is on (#1495). */
+  const section = useRef<HTMLElement>(null);
+  /**
+   * Answers received: the button was off while the host read, so the browser dropped its focus and it
+   * goes back once the button is on (#1495). Focus the person moved somewhere else (a comment they
+   * began) stays where it is.
+   */
   const [answered, setAnswered] = useState(0);
   useEffect(() => {
-    if (answered > 0) askButton.current?.focus();
+    if (answered === 0) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || section.current?.contains(active)) {
+      askButton.current?.focus();
+    }
   }, [answered]);
   const off = whyOff(card, changes, t);
 
@@ -73,11 +82,17 @@ export function CardSecondOpinion(
     asking.current = false;
     setBusy(false);
     setAnswered((count) => count + 1);
-    if (next.kind === "result" && next.result.anchored > 0) await props.onReviewed();
+    if (next.kind === "result" && next.result.anchored > 0) {
+      try {
+        await props.onReviewed();
+      } catch {
+        // The panel could not read its comments again; it shows that on its own next read.
+      }
+    }
   };
 
   return (
-    <section aria-label={t("secondOpinion.title")}>
+    <section ref={section} aria-label={t("secondOpinion.title")}>
       <Stack gap={2}>
         <h3 className="font-medium text-sm">{t("secondOpinion.title")}</h3>
         <p className="text-muted-foreground text-sm">{t("secondOpinion.intro")}</p>
@@ -87,6 +102,7 @@ export function CardSecondOpinion(
             variant="outline"
             size="sm"
             disabled={off !== null || busy}
+            pending={busy}
             aria-describedby={off ? reasonId : undefined}
             // The wait is this component's own (busy), so the button is on again with the answer.
             onClick={() => void ask()}
