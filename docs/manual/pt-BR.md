@@ -1134,7 +1134,7 @@ aparece mascarado e como **Oculto**, e não abre.
   **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
   quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
   uma linha para cada trava que segura os cards novos (o limite de pausa da cota, um orçamento no limite,
-  o host sem memória), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
+  o host sem memória, o host com novas execuções pausadas), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
   está cheio, pausado ou travado) e outro host online tem o mesmo projeto (o mesmo repositório) com
   vagas para todos eles, a confirmação também oferece **Iniciar em <host>**: ela cria cada um desses
   cards nesse host e o inicia lá, depois marca o card daqui "Iniciado em <host> como <card>" e o move

@@ -2653,8 +2653,10 @@ step(Then, "the confirm offers no other host to start it on", async (c) => {
     .getByRole("button", { name: c.t("board.startSelected", { n: "1" }), exact: true });
   await confirm.waitFor({ timeout: WAIT });
   if ((await startOnButton(c, "beta").count()) > 0) throw new Error("host beta is offered");
-  const hint = c.page.getByRole("alertdialog").getByText(pattern(dictionary(c).board.startOnHint));
-  if ((await hint.count()) > 0) throw new Error("the confirm says another host has the places");
+  for (const key of ["startOnHint", "startOnHintOne"] as const) {
+    const hint = c.page.getByRole("alertdialog").getByText(pattern(dictionary(c).board[key]));
+    if ((await hint.count()) > 0) throw new Error("the confirm says another host has the places");
+  }
 });
 
 step(When, "I choose to start it on host {string}", async (c, host = "") => {

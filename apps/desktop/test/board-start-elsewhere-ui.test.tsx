@@ -174,7 +174,7 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     await settle(() => elsewhere("Start on beta") !== null);
     expect(elsewhere("Start on beta")).not.toBeNull();
     // The hint says how many go, and every board of the other host was loaded to count its runs.
-    expect((dialog().textContent ?? "").includes("2 of them would wait here")).toBe(true);
+    expect((dialog().textContent ?? "").includes("2 of them would wait here.")).toBe(true);
     expect([...loaded].sort((a, b) => a.localeCompare(b))).toEqual(["h2/p2", "h2/p3"]);
     // Nothing moved before the person pressed it.
     expect(types(calls)).toEqual([]);
@@ -195,12 +195,51 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     await settle(() => (document.body.textContent ?? "").includes("2 cards started on beta"));
   });
 
-  test("a paused host makes every card wait and offers the other host too", async () => {
+  test("a paused host says so, makes every card wait and offers the other host too (#1481)", async () => {
     setup({ sourcePaused: true, sourceMax: 5 });
     await ready();
     await pickBoth();
     await settle(() => elsewhere("Start on beta") !== null);
     expect(elsewhere("Start on beta")).not.toBeNull();
+    const text = dialog().textContent ?? "";
+    // The hold is named, the queue line follows it, and nothing promises that they start now.
+    expect(text.includes("alfa has new runs paused: new cards wait until you resume it.")).toBe(
+      true,
+    );
+    expect(text.includes("They join the board's queue.")).toBe(true);
+    expect(text.includes("All of them start now.")).toBe(false);
+    expect(text.includes("of them would wait here")).toBe(true);
+  });
+
+  test("one card that would wait is named in the singular, and the hint ends in a full stop (#1483)", async () => {
+    setup({ sourcePaused: true, sourceMax: 5 });
+    await ready();
+    await act1(() => fireEvent.click(li("A"), { ctrlKey: true }));
+    const startBar = screen.queryByRole("group", { name: "Selection" });
+    const start = startBar ? within(startBar).queryByRole("button", { name: "Start 1" }) : null;
+    expect(start).not.toBeNull();
+    await act1(() => fireEvent.click(start as HTMLElement));
+    await settle(() => elsewhere("Start on beta") !== null);
+    const text = dialog().textContent ?? "";
+    expect(
+      text.includes(
+        "This card would wait here. Another host with the same project has a place for it.",
+      ),
+    ).toBe(true);
+    expect(text.includes("1 of them")).toBe(false);
+    expect(text.includes("has the places for them:")).toBe(false);
+  });
+
+  test("the hint of several cards ends in a full stop too (#1483)", async () => {
+    setup({ sourcePaused: true, sourceMax: 5 });
+    await ready();
+    await pickBoth();
+    await settle(() => elsewhere("Start on beta") !== null);
+    expect(
+      (dialog().textContent ?? "").includes(
+        "2 of them would wait here. Another host with the same project has places for them.",
+      ),
+    ).toBe(true);
   });
 
   test("no offer when nothing waits, when the other host holds another repository, or has no places", async () => {
@@ -234,7 +273,7 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
   });
 
   test("the offer is in Portuguese", async () => {
-    setup({ language: "pt-BR" });
+    setup({ language: "pt-BR", sourcePaused: true, sourceMax: 5 });
     await ready();
     for (const title of ["A", "B"]) await act1(() => fireEvent.click(li(title), { ctrlKey: true }));
     const startBar = screen.queryByRole("group", { name: "Seleção" });
@@ -243,5 +282,31 @@ describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#142
     await act1(() => fireEvent.click(start as HTMLElement));
     await settle(() => elsewhere("Iniciar em beta") !== null);
     expect(elsewhere("Iniciar em beta")).not.toBeNull();
+    const text = dialog().textContent ?? "";
+    expect(
+      text.includes(
+        "alfa está com novas execuções pausadas: os cards novos esperam até você retomar.",
+      ),
+    ).toBe(true);
+    expect(text.includes("Todos iniciam agora.")).toBe(false);
+    expect(
+      text.includes("2 deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles."),
+    ).toBe(true);
+  });
+
+  test("one card in Portuguese agrees too (#1483)", async () => {
+    setup({ language: "pt-BR", sourcePaused: true, sourceMax: 5 });
+    await ready();
+    await act1(() => fireEvent.click(li("A"), { ctrlKey: true }));
+    const startBar = screen.queryByRole("group", { name: "Seleção" });
+    const start = startBar ? within(startBar).queryByRole("button", { name: "Iniciar 1" }) : null;
+    expect(start).not.toBeNull();
+    await act1(() => fireEvent.click(start as HTMLElement));
+    await settle(() => elsewhere("Iniciar em beta") !== null);
+    expect(
+      (dialog().textContent ?? "").includes(
+        "Este card esperaria aqui. Outro host com o mesmo projeto tem vaga para ele.",
+      ),
+    ).toBe(true);
   });
 });

@@ -966,9 +966,12 @@ export const ptBR = {
     startBudgetHold:
       "{host} chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
     startMemoryHold: "{host} está sem memória: os cards novos esperam ela liberar.",
+    startPausedHold:
+      "{host} está com novas execuções pausadas: os cards novos esperam até você retomar.",
     startedElsewhere: "Iniciado em {host} como {id}.",
     startOn: "Iniciar em {host}",
-    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles:",
+    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles.",
+    startOnHintOne: "Este card esperaria aqui. Outro host com o mesmo projeto tem vaga para ele.",
     elsewhereOrphaned: "Uma cópia ficou em {host}: {names}",
     elsewhereDoneOne: "1 card iniciado em {host}.",
     elsewhereDone: "{count} cards iniciados em {host}.",
