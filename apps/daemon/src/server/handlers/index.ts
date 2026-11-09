@@ -5,6 +5,7 @@
 import type { Handlers } from "../dispatch.ts";
 import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
+import { assistantHandlers } from "./assistant.ts";
 import { cardHandlers } from "./card.ts";
 import { costsHandlers } from "./costs.ts";
 import { externalHandlers } from "./external.ts";
@@ -21,6 +22,7 @@ import { sessionHandlers } from "./session.ts";
 import { teleportHandlers } from "./teleport.ts";
 import { terminalHandlers } from "./terminal.ts";
 import { watchHandlers } from "./watch.ts";
+import { worktreesHandlers } from "./worktrees.ts";
 
 /** The domains, by name; no command may sit in two of them (a spread would let the last win). */
 export const DOMAINS: Record<string, Partial<Handlers>> = {
@@ -41,7 +43,9 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   card: cardHandlers,
   project: projectHandlers,
   session: sessionHandlers,
+  worktrees: worktreesHandlers,
   external: externalHandlers,
+  assistant: assistantHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));

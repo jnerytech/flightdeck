@@ -105,6 +105,13 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the assistant commands left the switch of server.ts.
+  test("the assistant domain owns the assistant.* commands", () => {
+    expect(Object.keys(DOMAINS.assistant ?? {}).sort()).toEqual(
+      ["assistant.cancel", "assistant.context", "assistant.record", "assistant.run"].sort(),
+    );
+  });
+
   // Issue #1288: the external session commands left the switch of server.ts.
   test("the external domain owns the external.* commands", () => {
     expect(Object.keys(DOMAINS.external ?? {}).sort()).toEqual(
@@ -215,5 +222,12 @@ describe("server-registry", () => {
   // Issue #1344: "While you were away" reads what happened on the host since a time.
   test("the activity domain owns activity.since", () => {
     expect(Object.keys(DOMAINS.activity ?? {}).sort()).toEqual(["activity.since"]);
+  });
+
+  // Issue #1288: the worktree commands left the switch of server.ts.
+  test("the worktrees domain owns the worktree.* commands", () => {
+    expect(Object.keys(DOMAINS.worktrees ?? {}).sort()).toEqual(
+      ["worktree.list", "worktree.remove"].sort(),
+    );
   });
 });

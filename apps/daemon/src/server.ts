@@ -649,17 +649,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "resources");
   }
 
-  function worktrees(): Worktrees {
-    return need(opts, "worktrees");
-  }
-
   function board(): Board {
     return need(opts, "board");
-  }
-
-  function assistant(): AssistantService {
-    if (!opts.assistant) throw featureOff("assistant");
-    return opts.assistant;
   }
 
   async function dispatch(ws: Socket, command: Command): Promise<void> {
@@ -699,10 +690,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
         await resources().endOrphan(command.payload.pid, command.payload.startTicks);
         return ok(command.type, { ended: true });
-      case "worktree.list":
-        return ok(command.type, await worktrees().list(command.payload.projectId));
-      case "worktree.remove":
-        return ok(command.type, await worktrees().remove(command.payload.items));
       case "names.list":
         return ok(command.type, {
           names: names()
@@ -853,16 +840,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, ids } = command.payload;
         return ok(command.type, await board().sendPrComments(cardId, ids));
       }
-      case "assistant.run":
-        return ok(command.type, await assistant().run(command.payload));
-      case "assistant.cancel":
-        assistant().cancel(command.payload.requestId);
-        return ok(command.type);
-      case "assistant.context":
-        return ok(command.type, await assistant().context(command.payload));
-      case "assistant.record":
-        assistant().record(command.payload);
-        return ok(command.type);
     }
   }
 
