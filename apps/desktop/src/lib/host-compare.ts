@@ -117,6 +117,30 @@ export function compareHosts(hosts: readonly HostFacts[]): CompareRow[] {
   });
 }
 
+export interface FeatureDiff {
+  /** What most hosts have and this one lacks, sorted. */
+  missing: string[];
+  /** What this host has and most hosts lack, sorted. */
+  extra: string[];
+}
+
+const featureList = (value: string): string[] => (value === "" ? [] : value.split(","));
+
+/**
+ * Which features a host's set (the `features` value) lacks or adds against the set most hosts have
+ * (the row's `majority`). With no majority, a tie or a host that does not report, there is nothing
+ * to differ from, so both lists are empty.
+ */
+export function featureDiff(value: string | null, majority: string | null): FeatureDiff {
+  if (value === null || majority === null) return { missing: [], extra: [] };
+  const has = new Set(featureList(value));
+  const common = new Set(featureList(majority));
+  return {
+    missing: [...common].filter((name) => !has.has(name)),
+    extra: [...has].filter((name) => !common.has(name)),
+  };
+}
+
 /** The fields whose lack the host's page (Health & dependencies) already has a fix for. */
 const FIXED_WHEN_LACKING: ReadonlySet<CompareField> = new Set([
   "hooks",
