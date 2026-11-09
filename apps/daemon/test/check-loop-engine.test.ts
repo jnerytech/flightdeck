@@ -147,7 +147,7 @@ describe("check-loop: a turn that passes its checks", () => {
       workflow.engine.onIdle("c"),
       workflow.engine.onTurnResult("c", ok),
       off.log,
-    ]).toEqual(["pass", "pass", "pass", "pass", []]);
+    ]).toEqual(["release", "place", "release", "place", []]);
   });
 });
 
@@ -322,6 +322,74 @@ describe("check-loop: the security review's cases", () => {
     expect(r.log.filter((entry) => entry === "release")).toEqual(["release"]);
   });
 
+  test("a placement that throws still releases the slot, once", async () => {
+    const r = rig();
+    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
+    const engine = new CheckLoopEngine({
+      ...fx,
+      place: () => {
+        throw new Error("board write failed");
+      },
+    });
+    engine.onIdle("c");
+    engine.onTurnResult("c", ok);
+    await engine.idle("c").catch(() => {});
+    await Promise.resolve();
+    expect(r.log.filter((entry) => entry === "release")).toEqual(["release"]);
+  });
+
+  test("a record that throws on a stop, a dead session or the result timer still closes the loop and releases once", () => {
+    const releases: number[] = [];
+    for (const end of ["stop", "gone", "timer"] as const) {
+      const r = rig();
+      const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] })
+        .fx;
+      const engine = new CheckLoopEngine({
+        ...fx,
+        record: () => {
+          throw new Error("disk full");
+        },
+      });
+      engine.onIdle("c");
+      try {
+        if (end === "stop") engine.onStop("c");
+        if (end === "gone") engine.onSessionGone("c");
+        if (end === "timer") r.timers[0]?.fn();
+      } catch {
+        // Before the fix the error escapes; the count below says what must happen.
+      }
+      // A second way out finds no loop: nothing is released twice.
+      try {
+        engine.onStop("c");
+      } catch {
+        // As above.
+      }
+      releases.push(r.log.filter((entry) => entry === "release").length);
+    }
+    expect(releases).toEqual([1, 1, 1]);
+  });
+
+  test("a switch turned off mid-loop: the engine releases the slot it held, the board only places", async () => {
+    const r = rig({ outcomes: [FAIL] });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    r.engine.onIdle("c");
+    r.card.on = false;
+    const decision = r.engine.onTurnResult("c", ok);
+    expect([decision, r.log]).toEqual(["place", ["send", "release"]]);
+  });
+
+  test("a replaced run is not counted: the next record's n is the run that was used", async () => {
+    const r = rig({ outcomes: [PASS, FAIL] });
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    r.engine.onTurnResult("c", ok);
+    open();
+    await r.checksDone();
+    await Promise.resolve();
+    expect(r.records.map((x) => x.n)).toEqual([1]);
+  });
+
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
     const output =
       "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
@@ -389,7 +457,7 @@ describe("check-loop: what ends a loop early", () => {
       decision,
       failed.log,
       failed.timers[0]?.cleared,
-    ]).toEqual([30_000, ["release"], "no_result", "pass", ["release"], true]);
+    ]).toEqual([30_000, ["release"], "no_result", "place", ["release"], true]);
   });
 });
 
