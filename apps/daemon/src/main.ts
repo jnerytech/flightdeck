@@ -112,6 +112,7 @@ import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
+import { present } from "./present.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -951,7 +952,7 @@ export async function startDaemon(
     keepAwake: (session) =>
       awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
     baseEnv: env,
-    ...(opencode.runtime ? { opencode: opencode.runtime } : {}),
+    ...present({ opencode: opencode.runtime }),
     onQuota: (readings) => {
       quota.record(readings);
       quotaHistory.sample(readings);
@@ -1229,7 +1230,7 @@ export async function startDaemon(
       (await resolveSshPath({ platform: process.platform, exists, which: whichOnPath })),
     run: processRun(),
     exec: processExec(),
-    ...(sshAskpass ? { askpass: sshAskpass } : {}),
+    ...present({ askpass: sshAskpass }),
     // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
     delivery: chooseDelivery({
       platform: process.platform,
@@ -1360,7 +1361,7 @@ export async function startDaemon(
       return card ? (teams?.personaOfCard(card) ?? null) : null;
     },
     // Issue #101: a worker's session is named with its team, role and number from the start.
-    ...(teams ? { teamOfCard: teams.teamOfCard.bind(teams) } : {}),
+    ...present({ teamOfCard: teams?.teamOfCard.bind(teams) }),
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
@@ -1403,7 +1404,7 @@ export async function startDaemon(
   const cardPorts = new CardPorts({
     db: store.db,
     base: config.run.portBase,
-    ...(options.portProbe ? { isFree: options.portProbe } : {}),
+    ...present({ isFree: options.portProbe }),
   });
   const runManager = new RunManager({
     db: store.db,
@@ -1468,7 +1469,7 @@ export async function startDaemon(
       info: () => opencode.info,
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
-    ...(assistant ? { assistant } : {}),
+    ...present({ assistant }),
     teleport,
     teleportInbox,
     teleportImport: teleportImportDeps({
@@ -1482,7 +1483,7 @@ export async function startDaemon(
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
-    ...(options.rootsPlatform ? { rootsPlatform: options.rootsPlatform } : {}),
+    ...present({ rootsPlatform: options.rootsPlatform }),
     bypass: {
       allowed: () => config.allowBypassPermissions,
       set: async (allow) => {
@@ -1801,7 +1802,7 @@ export async function startDaemon(
       // With the terminal off there are none to list, and the read must not fail on it (#937).
       terminals: () => (terminals.enabled ? terminals.list() : []),
       pidOf: terminals.pidOf.bind(terminals),
-      ...(options.resourcesProc ? { proc: options.resourcesProc } : {}),
+      ...present({ proc: options.resourcesProc }),
     }),
     worktrees: createWorktrees({
       board,
@@ -1811,7 +1812,7 @@ export async function startDaemon(
       externals: central.external,
       locks: folderLocks,
     }),
-    ...(updates ? { updates } : {}),
+    ...present({ updates }),
     snapshots,
     rewinder,
     forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
@@ -1829,17 +1830,17 @@ export async function startDaemon(
     memory: new ProjectMemory({
       record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
     }),
-    ...(updater ? { updater } : {}),
-    ...(autoUpdater ? { autoUpdate: autoUpdateOf(autoUpdater, config, configFile) } : {}),
+    ...present({
+      updater,
+      autoUpdate: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
+    }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
     token: config.token,
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
-    ...(claude ? { claude } : {}),
-    ...(account ? { account } : {}),
-    ...(options.onShutdown ? { onShutdown: options.onShutdown } : {}),
+    ...present({ claude, account, onShutdown: options.onShutdown }),
     terminal: await terminalInfo(env),
   });
 
@@ -1847,7 +1848,7 @@ export async function startDaemon(
     config.wsl.length > 0
       ? new WslSupervisor(config.wsl, {
           logDir: join(config.dataDir, "logs"),
-          ...(options.wslCommand ? { command: options.wslCommand } : {}),
+          ...present({ command: options.wslCommand }),
         })
       : null;
   await wsl?.start();
