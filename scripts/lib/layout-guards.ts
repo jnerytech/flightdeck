@@ -23,7 +23,8 @@ export type Rule =
   | "overflow-x"
   | "nested-scroll"
   | "header-clipped"
-  | "sheet-actions";
+  | "sheet-actions"
+  | "reason-over";
 
 export interface Finding {
   rule: Rule;
@@ -660,6 +661,57 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       }
     }
   };
+  /** The boxes of an element's own text: its lines where the browser gives them, else its box. */
+  const textBoxes = (el: Element) => {
+    const lines: DOMRect[] = [];
+    for (const node of el.childNodes) {
+      if (node.nodeType !== 3 || !(node.textContent ?? "").trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const line of range.getClientRects?.() ?? []) {
+        if (line.width > 0 && line.height > 0) lines.push(line);
+      }
+    }
+    return lines.length > 0 ? lines : [rectOf(el)];
+  };
+  /**
+   * #1325: a disabled button's reason adds no height to its row (#38), so a reason that wraps, or
+   * a row with text right under it, draws over that text. Only the reasons: a tooltip or a menu
+   * floats over the page on purpose. Touching by 2 px or less covers nothing.
+   */
+  const checkReasons = (shown: Element[]) => {
+    const texts = shown.filter((el) => ownText(el) && !el.closest(".action-reason"));
+    /** Text in a layer that floats (a menu, a popover) and does not hold the reason: drawn over it. */
+    const floatsOver = (el: Element, reason: Element) => {
+      for (let up: Element | null = el; up && up !== document.body; up = up.parentElement) {
+        const position = getComputedStyle(up).position;
+        if ((position === "fixed" || position === "absolute") && !up.contains(reason)) return true;
+      }
+      return false;
+    };
+    for (const reason of shown.filter((el) => el.classList.contains("action-reason"))) {
+      const box = rectOf(reason);
+      if (box.width <= 0 || box.height <= 0) continue;
+      for (const other of texts) {
+        if (other.contains(reason) || floatsOver(other, reason)) continue;
+        const over = textBoxes(other).find(
+          (line) =>
+            Math.min(box.right, line.right) - Math.max(box.left, line.left) > 2 &&
+            Math.min(box.bottom, line.bottom) - Math.max(box.top, line.top) > 2,
+        );
+        if (!over) continue;
+        const wide = Math.round(Math.min(box.right, over.right) - Math.max(box.left, over.left));
+        const tall = Math.round(Math.min(box.bottom, over.bottom) - Math.max(box.top, over.top));
+        add(
+          "reason-over",
+          pathOf(reason, true),
+          `over ${pathOf(other, true)}, ${wide}x${tall} px`,
+          Math.min(wide, tall),
+        );
+        break;
+      }
+    }
+  };
   const checkNarrow = () => {
     if (!narrow) return;
     const shown = [...document.querySelectorAll("body *")].filter(seenBy);
@@ -667,6 +719,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     checkNestedScroll(shown);
     checkHeader(narrow);
     checkSheets();
+    checkReasons(shown);
   };
 
   checkSideways();
@@ -770,6 +823,7 @@ export const RESPONSIVE_RULES: Rule[] = [
   "nested-scroll",
   "header-clipped",
   "sheet-actions",
+  "reason-over",
 ];
 
 export const RESPONSIVE: ResponsiveRules = {
