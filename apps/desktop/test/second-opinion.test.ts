@@ -49,7 +49,7 @@ describe("second-opinion: the reviewer findings still open (#1446)", () => {
 
   test("in pt-BR the line is translated", () => {
     expect(findingsNote(tPt, [comment({ severity: "high" }), comment({ severity: "low" })])).toBe(
-      "2 achados do revisor sem tratar (1 alto)",
+      "2 achados do revisor sem tratar (alto: 1)",
     );
   });
 });
