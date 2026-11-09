@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { type IstanbulChangedDeps, istanbulChanged } from "../lib/istanbul-changed.ts";
-import { shardRun } from "../lib/shard-gate.ts";
+import { shardRun, spawnLogged } from "../lib/shard-gate.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
@@ -119,4 +119,12 @@ describe("istanbul-changed (#1493)", () => {
     const log = (await new Response(proc.stderr).text()) + (await new Response(proc.stdout).text());
     expect([await proc.exited, /cov_\w+ is not defined/.test(log)]).toEqual([1, true]);
   }, 15_000);
+
+  test("the scripts' spawn gives the exit code and the output, stdout then stderr, with the env added", async () => {
+    const spawn = spawnLogged(ROOT);
+    const ran = await spawn(["bash", "-c", 'echo "out $EXTRA"; echo err >&2; exit 3'], {
+      EXTRA: "added",
+    });
+    expect(ran).toEqual({ exit: 3, log: "out added\nerr\n" });
+  });
 });
