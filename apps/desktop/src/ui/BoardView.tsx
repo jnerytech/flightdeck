@@ -323,7 +323,10 @@ function CardTile(
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
+        {/* A reason badge below says the card is queued, and why: one badge, not "queued" beside it. */}
+        {card.queued && !["quota", "memory", "paused"].includes(card.queueReason ?? "") && (
+          <Badge variant="outline">{t("kanban.queued")}</Badge>
+        )}
         {card.queueReason === "quota" && (
           <Badge variant="outline" className="text-status-needs-you">
             {card.quotaUntil
