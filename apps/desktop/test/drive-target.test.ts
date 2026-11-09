@@ -110,11 +110,17 @@ describe("driveTarget", () => {
   });
 
   test("refuses an upload address that is not Google's and sends nothing there", async () => {
-    const drive = fakeDrive({ sessionHost: "https://evil.example" });
-    const target = driveTarget({ fetch: drive.fetch, auth: { token: async () => "good" } });
-    const failure = await target.put(NAME(1), "cipher").catch((e: unknown) => e);
-    expect(failure instanceof DriveError && failure.kind).toBe("upload");
-    expect(drive.calls.some((call) => call.url.startsWith("https://evil.example"))).toBe(false);
-    expect(drive.files.size).toBe(0);
+    for (const host of [
+      "https://evil.example",
+      "https://www.googleapis.com.evil.example",
+      "http://www.googleapis.com",
+    ]) {
+      const drive = fakeDrive({ sessionHost: host });
+      const target = driveTarget({ fetch: drive.fetch, auth: { token: async () => "good" } });
+      const failure = await target.put(NAME(1), "cipher").catch((e: unknown) => e);
+      expect(failure instanceof DriveError && failure.kind).toBe("upload");
+      expect(drive.calls.some((call) => call.url.startsWith(host))).toBe(false);
+      expect(drive.files.size).toBe(0);
+    }
   });
 });

@@ -109,7 +109,8 @@ describe("backup-drive-ui: Google Drive in Settings > Backup schedule (#1444)", 
     await waitFor(() => radio("Google Drive") !== null);
     await click("Google Drive");
     await click("Sign in with Google");
-    await waitFor(() => shown("Signed in to Google"));
+    await waitFor(() => screen.queryByRole("button", { name: "Sign out" }) !== null);
+    expect(shown("Not signed in to Google")).toBe(false);
     expect([...keyring.keys()]).toEqual([REFRESH_TOKEN_ID]);
     expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeNull();
     await click("Sign out");

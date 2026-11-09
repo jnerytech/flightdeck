@@ -140,7 +140,7 @@ describe("BackupScheduler: Google Drive (#1444)", () => {
     await s.scheduler.setPassphrase(PASS);
     await s.scheduler.tick();
     expect(s.scheduler.report).toEqual({ status: "skipped", reason: "drive-auth", at: T0 });
-    expect(s.asked.filter((kind) => kind === "drive-auth")).toEqual(["drive-auth"]);
+    expect(s.asked).toEqual(["passphrase", "drive-auth"]);
     expect(s.google.drive.calls.length).toBe(0);
   });
 
@@ -156,7 +156,7 @@ describe("BackupScheduler: Google Drive (#1444)", () => {
       false,
       0,
     ]);
-    expect(s.asked.filter((kind) => kind === "drive-auth")).toEqual(["drive-auth"]);
+    expect(s.asked).toEqual(["passphrase", "drive-auth"]);
   });
 
   test("signing out removes the token; the schedule then waits for a new sign-in", async () => {
@@ -165,6 +165,11 @@ describe("BackupScheduler: Google Drive (#1444)", () => {
     expect([s.scheduler.driveSignedIn, s.keyring.size]).toEqual([true, 1]);
     await s.scheduler.signOutDrive();
     expect([s.scheduler.driveSignedIn, s.keyring.size]).toEqual([false, 0]);
+    const calls = s.google.drive.calls.length;
+    s.clock.now = T0 + DAY;
+    await s.scheduler.tick();
+    expect(s.scheduler.report).toEqual({ status: "skipped", reason: "drive-auth", at: T0 + DAY });
+    expect(s.google.drive.calls.length).toBe(calls);
   });
 
   test("without a client id a saved Drive target falls back to the folder", async () => {
