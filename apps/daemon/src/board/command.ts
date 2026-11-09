@@ -143,15 +143,33 @@ export function gitLimitedFor(
 /** The most stderr `runLimited` keeps; the rest is read and dropped (#806). */
 const STDERR_MAX = 64 * 1024;
 
-/** All of a stream is read, so its writer never blocks; only the first `max` bytes are kept. */
-async function readCapped(stream: ReadableStream<Uint8Array>, max: number): Promise<string> {
+/**
+ * How long the readers wait for the pipes to close once the tree was killed (#1361): a process that
+ * left the group (`setsid`) keeps them open, and the call must not wait for it to end.
+ */
+const KILL_GRACE_MS = 2000;
+
+/**
+ * All of a stream is read, so its writer never blocks; only the first `max` bytes are kept.
+ * `cancel` stops reading, and `text` then gives what was kept.
+ */
+function readCapped(
+  stream: ReadableStream<Uint8Array>,
+  max: number,
+): { text: Promise<string>; cancel: () => void } {
+  const reader = stream.getReader();
   const kept: Uint8Array[] = [];
   let size = 0;
-  for await (const chunk of stream) {
-    if (size < max) kept.push(chunk.subarray(0, max - size));
-    size += chunk.length;
-  }
-  return Buffer.concat(kept).toString("utf8");
+  const text = (async () => {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (size < max) kept.push(value.subarray(0, max - size));
+      size += value.length;
+    }
+    return Buffer.concat(kept).toString("utf8");
+  })();
+  return { text, cancel: () => void reader.cancel().catch(() => {}) };
 }
 
 /**
@@ -181,10 +199,23 @@ export async function runLimited(
   let timedOut = false;
   let aborted = false;
   let killing: Promise<void> = Promise.resolve();
+  // Read at the same time as stdout: a program that fills the pipe's buffer with stderr would stall.
+  const errors = readCapped(proc.stderr, STDERR_MAX);
+  const reader = proc.stdout.getReader();
+  // Once the tree is killed, the readers get a short grace, then stop: what kept a pipe open
+  // outside the group is not waited for (#1361).
+  let grace: ReturnType<typeof setTimeout> | null = null;
+  const killTreeNow = () => {
+    killing = killing.then(() => kill(proc.pid)).catch(() => {});
+    grace ??= setTimeout(() => {
+      void reader.cancel().catch(() => {});
+      errors.cancel();
+    }, KILL_GRACE_MS);
+  };
   // An abort kills the whole tree like the time limit does (#905).
   const onAbort = () => {
     aborted = true;
-    killing = kill(proc.pid).catch(() => {});
+    killTreeNow();
   };
   if (signal?.aborted) onAbort();
   else signal?.addEventListener("abort", onAbort, { once: true });
@@ -193,14 +224,12 @@ export async function runLimited(
       ? null
       : setTimeout(() => {
           timedOut = true;
-          killing = kill(proc.pid).catch(() => {});
+          killTreeNow();
         }, timeoutMs);
-  // Read at the same time as stdout: a program that fills the pipe's buffer with stderr would stall.
-  const errors = readCapped(proc.stderr, STDERR_MAX);
   const chunks: Uint8Array[] = [];
   let size = 0;
   let truncated = false;
-  const reader = proc.stdout.getReader();
+  let failure: unknown = null;
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -210,19 +239,25 @@ export async function runLimited(
       if (size > limit) {
         truncated = true;
         // A child it left would hold the pipes open, and stderr would never end.
-        if (overflowKillsTree) killing = kill(proc.pid).catch(() => {});
+        if (overflowKillsTree) killTreeNow();
         await reader.cancel();
         break;
       }
     }
+  } catch (error) {
+    // Reading failed: the tree goes too, and the cleanup below still runs before the error.
+    failure = error;
+    killTreeNow();
   } finally {
     // Past the limit, or when reading failed: the program does not go on writing to nobody.
     proc.kill();
   }
-  const [stderr, code] = await Promise.all([errors, proc.exited]);
+  const [stderr, code] = await Promise.all([errors.text, proc.exited]);
   if (timer) clearTimeout(timer);
+  if (grace) clearTimeout(grace);
   signal?.removeEventListener("abort", onAbort);
   await killing;
+  if (failure) throw failure;
   const all = Buffer.concat(chunks);
   const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
   return {

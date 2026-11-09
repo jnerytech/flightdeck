@@ -576,8 +576,9 @@ export class PrFixer {
   ): Promise<{ text: string; refused: boolean } | null> {
     for (const command of settings.checks) {
       // Stored settings are checked again: only a plain command and its arguments, in the worktree.
-      if (checkCommandRefusal(command, worktree)) {
-        return { text: `local check refused: ${masked(command)}`, refused: true };
+      const refusal = checkCommandRefusal(command, worktree);
+      if (refusal) {
+        return { text: `local check refused (${refusal}): ${masked(command)}`, refused: true };
       }
       const result =
         await /* NOSONAR: checks run one after the other and stop at the first that fails */ this.opts.checks.run(
