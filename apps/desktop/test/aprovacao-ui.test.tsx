@@ -300,6 +300,15 @@ describe("aprovacao-ui", () => {
     const project = await d.board.addProject({ path: repo, promptTemplate: "" });
     const card = d.board.createCard(project.id, { title: "Testar", description: "[bash]" });
     await d.board.startCard(card.id);
+    // The card's own run asks too: wait for its request before the app opens the card, so the card
+    // page never waits for a run that has not got to its question yet (a slow Windows runner, #1417).
+    const cardSession = await poll(() => d.board.getCard(card.id).sessionId ?? undefined, 15_000);
+    expect(cardSession).not.toBeNull();
+    const asked = await poll(
+      () => d.manager.pendingPermissions(cardSession ?? "").length === 1,
+      15_000,
+    );
+    expect(asked).toBe(true);
     const { sessionId } = await d.manager.create({
       cwd: d.project,
       prompt: "[bash]",
