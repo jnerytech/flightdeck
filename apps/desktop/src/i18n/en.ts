@@ -1368,6 +1368,8 @@ export const en: Dictionary = {
   time: {
     now: "just now",
     ago: "{d} ago",
+    agoDay: "1 day ago",
+    agoDays: "{n} days ago",
     hours: "{n} h",
     minutes: "{n} min",
     seconds: "{n} s",
