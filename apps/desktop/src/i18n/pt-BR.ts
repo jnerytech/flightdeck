@@ -813,6 +813,9 @@ export const ptBR = {
       unreadable:
         "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
       failed: "A restauração falhou e nada foi alterado.",
+      "drive-auth":
+        "O Google Drive não aceita a entrada. Entre de novo em Backups agendados.",
+      "drive-failed": "Não foi possível ler o Google Drive. Tente de novo.",
       unexpected: "Algo deu errado. Nada foi alterado.",
       "too-big":
         "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",

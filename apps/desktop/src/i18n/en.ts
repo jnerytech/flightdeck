@@ -816,6 +816,9 @@ export const en: Dictionary = {
       unreadable:
         "The file could not be read. Check the passphrase; a changed file is refused too.",
       failed: "The restore failed and nothing was changed.",
+      "drive-auth":
+        "Google Drive does not accept the sign-in. Sign in again under Scheduled backups.",
+      "drive-failed": "Google Drive could not be read. Try again.",
       unexpected: "Something went wrong. Nothing was changed.",
       "too-big":
         "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",

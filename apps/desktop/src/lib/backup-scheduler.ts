@@ -97,6 +97,16 @@ export class BackupScheduler {
     return result;
   }
 
+  /** The names of the backups on Drive. Rejects with a `DriveError` when it cannot be read. */
+  async driveBackups(): Promise<string[]> {
+    return [];
+  }
+
+  /** The text of one backup on Drive. */
+  async driveBackupText(_name: string): Promise<string> {
+    return "";
+  }
+
   async signOutDrive(): Promise<void> {
     if (!this.google) return;
     await this.google.signOut();

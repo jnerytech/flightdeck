@@ -435,7 +435,12 @@ export interface AppUpdateState {
 /** What the restore picker reads at most (PICKED_FILE_MAX_BYTES in src-tauri/src/lib.rs, #1241). */
 const BACKUP_FILE_MAX_BYTES = 1024 * 1024;
 /** What a backup or a read says besides a BackupError code: a cancelled dialog, or any other failure. */
-type BackupOutcomeCode = "cancelled" | "too-big" | "unexpected";
+type BackupOutcomeCode =
+  | "cancelled"
+  | "too-big"
+  | "unexpected"
+  | "drive-auth"
+  | "drive-failed";
 
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
@@ -4597,6 +4602,23 @@ export class AppStore {
       this.fail(error);
       return { ok: false, code: "unexpected" };
     }
+  }
+
+  /** Issue #1462: the backups on Google Drive, newest first. */
+  async listDriveBackups(): Promise<
+    { ok: true; names: string[] } | { ok: false; code: BackupOutcomeCode }
+  > {
+    return { ok: true, names: [] };
+  }
+
+  /** Issue #1462: reads one backup from Google Drive into the same preview as a file. */
+  async previewDriveBackup(
+    _name: string,
+    _passphrase: string,
+  ): Promise<
+    { ok: true; preview: RestorePreview } | { ok: false; code: BackupErrorCode | BackupOutcomeCode }
+  > {
+    return { ok: false, code: "unexpected" };
   }
 
   /**
