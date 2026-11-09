@@ -225,4 +225,11 @@ describe("server-registry", () => {
       ["worktree.list", "worktree.remove"].sort(),
     );
   });
+
+  // Issue #1288: the issues commands left the switch of server.ts.
+  test("the issues domain owns the issues.* commands", () => {
+    expect(Object.keys(DOMAINS.issues ?? {}).sort()).toEqual(
+      ["issues.createCard", "issues.get", "issues.list"].sort(),
+    );
+  });
 });
