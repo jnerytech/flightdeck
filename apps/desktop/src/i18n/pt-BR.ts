@@ -1672,6 +1672,7 @@ export const ptBR = {
     quotaPause: "a trava da cota para cartões novos",
     memoryPause: "a trava de memória para cartões novos",
     hostPause: "a pausa de novas execuções",
+    cardReview: "a revisão de segunda opinião de um cartão",
     quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },

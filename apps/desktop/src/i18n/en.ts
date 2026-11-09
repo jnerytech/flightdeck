@@ -1682,6 +1682,7 @@ export const en: Dictionary = {
     quotaPause: "the quota guard for new cards",
     memoryPause: "the memory hold for new cards",
     hostPause: "the pause of new runs",
+    cardReview: "the second-opinion review of a card",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
