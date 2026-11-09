@@ -78,7 +78,7 @@ const card = {
   worktreePath: "/w",
 } as never;
 
-async function show(language: "en" | "pt-BR", anchored = 1) {
+async function show(language: "en" | "pt-BR", anchored = 1, comments = COMMENTS) {
   const store = {
     hostRequest: async (_host: string, type: string) =>
       type === "card.review"
@@ -95,7 +95,7 @@ async function show(language: "en" | "pt-BR", anchored = 1) {
           }
         : { ok: true, data: CHANGES },
     hostCommand: async (_host: string, type: string) =>
-      type === "review.list" ? { comments: COMMENTS } : null,
+      type === "review.list" ? { comments } : null,
     watchChanges: () => () => {},
     canOpenPaths: () => false,
     later: () => () => {},
@@ -136,6 +136,10 @@ async function show(language: "en" | "pt-BR", anchored = 1) {
   ]).toEqual([true, true]);
 }
 
+/** The text of the focused list item, or "" when the focus is not on one (the page itself, say). */
+const focused = () =>
+  document.activeElement?.tagName === "LI" ? (document.activeElement.textContent ?? "") : "";
+
 const press = async (name: string) => {
   const found = screen.queryByRole("button", { name });
   expect(found).not.toBeNull();
@@ -148,8 +152,8 @@ describe("second-opinion-drafts-ui: going to the reviewer drafts (#1496)", () =>
   test("Go to the drafts puts the focus on the first reviewer draft, not on a person's", async () => {
     await show("en");
     await press("Go to the drafts");
-    const focused = document.activeElement?.textContent ?? "";
-    expect([focused.includes("Floats lose cents."), focused.includes("My own note.")]).toEqual([
+
+    expect([focused().includes("Floats lose cents."), focused().includes("My own note.")]).toEqual([
       true,
       false,
     ]);
@@ -158,7 +162,16 @@ describe("second-opinion-drafts-ui: going to the reviewer drafts (#1496)", () =>
   test("in pt-BR the button is Ir para os rascunhos", async () => {
     await show("pt-BR");
     await press("Ir para os rascunhos");
-    expect((document.activeElement?.textContent ?? "").includes("Floats lose cents.")).toBe(true);
+    expect(focused().includes("Floats lose cents.")).toBe(true);
+  });
+
+  test("once the drafts were sent, the button goes to the reviewer's sent comment", async () => {
+    await show("en", 1, [
+      comment({ state: "sent" }),
+      comment({ id: "r1", body: "Floats lose cents.", author: "reviewer", state: "sent" }),
+    ]);
+    await press("Go to the drafts");
+    expect(focused().includes("Floats lose cents.")).toBe(true);
   });
 
   test("a review that placed no draft offers no button", async () => {
