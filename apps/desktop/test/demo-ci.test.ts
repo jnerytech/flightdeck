@@ -183,6 +183,8 @@ describe("demo-prints: axe e CI", () => {
       "pull-requests",
       "enquanto-fora",
       "segunda-opiniao",
+      // #1406: Update from the base on three cards, one of them in conflict.
+      "board-atualizar",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

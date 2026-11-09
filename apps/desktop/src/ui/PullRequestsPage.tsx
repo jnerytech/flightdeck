@@ -1,13 +1,16 @@
 import { GitPullRequest } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CardMergePr } from "@/components/card/card-merge-pr";
+import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PrRefusal } from "@/components/pull-requests/pr-refusal";
 import { PrRow } from "@/components/pull-requests/pr-row";
 import { refusalText } from "@/i18n/errors";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
+import { bulkSplit, updateMany, updateSummary } from "../lib/board-bulk.ts";
+import { answerOf } from "../lib/board-select.ts";
 import { openPullRequests } from "../lib/pull-requests.ts";
 import type { Route } from "../lib/router.ts";
 import { useStoreSlice } from "../lib/use-store.ts";
@@ -63,6 +66,49 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
     store.success(t("cardReview.updated"));
   };
 
+  /**
+   * #1406: Update from the base for every listed PR that can take it (idle, with a branch), one card
+   * at a time, each on its own host. The summary names the updated, current and conflicted cards.
+   */
+  const updatable = bulkSplit(
+    rows.map((row) => row.card),
+    t,
+  ).update;
+  const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
+  const [summary, setSummary] = useState("");
+  const updateAll = useRef<HTMLButtonElement>(null);
+  /** Runs finished: the button was off while each ran, so the focus goes back once it is on. */
+  const [ran, setRan] = useState(0);
+  useEffect(() => {
+    if (ran > 0) updateAll.current?.focus();
+  }, [ran]);
+  const updateEvery = async () => {
+    if (updating) return;
+    const hostOf = new Map(rows.map((row) => [row.card, row.hostId]));
+    const host = (card: (typeof updatable)[number]) => hostOf.get(card) ?? "";
+    setRefusal(null);
+    setSummary("");
+    setUpdating({ done: 0, total: updatable.length });
+    const results = await updateMany(updatable, {
+      behind: async (card) => {
+        const answer = await store.hostRequest(host(card), "changes.get", {
+          target: `card:${card.id}`,
+        });
+        return answer.ok ? (answer.data.position?.behind ?? null) : null;
+      },
+      update: async (card) => {
+        const answer = await store.hostRequest(host(card), "card.updateFromBase", {
+          cardId: card.id,
+        });
+        return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+      },
+      onProgress: (done, total) => setUpdating({ done, total }),
+    });
+    setSummary(updateSummary(t, results));
+    setUpdating(null);
+    setRan((n) => n + 1);
+  };
+
   const target = merging ? state.cards[sessionKey(merging.hostId, merging.cardId)] : undefined;
   let body = null;
   if (rows.length > 0) {
@@ -114,6 +160,26 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   return (
     <Page title={t("pullRequests.title")} subtitle={t("pullRequests.subtitle")}>
       <Stack gap={3}>
+        {/* #1406: one row's own button is enough for a single PR. */}
+        {updatable.length > 1 && (
+          <Inline gap={2}>
+            <ActionButton
+              ref={updateAll}
+              variant="outline"
+              size="sm"
+              disabled={updating !== null}
+              onClick={() => void updateEvery()}
+            >
+              {t("board.updateSelected", { n: updatable.length })}
+            </ActionButton>
+            {updating && (
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {t("board.updating", updating)}
+              </span>
+            )}
+          </Inline>
+        )}
+        <output className="block text-sm empty:hidden">{summary}</output>
         {refusal && <PrRefusal text={refusal} />}
         {merging && target && (
           <CardMergePr

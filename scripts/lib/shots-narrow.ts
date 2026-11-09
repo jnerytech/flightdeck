@@ -58,6 +58,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "board-selecao-iniciar",
   // #1446: the second-opinion review on a card's Changes.
   "card-segunda-opiniao",
+  // #1406: the bar and the board's notice after Update N from the base.
+  "board-atualizar",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

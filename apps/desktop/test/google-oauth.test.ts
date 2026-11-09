@@ -21,6 +21,7 @@ function setup(
   const opened: string[] = [];
   const listened: string[] = [];
   let clock = 1_000_000;
+  let cancelled = 0;
   const redirect = options.redirect === undefined ? "echo" : options.redirect;
   const sign = googleSignIn({
     config: options.config ?? { clientId: "client-1" },
@@ -45,7 +46,9 @@ function setup(
           }
           return redirect;
         },
-        cancel: () => {},
+        cancel: () => {
+          cancelled += 1;
+        },
       }),
     },
     openExternal: async (url) => {
@@ -53,7 +56,16 @@ function setup(
     },
     now: () => clock,
   });
-  return { sign, oauth, keyring, stored, opened, listened, tick: (ms: number) => (clock += ms) };
+  return {
+    sign,
+    oauth,
+    keyring,
+    stored,
+    opened,
+    listened,
+    cancelled: () => cancelled,
+    tick: (ms: number) => (clock += ms),
+  };
 }
 
 async function sha256Url(text: string): Promise<string> {
@@ -133,6 +145,23 @@ describe("googleSignIn.signIn", () => {
   });
 });
 
+describe("googleSignIn: the loopback listener", () => {
+  test("is closed once however the sign-in ends: signed in, cancelled, forged state, refused code", async () => {
+    const ended = [
+      setup(),
+      setup({ redirect: null }),
+      setup({ redirect: { code: "the-code", state: "forged" } }),
+    ];
+    const refused = setup();
+    refused.oauth.codes.clear();
+    ended.push(refused);
+    for (const one of ended) {
+      await one.sign.signIn();
+      expect(one.cancelled()).toBe(1);
+    }
+  });
+});
+
 describe("googleSignIn: scope and sign-out", () => {
   test("a sign-in that did not grant the app data scope is refused and stores nothing", async () => {
     const { sign, oauth, keyring } = setup();
@@ -147,10 +176,14 @@ describe("googleSignIn: scope and sign-out", () => {
     await sign.signOut();
     expect(oauth.revoked).toEqual(["refresh-1"]);
     expect(keyring.size).toBe(0);
-    await sign.signIn();
+    // The fake spends a code once: give it another, so this sign-in really stores a token.
+    oauth.codes.add("the-code");
+    expect(await sign.signIn()).toBe("signed-in");
+    expect(keyring.size).toBe(1);
     oauth.offline = true;
     await sign.signOut();
     expect(keyring.size).toBe(0);
+    expect(await sign.signedIn()).toBe(false);
   });
 });
 

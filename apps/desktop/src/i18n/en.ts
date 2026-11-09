@@ -972,10 +972,13 @@ export const en: Dictionary = {
     startBudgetHold:
       "{host} reached a budget that holds new cards: they wait until its period resets.",
     startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
+    startPausedHold: "{host} has new runs paused: new cards wait until you resume it.",
     startedElsewhere: "Started on {host} as {id}.",
     startOn: "Start on {host}",
     startOnHint:
-      "{n} of them would wait here. Another host with the same project has the places for them:",
+      "{n} of them would wait here. Another host with the same project has places for them.",
+    startOnHintOne:
+      "This card would wait here. Another host with the same project has a place for it.",
     elsewhereOrphaned: "A copy is left on {host}: {names}",
     elsewhereDoneOne: "1 card started on {host}.",
     elsewhereDone: "{count} cards started on {host}.",
@@ -4104,6 +4107,12 @@ export const en: Dictionary = {
     badCheck:
       "Local checks: a command and its arguments, with no quotes, pipes, ; & $ or redirections",
     badLimit: "{label}: empty or above zero",
+    checkRounds: "Check loop rounds",
+    checkEnv: "Extra check variables (one per line)",
+    checkLoopDefault: "Turn the check loop on for new cards",
+    badCheckRounds: "Check loop rounds: from 1 to 10",
+    badCheckEnv: "Extra variables: only where a tool lives (like JAVA_HOME), never a secret",
+    tooManyCheckEnv: "Extra variables: at most 20 names, each up to 64 characters",
   },
   sessionFinish: {
     commit: "Commit on a new branch",

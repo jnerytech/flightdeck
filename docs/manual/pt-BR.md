@@ -1079,7 +1079,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   checks, se **Vigiar e consertar** está desligado, vigiando ou precisa de você, e um link para o
   PR. **Fazer merge do PR** pergunta antes, com a mesma confirmação da página do card, e só aparece
   quando o host faz merge e os checks não estão falhando; **Atualizar com a base** faz o rebase da
-  branch do card, e um conflito fica na tela com os arquivos. O título abre o card. Uma linha sob o título diz se o PR
+  branch do card, e um conflito fica na tela com os arquivos. Com dois ou mais PRs que podem ser
+  atualizados (com branch, e sem estar rodando), **Atualizar N com a base** acima da lista atualiza
+  todos, um de cada vez, cada um no seu host, como a barra de seleção do board: um PR que já está na
+  base fica como está, um conflito para só aquele card, e uma linha nomeia os atualizados, os já em
+  dia e os com conflito. O título abre o card. Uma linha sob o título diz se o PR
   conflita com a base, a revisão (aprovado, mudanças pedidas, revisão pendente) e há quanto tempo está
   aberto, como a checagem de PRs do host informa (a cada cerca de um minuto); um host que não informa,
   ou que ainda não checou, não acrescenta nada.
@@ -1130,7 +1134,7 @@ aparece mascarado e como **Oculto**, e não abre.
   **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
   quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
   uma linha para cada trava que segura os cards novos (o limite de pausa da cota, um orçamento no limite,
-  o host sem memória), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
+  o host sem memória, o host com novas execuções pausadas), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
   está cheio, pausado ou travado) e outro host online tem o mesmo projeto (o mesmo repositório) com
   vagas para todos eles, a confirmação também oferece **Iniciar em <host>**: ela cria cada um desses
   cards nesse host e o inicia lá, depois marca o card daqui "Iniciado em <host> como <card>" e o move
