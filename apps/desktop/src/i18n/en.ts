@@ -3072,6 +3072,8 @@ export const en: Dictionary = {
     /** The first-run screen's title, and the Add host screen's once a host exists (#728). */
     title: "Connect your first host",
     titleMore: "Add a host",
+    /** The first-run screen's tab and header crumb (#1551). */
+    crumb: "Connect a host",
     addHost: "Add a host with the flightdeckd address and token.",
     stepsLabel: "First steps",
     step1: "On the computer that runs Claude Code, install and start the daemon:",
