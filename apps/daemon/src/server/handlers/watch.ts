@@ -5,29 +5,30 @@ import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 
 /**
- * Issue #1361: the fields that decide what runs unattended in a card's worktree, as whom
- * (`persona`), and what a round may push outside its PR (`driftAllow`). A patch that changes one
- * needs a near connection; one that sends them unchanged (the whole form) does not.
+ * Issue #1361: the fields a far client may change: the switch and the brakes on spending (rounds,
+ * turns, failures, money). Every other field decides what runs unattended in a card's worktree, as
+ * whom, or what a round may push, so a patch that changes it needs a near connection; one that
+ * sends it unchanged (the whole form) does not. A new field is near-only until it is named here.
  */
-const NEAR_ONLY = [
-  "checks",
-  "checkTimeoutMin",
-  "checkRounds",
-  "checkEnv",
-  "checkLoopDefault",
-  "persona",
-  "driftAllow",
-] as const;
+const FAR_EDITABLE: ReadonlySet<string> = new Set([
+  "enabled",
+  "maxRounds",
+  "maxTurns",
+  "maxFailures",
+  "budgetUsd",
+  "dailyUsd",
+]);
 
 export const watchHandlers = {
   "watch.settings": (payload, { ws, server }) => {
     const watch = server.need("watch");
     const { projectId, patch } = payload;
     if (patch) {
-      const current = watch.settings(projectId);
-      const changed = NEAR_ONLY.filter(
-        (key) => key in patch && JSON.stringify(patch[key]) !== JSON.stringify(current[key]),
-      );
+      const current: Record<string, unknown> = { ...watch.settings(projectId) };
+      const changed = Object.entries(patch)
+        .filter(([key]) => !FAR_EDITABLE.has(key))
+        .filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(current[key]))
+        .map(([key]) => key);
       if (changed.length > 0) {
         requireVaultTransport(ws.data.origin, "watch.settings", server.opts.log);
         // The project's trail of who changed what runs unattended: the fields, not their values.
