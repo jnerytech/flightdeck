@@ -102,6 +102,20 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     ]);
   });
 
+  // The print of #1328 showed "Type it below" under the passphrase field: the notice comes first.
+  test("the notice of a waiting backup comes before the passphrase field it points to", async () => {
+    open();
+    await click("Choose folder");
+    await click("Every day");
+    const notice = screen.queryByText("A backup is due, but it waits for the passphrase. Type it below.");
+    const input = field("Passphrase for this session");
+    expect(
+      notice !== null &&
+        input !== null &&
+        (notice.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    ).toBe(true);
+  });
+
   test("a short passphrase is not accepted; a good one runs the backup, then the field goes away", async () => {
     const { files, platform, store } = open();
     await click("Choose folder");
