@@ -1106,6 +1106,7 @@ function redacted(text: string): string {
       "--$1$2***",
     )
     .replace(/\b(Bearer)\s+\S+/gi, "$1 ***")
+    .replace(/\b(Cookie|X-Api-Key):\s*[^"'\s]+/gi, "$1: ***")
     .replace(
       /\b(\w*(?:TOKEN|SECRET|PASSWORD|KEY|EXTRAHEADER)\w*)=(?:"[^"]*"|'[^']*'|\S+)/gi,
       "$1=***",

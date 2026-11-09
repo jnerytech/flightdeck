@@ -309,6 +309,7 @@ const TEXT_AREAS = new Set(["secret", "permission"]);
 const SECRET_VALUES = [
   /(?:gh[pousr]_|github_pat_)\w{20,}/,
   /glpat-[\w-]{20,}/,
+  /\bnpm_\w{20,}/,
   /\bsk-[\w-]{16,}/,
   /AKIA[0-9A-Z]{16}/,
   /xox[abprs]-[\w-]{10,}/,
@@ -324,7 +325,8 @@ function areasOf(lines: string[], path: string): string[] {
     ([name, patterns]) =>
       !(text && TEXT_AREAS.has(name)) && code.some((line) => any(patterns, line)),
   ).map(([name]) => name);
-  if (text && code.some((line) => any(SECRET_VALUES, line))) areas.push("secret");
+  // A secret pasted in a comment is leaked all the same: every line is read for its shape.
+  if (text && lines.some((line) => any(SECRET_VALUES, line))) areas.push("secret");
   return areas;
 }
 
