@@ -235,9 +235,10 @@ em vez de depender de cuidado.
   test`): while it runs, the slot raises the niceness of the other bun test processes of the
   same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
   process tree, restores nothing (those processes finish niced) and does nothing on Windows.
-  A slot run that names more than 60 test files, nested or not, is refused without
-  `FLIGHTDECK_SLOT_HEAVY="<reason>"` (#833): `test:related` takes the slot above 60 files, and such
-  a run held it 30 minutes. Past 20 minutes a hold is LONG: the holder and its waiters get a line,
+  A slot run whose test files take more than 60 s of CI time by `scripts/test-timings.json` (more
+  than 60 files when it cannot be read), nested or not, is refused without
+  `FLIGHTDECK_SLOT_HEAVY="<reason>"` (#833, #1541): `test:related` takes the slot above 60 files, and
+  a run of hundreds of files held it 30 minutes, while 60 unit files take seconds. Past 20 minutes a hold is LONG: the holder and its waiters get a line,
   `--status` marks it, and `harness:stats` lists it.
 - **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
   `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a
