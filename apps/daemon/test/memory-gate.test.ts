@@ -113,25 +113,35 @@ describe("memory-gate: new cards wait while the host's memory is at or above res
     expect([g.gate.pauseAt(), g.gate.blocked(), heard]).toEqual([null, null, 2]);
   });
 
-  test("a watched gate reads again on its own and speaks only when the hold starts or ends", () => {
+  test("a watched gate reads again on its own only while it holds, and speaks when the hold ends", () => {
     const g = gateAt(0.95);
     let heard = 0;
+    const live = () => g.pending.filter((t) => !t.cleared).length;
     const stop = g.gate.watch(() => heard++);
     g.advance(15_000);
-    expect(heard).toBe(0);
+    expect([heard, live()]).toEqual([0, 1]);
     g.set(used(0.5));
     g.advance(15_000);
-    expect(heard).toBe(1);
-    g.advance(15_000);
-    expect(heard).toBe(1);
+    // Released: nothing waits for memory, so an idle daemon keeps no timer (daemon-idle).
+    expect([heard, live()]).toEqual([1, 0]);
+    // The next start reads afresh; holding again, the poll comes back.
     g.set(used(0.97));
+    expect(g.gate.blocked()).toEqual({ used: 0.97 });
+    expect(live()).toBe(1);
+    g.set(used(0.5));
     g.advance(15_000);
-    expect(heard).toBe(2);
+    expect([heard, live()]).toEqual([2, 0]);
     // Unwatched, it stops reading: no timer is left behind.
+    g.set(used(0.97));
+    g.gate.blocked();
     stop();
-    g.set(used(0.1));
-    g.advance(15_000);
-    expect([heard, g.pending.filter((t) => !t.cleared).length]).toEqual([2, 0]);
+    expect([heard, live()]).toEqual([2, 0]);
+  });
+
+  test("a watched gate that does not hold keeps no timer", () => {
+    const g = gateAt(0.5);
+    cleanups.push(g.gate.watch(() => {}));
+    expect(g.pending.filter((t) => !t.cleared).length).toBe(0);
   });
 
   test("on the board, a card waits with reason memory and starts when memory falls", async () => {
