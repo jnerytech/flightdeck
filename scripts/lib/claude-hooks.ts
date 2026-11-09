@@ -175,6 +175,19 @@ export function checkoutRoot(filePath: string, projectDir: string): string | nul
   }
 }
 
+/** The arguments `bun` gets to check one edited file with Biome (the biome-on-edit hook). */
+export function biomeEditArgs(rel: string): string[] {
+  return [
+    "x",
+    "biome",
+    "check",
+    "--write",
+    "--no-errors-on-unmatched",
+    "--files-ignore-unknown=true",
+    rel,
+  ];
+}
+
 /**
  * Why an Edit or Write of a test file is blocked: it adds a focused, skipped or todo test, or a
  * snapshot that would record the first run (docs/TDD.md). `readFile` gives the current content
