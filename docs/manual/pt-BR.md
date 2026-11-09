@@ -1372,7 +1372,7 @@ interrompida ou fica ociosa.
   Execuções que já estão rodando nunca são paradas. Troque no painel **Recursos** da página do host
   (**Cartões novos esperam com a memória em**, ou **Nunca**), ou no `config.json`
   (`{ "resources": { "pauseAt": 0.9 } }`, `null` desliga). Quando o host não consegue ler a
-  memória, nada espera.
+  memória, nada espera; o macOS, que conta o cache como memória em uso, não é lido.
 
 ### Dependências entre cards
 

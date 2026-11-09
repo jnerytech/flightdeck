@@ -113,7 +113,7 @@ import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
-import { MemoryGate, type MemoryReading } from "./resources/memory-gate.ts";
+import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createResources } from "./resources/wiring.ts";
 import { Changes } from "./review/changes.ts";
@@ -850,16 +850,16 @@ export async function startDaemon(
   );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
-  // Issue #1343: new cards wait while memory is at or above resources.pauseAt. Under the test
-  // preload (its service guard) nothing of the real machine is read: a busy runner would hold every
-  // board test, so the reading is unknown there and the hold stays open, unless a test injects one.
+  // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
+  // is set only by the test preload, never in production: under it nothing of the real machine is
+  // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
   const memoryGate = new MemoryGate({
     pauseAt: config.resources.pauseAt,
     read:
       options.memoryReading ??
       (process.env.FLIGHTDECK_SERVICE_GUARD
         ? () => null
-        : () => ({ totalBytes: totalmem(), freeBytes: freemem() })),
+        : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
   });
   const quotaHistory = new QuotaHistory({ db: store.db });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.

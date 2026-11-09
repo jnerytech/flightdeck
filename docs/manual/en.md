@@ -1362,7 +1362,8 @@ interrupted or goes idle.
   and starts on its own once memory frees up; the host looks again every 15 seconds. Runs already
   going are never stopped. Change it in the host page's **Resources** panel (**New cards wait from
   memory at**, or **Never**), or in `config.json` (`{ "resources": { "pauseAt": 0.9 } }`, `null`
-  to turn it off). When the host cannot read its memory, nothing waits.
+  to turn it off). When the host cannot read its memory, nothing waits; macOS, which counts its
+  cache as used memory, is not read.
 
 ### Card dependencies
 

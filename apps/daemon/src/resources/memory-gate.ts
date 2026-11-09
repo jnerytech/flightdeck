@@ -30,12 +30,13 @@ export const MEMORY_PAUSE_AT = 0.9;
  * MemAvailable through Bun's free memory and Windows its available physical memory, both with the
  * reclaimable cache counted as free; macOS counts that cache as used, so a Mac would sit above 90%.
  */
-export function osMemoryReading(_os: {
+export function osMemoryReading(os: {
   platform: NodeJS.Platform;
   totalmem(): number;
   freemem(): number;
 }): MemoryReading | null {
-  return null;
+  if (os.platform === "darwin") return null;
+  return { totalBytes: os.totalmem(), freeBytes: os.freemem() };
 }
 
 /** The share of memory in use, or null when the reading cannot be trusted. */
