@@ -18,13 +18,22 @@ type LimitedGit = (
   timeoutMs?: number,
 ) => Promise<CommandResult & { truncated: boolean }>;
 
-/** The radar's git: no fsmonitor hook, output capped, and a time limit; a cut-off read is a failure. */
+/** Git without its fsmonitor hook (a repo's config could name a program), with plain path names. */
+const GIT_SAFE = ["-c", "core.fsmonitor=false", "-c", "core.quotePath=false"];
+const NUL = 0;
+
+/** The radar's git: output capped, a time limit; a read that was cut off or timed out is a failure. */
 export function radarGit(
-  _limit = 1024 * 1024,
-  _timeoutMs = 10_000,
-  _run: LimitedGit = gitLimitedFor,
+  limit = 1024 * 1024,
+  timeoutMs = 10_000,
+  run: LimitedGit = (cwd, max, args, ms) =>
+    gitLimitedFor(cwd, max, args, ms, undefined, { separator: NUL }),
 ): RadarGit {
-  return async () => ({ code: 0, stdout: "", stderr: "" });
+  return async (cwd, ...args) => {
+    // git-arg: the radar's callers pass fixed options and a Rev checked by refArg
+    const result = await run(cwd, limit, [...GIT_SAFE, ...args], timeoutMs);
+    return result.truncated || result.timedOut ? { ...result, code: result.code || 1 } : result;
+  };
 }
 
 /** A card the radar watches: its worktree and what it was cut from. */
@@ -52,6 +61,7 @@ interface Entry {
   files: Set<string>;
 }
 
+const byName = (a: string, b: string): number => a.localeCompare(b);
 const names = (result: CommandResult): string[] => result.stdout.split("\0").filter(Boolean);
 
 /**
@@ -67,9 +77,9 @@ export class ConflictRadar {
   constructor(private readonly git: RadarGit) {}
 
   /** Reads the card's changed files; returns the card and the cards whose overlaps changed. */
-  async update(card: RadarCard, _isCurrent: () => boolean = () => true): Promise<string[]> {
+  async update(card: RadarCard, isCurrent: () => boolean = () => true): Promise<string[]> {
     const head = await this.git(card.worktree, "rev-parse", "HEAD");
-    if (head.code !== 0) return [];
+    if (head.code !== 0) return this.failed(card.id);
     const sha = head.stdout.trim();
     const before = this.entries.get(card.id);
     let committed = before?.head === sha ? before.committed : null;
@@ -83,7 +93,7 @@ export class ConflictRadar {
         `${card.base}...HEAD`,
         "--",
       );
-      if (diff.code !== 0) return [];
+      if (diff.code !== 0) return this.failed(card.id);
       committed = names(diff);
     }
     const tracked = await this.git(card.worktree, "diff", "--name-only", "-z", "HEAD", "--");
@@ -94,8 +104,14 @@ export class ConflictRadar {
       "--exclude-standard",
       "-z",
     );
-    if (tracked.code !== 0 || untracked.code !== 0) return [];
-    const files = new Set([...committed, ...names(tracked), ...names(untracked)]);
+    if (tracked.code !== 0 || untracked.code !== 0) return this.failed(card.id);
+    // The card may have left the radar while git ran: nothing of this read is kept.
+    if (!isCurrent()) return [];
+    const files = new Set(
+      [...committed, ...names(tracked), ...names(untracked)]
+        .sort(byName)
+        .slice(0, MAX_FILES_PER_CARD),
+    );
     if (before && sameFiles(before.files, files) && before.group === card.group) {
       before.head = sha;
       before.committed = committed;
@@ -123,13 +139,19 @@ export class ConflictRadar {
     return [...affected];
   }
 
+  /** A read that failed: what the card had is stale, so it leaves the radar with its flags. */
+  private failed(cardId: string): string[] {
+    const peers = this.remove(cardId);
+    return peers.length > 0 ? [cardId, ...peers] : [];
+  }
+
   /** The card left the board or lost its worktree; returns the cards that were flagged with it. */
   remove(cardId: string): string[] {
     const entry = this.entries.get(cardId);
     if (!entry) return [];
     const peers = [...this.peersOf(cardId, entry)];
     this.drop(cardId);
-    return peers.sort();
+    return peers.sort(byName);
   }
 
   /** The cards that share files with this one, with the files, in card order. */
@@ -138,7 +160,7 @@ export class ConflictRadar {
     const byFile = entry && this.index.get(entry.projectId);
     if (!entry || !byFile) return [];
     const shared = new Map<string, string[]>();
-    for (const file of [...entry.files].sort()) {
+    for (const file of [...entry.files].sort(byName)) {
       for (const peer of this.peersAt(byFile, file, cardId, entry.group)) {
         const list = shared.get(peer) ?? [];
         if (list.length < MAX_SHARED_FILES) list.push(file);
@@ -146,7 +168,8 @@ export class ConflictRadar {
       }
     }
     return [...shared]
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => byName(a, b))
+      .slice(0, MAX_PEERS)
       .map(([peer, files]) => ({ cardId: peer, files }));
   }
 

@@ -53,7 +53,7 @@ import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
-import { ConflictRadar } from "./conflict-radar.ts";
+import { ConflictRadar, radarGit } from "./conflict-radar.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { cardDiff } from "./diff.ts";
 import {
@@ -445,7 +445,9 @@ export class Board {
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
   /** Issue #1405: which cards of a project edit the same files. */
-  private readonly radar = new ConflictRadar((cwd, ...args) => git(cwd, ...args));
+  private readonly radar = new ConflictRadar(radarGit());
+  /** The radar reads of the cards in flight, and the ones asked again meanwhile. */
+  private readonly radarReads = new Map<string, { again: boolean; done: Promise<void> }>();
   /** Phase 22: the fix runs waiting for their first turn to end, by card. */
   private readonly fixes = new Map<string, (result: FixResult) => void>();
   private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
@@ -2612,31 +2614,57 @@ export class Board {
   }
 
   /** Issue #1405: reads what the card changed and tells the cards that now share files with it. */
-  async refreshConflicts(id: string): Promise<void> {
-    if (this.stopped) return;
-    const card = this.getCard(id);
-    const watching =
-      card.worktreePath !== null &&
-      card.column !== "done" &&
-      card.prState !== "merged" &&
-      card.prState !== "closed";
-    if (!watching) return this.dropConflicts(id);
-    const project = this.getProject(card.projectId);
-    let base: Rev;
-    try {
-      base = refArg(project.baseBranch);
-    } catch {
-      return this.dropConflicts(id);
+  refreshConflicts(id: string): Promise<void> {
+    // One read of a card at a time; a turn that ends meanwhile asks for one more, not for another.
+    const running = this.radarReads.get(id);
+    if (running) {
+      running.again = true;
+      return running.done;
     }
-    const affected = await this.radar.update({
-      id,
-      projectId: card.projectId,
-      worktree: card.worktreePath as string,
-      base,
-      group: card.arenaOf ?? id,
-    });
+    const read = { again: false, done: Promise.resolve() };
+    read.done = (async () => {
+      try {
+        do {
+          read.again = false;
+          await this.readConflicts(id);
+        } while (read.again && !this.stopped);
+      } finally {
+        this.radarReads.delete(id);
+      }
+    })();
+    this.radarReads.set(id, read);
+    return read.done;
+  }
+
+  /** The base branch of a card the radar should watch, or `null`: no worktree, finished, or no base. */
+  private radarBase(id: string): Rev | null {
+    if (!this.cardExists(id)) return null;
+    const card = this.getCard(id);
+    if (card.worktreePath === null || card.column === "done") return null;
+    if (card.prState === "merged" || card.prState === "closed") return null;
+    try {
+      return refArg(this.getProject(card.projectId).baseBranch);
+    } catch {
+      return null;
+    }
+  }
+
+  private async readConflicts(id: string): Promise<void> {
     if (this.stopped) return;
-    for (const other of affected) this.changed(other);
+    const base = this.radarBase(id);
+    if (base === null) return this.dropConflicts(id);
+    const card = this.getCard(id);
+    const affected = await this.radar.update(
+      {
+        id,
+        projectId: card.projectId,
+        worktree: card.worktreePath as string,
+        base,
+        group: card.arenaOf ?? id,
+      },
+      () => !this.stopped && this.radarBase(id) !== null,
+    );
+    for (const other of affected) if (this.cardExists(other)) this.changed(other);
   }
 
   private async refreshAllConflicts(): Promise<void> {
