@@ -25,6 +25,18 @@ describe("pr-provider: which PR provider a remote points to (issue #1568)", () =
       expect(providerOfRemote(url).provider).toBe("github");
   });
 
+  test("Azure DevOps needs its own hosts too: an encoded slash cannot make another host one", () => {
+    for (const url of [
+      "https://evil.com%2F.visualstudio.com/org/proj",
+      "https://a%2Fb.visualstudio.com/p",
+      "https://visualstudio.com.evil.test/org/proj",
+    ])
+      expect(providerOfRemote(url).provider).toBeNull();
+    expect(providerOfRemote("https://acme.visualstudio.com/proj/_git/repo").provider).toBe(
+      "azure-devops",
+    );
+  });
+
   test("a host that only has github in its name is not GitHub: an enterprise server is set by hand", () => {
     for (const url of [
       "https://github.evil.test/acme/app",
