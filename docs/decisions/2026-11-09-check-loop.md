@@ -28,9 +28,17 @@ board, from the watch's parts. No new trust model and no new command language.
 
 ### The loop
 
-1. **What triggers it.** A `turn.result` arrives for a plain card run (no workflow, not a watch
-   `fixCard` round) whose card has the option on. Before the column rule places the card, the
+1. **What triggers it.** A live `turn.result` for a plain card run (no workflow, not a watch
+   `fixCard` round), on a card whose switch is on. Before the column rule places the card, the
    card enters `checking`.
+   - **"Live" excludes replayed events.** `Board.follow` replays a session's stored events to
+     `onSessionEvent` on every subscribe (`board.ts`), and the loop must never start on a replay.
+   - **Each event is keyed by its sequence number.** The card stores the seq of the last turn
+     the loop handled (`check_loop_turn_seq`). A `turn.result` with a seq at or below it is
+     ignored, and so is any event that reaches `onSessionEvent` through the replay.
+   - **A turn that ended before the switch was turned on, or before a restart, never starts
+     checks.** Slice 1 has a replay test: re-follow a card whose last stored event is a
+     `turn.result`, and check that nothing runs.
 2. **Running the checks.** They run one after the other, in the order the project lists them,
    and stop at the first that fails, as the watch's `failedCheck` does.
 3. **All checks pass.** The card is placed as today (In review), with "checks passed in round k".
@@ -48,6 +56,17 @@ board, from the watch's parts. No new trust model and no new command language.
    sending a message. Only the loop's own rounds count toward N. A person who keeps the card
    going asked for that, so their turns do not use up the loop's rounds. The cost bounds below
    still apply to every round.
+9. **The loop and the person are told apart by where the input comes in, not by its text.**
+   - **The person's input** is every protocol command that writes into the card's session:
+     `card.message`, `card.start`, `session.send` and `session.interrupt` on that session's id,
+     and an answer to its permission or question. Each handler tells the board through
+     `board.personTurn(cardId)`, which aborts the loop and resets its counter.
+   - **The loop's round** is sent by the board itself through an internal call that writes the
+     same text into the session (`manager.send`). It never goes through those handlers. The board
+     notes the round as pending (`card_check_rounds` row `sent`), so the turn it starts is the
+     loop's.
+   - **Slice 1 tests both ways:** a loop round does not reset the counter, and a person's
+     `card.message` or `session.send` between rounds does.
 
 ### The message
 
@@ -86,16 +105,25 @@ the same session, the same trust as the watch's round prompt. It never reaches a
     on like any card setting.
   - **In any other mode** (`default`, `acceptEdits`, `plan`, `dontAsk`, `auto`), turning the
     switch on needs the person's confirmation (`confirm: true`). The app first shows what it
-    means: "The checks will run the code this card writes, without asking you each time." That
-    confirmation is near-only (`requireVaultTransport`). It is stored on the card
-    (`check_loop_confirmed_at`).
+    means: "The checks will run the code this card writes, without asking you each time. That
+    code can read your files and reach the network, as the session itself can." That
+    confirmation is near-only (`requireVaultTransport`). It is stored on the card with what was
+    confirmed: `check_loop_confirmed_at`, and a hash of the project's checks, `checkEnv` and the
+    card's mode at that moment.
+  - **A confirmation is cleared, or no longer counts,** when:
+    - the switch is turned off;
+    - the project's checks or `checkEnv` change (the hash no longer matches);
+    - the card's mode changes to another mode that is not `bypassPermissions`.
+
+    The person then confirms again. Turning the switch off always clears it.
   - **The mode is read again before every round, not only when the switch turns on.** A live
     session can change its mode (`SettableMode`). A round runs only if the card's current mode is
     `bypassPermissions`, or the card has a stored confirmation. Otherwise the loop stops with the
     reason `check_loop_confirm`, and the card moves on.
   - **A project default turns the switch on only for new cards that start in
     `bypassPermissions`.** In any other mode a new card starts with the switch off, and the person
-    confirms on the card. A default never stands in for a confirmation.
+    confirms on the card. A default never stands in for a confirmation. The default itself
+    (`checkLoopDefault`) is a project setting changed only over a near connection.
   - Turning the switch off always works, from anywhere.
 - **The loop runs only in a project the person trusts** (`ProjectTrust.isTrusted`, #196). This
   is checked when the switch turns on and again before every round. Trust is a statement about
@@ -104,24 +132,30 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   anything beyond a command and its arguments. `rm -rf /`, `curl …` and `node ./x.js` all pass it.
   So:
   - **Changing the list needs a near connection.** `requireVaultTransport` applies to a
-    `watch.settings` patch that has `checks`, `checkTimeoutMin` or `checkRounds`. Today any paired
+    `watch.settings` patch that has any of `checks`, `checkTimeoutMin`, `checkRounds`,
+    `checkEnv` or `checkLoopDefault`. Slice 1 tests each of the five from a far origin. Today any paired
     client may set the commands the watch runs unattended. The loop runs them after every turn,
     so the list gets the same bar as resuming a run (2026-11-08-run-resume.md). The origin is the
     socket's peer address, never a protocol field. Reading the settings, and the other fields of
     a patch, still work from anywhere.
   - **Each edit of the list is a line in the project's trail:** who, when and the new list.
-  - **The stored list is checked again just before each command runs.** This is defence in
-    depth: the edit gate above is the real one. A command must pass `isWatchCheck` plus these rules:
+  - **The stored list is checked again just before each command runs.** This is best effort and
+    not a boundary: `node ./x.js` already runs code the session wrote, and that code can open any
+    path itself. The edit gate above is the real one, and nobody should rely on this rule alone.
+    A command must pass `isWatchCheck` plus these rules:
     - Its first word holds no `=`. An environment assignment such as `LD_PRELOAD=…` is refused.
-    - No word, and no value after an `=` inside a word (`--config=/etc/x`), may name a place
-      outside the worktree. Refused are:
+    - Each word is also split on `=`, `:`, `,` and `@`. A short flag with its value attached is
+      split after the flag, so `-I/etc` and `-C/x` are read as `/etc` and `/x`. No piece may name
+      a place outside the worktree. This covers `--config=/etc/x`, `--x:/y`, `a,/y` and `@/x`.
+      Refused are:
       - an absolute POSIX path (`/x`);
       - a drive letter (`C:`, `C:/x`);
       - a UNC or device path (`//server/share`, `//./x`);
       - a word whose `..` segments, resolved from the worktree, leave it.
     - The test is `isInside` (`apps/daemon/src/paths.ts`) on the resolved path. On Windows it
       compares case-insensitively, with each step read through `ntfsName`
-      (2026-11-09-ntfs-names-in-path-checks.md).
+      (2026-11-09-ntfs-names-in-path-checks.md). The test is lexical: it does not follow
+      symlinks, so a link inside the worktree that points out passes.
     - A bare command name (`bun`, `npm`) is a word, not a path: the `PATH` lookup finds it.
 
     A list written before these rules therefore cannot reach the shell. The same checks apply
@@ -129,14 +163,21 @@ the same session, the same trust as the watch's round prompt. It never reaches a
 
 ### Spawn and kill
 
-- A check is spawned by `shellCheckRunner`, the runner the workflow checks and the watch already
-  use: the platform shell (`sh -c`, or `cmd.exe /d /s /c` on Windows), in the card's own
-  worktree. The project's checkout and the daemon's folder are never used.
+- **The loop and the watch get a runner of their own,** `boundedCheckRunner`, next to
+  `shellCheckRunner` in `workflows/check-runner.ts`. It uses the same platform shell (`sh -c`, or
+  `cmd.exe /d /s /c` on Windows), in the card's own worktree. The project's checkout and the
+  daemon's folder are never used. The new runner adds the allowlisted environment, the 4 MB
+  bound, the abort signal and the whole output (its result type is new, `BoundedCheckResult`).
+- **Workflow `check` steps keep `shellCheckRunner` exactly as today.** Their commands are trusted
+  shell strings, with pipes, quotes and variables, and may need variables the allowlist drops.
+  `CheckResult.output` keeps its meaning (the last 8 KB). Tightening the workflow checks is a
+  separate decision, with its own issue.
 - **The environment is an allowlist, not the daemon's.** Today `runCommand` passes the whole
   `process.env`, so provider keys and `FLIGHTDECK_*` would reach the code the session wrote.
   `masked` scans for secrets it knows the shape of. It cannot catch an environment value it has
-  never seen, so the allowlist is what keeps those values out. Nothing of the vault is added. The
-  values come from the daemon's own environment, and the list depends on the platform:
+  never seen, so the allowlist is what keeps those values out of the checks' environment.
+  Nothing of the vault is added. The values come from the daemon's own environment, and the list
+  depends on the platform:
   - **POSIX:** `PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `LC_ALL`, `TZ`, `TMPDIR`,
     `XDG_CACHE_HOME`, `XDG_CONFIG_HOME` and `XDG_DATA_HOME`.
   - **Windows:** `PATH`, `PATHEXT`, `SystemRoot`, `windir`, `SystemDrive`, `ComSpec`,
@@ -148,8 +189,22 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   - **A project can widen the list itself** (`checkEnv`, at most 20 names). This keeps a person
     who needs `JAVA_HOME` from turning the whole thing off. The project setting is edited only
     over a near connection, like the checks. It holds names only, and the values still come from
-    the daemon. A name the vault holds is refused, and so is one starting with `FLIGHTDECK_`.
-    The person owns that list.
+    the daemon. The person owns that list. A name is refused when:
+    - the vault holds it;
+    - it starts with `FLIGHTDECK_`;
+    - it has the shape of a secret: it contains `TOKEN`, `KEY`, `SECRET`, `PASSWORD`, `PASSWD`,
+      `CREDENTIAL`, `AUTH`, `COOKIE` or `SESSION`, or it starts with `ANTHROPIC_`, `OPENAI_`,
+      `AWS_`, `AZURE_`, `GH_` or `GITHUB_`.
+
+    Names are compared case-insensitively on every platform, because Windows reads `Path` and
+    `PATH` as one name. There is no confirmation that lets a refused name through: a check that
+    needs a secret is not a check the loop runs unattended.
+- **The loop is not a secrets boundary.** The allowlist keeps the daemon's environment values
+  out, and nothing more. The checks still get the person's `HOME` or `USERPROFILE`, `APPDATA` and
+  `XDG_*`, and the network. Code the session wrote can read `~/.ssh`, `~/.npmrc`,
+  `~/.config/gh` or `~/.claude` and send them out, exactly as the session itself can when it
+  runs Bash. The confirmation text says so. A per-check `HOME` would break the tools' caches and
+  logins, and would protect nothing the session cannot already reach, so it is not done.
 - **The cwd is the worktree path from the board's record,** never protocol input. It is checked
   with `isInside` against the host's allowed roots before it is used. A refusal never names the
   path.
@@ -160,8 +215,8 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   loop's runner reads at most 4 MB of stdout and stderr together, as `gitLimited` does for git.
   Past that, it kills the process group, and the summary says "stopped: more than 4 MB of
   output".
-- **The runner gets an abort signal.** `CheckRunner.run` takes one, and `shellCheckRunner` passes
-  it to `runCommand`, which already accepts it but is called without it today. When the person
+- **The runner gets an abort signal.** `boundedCheckRunner` takes one and passes it to
+  `runCommand`, which already accepts it (`shellCheckRunner` calls it without one today). When the person
   stops, discards or moves the card, the running check is killed and the loop ends, with no
   message sent. The kill path is the timeout's (a process group on POSIX, `taskkill /T` on
   Windows). A timeout is always passed, because only a timed or signalled command is detached
@@ -206,8 +261,18 @@ Then `turn.result` arrives:
 - if it says error or interrupted, the loop does not run and the slot is released then;
 - if it is already in, the check starts.
 
-Slice 1 tests both event orders, with fake events, against a waiting card that must not start in
-the gap.
+The hold never waits forever:
+- **If the session's status becomes `error` or `ended`** while the card holds the slot, the hold
+  is released at once and the loop ends. A session that died has no turn left to check.
+- **If no `turn.result` comes within 30 seconds after idle,** the hold is released and the loop
+  does not run, with "the turn's result never came".
+
+Slice 1 tests, with fake events against a waiting card:
+- both event orders, where the waiting card must not start in the gap;
+- an idle followed by `ended` with no `turn.result`;
+- an idle with no `turn.result` until the 30 s wait passes, on a fake clock.
+
+In both of the last two, the waiting card then starts.
 
 ### Reuse, and what stays apart
 
@@ -265,7 +330,7 @@ the gap.
 - **A far client can no longer change the watch's checks or their timeout.** This is a
   tightening of phase 22, and it appears in the release notes.
 - **The watch's own checks also get the allowlisted environment, the stricter command check, the
-  4 MB output bound and the mask-before-cut order.** They run through the same shared code, a
+  4 MB output bound and the mask-before-cut order (the workflow checks do not).** They run through the same shared code, a
   second tightening of phase 22 for the release notes. A project whose checks need more
   variables lists them in `checkEnv`. This is tested on Windows by hand (#14), since Windows does
   not gate a PR.
@@ -322,6 +387,17 @@ The PR's review then added more, all folded in above:
 - the slot hold is decided at the idle event;
 - the Windows environment list, and `checkEnv`;
 - the path rule on every word, with drive letters, UNC and `ntfsName`.
+
+Its second pass added these, all folded in above:
+- the loop's round is told apart from the person's input by where it comes in;
+- the hold is released on `error` or `ended`, or after 30 s with no `turn.result`;
+- replayed events never trigger, keyed by the turn's seq;
+- the loop is said plainly not to be a secrets boundary;
+- `checkEnv` refuses names shaped like secrets, compared case-insensitively;
+- all five settings fields are near-only;
+- workflow checks keep their runner;
+- the path rule is best effort and splits words on `=`, `:`, `,` and `@`;
+- a confirmation is bound to the list and the mode, and is cleared with the switch.
 
 The reviewer judged the kill model (process group, `taskkill /T`), one check per card, and no
 resume after a restart to be sound. The daemon slice is reviewed again as code before its push.
