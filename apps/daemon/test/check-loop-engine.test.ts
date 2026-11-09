@@ -541,6 +541,53 @@ describe("check-loop: the security review's cases", () => {
     ]).toEqual([true, ["send", "release"], "no_result", true]);
   });
 
+  test("a result that passed before idle is not waited on again: the later idle releases at once", () => {
+    const failed = rig();
+    const placed = failed.engine.onTurnResult("c", { isError: true, interrupted: false });
+    const idle = failed.engine.onIdle("c");
+    const switched = rig({ card: { on: false } });
+    switched.engine.onTurnResult("c", ok);
+    switched.card.on = true;
+    const later = switched.engine.onIdle("c");
+    expect([placed, idle, failed.timers.length, later, switched.timers.length]).toEqual([
+      "place",
+      "release",
+      0,
+      "release",
+      0,
+    ]);
+  });
+
+  test("a release that throws never escapes: not from the checks' end, not from a timer", async () => {
+    const r = rig();
+    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
+    const engine = new CheckLoopEngine({
+      ...fx,
+      release: () => {
+        throw new Error("slot table locked");
+      },
+    });
+    engine.onTurnResult("c", ok);
+    const ended = await engine.idle("c").then(
+      () => "settled",
+      () => "rejected",
+    );
+    const other = new CheckLoopEngine({
+      ...fx,
+      release: () => {
+        throw new Error("slot table locked");
+      },
+    });
+    other.onIdle("c");
+    let fromTimer = "quiet";
+    try {
+      r.timers.at(-1)?.fn();
+    } catch {
+      fromTimer = "threw";
+    }
+    expect([ended, fromTimer]).toEqual(["settled", "quiet"]);
+  });
+
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
     const output =
       "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
