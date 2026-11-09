@@ -9,6 +9,7 @@ import { githubHandlers } from "./github.ts";
 import { hostHandlers } from "./host.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
 import { messagingHandlers } from "./messaging.ts";
+import { projectHandlers } from "./project.ts";
 import { reviewHandlers } from "./review.ts";
 import { runsHandlers } from "./runs.ts";
 import { securityHandlers } from "./security.ts";
@@ -28,6 +29,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   host: hostHandlers,
   knowledge: knowledgeHandlers,
   teleport: teleportHandlers,
+  project: projectHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));

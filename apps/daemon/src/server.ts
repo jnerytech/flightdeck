@@ -78,7 +78,7 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { resolveAllowedCwd, rootNames } from "./paths.ts";
+import { resolveAllowedCwd } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import { realPathOf, statKind } from "./permissions/path-kind.ts";
 import { rulePaths, ruleReadings } from "./permissions/permission-updates.ts";
@@ -87,7 +87,7 @@ import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
 import type { Personas } from "./personas/store.ts";
 import type { Plugins } from "./plugins/plugins.ts";
-import { cloneRepo, type GitRunner, scanRepos, spawnGit } from "./project-find.ts";
+import type { GitRunner } from "./project-find.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
@@ -131,7 +131,6 @@ import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
-import { trustsManyProjects } from "./trust/trust-root.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
@@ -800,13 +799,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return sub;
   }
 
-  /** A host template's Markdown for a harness preview or apply, read now; null without one (#75, T1b). */
-  async function markdownOf(template: string | undefined): Promise<TemplateMarkdown | null> {
-    if (template === undefined) return null;
-    if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
-    return opts.harnessTemplates.files(template);
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
@@ -1120,21 +1112,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type, { ...page, sessions });
       }
-      case "project.list":
-        return ok(command.type, {
-          projects: await Promise.all(
-            board()
-              .listProjects()
-              .map((p) => board().forWire(p)),
-          ),
-          maxParallelRuns: board().maxParallelRuns,
-        });
-      case "project.add":
-        return ok(command.type, await board().forWire(await board().addProject(command.payload)));
-      case "project.update": {
-        const { projectId, ...patch } = command.payload;
-        return ok(command.type, await board().forWire(board().updateProject(projectId, patch)));
-      }
       case "board.get": {
         const found = board().getBoard(command.payload.projectId);
         return ok(command.type, { ...found, project: await board().forWire(found.project) });
@@ -1151,129 +1128,6 @@ export function startServer(opts: ServerOptions): RunningServer {
             opts.rootsPlatform,
           ),
         });
-      }
-      case "project.trust.state": {
-        if (!opts.projectTrust) throw featureOff("projectTrust");
-        const paths = await Promise.all(
-          command.payload.paths.map((p) => resolveAllowedCwd(p, opts.allowedRoots)),
-        );
-        await opts.projectTrust.refresh();
-        return ok(command.type, { items: opts.projectTrust.state(paths) });
-      }
-      case "project.trust.inspect": {
-        if (!opts.projectTrust) throw featureOff("projectTrust");
-        // Commands and server arguments are shown whole, a secret in one included: a near connection only.
-        requireVaultTransport(ws.data.origin, "project.trust.inspect", opts.log);
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.projectTrust.inspect(path));
-      }
-      case "project.harness.stack": {
-        if (!opts.harnessStack) throw featureOff("harnessStack");
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.harnessStack(path));
-      }
-      case "project.harness.preview": {
-        if (!opts.harnessPreview) throw featureOff("harnessPreview");
-        const { parts, template } = command.payload;
-        // A template's files come back whole, and T1a keeps them off a far connection: near only.
-        if (template !== undefined) {
-          requireVaultTransport(ws.data.origin, "project.harness.preview", opts.log);
-        }
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.harnessPreview(path, parts, await markdownOf(template)));
-      }
-      case "project.harness.export": {
-        if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
-        // It reads a project's instructions into a store any project of the host can use: near only.
-        requireVaultTransport(ws.data.origin, "project.harness.export", opts.log);
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        const { id, title } = command.payload;
-        return ok(command.type, await opts.harnessTemplates.export(path, id, title));
-      }
-      case "harness.templates.list": {
-        if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
-        return ok(command.type, { templates: await opts.harnessTemplates.list() });
-      }
-      case "harness.templates.delete": {
-        if (!opts.harnessTemplates) throw featureOff("harnessTemplates");
-        // It deletes files on the host: a near connection, and only once the person confirmed.
-        requireVaultTransport(ws.data.origin, "harness.templates.delete", opts.log);
-        if (command.payload.confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "deleting a template needs confirm: true",
-            "harness_confirm",
-          );
-        }
-        return ok(command.type, await opts.harnessTemplates.remove(command.payload.id));
-      }
-      case "project.harness.draft": {
-        if (!opts.harnessDraft) throw featureOff("harnessDraft");
-        // A model call on the plan, whose text a later apply may write: a near connection only.
-        requireVaultTransport(ws.data.origin, "project.harness.draft", opts.log);
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.harnessDraft(path));
-      }
-      case "project.harness.commit": {
-        if (!opts.harnessCommit) throw featureOff("harnessCommit");
-        // A branch made in the person's repository, one push from public: near only, and confirmed.
-        requireVaultTransport(ws.data.origin, "project.harness.commit", opts.log);
-        if (command.payload.confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "committing the Claude Code setup needs confirm: true",
-            "harness_confirm",
-          );
-        }
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        return ok(command.type, await opts.harnessCommit(path, command.payload.digests));
-      }
-      case "project.harness.apply": {
-        if (!opts.harnessApply) throw featureOff("harnessApply");
-        // A hook written here runs its command in every session of a trusted project: a near
-        // connection only, like project.trust.set, and only once the person confirmed.
-        requireVaultTransport(ws.data.origin, "project.harness.apply", opts.log);
-        const { parts, digests, confirm, reformat, template } = command.payload;
-        if (confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "changing the Claude Code setup needs confirm: true",
-            "harness_confirm",
-          );
-        }
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        // The template is read again here: apply never takes its content from the app.
-        const markdown = await markdownOf(template);
-        return ok(
-          command.type,
-          await opts.harnessApply(path, parts, digests, {
-            reformat: reformat === true,
-            ...(markdown ? { template: markdown } : {}),
-          }),
-        );
-      }
-      case "project.trust.set": {
-        if (!opts.projectTrust) throw featureOff("projectTrust");
-        // Trusting lets the project's own hooks and MCP servers run without a prompt: only from a near
-        // connection, like roots.add and host.bypass. Revoking only lowers risk.
-        if (command.payload.trusted) {
-          requireVaultTransport(ws.data.origin, "project.trust.set", opts.log);
-        }
-        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        // A folder above a root, or a root that is not one repository, holds many projects:
-        // trusting it would trust every clone inside (#592).
-        if (
-          command.payload.trusted &&
-          (await trustsManyProjects(path, await rootNames(opts.allowedRoots)))
-        ) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "trusting this folder would trust every project inside it",
-            "trust_root_refused",
-          );
-        }
-        await opts.projectTrust.refresh();
-        return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;
@@ -1331,11 +1185,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           await listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
-      case "projects.scan": {
-        if (!opts.findProjects) throw featureOff("projects.scan");
-        const { depth } = command.payload;
-        return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
-      }
       case "roi.summary":
         return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
       case "runtime.models": {
@@ -1348,12 +1197,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { models: await opts.opencode.models() });
       }
-      case "projects.clone":
-        if (!opts.findProjects) throw featureOff("projects.clone");
-        return ok(
-          command.type,
-          await cloneRepo(command.payload, opts.allowedRoots, opts.git ?? spawnGit),
-        );
       case "deps.check":
         if (!opts.deps) throw featureOff("depsCheck");
         return ok(command.type, await opts.deps());
