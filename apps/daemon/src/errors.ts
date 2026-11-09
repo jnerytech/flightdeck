@@ -22,3 +22,11 @@ export function featureOff(feature: string): FlightdeckError {
     feature,
   });
 }
+
+/** The reason and params of a refusal; `null` for any other error. */
+export function refusalOf(
+  error: unknown,
+): { reason: string; params?: Record<string, string | number> } | null {
+  if (!(error instanceof FlightdeckError) || !error.reason) return null;
+  return error.params ? { reason: error.reason, params: error.params } : { reason: error.reason };
+}

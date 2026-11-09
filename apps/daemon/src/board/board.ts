@@ -7,7 +7,6 @@ import {
   type BoardResult,
   type CardTemplates,
   CheckLoopReason,
-  type ContractOverrides,
   contractOf,
   type EffortLevel,
   inSequence,
@@ -26,11 +25,10 @@ import {
   type WorkflowTemplate,
   type WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError, refusalOf } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside } from "../paths.ts";
-import { withoutPersonas } from "../personas/prepare.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { ulid } from "../ulid.ts";
 import { runChecks } from "../watch/check-run.ts";
@@ -38,7 +36,6 @@ import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
-import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import { cardMode } from "./check-loop.ts";
 import {
@@ -52,6 +49,7 @@ import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { cardDiff } from "./diff.ts";
+import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import {
   aheadBehind,
   assertLocalBranch,
@@ -59,7 +57,6 @@ import {
   pendingFiles,
   rebaseOnto,
 } from "./merge.ts";
-import { pinnedPrompt } from "./pins.ts";
 import { type PrComment, prMessage, prProvider } from "./pr.ts";
 import { Projects } from "./projects.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
@@ -67,18 +64,12 @@ import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
 import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
-import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
-  hasTddSkill,
   projectTemplate,
-  renderSpec,
-  specFirstLine,
   type TemplateIgnored,
   type TemplateName,
   untrustedTemplate,
-  wantsSpec,
-  writeSpec,
 } from "./spec-template.ts";
 import type {
   BoardColumn,
@@ -94,13 +85,7 @@ import type {
   PrState,
   RunRow,
 } from "./types.ts";
-import {
-  addWorktree,
-  excludeLocalSettingsAsync,
-  freshBase,
-  must,
-  WORKTREE_INCLUDE_LIMIT,
-} from "./worktree.ts";
+import { must } from "./worktree.ts";
 
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
@@ -108,8 +93,6 @@ export type { BoardOptions } from "./types.ts";
 
 /** How often cards with an open PR ask the provider for its state and checks. */
 export const DEFAULT_PR_POLL_MS = 60_000;
-
-const PENDING_NOTICE = "worktree com alterações pendentes: não foi removida";
 
 /** Issue #79: a card done this recently still covers the key of the finding it was raised from. */
 const DONE_COVERS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -170,22 +153,6 @@ const BUSY: ReadonlySet<string> = new Set(["starting", "running", "awaiting_perm
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
  */
-/** The notice for files the worktree copy left out because they passed the size limit. */
-function skippedNotice(left: number, limit: number): string {
-  const files =
-    left === 1
-      ? "1 arquivo do .worktreeinclude não copiado"
-      : left + " arquivos do .worktreeinclude não copiados";
-  return `${files}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
-}
-
-/** The reason and params of a refusal; `null` for any other error. */
-export function refusalOf(
-  error: unknown,
-): { reason: string; params?: Record<string, string | number> } | null {
-  if (!(error instanceof FlightdeckError) || !error.reason) return null;
-  return error.params ? { reason: error.reason, params: error.params } : { reason: error.reason };
-}
 
 export class Board {
   private readonly db: Database;
@@ -197,6 +164,8 @@ export class Board {
   private readonly sessions: SessionFollow;
   /** The runs' slots and what holds the queue (issue #1523). */
   private readonly queue: RunQueue;
+  /** Launching and ending the cards' runs (issue #1523). */
+  private readonly launcher: Launcher;
   private readonly waits: Array<() => Promise<unknown>> = [];
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
@@ -272,6 +241,23 @@ export class Board {
       },
       checks: opts.checks ?? shellCheckRunner(),
       clock: opts.clock ?? Date.now,
+    });
+    this.launcher = new Launcher({
+      db: opts.db,
+      opts,
+      workflows: this.workflows,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      place: (id, event) => this.place(id, event),
+      release: (id) => this.release(id),
+      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
+      settleFix: (id, result) => this.settleFix(id, result),
+      follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
+      templateFor: (cwd, name) => this.templateFor(cwd, name),
+      dropConflicts: (id) => this.dropConflicts(id),
+      loop: () => this.loop,
+      settle: () => this.settle(),
     });
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.queue.watchLimits();
@@ -1257,167 +1243,21 @@ export class Board {
 
   /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
   private failRun(id: string, runId: string, notice: string, why?: unknown): void {
-    this.settleFix(id, { isError: true, error: notice });
-    this.workflows.fail(runId, notice, refusalOf(why));
-    this.setNotice(id, notice, why);
-    this.place(id, { type: "failed" });
-    this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), runId);
-    this.changed(id);
-    this.release(id);
+    this.launcher.failRun(id, runId, notice, why);
   }
 
-  private async launch(id: string, runId: string): Promise<void> {
-    const card = this.getCard(id);
-    const project = this.getProject(card.projectId);
-    let worktree = card.worktreePath;
-    if (!worktree) {
-      const limit = this.opts.worktreeIncludeLimit ?? WORKTREE_INCLUDE_LIMIT;
-      // A card that waited for blockers starts from the base as it is after they merged.
-      const from =
-        card.blockedBy.length > 0
-          ? await freshBase(project.path, refArg(project.baseBranch))
-          : { ref: project.baseBranch, notice: null };
-      const added = await addWorktree(project.path, card.title, from.ref, limit);
-      worktree = added.path;
-      const left = added.skipped.length;
-      const skipped = left === 0 ? null : skippedNotice(left, limit);
-      const notice = [from.notice, skipped].filter((part) => part !== null).join("; ") || null;
-      this.db
-        .query(
-          "UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, notice = ?, updated_at = ? WHERE id = ?",
-        )
-        .run(added.slug, added.branch, added.path, notice, now(), id);
-      this.changed(id);
-    }
-    if (this.opts.folderLocks?.isHeld(worktree)) throw folderRemoving(worktree);
-    await excludeLocalSettingsAsync(project.path);
-    if (project.setupScript) await runSetup(project.setupScript, worktree);
-    // The newest run is the active one: older sessions of the card are closed.
-    await this.closeRuns(id, runId);
-    // A workflow run executes its steps instead of sending the description to one session.
-    if (this.workflows.has(runId)) return this.workflows.begin(runId, worktree);
-    const specLine = this.firstSession(id, runId)
-      ? await this.startSpec(id, project.contractByColumn, worktree)
-      : null;
-    const pins = await pinnedPrompt(worktree, card.pinnedDocs);
-    const prompt = [card.description, specLine ?? "", pins, project.promptTemplate]
-      .filter((part) => part.trim())
-      .join("\n\n");
-    const { variant } = card;
-    const run = this.db
-      .query<{ persona: string | null; fix_prompt: string | null }, [string]>(
-        "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
-      )
-      .get(runId);
-    const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
-    const prepared = await (this.opts.preparePersonas ?? withoutPersonas)(personaRef, worktree);
-    const { sessionId } = await this.opts.manager.create(
-      {
-        cwd: worktree,
-        prompt: run?.fix_prompt ?? prompt,
-        name: card.title,
-        ...(variant?.model ? { model: variant.model } : {}),
-        ...(variant?.effort ? { effort: variant.effort } : {}),
-        ...(variant?.permissionMode ? { permissionMode: variant.permissionMode } : {}),
-        ...(personaRef ? { persona: personaRef } : {}),
-      },
-      { unattended: run?.fix_prompt != null, prepared },
-    );
-    this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
-    this.changed(id);
-    this.follow(id, sessionId, 0);
-  }
-
-  /**
-   * Issue #78: on a card's first run, when its project asks for a spec, writes the spec from the
-   * template into the new worktree (never over one that is there) and gives the line that sends the
-   * session to it first. A spec that cannot be written is said on the card; the run starts anyway.
-   */
-  private async startSpec(
-    id: string,
-    contracts: ContractOverrides,
-    worktree: string,
-  ): Promise<string | null> {
-    const card = this.getCard(id);
-    const path = specExpectedPath(card);
-    if (path === null || !wantsSpec(contracts, card.specPath)) return null;
-    // A trusted project's own template, from its trusted checkout; anything else gets the built-in.
-    const template = await this.templateFor(worktree, "spec");
-    const result = await writeSpec(worktree, path, renderSpec(card, template.body ?? undefined));
-    if (result === "failed") {
-      // The app says it in its language; the prompt sends the agent to no spec that is not there.
-      const why = new FlightdeckError(
-        "invalid_state",
-        `spec template not written: ${path}`,
-        "spec_template_failed",
-        { path },
-      );
-      this.setNotice(id, why.message, why);
-      this.changed(id);
-      return null;
-    }
-    const ignored = template.ignored;
-    if (ignored && result === "written") {
-      // The built-in template was used; the project's own is named by its reason, never quoted.
-      const why = new FlightdeckError(
-        "invalid_state",
-        `the project's spec template was not used (${ignored})`,
-        `spec_template_${ignored}`,
-      );
-      this.setNotice(id, why.message, why);
-      this.changed(id);
-    }
-    return specFirstLine(path, await hasTddSkill(worktree));
-  }
-
-  /**
-   * No earlier run of the card reached a session: the card's first start, the one a spec template
-   * is for. A first start that failed before its session (a setup script) still counts as first.
-   */
-  private firstSession(id: string, runId: string): boolean {
-    const earlier = this.db
-      .query("SELECT 1 FROM card_runs WHERE card_id = ? AND id <> ? AND session_id IS NOT NULL")
-      .get(id, runId);
-    return earlier === null;
+  private launch(id: string, runId: string): Promise<void> {
+    return this.launcher.launch(id, runId);
   }
 
   /** Closes the card's sessions and ends its open runs, except `keep` (the one launching). */
-  private async closeRuns(id: string, keep = ""): Promise<void> {
-    const open = this.db
-      .query<RunRow, [string, string]>(
-        "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND ended_at IS NULL",
-      )
-      .all(id, keep);
-    await inSequence(open, async (run) => {
-      if (run.session_id) await this.opts.manager.close(run.session_id);
-      this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
-    });
-    this.workflows.abandon(id, "execução encerrada com o card", keep);
-    await this.workflows.closeSessions(id, keep);
+  private closeRuns(id: string, keep = ""): Promise<void> {
+    return this.launcher.closeRuns(id, keep);
   }
 
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
-  private async finish(id: string): Promise<void> {
-    this.dropConflicts(id);
-    // Issue #1361: the worktree goes only once a check killed in it has exited.
-    await this.loop?.onStop(id);
-    await this.closeRuns(id);
-    await this.removeCleanWorktree(id);
-    this.changed(id);
-  }
-
-  private async removeCleanWorktree(id: string): Promise<void> {
-    const card = this.getCard(id);
-    if (!card.worktreePath) return;
-    const pending = must(await git(card.worktreePath, "status", "--porcelain"), "git status");
-    if (pending.stdout.trim()) {
-      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(PENDING_NOTICE, id);
-      return;
-    }
-    const repo = this.getProject(card.projectId).path;
-    await this.settle();
-    must(await git(repo, "worktree", "remove", card.worktreePath), "git worktree remove");
-    this.db.query("UPDATE cards SET worktree_path = NULL, notice = NULL WHERE id = ?").run(id);
+  private finish(id: string): Promise<void> {
+    return this.launcher.finish(id);
   }
 
   /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
