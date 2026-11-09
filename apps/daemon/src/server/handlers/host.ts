@@ -8,6 +8,10 @@ import { requireVaultTransport } from "../../vault/vault.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 
 export const hostHandlers = {
+  "resources.setPauseAt": (_payload, { server }) => {
+    server.need("memoryPause");
+    return { pauseAt: null };
+  },
   "host.sleep": async (payload, { server }) => {
     const { sleep } = server.opts;
     if (!sleep) throw featureOff("sleep");

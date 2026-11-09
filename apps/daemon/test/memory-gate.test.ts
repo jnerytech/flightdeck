@@ -1,0 +1,161 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { ResourcesSnapshot } from "@flightdeck/protocol";
+import { loadConfig } from "../src/config.ts";
+import { startDaemon } from "../src/main.ts";
+import { MemoryGate, type MemoryReading } from "../src/resources/memory-gate.ts";
+import { cardWhen, newBoard } from "./board-helpers.ts";
+import { tempDir } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
+import { manualTime } from "./time-helpers.ts";
+
+// Real git in a temp repository and a turn: more than the default 5 s.
+setDefaultTimeout(20_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+const GB = 1024 ** 3;
+/** A reading with this share of 16 GB in use. */
+const used = (share: number): MemoryReading => ({
+  totalBytes: 16 * GB,
+  freeBytes: Math.round(16 * GB * (1 - share)),
+});
+
+/** A gate over a reading the test moves, on a manual clock. */
+function gateAt(share: number, pauseAt: number | null = 0.9) {
+  const time = manualTime();
+  let reading: MemoryReading | null = used(share);
+  const gate = new MemoryGate({ pauseAt, read: () => reading, timers: time.timers });
+  return {
+    ...time,
+    gate,
+    set: (next: MemoryReading | null) => {
+      reading = next;
+    },
+  };
+}
+
+describe("memory-gate: new cards wait while the host's memory is at or above resources.pauseAt (#1343)", () => {
+  test("95% in use holds new runs; 50% lets them go", () => {
+    expect(gateAt(0.95).gate.blocked()).toEqual({ used: 0.95 });
+    expect(gateAt(0.5).gate.blocked()).toBeNull();
+    // The threshold itself holds, like the panel's Critical.
+    expect(gateAt(0.9).gate.blocked()).toEqual({ used: 0.9 });
+  });
+
+  test("every doubt lets runs go: no threshold, no reading, a throw, a total of 0 or nonsense", () => {
+    expect(gateAt(0.99, null).gate.blocked()).toBeNull();
+    for (const reading of [
+      null,
+      { totalBytes: 0, freeBytes: 0 },
+      { totalBytes: Number.NaN, freeBytes: 1 },
+      { totalBytes: 16 * GB, freeBytes: -1 },
+      { totalBytes: 16 * GB, freeBytes: 17 * GB },
+    ]) {
+      const g = gateAt(0.99);
+      g.set(reading);
+      expect([reading, g.gate.blocked()]).toEqual([reading, null]);
+    }
+    const throwing = new MemoryGate({
+      pauseAt: 0.9,
+      read: () => {
+        throw new Error("no /proc");
+      },
+    });
+    expect(throwing.blocked()).toBeNull();
+  });
+
+  test("a new threshold applies at once and tells the watchers", () => {
+    const g = gateAt(0.85);
+    let heard = 0;
+    const stop = g.gate.watch(() => heard++);
+    cleanups.push(stop);
+    expect(g.gate.blocked()).toBeNull();
+    g.gate.setPauseAt(0.8);
+    expect([g.gate.pauseAt(), g.gate.blocked(), heard]).toEqual([0.8, { used: 0.85 }, 1]);
+    g.gate.setPauseAt(null);
+    expect([g.gate.pauseAt(), g.gate.blocked(), heard]).toEqual([null, null, 2]);
+  });
+
+  test("a watched gate reads again on its own and speaks only when the hold starts or ends", () => {
+    const g = gateAt(0.95);
+    let heard = 0;
+    const stop = g.gate.watch(() => heard++);
+    g.advance(15_000);
+    expect(heard).toBe(0);
+    g.set(used(0.5));
+    g.advance(15_000);
+    expect(heard).toBe(1);
+    g.advance(15_000);
+    expect(heard).toBe(1);
+    g.set(used(0.97));
+    g.advance(15_000);
+    expect(heard).toBe(2);
+    // Unwatched, it stops reading: no timer is left behind.
+    stop();
+    g.set(used(0.1));
+    g.advance(15_000);
+    expect([heard, g.pending.filter((t) => !t.cleared).length]).toEqual([2, 0]);
+  });
+
+  test("on the board, a card waits with reason memory and starts when memory falls", async () => {
+    const g = gateAt(0.95);
+    const ctx = newBoard({ memory: g.gate });
+    cleanups.push(() => ctx.board.stop());
+    const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
+    const card = ctx.board.createCard(project.id, { title: "Heavy", description: "oi" });
+    expect(await ctx.board.startCard(card.id)).toMatchObject({
+      queued: true,
+      queueReason: "memory",
+      sessionId: null,
+    });
+    g.set(used(0.5));
+    g.advance(15_000);
+    const started = await cardWhen(ctx.board, card.id, (c) => c.sessionId !== null);
+    expect(started).toMatchObject({ queued: false, queueReason: null });
+  });
+});
+
+const TOKEN = "memory-pause-token-0123456789abcdef";
+
+describe("memory-pause: the hold is a host setting the app reads and changes (#1343)", () => {
+  test("resources.setPauseAt writes the config, answers the new value and resources.get agrees", async () => {
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        allowedRoots: [dir],
+        history: { roots: [join(dir, "nada")] },
+      }),
+    );
+    const running = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => running.stop());
+    const client = new FrameClient(`ws://127.0.0.1:${new URL(running.url).port}/v1/ws`);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+
+    expect((await loadConfig(file)).resources.pauseAt).toBe(0.9);
+    const info = await client.data<{ features?: string[] }>("host.info", {});
+    expect(info?.features?.includes("memoryPause")).toBe(true);
+    expect((await client.data<ResourcesSnapshot>("resources.get", {}))?.memoryPauseAt).toBe(0.9);
+
+    expect(await client.data("resources.setPauseAt", { pauseAt: 0.8 })).toEqual({ pauseAt: 0.8 });
+    expect((await loadConfig(file)).resources.pauseAt).toBe(0.8);
+    expect((await client.data<ResourcesSnapshot>("resources.get", {}))?.memoryPauseAt).toBe(0.8);
+
+    expect(await client.data("resources.setPauseAt", { pauseAt: null })).toEqual({ pauseAt: null });
+    expect((await loadConfig(file)).resources.pauseAt).toBeNull();
+  });
+});

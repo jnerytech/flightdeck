@@ -146,6 +146,8 @@ export interface BoardOptions {
   quota?: Quota;
   /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
+  /** Issue #1343: while the host's memory is at or above `resources.pauseAt`, new cards wait. */
+  memory?: { blocked(): unknown; watch(listener: () => void): () => void };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
   /** Phase 22: refuses a PR description that carries a secret. */

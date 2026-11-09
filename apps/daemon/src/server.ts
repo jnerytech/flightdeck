@@ -355,6 +355,8 @@ export interface ServerOptions {
   quota?: Quota;
   /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
   quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
+  /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
+  memoryPause?: { pauseAt(): number | null; set(pauseAt: number | null): void | Promise<void> };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
