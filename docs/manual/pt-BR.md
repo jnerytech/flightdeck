@@ -1311,13 +1311,13 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   quando uma execução termina (mostra as Mudanças do card), depois **Abrir PR** e, com o PR aberto
   e pronto para merge, **Fazer merge do PR** (a confirmação abaixo; enquanto
   uma sessão roda, **Parar** lidera e **Fazer merge do PR** espera no menu, e com checks falhando
-  ele não é oferecido). O resto está no menu **⋯** ao
+  ele não é oferecido). O resto está no menu **Ações** (⋯) ao
   lado: **Iniciar com workflow ou persona…** (o mesmo diálogo do **Iniciar card** do board),
   **Iniciar**, **Iniciar em segundo plano**, **Parar**, **Abrir PR**, **Fazer merge do PR**,
   **Finalizar…** e **Descartar**. Um card cuja execução terminou abre em **Mudanças**. Enquanto uma
   execução espera num portão, **Aprovar** e **Negar** do próprio portão, no alto da página, são
   os únicos botões principais: o painel Execução não lidera com nada até o portão ser respondido.
-- **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
+- **Editar e excluir:** o menu **Ações** (⋯) do card tem **Editar…**, que abre o card com o título pronto
   para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
   **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
   (sem worktree, branch nem sessão). Para um que já começou, a janela explica o motivo e oferece

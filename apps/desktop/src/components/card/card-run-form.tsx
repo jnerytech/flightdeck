@@ -164,12 +164,9 @@ export function CardRunForm(
           {props.arenaStart}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={t("board.cardActions", { title: card.title })}
-              >
+              <Button variant="outline" aria-label={t("board.cardActions", { title: card.title })}>
                 <MoreHorizontal aria-hidden="true" />
+                {t("cardUi.menu")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

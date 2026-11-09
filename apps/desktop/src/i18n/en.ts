@@ -4065,6 +4065,10 @@ export const en: Dictionary = {
     /** The card's details as a pane of their own once its conversation shows (#641). */
     infoPane: "The card, above its conversation",
     runTitle: "Run",
+    /** The run panel's menu button, in words: its name, "Actions for <card>", contains it. */
+    menu: "Actions",
+    /** A card's tab and breadcrumb while it loads: never its id (#1330). */
+    loadingTitle: "Loading card…",
     saveDescription: "Save description",
     validation: "Validation note",
     saveValidation: "Save validation note",
