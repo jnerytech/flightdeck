@@ -19,6 +19,7 @@ function setup(
   const keyring = new Map<string, string>();
   const stored = new Map<string, string>();
   const opened: string[] = [];
+  const listened: string[] = [];
   let clock = 1_000_000;
   const redirect = options.redirect === undefined ? "echo" : options.redirect;
   const sign = googleSignIn({
@@ -34,7 +35,8 @@ function setup(
       },
     } as never,
     loopback: {
-      listen: async () => ({
+      listen: async (state: string) => ({
+        ...(listened.push(state), {}),
         port: 4567,
         wait: async () => {
           if (redirect === "echo") {
@@ -51,7 +53,7 @@ function setup(
     },
     now: () => clock,
   });
-  return { sign, oauth, keyring, stored, opened, tick: (ms: number) => (clock += ms) };
+  return { sign, oauth, keyring, stored, opened, listened, tick: (ms: number) => (clock += ms) };
 }
 
 async function sha256Url(text: string): Promise<string> {
@@ -76,6 +78,14 @@ describe("googleSignIn.signIn", () => {
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("access_type")).toBe("offline");
     expect((url.searchParams.get("state") ?? "").length).toBeGreaterThanOrEqual(16);
+  });
+
+  test("gives the loopback listener the state that is in the consent URL, before it opens the page", async () => {
+    const { sign, opened, listened } = setup();
+    await sign.signIn();
+    const state = new URL(opened[0] ?? "http://none").searchParams.get("state");
+    expect(listened).toEqual([state ?? "no"]);
+    expect(listened[0]?.length).toBeGreaterThanOrEqual(16);
   });
 
   test("exchanges the code with the verifier behind the challenge and keeps only the refresh token in the vault", async () => {

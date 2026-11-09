@@ -125,6 +125,15 @@ interface Entry {
   scopes: string[];
 }
 
+/**
+ * The text without a trailing ` (#N)` and the spaces before it. The suffix is found first, so a long
+ * run of spaces costs one pass, not one per space (a `\s*` before it would backtrack).
+ */
+function withoutIssueSuffix(text: string): string {
+  const suffix = /\(#\d+\)$/.exec(text);
+  return suffix ? text.slice(0, suffix.index).trimEnd() : text;
+}
+
 /** The Markdown draft: one bullet per issue, with its PRs, under its area. */
 export function highlightsDraft(
   since: string,
@@ -138,7 +147,7 @@ export function highlightsDraft(
     const key = issue === null ? `pr${pr.number}` : `issue${issue}`;
     // A fetched title can be a PR's (`feat(x): …`): both lose that prefix and a trailing (#N).
     const raw = (issue === null ? undefined : titles.get(issue)) ?? pr.title;
-    const title = raw.replace(CONVENTIONAL, "").replace(/\s*\(#\d+\)$/, "");
+    const title = withoutIssueSuffix(raw.replace(CONVENTIONAL, ""));
     const entry = entries.get(key) ?? { title, prs: [], issue, scopes: [] };
     entry.prs.push(pr.number);
     for (const c of userCommits(pr)) entry.scopes.push(CONVENTIONAL.exec(c.headline)?.[2] ?? "");

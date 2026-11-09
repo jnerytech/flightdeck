@@ -3246,12 +3246,17 @@ const TOOLCHAIN_ENV =
  * files, tokens), Flightdeck's own, git's and npm's, or a loader's. Over-blocking is fine: a check
  * that needs a secret does not run unattended. Any case (Windows reads both).
  */
-const REFUSED_ENV =
-  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|_PASS$|^PWD$|CREDENTIAL|AUTH|COOKIE|SESSION|JWT|BEARER|SAS|SIGNATURE|WEBHOOK|_PAT$|DSN|DATABASE_URL|CONN|PRIVATE|CERT|^(?:ANTHROPIC|CLAUDE|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK|GIT|NPM|LD|DYLD|XDG)_/i;
+const REFUSED_ENV = [
+  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|JWT/i,
+  /BEARER|SAS|SIGNATURE|WEBHOOK|DSN|DATABASE_URL|CONN|PRIVATE|CERT/i,
+  // Today no name that passes TOOLCHAIN_ENV ends this way; kept, as the one pattern had them.
+  /_PASS$|^PWD$|_PAT$/i,
+  /^(?:ANTHROPIC|CLAUDE|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK|GIT|NPM|LD|DYLD|XDG)_/i,
+];
 
 /** Issue #1361: a name a project may add to its checks' environment (the value stays the daemon's). */
 export const isCheckEnvName = (name: string): boolean =>
-  TOOLCHAIN_ENV.test(name) && !REFUSED_ENV.test(name);
+  TOOLCHAIN_ENV.test(name) && !REFUSED_ENV.some((refused) => refused.test(name));
 
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({

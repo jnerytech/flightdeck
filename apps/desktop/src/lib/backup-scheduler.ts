@@ -9,7 +9,7 @@ import {
   type ScheduleTarget,
   saveSchedule,
 } from "./backup-schedule.ts";
-import { driveTarget } from "./drive-target.ts";
+import { DriveError, driveTarget } from "./drive-target.ts";
 import {
   type GoogleConfig,
   type GoogleSignIn,
@@ -95,6 +95,20 @@ export class BackupScheduler {
     this.notify();
     await this.tick();
     return result;
+  }
+
+  /** The names of the backups on Drive. Rejects with a `DriveError` when it cannot be read. */
+  async driveBackups(): Promise<string[]> {
+    const drive = this.drive();
+    if (!drive) throw new DriveError("auth");
+    return drive.list();
+  }
+
+  /** The text of one backup on Drive. */
+  async driveBackupText(name: string): Promise<string> {
+    const drive = this.drive();
+    if (!drive) throw new DriveError("auth");
+    return drive.get(name);
   }
 
   async signOutDrive(): Promise<void> {

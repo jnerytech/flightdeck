@@ -13,7 +13,7 @@ const TAURI = join(ROOT, "apps/desktop/src-tauri");
 const read = (path: string) => readFileSync(path, "utf8");
 
 const CSP =
-  "default-src 'self'; connect-src 'self' ws: wss: ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*";
+  "default-src 'self'; connect-src 'self' ws: wss: ipc: http://ipc.localhost https://oauth2.googleapis.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*";
 
 const COMMANDS = [
   "token_get",
@@ -30,6 +30,9 @@ const COMMANDS = [
   "backup_folder_write",
   "backup_folder_list",
   "backup_folder_remove",
+  "oauth_loopback_listen",
+  "oauth_loopback_wait",
+  "oauth_loopback_cancel",
   "open_result",
   "append_log",
   "read_log_tail",
@@ -61,12 +64,15 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe("assistant-csp: a provider is reached only from Rust (phase 40)", () => {
-  test("the CSP is the one before phase 40 plus media-src data:, and connect-src has no https:", () => {
+  test("the CSP is the one before phase 40 plus media-src data: and the two Google hosts of the Drive backup (#1462)", () => {
     const conf = JSON.parse(read(join(TAURI, "tauri.conf.json")));
     const csp: string = conf.app.security.csp;
     expect(csp).toBe(CSP);
     const connect = csp.split(";").find((part) => part.trim().startsWith("connect-src")) ?? "";
-    expect(connect).not.toContain("https:");
+    // No scheme-wide or wildcard source: only these two https hosts.
+    const https = connect.split(/\s+/).filter((source) => source.startsWith("https:"));
+    expect(https).toEqual(["https://oauth2.googleapis.com", "https://www.googleapis.com"]);
+    expect(connect).not.toContain("*");
   });
 
   test("no app source calls fetch or XMLHttpRequest in a file that names a provider host", () => {

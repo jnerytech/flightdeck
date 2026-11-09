@@ -114,10 +114,11 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
 
   return {
     async signIn() {
-      const listener = await deps.loopback.listen();
-      const redirect = `http://127.0.0.1:${listener.port}`;
       const verifier = random(32);
       const state = random(16);
+      // The shell checks the state itself and ignores a request that is not this sign-in's.
+      const listener = await deps.loopback.listen(state);
+      const redirect = `http://127.0.0.1:${listener.port}`;
       const query = new URLSearchParams({
         client_id: config.clientId,
         redirect_uri: redirect,
