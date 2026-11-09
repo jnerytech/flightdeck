@@ -29,3 +29,18 @@ export function boardFiles(
   const owner = cards.find((card) => card.worktreePath === filter.path);
   return owner ? { kind: "tree", target: `card:${owner.id}`, branch, search } : null;
 }
+
+/**
+ * Whether the files panel shows: wide, a picked worktree shows its files at once; narrow, they wait
+ * for the Files button. What the person chose for this worktree wins over both.
+ */
+export function filesPanelOpen(
+  files: BoardFiles | null,
+  choice: { path: string; open: boolean } | null,
+  worktree: Pick<WorktreeFilter, "path"> | null,
+  narrow: boolean,
+): boolean {
+  if (files === null) return false;
+  if (choice !== null && choice.path === worktree?.path) return choice.open;
+  return !narrow;
+}

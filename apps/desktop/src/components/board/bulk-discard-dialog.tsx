@@ -15,6 +15,10 @@ import type { T } from "../../i18n/index.ts";
 export const hasStartedWork = (card: Card) =>
   Boolean(card.worktreePath || card.branch || card.sessionId);
 
+/** A card with work to clean up is discarded, not deleted: the host command that fits it. */
+export const discardCommand = (card: Card) =>
+  hasStartedWork(card) ? ("card.discard" as const) : ("card.delete" as const);
+
 /** What goes with the card: a worktree or branch loses uncommitted work; a session just closes. */
 function goesWith(card: Card, t: T): string | null {
   if (card.worktreePath || card.branch) return t("board.discardStarted");

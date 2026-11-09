@@ -7,6 +7,7 @@ import {
   projectTree,
   rowInFilter,
   type WorktreeFilter,
+  worktreeOfProject,
 } from "../src/lib/project-tree.ts";
 
 const project = (id: string, name: string, over: Partial<Project> = {}): Project =>
@@ -177,5 +178,23 @@ describe("arvore-projetos: paths on Windows and nodes without a branch (issue #1
       [],
     );
     expect(api?.nodes[1]?.branch).toBe("fd-login");
+  });
+});
+
+describe("worktreeOfProject: the picked checkout counts only on its own project's board (#1125)", () => {
+  const picked = {
+    hostId: "h1",
+    projectId: "p1",
+    kind: "worktree",
+    path: "/wt/b",
+    branch: "b",
+  } as const;
+  test("it is kept for its host and project, and dropped for any other, or for none", () => {
+    expect([
+      worktreeOfProject(picked, "h1", "p1"),
+      worktreeOfProject(picked, "h1", "p2"),
+      worktreeOfProject(picked, "h2", "p1"),
+      worktreeOfProject(null, "h1", "p1"),
+    ]).toEqual([picked, null, null, null]);
   });
 });
