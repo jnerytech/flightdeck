@@ -1,4 +1,4 @@
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
 import {
   type CardCliArgs,
@@ -14,12 +14,14 @@ import {
   type Handlers,
   HOST,
   project,
+  stopAll,
   stops,
   TOKEN,
 } from "./card-cli-helpers.ts";
 import { poll } from "./helpers.ts";
 
 setDefaultTimeout(20_000);
+afterEach(stopAll);
 
 async function run(args: CardCliArgs, daemon: { port: number }, bind?: string, timeoutMs?: number) {
   return runCardCli(args, config(daemon.port, bind), timeoutMs ? { timeoutMs } : {});

@@ -1,5 +1,4 @@
 /** A daemon of the tests of `flightdeckd card`: it speaks the protocol and answers what the test says. */
-import { afterEach } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
 
 export const TOKEN = "card-cli-token-0123456789abcdef";
@@ -12,9 +11,10 @@ export type Handlers = Record<
 >;
 
 export const stops: Array<() => unknown> = [];
-afterEach(async () => {
+/** `afterEach(stopAll)` in every test file: a module is loaded once, so it cannot register this for them all. */
+export async function stopAll(): Promise<void> {
   for (const stop of stops.splice(0)) await stop();
-});
+}
 
 /** A daemon of this test: `hello` checks the token, every other command is a handler or silent. */
 /** A handler that answers with this closes the connection instead (a daemon that dies mid-command). */

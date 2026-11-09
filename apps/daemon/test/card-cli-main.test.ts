@@ -1,11 +1,20 @@
-import { describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs, runCli } from "../src/main.ts";
-import { card, fakeDaemon, type Handlers, HOST, stops, TOKEN } from "./card-cli-helpers.ts";
+import {
+  card,
+  fakeDaemon,
+  type Handlers,
+  HOST,
+  stopAll,
+  stops,
+  TOKEN,
+} from "./card-cli-helpers.ts";
 import { tempDir } from "./helpers.ts";
 
 setDefaultTimeout(20_000);
+afterEach(stopAll);
 
 const HANDLERS: Handlers = {
   ...HOST,
