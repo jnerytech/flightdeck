@@ -20,7 +20,17 @@ const NONE: CompareValues = {
   features: null,
 };
 
-const FIELDS = ["os", "daemon", "claude", "hooks", "signin", "gh", "az", "boot", "features"];
+const FIELDS = [
+  "os",
+  "daemon",
+  "claude",
+  "hooks",
+  "signin",
+  "gh",
+  "az",
+  "boot",
+  "features",
+] as const;
 
 const facts = (hostId: string, values: Partial<CompareValues>): HostFacts => ({
   hostId,
@@ -41,7 +51,7 @@ const markedIds = (hosts: HostFacts[], field: (typeof COMPARE_FIELDS)[number]) =
 describe("host-compare: the table's rows and cells", () => {
   test("there is one row per field, in the order shown, and one cell per host in the order given", () => {
     const rows = compareHosts([facts("a", {}), facts("b", {}), facts("c", {})]);
-    expect(rows.map((r) => r.field)).toEqual(FIELDS);
+    expect(rows.map((r) => r.field)).toEqual([...FIELDS]);
     expect(COMPARE_FIELDS).toEqual(FIELDS);
     for (const row of rows) expect(row.cells.map((c) => c.hostId)).toEqual(["a", "b", "c"]);
   });
@@ -146,7 +156,7 @@ describe("host-compare: the majority rule", () => {
 
   test("no hosts give a row per field with no cells", () => {
     const rows = compareHosts([]);
-    expect(rows.map((r) => r.field)).toEqual(FIELDS);
+    expect(rows.map((r) => r.field)).toEqual([...FIELDS]);
     expect(rows.map((r) => r.cells.length)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0]);
   });
 });
