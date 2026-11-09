@@ -266,4 +266,19 @@ describe("issue-claim: one session owns an issue (#1410)", () => {
     const b = claim(["7", "--by", "fd-a"], refused);
     expect([await b.code, b.lines]).toEqual([1, ["claim: gh could not comment on #7: HTTP 403"]]);
   });
+
+  test("from the second review: a coordinator's release frees another session's claim, and --reassign with --release is refused", async () => {
+    const owned = fakeGh({ comments: [note("fd-a", "progress")] });
+    const r = claim(["7", "--by", "fd-b", "--release"], owned, { coordinator: true });
+    expect(await r.code).toBe(0);
+    expect(bodyOf(posts(owned.asked)[0])).toContain(ownerMark("fd-coordinator", "todo"));
+    // Read again: the issue is free, so a new claim takes it.
+    const next = claim(["7", "--by", "fd-b"], owned);
+    expect([await next.code, next.lines]).toEqual([0, ["claimed #7 for fd-b"]]);
+    const both = fakeGh({ comments: [note("fd-a", "progress")] });
+    const mixed = claim(["7", "--by", "fd-b", "--reassign", "--release"], both, {
+      coordinator: true,
+    });
+    expect([await mixed.code, posts(both.asked).length]).toEqual([2, 0]);
+  });
 });
