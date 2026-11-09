@@ -226,6 +226,7 @@ const made = new WeakMap<
     backupFiles?: string[];
     origin?: string;
     cards?: string[];
+    listsBefore?: number;
   }
 >();
 const mine = (c: Context) => {
@@ -458,7 +459,12 @@ async function addOwnProject(
     mine(c).origin = bare;
   }
   mine(c).project = name;
-  await open(c, { name: "all-projects", host: ALFA });
+  await addFolderToHost(c, ALFA, folder);
+}
+
+/** Adds a folder as a project of one host through the Add project dialog. */
+async function addFolderToHost(c: Context, host: string, folder: string) {
+  await open(c, { name: "all-projects", host });
   await c.page
     .getByRole("button", { name: c.t("projectsOverview.newProject"), exact: true })
     .click();
@@ -2480,4 +2486,197 @@ step(Then, "the confirm says the other card changes the same files", async (c) =
   const [, second = ""] = mine(c).cards ?? [];
   const line = dictionary(c).conflictRadar.mergeLine.replace("{titles}", second);
   await c.page.getByRole("alertdialog").getByText(line, { exact: true }).waitFor({ timeout: WAIT });
+});
+
+// Start a card on another host when its own host would make it wait (issue #1422).
+const BETA = "demo-beta";
+
+step(Given, "a git project of my own with a remote is added to host {string}", async (c) =>
+  addOwnProject(c, {}, { origin: true }),
+);
+
+step(Given, "the same project is added to host {string}", async (c, host = "") => {
+  // A clone has the same origin, so the two hosts hold the same repository under one project key.
+  const name = mine(c).project ?? "";
+  const folder = join(dirname(c.ids.teleportRepo), name);
+  execFileSync("git", ["clone", "-q", mine(c).origin ?? "", folder], { stdio: "ignore" });
+  await addFolderToHost(c, `demo-${host}`, folder);
+});
+
+/** The address of one demo host, as the app saved it. */
+async function hostAddress(c: Context, id: string): Promise<string> {
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+  const hosts = (await c.page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key) ?? "[]"),
+    HOSTS_KEY,
+  )) as Array<{ id: string; url: string }>;
+  const url = hosts.find((host) => host.id === id)?.url;
+  if (!url) throw new Error(`the demo has no host ${id}`);
+  return url;
+}
+
+/**
+ * Counts the project lists host beta is asked and has answered, and can refuse a start. The refusal
+ * is answered in the page, as the host would; everything else goes to the real host.
+ */
+async function tapBeta(c: Context, refuseStart: boolean) {
+  const address = await hostAddress(c, BETA);
+  await c.page.addInitScript(
+    ({ address, refuse }) => {
+      const tap = window as unknown as { listsAsked: number; listsAnswered: number };
+      tap.listsAsked = 0;
+      tap.listsAnswered = 0;
+      const send = WebSocket.prototype.send;
+      WebSocket.prototype.send = function (data) {
+        if (this.url === address && typeof data === "string") {
+          const frame = JSON.parse(data) as { id: string };
+          if (data.includes('"project.list"')) {
+            tap.listsAsked += 1;
+            const listen = (event: MessageEvent) => {
+              try {
+                if ((JSON.parse(String(event.data)) as { id?: string }).id !== frame.id) return;
+              } catch {
+                return;
+              }
+              tap.listsAnswered += 1;
+              this.removeEventListener("message", listen);
+            };
+            this.addEventListener("message", listen);
+          }
+          if (refuse && data.includes('"card.start"')) {
+            const nack = {
+              type: "ack",
+              id: frame.id,
+              ok: false,
+              error: { code: "internal", message: "refused" },
+            };
+            setTimeout(
+              () => this.dispatchEvent(new MessageEvent("message", { data: JSON.stringify(nack) })),
+              0,
+            );
+            return;
+          }
+        }
+        send.call(this, data);
+      };
+    },
+    { address, refuse: refuseStart },
+  );
+}
+
+step(Given, "the app notes what host beta answers about its projects", async (c) =>
+  tapBeta(c, false),
+);
+
+step(Given, "host beta refuses to start the cards it is handed", async (c) => tapBeta(c, true));
+
+const listsAsked = (c: Context) =>
+  c.page.evaluate(() => (window as unknown as { listsAsked?: number }).listsAsked ?? 0);
+
+step(When, "I select a card of my own on that project and ask to start it", async (c) => {
+  const title = unique(c, "bdd card");
+  mine(c).card = title;
+  await openOwnBoard(c);
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+  await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+  await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+  await tile(c).waitFor({ timeout: WAIT });
+  mine(c).listsBefore = await listsAsked(c);
+  // Ctrl-click selects the card without opening it.
+  await tile(c).click({ modifiers: ["Control"], timeout: WAIT });
+  await c.page
+    .getByRole("group", { name: c.t("board.selection"), exact: true })
+    .getByRole("button", { name: c.t("board.startSelected", { n: "1" }), exact: true })
+    .click({ timeout: WAIT });
+  await c.page.getByRole("alertdialog").waitFor({ timeout: WAIT });
+});
+
+const startOnButton = (c: Context, host: string) =>
+  c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("board.startOn", { host }), exact: true });
+
+step(Then, "the confirm offers to start it on host {string}", async (c, host = "") => {
+  await startOnButton(c, host).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the confirm offers no other host to start it on", async (c) => {
+  // Absence proves nothing until the host has answered: wait for its answer to the question the
+  // confirm asked when it opened, and for the page to draw it.
+  const before = mine(c).listsBefore ?? 0;
+  await waitFor(
+    () =>
+      c.page.evaluate((from) => {
+        const tap = window as unknown as { listsAsked: number; listsAnswered: number };
+        return tap.listsAsked > from && tap.listsAnswered === tap.listsAsked;
+      }, before),
+    "host beta answered the confirm's question",
+  );
+  await c.page.evaluate(
+    () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+  );
+  const confirm = c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: c.t("board.startSelected", { n: "1" }), exact: true });
+  await confirm.waitFor({ timeout: WAIT });
+  if ((await startOnButton(c, "beta").count()) > 0) throw new Error("host beta is offered");
+  const hint = c.page.getByRole("alertdialog").getByText(pattern(dictionary(c).board.startOnHint));
+  if ((await hint.count()) > 0) throw new Error("the confirm says another host has the places");
+});
+
+step(When, "I choose to start it on host {string}", async (c, host = "") => {
+  await startOnButton(c, host).click({ timeout: WAIT });
+});
+
+step(Then, "the board says the card started on host {string}", async (c, host = "") => {
+  await c.page
+    .getByRole("status")
+    .filter({ hasText: c.t("board.elsewhereDoneOne", { host }) })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the board says the card did not start", async (c) => {
+  const said = dictionary(c).board.startFailedOne.replace("{names}", "");
+  await c.page
+    .getByRole("status")
+    .filter({ hasText: mine(c).card ?? "" })
+    .filter({ hasText: said })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the card says it started on host {string}", async (c, host = "") => {
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  const note = pattern(dictionary(c).board.startedElsewhere.replace("{host}", host));
+  await c.page.getByText(note).first().waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card does not say it started on any host", async (c) => {
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  await c.page
+    .getByRole("button", { name: c.t("cardUi.start"), exact: true })
+    .waitFor({ timeout: WAIT });
+  const note = pattern(dictionary(c).board.startedElsewhere.replace("{host}", "beta"));
+  if ((await c.page.getByText(note).count()) > 0) throw new Error("the card was marked");
+});
+
+/** The board of the scenario's project on host beta. */
+async function openBetaBoard(c: Context) {
+  await open(c, { name: "projects", host: BETA });
+  await c.page
+    .getByRole("button", { name: c.t("projectsUi.openBoard", { name: mine(c).project ?? "" }) })
+    .click({ timeout: WAIT });
+}
+
+step(Then, "host beta runs a copy of the card", async (c) => {
+  await openBetaBoard(c);
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+  await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "host beta has no copy of the card", async (c) => {
+  await openBetaBoard(c);
+  await c.page
+    .getByRole("button", { name: c.t("kanban.newCard"), exact: true })
+    .waitFor({ timeout: WAIT });
+  if ((await tile(c).count()) > 0) throw new Error("host beta holds a copy of the card");
 });

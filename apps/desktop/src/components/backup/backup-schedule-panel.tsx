@@ -9,9 +9,10 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { formatDateTime } from "@/i18n/format";
 import type { AppStore } from "@/lib/app-store";
-import type { Cadence } from "@/lib/backup-schedule";
+import type { Cadence, ScheduleTarget } from "@/lib/backup-schedule";
 
 const CADENCES: readonly Cadence[] = ["off", "daily", "weekly"];
+const TARGETS: readonly ScheduleTarget[] = ["folder", "drive"];
 /** The number of files to keep that `text` means, or null when it is not a whole number from 1. */
 function validKeep(text: string): number | null {
   const keep = Number(text);
@@ -31,6 +32,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const [keepText, setKeepText] = useState(String(scheduler.schedule().keep));
   const choosing = useBusy();
   const using = useBusy();
+  const signing = useBusy();
+  const [refused, setRefused] = useState(false);
   if (!scheduler.supported) return null;
 
   const schedule = scheduler.schedule();
@@ -38,6 +41,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   // #1329: what was typed stays, and says why it is not saved, until it is a whole number from 1.
   const keepValid = validKeep(keepText) !== null;
   const waiting = schedule.cadence !== "off" && !scheduler.hasPassphrase;
+  // Drive is a choice only where a client id is configured; a saved Drive target means the folder without it.
+  const onDrive = scheduler.driveAvailable && schedule.target === "drive";
 
   return (
     <Panel title={t("backupSchedule.title")}>
@@ -60,22 +65,74 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
             ))}
           </Stack>
         </fieldset>
-        <Stack gap={1}>
-          <p>
-            <span className="font-medium">{t("backupSchedule.folder")}: </span>
-            {scheduler.folder ?? t("backupSchedule.noFolder")}
-          </p>
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={choosing.busy}
-              onClick={() => choosing.run(() => scheduler.chooseFolder())}
-            >
-              {t("backupSchedule.chooseFolder")}
-            </Button>
-          </div>
-        </Stack>
+        {scheduler.driveAvailable && (
+          <fieldset>
+            <legend className="sr-only">{t("backupSchedule.targetLegend")}</legend>
+            <Stack gap={1}>
+              {TARGETS.map((target) => (
+                <label key={target} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    className="hit-control"
+                    name={`${id}-target`}
+                    checked={schedule.target === target}
+                    onChange={() => scheduler.setTarget(target)}
+                  />
+                  {t(`backupSchedule.target.${target}`)}
+                </label>
+              ))}
+            </Stack>
+          </fieldset>
+        )}
+        {onDrive ? (
+          <Stack gap={1}>
+            <p className="text-muted-foreground text-sm">{t("backupSchedule.driveHelp")}</p>
+            <p>
+              {scheduler.driveSignedIn
+                ? t("backupSchedule.driveSignedIn")
+                : t("backupSchedule.driveSignedOut")}
+            </p>
+            {refused && <InlineNotice tone="warn">{t("backupSchedule.driveRefused")}</InlineNotice>}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={signing.busy}
+                onClick={() =>
+                  signing.run(async () => {
+                    if (scheduler.driveSignedIn) {
+                      setRefused(false);
+                      await scheduler.signOutDrive();
+                      return;
+                    }
+                    setRefused((await scheduler.signInDrive()) === "refused");
+                  })
+                }
+              >
+                {scheduler.driveSignedIn
+                  ? t("backupSchedule.driveSignOut")
+                  : t("backupSchedule.driveSignIn")}
+              </Button>
+            </div>
+          </Stack>
+        ) : (
+          <Stack gap={1}>
+            <p>
+              <span className="font-medium">{t("backupSchedule.folder")}: </span>
+              {scheduler.folder ?? t("backupSchedule.noFolder")}
+            </p>
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={choosing.busy}
+                onClick={() => choosing.run(() => scheduler.chooseFolder())}
+              >
+                {t("backupSchedule.chooseFolder")}
+              </Button>
+            </div>
+          </Stack>
+        )}
         <Form variant="inline" onSubmit={() => {}}>
           <Field
             label={t("backupSchedule.keep")}
