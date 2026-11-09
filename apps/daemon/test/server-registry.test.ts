@@ -211,4 +211,11 @@ describe("server-registry", () => {
       ].sort(),
     );
   });
+
+  // Issue #1288: the worktree commands left the switch of server.ts.
+  test("the worktrees domain owns the worktree.* commands", () => {
+    expect(Object.keys(DOMAINS.worktrees ?? {}).sort()).toEqual(
+      ["worktree.list", "worktree.remove"].sort(),
+    );
+  });
 });
