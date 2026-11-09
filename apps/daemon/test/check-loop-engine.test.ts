@@ -89,7 +89,7 @@ function rig(
       },
     },
   });
-  const settle = () => engine.idle("c");
+  const checksDone = () => engine.idle("c");
   return {
     engine,
     card,
@@ -99,7 +99,7 @@ function rig(
     sent,
     signals,
     timers,
-    settle,
+    checksDone,
     setMode: (next: PermissionMode) => (mode = next),
     setTrusted: (next: boolean) => (trusted = next),
     setLimit: (next: typeof limit) => (limit = next),
@@ -120,7 +120,7 @@ describe("check-loop: a turn that passes its checks", () => {
   test("idle then the result: the slot is held, the checks pass, the card moves on and the slot goes back once", async () => {
     const r = rig();
     const decisions = [r.engine.onIdle("c"), r.engine.onTurnResult("c", ok)];
-    await r.settle();
+    await r.checksDone();
     expect([decisions, r.log, r.records.at(-1)?.reason]).toEqual([
       ["hold", "hold"],
       ["place", "release"],
@@ -131,7 +131,7 @@ describe("check-loop: a turn that passes its checks", () => {
   test("the result then idle ends the same way", async () => {
     const r = rig();
     const decisions = [r.engine.onTurnResult("c", ok), r.engine.onIdle("c")];
-    await r.settle();
+    await r.checksDone();
     expect([decisions, r.log]).toEqual([
       ["hold", "hold"],
       ["place", "release"],
@@ -156,11 +156,11 @@ describe("check-loop: rounds", () => {
     const r = rig({ outcomes: [FAIL, PASS] });
     r.engine.onIdle("c");
     r.engine.onTurnResult("c", ok);
-    await r.settle();
+    await r.checksDone();
     const afterRound = [...r.log];
     // The round's turn: busy, then its result and idle again.
     const next = [r.engine.onTurnResult("c", ok), r.engine.onIdle("c")];
-    await r.settle();
+    await r.checksDone();
     expect([
       afterRound,
       next,
@@ -182,7 +182,7 @@ describe("check-loop: rounds", () => {
     for (let i = 0; i < 3; i++) {
       r.engine.onTurnResult("c", ok);
       r.engine.onIdle("c");
-      await r.settle();
+      await r.checksDone();
     }
     expect([r.sent.length, r.log.slice(-2), r.records.at(-1)?.reason]).toEqual([
       2,
@@ -196,7 +196,7 @@ describe("check-loop: rounds", () => {
       outcomes: [{ kind: "refused", command: "rm -rf /", refusal: "outside_worktree" }],
     });
     r.engine.onTurnResult("c", ok);
-    await r.settle();
+    await r.checksDone();
     expect([r.sent, r.log, r.records.at(-1)?.reason]).toEqual([
       [],
       ["place", "release"],
@@ -210,7 +210,7 @@ describe("check-loop: the gate before every round (#1361, tracked)", () => {
     const r = rig({ mode: "bypassPermissions", outcomes: [FAIL] });
     r.setMode("default");
     r.engine.onTurnResult("c", ok);
-    await r.settle();
+    await r.checksDone();
     expect([r.sent, r.log, r.records.at(-1)?.reason]).toEqual([
       [],
       ["place", "release"],
@@ -225,14 +225,14 @@ describe("check-loop: the gate before every round (#1361, tracked)", () => {
       outcomes: [FAIL],
     });
     stale.engine.onTurnResult("c", ok);
-    await stale.settle();
+    await stale.checksDone();
     const fresh = rig({
       mode: "acceptEdits",
       card: { confirmedHash: confirmationHash(["bun test"], [], "acceptEdits") },
       outcomes: [FAIL],
     });
     fresh.engine.onTurnResult("c", ok);
-    await fresh.settle();
+    await fresh.checksDone();
     expect([stale.records.at(-1)?.reason, fresh.sent.length]).toEqual(["check_loop_confirm", 1]);
   });
 
@@ -247,7 +247,7 @@ describe("check-loop: the gate before every round (#1361, tracked)", () => {
     ]) {
       const r = rig({ ...over, outcomes: [FAIL] });
       r.engine.onTurnResult("c", ok);
-      await r.settle();
+      await r.checksDone();
       reasons.push(r.records.at(-1)?.reason);
     }
     expect(reasons).toEqual([
@@ -264,15 +264,15 @@ describe("check-loop: what ends a loop early", () => {
   test("the person's turn aborts the running check, sends nothing, keeps the slot with the session, and starts the count again", async () => {
     const r = rig({ outcomes: [FAIL, FAIL, FAIL] });
     r.engine.onTurnResult("c", ok);
-    await r.settle();
+    await r.checksDone();
     const open = r.hold();
     r.engine.onTurnResult("c", ok);
     r.engine.onPersonTurn("c");
     open();
-    await r.settle();
+    await r.checksDone();
     const aborted = r.signals.at(-1)?.aborted;
     r.engine.onTurnResult("c", ok);
-    await r.settle();
+    await r.checksDone();
     expect([aborted, r.sent.length, r.log.includes("release"), r.records.at(-1)?.n]).toEqual([
       true,
       2,
@@ -289,7 +289,7 @@ describe("check-loop: what ends a loop early", () => {
     stopped.engine.onIdle("c");
     stopped.engine.onTurnResult("c", ok);
     stopped.engine.onStop("c");
-    await stopped.settle();
+    await stopped.checksDone();
     expect([
       gone.log,
       gone.records.at(-1)?.reason,
