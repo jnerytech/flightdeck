@@ -567,6 +567,7 @@ export const DAEMON_FEATURES = [
   "github",
   "boardsync",
   "roi",
+  "activity",
   "account",
   "prWatch",
   "runEnv",

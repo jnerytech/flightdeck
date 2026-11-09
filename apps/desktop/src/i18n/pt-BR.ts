@@ -1546,6 +1546,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    activity: "o resumo “Enquanto você esteve fora”",
     serviceInstall: "iniciar no boot pelo app",
     assistant: "o assistente de IA",
     teleport: "mudar uma sessão de host",

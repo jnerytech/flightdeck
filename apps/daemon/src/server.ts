@@ -1,4 +1,5 @@
 import {
+  type ActivitySinceResult,
   ASSISTANT_FEATURE,
   type AutoUpdateStatus,
   CLOSE_HEARTBEAT,
@@ -245,6 +246,8 @@ export interface ServerOptions {
   github?: GithubService;
   /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
   roi?: RoiSummarizer;
+  /** Issue #1344: what happened on this host since a time (`activity.since`), read-only and capped. */
+  activity?: (since: string, limit: number) => ActivitySinceResult;
   /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
   boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
@@ -465,6 +468,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
     ...when(opts.roi, "roi"),
+    ...when(opts.activity, "activity"),
     ...when(opts.central, "central"),
     ...when(opts.board, "workflows"),
     // Issue #1221: a template committed on a new branch and opened as a PR.

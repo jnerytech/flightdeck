@@ -1555,6 +1555,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    activity: "the “While you were away” summary",
     assistant: "the AI assistant",
     serviceInstall: "starting at boot from the app",
     teleport: "moving a session to another host",
