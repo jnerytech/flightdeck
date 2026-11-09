@@ -182,6 +182,8 @@ interface Loop {
   abort: AbortController | null;
   timer: unknown;
   running: Promise<void> | null;
+  /** The round messages sent whose echo has not come back yet. */
+  echoes: number;
 }
 
 export class CheckLoopEngine {
@@ -294,13 +296,35 @@ export class CheckLoopEngine {
     return running.catch(() => {});
   }
 
+  /**
+   * A user message reached the card's session (its echo, by whatever path wrote it). The loop's own
+   * round is expected once per round sent; anything else is outside input, and the loop steps aside.
+   */
+  onUserMessage(cardId: string): void {
+    const loop = this.loops.get(cardId);
+    if (!loop) return;
+    if (loop.echoes > 0) {
+      loop.echoes -= 1;
+      return;
+    }
+    this.onPersonTurn(cardId);
+  }
+
   /** Settles when the card's running checks are done (for the tests and a clean stop). */
   async idle(cardId: string): Promise<void> {
     await this.loops.get(cardId)?.running;
   }
 
   private fresh(): Loop {
-    return { phase: "awaiting_result", runs: 0, sent: 0, abort: null, timer: null, running: null };
+    return {
+      phase: "awaiting_result",
+      runs: 0,
+      sent: 0,
+      abort: null,
+      timer: null,
+      running: null,
+      echoes: 0,
+    };
   }
 
   private isLoopCard(cardId: string): boolean {
@@ -376,11 +400,13 @@ export class CheckLoopEngine {
       exitCode: outcome.exitCode,
       timedOut: outcome.timedOut,
     });
-    this.fx.send(cardId, roundMessage(loop.sent, max, outcome));
-    // The round's turn must start: a session that never goes busy does not keep the slot.
+    // The round's turn must start: a session that never goes busy does not keep the slot. Armed
+    // before the send, since the busy and the echo the send causes may come during it.
     loop.timer = this.fx.timer.set(() => {
       if (this.loops.get(cardId) === loop) this.end(cardId, loop, "no_result", { release: true });
     }, ROUND_START_MS);
+    loop.echoes += 1;
+    this.fx.send(cardId, roundMessage(loop.sent, max, outcome));
   }
 
   /**

@@ -2829,6 +2829,9 @@ export class Board {
     at: { live: boolean; seq: number } = { live: false, seq: 0 },
   ): void {
     const loop = at.live ? this.loop : null;
+    // Issue #1361: whatever path wrote into the session (a review comment, a message between
+    // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
+    if (loop && event.type === "message.user") loop.onUserMessage(cardId);
     if (event.type === "session.status") {
       this.place(cardId, { type: "session", status: event.status });
       if (loop && !FREES_SLOT.has(event.status)) loop.onBusy(cardId);
