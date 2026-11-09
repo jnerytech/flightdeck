@@ -64,7 +64,7 @@ describe("host-pause: new card runs wait while the person has paused the host (#
 const TOKEN = "host-pause-token-0123456789abcdef";
 
 /** A daemon over a temp repository, with its config file. */
-async function daemon() {
+async function daemon(extra: object = {}) {
   const { root, repo } = gitRepo();
   const file = join(root, "config.json");
   writeFileSync(
@@ -75,6 +75,7 @@ async function daemon() {
       dataDir: join(root, "data"),
       allowedRoots: [root],
       history: { roots: [join(root, "nada")] },
+      ...extra,
     }),
   );
   const running = await startDaemon(
@@ -119,6 +120,12 @@ describe("host-pause: the switch is the host's, in its config and host.info (#14
     expect((await loadConfig(file)).pauseNewRuns).toBe(false);
   });
 
+  test("a pause written in config.json holds after a restart", async () => {
+    const { client } = await daemon({ pauseNewRuns: true });
+    const info = await client.data<{ pause?: HostPauseStatus }>("host.info", {});
+    expect(info?.pause?.paused).toBe(true);
+  });
+
   test("only a near connection pauses or resumes a host", async () => {
     const pauses: boolean[] = [];
     const { root } = gitRepo();
@@ -148,6 +155,16 @@ describe("host-pause: the switch is the host's, in its config and host.info (#14
       false,
       "transport_refused",
       [],
+    ]);
+    // The host's own computer may.
+    const near = startServer(base);
+    cleanups.push(() => near.stop());
+    const local = new FrameClient(near.url);
+    cleanups.push(() => local.close());
+    await local.request("hello", { token: TOKEN, client: "t" });
+    expect([(await local.request("host.pause", { paused: true })).ok, pauses]).toEqual([
+      true,
+      [true],
     ]);
   });
 });

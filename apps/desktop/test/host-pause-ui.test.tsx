@@ -9,7 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { useStoreSlice } = await import("../src/lib/use-store.ts");
 const { statusBarSummary } = await import("../src/lib/status-bar.ts");
-const { StatusBar } = await import("../src/components/shell/status-bar.tsx");
+const { StatusBar, StatusBarSlot } = await import("../src/components/shell/status-bar.tsx");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
 const { HostPausePanel } = await import("../src/components/hosts/host-pause-panel.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
@@ -107,6 +107,13 @@ function board(language: "en" | "pt-BR") {
   );
 }
 
+/** The panel of the store's first host, drawn again as the store changes. */
+function PanelOfFirstHost({ store }: Readonly<{ store: Store }>) {
+  const { hosts } = useStoreSlice(store, ["hosts"]);
+  const host = hosts[0];
+  return host ? <HostPausePanel store={store} host={host} /> : null;
+}
+
 /** The panel over a host whose pause the fake commands change, as the daemon does. */
 function panel(language: "en" | "pt-BR", pause?: Pause) {
   const store = storeIn(language);
@@ -119,14 +126,9 @@ function panel(language: "en" | "pt-BR", pause?: Pause) {
     return now ?? {};
   }) as never;
   store.reloadHostInfo = (async () => update(store, { hosts: [hostRow(now)] })) as never;
-  function Harness() {
-    const { hosts } = useStoreSlice(store, ["hosts"]);
-    const host = hosts[0];
-    return host ? <HostPausePanel store={store} host={host} /> : null;
-  }
   render(
     <TContext.Provider value={store.i18n.t}>
-      <Harness />
+      <PanelOfFirstHost store={store} />
     </TContext.Provider>,
   );
   return { asked };
@@ -166,10 +168,8 @@ describe("host pause on the board, the host page and the status bar (#1404)", ()
 
   test("while sessions still run, the page counts them; in Portuguese too; none on an older host", async () => {
     panel("en", { paused: true, running: 2 });
-    await settleMaybe(
-      () => screen.queryByText("New runs are paused. 2 sessions still running.") !== null,
-    );
-    expect(screen.queryByText("New runs are paused. 2 sessions still running.")).not.toBeNull();
+    await settleMaybe(() => screen.queryByText("New runs are paused. 2 still running.") !== null);
+    expect(screen.queryByText("New runs are paused. 2 still running.")).not.toBeNull();
     cleanup();
     panel("pt-BR", { paused: false, running: 0 });
     await settleMaybe(() => screen.queryByText("Novas execuções começam normalmente.") !== null);
@@ -191,6 +191,40 @@ describe("host pause on the board, the host page and the status bar (#1404)", ()
     expect(
       statusBarSummary(state([hostRow({ paused: true, running: 0 }, "offline")]), 0).paused,
     ).toBeNull();
+  });
+
+  test("the status bar reads a paused host again as its sessions change, on any page", async () => {
+    const store = storeIn("en");
+    const reloaded: string[] = [];
+    store.reloadHostInfo = (async (id: string) => void reloaded.push(id)) as never;
+    const withSessions = (pause: Pause, status: string) => ({
+      ...hostRow(pause),
+      sessions: [{ id: "s1", status }],
+    });
+    const slot = (hosts: object[]) => (
+      <StatusBarSlot
+        t={store.i18n.t}
+        state={{ hosts, quota: {}, appUpdate: {}, settings: {} } as never}
+        now={0}
+        terminalTabs={0}
+        refreshing={false}
+        store={store}
+        onRefreshQuota={() => {}}
+        onOpenTerminals={() => {}}
+        go={() => {}}
+      />
+    );
+    const { rerender } = render(slot([withSessions({ paused: true, running: 1 }, "running")]));
+    rerender(slot([withSessions({ paused: true, running: 1 }, "idle")]));
+    await settleMaybe(() => reloaded.length >= 2);
+    expect(reloaded).toEqual(["h1", "h1"]);
+    cleanup();
+    reloaded.length = 0;
+    const { rerender: again } = render(
+      slot([withSessions({ paused: false, running: 1 }, "running")]),
+    );
+    again(slot([withSessions({ paused: false, running: 1 }, "idle")]));
+    expect(reloaded).toEqual([]);
   });
 
   for (const [lang, running, idle] of [
