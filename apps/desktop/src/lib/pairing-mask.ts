@@ -27,6 +27,11 @@ export function maskPairingLink(link: string): string {
   return `flightdeck://${where[1]}:${where[2]}?name=${name}&token=${TOKEN_MASK}`;
 }
 
+/** Text pasted into the link field: a bare token (no `://`) is all secret, anything else is masked as a link. */
+function maskPasted(text: string): string {
+  return /:\/\//.test(text) ? maskPairingLink(text) : TOKEN_MASK;
+}
+
 /** The token in text that may not read as a link yet, as the parser would decode it; null when none. */
 export function tokenInText(text: string): string | null {
   const query = text.includes("?") ? text.slice(text.indexOf("?") + 1) : "";
@@ -85,13 +90,18 @@ export function readLinkEdit(
   inputType = "",
 ): LinkEdit {
   const typed = inputType === "insertText" || inputType.startsWith("delete");
-  const bulk = inputType ? !typed : Math.abs(value.length - previous.length) > 1;
-  const show = (text: string) => (bulk ? maskPairingLink(text) : text);
+  // A typed character grows the value by one at most: more is a paste whatever the event says.
+  const bulk =
+    (inputType ? !typed : false) ||
+    value.length - previous.length > 1 ||
+    previous.length - value.length > 1;
+  const show = (text: string) => (bulk ? maskPasted(text) : text);
   if (!value) return { shown: value, problem: null, fields: null, bound };
   const parsed = parsePairingLink(value);
   if (!parsed.ok) {
     // A link that was read and now has no token loses it, whatever else is wrong with it.
-    const dropped = value.toLowerCase().startsWith("flightdeck://") && tokenInText(value) === null;
+    const dropped =
+      value.trimStart().toLowerCase().startsWith("flightdeck://") && tokenInText(value) === null;
     return {
       shown: show(value),
       problem: parsed.error,
