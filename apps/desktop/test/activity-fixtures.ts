@@ -18,6 +18,9 @@ interface Spec {
   unread?: boolean;
   risk?: "low" | "high";
   tool?: string;
+  /** Issue #1478: the host marked it quiet this many minutes ago, after this last tool. */
+  quietMin?: number;
+  quietTool?: string | null;
 }
 
 /** Sessions of two hosts as the hub and the live summaries have them. */
@@ -42,6 +45,9 @@ export function activityState(specs: Spec[], base: AppState): AppState {
         cwd: s.cwd ?? "/work/api",
         status: s.status,
         updatedAt: ago(s.agoMs),
+        ...(s.quietMin === undefined
+          ? {}
+          : { quietSince: ago(s.quietMin * MIN), quietTool: s.quietTool ?? null }),
         pendingPermissions:
           s.status === "awaiting_permission"
             ? [
