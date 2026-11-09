@@ -203,6 +203,82 @@ function useCostsStatus(store: AppStore, hostId: string, acrossHosts: boolean) {
   return status;
 }
 
+type Named = Readonly<{ id: string; name: string }>;
+
+/** The notices above the figures: what the totals leave out or disagree on, and the client in view. */
+function CostsNotices(
+  props: Readonly<{
+    status: CostsStatus | null;
+    acrossHosts: boolean;
+    allHosts: readonly Named[];
+    hosts: readonly Named[];
+    failed: string[];
+    selection: string;
+    clients: readonly Named[];
+  }>,
+) {
+  const t = useT();
+  const { status, acrossHosts, allHosts, hosts, failed, selection, clients } = props;
+  return (
+    <>
+      {status && status.divergences.length > 0 && (
+        <InlineNotice>
+          {t("costsUi.divergence", {
+            models: status.divergences
+              .map((d) =>
+                t("costsUi.divergenceItem", {
+                  model: d.model,
+                  computed: usd(d.computedUsd, t.lang),
+                  sdk: usd(d.sdkUsd, t.lang),
+                }),
+              )
+              .join("; "),
+          })}
+        </InlineNotice>
+      )}
+      {acrossHosts && allHosts.some((h) => !hosts.includes(h)) && (
+        <InlineNotice>
+          {t("costsUi.hostsSkipped", {
+            hosts: allHosts
+              .filter((h) => !hosts.includes(h))
+              .map((h) => h.name)
+              .join(", "),
+          })}
+        </InlineNotice>
+      )}
+      {failed.length > 0 && (
+        <InlineNotice>
+          {t("costsUi.hostsFailed", {
+            hosts: failed.map((id) => allHosts.find((h) => h.id === id)?.name ?? id).join(", "),
+          })}
+        </InlineNotice>
+      )}
+      {selection !== ALL_CLIENTS && (
+        <InlineNotice>
+          {t("costsUi.onlyClient", {
+            name: clients.find((c) => c.id === selection)?.name ?? t("clients.unassigned"),
+          })}
+        </InlineNotice>
+      )}
+      {status && status.telemetryDivergences.length > 0 && (
+        <InlineNotice>
+          {t("telemetry.divergence", {
+            items: status.telemetryDivergences
+              .map((d) =>
+                t("telemetry.divergenceItem", {
+                  session: d.claudeSessionId.slice(0, 8),
+                  computed: usd(d.computedUsd, t.lang),
+                  telemetry: usd(d.telemetryUsd, t.lang),
+                }),
+              )
+              .join("; "),
+          })}
+        </InlineNotice>
+      )}
+    </>
+  );
+}
+
 /**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
  * transcripts, in API prices: totals, a daily chart stacked by project, breakdowns, the most
@@ -427,63 +503,15 @@ export const CostsPage = memo(function CostsPage(props: {
       }
     >
       <div className="flex flex-col gap-5">
-        {status && status.divergences.length > 0 && (
-          <InlineNotice>
-            {t("costsUi.divergence", {
-              models: status.divergences
-                .map((d) =>
-                  t("costsUi.divergenceItem", {
-                    model: d.model,
-                    computed: usd(d.computedUsd, t.lang),
-                    sdk: usd(d.sdkUsd, t.lang),
-                  }),
-                )
-                .join("; "),
-            })}
-          </InlineNotice>
-        )}
-        {acrossHosts && state.hosts.some((h) => !hosts.includes(h)) && (
-          <InlineNotice>
-            {t("costsUi.hostsSkipped", {
-              hosts: state.hosts
-                .filter((h) => !hosts.includes(h))
-                .map((h) => h.name)
-                .join(", "),
-            })}
-          </InlineNotice>
-        )}
-        {failed.length > 0 && (
-          <InlineNotice>
-            {t("costsUi.hostsFailed", {
-              hosts: failed
-                .map((id) => state.hosts.find((h) => h.id === id)?.name ?? id)
-                .join(", "),
-            })}
-          </InlineNotice>
-        )}
-        {selection !== ALL_CLIENTS && (
-          <InlineNotice>
-            {t("costsUi.onlyClient", {
-              name:
-                state.clientList.find((c) => c.id === selection)?.name ?? t("clients.unassigned"),
-            })}
-          </InlineNotice>
-        )}
-        {status && status.telemetryDivergences.length > 0 && (
-          <InlineNotice>
-            {t("telemetry.divergence", {
-              items: status.telemetryDivergences
-                .map((d) =>
-                  t("telemetry.divergenceItem", {
-                    session: d.claudeSessionId.slice(0, 8),
-                    computed: usd(d.computedUsd, t.lang),
-                    telemetry: usd(d.telemetryUsd, t.lang),
-                  }),
-                )
-                .join("; "),
-            })}
-          </InlineNotice>
-        )}
+        <CostsNotices
+          status={status}
+          acrossHosts={acrossHosts}
+          allHosts={state.hosts}
+          hosts={hosts}
+          failed={failed}
+          selection={selection}
+          clients={state.clientList}
+        />
         {away && (
           <InlineNotice tone="info">
             <span>
