@@ -519,6 +519,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "cardPrMerge"),
     // Issue #1352: the card carries the PR's merge state, review state and open date.
     ...when(opts.board, "prDetails"),
+    // Issue #1405: cards whose changes touch the same files carry `mayConflict`.
+    ...when(opts.board, "conflictRadar"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),

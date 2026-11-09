@@ -60,6 +60,7 @@ describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
       "cardTemplates",
       "cardPrMerge",
       "prDetails",
+      "conflictRadar",
     ]);
     expect(await features({ board: true, issues: true, automations: true })).toEqual([
       "workflows",
@@ -71,6 +72,7 @@ describe("recursos-fase13: o host.info anuncia o que a Fase 13 trouxe", () => {
       "cardTemplates",
       "cardPrMerge",
       "prDetails",
+      "conflictRadar",
       "issues",
       "automation",
     ]);
