@@ -58,6 +58,13 @@ export function daemonUrl(config: { bind: string; port: number }): string {
   return `ws://${shown}:${config.port}${WS_PATH}`;
 }
 
+/** Nobody answers at the daemon's address (as opposed to a daemon that answers and refuses). */
+export class DaemonUnreachable extends Error {
+  constructor() {
+    super("no response");
+  }
+}
+
 /** The daemon protocol, as any client of the app speaks it: `hello`, then commands and acks. */
 export class DaemonClient {
   private readonly acks = new Map<string, { ok(ack: Ack): void; fail(error: Error): void }>();
@@ -79,7 +86,7 @@ export class DaemonClient {
     const ws = new WebSocket(url);
     await new Promise<void>((resolve, reject) => {
       ws.addEventListener("open", () => resolve(), { once: true });
-      ws.addEventListener("error", () => reject(new Error("no response")), { once: true });
+      ws.addEventListener("error", () => reject(new DaemonUnreachable()), { once: true });
     });
     const client = new DaemonClient(ws);
     await client.call("hello", { token, client: name });
