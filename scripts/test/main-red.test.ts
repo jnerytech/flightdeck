@@ -152,7 +152,7 @@ describe("main-red: one claim per red main (#1246)", () => {
       lastGreenAt: GREEN_RUN.createdAt,
     });
     expect((await latestMainRun(fakeGh({ runs: [GREEN_RUN] })))?.red).toBe(false);
-    expect(await latestMainRun(fakeGh({ runs: [CANCELLED] }))).toBe(null);
+    expect(await latestMainRun(fakeGh({ runs: [CANCELLED] }))).toBeNull();
   });
 
   test("a claim is read back from its issue: cause, owner, failing tests and the run's time", async () => {
@@ -177,7 +177,7 @@ describe("main-red: one claim per red main (#1246)", () => {
     expect(await mainRedLine(fakeGh({ runs: [RED_RUN] }))).toBe(
       `main is red since ${RED_RUN.url}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`,
     );
-    expect(await mainRedLine(fakeGh({ runs: [GREEN_RUN] }))).toBe(null);
+    expect(await mainRedLine(fakeGh({ runs: [GREEN_RUN] }))).toBeNull();
     // A claim for other jobs (an older red) does not cover this one: the red is unclaimed.
     const other = fakeGh({
       runs: [RED_RUN],
@@ -368,7 +368,7 @@ describe("main-red: one claim per red main (#1246)", () => {
   test("from the review: the lookup has one deadline; a gh that never answers says nothing in time", async () => {
     const never = () => new Promise<GhResult>(() => {});
     const started = Date.now();
-    expect(await mainRedWithin({ gh: never }, 30)).toBe(null);
+    expect(await mainRedWithin({ gh: never }, 30)).toBeNull();
     expect(Date.now() - started < 1000).toBe(true);
     const red = fakeGh({ runs: [RED_RUN] });
     expect((await mainRedWithin(red, 1000)) ?? "").toContain("unclaimed");
@@ -554,7 +554,7 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     );
     expect(pushList?.[pushList.indexOf("--event") + 1]).toBe("push");
     const views = fake.asked.filter((a) => a.join(" ") === "run view 50 --json jobs");
-    expect(views.length).toBe(1);
+    expect(views).toHaveLength(1);
   });
 
   test("the warning asks for the push run, the full runs and the claims at once, and no jobs of a green full run", async () => {
@@ -563,7 +563,7 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
       schedule: [FULL_GREEN],
       jobsById: { 51: SUITE_GREEN },
     });
-    expect(await mainRedLine({ ...fake, now: () => NOW })).toBe(null);
+    expect(await mainRedLine({ ...fake, now: () => NOW })).toBeNull();
     expect(fake.peak()).toBe(4);
     expect(fake.asked.some((a) => a[0] === "run" && a[1] === "view")).toBe(false);
   });
@@ -681,7 +681,7 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     const fake = fakeGh({ schedule: [FULL_GREEN], dispatch: many });
     await latestFullRun(fake);
     const views = fake.asked.filter((a) => a[0] === "run" && a[1] === "view");
-    expect(views.length).toBe(5);
+    expect(views).toHaveLength(5);
   });
 
   test("an age under an hour is told in minutes", async () => {

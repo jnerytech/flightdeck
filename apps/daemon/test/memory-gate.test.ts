@@ -141,7 +141,7 @@ describe("memory-gate: new cards wait while the host's memory is at or above res
   test("a watched gate that does not hold keeps no timer", () => {
     const g = gateAt(0.5);
     cleanups.push(g.gate.watch(() => {}));
-    expect(g.pending.filter((t) => !t.cleared).length).toBe(0);
+    expect(g.pending.filter((t) => !t.cleared)).toHaveLength(0);
   });
 
   test("on the board, a card waits with reason memory and starts when memory falls", async () => {

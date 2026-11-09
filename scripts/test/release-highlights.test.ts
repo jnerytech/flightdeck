@@ -145,7 +145,7 @@ describe("release highlights draft (#1334)", () => {
     expect(await draft([], gh)).toEqual({ code: 0, out: DRAFT, err: [] });
     // The search asks for main's merged PRs from the tag's date, and follows the cursor.
     const searches = calls.filter((c) => c.some((a) => a.startsWith("q=")));
-    expect(searches.length).toBe(2);
+    expect(searches).toHaveLength(2);
     expect(
       searches[0]?.includes(`q=repo:${REPO} is:pr is:merged base:main merged:>=${TAG_DATE}`),
     ).toBe(true);
@@ -284,7 +284,7 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
       ),
     ).toBe(4);
     expect(issueOf(pr(["feat(a): x"], { body: "Why.\n\nRefs: #12" }))).toBe(12);
-    expect(issueOf(pr(["feat(a): x", "test(a): y (#5)"]))).toBe(null);
+    expect(issueOf(pr(["feat(a): x", "test(a): y (#5)"]))).toBeNull();
     // GitHub cuts a long headline with "…" and moves the rest, with its (#N), into the body.
     expect(
       issueOf(pr(["feat(a): a long headline that GitHub cuts…"], { body: "…and its tail (#21)" })),
