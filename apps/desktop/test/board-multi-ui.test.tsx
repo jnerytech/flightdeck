@@ -603,6 +603,18 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
     ]).toEqual([0, false, true, false]);
   });
 
+  test("m opens the bar's Move to…, and closing it with Esc brings the focus back to the card", async () => {
+    setup();
+    await ready();
+    titleOf("B")?.focus();
+    await press("x");
+    await press("m");
+    await settleMaybe(() => screen.queryByRole("menuitem", { name: "Done" }) !== null);
+    await press("Escape");
+    await settleMaybe(() => screen.queryByRole("menuitem", { name: "Done" }) === null);
+    expect([focused(), selected()]).toEqual(["Card B", ["B"]]);
+  });
+
   test("while a selection exists every card has a check, not a Tab stop, that toggles it", async () => {
     setup();
     await ready();
