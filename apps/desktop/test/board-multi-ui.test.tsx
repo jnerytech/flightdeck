@@ -619,23 +619,29 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
     }
   });
 
-  test("with a selection, s starts no single card and m opens the bar's Move to…", async () => {
+  // PR B of #1354: with a selection, s asks to start the selection; it never starts the focused
+  // card alone, even one outside the selection. m opens the bar's Move to….
+  test("with a selection, s asks to start the selection, not the focused card, and m opens the bar's Move to…", async () => {
     const { commands, requests } = setup();
     await ready();
     titleOf("A")?.focus();
     await press("x");
     titleOf("C")?.focus();
     await press("s");
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null);
+    const asked = screen.queryByRole("heading", { name: "Start 1 card?" }) !== null;
     const started = [...commands, ...requests].filter(([, type]) => type === "card.start");
-    const dialog = screen.queryByRole("dialog") !== null;
+    await press("Escape");
+    await settleMaybe(() => screen.queryByRole("alertdialog") === null);
+    titleOf("C")?.focus();
     await press("m");
     await settleMaybe(() => screen.queryByRole("menuitem", { name: "Done" }) !== null);
     expect([
+      asked,
       started.length,
-      dialog,
       screen.queryByRole("menuitem", { name: "Done" }) !== null,
       screen.queryByRole("menuitem", { name: "Move to Done" }) !== null,
-    ]).toEqual([0, false, true, false]);
+    ]).toEqual([true, 0, true, false]);
   });
 
   test("m opens the bar's Move to…, and closing it with Esc brings the focus back to the card", async () => {

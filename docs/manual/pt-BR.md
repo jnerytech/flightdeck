@@ -1066,6 +1066,12 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
   cache e o modelo principal com o que ele custou.
+- **Enquanto você esteve fora** (no topo de **Precisa de você**) resume o que aconteceu nos seus
+  hosts desde a última vez que o app esteve ativo, quando isso foi há pelo menos 30 minutos: por
+  host, as sessões que terminaram, os cards que chegaram à revisão, os PRs com merge feito ou com
+  checks falhando, as execuções de workflow que falharam e a cota usada. Cada linha leva à sessão
+  ou ao card; um grupo mostra as três primeiras linhas e diz quantas faltam. Um host que não
+  respondeu é citado. Só aparece quando há novidade, e **Dispensar** o fecha até o próximo início.
 - **Pull requests** (na barra lateral, em Trabalho, depois de Board; ou **Ir para Pull requests**
   na paleta) lista todo card com PR aberto nos hosts conectados, primeiro os que pedem atenção
   (checks falhando, ou uma vigia que precisa de você). Cada linha diz o card, o host e o projeto, os
@@ -1112,12 +1118,19 @@ aparece mascarado e como **Oculto**, e não abre.
   seleciona ou desmarca, e um leitor de tela ouve o estado dela e a contagem.
 - **Selecionar pelo teclado** (#1354). Num card, `X` seleciona ou desmarca, e `Shift` com uma seta,
   `Home` ou `End` anda e seleciona o trecho desde o primeiro card escolhido, na ordem do board.
-  Enquanto há uma seleção, `M` abre o **Mover para…** da barra e `S` não inicia um card sozinho. `Esc`
+  Enquanto há uma seleção, `M` abre o **Mover para…** da barra e `S` o **Iniciar N**, nunca um card sozinho. `Esc`
   limpa a seleção e deixa o foco no card; sem seleção, faz o que fazia antes (uma tela dividida
   fecha). Um filtro esconde cards mas os mantém selecionados; o que você faz então vale só para os
   cards que aparecem, e a barra diz quantos estão escondidos.
-- **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
-  **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
+- **A barra de seleção** acima do board mostra "3 selecionados" com **Iniciar N** (os cards que podem
+  iniciar), **Parar N** (quando algum deles roda ou espera na fila), **Mover para…** (uma coluna),
+  **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
+  quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
+  e os cards que ficam de fora e por quê. Parar também pergunta: o turno de um card rodando é
+  interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
+  branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
+  os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que
+  não aparecem, e **Mover para…** e **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
 - **O que uma coluna pede de um card** (#78). **Em revisão** pede um link de PR e verificações
   passando; **Em andamento** pede critérios de aceite, um item de checklist (`- [ ] …`) na
@@ -1736,6 +1749,16 @@ fica desligado, com o motivo ao lado e **Abrir Workflows** para a página de Wor
 quando o problema é o arquivo: o workflow mudou desde que você confiou nele, tem erros, ou não está
 mais na branch base. Se o host recusar o início, a recusa aparece no próprio lugar.
 
+Uma execução que falhou também pode continuar de onde parou (#1266): **Executar de novo a partir
+de <passo>** fica ao lado de **Executar de novo**. A mesma execução continua: os passos que
+terminaram guardam a saída e não rodam de novo, um gate aprovado não é perguntado de novo, e o passo
+que falhou roda do zero, com tudo o que vem depois. A execução do card espera uma vaga como qualquer
+outra. Ela só é oferecida quando é seguro; senão, o motivo aparece abaixo de **Executar de novo**: o
+workflow mudou desde a execução, a branch do card mudou desde que ela parou (um commit, reset ou rebase), o card
+sumiu ou roda outra coisa, ou a execução terminou antes de o Flightdeck guardar onde o código
+estava. Ela precisa de uma conexão próxima (este computador ou a Tailscale): por uma distante, esse é o
+motivo mostrado, e só **Executar de novo** é oferecido.
+
 ### Modelos
 
 Três workflows já vêm com o Flightdeck, para trabalho recorrente:
@@ -2308,7 +2331,9 @@ por padrão): depois de cada backup os mais antigos saem, e só arquivos com nom
 Flightdeck são tocados. O backup é cifrado como o de cima, então o Flightdeck pede a frase-senha uma
 vez a cada abertura; ela fica na memória até você fechar o app e nunca é salva. Enquanto você não a
 der, um backup devido espera, e a seção avisa. Um backup que não pôde ser salvo também aparece ali, e
-a data do último bom continua.
+a data do último bom continua. O sino também avisa, uma vez por abertura, quando um backup não pode
+sair: falta a frase-senha, não há pasta escolhida ou um backup falhou. Um clique no aviso abre
+**Configurações**, seção **Backup** (#1327).
 
 ## Ações: o Claude usa um segredo sem vê-lo
 
@@ -2950,6 +2975,9 @@ do app, dos cards e dos workflows, subagentes incluídos.
 
 > **Estimativa:** o valor é o equivalente em preços de API, estimado. Numa assinatura do Claude,
 > nada disso é cobrado.
+
+Os dólares seguem o idioma do app onde quer que um custo apareça: `US$ 1.234,50` em português,
+`US$ 1,234.50` em inglês (#1332).
 
 - **Fonte:** os transcripts do Claude Code em `~/.claude/projects`, os mesmos do histórico.
   - Cada mensagem conta uma vez, mesmo quando o transcript a repete em várias linhas.

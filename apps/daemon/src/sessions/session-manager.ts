@@ -280,6 +280,15 @@ export class SessionManager {
     return this.risk.classify(toolName, input, this.get(sessionId).cwd);
   }
 
+  /**
+   * Issue #1361: the mode a session runs in now (the one it last reported, else its start mode);
+   * with no session yet, the host's default.
+   */
+  modeOf(sessionId: string | null): PermissionMode {
+    if (sessionId === null) return this.opts.defaultPermissionMode;
+    return this.store.lastMode(sessionId) ?? this.get(sessionId).permissionMode;
+  }
+
   get(sessionId: string): SessionSummary {
     const session = this.store.getSession(sessionId);
     if (!session)

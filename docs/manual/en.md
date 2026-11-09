@@ -1063,6 +1063,12 @@ live; the list is the project's, so a session of another project never shows her
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
   the top model with what it cost.
+- **While you were away** (at the top of **Needs you**) summarises what happened on your hosts since
+  the app was last active, when that was at least 30 minutes ago: per host, the sessions that
+  finished, the cards that reached review, the PRs merged or with failing checks, the failed
+  workflow runs and the quota used. Each line goes to the session or the card; a group shows its
+  first three lines and says how many more there are. A host that did not answer is named. It
+  shows only when something is new, and **Dismiss** closes it until the next start.
 - **Pull requests** (in the sidebar under Work, after Board; or **Go to Pull requests** in the
   palette) lists every card with an open PR on the connected hosts, the ones that need a look first
   (failing checks, or a watch that needs you). A row names the card, its host and project, its
@@ -1108,12 +1114,19 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   screen reader hears its state and the count.
 - **Select from the keyboard** (#1354). On a card, `X` selects it or unselects it, and `Shift` with an
   arrow, `Home` or `End` moves and selects the range from the first card picked, in the board's order.
-  While a selection exists, `M` opens the bar's **Move to…** and `S` starts no single card. `Esc` clears
+  While a selection exists, `M` opens the bar's **Move to…** and `S` its **Start N**, never a single card. `Esc` clears
   the selection and leaves the focus on the card; with none, it does what it did before (a split view
   closes). A filter hides cards but keeps them selected; what you do then applies only to the cards
   you can see, and the bar says how many are hidden.
-- **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
-  **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
+- **The selection bar** above the board shows "3 selected" with **Start N** (the cards that can start),
+  **Stop N** (while some of them run or wait in the queue), **Move to…** (a column), **Discard…** and
+  **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
+  many wait in the host's queue, the host's 5-hour window on a subscription, and the cards it skips and
+  why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
+  one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
+  the ones that went leave the selection, and the bar names any the host refused. In a narrow window
+  the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
+  under ⋯. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
 - **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
   **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's
@@ -1725,6 +1738,15 @@ column's default persona, and the earlier run stays in the card's history. It is
 changed since you trusted it, it has errors, or it is not on the base branch any more. If the host
 refuses the start, the refusal shows in place.
 
+A run that failed can also go on from where it stopped (#1266): **Run again from <step>** sits
+next to **Run again**. The same run continues: the steps that finished keep their output and are
+not run again, an approved gate is not asked again, and the failed step runs from scratch with
+everything after it. The card's run waits for a slot like any run. It is offered only when it is
+safe, otherwise the reason shows under **Run again**: the workflow changed since the run, the
+card's branch changed since it stopped (a commit, reset or rebase), the card is gone or runs something else, or the
+run ended before Flightdeck kept where the code was. It needs a near connection (this computer or
+Tailscale): over a far one, that is the reason shown, and only **Run again** is offered.
+
 ### Templates
 
 Three workflows ship with Flightdeck, for recurring work:
@@ -2294,7 +2316,9 @@ after each backup the oldest files go, and only files named like a Flightdeck ba
 touched. The backup is encrypted like the one above, so Flightdeck asks for a passphrase once each
 time it starts; it stays in memory until you close the app and is never saved. Until you give it, a
 backup that is due waits, and the section says so. A backup that could not be saved is shown there
-too, and the date of the last good one stays.
+too, and the date of the last good one stays. The bell says it too, once per start, when a backup
+cannot go: the passphrase is missing, no folder is chosen, or a backup failed. A click on the notice
+opens **Settings**, section **Backup** (#1327).
 
 ## Actions: Claude uses a secret without seeing it
 
@@ -2930,6 +2954,9 @@ app, cards and workflows, subagents included.
 
 > **Estimate:** the value is the API-price equivalent, estimated. On a Claude subscription,
 > none of it is charged.
+
+Dollars follow the app's language everywhere a cost shows: `US$ 1,234.50` in English,
+`US$ 1.234,50` in Portuguese (#1332).
 
 - **Source:** the Claude Code transcripts in `~/.claude/projects`, the same as the history.
   - Each message counts once, even when the transcript repeats it across several lines.

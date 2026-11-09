@@ -24,12 +24,12 @@ process.exit(
       },
       env: process.env,
       log: (line) => console.log(line),
-      // #1246: a red main and its claim, said before a PR moves; 3 s at most, then nothing.
+      // #1246: a red main and its claim, said before a PR moves; 6 s at most (#1381), then nothing.
       mainRed: () =>
         mainRedWithin(
           {
             gh: async (cmd) => {
-              const ran = await runCommand(["gh", ...cmd], process.cwd(), undefined, 3000);
+              const ran = await runCommand(["gh", ...cmd], process.cwd(), undefined, 6000);
               return {
                 code: ran.timedOut ? 124 : ran.code,
                 stdout: ran.stdout,
@@ -37,7 +37,7 @@ process.exit(
               };
             },
           },
-          3000,
+          6000,
         ),
     },
   ),

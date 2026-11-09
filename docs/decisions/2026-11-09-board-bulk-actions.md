@@ -52,34 +52,30 @@ chord stay as they are.
     in en and pt-BR, with the span.
   - Clicking it toggles the card. A plain click on the card still opens it.
 - **Touch, or no Ctrl key.** The card's menu (**Select card**) starts a selection. From then on every
-  card shows its check. Until slice 2's PR B lands, `s` with a selection does nothing: it never starts
-  a card outside the selection.
+  card shows its check.
 
 ## The bar
 
 It stays in `SelectionSlot` (#760): it covers the toolbar's row, so the columns never move.
 
-![The bar at 1280, dark (mock)](../images/decisions/1354-bar-1280-dark.png)
-![The bar at 1280, light (mock)](../images/decisions/1354-bar-1280-light.png)
 
 - **Order.** The count, **Start N**, **Stop N**, **Move to…**, **Discard…** and **Clear selection**.
 - **Counts.** N counts only the cards each action can take:
   - **Start:** the cards `cardStartBlock` lets start.
   - **Stop:** the cards that are running or queued.
-- **Disabled buttons.** A button with no card to take is disabled with its reason: "None of the
-  selected cards can start" and "None of the selected cards is running".
+- **Disabled buttons.** Start with no card to take is disabled, and says "None of the selected cards
+  can start" on a line of the bar, in the flow (a `FieldRow`, #732). Stop shows only while a selected
+  card is running or queued: most selections have none, and a reason hung under a disabled Stop was
+  drawn over the cards at 1024 and past the window at 390 (the narrow guard of the prints caught it).
 - **One primary (#1197).** **Start N** is the primary while it has a card. Otherwise there is none.
 - **640 (the column switcher shows).** The count gains "1 in another column" ("{n} in other
   columns"), because the actions take the whole selection, not just the column on screen. The row
   wraps, and **Clear selection** may take a line of its own.
 
-  ![The bar at 640 (mock)](../images/decisions/1354-bar-640-dark.png)
 - **390.** **Move to…** and **Discard…** go under a ⋯ menu ("More actions for the selection"), and
   **Clear selection** becomes **Clear**. The bar wraps to two lines at most. It stays at the top, not
   in a sticky bottom bar, which would bring back the covered-content problem of #1271.
 
-  ![The bar at 390, pt-BR (mock)](../images/decisions/1354-bar-390-dark-pt-BR.png)
-  ![The bar at 390, pt-BR, light (mock)](../images/decisions/1354-bar-390-light-pt-BR.png)
 
 ## The confirms
 
@@ -94,9 +90,6 @@ confirm, only the column contract's question (#78).
     {reason}" (the `startOffText` reason).
   - **Button:** **Start 3** (primary), next to **Cancel**.
 
-  ![Start, dark (mock)](../images/decisions/1354-confirm-start-dark.png)
-  ![Start, light (mock)](../images/decisions/1354-confirm-start-light.png)
-  ![Start, pt-BR (mock)](../images/decisions/1354-confirm-start-dark-pt-BR.png)
 - **Stop N.** Stopping one card asks nothing today. Stopping several ends several sessions at once, so
   it asks.
   - **Title:** "Stop 1 card?"
@@ -107,8 +100,6 @@ confirm, only the column contract's question (#78).
   - **Button:** **Stop 1**. It isn't marked destructive: the turn's unfinished work is cut off, but the
     worktrees, branches and commits stay.
 
-  ![Stop, dark (mock)](../images/decisions/1354-confirm-stop-dark.png)
-  ![Stop, light (mock)](../images/decisions/1354-confirm-stop-light.png)
 
 ### Where each fact comes from (no daemon change)
 
@@ -142,7 +133,6 @@ The board is one host's (`BoardView` takes one `hostId`), so the confirm names o
 | `board.startSelected` | Start {n} | Iniciar {n} |
 | `board.stopSelected` | Stop {n} | Parar {n} |
 | `board.noneCanStart` | None of the selected cards can start | Nenhum card selecionado pode iniciar |
-| `board.noneRunning` | None of the selected cards is running | Nenhum card selecionado está rodando |
 | `board.selectCardNamed` | Select {title} | Selecionar {title} |
 | `board.otherColumnOne` | 1 in another column | 1 em outra coluna |
 | `board.otherColumns` | {n} in other columns | {n} em outras colunas |
@@ -154,9 +144,11 @@ The board is one host's (`BoardView` takes one `hostId`), so the confirm names o
 | `board.startSplit` | {started} and {waiting} (at most {max} at once). | {started} e {waiting} (no máximo {max} ao mesmo tempo). |
 | `board.startAllNow` | All of them start now. | Todos iniciam agora. |
 | `board.startQueue` | They join the board's queue. | Eles entram na fila do board. |
-| `board.startQuota` | {host}: {percent}% of the 5-hour window used, resets in {reset}. | {host}: {percent}% da janela de 5 horas usados, renova em {reset}. |
-| `board.startBudgetHold` | A budget holds new cards on {host}: they wait until it allows. | Um orçamento segura cards novos em {host}: eles esperam até ele liberar. |
-| `board.startMemoryHold` | {host} is short of memory: new runs wait until it frees up. | {host} está com pouca memória: as execuções novas esperam ela liberar. |
+| `board.startQuota` | {host}: {percent}% of the 5-hour window used, {reset}. | {host}: {percent}% da janela de 5 horas usados, {reset}. |
+| `board.startQuotaHold` | {host} is over its pause limit: new cards wait until the window resets. | {host} passou do limite de pausa: os cards novos esperam a janela renovar. |
+| `board.noCriteriaOne` / `board.noCriteria` | 1 of them has no acceptance criteria; it starts anyway. / {n} of them have no acceptance criteria; they start anyway. | 1 deles não tem critérios de aceite; ele inicia mesmo assim. / {n} deles não têm critérios de aceite; eles iniciam mesmo assim. |
+| `board.startFailedOne` / `board.startFailed` | 1 card did not start: {names} / {count} cards did not start: {names} | 1 card não iniciou: {names} / {count} cards não iniciaram: {names} |
+| `board.stopFailedOne` / `board.stopFailed` | 1 card did not stop: {names} / {count} cards did not stop: {names} | 1 card não parou: {names} / {count} cards não pararam: {names} |
 | `board.skipped` | skipped: {reason} | fica de fora: {reason} |
 | `board.stopTitleOne` / `board.stopTitle` | Stop 1 card? / Stop {n} cards? | Parar 1 card? / Parar {n} cards? |
 | `board.stopBody` | A running card's turn is cut off and the card waits in Needs you; a queued card goes back to Backlog. Worktrees, branches and commits stay. | O turno de um card rodando é interrompido e o card espera em Esperando você; um card na fila volta para o Backlog. Worktrees, branches e commits ficam. |
@@ -167,16 +159,23 @@ Which line the Start confirm shows: with nothing left to wait, `board.startAllNo
 now, `board.startQueue`; otherwise `board.startSplit`, built from the one-or-many forms of
 `board.startNow` and `board.wait`.
 
-## The mock prints
+## The prints
 
-The prints come from the demo board (`flightdeck-web`, en and pt-BR, both themes): a real selection
-made with Ctrl-click, with slice 2's controls injected into the page. The confirms are the real
-**Discard…** dialog of the same selection, with its words changed.
+Slice 1 drew mocks; slice 2 replaced them with real prints of `demo:shots`, both themes and both
+languages, re-measured at 1024, 640 and 390 by the narrow guard:
 
-- **Stand-ins.** The Pi's Chromium 114 paints no Tailwind ring, so the selected cards' `ring-1 ring-ring`
-  and the focused title's ring are drawn with an inline box-shadow and outline.
-- **The script** is not in the repository: it is a one-off, and these PNGs are a design, not evidence
-  of a built screen. Slice 2 replaces them with real prints from `demo:shots` and deletes these files.
+- `board-selecao`: four cards selected, three to start and one at a gate. The bar, the checks, and at
+  390 the compact bar with Move to and Discard under ⋯ and "1 in another column".
+- `board-selecao-iniciar`: Start N's confirm on the same selection, with the host's queue and quota.
+
+## Built in slice 2, and what waits
+
+- **Shown:** the count, Start N, Stop N while something runs, the queue line (from `project.list`'s
+  `maxParallelRuns` and the host's running cards), the 5-hour quota line and the pause-limit line on a
+  subscription, the cards with no acceptance criteria, and the skipped cards with their reason.
+- **Waits:** the budget line (`board.startBudgetHold`) needs the host's budgets with "hold new cards"
+  in the board's store, and the memory line (`board.startMemoryHold`) needs #1343's queued reason.
+  Neither is in the strings yet; each comes with its source.
 
 ## Out of scope
 

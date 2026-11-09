@@ -16,6 +16,7 @@ import {
   CONTRACT_CARD,
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
+  DEMO_AWAY_SINCE,
   DEMO_CLOSED_TEAM,
   DEMO_PR_BETA_CARD,
   DEMO_PR_BETA_URL,
@@ -1494,6 +1495,54 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     }
   },
 
+  // #1354: acting on several cards, keyboard only. Two new cards, selected with x and Shift+Down;
+  // s asks to start them, with the count and the host's queue; Cancel starts nothing, and Esc
+  // clears the selection with the focus left on the card.
+  "board-selecao": async (c) => {
+    const stamp = Date.now();
+    const titles = [`Lote A ${stamp}`, `Lote B ${stamp}`];
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    for (const title of titles) {
+      await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+      await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+      await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+      await c.page
+        .locator(`li[aria-label="${c.t("kanban.card", { title })}"]`)
+        .waitFor({ timeout: WAIT });
+    }
+    const titleOf = (title: string) =>
+      c.page
+        .locator(`li[aria-label="${c.t("kanban.card", { title })}"]`)
+        .getByRole("button", { name: title, exact: true });
+    await titleOf(titles[0] as string).focus();
+    await c.page.keyboard.press("x");
+    await c.page.keyboard.press("Shift+ArrowDown");
+    const bar = c.page.getByRole("group", { name: c.t("board.selection"), exact: true });
+    await bar
+      .getByText(c.t("board.selectedCount", { n: 2 }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await c.page.keyboard.press("s");
+    const dialog = c.page.getByRole("alertdialog");
+    await dialog
+      .getByRole("heading", { name: c.t("board.startTitle", { n: 2 }), exact: true })
+      .waitFor({ timeout: WAIT });
+    // The host's limit comes from project.list: a split line, or all start now.
+    const queueLines = [c.t("board.startAllNow"), c.t("board.startQueue")];
+    await waitFor(async () => {
+      const line = (await dialog.locator("p").first().textContent()) ?? "";
+      // "1 starts now and 1 waits … (at most 2 at once)." or one of the two short forms.
+      return queueLines.includes(line) || /\(.*\d+.*\)\.$/.test(line);
+    }, "the confirm says how the host's queue takes them");
+    await dialog.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await titleOf(titles[1] as string).focus();
+    await c.page.keyboard.press("Escape");
+    await bar.waitFor({ state: "detached", timeout: WAIT });
+    const focused = await c.page.evaluate(() => document.activeElement?.textContent ?? "");
+    if (focused !== titles[1])
+      throw new Error(`Esc deveria deixar o foco no card, ficou em "${focused}"`);
+  },
+
   // Teams (#754): the form of a new team ends in Create and start, which must be in view and
   // clickable once the goal is written, in a phone-sized window and a desktop one. Nothing is
   // created, so the other journeys' counts stay as they were (the demo's one closed team aside).
@@ -2185,6 +2234,43 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await dialog.getByText(DEMO_PR_BETA_URL, { exact: true }).waitFor({ timeout: WAIT });
     await dialog.getByRole("button", { name: c.t("cardMergePr.action"), exact: true }).click();
     await c.page.getByText(c.t("cardMergePr.done"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // Issue #1344: after a long absence, Needs you opens with a summary of what the hosts did; its
+  // lines go to the card, and Dismiss closes it.
+  "enquanto-fora": async (c) => {
+    // Any page of the demo holds the window's storage; the app was last active long ago.
+    if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+    await c.page.evaluate(
+      ([key, value]) => localStorage.setItem(key as string, value as string),
+      ["flightdeck.lastActive", DEMO_AWAY_SINCE],
+    );
+    await open(c, { name: "needs-you" });
+    const summary = c.page.getByRole("region", { name: c.t("away.title"), exact: true });
+    await summary.waitFor({ timeout: WAIT });
+    // Both hosts with news are named, and each has cards in review. A group shows only the newest
+    // three lines, which earlier journeys also move, so the line that is followed is the first.
+    await summary.getByRole("heading", { name: "alfa", exact: true }).waitFor({ timeout: WAIT });
+    await summary.getByRole("heading", { name: BETA, exact: true }).waitFor({ timeout: WAIT });
+    const review = summary.getByRole("heading", { name: new RegExp(`^${c.t("away.review")}`) });
+    await review.nth(1).waitFor({ timeout: WAIT });
+    await review
+      .first()
+      .locator("xpath=following-sibling::ul[1]")
+      .getByRole("button")
+      .first()
+      .click();
+    // The line went to its card: the summary is not on screen any more.
+    await summary.waitFor({ state: "detached", timeout: WAIT });
+    // Back in Needs you (a reload would read the time the app was just active), the summary is
+    // still there, and Dismiss closes it.
+    await c.page
+      .getByRole("button", { name: new RegExp(`^${c.t("sidebar.needsYou")}`) })
+      .first()
+      .click();
+    await summary.waitFor({ timeout: WAIT });
+    await summary.getByRole("button", { name: c.t("away.dismiss"), exact: true }).click();
+    await summary.waitFor({ state: "detached", timeout: WAIT });
   },
 
   "escopo-dados": async (c) => {

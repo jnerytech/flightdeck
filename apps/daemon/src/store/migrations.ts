@@ -972,6 +972,26 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (run_id, n)
   );
   `,
+  // Issue #1361: a card's check loop: its switch, cap, confirmation, replay mark and rounds.
+  `
+  ALTER TABLE cards ADD COLUMN check_loop INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE cards ADD COLUMN check_rounds INTEGER;
+  ALTER TABLE cards ADD COLUMN check_loop_confirmed_at TEXT;
+  ALTER TABLE cards ADD COLUMN check_loop_confirmed_hash TEXT;
+  ALTER TABLE cards ADD COLUMN check_loop_turn_seq INTEGER;
+  CREATE TABLE card_check_rounds (
+    card_id   TEXT NOT NULL,
+    run_id    TEXT NOT NULL,
+    n         INTEGER NOT NULL,
+    at        TEXT NOT NULL,
+    status    TEXT NOT NULL,
+    command   TEXT,
+    exit_code INTEGER,
+    timed_out INTEGER NOT NULL DEFAULT 0,
+    summary   TEXT,
+    PRIMARY KEY (card_id, run_id, n)
+  );
+  `,
   // Issue #1352: what the PR poll reads besides the checks: merge state, review state, open date.
   `
   ALTER TABLE cards ADD COLUMN pr_mergeable TEXT;
