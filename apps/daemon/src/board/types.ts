@@ -17,6 +17,7 @@ export type {
   DiffFile,
   DiffHunk,
   DiffLine,
+  MayConflict,
   Project,
   PrProviderKind,
   PrState,

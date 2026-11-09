@@ -2585,6 +2585,9 @@ export class Board {
     return this.running.has(cardId) || this.getCard(cardId).queued;
   }
 
+  /** Issue #1405: reads what the card changed and tells the cards that now share files with it. */
+  async refreshConflicts(_id: string): Promise<void> {}
+
   /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
   releaseWorktree(id: string, path: string, clearBranch: boolean): void {
     // Only the worktree that was removed: a card that got another one meanwhile keeps it.

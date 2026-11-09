@@ -640,6 +640,15 @@ export type PrState = z.infer<typeof PrState>;
 export const ChecksState = z.enum(["pending", "passing", "failing"]);
 export type ChecksState = z.infer<typeof ChecksState>;
 
+/** Issue #1405: another card of the project that changes some of the same files. */
+export const MayConflict = z.object({
+  cardId: z.string(),
+  title: z.string(),
+  /** The files both cards change (capped by the daemon). */
+  files: z.array(z.string()),
+});
+export type MayConflict = z.infer<typeof MayConflict>;
+
 /** Phase 13: the project's automatic approval, off by default. */
 export const AutoApproveSettings = z.object({
   enabled: z.boolean().default(false),
@@ -817,6 +826,8 @@ export const Card = z.object({
   prUrl: z.string().nullable(),
   prState: PrState.nullable(),
   checksState: ChecksState.nullable(),
+  /** Issue #1405 (host `conflictRadar`): the cards that edit the same files; absent when none. */
+  mayConflict: z.array(MayConflict).optional(),
   /** Started and waiting for a free slot. */
   queued: z.boolean(),
   /** Session of the active (latest) run. */
