@@ -8,6 +8,7 @@ import { CardMergePr } from "@/components/card/card-merge-pr";
 import { CardPins } from "@/components/card/card-pins";
 import { CardRunForm } from "@/components/card/card-run-form";
 import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
+import { CheckLoopPanel } from "@/components/card/check-loop-panel";
 import { PostMortem } from "@/components/card/post-mortem";
 import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -260,6 +261,9 @@ export const CardDetail = memo(function CardDetail(props: {
                 )}
                 {withWatch && card.prUrl && (
                   <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
+                )}
+                {withWatch && card.checkLoop && (
+                  <CheckLoopPanel store={store} hostId={hostId} card={card} />
                 )}
                 {card.worktreePath && has("runenv") && (
                   <RunPanel store={store} hostId={hostId} card={card} />
