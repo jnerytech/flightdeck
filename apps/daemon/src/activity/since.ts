@@ -108,7 +108,7 @@ export function activitySince(
     db,
     {
       select:
-        "id AS runId, card_id AS cardId, workflow_name AS workflowName, status_reason_key AS reasonKey, status_reason_params AS params, ended_at AS at",
+        "id AS runId, card_id AS cardId, (SELECT project_id FROM cards WHERE cards.id = workflow_runs.card_id) AS projectId, workflow_name AS workflowName, status_reason_key AS reasonKey, status_reason_params AS params, ended_at AS at",
       from: "workflow_runs",
       where: "status = 'failed' AND ended_at IS NOT NULL AND ended_at >= ?",
       args: [since],
@@ -120,6 +120,7 @@ export function activitySince(
     }: {
       runId: string;
       cardId: string;
+      projectId: string;
       workflowName: string;
       reasonKey: string | null;
       params: string | null;

@@ -126,7 +126,9 @@ function HostNews(props: Readonly<{ store: AppStore; news: AwayNews; go(route: R
           const text = reason
             ? t("away.run", { workflow: run.workflowName, reason })
             : run.workflowName;
-          return <Line text={text} to={known ? card(run.cardId, known.projectId) : null} go={go} />;
+          // A card the app has not loaded opens by the project the run carries; an older host sends none.
+          const projectId = known?.projectId ?? run.projectId;
+          return <Line text={text} to={projectId ? card(run.cardId, projectId) : null} go={go} />;
         }}
       />
       {quota.length > 0 && (

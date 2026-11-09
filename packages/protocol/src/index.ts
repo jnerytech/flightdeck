@@ -1678,8 +1678,8 @@ export interface ActivityPr extends ActivityCard {
 export interface ActivityRun {
   runId: string;
   cardId: string;
-  /** The card's project (issue #1408), so the line opens a card the app has not loaded; `null` once the card is gone. */
-  projectId?: string | null;
+  /** The card's project (issue #1408), so the line opens a card the app has not loaded; an older host sends none. */
+  projectId?: string;
   workflowName: string;
   /** Why it failed, as a key and params the app translates. */
   reasonKey: string | null;
