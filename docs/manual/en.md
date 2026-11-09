@@ -1502,6 +1502,18 @@ conversation. It is where you check what the agent did and send it back what to 
     other;
   - a comment follows the quoted lines when the file changes, and shows **Outdated** when they are
     gone. Sent comments stay in the list as history.
+- **Second opinion** (on a card, when the host offers it): **Get a second opinion** asks a second
+  Claude call to read the card's diff and leave its findings as reviewer drafts. Nothing starts on
+  its own: you ask, the button is off while a run goes or when there are no changes, and the host
+  refuses (and says why) while it is paused, at the plan quota's pause limit, short of memory or
+  at the card's budget, and after 3 reviews of the card in a day. The same diff is reviewed once:
+  asking again shows that review. The call has no tools and sees only the card's text and the diff,
+  with secrets masked; the diff goes to Anthropic, as the card's own session sends it. Each
+  finding that falls on a changed line becomes a draft marked **Reviewer**, with its severity
+  (Blocker, High, Medium or Low): edit it (then it is yours), **Dismiss** it, or leave it, and
+  **Send review** sends it to the card with your own comments, framed as a suggestion to check.
+  Findings on no changed line are listed under the button as text. **Open PR** says how many
+  reviewer findings are still open when a blocker or a high one is, and opens the PR all the same.
 - **Revert and edit:**
   - **Revert** asks for confirmation, goes back to `HEAD` (or the card's base; a new file is
     removed), keeps a copy in `<dataDir>/review-trash/` for 7 days and offers **Undo** for 30
