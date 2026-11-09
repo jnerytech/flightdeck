@@ -34,7 +34,10 @@ export interface MergedPr {
 
 export interface HighlightsDeps {
   gh: (args: string[]) => Promise<GhResult>;
+  /** The draft (stdout). */
   log: (line: string) => void;
+  /** Errors and warnings (stderr), so `> notes.md` keeps only the draft. */
+  warn: (line: string) => void;
 }
 
 const CONVENTIONAL = /^(\w+)(?:\(([^)]*)\))?!?:\s*/;
