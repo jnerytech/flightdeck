@@ -182,6 +182,8 @@ describe("demo-prints: axe e CI", () => {
       "merge-pr-recusa",
       "pull-requests",
       "enquanto-fora",
+      // #1406: Update from the base on three cards, one of them in conflict.
+      "board-atualizar",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
