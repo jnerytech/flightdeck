@@ -593,7 +593,7 @@ export class HostConnection {
     const hidden = token ? reason.split(token).join("[token]") : reason;
     return {
       code,
-      reason: hidden.replaceAll(/\p{Cc}+/gu, " ").slice(0, 123),
+      reason: hidden.replaceAll(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, " ").slice(0, 123),
       byWatchdog: this.gaveUp,
       byApp,
       silentMs: now - this.lastHeard,

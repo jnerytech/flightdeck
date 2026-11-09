@@ -29,7 +29,7 @@ const REASON_CAP = 123;
 function plain(text: string, token: string, cap: number): string {
   const hidden = token ? text.split(token).join("[token]") : text;
   return hidden
-    .replaceAll(/\p{Cc}+/gu, " ")
+    .replaceAll(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, " ")
     .replaceAll('"', "'")
     .slice(0, cap);
 }
