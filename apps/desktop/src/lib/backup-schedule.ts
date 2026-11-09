@@ -102,6 +102,42 @@ export function backupFileName(now: number): string {
   return `flightdeck-backup-${day}-${time}.fdbackup`;
 }
 
+/** Where a due run writes: the Drive target or the stored folder, or the reason there is none. */
+async function pickTarget(deps: {
+  folder: BackupFolder | undefined;
+  drive?: BackupTarget | null;
+  schedule: BackupSchedule;
+  passphrase: string | null;
+}): Promise<{ target: BackupTarget; passphrase: string } | { reason: SkipReason }> {
+  const { folder, schedule } = deps;
+  const onDrive = schedule.target === "drive";
+  // The folder in the saved schedule is only a copy; the one that counts is the stored pick.
+  if (!onDrive && !(await folder?.current().catch(() => null))) return { reason: "no-folder" };
+  const { passphrase } = deps;
+  if (!passphrase) return { reason: "no-passphrase" };
+  const target = onDrive ? deps.drive : folder && folderTarget(folder);
+  return target ? { target, passphrase } : { reason: onDrive ? "drive-auth" : "no-folder" };
+}
+
+/** Writes one backup into the target; the reason it failed, or null when it is there. */
+async function writeBackup(
+  deps: { platform: BackupPlatform; options?: BackupOptions },
+  target: BackupTarget,
+  passphrase: string,
+  name: string,
+): Promise<SkipReason | null> {
+  try {
+    // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
+    const { createBackup } = await import("./backup-bundle.ts");
+    const text = await createBackup(deps.platform, passphrase, passphrase, deps.options);
+    await target.put(name, text);
+    return null;
+  } catch (error) {
+    // A sign-in Google no longer honours is the person's to fix; anything else is a failed write.
+    return error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "failed";
+  }
+}
+
 /**
  * Runs the schedule once: when it is due, writes a backup into the folder, then keeps the newest
  * `keep` files named like a backup and removes the rest. Nothing is removed unless the write worked,
@@ -117,7 +153,7 @@ export async function runScheduledBackup(deps: {
   now: number;
   options?: BackupOptions;
 }): Promise<RunReport> {
-  const { platform, folder, schedule, passphrase, now } = deps;
+  const { folder, schedule, now } = deps;
   if (schedule.cadence === "off") return { status: "idle" };
   const at = now;
   const onDrive = schedule.target === "drive";
@@ -125,25 +161,13 @@ export async function runScheduledBackup(deps: {
     return { status: "skipped", reason: "no-folder", at };
   }
   if (!isDue(schedule, now)) return { status: "idle" };
-  // The folder in the saved schedule is only a copy; the one that counts is the stored pick.
-  if (!onDrive && !(await folder?.current().catch(() => null))) {
-    return { status: "skipped", reason: "no-folder", at };
-  }
-  if (!passphrase) return { status: "skipped", reason: "no-passphrase", at };
-  const target = onDrive ? deps.drive : folder && folderTarget(folder);
-  if (!target) return { status: "skipped", reason: onDrive ? "drive-auth" : "no-folder", at };
+  const picked = await pickTarget(deps);
+  if ("reason" in picked) return { status: "skipped", reason: picked.reason, at };
+  const { target, passphrase: secret } = picked;
   const keep = Math.max(1, Math.floor(schedule.keep));
   const name = backupFileName(now);
-  try {
-    // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
-    const { createBackup } = await import("./backup-bundle.ts");
-    const text = await createBackup(platform, passphrase, passphrase, deps.options);
-    await target.put(name, text);
-  } catch (error) {
-    // A sign-in Google no longer honours is the person's to fix; anything else is a failed write.
-    const reason = error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "failed";
-    return { status: "skipped", reason, at };
-  }
+  const failed = await writeBackup(deps, target, secret, name);
+  if (failed) return { status: "skipped", reason: failed, at };
   // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
   // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
   const pruned = await keepNewest(target, keep, name);
