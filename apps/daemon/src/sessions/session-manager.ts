@@ -42,6 +42,8 @@ import type {
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
+import type { ToolNote } from "./activity-clock.ts";
+import type { QuietInfo } from "./stall.ts";
 
 /** The reason a restart gives the sessions it interrupts: a code (the app words it), not a sentence. */
 export const RESTART_REASON = "daemon_restarted";
@@ -248,6 +250,14 @@ export class SessionManager {
   list(): SessionSummary[] {
     return this.store.listSessions().map((s) => this.withSleep(s));
   }
+
+  /** Issue #1478: when the session last did anything and the tool it has open. */
+  activity(_sessionId: string): { lastEventAt: number | null; tool: ToolNote } {
+    return { lastEventAt: null, tool: { name: null, inFlight: false } };
+  }
+
+  /** Issue #1478: the stall watcher marks a session quiet (or clears it with `null`). */
+  markQuiet(_sessionId: string, _info: QuietInfo | null): void {}
 
   /** Idle with no process is asleep: the daemon put it to sleep, or a restart left it so. */
   private withSleep(session: SessionSummary): SessionSummary {
