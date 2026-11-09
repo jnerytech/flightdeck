@@ -303,6 +303,25 @@ describe("check-loop: the security review's cases", () => {
     expect([r.log, r.records.at(-1)?.reason]).toEqual([["place", "release"], "check_error"]);
   });
 
+  test("even when recording the end throws, the slot goes back", async () => {
+    const r = rig();
+    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
+    const failing = new CheckLoopEngine({
+      ...fx,
+      runChecks: async () => {
+        throw new Error("spawn failed");
+      },
+      record: () => {
+        throw new Error("disk full");
+      },
+    });
+    failing.onIdle("c");
+    failing.onTurnResult("c", ok);
+    await failing.idle("c").catch(() => {});
+    await Promise.resolve();
+    expect(r.log.filter((entry) => entry === "release")).toEqual(["release"]);
+  });
+
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
     const output =
       "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
