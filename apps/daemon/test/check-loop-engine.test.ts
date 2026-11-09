@@ -260,6 +260,62 @@ describe("check-loop: the gate before every round (#1361, tracked)", () => {
   });
 });
 
+describe("check-loop: the security review's cases", () => {
+  test("the gate comes before the checks: an untrusted project, a stale confirmation or plan runs nothing", async () => {
+    const calls: number[] = [];
+    for (const over of [
+      { trusted: false },
+      { mode: "default" as const },
+      { mode: "plan" as const },
+    ]) {
+      const r = rig({ ...over, outcomes: [FAIL] });
+      r.engine.onTurnResult("c", ok);
+      await r.checksDone();
+      calls.push(r.signals.length);
+    }
+    expect(calls).toEqual([0, 0, 0]);
+  });
+
+  test("a second result while the checks run aborts the first run: one round, not two", async () => {
+    const r = rig({ outcomes: [FAIL, FAIL] });
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    r.engine.onTurnResult("c", ok);
+    open();
+    await r.checksDone();
+    await Promise.resolve();
+    expect([r.signals[0]?.aborted, r.sent.length]).toEqual([true, 1]);
+  });
+
+  test("checks that throw end the loop with check_error, and the slot goes back", async () => {
+    const r = rig();
+    const failing = new CheckLoopEngine({
+      ...(r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx,
+      runChecks: async () => {
+        throw new Error("spawn failed");
+      },
+    });
+    failing.onIdle("c");
+    failing.onTurnResult("c", ok);
+    // Before the fix the error escapes the engine; the assertion below says what it should do.
+    await failing.idle("c").catch(() => {});
+    await Promise.resolve();
+    expect([r.log, r.records.at(-1)?.reason]).toEqual([["place", "release"], "check_error"]);
+  });
+
+  test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
+    const output =
+      "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
+    const text = roundMessage(1, 3, { ...FAIL, output });
+    expect([
+      text.includes("ghp_abcdefghijklmnopqrstuvwxyz0123456789"),
+      text.includes("\u202e"),
+      text.includes("\u009b"),
+      text.includes("fine"),
+    ]).toEqual([false, false, false, true]);
+  });
+});
+
 describe("check-loop: what ends a loop early", () => {
   test("the person's turn aborts the running check, sends nothing, keeps the slot with the session, and starts the count again", async () => {
     const r = rig({ outcomes: [FAIL, FAIL, FAIL] });
