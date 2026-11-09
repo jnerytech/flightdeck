@@ -24,6 +24,12 @@ function hostOf(stripped: string): string | null {
 const isGithubHost = (host: string | null) =>
   host === "github.com" || host === "ssh.github.com" || host?.endsWith(".ghe.com") === true;
 
+/** The hosts Azure DevOps runs on, as the validated host name says (an encoded slash cannot pass for a dot). */
+const isAzureHost = (host: string | null) =>
+  host === "dev.azure.com" ||
+  host === "ssh.dev.azure.com" ||
+  host?.endsWith(".visualstudio.com") === true;
+
 /** What a remote address says: the provider when it is one Flightdeck opens PRs on, and its host name. */
 export function providerOfRemote(url: string | null): {
   provider: DetectedProvider | null;
@@ -34,7 +40,7 @@ export function providerOfRemote(url: string | null): {
   const host = hostOf(stripped);
   const [, owner, repo, ...rest] = stripped.split("/");
   if (isGithubHost(host) && owner && repo && rest.length === 0) return { provider: "github", host };
-  if (azureCoords(url)) return { provider: "azure-devops", host };
+  if (isAzureHost(host) && azureCoords(url)) return { provider: "azure-devops", host };
   return { provider: null, host };
 }
 
