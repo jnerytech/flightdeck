@@ -226,11 +226,14 @@ export const sessionHandlers = {
   "session.files": (payload, { server }) => {
     return { files: server.need("sessionFiles").list(payload.claudeSessionId) };
   },
+  // Issue #1361: a persona the person switches in a card's session is their input too.
   "session.applyPersona": async (payload, { server }) => {
     const { sessionId, claudeSessionId, persona } = payload;
+    if (sessionId) server.opts.board?.personTurnOfSession(sessionId);
     return await server.need("personaSessions").apply({ sessionId, claudeSessionId, persona });
   },
   "session.clearPersona": async (payload, { server }) => {
+    if (payload.sessionId) server.opts.board?.personTurnOfSession(payload.sessionId);
     return await server.need("personaSessions").clear(payload);
   },
   "sessions.watch": (payload, { ws, send, server }) => {

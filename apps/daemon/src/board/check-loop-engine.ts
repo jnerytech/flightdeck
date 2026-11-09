@@ -282,11 +282,16 @@ export class CheckLoopEngine {
     if (loop.phase === "awaiting_result") loop.phase = "fixing";
   }
 
-  /** The person stopped, discarded or moved the card. */
-  onStop(cardId: string): void {
+  /**
+   * The person stopped, discarded or moved the card: the loop ends now. The promise settles when
+   * its aborted check has exited, so a caller that removes the worktree can wait for it.
+   */
+  onStop(cardId: string): Promise<void> {
     const loop = this.loops.get(cardId);
-    if (!loop) return;
+    if (!loop) return Promise.resolve();
+    const running = loop.running ?? Promise.resolve();
     this.end(cardId, loop, "stopped_by_you", { release: true });
+    return running.catch(() => {});
   }
 
   /** Settles when the card's running checks are done (for the tests and a clean stop). */

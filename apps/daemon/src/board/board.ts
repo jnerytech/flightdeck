@@ -1416,18 +1416,32 @@ export class Board {
     },
   ): Card {
     const card = this.getCard(id);
-    this.db
-      .query(
-        `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
-         check_loop_confirmed_hash = ? WHERE id = ?`,
-      )
-      .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
     // Switched on: the session's events so far are history, never a turn for the loop to check.
-    if (value.on && card.checkLoop?.on !== true) {
-      const mark = card.sessionId ? this.opts.manager.get(card.sessionId).lastSeq : null;
-      this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(mark, id);
-    }
+    // Read before anything is written, so a session that is gone fails nothing (no mark, no error).
+    const switching = value.on && card.checkLoop?.on !== true;
+    const mark = switching ? this.lastSeqOf(card.sessionId) : undefined;
+    this.db.transaction(() => {
+      this.db
+        .query(
+          `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
+           check_loop_confirmed_hash = ? WHERE id = ?`,
+        )
+        .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
+      if (mark !== undefined) {
+        this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(mark, id);
+      }
+    })();
     return this.changed(id);
+  }
+
+  /** The last event number of a session, or null with no session (or one no longer stored). */
+  private lastSeqOf(sessionId: string | null): number | null {
+    if (sessionId === null) return null;
+    try {
+      return this.opts.manager.get(sessionId).lastSeq;
+    } catch {
+      return null;
+    }
   }
 
   /** "Pedir ajuste": a message to the session of the active run. */
@@ -1920,7 +1934,7 @@ export class Board {
     if (card.noticeReason === "card_moved_anyway") this.clearNotice(id);
     // Issue #1361: a card the person moved to another column leaves its check loop; a reorder in
     // its own column, or a move that was refused above, does not.
-    if (before.column !== column) this.loop?.onStop(id);
+    if (before.column !== column) void this.loop?.onStop(id);
     const moved = this.moveCard(id, column, position);
     if (needs.length === 0) return moved;
     const lacked = why(
@@ -2018,7 +2032,7 @@ export class Board {
    */
   async stopCard(id: string): Promise<Card> {
     const card = this.getCard(id);
-    this.loop?.onStop(id);
+    void this.loop?.onStop(id);
     if (card.queued) {
       this.db
         .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
@@ -2398,7 +2412,8 @@ export class Board {
     if (!confirm)
       throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
     const card = this.getCard(id);
-    this.loop?.onStop(id);
+    // Issue #1361: the worktree goes only once a check killed in it has exited.
+    await this.loop?.onStop(id);
     // The variants of an arena go with its card.
     await inSequence(this.variantIds(id), async (variant) => {
       await this.discardCard(variant, true);
