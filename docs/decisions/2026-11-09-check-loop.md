@@ -11,11 +11,9 @@ the parts of an automatic loop, but none of them runs at the end of a plain card
   to a command and its arguments, with nothing a shell reads), with a timeout per check
   (`checkTimeoutMin`). It counts rounds in `pr_watch_rounds` under a cap (`maxRounds`,
   2026-11-07-fix-round-cap.md). It masks secrets in what it quotes (`masked`).
-- **The check runner (`workflows/check-runner.ts`).** It runs one command in the card's worktree,
-  kills the whole process group at the timeout (`board/command.ts`), and keeps the last 8 KB of
-  output.
-- **Workflow runs.** These have their own `check` and `loop` steps, trusted by the workflow
-  file's hash.
+- **The check runner (`workflows/check-runner.ts`).** One command in the card's worktree, its
+  process group killed at the timeout (`board/command.ts`), the last 8 KB of output kept.
+- **Workflow runs.** Their own `check` and `loop` steps, trusted by the workflow file's hash.
 - **The turn end (`board.onSessionEvent`, `turn.result`).** It places the card by the column
   rules, and `board.message` sends text into the card's live session.
 
@@ -33,17 +31,24 @@ board, from the watch's parts. No new trust model and no new command language.
    card enters `checking`.
    - **"Live" excludes replayed events.** `Board.follow` replays a session's stored events to
      `onSessionEvent` on every subscribe (`board.ts`), and the loop must never start on a replay.
-   - **Each event is keyed by its sequence number.** The card stores the seq of the last turn
-     the loop handled (`check_loop_turn_seq`). A `turn.result` with a seq at or below it is
-     ignored, and so is any event that reaches `onSessionEvent` through the replay.
+   - **Each event is keyed by its sequence number.** The card stores a high-water mark,
+     `check_loop_turn_seq`, written at three points:
+     - when the switch is turned on, it is set to the session's current head seq (null means no
+       session yet, and the first live turn starts the loop);
+     - when the card enters `checking`, it is set before the first check runs;
+     - on every `turn.result` the loop sees, error and interrupted turns included.
+
+     A `turn.result` with a seq at or below the mark is ignored, and so is any event that reaches
+     `onSessionEvent` through the replay. The restart sweep leaves the mark where it is.
    - **A turn that ended before the switch was turned on, or before a restart, never starts
      checks.** Slice 1 has a replay test: re-follow a card whose last stored event is a
-     `turn.result`, and check that nothing runs.
+     `turn.result`, and check that nothing runs. It covers a null mark and a mark below the
+     replayed seq.
 2. **Running the checks.** They run one after the other, in the order the project lists them,
    and stop at the first that fails, as the watch's `failedCheck` does.
 3. **All checks pass.** The card is placed as today (In review), with "checks passed in round k".
 4. **A check fails, and round k < N with every bound still open.** The daemon sends the failure
-   summary through `board.message` into the same session (no new run), counts round k + 1, and
+   summary through `board.sendRound` into the same session (no new run), counts round k + 1, and
    the card stays In progress. The next `turn.result` starts again at step 1.
 5. **A check fails at round N, or a bound is reached.** The card is placed as today, with the
    last failure and the reason the loop stopped.
@@ -61,12 +66,15 @@ board, from the watch's parts. No new trust model and no new command language.
      `card.message`, `card.start`, and `session.send`, `session.interrupt` and
      `permission.respond` on that session's id. Each handler tells the board through
      `board.personTurn(cardId)`, which aborts the loop and resets its counter.
-   - **The loop's round** is sent by the board itself through an internal call that writes the
-     same text into the session (`manager.send`). It never goes through those handlers. The board
+   - **The loop's round** is sent by `board.sendRound(cardId, text)`, a board method no
+     protocol handler calls. It writes into the session through `manager.send`. `personTurn` is
+     called in the protocol handlers, not inside `board.message` or `manager.send`, so a round
+     never resets its own counter. The board
      notes the round as pending (`card_check_rounds` row `sent`), so the turn it starts is the
      loop's.
    - **Slice 1 tests both ways:** a loop round does not reset the counter, and a person's
-     `card.message` or `session.send` between rounds does.
+     `card.message` or `session.send` between rounds does. Both run against `sendRound` and the
+     real handlers.
 
 ### The message
 
@@ -116,8 +124,11 @@ the same session, the same trust as the watch's round prompt. It never reaches a
     - the card's mode changes to another mode that is not `bypassPermissions`.
 
     The person then confirms again. Turning the switch off always clears it.
-  - **The mode is read again before every round, not only when the switch turns on.** A live
-    session can change its mode (`SettableMode`). A round runs only if the card's current mode is
+  - **The mode is read again before every round, not only when the switch turns on.** It is the
+    live session's mode, from the session manager, not a field stored on the card: a live session
+    can change its mode (`SettableMode`). In `plan` the session cannot edit, so the loop has no
+    use there. A card in `plan` cannot turn the switch on, and a switch to `plan` mid-loop ends
+    the loop with `check_loop_mode`. Slice 1 tests a mode change in the middle of a loop. A round runs only if the card's current mode is
     `bypassPermissions`, or the card has a stored confirmation. Otherwise the loop stops with the
     reason `check_loop_confirm`, and the card moves on.
   - **A project default turns the switch on only for new cards that start in
@@ -133,7 +144,11 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   So:
   - **Changing the list needs a near connection.** `requireVaultTransport` applies to a
     `watch.settings` patch that has any of `checks`, `checkTimeoutMin`, `checkRounds`,
-    `checkEnv` or `checkLoopDefault`. Slice 1 tests each of the five from a far origin. Today any paired
+    `checkEnv` or `checkLoopDefault` whose value differs from the stored one. A field sent
+    unchanged passes, so a far client that saves the whole form still saves `enabled` or
+    `maxRounds`. The app sends a minimal patch anyway, and shows the five fields read-only on a
+    far host. Slice 1 tests each of the five from a far origin, changed (refused) and unchanged
+    (accepted). Today any paired
     client may set the commands the watch runs unattended. The loop runs them after every turn,
     so the list gets the same bar as resuming a run (2026-11-08-run-resume.md). The origin is the
     socket's peer address, never a protocol field. Reading the settings, and the other fields of
@@ -160,6 +175,10 @@ the same session, the same trust as the watch's round prompt. It never reaches a
 
     A list written before these rules therefore cannot reach the shell. The same checks apply
     when the list is saved, so a person sees the refusal at once.
+  - **A stored command that is refused stops the loop at once,** with the reason
+    `check_refused` and the masked command. No round is sent and none is counted: the session
+    cannot fix the list. The watch does the same instead of reporting "local check refused" as a
+    failure to fix, and that goes in the release notes.
 
 ### Spawn and kill
 
@@ -221,7 +240,7 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   message sent. The kill path is the timeout's (a process group on POSIX, `taskkill /T` on
   Windows). A timeout is always passed, because only a timed or signalled command is detached
   into its own group.
-- **The signal is checked again after a check returns and before `board.message`,** so a stop
+- **The signal is checked again after a check returns and before `board.sendRound`,** so a stop
   that races the end of a check never sends a round.
 - **A discard aborts first, and removes the worktree only after the check's process has
   ended.**
@@ -250,7 +269,9 @@ Inside a round, each check is bounded by its timeout (`checkTimeoutMin`) and by 
 
 **The slot.** Today a run gives its slot back when its session goes idle (`FREES_SLOT`,
 `board.ts`). The idle status can arrive before `turn.result`, or apart from it. A `checking`
-card holds its slot until the loop sends a round or ends. This way a check never starts outside
+card holds its slot without a break, from the idle event through the checks, the round and the
+round's turn, until the loop ends (passed, stopped or bounded). The next idle of that turn is
+the same hold, not a new one. This way a check never starts outside
 the parallel limit, and a round never takes a slot another card waits for.
 
 The hold is decided at the idle event, in the same synchronous step that would release the slot,
@@ -269,6 +290,7 @@ The hold never waits forever:
 
 Slice 1 tests, with fake events against a waiting card:
 - both event orders, where the waiting card must not start in the gap;
+- a round sent, where the waiting card must not start before the session goes busy;
 - an idle followed by `ended` with no `turn.result`;
 - an idle with no `turn.result` until the 30 s wait passes, on a fake clock.
 
@@ -295,38 +317,41 @@ In both of the last two, the waiting card then starts.
 ### What the card shows
 
 - **Protocol.** `Card.checkLoop` is an optional field:
-  `{ round, max, state: "checking" | "fixing" | "passed" | "stopped", last: { command, exitCode, timedOut } | null, reason? }`.
+  `{ round, max, state: "checking" | "fixing" | "passed" | "stopped", last: { command, exitCode, timedOut, tooLarge } | null, reason: CheckLoopReason | null }`.
   An older app ignores it.
+- **`CheckLoopReason` is a closed enum.** Its values are `passed`, `rounds_spent`, `budget`,
+  `quota`, `memory`, `person_turn`, `stopped_by_you`, `interrupted`, `session_ended`,
+  `no_result`, `check_loop_confirm`, `check_loop_untrusted`, `check_loop_mode`, `check_refused`
+  and `output_too_large`. The trail lines carry the same enum plus their parameters (round, max,
+  masked command, exit code). The app shows each in en and pt-BR, and never a text written by
+  the daemon. English is used only in the prompt sent into the session.
 - **The card shows:**
   - while a round runs, "Checks · round 2 of 3", with the failed command;
   - on the card in review, "Checks passed in round 2" or "Checks still failing after 3 rounds: `bun test`";
-  - the stop reason in both languages: quota, memory, budget, interrupted, or stopped by you.
+  - the stop reason, from the enum, in both languages.
 - **Each round is a line in the card's trail,** as the watch's are.
 - **The option is a switch on the card,** whose default comes from the project. When it is off,
   the switch says why (no checks, project not trusted).
 
 ## Discarded alternatives
 
-- **A "fix until green" workflow, built from a `loop` step.** It needs no new engine code, but
-  only workflow cards would get it. Each repository would need a workflow file to commit and
-  trust, and plain cards, where the request comes from, would gain nothing.
-- **A `checks:` list in the repository (`run.yaml`), trusted by its hash.** This is a second
-  trust flow, and a second list next to the watch's for the same thing. Its only gain is
-  versioning the list with the code; the person's own list on the host already serves.
-- **A new run for each round, like the watch's `fixCard`.** It costs a cold start and a new
-  session for every round, and the session forgets what it tried. The same session keeps the
-  context, and `board.message` already sends into it.
-- **Waiting for the quota or memory instead of stopping.** The card would sit In progress for
-  hours, holding its slot. Stopping with the reason hands the card to the person, which matches
-  the watch's hand-over.
+- **A "fix until green" workflow from a `loop` step:** no engine code, but only workflow cards
+  get it, and each repository needs a workflow file to commit and trust.
+- **A `checks:` list in the repository (`run.yaml`), trusted by its hash:** a second trust flow
+  and a second list for the same thing, only to version the list with the code.
+- **A new run per round, like `fixCard`:** a cold start each round, and the session forgets what
+  it tried; the same session keeps the context.
+- **Waiting for the quota or memory instead of stopping:** the card would sit In progress for
+  hours, holding its slot; stopping with the reason hands it to the person, as the watch does.
 
 ## Consequences
 
 - **A migration adds:**
-  - the table `card_check_rounds`;
-  - card columns for the option (`check_loop`), its own cap (`check_rounds`) and the stored
-    confirmation (`check_loop_confirmed_at`);
-  - `checkRounds` in the project's watch settings.
+  - the table `card_check_rounds`, whose `status` includes `sent` (the pending-round marker);
+  - card columns: the option (`check_loop`), its own cap (`check_rounds`), the confirmation
+    (`check_loop_confirmed_at`, and `check_loop_confirmed_hash` over the checks, `checkEnv` and the
+    mode), and the replay mark (`check_loop_turn_seq`);
+  - in the project's watch settings: `checkRounds`, `checkEnv` and `checkLoopDefault`.
 - **A far client can no longer change the watch's checks or their timeout.** This is a
   tightening of phase 22, and it appears in the release notes.
 - **The watch's own checks also get the allowlisted environment, the stricter command check, the
@@ -344,60 +369,30 @@ In both of the last two, the waiting card then starts.
      near-only checks patch. The security-reviewer reads this slice before its push.
   2. **Protocol.** `Card.checkLoop`, the card option on `card.update` (with `confirm` outside
      `bypassPermissions`), `checkRounds` and `checkEnv`, and the refusal reasons
-     `check_loop_no_checks`, `check_loop_untrusted`, `check_loop_confirm` and `check_word_outside`.
+     `check_loop_no_checks`, `check_loop_untrusted`, `check_loop_confirm`, `check_loop_mode` and
+     `check_word_outside`, and `CheckLoopReason`.
   3. **App.** The switch, the round line, the trail and the stop reasons, in both languages,
      with the ux-reviewer.
 
 ## Open questions (they change a slice, not this decision)
 
-- **Default of the switch for a new card.** This decision has it off for every project until the
-  person turns the project's default on. Should a project with checks default it on in
-  `bypassPermissions`?
-- **Holding the slot while checks run.** It is right for a small host such as the Pi. On a
-  large host with `maxParallelRuns` above 4, should checks run outside the slots, under their own
-  limit?
-- **A card whose PR is watched.** Its normal turns still loop before review, and the watch's
-  rounds do not. Should a watched card loop at all, or leave every fix to the watch?
+- **The default for a new card** is off until the person turns the project's default on. Should
+  a project with checks default it on in `bypassPermissions`?
+- **The slot hold** suits a small host such as the Pi. With `maxParallelRuns` above 4, should
+  checks run outside the slots, under a limit of their own?
+- **A card whose PR is watched** still loops at its normal turns. Should it leave every fix to
+  the watch instead?
 
 ## Security review of the spawn model
 
 The `security-reviewer` read this design against `shellCheckRunner`, `runCommand`,
-`isWatchCheck`, `watch.settings` and `isTrusted` before it merged. It found 3 high, 2 medium and
-3 low findings, all folded in above:
+`isWatchCheck`, `watch.settings` and `isTrusted`. It found 3 high, 2 medium and 3 low findings:
+- trust is not a sandbox;
+- the regex is not a gate;
+- the abort was not wired;
+- the daemon's environment reached the checks;
+- the output handling.
 
-- **Trust is not a sandbox.** Hence the loop is named as an exception to the permission mode,
-  and the near-only confirmation outside `bypassPermissions`.
-- **The regex is not a gate.** Hence near-only edits, an audit line, and the refusal of
-  environment assignments and outside paths.
-- **The abort was not wired.** Hence the signal in the runner, the re-check before sending, and
-  the discard order.
-- **The daemon's environment reached the checks.** Hence the allowlist.
-- **Output handling.** Strip, mask, then cap, in a block labelled as data.
-
-The low findings were the origin source, the startup sweep and the path check against the
-allowed roots.
-
-The PR's review then added more, all folded in above:
-- the permission mode is read again before every round, with a stored confirmation, and a
-  project default applies only to cards in `bypassPermissions`;
-- the runner masks before its cut;
-- the fence is longer than any backtick run in the output;
-- a 4 MB output bound;
-- a message or an interrupt from the person aborts the loop, and resets the counter;
-- the slot hold is decided at the idle event;
-- the Windows environment list, and `checkEnv`;
-- the path rule on every word, with drive letters, UNC and `ntfsName`.
-
-Its second pass added these, all folded in above:
-- the loop's round is told apart from the person's input by where it comes in;
-- the hold is released on `error` or `ended`, or after 30 s with no `turn.result`;
-- replayed events never trigger, keyed by the turn's seq;
-- the loop is said plainly not to be a secrets boundary;
-- `checkEnv` refuses names shaped like secrets, compared case-insensitively;
-- all five settings fields are near-only;
-- workflow checks keep their runner;
-- the path rule is best effort and splits words on `=`, `:`, `,` and `@`;
-- a confirmation is bound to the list and the mode, and is cleared with the switch.
-
-The reviewer judged the kill model (process group, `taskkill /T`), one check per card, and no
-resume after a restart to be sound. The daemon slice is reviewed again as code before its push.
+The PR's review then took three passes. Every finding of both is folded into the sections above.
+The reviewer judged the kill model (a process group, `taskkill /T`), one check per card, and no
+resume after a restart to be sound. The daemon slice is reviewed again, as code, before its push.
