@@ -247,6 +247,46 @@ function stopOnLimit(
   };
 }
 
+/** Reads stdout until it ends or passes `limit`; `onPast` runs once it has, before the reader is cancelled. */
+async function readStdout(
+  reader: { read(): Promise<{ done: boolean; value?: Uint8Array }>; cancel(): Promise<void> },
+  read: { count: { size: number }; limit: number; chunks: Uint8Array[] },
+  onPast: () => void,
+): Promise<void> {
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done || !value) return;
+    read.chunks.push(value);
+    read.count.size += value.length;
+    if (read.count.size > read.limit) {
+      onPast();
+      await reader.cancel();
+      return;
+    }
+  }
+}
+
+/** The result of a limited run: stdout cut at the limit after the last separator, and why it stopped. */
+function limitedResult(
+  out: { chunks: Uint8Array[]; limit: number; separator: number },
+  ended: { code: number; stderr: string; truncated: boolean },
+  stop: { timedOut: boolean; aborted: boolean },
+): CommandResult & { truncated: boolean } {
+  const { limit, separator } = out;
+  const all = Buffer.concat(out.chunks);
+  // Only stdout that went past the limit itself is cut; a stop for stderr keeps what stdout gave.
+  const kept =
+    all.length > limit ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
+  return {
+    code: ended.code,
+    stdout: kept.toString("utf8"),
+    stderr: ended.stderr,
+    truncated: ended.truncated,
+    ...(stop.timedOut ? { timedOut: true } : {}),
+    ...(stop.aborted ? { aborted: true } : {}),
+  };
+}
+
 /**
  * Runs a program, never through a shell, and reads at most `limit` bytes of its output: past it the
  * program is killed and the result says `truncated`, cut after the last `separator`. With
@@ -275,7 +315,7 @@ export async function runLimited(
     // Its own process group (outside Windows), so the whole tree can be killed at the limit.
     detached: (timeoutMs !== undefined || signal !== undefined) && process.platform !== "win32",
   });
-  let size = 0;
+  const count = { size: 0 };
   let truncated = false;
   const reader = proc.stdout.getReader();
   // Past the limit the tree goes and stdout stops being read (#1361).
@@ -291,8 +331,8 @@ export async function runLimited(
     STDERR_MAX,
     overflowKillsTree
       ? (n) => {
-          size += n;
-          if (size > limit) overflow();
+          count.size += n;
+          if (count.size > limit) overflow();
         }
       : undefined,
   );
@@ -306,19 +346,11 @@ export async function runLimited(
   let failed = false;
   let failure: unknown;
   try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      size += value.length;
-      if (size > limit) {
-        // A child it left would hold the pipes open, and stderr would never end.
-        if (overflowKillsTree) overflow();
-        truncated = true;
-        await reader.cancel();
-        break;
-      }
-    }
+    await readStdout(reader, { count, limit, chunks }, () => {
+      // A child it left would hold the pipes open, and stderr would never end.
+      if (overflowKillsTree) overflow();
+      truncated = true;
+    });
   } catch (error) {
     // Reading failed: the tree goes too, and the cleanup below still runs before the error.
     failed = true;
@@ -337,16 +369,9 @@ export async function runLimited(
     await stopper.release();
   }
   if (failed) throw failure;
-  const all = Buffer.concat(chunks);
-  // Only stdout that went past the limit itself is cut; a stop for stderr keeps what stdout gave.
-  const kept =
-    all.length > limit ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
-  return {
-    code,
-    stdout: kept.toString("utf8"),
-    stderr,
-    truncated,
-    ...(stopper.timedOut ? { timedOut: true } : {}),
-    ...(stopper.aborted ? { aborted: true } : {}),
-  };
+  return limitedResult(
+    { chunks, limit, separator },
+    { code, stderr, truncated },
+    { timedOut: stopper.timedOut, aborted: stopper.aborted },
+  );
 }

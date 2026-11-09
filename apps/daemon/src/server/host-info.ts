@@ -11,6 +11,7 @@ import {
 } from "@flightdeck/protocol";
 import pkg from "../../package.json" with { type: "json" };
 import { logPathFor } from "../logs/serve.ts";
+import { present } from "../present.ts";
 import type { OpenCodeInfo } from "../runtime/opencode-discovery.ts";
 import type { ServerOptions } from "../server.ts";
 import type { ServerContext } from "./context.ts";
@@ -162,29 +163,29 @@ export async function hostInfo(server: ServerContext, origin: string) {
     // The terminal can be turned on and off while the daemon runs: asked each time.
     features: [
       ...(opts.features ?? server.features),
-      ...(opts.terminals?.enabled ? ["terminal"] : []),
-      // Issue #107: `terminal.openSession` opens a shell in a session's folder.
-      ...(opts.terminals?.enabled ? ["terminal.session"] : []),
+      ...when(opts.terminals?.enabled, "terminal", "terminal.session"),
       // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
-      ...(opts.terminals?.enabled && opts.files ? ["file.terminal"] : []),
-      ...(opts.ui ? ["ui.mode"] : []),
-      ...(opts.templates ? ["templates"] : []),
-      ...(opts.tasks ? ["tasks"] : []),
-      ...(opts.opencode?.info().available ? ["opencode"] : []),
-      ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
-      ...(opts.teleport || opts.teleportInbox ? ["teleport"] : []),
-      ...(opts.autoUpdate ? ["autoUpdate"] : []),
+      ...when(opts.terminals?.enabled && opts.files, "file.terminal"),
+      ...when(opts.ui, "ui.mode"),
+      ...when(opts.templates, "templates"),
+      ...when(opts.tasks, "tasks"),
+      ...when(opts.opencode?.info().available, "opencode"),
+      ...when(opts.assistant, ASSISTANT_FEATURE),
+      ...when(opts.teleport || opts.teleportInbox, "teleport"),
+      ...when(opts.autoUpdate, "autoUpdate"),
     ],
-    ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
-    ...(opts.ui ? { ui: { ...opts.ui } } : {}),
-    ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+    ...present({
+      terminal: opts.terminals?.settings(),
+      ui: opts.ui && { ...opts.ui },
+      allowBypassPermissions: opts.bypass?.allowed(),
+      sleepAfterMinutes: opts.sleep?.minutes(),
+      keepAwake: opts.keepAwake?.status(),
+      pause: opts.hostPause?.status(),
+      runtimes: opts.opencode && [hostRuntime(opts.opencode.info())],
+      update,
+      autoUpdate: opts.autoUpdate?.status(),
+    }),
     ...(opts.fileLog ? logPathFor(opts.fileLog, origin) : {}),
-    ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
-    ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
-    ...(opts.hostPause ? { pause: opts.hostPause.status() } : {}),
-    ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
-    ...(update ? { update } : {}),
-    ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
     ...opts.terminal,
   };
 }
