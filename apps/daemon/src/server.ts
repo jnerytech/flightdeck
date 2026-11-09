@@ -353,6 +353,8 @@ export interface ServerOptions {
   quota?: Quota;
   /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
   quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
+  /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
+  memoryPause?: { pauseAt(): number | null; set(pauseAt: number | null): void | Promise<void> };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -474,6 +476,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.quotaPause, "quotaPause"),
+    ...when(opts.memoryPause, "memoryPause"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.deps, "depsCheck"),
@@ -946,8 +949,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
       case "releases.list":
         return ok(command.type, await releases().list(command.payload.limit ?? 5));
-      case "resources.get":
-        return ok(command.type, await resources().snapshot());
+      case "resources.get": {
+        const snapshot = await resources().snapshot();
+        // Issue #1343: the memory hold's threshold travels with the reading the panel shows.
+        const pause = opts.memoryPause;
+        return ok(command.type, pause ? { ...snapshot, memoryPauseAt: pause.pauseAt() } : snapshot);
+      }
       case "resources.endOrphan":
         // Like the other commands that change the host: not from beyond loopback and Tailscale.
         requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);

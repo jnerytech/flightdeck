@@ -146,6 +146,8 @@ export interface BoardOptions {
   quota?: Quota;
   /** Budgets with `queue` (phase 8): at 100%, new cards of their scope wait. */
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
+  /** Issue #1343: while the host's memory is at or above `resources.pauseAt`, new cards wait. */
+  memory?: { blocked(): unknown; watch(listener: () => void): () => void };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
   /** Phase 22: refuses a PR description that carries a secret. */
@@ -416,6 +418,7 @@ export class Board {
   /** Workflow turns waiting for the plan quota to free up. */
   private readonly quotaWaiters: Array<() => void> = [];
   private readonly unwatchQuota: () => void;
+  private readonly unwatchMemory: () => void;
   private readonly unwatchBudgets: () => void;
   /** Review comments of each card's open PR, from the last poll (phase 11). */
   private readonly prCommentCache = new Map<string, PrComment[]>();
@@ -465,6 +468,7 @@ export class Board {
       this.ruleWrites = this.ruleWrites.then(() => this.applyProjectRules(sessionId, updates));
     });
     this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
+    this.unwatchMemory = opts.memory?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
     this.armPoll();
     // Back from a restart: keep moving cards whose run still has a session.
@@ -1497,6 +1501,8 @@ export class Board {
       }
       // Over the plan quota, queued cards wait for the window to reset (runs going on do not).
       if (this.opts.quota?.blocked()) return;
+      // Short of memory (#1343), they wait for it to free up; the gate lets them go on any doubt.
+      if (this.opts.memory?.blocked()) return;
       // The oldest queued card whose budget lets it go: a held project never stalls the others.
       const next = this.db
         .query<RunRow & { project_id: string }, []>(
@@ -1522,13 +1528,14 @@ export class Board {
     }
   }
 
-  /** Why a queued card waits, for the card itself: the quota, then a budget, then a slot. */
+  /** Why a queued card waits, for the card itself: the quota, memory, a budget, then a slot. */
   private queueState(queued: boolean, projectId: string): Pick<Card, "queueReason" | "quotaUntil"> {
     const blocked = queued ? this.opts.quota?.blocked() : null;
     if (blocked) {
       const until = blocked.until === null ? null : new Date(blocked.until).toISOString();
       return { queueReason: "quota", quotaUntil: until };
     }
+    if (queued && this.opts.memory?.blocked()) return { queueReason: "memory", quotaUntil: null };
     if (queued && this.budgetBlocked(projectId)) return { queueReason: "budget", quotaUntil: null };
     return { queueReason: queued ? "slot" : null, quotaUntil: null };
   }
@@ -2501,6 +2508,7 @@ export class Board {
     if (this.pollTimer !== null) clearInterval(this.pollTimer);
     this.pollTimer = null;
     this.unwatchQuota();
+    this.unwatchMemory();
     this.unwatchBudgets();
     for (const unfollow of this.follows.values()) unfollow();
     this.follows.clear();

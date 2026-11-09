@@ -1066,6 +1066,14 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
   cache e o modelo principal com o que ele custou.
+- **Pull requests** (na barra lateral, em Trabalho, depois de Board; ou **Ir para Pull requests**
+  na paleta) lista todo card com PR aberto nos hosts conectados, primeiro os que pedem atenção
+  (checks falhando, ou uma vigia que precisa de você). Cada linha diz o card, o host e o projeto, os
+  checks, se **Vigiar e consertar** está desligado, vigiando ou precisa de você, e um link para o
+  PR. **Fazer merge do PR** pergunta antes, com a mesma confirmação da página do card, e só aparece
+  quando o host faz merge e os checks não estão falhando; **Atualizar com a base** faz o rebase da
+  branch do card, e um conflito fica na tela com os arquivos. O título abre o card. A linha ainda
+  não diz se o PR tem conflito ou espera revisão, nem a idade dele: os hosts não informam isso.
 - **Atividade** (na barra lateral, depois de Custos; `g a`, ou **Ir para Atividade** na paleta)
   mostra todas as sessões ao vivo de todos os hosts em quatro colunas: **Precisa de você** (a
   sessão está pedindo algo), **Trabalhando**, **Concluídas** (um turno terminou nas últimas 2 horas
@@ -1370,6 +1378,14 @@ interrompida ou fica ociosa.
 ```json
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
+
+- **Pouca memória** (#1343): enquanto a memória em uso do host estiver em `resources.pauseAt` ou
+  acima (90% por padrão, o **Crítico** do painel Recursos), um card novo espera com "aguardando
+  memória" e começa sozinho quando a memória fica 2 pontos abaixo; o host olha de novo a cada 15 segundos.
+  Execuções que já estão rodando nunca são paradas. Troque no painel **Recursos** da página do host
+  (**Cartões novos esperam com a memória em**, ou **Nunca**), ou no `config.json`
+  (`{ "resources": { "pauseAt": 0.9 } }`, `null` desliga). Quando o host não consegue ler a
+  memória, nada espera; o macOS, que conta o cache como memória em uso, não é lido.
 
 ### Dependências entre cards
 

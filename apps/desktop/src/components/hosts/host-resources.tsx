@@ -2,6 +2,7 @@ import type { ResourceRow, ResourcesSnapshot } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { MemoryGuard } from "@/components/hosts/memory-guard";
 import { Bar } from "@/components/layout/bar";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
@@ -168,6 +169,16 @@ export function HostResources(
             t={t}
             lang={lang}
           />
+          {snap.memoryPauseAt !== undefined && (
+            <MemoryGuard
+              store={store}
+              host={host}
+              pauseAt={snap.memoryPauseAt}
+              onChange={(memoryPauseAt) =>
+                setSnap((current) => (current ? { ...current, memoryPauseAt } : current))
+              }
+            />
+          )}
           {snap.disk && (
             <Meter
               slot="resources-disk"
