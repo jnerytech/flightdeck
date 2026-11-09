@@ -3,7 +3,7 @@
  * the dictionaries, in the language of the run (the same scenarios run in en and pt-BR).
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
@@ -13,6 +13,7 @@ import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
+  DEMO_GATE_CARD,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
@@ -1102,23 +1103,27 @@ step(
   async (c) => addOwnProject(c, { [`.flightdeck/workflows/${FLOW}.yaml`]: BREAKS }),
 );
 
-step(Given, "I trust its workflow", async (c) => {
+/** The project's Workflows page: the workflow `name` is trusted there. */
+async function trustWorkflow(c: Context, name: string) {
   await open(c, { name: "projects", host: ALFA });
   await c.page
     .getByRole("button", { name: c.t("projectsUi.workflows", { name: mine(c).project ?? "" }) })
     .click({ timeout: WAIT });
-  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name: FLOW }) }).click();
+  await c.page.getByRole("button", { name: c.t("workflowsUi.trust", { name }) }).click();
   await c.page
     .getByRole("alertdialog")
     .getByRole("button", { name: c.t("workflowsUi.trustConfirm"), exact: true })
     .click();
   await c.page
-    .getByRole("listitem", { name: c.t("workflowsUi.item", { name: FLOW }) })
+    .getByRole("listitem", { name: c.t("workflowsUi.item", { name }) })
     .getByText(c.t("workflowsUi.trusted"), { exact: true })
     .waitFor({ timeout: WAIT });
-});
+}
 
-step(When, "I start a card of my own on that project with its workflow", async (c) => {
+step(Given, "I trust its workflow", async (c) => trustWorkflow(c, FLOW));
+
+/** A card of the scenario's own is created on its project and started with the workflow `flow`. */
+async function startCardWith(c: Context, flow: string) {
   const title = unique(c, "bdd card");
   mine(c).card = title;
   await openOwnBoard(c);
@@ -1130,10 +1135,14 @@ step(When, "I start a card of my own on that project with its workflow", async (
     .click();
   await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
   const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
-  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption(FLOW);
+  await start.getByLabel(c.t("cardUi.workflow"), { exact: true }).selectOption(flow);
   await start.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
   await start.waitFor({ state: "detached", timeout: WAIT });
-});
+}
+
+step(When, "I start a card of my own on that project with its workflow", async (c) =>
+  startCardWith(c, FLOW),
+);
 
 step(Then, "the card offers Run again once the run has failed", async (c) => {
   await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
@@ -1791,5 +1800,213 @@ step(
     const [top, below] = [await lead.boundingBox(), await charts.boundingBox()];
     if (!top || !below || top.y + top.height > below.y)
       throw new Error(`the quota of ${host} does not lead the page`);
+  },
+);
+
+// A card waiting at a gate leads with the gate's Approve, never with Open PR or Review changes (issue #1269).
+step(When, "I open the card that waits at a workflow gate", async (c) => {
+  mine(c).card = DEMO_GATE_CARD;
+  await tile(c).getByRole("button", { name: DEMO_GATE_CARD, exact: true }).click({ timeout: WAIT });
+});
+
+step(Then, "the gate offers Approve and Deny", async (c) => {
+  const gate = c.page.getByRole("region", { name: pattern(dictionary(c).runUi.gate) });
+  await gate
+    .getByRole("button", { name: dictionary(c).approval.approve, exact: true })
+    .waitFor({ timeout: WAIT });
+  await gate
+    .getByRole("button", { name: dictionary(c).approval.deny, exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card's run panel has no main button, only its menu", async (c) => {
+  const run = c.page.locator('[data-slot="card-run"]');
+  const menu = c.t("board.cardActions", { title: DEMO_GATE_CARD });
+  await run.getByRole("button", { name: menu, exact: true }).waitFor({ timeout: WAIT });
+  const names = await run
+    .getByRole("button")
+    .evaluateAll((buttons) =>
+      buttons.map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim() ?? ""),
+    );
+  if (names.join("|") !== menu) throw new Error(`the run panel has more than its menu: ${names}`);
+});
+
+// Scheduled backups that cannot go reach the bell, once per start, and a press opens the schedule (issue #1327).
+// A schedule a past session left on is put in the page's storage, as the app keeps it; the next load is the restart.
+async function leaveSchedule(c: Context, folder: boolean) {
+  await open(c, { name: "needs-you" }, true, withDemoFolder);
+  await c.page.evaluate(
+    ([scheduleKey, folderKey, chosen, path]) => {
+      window.localStorage.setItem(
+        scheduleKey as string,
+        JSON.stringify({ cadence: "daily", folder: chosen ? path : "", keep: 5, lastRunAt: null }),
+      );
+      if (chosen)
+        window.localStorage.setItem(
+          folderKey as string,
+          JSON.stringify({ chosen: true, files: {} }),
+        );
+      window.localStorage.removeItem("flightdeck.inbox");
+    },
+    [SCHEDULE_KEY, DEMO_BACKUP_FOLDER_KEY, folder, DEMO_BACKUP_FOLDER],
+  );
+}
+
+step(
+  Given,
+  "a daily backup was left scheduled into the demo folder, with no passphrase",
+  async (c) => leaveSchedule(c, true),
+);
+
+step(Given, "a daily backup was left scheduled with no folder", async (c) =>
+  leaveSchedule(c, false),
+);
+
+step(When, "I restart the app on the queue of what needs me", async (c) => {
+  await open(c, { name: "needs-you" }, true, withDemoFolder);
+});
+
+step(When, "I restart the app on Settings > Backup", async (c) => {
+  await open(c, { name: "settings", section: "backup" }, true, withDemoFolder);
+  await cadenceRadio(c, "daily").waitFor({ timeout: WAIT });
+});
+
+step(When, "I turn the schedule off and on again", async (c) => {
+  await cadenceRadio(c, "off").check();
+  await cadenceRadio(c, "daily").check();
+  await c.page
+    .getByText(scheduleText(c).skipped["no-passphrase"], { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I open the bell", async (c) => {
+  // With a notice unread the bell says how many; Settings has a "Notifications" section too.
+  await c.page.getByRole("button", { name: pattern(dictionary(c).inbox.bellUnread) }).click();
+  await bell(c).waitFor({ timeout: WAIT });
+});
+
+/** The bell's entries that carry a title: how many there are, and none says it came more than once. */
+async function oneNotice(c: Context, title: string) {
+  const entries = bell(c).locator("li[data-entry]").filter({ hasText: title });
+  await entries.first().waitFor({ timeout: WAIT });
+  if ((await entries.count()) !== 1)
+    throw new Error(`the bell holds ${await entries.count()} notices titled "${title}"`);
+  if ((await bell(c).locator("li[data-entry]").count()) !== 1)
+    throw new Error("the bell holds more than that notice");
+  return entries;
+}
+
+step(
+  Then,
+  "the bell holds one notice that the scheduled backups need the passphrase",
+  async (c) => {
+    await oneNotice(c, scheduleText(c).attention.passphrase.title);
+  },
+);
+
+step(Then, "the bell holds one notice that the scheduled backups have no folder", async (c) => {
+  await oneNotice(c, scheduleText(c).attention["no-folder"].title);
+});
+
+step(When, "I press that notice", async (c) => {
+  await (await oneNotice(c, scheduleText(c).attention.passphrase.title))
+    .locator(".inbox-pick")
+    .click();
+});
+
+step(Then, "the schedule opens and asks for the passphrase", async (c) => {
+  await schedulePassphrase(c).waitFor({ timeout: WAIT });
+});
+
+// Run again from the failed step: the steps that finished are not run again (issues #1266, #1356).
+// The first step leaves a line in a file of the card's worktree each time it runs; the second fails once.
+const RESUMES = "resumes";
+const resumesFlow = (second: string) =>
+  `steps:\n  - id: first\n    check: 'echo ran >> .bdd-first'\n  - id: second\n    check: '${second}'\n`;
+const FAILS_ONCE = "test -e .bdd-attempt || { touch .bdd-attempt; exit 1; }";
+const resumesFile = `.flightdeck/workflows/${RESUMES}.yaml`;
+/** The project's folder, where its base branch is checked out. */
+const projectFolder = (c: Context) => join(dirname(c.ids.freshRepo), mine(c).project ?? "");
+const gitIn = (folder: string, ...args: string[]) =>
+  execFileSync("git", ["-C", folder, ...args], { encoding: "utf8" });
+/** The card's worktree: the one that is not the project's own checkout. */
+const cardWorktree = (c: Context) => {
+  const listed = gitIn(projectFolder(c), "worktree", "list", "--porcelain");
+  const paths = [...listed.matchAll(/^worktree (.+)$/gm)].map((m) => m[1] ?? "");
+  const own = paths.find((path) => path !== projectFolder(c));
+  if (!own) throw new Error(`the card has no worktree: ${listed}`);
+  return own;
+};
+
+step(
+  Given,
+  "a git project of my own with a two-step workflow whose second step fails once is added to host {string}",
+  async (c) => addOwnProject(c, { [resumesFile]: resumesFlow(FAILS_ONCE) }),
+);
+
+step(Given, "I trust its two-step workflow", async (c) => trustWorkflow(c, RESUMES));
+
+step(When, "I start a card of my own on that project with the two-step workflow", async (c) =>
+  startCardWith(c, RESUMES),
+);
+
+const resumeButton = (c: Context) =>
+  c.page.getByRole("button", { name: c.t("runUi.again.resume", { step: "second" }), exact: true });
+
+/** The card of the scenario, opened from its board. */
+async function openOwnCard(c: Context) {
+  await openOwnBoard(c);
+  await tile(c).locator("[data-card-open]").click({ timeout: WAIT });
+}
+
+step(Then, "the card offers to run again from the failed step", async (c) => {
+  await openOwnCard(c);
+  await resumeButton(c).waitFor({ timeout: SESSION_WAIT });
+});
+
+step(When, "I press Run again from the failed step", async (c) => resumeButton(c).click());
+
+step(Then, "the run goes on and ends completed", async (c) => {
+  await c.page
+    .getByRole("heading", {
+      name: c.t("runUi.title", { name: RESUMES, status: c.t("runUi.status.completed") }),
+    })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(Then, "the first step ran once", async (c) => {
+  const lines = readFileSync(join(cardWorktree(c), ".bdd-first"), "utf8")
+    .trim()
+    .split("\n");
+  if (lines.length !== 1) throw new Error(`the first step ran ${lines.length} times`);
+});
+
+step(When, "the workflow file is changed on the base branch and trusted again", async (c) => {
+  const folder = projectFolder(c);
+  writeFileSync(join(folder, resumesFile), resumesFlow(`${FAILS_ONCE}; true`));
+  gitIn(folder, "add", "--", resumesFile);
+  gitIn(folder, "commit", "-q", "-m", "change the workflow");
+  await trustWorkflow(c, RESUMES);
+});
+
+step(When, "the card's branch gets a new commit", async (c) => {
+  const worktree = cardWorktree(c);
+  writeFileSync(join(worktree, "moved.txt"), "moved\n");
+  gitIn(worktree, "add", "--", "moved.txt");
+  gitIn(worktree, "commit", "-q", "-m", "move the branch");
+});
+
+step(
+  Then,
+  "the card says why it cannot go on from the failed step: {string}",
+  async (c, reason = "") => {
+    await openOwnCard(c);
+    const key = `daemonRefusal.${reason}` as Parameters<Context["t"]>[0];
+    await c.page.getByText(c.t(key, { name: RESUMES })).waitFor({ timeout: SESSION_WAIT });
+    if ((await resumeButton(c).count()) > 0)
+      throw new Error("the card still offers to go on from the failed step");
+    await c.page
+      .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
+      .waitFor({ timeout: WAIT });
   },
 );

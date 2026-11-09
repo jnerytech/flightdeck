@@ -54,6 +54,7 @@ export const JOURNEYS: readonly string[] = [
   "time-apagar",
   "time-rodando",
   "merge-pr-recusa",
+  "pull-requests",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -108,9 +109,16 @@ export const DANGER_SESSION = "Limpar a pasta build";
 /** The closed team the demo keeps for the journey that deletes it (issue #934). */
 export const DEMO_CLOSED_TEAM = "closed-crew";
 
+/** The card whose workflow run waits at a gate, which the demo keeps waiting (issue #1269). */
+export const DEMO_GATE_CARD = "Revisar o fluxo de login";
+
 /** The In review card whose PR the demo keeps open, and that PR (issue #1244). */
 export const DEMO_PR_CARD = "Revisar mensagens de erro";
 export const DEMO_PR_URL = "https://github.com/acme/flightdeck-web/pull/42";
+
+/** The In review card on beta, whose PR the fake gh merges, so the Pull requests page lists two hosts (#1345). */
+export const DEMO_PR_BETA_CARD = "Add the health endpoint";
+export const DEMO_PR_BETA_URL = "https://github.com/acme/flightdeck-api/pull/57";
 
 /** The active team the demo keeps, with its members' last reports (issue #1222). */
 export const DEMO_ACTIVE_TEAM = "checkout-crew";

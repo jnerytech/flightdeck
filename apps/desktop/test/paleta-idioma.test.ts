@@ -56,6 +56,7 @@ describe("paleta", () => {
       "Adicionar um host | ação",
       "Mostrar os atalhos de teclado | ação",
       "Ir para Atividade | ação",
+      "Ir para Pull requests | ação",
       "# Clientes",
       "Gerenciar clientes | ação",
     ]);
@@ -84,6 +85,7 @@ describe("paleta", () => {
       "Add a host | action",
       "Show the keyboard shortcuts | action",
       "Go to Activity | action",
+      "Go to Pull requests | action",
       "# Clients",
       "Manage clients | action",
     ]);

@@ -51,6 +51,38 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the watch commands left the switch of server.ts.
+  test("the watch domain owns the watch.* commands", () => {
+    expect(Object.keys(DOMAINS.watch ?? {}).sort()).toEqual(
+      [
+        "watch.byUrl",
+        "watch.describe",
+        "watch.extend",
+        "watch.get",
+        "watch.resolveHeld",
+        "watch.set",
+        "watch.settings",
+        "watch.trace",
+        "watch.watch",
+      ].sort(),
+    );
+  });
+
+  // Issue #1288: the folder and file commands left the switch of server.ts.
+  test("the files domain owns the file.*, files.sessions and fs.* commands", () => {
+    expect(Object.keys(DOMAINS.files ?? {}).sort()).toEqual(
+      [
+        "file.list",
+        "file.read",
+        "file.search",
+        "file.write",
+        "files.sessions",
+        "fs.dirs",
+        "fs.files",
+      ].sort(),
+    );
+  });
+
   // Issue #1288: the host's own controls left the switch of server.ts (host.info follows later).
   test("the host domain owns the host, daemon, maintenance, hooks and memory-hold controls", () => {
     expect(Object.keys(DOMAINS.host ?? {}).sort()).toEqual(
@@ -84,6 +116,30 @@ describe("server-registry", () => {
         "teleport.read",
         "teleport.receive",
         "teleport.write",
+      ].sort(),
+    );
+  });
+
+  // Issue #1288: the project commands left the switch of server.ts (board.* and roots.add follow later).
+  test("the project domain owns the project, projects and harness template commands", () => {
+    expect(Object.keys(DOMAINS.project ?? {}).sort()).toEqual(
+      [
+        "harness.templates.delete",
+        "harness.templates.list",
+        "project.add",
+        "project.harness.apply",
+        "project.harness.commit",
+        "project.harness.draft",
+        "project.harness.export",
+        "project.harness.preview",
+        "project.harness.stack",
+        "project.list",
+        "project.trust.inspect",
+        "project.trust.set",
+        "project.trust.state",
+        "project.update",
+        "projects.clone",
+        "projects.scan",
       ].sort(),
     );
   });

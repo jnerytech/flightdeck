@@ -828,6 +828,8 @@ export const ptBR = {
     noFolder: "Nenhuma pasta escolhida",
     chooseFolder: "Escolher pasta",
     keep: "Arquivos a manter",
+    keepInvalid:
+      "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
     passphrase: "Frase-senha desta sessão",
     passphraseHelp:
       "Pelo menos 12 caracteres. Fica na memória até você fechar o Flightdeck e nunca é salva.",
@@ -1038,6 +1040,7 @@ export const ptBR = {
     projects: "Projetos",
     needsYou: "Precisa de você",
     activity: "Atividade",
+    pullRequests: "Pull requests",
     board: "Board",
     workflows: "Workflows",
     costs: "Custos",
@@ -1272,6 +1275,7 @@ export const ptBR = {
     newSessionAs: "Nova sessão como {persona}",
     goCosts: "Ir para Custos",
     goActivity: "Ir para Atividade",
+    goPullRequests: "Ir para Pull requests",
     connectTo: "Conectar a {name}",
     snippet: "Snippet: {name}",
     useSnippet: "Usar",
@@ -3100,6 +3104,17 @@ export const ptBR = {
     passing: "checks passando",
     failing: "checks falhando",
   },
+  pullRequests: {
+    title: "Pull requests",
+    subtitle: "Todo pull request aberto nos seus hosts, com o que fazer em seguida.",
+    list: "Pull requests abertos",
+    loading: "Lendo os pull requests…",
+    empty: "Nenhum pull request aberto.",
+    emptyDetail: "O PR de um card aparece aqui enquanto está aberto.",
+    refused: "{title}: {reason}",
+    noHosts: "Nenhum host está online.",
+    watchOff: "Vigiar e consertar está desligado",
+  },
   cardMergePr: {
     action: "Fazer merge do PR",
     message:
@@ -4184,6 +4199,8 @@ export const ptBR = {
         "O workflow {name} mudou desde que você confiou nele: revise e confie de novo antes de executá-lo.",
       invalid: "O workflow {name} tem erros: corrija o arquivo e faça o commit.",
       openWorkflows: "Abrir Workflows",
+      resume: "Executar de novo a partir de {step}",
+      resumed: "Continuando a partir de {step}.",
       started: "Executando de novo.",
     },
     budget: "Orçamento",

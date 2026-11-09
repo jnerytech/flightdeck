@@ -102,6 +102,36 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     ]);
   });
 
+  // The print of #1328 met axe's target-size: a bare radio is under 24 px, and three stacked ones
+  // leave no room around them. Each is a 24 px target, like the other radios of the app.
+  test("each cadence radio is a target of at least 24 px", () => {
+    open();
+    const radios = ["Off", "Every day", "Every week"].map(
+      (name) => screen.queryByRole("radio", { name }) as HTMLInputElement | null,
+    );
+    expect(radios.map((radio) => radio?.className.split(" ").includes("hit-control"))).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  // The print of #1328 showed "Type it below" under the passphrase field: the notice comes first.
+  test("the notice of a waiting backup comes before the passphrase field it points to", async () => {
+    open();
+    await click("Choose folder");
+    await click("Every day");
+    const notice = screen.queryByText(
+      "A backup is due, but it waits for the passphrase. Type it below.",
+    );
+    const input = field("Passphrase for this session");
+    expect(
+      notice !== null &&
+        input !== null &&
+        (notice.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    ).toBe(true);
+  });
+
   test("a short passphrase is not accepted; a good one runs the backup, then the field goes away", async () => {
     const { files, platform, store } = open();
     await click("Choose folder");
@@ -122,12 +152,40 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     ]).toEqual([false, 1, null, true, true, true]);
   });
 
-  test("a number to keep that is not valid goes back to the saved one when the field is left", async () => {
+  // #1329: an invalid number snapped back to the saved one on blur, and nothing said why. Now the
+  // field keeps what was typed and says, tied to it, what it takes and how many files are still kept.
+  test("a number to keep that is not valid says why and what is still kept, after the field is left too; a valid one clears it", async () => {
     const { platform } = open();
-    await type("Files to keep", "0");
     const input = field("Files to keep") as HTMLInputElement;
+    const error = "Type a whole number from 1. The saved number (5) stays.";
+    const says = () => {
+      const line = screen.queryByText(error);
+      return (
+        line !== null &&
+        input.getAttribute("aria-invalid") === "true" &&
+        (input.getAttribute("aria-describedby") ?? "").split(" ").includes(line.id)
+      );
+    };
+    await type("Files to keep", "0");
     await act(async () => fireEvent.blur(input));
-    expect([input.value, loadSchedule(platform.storage).keep]).toEqual(["5", 5]);
+    const afterZero = [says(), input.value, loadSchedule(platform.storage).keep];
+    await type("Files to keep", "2.5");
+    const afterFraction = says();
+    await type("Files to keep", "3");
+    const afterThree = [
+      screen.queryByText(error) === null,
+      input.hasAttribute("aria-invalid"),
+      loadSchedule(platform.storage).keep,
+    ];
+    // What the number field takes as a whole number is saved and clears the message: one rule for both.
+    await type("Files to keep", "2.0");
+    expect([
+      ...afterZero,
+      afterFraction,
+      ...afterThree,
+      input.hasAttribute("aria-invalid"),
+      loadSchedule(platform.storage).keep,
+    ]).toEqual([true, "0", 5, true, true, false, 3, false, 2]);
   });
 
   test("a write that fails is shown, not hidden", async () => {
@@ -142,5 +200,13 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
   test("the texts are in pt-BR too", () => {
     open({ language: "pt-BR" });
     expect([shown("Backups agendados"), shown("Escolher pasta")]).toEqual([true, true]);
+  });
+
+  test("in pt-BR an invalid number to keep says why too (#1329)", async () => {
+    open({ language: "pt-BR" });
+    await type("Arquivos a manter", "0");
+    expect(
+      shown("Digite um número inteiro a partir de 1. O número salvo (5) continua valendo."),
+    ).toBe(true);
   });
 });

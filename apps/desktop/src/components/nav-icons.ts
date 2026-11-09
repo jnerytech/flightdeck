@@ -6,6 +6,7 @@ import {
   Columns3,
   Drama,
   FolderGit2,
+  GitPullRequest,
   History,
   House,
   KeyRound,
@@ -28,6 +29,7 @@ export type NavKey =
   | "sessions"
   | "needs-you"
   | "activity"
+  | "pull-requests"
   | "projects"
   | "board"
   | "workflows"
@@ -51,6 +53,7 @@ export const NAV_ICONS: Record<NavKey, LucideIcon> = {
   sessions: Layers,
   "needs-you": CircleAlert,
   activity: Activity,
+  "pull-requests": GitPullRequest,
   projects: FolderGit2,
   board: Columns3,
   workflows: Workflow,

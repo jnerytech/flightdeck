@@ -58,6 +58,7 @@ const OWNER: Record<Route["name"], "host" | "reader" | null> = {
   plugins: null,
   setup: null,
   conversations: null,
+  "pull-requests": null,
   teams: null,
   vault: null,
   "add-host": null,

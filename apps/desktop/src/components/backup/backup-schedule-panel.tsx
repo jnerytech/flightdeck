@@ -12,6 +12,12 @@ import type { AppStore } from "@/lib/app-store";
 import type { Cadence } from "@/lib/backup-schedule";
 
 const CADENCES: readonly Cadence[] = ["off", "daily", "weekly"];
+/** The number of files to keep that `text` means, or null when it is not a whole number from 1. */
+function validKeep(text: string): number | null {
+  const keep = Number(text);
+  return text.trim() !== "" && Number.isInteger(keep) && keep >= 1 ? keep : null;
+}
+
 /** The same floor as a backup file's passphrase (the bundle refuses a shorter one). */
 const MIN_PASSPHRASE = 12;
 
@@ -29,6 +35,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
 
   const schedule = scheduler.schedule();
   const report = scheduler.report;
+  // #1329: what was typed stays, and says why it is not saved, until it is a whole number from 1.
+  const keepValid = validKeep(keepText) !== null;
   const waiting = schedule.cadence !== "off" && !scheduler.hasPassphrase;
 
   return (
@@ -42,6 +50,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
               <label key={cadence} className="flex items-center gap-2">
                 <input
                   type="radio"
+                  className="hit-control"
                   name={`${id}-cadence`}
                   checked={schedule.cadence === cadence}
                   onChange={() => void scheduler.setCadence(cadence)}
@@ -68,23 +77,35 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
           </div>
         </Stack>
         <Form variant="inline" onSubmit={() => {}}>
-          <Field label={t("backupSchedule.keep")}>
+          <Field
+            label={t("backupSchedule.keep")}
+            error={
+              keepValid
+                ? undefined
+                : t("backupSchedule.keepInvalid", { count: String(schedule.keep) })
+            }
+          >
             {(control) => (
               <Input
                 {...control}
                 type="number"
                 min={1}
                 value={keepText}
-                onBlur={() => setKeepText(String(scheduler.schedule().keep))}
                 onChange={(event) => {
                   setKeepText(event.target.value);
-                  const keep = Number(event.target.value);
-                  if (Number.isInteger(keep) && keep >= 1) void scheduler.setKeep(keep);
+                  const keep = validKeep(event.target.value);
+                  if (keep !== null) void scheduler.setKeep(keep);
                 }}
               />
             )}
           </Field>
         </Form>
+        {/* Before the passphrase field: the waiting notice says "Type it below". */}
+        {report.status === "skipped" && (
+          <InlineNotice tone={report.reason === "failed" ? "error" : "warn"}>
+            {t(`backupSchedule.skipped.${report.reason}`)}
+          </InlineNotice>
+        )}
         {waiting && (
           <Form
             variant="inline"
@@ -117,11 +138,6 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
         )}
         {schedule.cadence !== "off" && scheduler.hasPassphrase && (
           <p className="text-muted-foreground text-sm">{t("backupSchedule.passphraseSet")}</p>
-        )}
-        {report.status === "skipped" && (
-          <InlineNotice tone={report.reason === "failed" ? "error" : "warn"}>
-            {t(`backupSchedule.skipped.${report.reason}`)}
-          </InlineNotice>
         )}
         {report.status === "done" && report.prune === "failed" && (
           <InlineNotice tone="warn">{t("backupSchedule.pruneFailed")}</InlineNotice>
