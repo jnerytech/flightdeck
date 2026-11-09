@@ -27,7 +27,8 @@ export async function istanbulChanged(
   out: string,
   deps: IstanbulChangedDeps,
 ): Promise<number> {
-  if (!base || !out) {
+  // A leading dash would make the base an option of git diff.
+  if (!base || base.startsWith("-") || !out) {
     deps.print("usage: bun run scripts/istanbul-changed.ts <base> <out>");
     return 2;
   }
