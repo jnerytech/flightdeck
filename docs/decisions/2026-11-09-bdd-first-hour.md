@@ -42,14 +42,15 @@ host set to none in the settings step (the card never says "PR open"); the card'
 
 - **#1546 (focus), the part that holds.** After Create card the focus is on the new card's tile. Red when
   the board stops focusing the card it made (`onMade` in `new-card-dialog.tsx`).
-- **#1546, the part that does not hold in a real browser (issue #1580).** After Test and add and after Add
-  project the focus stays on the page body, in both languages, for as long as the check waits. No
-  scenario for these two until #1580 is fixed; they go in with it. The unit tests of #1569 pass in
-  happy-dom. Approve and Open PR are covered by `approval-focus-ui.test.tsx` and are not in this feature.
+- **#1546, Test and add and Add project (issue #1580, fixed in PR #1583).** The focus stayed on the page body
+  in a real browser while the unit tests passed in happy-dom. The scenario "The pages the first steps
+  open take the focus on their heading" (fd-frontend, in #1583) holds both steps; it ran green on main
+  in en and pt-BR. Approve and Open PR are covered by `approval-focus-ui.test.tsx` and are not in this
+  feature.
 
 ## Not covered
 
 - The project's own trust and setup prompts (#1547) and the long project name in the side bar (#1550):
   layout and copy findings that belong to the UX prints.
 - A project whose remote is on GitHub but whose PR host is still `none`: today the card leads with Open
-  PR and the refusal comes after the text is typed. That is #1543 and goes in with #1557.
+  PR and the refusal comes after the text is typed. That was #1543, fixed by #1557 for the no-provider case; the scenario above covers it.
