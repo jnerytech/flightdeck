@@ -1,5 +1,6 @@
 import type {
   AccountState,
+  ActivitySinceResult,
   AskpassRequest,
   BgList,
   BgSession,
@@ -83,6 +84,7 @@ import type {
 } from "../platform/types.ts";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
+import { AwayClock } from "./away.ts";
 import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
@@ -291,6 +293,25 @@ export interface Selection {
   sessionId: string | null;
 }
 
+/** How often the app writes that it is still active (issue #1344). */
+const AWAY_MARK_MS = 60_000;
+
+/** What one host said happened since the app was last active (issue #1344). */
+export interface AwayHost {
+  hostId: string;
+  result: ActivitySinceResult;
+}
+
+export interface AwayState {
+  /** When the app was last active, when it was away long enough to summarise; else null. */
+  since: string | null;
+  hosts: AwayHost[];
+  /** Hosts that can say what happened but did not answer, by id, so the summary can name them. */
+  unreached: string[];
+  /** The person closed the summary; it stays closed until the next start. */
+  dismissed: boolean;
+}
+
 export interface AppState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -375,6 +396,8 @@ export interface AppState {
   terminalEnv: TerminalEnv | null;
   /** Toasts still to show or still open (phase 10). */
   notices: Notice[];
+  /** Issue #1344: what happened on the hosts while the app was closed. */
+  away: AwayState;
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
   /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
@@ -533,6 +556,7 @@ export type HostCommandType = Extract<
   | `github.${string}`
   | `boardsync.${string}`
   | "roi.summary"
+  | "activity.since"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
@@ -1094,6 +1118,7 @@ export class AppStore {
       onAttention: (kind) => this.onBackupAttention(kind),
       ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
     });
+    this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -1143,6 +1168,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
+      away: { since: null, hosts: [], unreached: [], dismissed: false },
       inbox: [],
       composerFill: {},
       finished: [],
@@ -1208,6 +1234,11 @@ export class AppStore {
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
   readonly backupScheduler: BackupScheduler;
+  /** Issue #1344: when the app was last active, read before this start writes its own. */
+  private readonly awayClock: AwayClock;
+  private awayTimer: ReturnType<typeof setInterval> | null = null;
+  /** The hosts already asked this start, so a reconnect does not list them twice. */
+  private readonly awayAsked = new Set<string>();
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
   readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
@@ -1397,6 +1428,10 @@ export class AppStore {
         if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
+    // Issue #1344: the time the app is active, for the next start's "While you were away".
+    this.awayClock.mark();
+    if (this.awayTimer) clearInterval(this.awayTimer);
+    this.awayTimer = setInterval(() => this.awayClock.mark(), AWAY_MARK_MS);
     // A schedule that cannot start (storage full) must not stop the app from starting.
     this.backupScheduler.start().catch(() => {});
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
@@ -3131,6 +3166,8 @@ export class AppStore {
     this.stopWake = null;
     if (this.peersTimer) clearInterval(this.peersTimer);
     this.peersTimer = null;
+    if (this.awayTimer) clearInterval(this.awayTimer);
+    this.awayTimer = null;
     for (const conn of this.connections.values()) conn.dispose();
     this.connections.clear();
     this.offTrayAction?.();
@@ -3455,6 +3492,8 @@ export class AppStore {
     });
     // The setup checklist reads what this host has: its hooks, GitHub, projects.
     void this.refreshSetup(hostId, { connect });
+    // Issue #1344: a host that can say what happened while the app was closed is asked once.
+    if (hasFeature(hostInfo?.features, "activity", false)) void this.loadAway();
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
@@ -4168,6 +4207,45 @@ export class AppStore {
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
   readonly globalPersonas: GlobalPersonas;
+  /** Issue #1344: asks each online host with the feature what happened since the app was last active. */
+  async loadAway(): Promise<void> {
+    const since = this.awayClock.since();
+    if (this.state.away.since !== since) this.update({ away: { ...this.state.away, since } });
+    if (since === null) return;
+    const hosts = this.state.hosts.filter(
+      (h) =>
+        h.status === "online" &&
+        !this.awayAsked.has(h.id) &&
+        hasFeature(h.hostInfo?.features, "activity", false),
+    );
+    for (const host of hosts) this.awayAsked.add(host.id);
+    const answers = await Promise.all(
+      hosts.map(async (host) => ({
+        hostId: host.id,
+        asked: await this.hostRequest(host.id, "activity.since", { since }),
+      })),
+    );
+    // A host that did not answer is named, and asked again the next time it connects.
+    for (const { hostId, asked: answer } of answers) if (!answer.ok) this.awayAsked.delete(hostId);
+    const found = answers.flatMap(({ hostId, asked: answer }) =>
+      answer.ok ? [{ hostId, result: answer.data }] : [],
+    );
+    const failed = answers.flatMap(({ hostId, asked: answer }) => (answer.ok ? [] : [hostId]));
+    const answered = new Set(found.map((h) => h.hostId));
+    const unreached = [
+      ...this.state.away.unreached.filter((id) => !answered.has(id) && !failed.includes(id)),
+      ...failed,
+    ];
+    this.update({
+      away: { ...this.state.away, hosts: [...this.state.away.hosts, ...found], unreached },
+    });
+  }
+
+  /** Issue #1344: closes the summary until the next start. */
+  dismissAway(): void {
+    this.update({ away: { ...this.state.away, dismissed: true } });
+  }
+
   /**
    * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
    * that cannot be reached, is left out; the card says how many answered.
