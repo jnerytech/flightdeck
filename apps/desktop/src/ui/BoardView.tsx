@@ -462,7 +462,10 @@ export const BoardView = memo(function BoardView(props: {
   /** #1354: the Start N or Stop N confirm, and the host's limit of runs at once (null: not known). */
   const [bulk, setBulk] = useState<"start" | "stop" | null>(null);
   const [queueMax, setQueueMax] = useState<number | null | undefined>(undefined);
-  const workflowNames = useRef<string[]>([]);
+  /** The project's workflows (their inputs), asked when Start N's confirm opens; null until then. */
+  const [workflows, setWorkflows] = useState<Array<{ name: string; inputs: string[] }> | null>(
+    null,
+  );
   const suggestedPersona = useSuggestedPersona(store, hostId, "dev");
   /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
   const moveFrom = useRef<string | null>(null);
@@ -642,18 +645,32 @@ export const BoardView = memo(function BoardView(props: {
   const askStart = () => {
     if (busy || split.start.length === 0) return;
     setQueueMax(undefined);
+    setWorkflows(null);
     setBulk("start");
+    // Start waits for both (the confirm's button is off): the queue line and each card's workflow.
     void store.hostCommand(hostId, "project.list", {}).then((list) => {
       setQueueMax(typeof list?.maxParallelRuns === "number" ? list.maxParallelRuns : null);
     });
     void store.hostCommand(hostId, "workflow.list", { projectId }).then((list) => {
-      workflowNames.current = Array.isArray(list) ? list.map((w) => w.name) : [];
+      setWorkflows(
+        Array.isArray(list) ? list.map((w) => ({ name: w.name, inputs: w.inputs })) : [],
+      );
     });
   };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;
     setBulk("stop");
   };
+  /** A card whose workflow asks for inputs starts from its own dialog, where they are typed. */
+  const workflowOf = (card: Card) =>
+    startWorkflowOf(
+      card,
+      (workflows ?? []).map((w) => w.name),
+    );
+  const needsInputs = (card: Card) =>
+    (workflows?.find((w) => w.name === workflowOf(card))?.inputs.length ?? 0) > 0;
+  const startable = split.start.filter((card) => !needsInputs(card));
+  const startReady = queueMax !== undefined && workflows !== null;
   /** The host's cards holding a run: the queue's places they take. */
   const runningOnHost = Object.entries(state.cards).filter(
     ([key, card]) => key.startsWith(`${hostId}/`) && cardStartBlock(card) === "running",
@@ -661,12 +678,12 @@ export const BoardView = memo(function BoardView(props: {
   /** Starts or stops the cards one at a time; the ones that went leave the selection. */
   const runSelected = async (kind: "start" | "stop") => {
     if (busy) return;
-    const cards = kind === "start" ? split.start : split.stop;
+    const cards = kind === "start" ? startable : split.stop;
     setBulk(null);
     setBusy(true);
     const personaIds = (state.personas[hostId] ?? []).map((p) => p.id);
     const refused = await runMany(cards, async (card) => {
-      const workflow = startWorkflowOf(card, workflowNames.current);
+      const workflow = workflowOf(card);
       const persona = store.personaRef(startPersonaOf(card, personaIds) ?? suggestedPersona);
       const answer =
         kind === "start"
@@ -699,7 +716,7 @@ export const BoardView = memo(function BoardView(props: {
     const lines: string[] = [];
     if (queueMax !== undefined) {
       lines.push(
-        queueLine(t, queueSplit(split.start.length, queueMax ?? 0, runningOnHost), queueMax),
+        queueLine(t, queueSplit(startable.length, queueMax ?? 0, runningOnHost), queueMax),
       );
     }
     const quota = state.quota[hostId];
@@ -718,7 +735,7 @@ export const BoardView = memo(function BoardView(props: {
       }
       if (bars.some((bar) => bar.hot)) lines.push(t("board.startQuotaHold", { host: hostName }));
     }
-    const lacking = split.start.filter((card) => startNeeds(card, contracts).length > 0).length;
+    const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
     if (lacking > 0) {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
     }
@@ -1312,9 +1329,9 @@ export const BoardView = memo(function BoardView(props: {
           t={t}
           title={
             bulk === "start"
-              ? split.start.length === 1
+              ? startable.length === 1
                 ? t("board.startTitleOne")
-                : t("board.startTitle", { n: split.start.length })
+                : t("board.startTitle", { n: startable.length })
               : split.stop.length === 1
                 ? t("board.stopTitleOne")
                 : t("board.stopTitle", { n: split.stop.length })
@@ -1323,7 +1340,8 @@ export const BoardView = memo(function BoardView(props: {
           items={actingCards.map((card) => {
             const skip =
               bulk === "start"
-                ? split.skipStart.find((s) => s.card.id === card.id)?.reason
+                ? (split.skipStart.find((s) => s.card.id === card.id)?.reason ??
+                  (needsInputs(card) ? t("board.needsInputs") : undefined))
                 : split.skipStop.some((c) => c.id === card.id)
                   ? t("board.notRunning")
                   : undefined;
@@ -1331,9 +1349,10 @@ export const BoardView = memo(function BoardView(props: {
           })}
           confirmLabel={
             bulk === "start"
-              ? t("board.startSelected", { n: split.start.length })
+              ? t("board.startSelected", { n: startable.length })
               : t("board.stopSelected", { n: split.stop.length })
           }
+          confirmDisabled={bulk === "start" && (!startReady || startable.length === 0)}
           onCancel={() => setBulk(null)}
           onConfirm={() => void runSelected(bulk)}
         />

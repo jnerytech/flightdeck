@@ -953,6 +953,7 @@ export const en: Dictionary = {
     stopBody:
       "A running card's turn is cut off and the card waits in Needs you; a queued card goes back to Backlog. Worktrees, branches and commits stay.",
     notRunning: "not running",
+    needsInputs: "its workflow asks for inputs; start it from its menu",
     startFailedOne: "1 card did not start: {names}",
     startFailed: "{count} cards did not start: {names}",
     stopFailedOne: "1 card did not stop: {names}",

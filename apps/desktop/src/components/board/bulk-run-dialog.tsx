@@ -29,6 +29,8 @@ export function BulkRunDialog(
     lines: string[];
     items: BulkRunItem[];
     confirmLabel: string;
+    /** What the confirm needs has not come yet: the button waits. */
+    confirmDisabled?: boolean;
     onCancel(): void;
     onConfirm(): void;
   }>,
@@ -59,7 +61,9 @@ export function BulkRunDialog(
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-          <AlertDialogAction onClick={props.onConfirm}>{props.confirmLabel}</AlertDialogAction>
+          <AlertDialogAction disabled={props.confirmDisabled} onClick={props.onConfirm}>
+            {props.confirmLabel}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

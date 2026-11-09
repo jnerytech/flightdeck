@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Key, T } from "../../i18n/index.ts";
@@ -126,6 +127,7 @@ export function SelectionBar(
                   : t(`kanban.columns.${id}` as Key)}
               </DropdownMenuItem>
             ))}
+            {props.compact && <DropdownMenuSeparator />}
             {props.compact && (
               <DropdownMenuItem onSelect={props.onDiscard}>
                 {t("board.discardSelected")}

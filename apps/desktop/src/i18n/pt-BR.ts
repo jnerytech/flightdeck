@@ -948,6 +948,7 @@ export const ptBR = {
     stopBody:
       "O turno de um card rodando é interrompido e o card espera em Esperando você; um card na fila volta para o Backlog. Worktrees, branches e commits ficam.",
     notRunning: "não está rodando",
+    needsInputs: "o workflow dele pede entradas; inicie pelo menu do card",
     startFailedOne: "1 card não iniciou: {names}",
     startFailed: "{count} cards não iniciaram: {names}",
     stopFailedOne: "1 card não parou: {names}",
