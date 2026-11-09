@@ -4104,6 +4104,7 @@ export const ptBR = {
     badCheckRounds: "Rodadas do laço de checks: de 1 a 10",
     badCheckEnv:
       "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+    tooManyCheckEnv: "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
   },
   sessionFinish: {
     commit: "Fazer commit num branch novo",

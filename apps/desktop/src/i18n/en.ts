@@ -4097,6 +4097,7 @@ export const en: Dictionary = {
     checkLoopDefault: "Turn the check loop on for new cards",
     badCheckRounds: "Check loop rounds: from 1 to 10",
     badCheckEnv: "Extra variables: only where a tool lives (like JAVA_HOME), never a secret",
+    tooManyCheckEnv: "Extra variables: at most 20 names, each up to 64 characters",
   },
   sessionFinish: {
     commit: "Commit on a new branch",

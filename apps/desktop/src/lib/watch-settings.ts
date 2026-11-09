@@ -38,6 +38,9 @@ export function watchDraftOf(settings: WatchSettings | null): WatchDraft {
 
 const limit = (text: string): number | null => (text.trim() === "" ? null : Number(text));
 
+/** The variable names of the checks: the non-blank lines, each once. */
+const envNames = (text: string): string[] => [...new Set(checkLines(text))];
+
 /** The non-blank lines of the checks: one command with its arguments each. */
 const checkLines = (text: string): string[] =>
   text
@@ -72,9 +75,12 @@ export function validateWatchDraft(draft: WatchDraft, t: T): string | null {
     if (!Number.isInteger(loopRounds) || loopRounds < 1 || loopRounds > 10) {
       return t("watchSettingsUi.badCheckRounds");
     }
-    if (!checkLines(draft.loop.checkEnv).every(isCheckEnvName)) {
-      return t("watchSettingsUi.badCheckEnv");
+    const names = envNames(draft.loop.checkEnv);
+    // The host's own limits (the protocol's `checkEnv`): at most 20 names of up to 64 characters.
+    if (names.length > 20 || names.some((name) => name.length > 64)) {
+      return t("watchSettingsUi.tooManyCheckEnv");
     }
+    if (!names.every(isCheckEnvName)) return t("watchSettingsUi.badCheckEnv");
   }
   return null;
 }
@@ -95,7 +101,7 @@ export function watchPatchOf(draft: WatchDraft, saved: WatchSettings): Partial<W
     ...(draft.loop
       ? {
           checkRounds: Number(draft.loop.checkRounds),
-          checkEnv: checkLines(draft.loop.checkEnv),
+          checkEnv: envNames(draft.loop.checkEnv),
           checkLoopDefault: draft.loop.checkLoopDefault,
         }
       : {}),
