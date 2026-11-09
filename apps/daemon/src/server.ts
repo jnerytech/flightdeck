@@ -645,10 +645,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "resources");
   }
 
-  function worktrees(): Worktrees {
-    return need(opts, "worktrees");
-  }
-
   function board(): Board {
     return need(opts, "board");
   }
@@ -690,10 +686,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
         await resources().endOrphan(command.payload.pid, command.payload.startTicks);
         return ok(command.type, { ended: true });
-      case "worktree.list":
-        return ok(command.type, await worktrees().list(command.payload.projectId));
-      case "worktree.remove":
-        return ok(command.type, await worktrees().remove(command.payload.items));
       case "names.list":
         return ok(command.type, {
           names: names()
