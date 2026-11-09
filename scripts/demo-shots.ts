@@ -330,7 +330,11 @@ function shots(ids: DemoIds): Shot[] {
           .getByRole("group", { name: /^(Selection|Seleção)$/ })
           .getByRole("button", { name: /^(Update 3 from the base|Atualizar 3 com a base)$/ })
           .click();
-        await page.getByText(/(Conflict, left as it was|Conflito, ficou como estava)/).waitFor();
+        // The board's status line repeats the notice for a screen reader: either one will do.
+        await page
+          .getByText(/(Conflict, left as it was|Conflito, ficou como estava)/)
+          .first()
+          .waitFor();
       },
     },
     // #117: the files of a worktree picked in the sidebar tree, in a panel beside the columns.

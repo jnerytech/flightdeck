@@ -1567,7 +1567,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click();
     // "Conflict, left as it was: Juros por atraso (…)": its reason names the file.
     const conflict = c.t("board.conflictedNames", { names: conflicted }).replace(/\.$/, " (");
-    const notice = c.page.getByText(conflict, { exact: false });
+    // The board's status line repeats the notice for a screen reader: either one says it all.
+    const notice = c.page.getByText(conflict, { exact: false }).first();
     await notice.waitFor({ timeout: WAIT });
     const text = (await notice.textContent()) ?? "";
     const others = `${first}, ${second}`;
