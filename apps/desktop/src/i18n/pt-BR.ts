@@ -1361,6 +1361,8 @@ export const ptBR = {
   time: {
     now: "agora",
     ago: "há {d}",
+    agoDay: "há 1 dia",
+    agoDays: "há {n} dias",
     hours: "{n} h",
     minutes: "{n} min",
     seconds: "{n} s",
@@ -3188,6 +3190,15 @@ export const ptBR = {
     reviewChanges: "Mudanças pedidas",
     reviewRequired: "Revisão pendente",
     opened: "Aberto {ago}",
+  },
+  conflictRadar: {
+    badgeOne: "Pode conflitar com {title}",
+    badgeMany: "Pode conflitar com {n} cards",
+    title: "Pode conflitar com outros cards",
+    intro:
+      "Estes cards mudam os mesmos arquivos. Quem fizer o merge depois pode ter de resolver conflitos.",
+    mergeLine:
+      "Outros cards mudam os mesmos arquivos: {titles}. Quem fizer o merge depois pode ter de resolver conflitos.",
   },
   cardMergePr: {
     action: "Fazer merge do PR",

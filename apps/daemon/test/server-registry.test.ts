@@ -83,7 +83,7 @@ describe("server-registry", () => {
     );
   });
 
-  // Issue #1288: the host's own controls left the switch of server.ts (host.info follows later).
+  // Issue #1288: the host's own controls left the switch of server.ts (host.info followed in its own change).
   test("the host domain owns the host, daemon, maintenance, hooks and memory-hold controls", () => {
     expect(Object.keys(DOMAINS.host ?? {}).sort()).toEqual(
       [
@@ -94,6 +94,7 @@ describe("server-registry", () => {
         "hooks.status",
         "hooks.uninstall",
         "host.bypass",
+        "host.info",
         "host.keepAwake",
         "host.pause",
         "host.sleep",

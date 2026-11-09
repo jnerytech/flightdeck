@@ -8,6 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -160,14 +161,17 @@ function setup(
       : { ok: true, data: {} };
   }) as never;
   const ro = fakeResizeObserver();
+  // As the app renders it: the card tiles read the language from the context.
   render(
-    <BoardView
-      store={store}
-      hostId="h1"
-      projectId="p1"
-      onOpenCard={() => {}}
-      onOpenSettings={() => {}}
-    />,
+    <TContext.Provider value={store.i18n.t}>
+      <BoardView
+        store={store}
+        hostId="h1"
+        projectId="p1"
+        onOpenCard={() => {}}
+        onOpenSettings={() => {}}
+      />
+    </TContext.Provider>,
   );
   return { store, commands, requests, ...ro };
 }
@@ -496,6 +500,98 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
       labels.includes("Iniciar 2"),
       labels.some((label) => label?.startsWith("Parar")),
     ]).toEqual([true, true, false]);
+    restore();
+  });
+});
+
+/** The focused element's text and the card or bar it sits in: a check of where the focus went. */
+const focusAt = () => {
+  const el = document.activeElement as HTMLElement | null;
+  return {
+    card: el?.closest("li[data-card]")?.getAttribute("data-card") ?? null,
+    open: el?.hasAttribute("data-card-open") ?? false,
+    text: el?.textContent ?? "",
+  };
+};
+const pressEscape = () =>
+  act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  });
+
+// #1426 (round 10 of #168): closing a confirm left the focus on the page body, so a keyboard user
+// started again from the top. It goes back to where the person was.
+describe("board-bulk-ui: the focus after a confirm closes (#1426)", () => {
+  test("s on a card, then Esc: the focus is back on that card", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "C");
+    titleOf("C")?.focus();
+    await press("s");
+    await settleMaybe(() => dialog() !== null);
+    await pressEscape();
+    await settleMaybe(() => dialog() === null && focusAt().card === "C");
+    expect([dialog() === null, focusAt().card, focusAt().open]).toEqual([true, "C", true]);
+    restore();
+  });
+
+  test("the bar's Start N, then Cancel: the focus is back on Start N", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "B");
+    const start = button(bar(), "Start 2");
+    start.focus();
+    await click(start);
+    await settleMaybe(() => dialog() !== null);
+    await click(button(dialog(), "Cancel"));
+    await settleMaybe(() => dialog() === null && focusAt().text === "Start 2");
+    expect([dialog() === null, focusAt().text]).toEqual([true, "Start 2"]);
+    restore();
+  });
+
+  test("the bar's Stop N, then Esc: the focus is back on Stop N", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "D");
+    const stop = button(bar(), "Stop 1");
+    stop.focus();
+    await click(stop);
+    await settleMaybe(() => dialog() !== null);
+    await pressEscape();
+    await settleMaybe(() => dialog() === null && focusAt().text === "Stop 1");
+    expect([dialog() === null, focusAt().text]).toEqual([true, "Stop 1"]);
+    restore();
+  });
+
+  test("Discard…, then Cancel: the focus is back on Discard…", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "B");
+    const discard = button(bar(), "Discard…");
+    discard.focus();
+    await click(discard);
+    await settleMaybe(() => dialog() !== null);
+    await click(button(dialog(), "Cancel"));
+    await settleMaybe(() => dialog() === null && focusAt().text === "Discard…");
+    expect([dialog() === null, focusAt().text]).toEqual([true, "Discard…"]);
+    restore();
+  });
+});
+
+describe("board-bulk-ui: the conflict radar badge on a card (#1405)", () => {
+  test("a card the host says may conflict with another shows it; the others show nothing", async () => {
+    const { restore } = setup({
+      cards: [
+        card("A", "backlog", 1, {
+          mayConflict: [{ cardId: "B", title: "B", files: ["src/a.ts"] }],
+        }),
+        card("B", "backlog", 2),
+      ],
+    });
+    await ready();
+    expect([
+      li("A").textContent?.includes("May conflict with B"),
+      li("B").textContent?.includes("May conflict"),
+    ]).toEqual([true, false]);
     restore();
   });
 });

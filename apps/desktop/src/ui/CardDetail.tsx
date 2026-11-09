@@ -18,6 +18,7 @@ import { canMergeCardPr } from "@/lib/card-merge-pr";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { CardConflicts } from "../components/card/card-conflicts.tsx";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
 import { opensOnChanges } from "../lib/card-next-step.ts";
@@ -284,6 +285,7 @@ export const CardDetail = memo(function CardDetail(props: {
               library={has("knowledge")}
             />
           )}
+          <CardConflicts card={card} />
           {withDeps && (
             <CardDeps
               store={store}

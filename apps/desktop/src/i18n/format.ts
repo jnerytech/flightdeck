@@ -63,9 +63,14 @@ export function formatDuration(ms: number, t: T): string {
   return m === 0 ? t("time.hours", { n: h }) : t("time.hoursMinutes", { h, m });
 }
 
-/** "há 3 min" / "3 min ago"; under a minute, "agora". */
+const DAY_MS = 24 * 3_600_000;
+
+/** "há 3 min" / "3 min ago"; under a minute, "agora"; from a day on, in days ("há 2 dias"). */
 export function formatAgo(ms: number, t: T): string {
-  return ms < 60_000 ? t("time.now") : t("time.ago", { d: formatDuration(ms, t) });
+  if (ms < 60_000) return t("time.now");
+  const days = Math.floor(ms / DAY_MS);
+  if (days >= 1) return t(days === 1 ? "time.agoDay" : "time.agoDays", { n: days });
+  return t("time.ago", { d: formatDuration(ms, t) });
 }
 
 /** The day a release came out as a person reads it ("Nov 6, 2026", "6 de nov. de 2026"), on its UTC day. */
