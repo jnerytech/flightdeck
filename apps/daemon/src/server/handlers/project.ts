@@ -44,11 +44,15 @@ export const projectHandlers = {
   "project.detectProvider": async (payload, { server }) => {
     const board = server.need("board");
     const project = board.getProject(payload.projectId);
-    const found = await detectProvider(project);
+    const found = await detectProvider(project, server.opts.projectGit);
+    // The project form may have saved while git was reading: what the person set stays.
+    const fresh = board.getProject(payload.projectId);
+    if (fresh.prProvider !== "none")
+      return { project: await board.forWire(fresh), outcome: "kept" as const, host: null };
     // Saved the way the project form saves it, so the board and every window see the new provider.
     const now = found.provider
       ? board.updateProject(payload.projectId, { prProvider: found.provider })
-      : project;
+      : fresh;
     return { project: await board.forWire(now), outcome: found.outcome, host: found.host };
   },
   "project.trust.state": async (payload, { server }) => {

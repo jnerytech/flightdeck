@@ -1399,8 +1399,16 @@ title and description:
 A project whose provider is **none** (the default for a new project, and what a repository with no
 remote has) has no Open PR: the card's panel says so, with the steps (set the provider in the project's
 settings; if the repository has no remote, `git remote add origin <url>` first, then `gh auth login`
-or `az login`) and the branch the card's work is on, to push by hand. **Review changes** stays. The card page reads the provider from the repository's `origin` when it shows, and **Check the remote again** reads it once more after a `git remote add`: a GitHub or Azure DevOps remote is saved as the provider (and Open PR comes); another service is named, and the branch is yours to push. The provider is still yours to set in the project's settings. A PR the host refuses keeps the dialog open with the text
-you wrote, and the reason shown in it.
+or `az login`) and the branch the card's work is on, to push by hand. **Review changes** stays.
+
+On a host that announces `prDetect`, the card page also reads the provider from the repository's
+`origin` by itself when it shows (and the project's provider is still none), and **Check the remote
+again** reads it once more after a `git remote add`. A `github.com` (or `*.ghe.com`) or Azure DevOps
+remote is saved as the project's provider, a toast says so, and Open PR comes. Any other host is named
+and left alone: Flightdeck does not pick a provider from a name that only contains "github", so a GitHub
+Enterprise server is set by hand in the project's settings. If git cannot read the repository, the note
+says that, instead of telling you to add a remote. A PR the host refuses keeps the dialog open with
+the text you wrote, and the reason shown in it.
 
 The CLI must be installed and authenticated on the daemon's host (`gh auth login`, `az login`
 with the `azure-devops` extension). The daemon only invokes it, looking it up on the PATH. The

@@ -1413,8 +1413,16 @@ Um projeto com o provedor **nenhum** (o padrão de um projeto novo, e o que um r
 tem) não tem Abrir PR: o painel do card diz isso, com os passos (defina o provedor nas configurações
 do projeto; se o repositório não tem remote, `git remote add origin <url>` antes, depois `gh auth
 login` ou `az login`) e a branch em que está o trabalho do card, para enviar à mão. **Revisar
-mudanças** continua. A página do card lê o provedor do `origin` do repositório ao aparecer, e **Verificar o remote de novo** o lê outra vez depois de um `git remote add`: um remote do GitHub ou do Azure DevOps vira o provedor (e o Abrir PR aparece); outro serviço é nomeado, e a branch fica por sua conta. O provedor continua podendo ser definido nas configurações do projeto. Um PR que o host recusa mantém
-o diálogo aberto com o texto que você escreveu, e o motivo aparece nele.
+mudanças** continua.
+
+Num host que anuncia `prDetect`, a página do card também lê o provedor do `origin` do repositório
+sozinha ao aparecer (e enquanto o provedor do projeto for nenhum), e **Verificar o remote de novo** o
+lê outra vez depois de um `git remote add`. Um remote do `github.com` (ou `*.ghe.com`) ou do Azure
+DevOps vira o provedor do projeto, um aviso diz isso, e o Abrir PR aparece. Qualquer outro host é
+nomeado e deixado como está: o Flightdeck não escolhe um provedor por um nome que apenas contém
+"github", então um servidor GitHub Enterprise se define à mão nas configurações do projeto. Se o git
+não consegue ler o repositório, a nota diz isso, em vez de mandar adicionar um remote. Um PR que o
+host recusa mantém o diálogo aberto com o texto que você escreveu, e o motivo aparece nele.
 
 O CLI precisa estar instalado e autenticado no host do daemon (`gh auth login`, `az login` com a
 extensão `azure-devops`). O daemon só o invoca, procurando-o no PATH. O merge segue as regras

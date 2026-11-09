@@ -1011,6 +1011,13 @@ function permissionResponse(requestId: string, decision: "allow" | "deny", answe
   };
 }
 
+/** The list with this project in the place of the one of its id, or at the end when it was not there. */
+function replaceOrAdd(projects: Project[], project: Project): Project[] {
+  return projects.some((one) => one.id === project.id)
+    ? projects.map((one) => (one.id === project.id ? project : one))
+    : [...projects, project];
+}
+
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -4961,9 +4968,7 @@ export class AppStore {
     this.update({
       projects: {
         ...this.state.projects,
-        [hostId]: (this.state.projects[hostId] ?? []).map((one) =>
-          one.id === project.id ? project : one,
-        ),
+        [hostId]: replaceOrAdd(this.state.projects[hostId] ?? [], project),
       },
     });
     const { t } = this.i18n;

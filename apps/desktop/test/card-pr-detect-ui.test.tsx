@@ -124,7 +124,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
   test("a remote on another service says so, with its host, and offers no Open PR", async () => {
     const w = setup({ answers: [{ outcome: "unsupported", host: "gitlab.com" }] });
     await settle(() => panel().includes("gitlab.com"));
-    expect(panel()).toContain("not GitHub or Azure DevOps");
+    expect(panel()).toContain("not on github.com or Azure DevOps");
     expect(button("Open PR") === null).toBe(true);
     expect(w.store.getState().projects.h1?.[0]?.prProvider).toBe("none");
   });
@@ -146,7 +146,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
       answers: [{ outcome: "unsupported", host: "gitlab.com" }],
     });
     await settle(() => panel().includes("gitlab.com"));
-    expect(panel()).toContain("não é do GitHub nem do Azure DevOps");
+    expect(panel()).toContain("não está no github.com nem no Azure DevOps");
     expect(w.asked).toHaveLength(1);
   });
 

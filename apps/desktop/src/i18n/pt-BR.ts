@@ -4389,7 +4389,11 @@ export const ptBR = {
       "Nenhum remote ainda: adicione um com git remote add origin <url> e verifique de novo.",
     checkRemote: "Verificar o remote de novo",
     noRemoteOther:
-      "O remote deste projeto ({host}) não é do GitHub nem do Azure DevOps, os únicos em que o Flightdeck abre PR. Envie a branch à mão.",
+      "O remote deste projeto ({host}) não está no github.com nem no Azure DevOps, então o Flightdeck não escolhe um provedor a partir dele. Se for um servidor GitHub Enterprise, defina o provedor nas configurações do projeto; senão, envie a branch à mão.",
+    noRemoteElsewhere:
+      "O remote deste projeto não está no github.com nem no Azure DevOps, então o Flightdeck não escolhe um provedor a partir dele. Se for um servidor GitHub Enterprise, defina o provedor nas configurações do projeto; senão, envie a branch à mão.",
+    remoteUnreadable:
+      "O Flightdeck não conseguiu ler o remote deste repositório (o git falhou, ou a pasta sumiu): confira a pasta do projeto e verifique de novo.",
     providerDetected: "Provedor de PR definido pelo remote: {provider}.",
     providerName: { github: "GitHub", "azure-devops": "Azure DevOps", none: "—" },
     noRemoteBranch: "O trabalho do card está na branch {branch}: você pode enviá-la à mão.",

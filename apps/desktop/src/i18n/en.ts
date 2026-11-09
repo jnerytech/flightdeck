@@ -4384,7 +4384,11 @@ export const en: Dictionary = {
     remoteNone: "No remote found yet: add one with git remote add origin <url>, then check again.",
     checkRemote: "Check the remote again",
     noRemoteOther:
-      "This project's remote ({host}) is not GitHub or Azure DevOps, the only services Flightdeck opens PRs on. Push the branch by hand.",
+      "This project's remote ({host}) is not on github.com or Azure DevOps, so Flightdeck does not pick a provider from it. If it is a GitHub Enterprise server, set the provider in the project's settings; otherwise push the branch by hand.",
+    noRemoteElsewhere:
+      "This project's remote is not on github.com or Azure DevOps, so Flightdeck does not pick a provider from it. If it is a GitHub Enterprise server, set the provider in the project's settings; otherwise push the branch by hand.",
+    remoteUnreadable:
+      "Flightdeck could not read this repository's remote (git failed, or the folder is gone): check the project's folder, then check again.",
     providerDetected: "PR provider set from the remote: {provider}.",
     providerName: { github: "GitHub", "azure-devops": "Azure DevOps", none: "—" },
     noRemoteBranch: "The card's work is on the branch {branch}: you can push it by hand.",

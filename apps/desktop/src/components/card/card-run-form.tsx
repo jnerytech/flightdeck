@@ -137,6 +137,15 @@ export function CardRunForm(
   const noRemote = canOpenPr && provider?.prProvider === "none";
   /** #1568: what the host found when it looked at the remote, for the note. */
   const [looked, setLooked] = useState<{ outcome: string; host: string | null } | null>(null);
+  /** The note: why there is no Open PR, as far as the host could tell. */
+  const noteText = () => {
+    if (looked?.outcome === "unsupported")
+      return looked.host
+        ? t("cardUi.noRemoteOther", { host: looked.host })
+        : t("cardUi.noRemoteElsewhere");
+    if (looked?.outcome === "unreadable") return t("cardUi.remoteUnreadable");
+    return t("cardUi.noRemote");
+  };
   const lookAtRemote = async (pressed = false) => {
     const found = await store.detectPrProvider(hostId, card.projectId, pressed);
     if (found) setLooked({ outcome: found.outcome, host: found.host });
@@ -154,6 +163,8 @@ export function CardRunForm(
   const lookOnShow = noRemote && features.prDetect === true;
   // biome-ignore lint/correctness/useExhaustiveDependencies: asked once for each card and project that shows it
   useEffect(() => {
+    // What was found for another card's project is not this one's.
+    setLooked(null);
     if (lookOnShow) void lookAtRemote();
   }, [lookOnShow, card.projectId]);
   const step = nextStep(card, {
@@ -272,11 +283,7 @@ export function CardRunForm(
         </FieldRow>
         {noRemote && (
           <Stack gap={1}>
-            <p className="text-sm">
-              {looked?.outcome === "unsupported" && looked.host
-                ? t("cardUi.noRemoteOther", { host: looked.host })
-                : t("cardUi.noRemote")}
-            </p>
+            <p className="text-sm">{noteText()}</p>
             {features.prDetect && (
               <div>
                 <ActionButton
