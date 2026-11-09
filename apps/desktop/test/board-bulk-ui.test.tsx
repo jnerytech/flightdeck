@@ -94,6 +94,8 @@ function setup(
     /** The project's workflows, by name and inputs. */
     workflows?: Array<{ name: string; inputs: string[]; trusted?: boolean; errors?: string[] }>;
     cards?: object[];
+    /** workflow.list fails: hostCommand answers null, as it does after raising the banner. */
+    noWorkflows?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -134,6 +136,7 @@ function setup(
     if (type === "project.list") return { projects: [], maxParallelRuns: options.max ?? 2 };
     // The protocol's shape (#1390's review): { workflows }, each with its trust and errors.
     if (type === "workflow.list") {
+      if (options.noWorkflows) return null;
       return {
         workflows: (options.workflows ?? []).map((w) => ({
           hash: "h",
@@ -328,6 +331,22 @@ describe("board-bulk-ui: what the confirm waits for (#1354)", () => {
     });
     await settleMaybe(() => !button(dialog(), "Start 2").hasAttribute("disabled"));
     expect([before, button(dialog(), "Start 2").hasAttribute("disabled")]).toEqual([true, false]);
+    restore();
+  });
+
+  // #1390's review: a read that failed is not an empty list; Start waits, and says why.
+  test("when the workflows cannot be read, Start stays off and the confirm says so", async () => {
+    const { restore } = setup({ noWorkflows: true });
+    await ready();
+    await ctrl("A", "B");
+    await click(button(bar(), "Start 2"));
+    await settleMaybe(() => dialogText().includes("could not be read"));
+    expect([
+      button(dialog(), "Start 2").hasAttribute("disabled"),
+      dialogText().includes(
+        "The project's workflows could not be read: start the cards from their menus.",
+      ),
+    ]).toEqual([true, true]);
     restore();
   });
 
