@@ -5371,6 +5371,32 @@ export const en: Dictionary = {
     copy: "Copy the command for {name}",
     badge: "{host}: a required dependency is missing",
   },
+  hostCompare: {
+    title: "Compare hosts",
+    intro:
+      "Versions, hooks, sign-in and features of every host side by side. A cell that differs from what most hosts have is marked.",
+    show: "Show comparison",
+    hide: "Hide comparison",
+    refresh: "Refresh",
+    table: "Hosts compared",
+    unknown: "Not known",
+    differs: "Differs from most hosts, which have {value}",
+    differsFeatures: "Not the same features as most hosts",
+    fields: {
+      daemon: "Daemon version",
+      claude: "Claude Code version",
+      hooks: "Hooks",
+      signin: "Claude sign-in",
+      features: "Features",
+    },
+    hooks: { ok: "OK", warn: "Warning", fail: "Failed" },
+    signin: {
+      ok: "Signed in",
+      outdated: "Outdated",
+      missing: "Not signed in",
+      na: "Not applicable",
+    },
+  },
   hostHome: {
     tabs: "Host sections",
     overview: "Overview",
