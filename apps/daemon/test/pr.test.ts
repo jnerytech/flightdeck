@@ -98,6 +98,30 @@ describe("pr: GitHub", () => {
     expect(merged).toMatchObject({ column: "done", checksState: "passing" });
   });
 
+  test("o poll guarda no card se o PR conflita, a revisão e quando foi aberto (#1352)", async () => {
+    const gh = fake("gh", [
+      { args: ["view", "url"], stdout: JSON.stringify({ url: GH_URL }) },
+      {
+        args: ["view", "state,statusCheckRollup"],
+        stdout: JSON.stringify({
+          state: "OPEN",
+          statusCheckRollup: [],
+          mergeStateStatus: "DIRTY",
+          reviewDecision: "CHANGES_REQUESTED",
+          createdAt: "2026-11-09T10:00:00Z",
+        }),
+      },
+    ]);
+    const { board, card } = await cardWithWork("github", gh);
+    await board.createPr(card.id);
+    const polled = await cardWhen(board, card.id, (c) => c.prMergeable === "conflict");
+    expect(polled).toMatchObject({
+      prMergeable: "conflict",
+      prReview: "changes_requested",
+      prOpenedAt: "2026-11-09T10:00:00Z",
+    });
+  });
+
   test("PR já aberto para a branch é reaproveitado, sem gh pr create", async () => {
     const gh = fake("gh", [
       { args: ["view", "url"], stdout: JSON.stringify({ url: GH_URL }) },
