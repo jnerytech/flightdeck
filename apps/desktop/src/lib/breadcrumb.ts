@@ -136,7 +136,10 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
           label: projectName(route.host, route.projectId),
           route: { name: "board", host: route.host, projectId: route.projectId },
         },
-        { label: state.cards[sessionKey(route.host, route.cardId)]?.title ?? t("cardUi.loadingTitle") },
+        {
+          label:
+            state.cards[sessionKey(route.host, route.cardId)]?.title ?? t("cardUi.loadingTitle"),
+        },
       );
     case "add-host":
       return path({ label: t("sidebar.hosts") }, { label: t("sidebar.addHostCrumb") });
