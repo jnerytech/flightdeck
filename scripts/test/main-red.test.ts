@@ -312,7 +312,7 @@ describe("main-red: one claim per red main (#1246)", () => {
     );
     const blank = run(["claim", "\u0001\u0002"], fakeGh({ runs: [RED_RUN], log: LOG }));
     expect(await blank.code).toBe(2);
-    expect([created(blind.asked).length, created(fakeGh({}).asked).length]).toEqual([0, 0]);
+    expect(created(blind.asked)).toHaveLength(0);
   });
 
   test("from the review: an answer that is not JSON is a message and exit 1, never a stack trace", async () => {

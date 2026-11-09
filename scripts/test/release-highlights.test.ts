@@ -214,7 +214,13 @@ describe("release highlights draft (#1334)", () => {
     expect(err[0]?.startsWith("release-highlights: could not read the merged PRs: ")).toBe(true);
     // A long answer is cut, so an HTML page does not flood the terminal.
     const long = fakeGh({ page2: ok(`<html>${"x".repeat(500)}`) });
-    expect((await draft([], long.gh)).err[0]?.length).toBeLessThanOrEqual(260);
+    const cut = (await draft([], long.gh)).err[0] ?? "";
+    // Cut, not dropped: the message keeps its start and its length stays near the 250 characters.
+    expect([
+      cut.startsWith("release-highlights: could not read the merged PRs: "),
+      cut.length > 200,
+      cut.length <= 260,
+    ]).toEqual([true, true, true]);
   });
 
   test("a search result that is not a PR is a GitHub read error, not a crash", async () => {
