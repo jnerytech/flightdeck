@@ -101,7 +101,11 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
     setRefused(null);
     const end = run.endedAt;
     const result = await store.hostRequest(hostId, "run.resume", { runId: run.id, confirm: true });
-    const no = !result.ok ? result : result.data.ok ? null : result.data;
+    const refusal = () => {
+      if (!result.ok) return result;
+      return result.data.ok ? null : result.data;
+    };
+    const no = refusal();
     if (no) {
       if (result.ok) setCheck(result.data);
       setRefused(refusalText(result.ok ? "invalid_state" : result.code, "", t, no));
@@ -124,6 +128,7 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
     off === null && check && !check.ok && check.reason !== "run_resume_not_failed" && !refused
       ? refusalText("invalid_state", "", t, check)
       : null;
+  const whyId = why ? resumeReasonId : undefined;
   return (
     <Stack gap={2}>
       <Inline gap={2}>
@@ -141,7 +146,7 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
           variant="outline"
           size="sm"
           disabled={off !== null || busy === "resume"}
-          aria-describedby={off ? reasonId : why ? resumeReasonId : undefined}
+          aria-describedby={off ? reasonId : whyId}
           onClick={one("start", start)}
         >
           {t("runUi.again.action")}
