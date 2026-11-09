@@ -287,7 +287,8 @@ masked when you leave the field. The link shown cannot be copied with its token:
 the daemon. Editing the dotted link keeps the token it was read with, but only for the same address
 and port: another address asks you to paste that host's link, and taking the token out of the link
 takes it out of the form too. A pasted link that does not read yet (a bad port, say) shows its
-values as dots and keeps no token: fix it and paste it again. A token with a `•` in it cannot go in
+values as dots and keeps no token: fix it and paste it again. **Test and add** waits while the
+link field shows an error: fix the link or empty the field. A token with a `•` in it cannot go in
 a link: use the fields by hand.
 
 The token is kept in the operating system's credential store (Windows Credential Manager,

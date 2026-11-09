@@ -1,4 +1,3 @@
-import { parsePairingLink } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useBusy } from "@/components/feedback/busy";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -6,7 +5,7 @@ import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { type BoundToken, maskPairingLink, readLinkEdit } from "../lib/pairing-mask.ts";
+import { type BoundToken, maskOnLeave, readLinkEdit } from "../lib/pairing-mask.ts";
 import { pairingErrorText } from "../lib/pairing-text.ts";
 
 export interface HostDraft {
@@ -65,6 +64,13 @@ export function HostForm(
   return (
     <Form
       onSubmit={() => {
+        // A link typed by hand is masked as the form goes, the field not left (#1548).
+        setLink(maskOnLeave(link));
+        // A link that is refused names a host the form does not hold: it is fixed or emptied first.
+        if (linkError) {
+          setProblem(linkError);
+          return;
+        }
         if (!draft.name.trim() || !draft.address.trim() || !draft.token.trim()) {
           setProblem(t("hostForm.missing"));
           setByHand(true);
@@ -104,7 +110,7 @@ export function HostForm(
               setBound(edit.bound);
             }}
             // A link that was typed is masked when the field is left (#1548).
-            onBlur={() => setLink(maskPairingLink(link))}
+            onBlur={() => setLink(maskOnLeave(link))}
           />
         )}
       </Field>

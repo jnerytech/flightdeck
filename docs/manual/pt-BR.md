@@ -276,7 +276,8 @@ aparece como digitado e é mascarado quando você sai do campo. O link mostrado 
 com o token: copie-o de novo do daemon. Editar o link com pontos mantém o token com que foi lido, mas
 só para o mesmo endereço e porta: outro endereço pede que você cole o link desse host, e tirar o
 token do link o tira também do formulário. Um link colado que ainda não é lido (uma porta inválida,
-por exemplo) mostra seus valores em pontos e não guarda token: corrija-o e cole de novo. Um token com
+por exemplo) mostra seus valores em pontos e não guarda token: corrija-o e cole de novo. **Testar e
+adicionar** espera enquanto o campo do link mostra um erro: corrija o link ou esvazie o campo. Um token com
 `•` não cabe num link: use os campos à mão.
 
 O token fica no cofre de credenciais do sistema operacional (Windows Credential Manager, Keychain,

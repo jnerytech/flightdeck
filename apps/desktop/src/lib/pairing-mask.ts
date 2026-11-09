@@ -7,7 +7,7 @@ export const TOKEN_MASK = "••••";
 const DOT = "•";
 
 /** The value of every parameter but `name`, in text that may not read as a link: the key as typed or encoded. */
-const SECRET_VALUES = /([?&](?!name=)[^=&\s#]*=)[^&]*/gi;
+const SECRET_VALUES = /([?&#](?!name=)[^=&\s#]*=)[^&]*/gi;
 
 /** The `host:port` a pairing link was read with. */
 const WHERE = /^ws:\/\/(.+):(\d+)\/v1\/ws$/;
@@ -25,6 +25,16 @@ export function maskPairingLink(link: string): string {
   if (!parsed.ok || !where) return link.replace(SECRET_VALUES, `$1${TOKEN_MASK}`);
   const name = encodeURIComponent(parsed.value.name);
   return `flightdeck://${where[1]}:${where[2]}?name=${name}&token=${TOKEN_MASK}`;
+}
+
+/**
+ * The link field as it is left (it loses the focus, or the form is submitted): a link or the start of
+ * one is masked as a link; anything else is a token typed by hand, all of it secret.
+ */
+export function maskOnLeave(text: string): string {
+  const start = text.trim().toLowerCase();
+  const link = !start || text.includes("://") || "flightdeck://".startsWith(start);
+  return link ? maskPairingLink(text) : TOKEN_MASK;
 }
 
 /** Text pasted into the link field: a bare token (no `://`) is all secret, anything else is masked as a link. */
@@ -89,7 +99,11 @@ export function readLinkEdit(
   bound: BoundToken | null,
   inputType = "",
 ): LinkEdit {
-  const typed = inputType === "insertText" || inputType.startsWith("delete");
+  // A composition (an IME, a dead key) is typing too: the field is not rewritten under it.
+  const typed =
+    inputType === "insertText" ||
+    inputType === "insertCompositionText" ||
+    inputType.startsWith("delete");
   // A typed character grows the value by one at most: more is a paste whatever the event says.
   const bulk =
     (inputType ? !typed : false) ||
