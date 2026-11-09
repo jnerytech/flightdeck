@@ -4,7 +4,7 @@ import { type RefObject, useEffect, useRef } from "react";
 const WAIT_MS = 2000;
 
 /** The focus is lost: on the page body, or on something the step removed. */
-const focusLost = () => {
+export const focusLost = () => {
   const active = document.activeElement;
   return !active || active === document.body || !active.isConnected;
 };
