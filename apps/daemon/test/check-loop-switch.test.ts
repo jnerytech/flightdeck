@@ -182,3 +182,30 @@ describe("check-loop: the mode a card's switch is decided on", () => {
     expect([ask(null), ask(sessionId)]).toEqual(["default", "acceptEdits"]);
   });
 });
+
+describe("check-loop: the card's mode when its session is over", () => {
+  test("an ended or missing session gives the mode the next run starts in, not the one it ended in", async () => {
+    const { cardMode } = await import("../src/board/check-loop.ts");
+    const modes: Record<string, string> = { live: "bypassPermissions", over: "bypassPermissions" };
+    const manager = {
+      modeOf: (id: string | null) => {
+        if (id === null) return "default" as const;
+        if (!(id in modes)) throw new Error("session_not_found");
+        return modes[id] as "bypassPermissions";
+      },
+    };
+    const card = (sessionId: string | null, sessionStatus: string | null, variantMode?: string) =>
+      ({
+        sessionId,
+        sessionStatus,
+        variant: variantMode ? { permissionMode: variantMode } : null,
+      }) as never;
+    expect([
+      cardMode(card("live", "idle"), manager),
+      cardMode(card("over", "ended"), manager),
+      cardMode(card("over", "error", "acceptEdits"), manager),
+      cardMode(card("gone", "idle"), manager),
+      cardMode(card(null, null), manager),
+    ]).toEqual(["bypassPermissions", "default", "acceptEdits", "default", "default"]);
+  });
+});
