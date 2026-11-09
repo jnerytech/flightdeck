@@ -20,16 +20,16 @@ function setup(
   const stored = new Map<string, string>();
   const opened: string[] = [];
   let clock = 1_000_000;
-  const redirect = options.redirect ?? "echo";
+  const redirect = options.redirect === undefined ? "echo" : options.redirect;
   const sign = googleSignIn({
     config: options.config ?? { clientId: "client-1" },
     fetch: oauth.fetch,
     vault: {
-      get: async (id) => keyring.get(id) ?? null,
-      set: async (id, value) => {
+      get: async (id: string) => keyring.get(id) ?? null,
+      set: async (id: string, value: string) => {
         keyring.set(id, value);
       },
-      delete: async (id) => {
+      delete: async (id: string) => {
         keyring.delete(id);
       },
     } as never,
