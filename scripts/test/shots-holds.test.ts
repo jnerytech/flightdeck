@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { holdsRewriter } from "../lib/shots-holds.ts";
+import { holdsRewriter, installHolds } from "../lib/shots-holds.ts";
 
 /**
  * #1414: the print of Start N's confirm shows the host's memory hold and a budget hold the same on
@@ -62,5 +62,57 @@ describe("shots-holds", () => {
       first.data.memoryPauseAt,
       rewriter.fromHost(again),
     ]).toEqual([refusal, 4000, 0.4, again]);
+  });
+});
+
+/** A socket that records what the app sends and lets the test play the host's frames. */
+class FakeSocket {
+  sent: string[] = [];
+  listeners: Array<(event: { data: unknown }) => void> = [];
+  send(data: string) {
+    this.sent.push(data);
+  }
+  addEventListener(type: string, listener: (event: { data: unknown }) => void) {
+    if (type === "message") this.listeners.push(listener);
+  }
+  play(data: unknown) {
+    for (const listener of this.listeners) listener({ data });
+  }
+}
+
+// Playwright's routeWebSocket never saw the app's sockets under Bun, so the print wraps the page's
+// WebSocket from an init script instead: the rewriter goes in as its source.
+describe("shots-holds: the page's WebSocket", () => {
+  test("the rewriter's source stands alone, as an init script carries it", () => {
+    // What the page runs: the source alone, with nothing of this module around it.
+    const fromSource = (): unknown => {
+      try {
+        const make = new Function(`return (${holdsRewriter.toString()})`)();
+        const made = make() as ReturnType<typeof holdsRewriter>;
+        made.fromApp(ask("r1", "budget.list"));
+        const out = JSON.parse(made.fromHost(ack("r1", { budgets: [] })));
+        return [out.data.budgets.length, out.data.budgets[0].action];
+      } catch (error) {
+        return String(error);
+      }
+    };
+    expect(fromSource()).toEqual([1, "queue"]);
+  });
+
+  test("the wrapped socket sends as it came and hands the app the rewritten answer", () => {
+    const target = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    installHolds(target, holdsRewriter);
+    const socket = new target.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "resources.get"));
+    socket.play(ack("r1", snapshot));
+    socket.play(new Uint8Array([1]));
+    const read = JSON.parse(String(got[0]));
+    expect([socket.sent, read.data.memoryPauseAt, got[1] instanceof Uint8Array]).toEqual([
+      [ask("r1", "resources.get")],
+      0.9,
+      true,
+    ]);
   });
 });
