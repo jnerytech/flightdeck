@@ -3,6 +3,7 @@
  * setup (harness) and its templates, and finding or cloning repositories. The board itself
  * (`board.*`) and the allowed roots (`roots.add`) are separate.
  */
+import { detectProvider } from "../../board/pr-provider.ts";
 import { FlightdeckError, featureOff } from "../../errors.ts";
 import type { TemplateMarkdown } from "../../harness/templates-store.ts";
 import { resolveAllowedCwd, rootNames } from "../../paths.ts";
@@ -43,7 +44,12 @@ export const projectHandlers = {
   "project.detectProvider": async (payload, { server }) => {
     const board = server.need("board");
     const project = board.getProject(payload.projectId);
-    return { project: await board.forWire(project), outcome: "kept" as const, host: null };
+    const found = await detectProvider(project);
+    // Saved the way the project form saves it, so the board and every window see the new provider.
+    const now = found.provider
+      ? board.updateProject(payload.projectId, { prProvider: found.provider })
+      : project;
+    return { project: await board.forWire(now), outcome: found.outcome, host: found.host };
   },
   "project.trust.state": async (payload, { server }) => {
     const trust = server.opts.projectTrust;
