@@ -1965,6 +1965,9 @@ export const ReviewComment = z.object({
   sentAt: z.string().nullable(),
   /** The quoted lines are no longer in the file. */
   outdated: z.boolean(),
+  /** Issue #1439: a second opinion's finding, until the person edits it. */
+  author: z.literal("reviewer").optional(),
+  severity: z.enum(["blocker", "high", "medium", "low"]).optional(),
 });
 export type ReviewComment = z.infer<typeof ReviewComment>;
 

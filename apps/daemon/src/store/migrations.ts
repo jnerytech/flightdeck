@@ -998,4 +998,19 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN pr_review TEXT;
   ALTER TABLE cards ADD COLUMN pr_opened_at TEXT;
   `,
+  // Issue #1439: a second opinion's findings among the review drafts, and the card's reviews.
+  `
+  ALTER TABLE review_comments ADD COLUMN author TEXT;
+  ALTER TABLE review_comments ADD COLUMN severity TEXT;
+  CREATE TABLE card_reviews (
+    card_id   TEXT NOT NULL,
+    diff_hash TEXT NOT NULL,
+    state     TEXT NOT NULL,
+    at        TEXT NOT NULL,
+    summary   TEXT,
+    loose     TEXT,
+    cost_usd  REAL,
+    PRIMARY KEY (card_id, diff_hash)
+  );
+  `,
 ];
