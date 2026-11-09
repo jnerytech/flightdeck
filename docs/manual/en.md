@@ -1396,6 +1396,13 @@ title and description:
 - **Azure DevOps:** `az repos pr create --source-branch fd/<slug> --target-branch <base>`. State
   comes from `az repos pr show`, and the policy checks from `az repos pr policy list`.
 
+A project whose provider is **none** (the default for a new project, and what a repository with no
+remote has) has no Open PR: the card's panel says so, with the steps (set the provider in the project's
+settings; if the repository has no remote, `git remote add origin <url>` first, then `gh auth login`
+or `az login`) and the branch the card's work is on, to push by hand. **Review changes** stays. Adding a
+remote does not set the provider by itself. A PR the host refuses keeps the dialog open with the text
+you wrote, and the reason shown in it.
+
 The CLI must be installed and authenticated on the daemon's host (`gh auth login`, `az login`
 with the `azure-devops` extension). The daemon only invokes it, looking it up on the PATH. The
 merge stays with the provider's rules: on GitHub, **Merge PR** on a card whose PR is open (and whose

@@ -4,6 +4,7 @@ import {
   cancel,
   DEFAULT_MAX_AGE_MS,
   describeHolder,
+  estimatedSeconds,
   LONG_HOLD_MS,
   lowerOthers,
   POLL_MS,
@@ -18,6 +19,7 @@ import {
   type SlotHolder,
   status,
   testFileCount,
+  timingsFrom,
   tryAcquire,
   USAGE,
 } from "../lib/slot.ts";
@@ -810,6 +812,9 @@ describe("slot: long holds and the test file limit (#833)", () => {
     "--timeout=15000",
     ...testFiles(n),
   ];
+  /** Each file's CI seconds (#1541); a file with no timing counts at the table's mean. */
+  const timed = (n: number, seconds: number) =>
+    Object.fromEntries(testFiles(n).map((f) => [f.replace(/^\.\//, ""), seconds]));
   type Logged = [string, string, { detail?: string; minutes?: number }];
   const recorder = (f: ReturnType<typeof fake>) => {
     const records: Logged[] = [];
@@ -835,7 +840,7 @@ describe("slot: long holds and the test file limit (#833)", () => {
     expect(f.files.size).toBe(0);
     expect(f.logs.join("\n")).toContain("61 test files");
     expect(f.logs.join("\n")).toContain('FLIGHTDECK_SLOT_HEAVY="<reason>"');
-    expect(records).toEqual([["slot-files", "block", {}]]);
+    expect(records).toEqual([["slot-files", "block", { detail: "sonar: 61 test files" }]]);
     // A placeholder is no reason.
     const placeholder = fake();
     placeholder.env.heavyReason = "1";
@@ -866,13 +871,68 @@ describe("slot: long holds and the test file limit (#833)", () => {
     const records = recorder(f);
     expect(await run(f.env, related(61))).toBe(2);
     expect(f.spawned).toEqual([]);
-    expect(records).toEqual([["slot-files", "block", {}]]);
+    expect(records).toEqual([["slot-files", "block", { detail: "sonar: 61 test files" }]]);
     const given = fake({ files: { [PATH]: held(theirs) }, holder: 20 });
     const waived = recorder(given);
     given.env.heavyReason = "the release gate needs every daemon test";
     expect(await run(given.env, related(61))).toBe(0);
     expect(given.spawned).toHaveLength(1);
     expect(waived.map(([rule, decision]) => [rule, decision])).toEqual([["slot-files", "waived"]]);
+  });
+
+  test("#1541: with CI timings, the limit is 60 s of estimated CI time, not 60 files", async () => {
+    const quick = fake();
+    const quickRecords = recorder(quick);
+    quick.env.timings = timed(100, 0.1);
+    const slow = fake();
+    const slowRecords = recorder(slow);
+    slow.env.timings = timed(40, 2);
+    const codes = [await run(quick.env, related(100)), await run(slow.env, related(40))];
+    expect([codes, quick.spawned.length, quickRecords, slow.spawned, slowRecords]).toEqual([
+      [0, 2],
+      1,
+      [],
+      [],
+      [["slot-files", "block", { detail: "sonar: 40 test files, about 80 s of CI time" }]],
+    ]);
+    expect(slow.logs.join("\n")).toContain("40 test files, about 80 s of CI time");
+    // Files with no timing count at the mean: 61 untimed files of a 1 s table are about 61 s.
+    const untimed = fake();
+    const untimedRecords = recorder(untimed);
+    untimed.env.timings = { "other/a.test.ts": 1 };
+    expect([await run(untimed.env, related(61)), untimedRecords]).toEqual([
+      2,
+      [["slot-files", "block", { detail: "sonar: 61 test files, about 61 s of CI time" }]],
+    ]);
+  });
+
+  test("from the OpenCode review: a Windows-style or absolute path finds its own timing", () => {
+    const timings = { "apps/daemon/test/slow.test.ts": 50, "apps/daemon/test/x.test.ts": 0.1 };
+    const command = (arg: string) => ["bun", "test", arg];
+    expect([
+      estimatedSeconds(command(".\\apps\\daemon\\test\\slow.test.ts"), timings, "/repo"),
+      estimatedSeconds(command("/repo/apps/daemon/test/slow.test.ts"), timings, "/repo"),
+      estimatedSeconds(command("./apps/daemon/test/slow.test.ts"), timings, "/repo"),
+    ]).toEqual([50, 50, 50]);
+  });
+
+  test("from the OpenCode review: over 180 files a reason is needed whatever the timings say", async () => {
+    const many = fake();
+    const records = recorder(many);
+    many.env.timings = timed(181, 0.01);
+    expect([await run(many.env, related(181)), records]).toEqual([
+      2,
+      [["slot-files", "block", { detail: "sonar: 181 test files, about 2 s of CI time" }]],
+    ]);
+  });
+
+  test("from the OpenCode review: a timings table keeps only finite, non-negative numbers; anything else is no table", () => {
+    expect([
+      timingsFrom('{"a.test.ts": 1.5, "b.test.ts": "x", "c.test.ts": -1, "d.test.ts": null}'),
+      timingsFrom("[1, 2]"),
+      timingsFrom("not json"),
+      timingsFrom(null),
+    ]).toEqual([{ "a.test.ts": 1.5 }, undefined, undefined, undefined]);
   });
 
   test("a hold past 20 minutes is logged with its minutes when the slot is given back, a stopped one too, a shorter one not", async () => {

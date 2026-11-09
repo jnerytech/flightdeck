@@ -74,6 +74,10 @@ export interface SlotEnv {
   detached?: boolean;
   /** FLIGHTDECK_SLOT_HEAVY in this process's environment: the reason a run over the file limit gives (#833). */
   heavyReason?: string;
+  /** #1541: each test file's CI seconds (scripts/test-timings.json); the limit is then time, not files. */
+  timings?: Record<string, number>;
+  /** The checkout the timings' paths are relative to. */
+  root?: string;
   /** Appends a refusal, a waiver or a long hold to the hook log, for harness:stats (#833). */
   record?(
     rule: "slot-files" | "long-hold",
@@ -134,6 +138,13 @@ export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const LONG_HOLD_MS = 20 * 60_000;
 /** The most test files a slot run may name without a reason (#833); `test:related` takes the slot above it. */
 export const SLOT_TEST_FILES = 60;
+/**
+ * #1541: with the suite's CI timings known, the limit is this many seconds of estimated CI time:
+ * a run over 60 unit files takes seconds, one of 40 slow files may hold the slot for minutes.
+ */
+export const SLOT_TEST_SECONDS = 60;
+/** Past this many files a run needs a reason whatever the timings say (stale or missing ones). */
+export const SLOT_TEST_FILES_CAP = 3 * SLOT_TEST_FILES;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel | bun run slot -- --reap";
 
@@ -620,29 +631,80 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
   return lowered;
 }
 
+const TEST_ARG = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+
+/**
+ * The CI timings table from its text (#1541): only finite, non-negative numbers; anything that is
+ * not an object of them is no table, so the 60-file limit applies.
+ */
+export function timingsFrom(text: string | null): Record<string, number> | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text ?? "");
+  } catch {
+    return undefined;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
+  const entries = Object.entries(parsed).filter(
+    (entry): entry is [string, number] =>
+      typeof entry[1] === "number" && Number.isFinite(entry[1]) && entry[1] >= 0,
+  );
+  return Object.fromEntries(entries);
+}
+
 /** How many test files a `bun ... test` command names; 0 for any other command (#833). */
 export function testFileCount(command: string[]): number {
   if (!isBunTest(command.join(" "))) return 0;
-  return command.filter((arg) => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(arg)).length;
+  return command.filter((arg) => TEST_ARG.test(arg)).length;
+}
+
+/** The CI seconds a run's test files take (#1541): a file with no timing counts at their mean. */
+export function estimatedSeconds(
+  command: string[],
+  timings: Record<string, number>,
+  root = "",
+): number {
+  const values = Object.values(timings);
+  const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 1;
+  // The table's keys are repo-relative with "/": a Windows-style or absolute path is read as one.
+  const base = `${root.replace(/\\/g, "/").replace(/\/$/, "")}/`;
+  const key = (arg: string) => {
+    const path = arg.replace(/\\/g, "/");
+    const inside = base !== "/" && path.startsWith(base) ? path.slice(base.length) : path;
+    return inside.replace(/^\.\//, "");
+  };
+  return command
+    .filter((arg) => TEST_ARG.test(arg))
+    .reduce((sum, arg) => sum + (timings[key(arg)] ?? mean), 0);
 }
 
 /**
  * #833: a run of more than `SLOT_TEST_FILES` test files holds the slot 20 minutes or more while
- * others wait, so it needs FLIGHTDECK_SLOT_HEAVY with a reason. The refusal and the waiver both go
- * to the hook log. True when the run is refused.
+ * others wait, so it needs FLIGHTDECK_SLOT_HEAVY with a reason. #1541: with the CI timings known,
+ * the limit is `SLOT_TEST_SECONDS` of estimated CI time instead. The refusal (with the label, the
+ * count and the estimate) and the waiver both go to the hook log. True when the run is refused.
  */
 function refusedOverLimit(env: SlotEnv, command: string[]): boolean {
   const count = testFileCount(command);
-  if (count <= SLOT_TEST_FILES) return false;
+  if (count === 0) return false;
+  const seconds = env.timings ? Math.round(estimatedSeconds(command, env.timings, env.root)) : null;
+  const within = seconds === null ? count <= SLOT_TEST_FILES : seconds <= SLOT_TEST_SECONDS;
+  if (within && count <= SLOT_TEST_FILES_CAP) return false;
   const reason = (env.heavyReason ?? "").trim();
   if (heavyReasonGiven(reason)) {
     env.record?.("slot-files", "waived", { detail: reason.slice(0, 200) });
     return false;
   }
+  const size =
+    seconds === null ? `${count} test files` : `${count} test files, about ${seconds} s of CI time`;
+  const limit =
+    seconds === null
+      ? `more than ${SLOT_TEST_FILES} need a reason (#833)`
+      : `more than ${SLOT_TEST_SECONDS} s need a reason (#833, #1541)`;
   env.log(
-    `slot: ${count} test files would hold the slot for 20 minutes or more while others wait; more than ${SLOT_TEST_FILES} need a reason (#833). Run fewer: each touched test with \`bun --config=bunfig.area.toml test <file>\`, or \`bun run test:related -- --fast --tier unit,component\` on a smaller change; CI runs the rest. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command (of \`bun run test:related\` too).`,
+    `slot: ${size} would hold the slot for minutes while others wait; ${limit}. Run fewer: each touched test with \`bun --config=bunfig.area.toml test <file>\`, or \`bun run test:related -- --fast --tier unit,component\` on a smaller change; CI runs the rest. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command (of \`bun run test:related\` too).`,
   );
-  env.record?.("slot-files", "block", {});
+  env.record?.("slot-files", "block", { detail: `${oneLine(env.label)}: ${size}` });
   return true;
 }
 

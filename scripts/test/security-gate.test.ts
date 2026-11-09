@@ -451,6 +451,71 @@ const RISKY_DIFF = [
   '+Bun.spawn(["git"]);',
 ].join("\n");
 
+describe("security-gate: the app's dictionaries are text (#1541)", () => {
+  const EN = "apps/desktop/src/i18n/en.ts";
+  const PT = "apps/desktop/src/i18n/pt-BR.ts";
+
+  test("added keys whose words say token, secret or permission are not risky; a secret value or code is", () => {
+    const added = new Map([
+      [
+        EN,
+        [
+          '    tokenHint: "Paste the pairing token here",',
+          '    permissionDenied: "Permission denied",',
+        ],
+      ],
+      [PT, ['    secretSaved: "Segredo salvo no cofre",']],
+      ["apps/desktop/src/i18n/index.ts", ["const token = read();"]],
+    ]);
+    // Secret-shaped values are built here, so no scanner reads a token in this file.
+    const ghp = `ghp_${"a".repeat(36)}`;
+    const leaked = new Map([[EN, [`    example: "${ghp}",`]]]);
+    const code = new Map([[PT, ['    run: () => Bun.spawn(["sh"]),']]]);
+    // From the security review: an npm token, and a secret pasted in a comment, count too.
+    const npm = new Map([[EN, [`    // npm_${"b".repeat(36)}`]]]);
+    expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code), riskyFiles(npm)]).toEqual([
+      [{ path: "apps/desktop/src/i18n/index.ts", why: ["secret"] }],
+      [{ path: EN, why: ["secret"] }],
+      [{ path: PT, why: ["spawn"] }],
+      [{ path: EN, why: ["secret"] }],
+    ]);
+  });
+
+  test("from the OpenCode review: only plain text entries are exempt; code in a dictionary is read in every area", () => {
+    const code = new Map([
+      [EN, ["    mode: chmodSync(file, 0o600),", '    gh: localStorage.getItem("token"),']],
+      [PT, ["    saved: `Token salvo`,", "    \"permission-denied\": 'Permissão negada',"]],
+    ]);
+    expect(riskyFiles(code)).toEqual([{ path: EN, why: ["secret", "permission"] }]);
+  });
+
+  test("from the security review: an escaped backslash before a quote ends the literal, and a long run of backslashes is quick", () => {
+    // In JS this is "a\\" + Bun.spawn(...) and a comment: code, not one literal.
+    const trick = new Map([[EN, ['    k: "a\\\\" + Bun.spawn(["sh"]) // \\"']]]);
+    const started = performance.now();
+    const slow = riskyFiles(new Map([[PT, [`    k: "${"\\".repeat(40)}`]]]));
+    expect([riskyFiles(trick), slow, performance.now() - started < 100]).toEqual([
+      [{ path: EN, why: ["spawn"] }],
+      [],
+      true,
+    ]);
+  });
+
+  test("an edited key reads the dictionary at HEAD as text too; a secret-handling edit elsewhere still counts", () => {
+    const removed = new Map([
+      [EN, ['    tokenHint: "Paste the token",']],
+      ["apps/daemon/src/vault-read.ts", ["const x = 1;"]],
+    ]);
+    const heads: Record<string, string> = {
+      [EN]: 'export const en = {\n  tokenHint: "Paste the pairing token here",\n  permissionDenied: "Permission denied",\n};',
+      "apps/daemon/src/vault-read.ts": "export const password = readPassword();",
+    };
+    expect(riskyEdits([], removed, (path) => heads[path] ?? null)).toEqual([
+      { path: "apps/daemon/src/vault-read.ts", why: ["edits secret code"] },
+    ]);
+  });
+});
+
 describe("security-gate: end to end", () => {
   test("a git that fails, or a base that does not resolve, gives unknown, never 0 (#273)", () => {
     for (const [answers, base, why] of [
