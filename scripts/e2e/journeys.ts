@@ -10,6 +10,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
+import { DEMO_ONLINE_HOSTS } from "../lib/demo-hosts.ts";
 import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
 import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
 import {
@@ -103,7 +104,7 @@ export async function open(
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
 async function demoHostsOnline(c: Context): Promise<boolean> {
-  for (const name of ["alfa", "beta"]) {
+  for (const name of DEMO_ONLINE_HOSTS) {
     const dot = (state: string | RegExp) =>
       c.page.getByRole("img", { name: state, exact: typeof state === "string" });
     const online = c.t("sidebar.hostState", { host: name, state: c.t("hosts.status.online") });
@@ -1413,10 +1414,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   },
 
   // Issue #730: with no host online, Sessions is not a dead end: it says so and offers Add a host.
-  // The demo's other hosts are offline, so removing the two online ones leaves none to list.
+  // The demo's other hosts are offline, so removing every online one (DEMO_ONLINE_HOSTS) leaves none to list.
   "sessions-no-host": async (c) => {
     await open(c, { name: "hub" });
-    for (const host of ["alfa", "beta"]) {
+    for (const host of DEMO_ONLINE_HOSTS) {
       await c.page
         .getByRole("button", { name: c.t("sidebar.hostMenu", { host }), exact: true })
         .click();

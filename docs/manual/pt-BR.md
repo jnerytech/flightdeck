@@ -312,15 +312,21 @@ falha. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 
 #### Comparar hosts
 
-Com dois ou mais hosts, a aba **Visão geral** do host também tem **Comparar hosts**. **Mostrar
-comparação** abre uma tabela com uma coluna por host e uma linha para a versão do daemon, a versão
-do Claude Code, os hooks, o login do Claude e os recursos. Abrir (e **Atualizar**) lê cada host
+Com dois ou mais hosts, a aba **Visão geral** do host também tem **Comparar hosts**, uma faixa da
+largura da aba, abaixo das duas colunas. **Mostrar comparação** abre uma tabela com uma coluna por
+host e uma linha para o sistema operacional, a versão do daemon, a versão do Claude Code, os hooks,
+o login do Claude, `gh`, `az`, Iniciar no boot e os recursos. Abrir (e **Atualizar**) lê cada host
 online de novo, rodando as mesmas verificações de **Saúde e dependências**; nada mais pergunta aos
-hosts. A célula que difere do que a maioria dos hosts tem fica marcada e diz o motivo em palavras
-("Difere da maioria dos hosts, que têm 1.4.0"). Sem maioria (dois hosts diferentes, ou metade para
-cada lado) nada é marcado, e um valor que o host não informa, ou qualquer valor de um host offline,
-aparece como um traço e nunca é marcado. Os recursos são contados; dois hosts com a mesma contagem
-e recursos diferentes continuam distintos.
+hosts. Os hooks aparecem como Instalados, Desatualizados ou Ausentes, como nessa seção. A célula que
+difere do que a maioria dos hosts tem fica marcada e diz o motivo em palavras ("Difere da maioria
+dos hosts, que têm 1.4.0"). Quando o que está marcado falta (hooks, login, `gh`, `az` ou Iniciar no
+boot ausente ou desatualizado) ou é um daemon mais antigo, a célula tem um botão **Corrigir em** com o nome do host, que
+abre a página desse host, onde Saúde e dependências tem a instalação, o ligar ou a atualização; na
+página do próprio host, ele rola até lá. Sem maioria (dois hosts diferentes, ou metade para cada
+lado) nada é marcado. Um host que não está online diz isso uma vez ("Não comparado: offline."), em
+vez de um traço em cada linha, e um valor que um host online não informa aparece como um traço e
+nunca é marcado. Os recursos são contados; dois hosts com a mesma contagem e recursos diferentes
+continuam distintos.
 
 ### Confiar em um projeto
 
@@ -3826,6 +3832,14 @@ app. **Configurações > Diagnóstico** tem **Abrir a pasta de logs** e **Copiar
 copia a versão e o sistema do app, o nome, o estado, a versão e os recursos de cada host (nunca um
 endereço ou token) e as últimas 50 linhas do log, para colar numa mensagem. Nenhum dos dois botões
 existe no navegador.
+
+Quando um host fica offline, o log diz por quê, para que uma queda que se repete possa ser lida (#939). O
+app escreve uma linha para cada queda de um link que estava online (um aviso): o código e o motivo do
+fechamento, se o host ou o app o fechou, há quanto tempo o link estava de pé, há quanto tempo nada vinha
+do host e há quanto tempo veio o último ping do heartbeat. O daemon escreve uma linha para cada conexão
+que fecha: o nome que o cliente deu, o código e o motivo, se foi o daemon (tempo do heartbeat, token
+errado, token trocado) ou o cliente que fechou, e os mesmos relógios. Nenhuma das linhas tem token,
+endereço ou mensagem.
 
 O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (também girado), e o
 `host.info` diz onde fica. Na página de um host, **Copiar as últimas linhas de log do host** copia

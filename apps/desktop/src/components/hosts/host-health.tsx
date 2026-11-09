@@ -346,7 +346,7 @@ export function HostHealth(
   };
 
   return (
-    <Panel title={t("hostHealth.title")} label={t("hostHealth.title")}>
+    <Panel title={t("hostHealth.title")} label={t("hostHealth.title")} slot="host-health">
       <div data-slot="health-summary" className="health-summary">
         <output className="dep-line">
           <HeadIcon

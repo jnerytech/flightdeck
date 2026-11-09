@@ -1,7 +1,17 @@
 import type { DepResult, DoctorResult, HostInfoResult } from "@flightdeck/protocol";
 
 /** The things the table compares, one row each, in the order shown. */
-export const COMPARE_FIELDS = ["daemon", "claude", "hooks", "signin", "features"] as const;
+export const COMPARE_FIELDS = [
+  "os",
+  "daemon",
+  "claude",
+  "hooks",
+  "signin",
+  "gh",
+  "az",
+  "boot",
+  "features",
+] as const;
 export type CompareField = (typeof COMPARE_FIELDS)[number];
 
 /** What one host has for each field; `null` is not known (offline, an older daemon, not asked yet). */
@@ -27,32 +37,51 @@ export interface CompareRow {
 }
 
 const NOTHING: CompareValues = {
+  os: null,
   daemon: null,
   claude: null,
   hooks: null,
   signin: null,
+  gh: null,
+  az: null,
+  boot: null,
   features: null,
 };
 
 export interface HostFactsInput {
   hostId: string;
   online: boolean;
-  info: Pick<HostInfoResult, "daemonVersion" | "claudeVersion" | "features"> | undefined;
+  info: Pick<HostInfoResult, "os" | "daemonVersion" | "claudeVersion" | "features"> | undefined;
   doctor: Pick<DoctorResult, "checks"> | undefined;
   deps: { items: ReadonlyArray<Pick<DepResult, "id" | "state">> } | undefined;
 }
 
+/**
+ * Hooks as the dependency says (`ok`, `outdated`, `missing`). A host with no dependency check only
+ * has the doctor's status, which cannot tell absent from outdated: it counts when it says `ok`.
+ */
+function hooksOf(input: HostFactsInput): string | null {
+  const dep = input.deps?.items.find((item) => item.id === "hooks");
+  if (dep) return dep.state;
+  return input.doctor?.checks.find((check) => check.id === "hooks")?.status === "ok" ? "ok" : null;
+}
+
 /** What a host reports for each field, read from what the app already holds for it. */
 export function hostFacts(input: HostFactsInput): HostFacts {
-  const { info, doctor, deps } = input;
+  const { info, deps } = input;
   if (!input.online) return { hostId: input.hostId, values: { ...NOTHING } };
+  const dep = (id: DepResult["id"]) => deps?.items.find((item) => item.id === id)?.state ?? null;
   return {
     hostId: input.hostId,
     values: {
+      os: info?.os ?? null,
       daemon: info?.daemonVersion ?? null,
       claude: info?.claudeVersion ?? null,
-      hooks: doctor?.checks.find((check) => check.id === "hooks")?.status ?? null,
-      signin: deps?.items.find((item) => item.id === "claudeAuth")?.state ?? null,
+      hooks: hooksOf(input),
+      signin: dep("claudeAuth"),
+      gh: dep("gh"),
+      az: dep("az"),
+      boot: dep("service"),
       // Sorted, so the same set reads the same whatever order a host lists it in.
       features: info?.features
         ? [...info.features].sort((a, b) => a.localeCompare(b)).join(",")
@@ -86,4 +115,24 @@ export function compareHosts(hosts: readonly HostFacts[]): CompareRow[] {
     });
     return { field, majority: cells.some((cell) => cell.marked) ? majority : null, cells };
   });
+}
+
+/** The fields whose lack the host's page (Health & dependencies) already has a fix for. */
+const FIXED_WHEN_LACKING: ReadonlySet<CompareField> = new Set([
+  "hooks",
+  "signin",
+  "gh",
+  "az",
+  "boot",
+]);
+
+/**
+ * Whether a cell has a fix the app already offers on its host's page: what is missing or outdated
+ * has its install, sign-in or turn-on there, and an older daemon has its update. The OS, the Claude
+ * Code version and the features have none.
+ */
+export function hasFix(field: CompareField, value: string | null): boolean {
+  if (value === null) return false;
+  if (field === "daemon") return true;
+  return FIXED_WHEN_LACKING.has(field) && (value === "missing" || value === "outdated");
 }

@@ -149,7 +149,10 @@ describe("log-app-ui: the app's own events reach the log", () => {
       code: 4408,
       reason: "heartbeat timeout",
       byWatchdog: false,
+      byApp: false,
       silentMs: 45_000,
+      upMs: 272_000,
+      pingMs: 30_000,
       wasOnline: true,
     };
     internals.onStatus(
@@ -158,7 +161,7 @@ describe("log-app-ui: the app's own events reach the log", () => {
       "offline",
     );
     expect(w.store.appLog.recent(20).map((l) => l.replace(/^\S+ /, ""))).toContain(
-      "WARN host pc: offline, closed by the host (4408 heartbeat timeout), 45 s silent",
+      "WARN host pc: offline, closed by the host (4408 heartbeat timeout), 45 s silent, up 272 s, last ping 30 s ago",
     );
     expect(lines.some((l) => l.startsWith("ERROR refusal the host refused: [redacted]"))).toBe(
       true,

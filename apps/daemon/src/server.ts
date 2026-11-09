@@ -85,6 +85,7 @@ import type { PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import { closeLine } from "./server/close-log.ts";
 import { serverContext } from "./server/context.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
@@ -375,7 +376,7 @@ export interface ServerOptions {
   sshHostKeys?: HostKeys;
   /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test` (phase 15). */
   sshConnect?: SshConnector;
-  /** Where the server writes what it refuses (never a secret). */
+  /** Where the server writes what it refuses and why a connection closed (never a secret). */
   log?: (message: string) => void;
   /** The ssh password and passphrase requests behind `askpass.*` (phase 15). */
   askpass?: AskpassBroker;
@@ -425,13 +426,20 @@ export { tokenMatches };
 export function startServer(opts: ServerOptions): RunningServer {
   const { manager } = opts;
 
-  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
+  /** The daemon closes a connection and says why, for the close log (#1532). */
+  const closeBy = (ws: Socket, cause: string, code: number, reason: string) => {
+    ws.data.closedBy = cause;
+    ws.close(code, reason);
+  };
+  const unauthorized = (ws: Socket) =>
+    closeBy(ws, "unauthorized", CLOSE_UNAUTHORIZED, "unauthorized");
   const authed = new Set<Socket>();
   /** What every handler shares (issue #248), and one command's view of its socket. */
   const context = serverContext(opts);
   const call = (ws: Socket): Call => ({ ws, send: (frame) => send(ws, frame), server: context });
   let currentToken = opts.token;
   let pingSeq = 0;
+  let connSeq = 0;
 
   const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
   const now = opts.now ?? (() => performance.now());
@@ -448,7 +456,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.pendingPings.size >= MAX_MISSED_PINGS &&
         silentMs >= MAX_MISSED_PINGS * pingEveryMs
       ) {
-        ws.close(CLOSE_HEARTBEAT, "heartbeat timeout");
+        closeBy(ws, "heartbeat", CLOSE_HEARTBEAT, "heartbeat timeout");
         continue;
       }
       const id = String(++pingSeq);
@@ -464,6 +472,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     const sentAt = pong.success ? ws.data.pendingPings.get(pong.data.id) : undefined;
     if (sentAt === undefined) return;
     ws.data.lastRttMs = Math.round(now() - sentAt);
+    ws.data.lastPongAt = now();
     ws.data.pendingPings.clear();
   }
 
@@ -487,6 +496,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       return;
     }
     ws.data.authed = true;
+    ws.data.client = parsed.data.payload.client;
     authed.add(ws);
     const data: CommandResults["hello"] = {
       hostName: opts.hostName,
@@ -563,6 +573,8 @@ export function startServer(opts: ServerOptions): RunningServer {
             coalescers: new Set(),
             pendingPings: new Map(),
             lastFrameAt: now(),
+            id: ++connSeq,
+            connectedAt: now(),
             changeWatchers: new Map(),
           },
         });
@@ -588,8 +600,24 @@ export function startServer(opts: ServerOptions): RunningServer {
         if ((frame as { type?: unknown } | null)?.type === "pong") return onPong(ws, frame);
         void onCommand(ws, frame);
       },
-      close(ws) {
+      close(ws, code, reason) {
         authed.delete(ws);
+        const at = now();
+        opts.log?.(
+          closeLine(
+            {
+              id: ws.data.id,
+              client: ws.data.client ?? null,
+              code,
+              reason,
+              byDaemon: ws.data.closedBy ?? null,
+              upMs: at - ws.data.connectedAt,
+              silentMs: at - ws.data.lastFrameAt,
+              pongAgoMs: ws.data.lastPongAt === undefined ? null : at - ws.data.lastPongAt,
+            },
+            currentToken,
+          ),
+        );
         ws.data.unwatch?.();
         ws.data.unwatchHistory?.();
         ws.data.unwatchBoard?.();
@@ -623,7 +651,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       if (token === currentToken) return;
       currentToken = token;
       // Only one token is valid at a time, so every authenticated client used the old one.
-      for (const ws of authed) ws.close(CLOSE_UNAUTHORIZED, "token rotacionado");
+      for (const ws of authed)
+        closeBy(ws, "token rotated", CLOSE_UNAUTHORIZED, "token rotacionado");
     },
     stop: () => {
       stopHeartbeat();

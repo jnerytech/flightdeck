@@ -322,15 +322,20 @@ a terminal with `flightdeckd doctor`.
 
 #### Comparing hosts
 
-With two or more hosts, the host's **Overview** tab also has **Compare hosts**. **Show comparison**
-opens one table with a column per host and a row each for the daemon version, the Claude Code
-version, the hooks, the Claude sign-in and the features. Opening it (and **Refresh**) reads each
-online host again, which runs the same checks as **Health & dependencies**; nothing else asks the
-hosts. A cell that differs from what most hosts have is marked, and it says why in words ("Differs
-from most hosts, which have 1.4.0"). With no majority (two hosts that differ, or an even split)
-nothing is marked, and a value a host does not report, or any value of a host that is offline,
-shows as a dash and is never marked. The features are counted; two hosts with the same count but
-different features are still told apart.
+With two or more hosts, the host's **Overview** tab also has **Compare hosts**, a band as wide as
+the tab under its two columns. **Show comparison** opens one table with a column per host and a row
+each for the operating system, the daemon version, the Claude Code version, the hooks, the Claude
+sign-in, `gh`, `az`, Start at boot and the features. Opening it (and **Refresh**) reads each online
+host again, which runs the same checks as **Health & dependencies**; nothing else asks the hosts.
+Hooks read Installed, Outdated or Absent, as in that section. A cell that differs from what most
+hosts have is marked, and it says why in words ("Differs from most hosts, which have 1.4.0"). When
+what is marked is lacking (hooks, sign-in, `gh`, `az` or Start at boot missing or outdated) or is an
+older daemon, the cell has a **Fix on** button with the host's name, which opens that host's page, where Health &
+dependencies has the install, the turn-on or the update; on the host's own page it scrolls there.
+With no majority (two hosts that differ, or an even split) nothing is marked. A host that is not
+online says so once ("Not compared: offline."), in place of a dash in every row, and a value an
+online host does not report shows as a dash and is never marked. The features are counted; two
+hosts with the same count but different features are still told apart.
 
 ### Trusting a project
 
@@ -3806,6 +3811,14 @@ result of update checks, and the webview's own errors and console warnings. **Se
 Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copies the app's version
 and system, each host's name, state, version and features (never an address or a token), and the
 last 50 log lines, to paste in a message. Neither button exists in a browser.
+
+When a host goes offline, the log says why, so a drop that repeats can be read (#939). The app writes one
+line for each drop of a link that was online (a warning): the close code and reason, whether the host
+or the app closed it, how long the link had been up, how long nothing had come from the host and how
+long since its last heartbeat ping. The daemon writes one line for each connection that closes: the
+name the client gave, the code and reason, whether the daemon (heartbeat timeout, wrong token, a
+rotated token) or the client closed it, and the same clocks. Neither line holds a token, an address or
+a message.
 
 The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
 `host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
