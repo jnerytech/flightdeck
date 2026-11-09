@@ -1661,6 +1661,7 @@ export const ptBR = {
     keepAwake: "a função de manter o computador acordado",
     quotaPause: "a trava da cota para cartões novos",
     memoryPause: "a trava de memória para cartões novos",
+    hostPause: "a pausa de novas execuções",
     quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },

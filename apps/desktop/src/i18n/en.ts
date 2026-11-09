@@ -1671,6 +1671,7 @@ export const en: Dictionary = {
     keepAwake: "keeping the computer awake",
     quotaPause: "the quota guard for new cards",
     memoryPause: "the memory hold for new cards",
+    hostPause: "the pause of new runs",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },

@@ -454,6 +454,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.quotaPause, "quotaPause"),
     ...when(opts.memoryPause, "memoryPause"),
+    ...when(opts.hostPause, "hostPause"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.deps, "depsCheck"),
@@ -738,6 +739,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.fileLog ? logPathFor(opts.fileLog, ws.data.origin) : {}),
           ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
+          ...(opts.hostPause ? { pause: opts.hostPause.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),

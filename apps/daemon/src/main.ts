@@ -1502,7 +1502,12 @@ export async function startDaemon(
     },
     hostPause: {
       status: () => ({ paused: hostPause.paused(), running: manager.activeSessionCount() }),
-      set: async (_paused) => {},
+      set: async (paused) => {
+        // The file first: when it cannot be written the pause stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({ ...raw, pauseNewRuns: paused }));
+        config.pauseNewRuns = paused;
+        hostPause.set(paused);
+      },
     },
     memoryPause: {
       pauseAt: () => memoryGate.pauseAt(),
