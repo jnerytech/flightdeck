@@ -55,7 +55,7 @@ async function setup() {
       ? (ack.data as Record<string, unknown>)
       : (error?.reason ?? error?.code ?? "refused");
   };
-  return { near, far, save, watcher, projectId: project.id };
+  return { near, far, save, watcher, store, projectId: project.id };
 }
 
 describe("check-loop: the loop's settings and who may change them", () => {
@@ -121,6 +121,21 @@ describe("check-loop: the loop's settings and who may change them", () => {
     expect(watcher.settings(projectId).checkEnv).toEqual(["JAVA_HOME"]);
   });
 
+  test("a stored checkEnv that is not a list reads back as none", async () => {
+    const { watcher, projectId, store } = await setup();
+    store.db
+      .query("INSERT INTO pr_watch_project (project_id, settings) VALUES (?, ?)")
+      .run(projectId, JSON.stringify({ checkEnv: "JAVA_HOME" }));
+    const read = () => {
+      try {
+        return watcher.settings(projectId).checkEnv;
+      } catch {
+        return "the read threw";
+      }
+    };
+    expect(read()).toEqual([]);
+  });
+
   test("checkEnv takes only a toolchain's location names; anything that runs, redirects or looks like a secret is refused", () => {
     const accepts = (names: string[]) =>
       WatchSettings.partial().safeParse({ checkEnv: names }).success;
@@ -156,6 +171,8 @@ describe("check-loop: the loop's settings and who may change them", () => {
       "WEBHOOK_URL",
       "GITLAB_PAT",
       "GIT_DIR",
+      "CLAUDE_HOME",
+      "XDG_CONFIG_HOME",
     ];
     expect([
       accepts([
