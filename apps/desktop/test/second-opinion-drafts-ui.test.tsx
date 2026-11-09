@@ -174,6 +174,18 @@ describe("second-opinion-drafts-ui: going to the reviewer drafts (#1496)", () =>
     expect(focused().includes("Floats lose cents.")).toBe(true);
   });
 
+  test("a reviewer's sent comment listed before a draft does not take the focus from the draft", async () => {
+    await show("en", 1, [
+      comment({ id: "r0", body: "An older finding.", author: "reviewer", state: "sent" }),
+      comment({ id: "r1", body: "Floats lose cents.", author: "reviewer", state: "draft" }),
+    ]);
+    await press("Go to the drafts");
+    expect([
+      focused().includes("Floats lose cents."),
+      focused().includes("An older finding."),
+    ]).toEqual([true, false]);
+  });
+
   test("a review that placed no draft offers no button", async () => {
     await show("en", 0);
     expect(screen.queryByRole("button", { name: "Go to the drafts" }) === null).toBe(true);

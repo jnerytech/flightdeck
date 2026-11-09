@@ -161,6 +161,17 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
     expect(failing[1] ?? "").toEndWith("STALE? (git could not say what changed it)");
   });
 
+  test("a commit that changed the file is named before any merge: the first look leaves merges out", async () => {
+    const { fetch } = fakeFetch("a".repeat(40), [issue("a.ts", 1)]);
+    const lines: string[] = [];
+    await sonarLeft([], {
+      fetch,
+      git: fakeGit({ log: "aaa111222 fix(a): split it", merge: "ccc111222 Merge pull request #9" }),
+      log: (l) => lines.push(l),
+    });
+    expect(lines[1] ?? "").toEndWith("STALE? (changed by aaa111222 fix(a): split it)");
+  });
+
   test("from the review: a change that only a merge brought in is named by that merge", async () => {
     const { fetch } = fakeFetch("a".repeat(40), [issue("a.ts", 1)]);
     const lines: string[] = [];
