@@ -4092,6 +4092,11 @@ export const en: Dictionary = {
     badCheck:
       "Local checks: a command and its arguments, with no quotes, pipes, ; & $ or redirections",
     badLimit: "{label}: empty or above zero",
+    checkRounds: "Check loop rounds",
+    checkEnv: "Extra check variables (one per line)",
+    checkLoopDefault: "Turn the check loop on for new cards",
+    badCheckRounds: "Check loop rounds: from 1 to 10",
+    badCheckEnv: "Extra variables: only where a tool lives (like JAVA_HOME), never a secret",
   },
   sessionFinish: {
     commit: "Commit on a new branch",

@@ -4098,6 +4098,12 @@ export const ptBR = {
     badCheck:
       "Checks locais: um comando e seus argumentos, sem aspas, pipes, ; & $ nem redirecionamentos",
     badLimit: "{label}: vazio ou maior que zero",
+    checkRounds: "Rodadas do laço de checks",
+    checkEnv: "Variáveis extras dos checks (uma por linha)",
+    checkLoopDefault: "Ligar o laço de checks em cards novos",
+    badCheckRounds: "Rodadas do laço de checks: de 1 a 10",
+    badCheckEnv:
+      "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
   },
   sessionFinish: {
     commit: "Fazer commit num branch novo",
