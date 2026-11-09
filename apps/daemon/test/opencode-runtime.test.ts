@@ -291,6 +291,8 @@ describe("opencode-runtime", () => {
     agents[0]?.endPrompt({ stopReason: "cancelled" });
     expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
     timers.advance(INTERRUPT_ESCALATION_MS);
+    // escalate() closes without awaiting: let a close that would be written get written first.
+    await turns(20);
     expect(methods(agents[0])).not.toContain("session/close");
     expect(agents[0]?.alive).toBe(true);
   });
@@ -427,7 +429,7 @@ describe("opencode-runtime", () => {
     await run.close();
     release();
     await turns(20);
-    expect(agents.filter((a) => a.alive)).toHaveLength(0);
+    expect(agents).toHaveLength(0);
   });
 
   test("an interrupt while the turn waits for its start cancels that turn; on an idle run it changes nothing", async () => {
