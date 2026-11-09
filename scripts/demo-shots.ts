@@ -321,7 +321,7 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "board", host: ALFA, projectId: ids.updateProject },
       async prepare(page) {
         for (const title of DEMO_UPDATE_CARDS) {
-          await page
+          await page // NOSONAR: one Ctrl-click after the other, so each adds to the selection the last one left
             .locator("li[data-card]", { hasText: title })
             .first()
             .click({ modifiers: ["Control"], position: { x: 40, y: 4 } });
