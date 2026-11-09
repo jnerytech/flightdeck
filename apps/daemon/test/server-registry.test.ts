@@ -50,4 +50,25 @@ describe("server-registry", () => {
       ].sort(),
     );
   });
+
+  // Issue #1288: the host's own controls left the switch of server.ts (host.info follows later).
+  test("the host domain owns the host, daemon, maintenance and hooks controls", () => {
+    expect(Object.keys(DOMAINS.host ?? {}).sort()).toEqual(
+      [
+        "daemon.shutdown",
+        "daemon.update.apply",
+        "daemon.update.check",
+        "hooks.install",
+        "hooks.status",
+        "hooks.uninstall",
+        "host.bypass",
+        "host.keepAwake",
+        "host.sleep",
+        "host.updates.set",
+        "maintenance.backup",
+        "maintenance.prune",
+        "maintenance.status",
+      ].sort(),
+    );
+  });
 });
