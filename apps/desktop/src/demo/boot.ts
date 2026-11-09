@@ -86,17 +86,76 @@ export function demoStoreOptions(
   return { baseDelayMs: 60_000 };
 }
 
+/** The key the demo's backup folder keeps its files under, in the page's storage (survives a reload). */
+export const DEMO_BACKUP_FOLDER_KEY = "flightdeck.demoBackupFolder";
+/** The path the demo's folder dialog gives. */
+export const DEMO_BACKUP_FOLDER = "/demo/backups";
+
+/** The shell's rule: only files named like a backup are written, listed or removed. */
+const BACKUP_NAME = /^flightdeck-backup-\d{8}-\d{6}\.fdbackup$/;
+
+interface DemoFolder {
+  chosen: boolean;
+  files: Record<string, string>;
+}
+
+/**
+ * A stand-in for the desktop's backup folder (issue #1264), for the e2e: the web build has none.
+ * Its files live in the page's storage, so a page loaded again finds them, as a restart finds a folder.
+ */
+export function demoBackupFolder(platform: Platform): NonNullable<Platform["backupFolder"]> {
+  const read = (): DemoFolder => {
+    try {
+      const raw = JSON.parse(
+        platform.storage.getItem(DEMO_BACKUP_FOLDER_KEY) ?? "null",
+      ) as Partial<DemoFolder> | null;
+      return { chosen: raw?.chosen === true, files: raw?.files ?? {} };
+    } catch {
+      return { chosen: false, files: {} };
+    }
+  };
+  const write = (folder: DemoFolder) =>
+    platform.storage.setItem(DEMO_BACKUP_FOLDER_KEY, JSON.stringify(folder));
+  const named = (name: string) => {
+    if (!BACKUP_NAME.test(name)) throw new Error("not a backup file name");
+  };
+  return {
+    pick: () => {
+      write({ ...read(), chosen: true });
+      return Promise.resolve(DEMO_BACKUP_FOLDER);
+    },
+    current: () => Promise.resolve(read().chosen ? DEMO_BACKUP_FOLDER : null),
+    write: async (name, text) => {
+      named(name);
+      const folder = read();
+      write({ ...folder, files: { ...folder.files, [name]: text } });
+    },
+    list: () => Promise.resolve(Object.keys(read().files).sort((a, b) => a.localeCompare(b))),
+    remove: async (name) => {
+      named(name);
+      const folder = read();
+      const { [name]: _gone, ...files } = folder.files;
+      write({ ...folder, files });
+    },
+  };
+}
+
 /**
  * The e2e asks for `?update=<version>`: the demo's updater then offers that version and "downloads"
  * it, so the update card (#490) can be driven in a page, which has no Tauri updater. Without it, or
  * with something that is not a version, the platform is the browser's as it is.
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
-  const version = new URLSearchParams(search).get("update");
-  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return platform;
+  const params = new URLSearchParams(search);
+  const withFolder =
+    params.get("backupFolder") === "demo"
+      ? { ...platform, backupFolder: demoBackupFolder(platform) }
+      : platform;
+  const version = params.get("update");
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return withFolder;
   const nothing = () => Promise.resolve();
   return {
-    ...platform,
+    ...withFolder,
     updater: {
       supported: true,
       check: () => Promise.resolve({ version, notes: "" }),
