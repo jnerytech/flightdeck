@@ -84,7 +84,8 @@ describe("board-bulk: one card at a time (#1354)", () => {
       going++;
       most = Math.max(most, going);
       order.push(c.id);
-      await new Promise((resolve) => setTimeout(resolve, 1));
+      // A yield: run in parallel, every request would count itself going before any came back.
+      await Promise.resolve();
       going--;
       return c.id === "b" ? { ok: false, message: "no room", reason: "busy" } : { ok: true };
     });
