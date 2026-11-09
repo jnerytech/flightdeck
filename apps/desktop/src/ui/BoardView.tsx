@@ -421,6 +421,8 @@ export const BoardView = memo(function BoardView(props: {
   onOpenSettings(): void;
   /** A project was added from here: its board opens. */
   onOpenProject?(projectId: string): void;
+  /** The route asks for the New card dialog open as the board shows (#1547). */
+  newCard?: boolean;
 }) {
   const { store, hostId, projectId } = props;
   const state = useStoreSlice(store, BOARDVIEW_KEYS);
@@ -441,7 +443,7 @@ export const BoardView = memo(function BoardView(props: {
   const dragging = useRef<string | null>(null);
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(props.newCard === true);
   const [starting, setStarting] = useState<Card | null>(null);
   /** The card whose Delete… is asking for confirmation. */
   const [deleting, setDeleting] = useState<Card | null>(null);

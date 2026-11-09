@@ -352,6 +352,9 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   **também não os seus servidores MCP nem os seus plugins** (o Claude Code é instruído a usar só o
   servidor MCP que o Flightdeck dá). O `CLAUDE.md`, os agentes e as skills do projeto também não
   carregam. Um aviso no alto da sessão diz isso, com **Revisar e confiar**.
+- Um projeto sem cards abre a página com uma linha e um botão, **Próximo passo: criar o primeiro
+  card**, que abre o Novo card do Board. Os cards rodam com ou sem confiança no projeto: confiar
+  acrescenta a configuração própria do projeto às sessões dele.
 - A página do projeto tem **Configuração do projeto**: o que o projeto carregaria, lido sem rodar
   nada (hooks por evento e servidores MCP com o comando inteiro, em um bloco com rolagem e um
   aviso quando um comando é longo ou tem várias linhas; programas que as configurações executam,

@@ -4883,6 +4883,7 @@ export const en: Dictionary = {
     placeholder: "Type a message",
   },
   projectPage: {
+    nextCard: "Next: create the first card",
     notHere: "This project is not on this host.",
     baseInvalid:
       "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
@@ -5034,7 +5035,7 @@ export const en: Dictionary = {
     },
     trust: {
       title: "Project configuration",
-      hint: "A project can carry its own hooks, MCP servers, settings, agents and skills. They load into a session only when you trust the project.",
+      hint: "Cards run either way; trusting the project adds its own hooks, MCP servers, settings, agents and skills to its sessions.",
       untrusted: "Not trusted. Sessions here load your own settings, not this project's.",
       trusted: "Trusted: this project's own configuration loads in its sessions.",
       trustedVia: "Trusted through {path}: this project's own configuration loads in its sessions.",
