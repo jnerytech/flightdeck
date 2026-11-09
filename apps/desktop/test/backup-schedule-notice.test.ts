@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { SCHEDULE_KEY } from "../src/lib/backup-schedule.ts";
 import { AppStore } from "../src/lib/app-store.ts";
+import { SCHEDULE_KEY } from "../src/lib/backup-schedule.ts";
 import { memoryPlatform, waitFor } from "./fixtures.ts";
 
 /**
@@ -41,7 +41,7 @@ function start(options: {
 
 const shown = (store: AppStore) =>
   store.getState().inbox.map((entry) => ({ title: entry.title, route: entry.route }));
-const SETTINGS_BACKUP = { name: "settings", section: "backup" };
+const SETTINGS_BACKUP = { name: "settings", section: "backup" } as const;
 
 describe("backup-schedule-notice (#1327)", () => {
   test("a start with the schedule on and no passphrase puts one notice in the bell, opening the backup settings", async () => {
@@ -63,7 +63,7 @@ describe("backup-schedule-notice (#1327)", () => {
       () => null,
     );
     expect(shown(store).map((entry) => entry.title)).toEqual([
-      "Os backups agendados precisam da sua senha",
+      "Os backups agendados precisam da sua frase-senha",
     ]);
     store.dispose();
   });

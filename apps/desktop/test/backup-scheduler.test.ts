@@ -197,8 +197,8 @@ describe("backup-scheduler (#1264)", () => {
     off.scheduler.dispose();
     const held = setup();
     await held.scheduler.chooseFolder();
-    await held.scheduler.setCadence("daily");
     await held.scheduler.setPassphrase(PASS);
+    await held.scheduler.setCadence("daily");
     await held.scheduler.start();
     held.scheduler.dispose();
     expect([off.asked, held.asked]).toEqual([[], []]);
@@ -218,8 +218,8 @@ describe("backup-scheduler (#1264)", () => {
   test("a write that failed is told once per start", async () => {
     const { scheduler, asked } = setup({ failWrite: true });
     await scheduler.chooseFolder();
-    await scheduler.setCadence("daily");
     await scheduler.setPassphrase(PASS);
+    await scheduler.setCadence("daily");
     await scheduler.tick();
     await scheduler.tick();
     expect(asked).toEqual(["failed"]);
