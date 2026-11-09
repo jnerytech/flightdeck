@@ -982,7 +982,7 @@ export const ptBR = {
     stopTitleOne: "Parar 1 card?",
     stopTitle: "Parar {n} cards?",
     stopBody:
-      "O turno de um card rodando é interrompido e o card espera em Esperando você; um card na fila volta para o Backlog. Worktrees, branches e commits ficam.",
+      "O turno de um card rodando é interrompido e o card espera em Precisa de você; um card na fila volta para o Backlog. Worktrees, branches e commits ficam.",
     notRunning: "não está rodando",
     needsInputs: "o workflow dele pede entradas; inicie pelo menu do card",
     workflowsUnread: "Não deu para ler os workflows do projeto: inicie os cards pelos menus deles.",
@@ -4317,7 +4317,7 @@ export const ptBR = {
     columns: {
       backlog: "Backlog",
       in_progress: "Em andamento",
-      waiting: "Esperando você",
+      waiting: "Precisa de você",
       review: "Em revisão",
       done: "Concluído",
     },

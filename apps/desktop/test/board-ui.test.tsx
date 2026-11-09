@@ -209,7 +209,7 @@ describe("board-ui", () => {
       screen.getByRole("region", { name }).querySelector(".column-count")?.textContent;
     expect(count("Backlog")).toBe("2");
     expect(count("Concluído")).toBe("0");
-    for (const name of ["Backlog", "Em andamento", "Esperando você", "Em revisão", "Concluído"]) {
+    for (const name of ["Backlog", "Em andamento", "Precisa de você", "Em revisão", "Concluído"]) {
       expect(
         screen.getByRole("region", { name }).querySelector("[data-slot='column-icon']"),
       ).not.toBeNull();
@@ -286,7 +286,7 @@ describe("board-ui", () => {
     await openBoard(repo);
     for (const title of ["A", "B", "C"]) await createCard(title);
     expect(column("Backlog")).toEqual(["A", "B", "C"]);
-    for (const label of ["Em andamento", "Esperando você", "Em revisão", "Concluído"]) {
+    for (const label of ["Em andamento", "Precisa de você", "Em revisão", "Concluído"]) {
       expect(screen.queryByRole("region", { name: label })).not.toBeNull();
     }
     await drag("C", cardItem("A"));
@@ -328,7 +328,7 @@ describe("board-ui", () => {
       "Iniciar card",
       "Selecionar card",
       "Mover para Em andamento",
-      "Mover para Esperando você",
+      "Mover para Precisa de você",
       "Mover para Em revisão",
       "Mover para Concluído",
       "Mover para cima",
