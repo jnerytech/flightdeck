@@ -8,7 +8,8 @@ import { memoryPlatform } from "./fixtures.ts";
  * first, and reads one into the same preview as a file; the restore itself is the one of #1241.
  */
 const PASS = "correct horse battery";
-const NAME = (day: number) => `flightdeck-backup-202611${String(day).padStart(2, "0")}-120000.fdbackup`;
+const NAME = (day: number) =>
+  `flightdeck-backup-202611${String(day).padStart(2, "0")}-120000.fdbackup`;
 
 const { AppStore } = await import("../src/lib/app-store.ts");
 

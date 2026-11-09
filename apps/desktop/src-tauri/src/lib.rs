@@ -1117,65 +1117,71 @@ const OAUTH_WAIT: std::time::Duration = std::time::Duration::from_secs(5 * 60);
 /// Opens a listener on 127.0.0.1 for the sign-in whose `state` is given. Nothing here is logged.
 #[tauri::command]
 async fn oauth_loopback_listen(
+    app: tauri::AppHandle,
     state: String,
-    loopbacks: State<'_, OauthLoopbacks>,
 ) -> Result<OauthListening, String> {
-    let listener = oauth_loopback::bind(&state)?;
-    let port = listener.port();
-    let id = loopbacks.next.fetch_add(1, Ordering::SeqCst) + 1;
-    let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
-    for (_, old) in sessions.drain() {
-        old.cancel.store(true, Ordering::SeqCst);
-    }
-    sessions.insert(
-        id,
-        OauthSession {
-            listener: Some(listener),
-            cancel: std::sync::Arc::new(AtomicBool::new(false)),
-        },
-    );
-    Ok(OauthListening { id, port })
+    spawn_blocking_result(move || {
+        let loopbacks = app.state::<OauthLoopbacks>();
+        let listener = oauth_loopback::bind(&state)?;
+        let port = listener.port();
+        let id = loopbacks.next.fetch_add(1, Ordering::SeqCst) + 1;
+        let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
+        for (_, old) in sessions.drain() {
+            old.cancel.store(true, Ordering::SeqCst);
+        }
+        sessions.insert(
+            id,
+            OauthSession {
+                listener: Some(listener),
+                cancel: std::sync::Arc::new(AtomicBool::new(false)),
+            },
+        );
+        Ok(OauthListening { id, port })
+    })
+    .await
 }
 
 /// Waits for the redirect: the code, or `None` when the person refused, it timed out or it was
 /// cancelled. The session is over when this returns.
 #[tauri::command]
-async fn oauth_loopback_wait(
-    id: u64,
-    loopbacks: State<'_, OauthLoopbacks>,
-) -> Result<Option<String>, String> {
-    let (listener, cancel) = {
-        let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
-        let session = sessions
-            .get_mut(&id)
-            .ok_or_else(|| "no sign-in is waiting".to_string())?;
-        let listener = session
-            .listener
-            .take()
-            .ok_or_else(|| "the sign-in is already waiting".to_string())?;
-        (listener, session.cancel.clone())
-    };
-    let outcome = spawn_blocking_result(move || Ok(listener.wait(OAUTH_WAIT, &cancel))).await?;
-    if let Ok(mut sessions) = loopbacks.sessions.lock() {
-        sessions.remove(&id);
-    }
-    Ok(match outcome {
-        oauth_loopback::Outcome::Code(code) => Some(code),
-        _ => None,
+async fn oauth_loopback_wait(app: tauri::AppHandle, id: u64) -> Result<Option<String>, String> {
+    spawn_blocking_result(move || {
+        let loopbacks = app.state::<OauthLoopbacks>();
+        let (listener, cancel) = {
+            let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
+            let session = sessions
+                .get_mut(&id)
+                .ok_or_else(|| "no sign-in is waiting".to_string())?;
+            let listener = session
+                .listener
+                .take()
+                .ok_or_else(|| "the sign-in is already waiting".to_string())?;
+            (listener, session.cancel.clone())
+        };
+        let outcome = listener.wait(OAUTH_WAIT, &cancel);
+        if let Ok(mut sessions) = loopbacks.sessions.lock() {
+            sessions.remove(&id);
+        }
+        Ok(match outcome {
+            oauth_loopback::Outcome::Code(code) => Some(code),
+            _ => None,
+        })
     })
+    .await
 }
 
 /// Ends a sign-in: a wait in progress returns, and the port closes.
 #[tauri::command]
-async fn oauth_loopback_cancel(
-    id: u64,
-    loopbacks: State<'_, OauthLoopbacks>,
-) -> Result<(), String> {
-    let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
-    if let Some(session) = sessions.remove(&id) {
-        session.cancel.store(true, Ordering::SeqCst);
-    }
-    Ok(())
+async fn oauth_loopback_cancel(app: tauri::AppHandle, id: u64) -> Result<(), String> {
+    spawn_blocking_result(move || {
+        let loopbacks = app.state::<OauthLoopbacks>();
+        let mut sessions = loopbacks.sessions.lock().map_err(|e| e.to_string())?;
+        if let Some(session) = sessions.remove(&id) {
+            session.cancel.store(true, Ordering::SeqCst);
+        }
+        Ok(())
+    })
+    .await
 }
 
 /// Deletes the file `vault_pick_file` returned last, and nothing else.
