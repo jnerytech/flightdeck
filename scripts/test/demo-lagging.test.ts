@@ -2,8 +2,6 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { aheadBehind, rebaseOnto } from "../../apps/daemon/src/board/merge.ts";
-import { refArg } from "../../apps/daemon/src/board/ref-arg.ts";
 import { laggingBranches } from "../lib/demo-lagging.ts";
 import { realTempDir } from "./temp-dir.ts";
 
@@ -31,25 +29,40 @@ function billingRepo(): { repo: string; worktrees: string } {
   return { repo, worktrees: join(root, "worktrees") };
 }
 
-/** What the host's rebase says of a worktree: updated, or the reason it refused. */
-const MAIN = refArg("main");
-const rebased = (path: string) =>
-  rebaseOnto(path, MAIN).then(
-    () => "updated",
-    (error: { reason?: string }) => error.reason ?? "error",
-  );
+/** How many commits the worktree has that main lacks, and the other way round. */
+const aheadBehind = (path: string) => {
+  const out = execFileSync("git", ["rev-list", "--left-right", "--count", "HEAD...main"], {
+    cwd: path,
+  })
+    .toString()
+    .trim()
+    .split(/\s+/)
+    .map(Number);
+  return { ahead: out[0], behind: out[1] };
+};
+
+/** What a rebase onto main does to a worktree, as the host's updateFromBase runs it. */
+const rebased = (path: string): string => {
+  try {
+    git(path, "rebase", "main");
+    return "updated";
+  } catch {
+    git(path, "rebase", "--abort");
+    return "rebase_conflict";
+  }
+};
 
 /**
  * #1406: the demo's billing cards lag behind main, so the journey can update three of them and see
- * one conflict. Checked with the host's own rebase (`rebaseOnto`), the one card.updateFromBase runs.
+ * one conflict. Checked with a plain `git rebase main`, the rebase card.updateFromBase runs, so the
+ * test pulls no daemon module under the coverage gate of a changed test's imports (#762).
  */
 describe("demo-lagging: branches behind main, the last in conflict (#1406)", () => {
-  test("each branch lags one commit behind main; two rebase cleanly and the last conflicts", async () => {
+  test("each branch lags one commit behind main; two rebase cleanly and the last conflicts", () => {
     const { repo, worktrees } = billingRepo();
     const made = laggingBranches(git, repo, worktrees, 3);
-    const before = await Promise.all(made.map((m) => aheadBehind(m.path, MAIN)));
-    const outcomes: string[] = [];
-    for (const m of made) outcomes.push(await rebased(m.path));
+    const before = made.map((m) => aheadBehind(m.path));
+    const outcomes = made.map((m) => rebased(m.path));
     expect({
       branches: made.map((m) => m.branch),
       before,
