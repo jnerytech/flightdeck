@@ -928,7 +928,8 @@ export const en: Dictionary = {
     clearSelection: "Clear selection",
     selectCard: "Select card",
     deselectCard: "Deselect card",
-    selectedCard: "selected",
+    /** #1354: the check on each card while a selection exists. */
+    selectCardNamed: "Select {title}",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
     /** What a column asks of a card before it gets there (issue #78). */
@@ -971,7 +972,7 @@ export const en: Dictionary = {
     countMany: "{n} cards",
     /** The board's keys, said by each card's title (#1198). */
     keysHint:
-      "Arrows move between the cards, Enter opens one, S starts it and M shows its actions.",
+      "Arrows move between the cards, Enter opens one, S starts it, M shows its actions, X selects it and Shift with an arrow selects a range. Esc clears the selection.",
     /** A narrow board shows one column at a time, picked here (#1198). */
     columns: "Columns",
     showColumn: "{column}, {count}",

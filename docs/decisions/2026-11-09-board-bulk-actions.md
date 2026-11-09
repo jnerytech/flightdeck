@@ -42,7 +42,9 @@ chord stay as they are.
 
 - **Ctrl-click and Shift-click** stay as they are.
 - **A check on each card**, at the start of its title line. It shows on every card while a selection
-  exists. With none, it shows on the card under the pointer or with the focus.
+  exists. With none, it does not show. Slice 2 changed this from "on the card under the pointer or
+  with the focus": a check that appears there reflows the title and moves the cards under the pointer
+  as it passes. Ctrl-click, `x` and the card menu's **Select card** start a selection.
   - The box is 16 px inside a 24 px target (`hit-control`): axe's target-size failed #1349 on bare radios.
   - It is not a Tab stop (`tabIndex -1`). `x` is its keyboard path, so each column stays one Tab stop.
   - Its name is "Select {title}" ("Selecionar {title}"). It replaces the `sr-only` "selected" span, so
@@ -50,7 +52,8 @@ chord stay as they are.
     in en and pt-BR, with the span.
   - Clicking it toggles the card. A plain click on the card still opens it.
 - **Touch, or no Ctrl key.** The card's menu (**Select card**) starts a selection. From then on every
-  card shows its check.
+  card shows its check. Until slice 2's PR B lands, `s` with a selection does nothing: it never starts
+  a card outside the selection.
 
 ## The bar
 
