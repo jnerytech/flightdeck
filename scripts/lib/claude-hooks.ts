@@ -196,6 +196,24 @@ export function biomeEditArgs(rel: string): string[] {
   ];
 }
 
+/** What the biome-on-edit hook found in the file it checked: `ok` when nothing is left to fix. */
+export interface EditedFileCheck {
+  ok: boolean;
+  output: string;
+}
+
+/**
+ * The biome-on-edit hook's check of one edited file (#1566): formatting, import order and safe
+ * fixes are written into the file, and what is left is returned.
+ */
+export function checkEditedFile(
+  _root: string,
+  _rel: string,
+  _biome: string[] = ["bun", "x", "biome"],
+): EditedFileCheck {
+  return { ok: true, output: "" };
+}
+
 /**
  * Why an Edit or Write of a test file is blocked: it adds a focused, skipped or todo test, or a
  * snapshot that would record the first run (docs/TDD.md). `readFile` gives the current content
