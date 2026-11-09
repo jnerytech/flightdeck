@@ -12,6 +12,7 @@ import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { AWAY_KEY } from "../../../apps/desktop/src/lib/away.ts";
 import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { HOSTS_KEY } from "../../../apps/desktop/src/lib/hosts.ts";
+import { TOKEN_MASK } from "../../../apps/desktop/src/lib/pairing-mask.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
@@ -3200,6 +3201,15 @@ step(
   },
 );
 
+step(
+  When,
+  "I type the pairing link of the first demo host named {string}",
+  async (c, name = "") => {
+    const link = formatPairingLink({ ...c.ids.alfaPairing, name });
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).pressSequentially(link);
+  },
+);
+
 step(When, "I press Test and add", async (c) =>
   c.page.getByRole("button", { name: c.t("hostForm.submit"), exact: true }).click(),
 );
@@ -3316,4 +3326,51 @@ step(Then, "the card says its PR is open and offers Merge PR", async (c) => {
     .first()
     .waitFor({ timeout: SESSION_WAIT });
   await mergeButton(c).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the first tab and the breadcrumb say to connect a host", async (c) => {
+  await c.page
+    .getByRole("tab", { name: c.t("welcome.crumb"), exact: true, selected: true })
+    .waitFor({ timeout: WAIT });
+  await c.page
+    .getByRole("navigation", { name: c.t("shell.breadcrumb"), exact: true })
+    .getByText(c.t("welcome.crumb"), { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I leave the pairing link field", async (c) =>
+  c.page.getByLabel(c.t("hostForm.link"), { exact: true }).press("Tab"),
+);
+
+step(Then, "the pairing link field shows dots in place of the token", async (c) => {
+  const field = c.page.getByLabel(c.t("hostForm.link"), { exact: true });
+  await waitFor(async () => (await field.inputValue()).includes(TOKEN_MASK), "the token is masked");
+  const shown = await field.inputValue();
+  if (shown.includes(c.ids.alfaPairing.token)) throw new Error("the link field shows the token");
+});
+
+step(Then, "the card says no PR can be opened without a PR provider", async (c) => {
+  await c.page.getByText(c.t("cardUi.noRemote"), { exact: true }).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the card names the branch to push by hand", async (c) => {
+  const branch = gitIn(
+    worktreeOf(c, mine(c).card ?? ""),
+    "rev-parse",
+    "--abbrev-ref",
+    "HEAD",
+  ).trim();
+  await c.page
+    .getByText(c.t("cardUi.noRemoteBranch", { branch }), { exact: true })
+    .waitFor({ timeout: WAIT });
+});
+
+step(Then, "Review changes still leads and Open PR is not offered", async (c) => {
+  await c.page
+    .getByRole("button", { name: c.t("cardUi.reviewChanges"), exact: true })
+    .waitFor({ timeout: WAIT });
+  const open = await c.page
+    .getByRole("button", { name: c.t("cardUi.openPr"), exact: true })
+    .count();
+  if (open !== 0) throw new Error("Open PR is offered on a project with no PR provider");
 });

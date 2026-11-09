@@ -7,7 +7,7 @@ walk whole: the first-run screen, pairing, the first project, card and PR were e
 
 ## Decision
 
-`first-hour.feature`, four scenarios (en and pt-BR, 2 to 35 s each on the Pi), all on the page a first
+`first-hour.feature`, seven scenarios (en and pt-BR, 2 to 35 s each on the Pi), all on the page a first
 start opens (`?hosts=none`, #1052). The page is never reloaded after the pairing: the web build keeps
 the host's token in memory only, so a reload would lose it, which is also why these scenarios use their
 own in-page steps instead of the `open()` helper.
@@ -28,11 +28,20 @@ Mutations, each red for the right reason: a wrong token in the link (no "orange 
 host set to none in the settings step (the card never says "PR open"); the card's description
 `[quiet]` (the run never ends, so the card never reaches Review changes or Open PR).
 
-## Waiting for their fixes
+## Round-14 fixes with a scenario
 
-Added as each merges, per the issue: #1557 (no remote: Open PR says what to do and keeps the text),
-#1556 (the pasted pairing link masks its token), #1546 (focus after Test and add, Add project, Create
-card, opening a card, Approve and Open PR), #1551 (the first-start tab and crumb).
+- **#1551 (first-start tab and crumb).** The selected tab and the "You are in" breadcrumb both read
+  "Connect a host". Red when the early return in `breadcrumb.ts` is off.
+- **#1556 / #1548 (masked token).** A pasted link (`fill`, read as a paste) shows dots in the link field at
+  once, and still connects: the host's dot reads online. A link typed key by key shows the dots once the
+  field is left. Red when the field's `onChange` keeps the typed text, and `maskOnLeave` returns it
+  unmasked (both off at once; each alone is covered by one scenario).
+- **#1557 / #1543 (no remote).** On a project with no PR provider, the card says no PR can be opened
+  without one, names its branch to push by hand, keeps Review changes as the lead on the Changes tab and
+  offers no Open PR. Red when `noRemote` is forced off in `card-run-form.tsx`.
+
+Still waiting: #1546 (focus after Test and add, Add project, Create card, opening a card, Approve and
+Open PR), in PR #1569 as of this writing; its scenarios go in when it merges.
 
 ## Not covered
 
