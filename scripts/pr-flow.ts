@@ -19,7 +19,12 @@ const reviews =
   resolve(import.meta.dir, "../../flightdeck-handoff/pr-reviews");
 const review = async (n: number) => {
   const file = join(reviews, `pr-${n}.md`);
-  return existsSync(file) ? readFileSync(file, "utf8") : null;
+  // An unreadable review (a folder in its place, no permission) counts as none yet.
+  try {
+    return existsSync(file) ? readFileSync(file, "utf8") : null;
+  } catch {
+    return null;
+  }
 };
 
 process.exit(

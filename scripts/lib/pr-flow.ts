@@ -478,7 +478,7 @@ export function reviewState(n: number, text: string | null): { line: string; wai
   const count = (re: RegExp) => text.split("\n").filter((l) => re.test(l)).length;
   // The last VERDICT line, as a whole word: a quoted one earlier, or approve-with-changes, is not approve.
   const verdicts = [...text.matchAll(/^VERDICT: *([\w-]+)\s*$/gm)];
-  const verdict = verdicts.at(-1)?.[1] ?? "unknown";
+  const verdict = verdicts.at(-1)?.[1]?.toLowerCase() ?? "unknown";
   const line = `OpenCode review: VERDICT ${verdict}, ${count(/^\[(blocker|high)\]/)} blocker/high, ${count(/^\[medium\]/)} medium (pr-reviews/pr-${n}.md)`;
   return { line, wait: verdict === "approve" ? null : `says ${verdict}` };
 }
@@ -545,6 +545,11 @@ async function autoPr(n: number, deps: PrFlowDeps, now = false): Promise<number>
     return 1;
   }
   deps.log(`#${n} merges by itself, with a merge commit, once its required checks are green`);
+  if (review?.wait) {
+    deps.log(
+      `#${n} may merge while its OpenCode review ${review.wait}: fix what it finds in a follow-up, or turn auto-merge off`,
+    );
+  }
   return 0;
 }
 
