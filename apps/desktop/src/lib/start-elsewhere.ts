@@ -126,11 +126,23 @@ export async function startElsewhere(run: {
   return outcome;
 }
 
+/** The line after a hand-off: how many started there, which did not, and which stay on the board. */
 export function elsewhereNotice(
-  _t: T,
-  _outcome: ElsewhereOutcome,
-  _host: string,
-  _name: (refused: BulkRefusal[]) => string,
+  t: T,
+  outcome: ElsewhereOutcome,
+  host: string,
+  name: (refused: BulkRefusal[]) => string,
 ): string | null {
-  return "";
+  const { moved, refused, unmarked } = outcome;
+  const parts: string[] = [];
+  if (moved.length === 1) parts.push(t("board.elsewhereDoneOne", { host }));
+  else if (moved.length > 1) parts.push(t("board.elsewhereDone", { count: moved.length, host }));
+  if (refused.length === 1) parts.push(t("board.startFailedOne", { names: name(refused) }));
+  else if (refused.length > 1) {
+    parts.push(t("board.startFailed", { count: refused.length, names: name(refused) }));
+  }
+  if (unmarked.length > 0) {
+    parts.push(t("board.elsewhereUnmarked", { names: unmarked.map((c) => c.title).join(", ") }));
+  }
+  return parts.length === 0 ? null : parts.join(" ");
 }
