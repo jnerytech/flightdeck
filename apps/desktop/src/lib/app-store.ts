@@ -121,6 +121,8 @@ import {
 } from "./finished.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
+import { googleConfig } from "./google-config.ts";
+import type { GoogleConfig } from "./google-oauth.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { HomeCache } from "./home-cache.ts";
 import {
@@ -679,6 +681,8 @@ export interface AppStoreOptions {
   peersSyncMs?: number;
   /** scrypt work factor (log2 N) of an exported vault; tests lower it to stay fast. */
   vaultWorkFactor?: number;
+  /** Issue #1444: Google Drive for the scheduled backups; the build's own client id when absent. */
+  google?: { config: GoogleConfig | null; fetch?: typeof fetch };
 }
 
 /** A toast: a host's error (by code, the daemon's message as detail) or a short success. */
@@ -1117,6 +1121,7 @@ export class AppStore {
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
       onAttention: (kind) => this.onBackupAttention(kind),
+      google: options.google ?? { config: googleConfig() },
       ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
