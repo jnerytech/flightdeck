@@ -3268,6 +3268,14 @@ export const ptBR = {
     reviewChanges: "Mudanças pedidas",
     reviewRequired: "Revisão pendente",
     opened: "Aberto {ago}",
+    conflictHint:
+      "Este PR conflita com a base: atualize a branch com a base e depois faça o merge.",
+    heldHint: "O GitHub pode recusar este merge: {why}.",
+    heldWhy: {
+      blocked: "as regras da branch o seguram",
+      changes: "pediram mudanças",
+      required: "falta uma revisão",
+    },
   },
   conflictRadar: {
     badgeOne: "Pode conflitar com {title}",

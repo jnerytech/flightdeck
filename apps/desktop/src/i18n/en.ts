@@ -3268,6 +3268,13 @@ export const en: Dictionary = {
     reviewChanges: "Changes requested",
     reviewRequired: "Review required",
     opened: "Opened {ago}",
+    conflictHint: "This PR conflicts with its base: bring the branch up to date, then merge.",
+    heldHint: "GitHub may refuse this merge: {why}.",
+    heldWhy: {
+      blocked: "the branch rules hold it",
+      changes: "changes were requested",
+      required: "a review is required",
+    },
   },
   conflictRadar: {
     badgeOne: "May conflict with {title}",

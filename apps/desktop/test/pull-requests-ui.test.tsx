@@ -234,7 +234,85 @@ describe("pull-requests-ui: what the poll says about each PR (#1352)", () => {
       row("Card a").textContent?.includes("alpha"),
       facts("Card a"),
       facts("Card b"),
-    ]).toEqual([true, "Conflicts with the base · Changes requested · Opened 3 h ago", null]);
+    ]).toEqual([true, "Changes requested · Opened 3 h ago", null]);
+  });
+});
+
+describe("pull-requests-ui: the action a PR's state leads to (#1482)", () => {
+  const variant = (title: string, name: string) =>
+    inRow(title).queryByRole("button", { name })?.getAttribute("data-variant") ?? null;
+
+  test("a PR that conflicts has no Merge PR: Update from the base leads, and the conflict is a badge", () => {
+    open({
+      cards: {
+        "h1/a": card("a", { prMergeable: "conflict", prReview: "changes_requested" }),
+        "h2/b": card("b"),
+      },
+    });
+    const facts = row("Card a").querySelector("[data-slot='pr-facts']")?.textContent ?? "";
+    const badge = row("Card a").querySelector("[data-slot='pr-conflict']");
+    expect([
+      inRow("Card a").queryByRole("button", { name: "Merge PR" }) === null,
+      variant("Card a", "Update from the base"),
+      badge?.textContent?.includes("Conflicts with the base"),
+      badge?.querySelector("svg") !== null,
+      facts.includes("Conflicts with the base"),
+      facts.includes("Changes requested"),
+      // The control: a clean row still leads with Merge PR.
+      variant("Card b", "Merge PR"),
+    ]).toEqual([true, "default", true, true, false, true, "default"]);
+  });
+
+  test("a PR that conflicts and has no worktree has no Merge PR and says what to do", () => {
+    open({
+      cards: {
+        "h1/a": card("a", { prMergeable: "conflict", worktreePath: null }),
+        "h2/b": card("b"),
+      },
+    });
+    expect([
+      inRow("Card a").queryByRole("button", { name: "Merge PR" }) === null,
+      inRow("Card a").queryByRole("button", { name: "Update from the base" }) === null,
+      row("Card a").textContent?.includes("bring the branch up to date"),
+      variant("Card b", "Merge PR"),
+    ]).toEqual([true, true, true, "default"]);
+  });
+
+  test("a held PR keeps Merge PR, but not as the lead, and says why it may be refused", () => {
+    open({
+      cards: {
+        "h1/a": card("a", { prReview: "changes_requested" }),
+        "h2/b": card("b", { prMergeable: "blocked" }),
+      },
+    });
+    const merge = (title: string) => inRow(title).queryByRole("button", { name: "Merge PR" });
+    const describedBy = (title: string) => {
+      const id = merge(title)?.getAttribute("aria-describedby") ?? "";
+      return id
+        .split(" ")
+        .map((one) => document.getElementById(one)?.textContent ?? "")
+        .join(" ");
+    };
+    expect([
+      variant("Card a", "Merge PR"),
+      variant("Card b", "Merge PR"),
+      row("Card a").textContent?.includes("GitHub may refuse this merge: changes were requested."),
+      row("Card b").textContent?.includes(
+        "GitHub may refuse this merge: the branch rules hold it.",
+      ),
+      describedBy("Card a").includes("GitHub may refuse"),
+    ]).toEqual(["outline", "outline", true, true, true]);
+  });
+
+  test("a held PR with no Merge PR here does not say GitHub may refuse a merge", () => {
+    open({
+      features: ["watch"],
+      cards: { "h2/b": card("b", { prMergeable: "blocked" }) },
+    });
+    expect([
+      inRow("Card b").queryByRole("button", { name: "Merge PR" }) === null,
+      row("Card b").textContent?.includes("GitHub may refuse"),
+    ]).toEqual([true, false]);
   });
 });
 

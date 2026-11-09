@@ -53,10 +53,14 @@ export function openPullRequests(
 /**
  * What the PR poll reports about a PR besides its checks (#1352): the merge state, the review and
  * how long it has been open, as short phrases. What the host does not report (an older host, or
- * before the first poll) gives no phrase.
+ * before the first poll) gives no phrase. `withConflict` false leaves the conflict out (the row
+ * shows it as a badge of its own).
  */
-export function prFacts(card: Card, now: number, t: T): string[] {
-  const merge = MERGE_WORDS[card.prMergeable ?? "unknown"];
+export function prFacts(card: Card, now: number, t: T, withConflict = true): string[] {
+  const merge =
+    card.prMergeable === "conflict" && !withConflict
+      ? null
+      : MERGE_WORDS[card.prMergeable ?? "unknown"];
   const review = REVIEW_WORDS[card.prReview ?? "none"];
   const opened = card.prOpenedAt ? Date.parse(card.prOpenedAt) : Number.NaN;
   return [
@@ -79,3 +83,22 @@ const REVIEW_WORDS = {
   required: "pullRequests.reviewRequired",
   none: null,
 } as const;
+
+/** What the poll says about merging a PR (#1482): it conflicts, it is held, or nothing stands in the way. */
+export type MergeStance =
+  | { kind: "conflict" }
+  | { kind: "held"; why: "blocked" | "changes" | "required" }
+  | { kind: "ready" };
+
+/**
+ * Whether Merge PR can lead the row. A PR that conflicts with its base cannot be merged (GitHub
+ * refuses): bringing the branch up to date is the next step. One that is blocked, or waits for a
+ * review or for changes, may be refused: Merge PR stays, but not as the lead, and says why.
+ */
+export function mergeStance(card: Card): MergeStance {
+  if (card.prMergeable === "conflict") return { kind: "conflict" };
+  if (card.prMergeable === "blocked") return { kind: "held", why: "blocked" };
+  if (card.prReview === "changes_requested") return { kind: "held", why: "changes" };
+  if (card.prReview === "required") return { kind: "held", why: "required" };
+  return { kind: "ready" };
+}

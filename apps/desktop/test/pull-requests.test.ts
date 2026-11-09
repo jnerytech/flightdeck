@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import type { AppState } from "../src/lib/app-store.ts";
-import { openPullRequests, prFacts } from "../src/lib/pull-requests.ts";
+import { mergeStance, openPullRequests, prFacts } from "../src/lib/pull-requests.ts";
 
 const card = (id: string, over: object = {}) =>
   ({
@@ -152,5 +152,41 @@ describe("pull-requests: what the poll says about a PR (#1352)", () => {
       }),
     );
     expect(ids(rows)).toEqual(["h1:b", "h1:c", "h1:a", "h1:d"]);
+  });
+});
+
+describe("pull-requests: can Merge PR lead the row (#1482)", () => {
+  test("a conflict wins over everything; blocked, changes asked and a review needed hold it", () => {
+    const stance = (over: object) => mergeStance(card("a", over));
+    expect([
+      stance({ prMergeable: "conflict", prReview: "changes_requested" }),
+      stance({ prMergeable: "blocked", prReview: "changes_requested" }),
+      stance({ prReview: "changes_requested" }),
+      stance({ prReview: "required" }),
+    ]).toEqual([
+      { kind: "conflict" },
+      { kind: "held", why: "blocked" },
+      { kind: "held", why: "changes" },
+      { kind: "held", why: "required" },
+    ]);
+  });
+
+  test("clean, approved, unknown, or a host that reports nothing leaves Merge PR as it was", () => {
+    const stance = (over: object) => mergeStance(card("a", over));
+    expect([
+      stance({ prMergeable: "clean", prReview: "approved" }),
+      stance({ prMergeable: "unknown", prReview: "none" }),
+      stance({}),
+      stance({ prMergeable: null, prReview: null }),
+    ]).toEqual([{ kind: "ready" }, { kind: "ready" }, { kind: "ready" }, { kind: "ready" }]);
+  });
+
+  test("the facts line can leave the conflict out, since the row shows it as a badge", () => {
+    const t = translator("en");
+    const over = { prMergeable: "conflict", prReview: "changes_requested" };
+    expect([
+      prFacts(card("a", over), Date.parse("2026-11-09T12:00:00Z"), t, false),
+      prFacts(card("a", over), Date.parse("2026-11-09T12:00:00Z"), t),
+    ]).toEqual([["Changes requested"], ["Conflicts with the base", "Changes requested"]]);
   });
 });
