@@ -26,6 +26,8 @@ export function SelectionBar(
     /** #1354: Move to…'s menu, also opened by `m` on a card of the selection. */
     moveOpen?: boolean;
     onMoveOpenChange?(open: boolean): void;
+    /** Where the focus goes when that menu closes; false leaves it on the button. */
+    onMoveClosed?(): boolean;
   }>,
 ) {
   const { t } = props;
@@ -59,7 +61,11 @@ export function SelectionBar(
             {t("board.moveSelected")}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent
+          onCloseAutoFocus={(e) => {
+            if (props.onMoveClosed?.()) e.preventDefault();
+          }}
+        >
           {COLUMNS.map(({ id }) => (
             <DropdownMenuItem key={id} onSelect={() => props.onMove(id)}>
               {t(`kanban.columns.${id}` as Key)}

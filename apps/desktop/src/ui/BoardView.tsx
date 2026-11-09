@@ -427,6 +427,8 @@ export const BoardView = memo(function BoardView(props: {
   const [discardingMany, setDiscardingMany] = useState(false);
   /** #1354: the bar's Move to… menu, opened by its button or by `m` on a card of a selection. */
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
+  /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
+  const moveFrom = useRef<string | null>(null);
   // A batch of moves or discards is running: nothing else may start.
   const [busy, setBusy] = useState(false);
   /** The cards dragged together when the dragged one is part of a selection. */
@@ -817,6 +819,15 @@ export const BoardView = memo(function BoardView(props: {
                   onEscape={clearSelection}
                   moveOpen={moveMenuOpen}
                   onMoveOpenChange={setMoveMenuOpen}
+                  onMoveClosed={() => {
+                    const from = moveFrom.current;
+                    moveFrom.current = null;
+                    const title = from ? titleOf(from) : null;
+                    // A card a move took to a column not shown has no title to focus: the button keeps it.
+                    if (!title?.isConnected || title.closest("[hidden]")) return false;
+                    title.focus();
+                    return true;
+                  }}
                 />
               )
             }
@@ -1024,7 +1035,10 @@ export const BoardView = memo(function BoardView(props: {
                           locked={busy}
                           selected={selection.includes(card.id)}
                           selecting={selection.length > 0}
-                          onMoveSelection={() => setMoveMenuOpen(true)}
+                          onMoveSelection={() => {
+                            moveFrom.current = card.id;
+                            setMoveMenuOpen(true);
+                          }}
                           onToggleSelect={() => select(card)}
                           onRangeSelect={() => selectRange(card)}
                           tabbable={stops.has(card.id)}
