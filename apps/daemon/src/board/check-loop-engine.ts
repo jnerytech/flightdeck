@@ -83,6 +83,9 @@ export interface CheckLoopEffects {
 /** How long a held slot waits for the turn's result after the session went idle. */
 export const RESULT_WAIT_MS = 30_000;
 
+/** How long a round sent waits for its session to go busy before the loop gives up on it. */
+export const ROUND_START_MS = 120_000;
+
 /** The output a round quotes, from its end. */
 const OUTPUT_MAX = 4000;
 
@@ -146,13 +149,15 @@ export class CheckLoopEngine {
   /**
    * The session went idle. `hold`: the loop keeps the run's slot (for a loop going on, or a turn
    * whose result is due). `release`: not the loop's, the board releases the slot as it always did.
+   * `released`: a loop of this turn already handed the slot back; the board does nothing.
    */
-  onIdle(cardId: string): "hold" | "release" {
+  onIdle(cardId: string): "hold" | "release" | "released" {
     const loop = this.loops.get(cardId);
     if (loop) {
       if (loop.phase === "fixing") this.await(cardId, loop);
       return "hold";
     }
+    if (this.released.has(cardId)) return "released";
     if (!this.isLoopCard(cardId)) {
       this.released.add(cardId);
       return "release";
@@ -213,6 +218,11 @@ export class CheckLoopEngine {
   /** The session went busy (a new turn): its slot is the run's again, for the loop to hold. */
   onBusy(cardId: string): void {
     this.released.delete(cardId);
+    // A round's turn started: a wait armed by a stray idle, or the round's watchdog, is over.
+    const loop = this.loops.get(cardId);
+    if (!loop) return;
+    this.clearTimer(loop);
+    if (loop.phase === "awaiting_result") loop.phase = "fixing";
   }
 
   /** The person stopped, discarded or moved the card. */
@@ -262,7 +272,9 @@ export class CheckLoopEngine {
 
   private async checkOnce(cardId: string, loop: Loop, signal: AbortSignal): Promise<void> {
     const card = this.fx.card(cardId);
-    if (!card?.worktree) return this.end(cardId, loop, "stopped_by_you", { release: true });
+    if (!card?.worktree) {
+      return this.end(cardId, loop, "stopped_by_you", { release: true, place: true });
+    }
     const settings = this.fx.settings(card.projectId);
     // The gate comes before anything runs: an untrusted project, plan, or no matching
     // confirmation runs no check at all.
@@ -287,7 +299,8 @@ export class CheckLoopEngine {
     }
     // Read again: a mid-run edit of the checks or the rounds counts before a round is sent.
     const fresh = this.fx.settings(card.projectId);
-    const max = Math.min(card.rounds ?? fresh.checkRounds, fresh.checkRounds);
+    const rounds = this.fx.card(cardId)?.rounds ?? card.rounds;
+    const max = Math.min(rounds ?? fresh.checkRounds, fresh.checkRounds);
     const stop = this.gate(cardId, fresh) ?? (loop.sent >= max ? "rounds_spent" : null);
     const limit = stop ?? this.fx.limit(cardId);
     if (limit) return this.end(cardId, loop, limit, { release: true, place: true, outcome });
@@ -302,6 +315,10 @@ export class CheckLoopEngine {
       timedOut: outcome.timedOut,
     });
     this.fx.send(cardId, roundMessage(loop.sent, max, outcome));
+    // The round's turn must start: a session that never goes busy does not keep the slot.
+    loop.timer = this.fx.timer.set(() => {
+      if (this.loops.get(cardId) === loop) this.end(cardId, loop, "no_result", { release: true });
+    }, ROUND_START_MS);
   }
 
   /**
@@ -349,6 +366,8 @@ export class CheckLoopEngine {
   private close(cardId: string, loop: Loop, how: { release: boolean; place?: boolean }): void {
     if (this.loops.get(cardId) !== loop) return;
     this.loops.delete(cardId);
+    // The slot this turn held is back: a late idle of the same turn must not hold or release it.
+    if (how.release) this.released.add(cardId);
     try {
       loop.abort?.abort();
       this.clearTimer(loop);
