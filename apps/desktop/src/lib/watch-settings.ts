@@ -70,17 +70,45 @@ export function validateWatchDraft(draft: WatchDraft, t: T): string | null {
       return t("watchSettingsUi.badLimit", { label });
   }
   if (!checkLines(draft.checks).every(isWatchCheck)) return t("watchSettingsUi.badCheck");
-  if (draft.loop) {
-    const loopRounds = Number(draft.loop.checkRounds);
-    if (!Number.isInteger(loopRounds) || loopRounds < 1 || loopRounds > 10) {
-      return t("watchSettingsUi.badCheckRounds");
+  const loop = loopProblemsOf(draft, t);
+  if (loop.checkRounds !== null || loop.checkEnv !== null) return t("watchSettingsUi.fixMarked");
+  return null;
+}
+
+/** What is wrong with each check loop field, shown under that field (#1498); `null`: nothing. */
+export interface LoopProblems {
+  checkRounds: string | null;
+  checkEnv: string | null;
+}
+
+export function loopProblemsOf(draft: WatchDraft, t: T): LoopProblems {
+  if (!draft.loop) return { checkRounds: null, checkEnv: null };
+  const rounds = Number(draft.loop.checkRounds);
+  const roundsOk = Number.isInteger(rounds) && rounds >= 1 && rounds <= 10;
+  return {
+    checkRounds: roundsOk ? null : t("watchSettingsUi.badCheckRounds"),
+    checkEnv: checkEnvProblem(draft.loop.checkEnv, t),
+  };
+}
+
+/**
+ * The first thing wrong with the variable names, said by the name alone: a `NAME=value` line gets
+ * the name to keep, since the host reads the value from its own environment. The value is never
+ * shown: a pasted secret must not end up on the screen or read aloud.
+ */
+function checkEnvProblem(text: string, t: T): string | null {
+  const names = envNames(text);
+  // The host's own limits (the protocol's `checkEnv`): at most 20 names of up to 64 characters.
+  if (names.length > 20 || names.some((name) => name.length > 64)) {
+    return t("watchSettingsUi.tooManyCheckEnv");
+  }
+  for (const line of names) {
+    if (isCheckEnvName(line)) continue;
+    const name = line.split("=")[0]?.trim() ?? "";
+    if (line.includes("=") && isCheckEnvName(name)) {
+      return t("watchSettingsUi.envNameOnly", { name });
     }
-    const names = envNames(draft.loop.checkEnv);
-    // The host's own limits (the protocol's `checkEnv`): at most 20 names of up to 64 characters.
-    if (names.length > 20 || names.some((name) => name.length > 64)) {
-      return t("watchSettingsUi.tooManyCheckEnv");
-    }
-    if (!names.every(isCheckEnvName)) return t("watchSettingsUi.badCheckEnv");
+    return t("watchSettingsUi.badCheckEnv", { name });
   }
   return null;
 }

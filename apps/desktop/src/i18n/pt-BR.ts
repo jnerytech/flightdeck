@@ -4127,8 +4127,14 @@ export const ptBR = {
     checkEnv: "Variáveis extras dos checks (uma por linha)",
     checkLoopDefault: "Ligar o laço de checks em cards novos",
     badCheckRounds: "Rodadas do laço de checks: de 1 a 10",
-    badCheckEnv:
-      "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+    badCheckEnv: "{name}: só onde fica uma ferramenta, como JAVA_HOME, nunca um segredo.",
+    envNameOnly: "{name}=…: escreva só o nome ({name}).",
+    checkEnvHelp: "Só os nomes, como JAVA_HOME: o valor vem do ambiente do host. Nunca um segredo.",
+    loopTitle: "Laço de checks",
+    loopIntro:
+      "Quando o turno de um card termina, ele roda estes checks e devolve o que falha para a própria sessão, no máximo este número de rodadas, antes de seguir.",
+    maxRoundsHelp: "Rodadas para consertar a CI de um PR que falha.",
+    fixMarked: "Corrija o campo marcado.",
     tooManyCheckEnv: "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
   },
   sessionFinish: {
