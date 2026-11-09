@@ -65,3 +65,11 @@ Feature: The first hour
     Then the card says no PR can be opened without a PR provider
     And the card names the branch to push by hand
     And Review changes still leads and Open PR is not offered
+
+  Scenario: The pages the first steps open take the focus on their heading
+    Given the app starts with no host
+    When I paste the pairing link of the first demo host named "orange pi"
+    And I press Test and add
+    Then the focus is on the heading of the page the step opened
+    When I add a git repository of my own as my first project from the host page
+    Then the focus is on the heading of the page the step opened

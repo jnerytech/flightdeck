@@ -3214,6 +3214,30 @@ step(When, "I press Test and add", async (c) =>
   c.page.getByRole("button", { name: c.t("hostForm.submit"), exact: true }).click(),
 );
 
+/** What has the focus, for a message: its tag and its text. */
+const focusSummary = (c: Context) =>
+  c.page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el) return "nothing";
+    if (el === document.body) return "the page body";
+    return `<${el.tagName.toLowerCase()}> ${(el.textContent ?? "").trim().slice(0, 40)}`;
+  });
+
+// #1546, #1580: a step that opens a page leaves the focus on the new page's heading, in a real browser.
+step(Then, "the focus is on the heading of the page the step opened", async (c) => {
+  try {
+    await waitFor(
+      () =>
+        c.page.evaluate(
+          () => document.activeElement?.matches("main [data-slot=page-title]") === true,
+        ),
+      "the focus on the page's heading",
+    );
+  } catch (error) {
+    throw new Error(`${(error as Error).message}; the focus is on ${await focusSummary(c)}`);
+  }
+});
+
 step(Then, "the host {string} shows online in the sidebar", async (c, name = "") =>
   c.page
     .getByRole("img", {
