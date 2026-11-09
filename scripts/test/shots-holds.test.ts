@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { holdsRewriter, installHolds } from "../lib/shots-holds.ts";
+import { holdsRewriter, holdsScript, installHolds } from "../lib/shots-holds.ts";
 
 /**
  * #1414: the print of Start N's confirm shows the host's memory hold and a budget hold the same on
@@ -114,5 +114,16 @@ describe("shots-holds: the page's WebSocket", () => {
       0.9,
       true,
     ]);
+  });
+
+  test("the init script alone wraps the window's WebSocket", () => {
+    const page = { WebSocket: FakeSocket as unknown as typeof WebSocket };
+    new Function("window", holdsScript())(page);
+    const socket = new page.WebSocket("ws://x") as unknown as FakeSocket;
+    const got: unknown[] = [];
+    socket.addEventListener("message", (event) => got.push(event.data));
+    socket.send(ask("r1", "budget.list"));
+    socket.play(ack("r1", { budgets: [notify] }));
+    expect(JSON.parse(String(got[0])).data.budgets.length).toBe(2);
   });
 });
