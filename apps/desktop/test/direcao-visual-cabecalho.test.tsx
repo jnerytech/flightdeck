@@ -105,7 +105,7 @@ describe("direcao-visual: cabeçalho", () => {
       "alfa",
       "Board",
       "flightdeck-web",
-      "c?",
+      "Carregando card…",
     ]);
     expect(labels({ name: "costs" })).toEqual(["Custos"]);
     expect(labels({ name: "settings" })).toEqual(["Configurações"]);
