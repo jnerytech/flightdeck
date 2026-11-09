@@ -95,6 +95,12 @@ export interface FakeOAuth {
   offline: boolean;
   /** Counts access tokens handed out: `access-1`, `access-2`... */
   issued: number;
+  /** When set, the token endpoint answers every request with this status and `{error: "server"}`. */
+  failWith: number | null;
+  /** The scope the fake says it granted. */
+  scope: string;
+  /** The tokens sent to the revoke endpoint. */
+  revoked: string[];
 }
 
 export function fakeOAuth(): FakeOAuth {
@@ -104,11 +110,21 @@ export function fakeOAuth(): FakeOAuth {
     refreshTokens: new Set(["refresh-1"]),
     offline: false,
     issued: 0,
+    failWith: null,
+    scope: "https://www.googleapis.com/auth/drive.appdata",
+    revoked: [],
     fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
       if (oauth.offline) throw new TypeError("network down");
-      if (url !== "https://oauth2.googleapis.com/token") return new Response("{}", { status: 404 });
       const form = Object.fromEntries(new URLSearchParams(String(init?.body)));
+      if (url === "https://oauth2.googleapis.com/revoke") {
+        oauth.revoked.push(form.token ?? "");
+        return new Response("{}");
+      }
+      if (url !== "https://oauth2.googleapis.com/token") return new Response("{}", { status: 404 });
+      if (oauth.failWith !== null) {
+        return new Response(JSON.stringify({ error: "server" }), { status: oauth.failWith });
+      }
       oauth.requests.push(form);
       const refused = () =>
         new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 });
@@ -117,7 +133,12 @@ export function fakeOAuth(): FakeOAuth {
         if (!oauth.codes.has(form.code ?? "")) return refused();
         oauth.codes.delete(form.code ?? "");
         return new Response(
-          JSON.stringify({ access_token: access(), expires_in: 3600, refresh_token: "refresh-1" }),
+          JSON.stringify({
+            access_token: access(),
+            expires_in: 3600,
+            refresh_token: "refresh-1",
+            scope: oauth.scope,
+          }),
         );
       }
       if (form.grant_type === "refresh_token") {

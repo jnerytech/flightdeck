@@ -123,6 +123,27 @@ describe("googleSignIn.signIn", () => {
   });
 });
 
+describe("googleSignIn: scope and sign-out", () => {
+  test("a sign-in that did not grant the app data scope is refused and stores nothing", async () => {
+    const { sign, oauth, keyring } = setup();
+    oauth.scope = "openid email";
+    expect(await sign.signIn()).toBe("refused");
+    expect(keyring.size).toBe(0);
+  });
+
+  test("signing out asks Google to revoke the token, and still signs out if that fails", async () => {
+    const { sign, oauth, keyring } = setup();
+    await sign.signIn();
+    await sign.signOut();
+    expect(oauth.revoked).toEqual(["refresh-1"]);
+    expect(keyring.size).toBe(0);
+    await sign.signIn();
+    oauth.offline = true;
+    await sign.signOut();
+    expect(keyring.size).toBe(0);
+  });
+});
+
 describe("googleSignIn.auth", () => {
   test("hands out the access token from the sign-in without asking Google again", async () => {
     const { sign, oauth } = setup();
@@ -157,6 +178,17 @@ describe("googleSignIn.auth", () => {
     expect(failure instanceof DriveError && failure.kind).toBe("auth");
     expect(keyring.size).toBe(0);
     expect(await sign.signedIn()).toBe(false);
+  });
+
+  test("a Google server error or throttling on refresh keeps the refresh token and is not an auth failure", async () => {
+    for (const status of [503, 429]) {
+      const { sign, oauth, keyring } = setup();
+      await sign.signIn();
+      oauth.failWith = status;
+      const failure = await sign.auth.token(true).catch((e: unknown) => e);
+      expect(failure instanceof DriveError && failure.kind).toBe("http");
+      expect(keyring.get(REFRESH_TOKEN_ID)).toBe("refresh-1");
+    }
   });
 
   test("with no sign-in the token is an auth failure and Google is not asked", async () => {
