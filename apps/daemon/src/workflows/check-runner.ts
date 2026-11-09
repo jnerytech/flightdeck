@@ -140,11 +140,13 @@ export function checkEnvironment(
 ): Record<string, string> {
   const windows = platform === "win32";
   // The project's names are checked again at use: the stored list is never trusted blindly.
-  const added = extra.filter(isCheckEnvName).map((name) => (windows ? name.toUpperCase() : name));
+  const added = new Set(
+    extra.filter(isCheckEnvName).map((name) => (windows ? name.toUpperCase() : name)),
+  );
   const env: Record<string, string> = {};
   for (const [name, value] of Object.entries(source)) {
     const key = windows ? name.toUpperCase() : name;
-    const kept = (windows ? WINDOWS_ENV.has(key) : POSIX_ENV.has(name)) || added.includes(key);
+    const kept = (windows ? WINDOWS_ENV.has(key) : POSIX_ENV.has(name)) || added.has(key);
     if (kept && value !== undefined) env[name] = value;
   }
   env.CI = "1";
@@ -160,7 +162,7 @@ export function boundedCheckRunner(
   outputMax: number = CHECK_OUTPUT_MAX,
 ): BoundedCheckRunner {
   return {
-    async run(command, cwd, timeoutMs = DEFAULT_CHECK_TIMEOUT_MS, signal, envNames = []) {
+    async run(command, cwd, timeoutMs, signal, envNames = []) {
       const guard = env[CHECK_GUARD_ENV];
       if (guard && !(await allowedByGuard(command, guard))) {
         return {
@@ -171,7 +173,8 @@ export function boundedCheckRunner(
       // A time limit always: only a timed or signalled command gets its own process group, which
       // is what the kill reaches. Stdout and stderr together count toward the bound; stderr keeps
       // its first 64 KB.
-      const result = await runLimited(shellCommand(command), cwd, outputMax, timeoutMs, killTree, {
+      const limit = timeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
+      const result = await runLimited(shellCommand(command), cwd, outputMax, limit, killTree, {
         signal,
         baseEnv: checkEnvironment(env, process.platform, envNames),
         overflowKillsTree: true,
