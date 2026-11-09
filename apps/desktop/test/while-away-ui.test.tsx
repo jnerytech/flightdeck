@@ -57,6 +57,8 @@ const ALFA = result({
 });
 
 interface Setup {
+  /** Something that finished, so the list has a row with the cursor on it. */
+  finished?: boolean;
   away?: object;
   lang?: "en" | "pt-BR";
 }
@@ -78,6 +80,22 @@ function open(setup: Setup = {}) {
       { id: "h2", name: "beta", status: "online", sessions: [] },
     ],
     cards: { "h1/c1": { id: "c1", projectId: "p1", title: "Cart screen" } },
+    ...(setup.finished
+      ? {
+          finishedLook: null,
+          finished: [
+            {
+              key: "h1/f1",
+              hostId: "h1",
+              sessionId: "f1",
+              name: "Docs rewrite",
+              outcome: "done",
+              at: at(1),
+              files: 2,
+            },
+          ],
+        }
+      : {}),
     away: {
       since: SINCE,
       hosts: [{ hostId: "h1", result: ALFA }],
@@ -168,6 +186,31 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
     const { dismissed } = open();
     await click(inPanel().queryByRole("button", { name: "Dismiss" }));
     expect(dismissed()).toBe(1);
+  });
+
+  test("Enter on a button of the summary does not also open the row under the list's cursor", async () => {
+    open({ finished: true });
+    // The list is there, with its row.
+    expect(screen.queryByRole("button", { name: /Docs rewrite/ })).not.toBeNull();
+    const dismiss = inPanel().queryByRole("button", { name: "Dismiss" });
+    expect(dismiss).not.toBeNull();
+    const press = async (target: Element | null, key: string) => {
+      await act(async () => {
+        if (target) fireEvent.keyDown(target, { key, bubbles: true });
+      });
+    };
+    const detailOpen = () => screen.queryByRole("button", { name: "See the changes" }) !== null;
+    // J on the summary does not move the list's cursor: Enter elsewhere then has no row to open.
+    await press(dismiss, "j");
+    await press(document.body, "Enter");
+    expect(detailOpen()).toBe(false);
+    // With the cursor on the row, Enter on the summary does not open it.
+    await press(document.body, "j");
+    await press(dismiss, "Enter");
+    expect(detailOpen()).toBe(false);
+    // Control: the same Enter anywhere else on the page opens the row under the cursor.
+    await press(document.body, "Enter");
+    expect(detailOpen()).toBe(true);
   });
 
   test("in Portuguese the summary speaks Portuguese", () => {
