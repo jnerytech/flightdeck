@@ -89,7 +89,6 @@ export async function startElsewhere(run: {
   t: T;
   cards: Card[];
   sourceHostId: string;
-  hostName: string;
   target: Elsewhere;
   ask: ElsewhereAsk;
 }): Promise<ElsewhereOutcome> {
@@ -125,4 +124,13 @@ export async function startElsewhere(run: {
     if (!done) outcome.unmarked.push(card);
   }
   return outcome;
+}
+
+export function elsewhereNotice(
+  _t: T,
+  _outcome: ElsewhereOutcome,
+  _host: string,
+  _name: (refused: BulkRefusal[]) => string,
+): string | null {
+  return "";
 }

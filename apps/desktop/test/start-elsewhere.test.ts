@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import {
   type ElsewhereAnswer,
+  elsewhereNotice,
   type HostFacts,
   offeredHosts,
   startElsewhere,
@@ -103,7 +104,7 @@ describe("start-elsewhere: the hand-off", () => {
     return { calls, ask: ask as never };
   };
   const run = (ask: never, cards = [card("a")]) =>
-    startElsewhere({ t, cards, sourceHostId: "src", hostName: "host src", target, ask });
+    startElsewhere({ t, cards, sourceHostId: "src", target, ask });
   const summary = (calls: Call[]) => calls.map(([host, type]) => `${host} ${type}`);
 
   test("makes and starts the card on the target, then marks the source and moves it to Done", async () => {
@@ -155,5 +156,44 @@ describe("start-elsewhere: the hand-off", () => {
     const { ask } = asker("card.move");
     const outcome = await run(ask, [card("a"), card("b")]);
     expect(outcome.unmarked.map((c) => c.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("start-elsewhere: what the notice says", () => {
+  const names = (refused: Array<{ card: { title: string } }>) =>
+    refused.map((r) => r.card.title).join(", ");
+  const notice = (over: object, tt = t) =>
+    elsewhereNotice(tt, { moved: [], refused: [], unmarked: [], ...over } as never, "beta", names);
+
+  test("says how many started there, which did not start, and which stay on the board", () => {
+    const a = { id: "a", title: "card a" };
+    const b = { id: "b", title: "card b" };
+    expect([
+      notice({ moved: [{ card: a, as: "n1" }] }),
+      notice({
+        moved: [
+          { card: a, as: "n1" },
+          { card: b, as: "n2" },
+        ],
+      }),
+      notice({ refused: [{ card: a }] }),
+      notice({ refused: [{ card: a }, { card: b }] }),
+      notice({ moved: [{ card: a, as: "n1" }], unmarked: [a] }),
+      notice({}),
+    ]).toEqual([
+      "1 card started on beta.",
+      "2 cards started on beta.",
+      "1 card did not start: card a",
+      "2 cards did not start: card a, card b",
+      "1 card started on beta. Not moved to Done here: card a",
+      null,
+    ]);
+  });
+
+  test("in Portuguese", () => {
+    const a = { id: "a", title: "card a" };
+    expect(notice({ moved: [{ card: a, as: "n1" }] }, translator("pt-BR"))).toBe(
+      "1 card iniciado em beta.",
+    );
   });
 });
