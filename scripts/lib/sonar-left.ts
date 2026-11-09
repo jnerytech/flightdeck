@@ -47,6 +47,15 @@ const oneLine = (text: unknown) =>
 
 class Refused extends Error {}
 
+const FAILED = "git could not say what changed it";
+
+/** What follows a finding: nothing when its file is unchanged, else STALE? and why. */
+function staleMark(by: string | null): string {
+  if (by === null) return "";
+  if (by === FAILED) return ` STALE? (${FAILED})`;
+  return ` STALE? (changed by ${by})`;
+}
+
 async function get(deps: SonarLeftDeps, url: string): Promise<unknown> {
   let answer: Fetched;
   try {
@@ -114,11 +123,14 @@ export async function sonarLeft(args: string[], deps: SonarLeftDeps): Promise<nu
         `the analysed commit ${analysed.slice(0, 9)} is not in this clone: git fetch origin main`,
       );
     }
+    // The range ends at the local origin/main: without it every finding would read as fresh.
+    const tip = await deps.git(["rev-parse", "--verify", "--quiet", "origin/main^{commit}"]);
+    if (tip.code !== 0) throw new Refused("this clone has no origin/main: git fetch origin main");
     const issues = (await openIssues(deps, severities))
       .map((i) => ({ ...i, file: i.component.replace(`${PROJECT}:`, "") }))
       .filter((i) => i.file.startsWith(prefix));
     deps.log(
-      `${issues.length} open findings, analysed ${analysed.slice(0, 9)}; STALE? = changed on main since`,
+      `${issues.length} open findings, analysed ${analysed.slice(0, 9)}; origin/main ${tip.stdout.trim().slice(0, 9)} (local: git fetch origin main to read the latest); STALE? = changed on main since`,
     );
     const changedBy = new Map<string, string | null>();
     for (const file of new Set(issues.map((i) => i.file))) {
@@ -137,13 +149,13 @@ export async function sonarLeft(args: string[], deps: SonarLeftDeps): Promise<nu
         ]);
       const plain = await since(["--no-merges"]);
       const logged = plain.code === 0 && plain.stdout.trim() ? plain : await since([]);
-      const last = logged.code === 0 ? oneLine(logged.stdout) : "";
-      changedBy.set(file, last || null);
+      // A git that cannot say is a doubt, never "unchanged": the finding is marked for a look.
+      if (logged.code !== 0) changedBy.set(file, FAILED);
+      else changedBy.set(file, oneLine(logged.stdout) || null);
     }
     for (const i of issues) {
       const where = i.line ? `${i.file}:${i.line}` : i.file;
-      const by = changedBy.get(i.file);
-      const stale = by ? ` STALE? (changed by ${by})` : "";
+      const stale = staleMark(changedBy.get(i.file) ?? null);
       deps.log(oneLine(`${i.severity} ${i.rule} ${where} ${i.message}${stale}`));
     }
     return 0;

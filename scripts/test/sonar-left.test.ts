@@ -138,7 +138,7 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
       log: (l) => lines.push(l),
     });
     expect(lines[1]).toBe(
-      "CRITICAL [31m rule 2J b .ts:1 text x STALE? (changed by abc123456 fix [31m it )",
+      "CRITICAL [31m rule 2J b .ts:1 text x STALE? (changed by abc123456 fix [31m it)",
     );
   });
 
