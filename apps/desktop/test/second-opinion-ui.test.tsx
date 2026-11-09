@@ -240,6 +240,40 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
   });
 });
 
+describe("second-opinion-ui: what the review's own review asked for (#1446)", () => {
+  test("a request that never reaches the host says so, and the button is back", async () => {
+    const { store, view } = setup();
+    store.hostRequest = (async () => {
+      throw new Error("the connection dropped");
+    }) as never;
+    render(view());
+    await ask();
+    await settle(() => screen.queryByRole("alert") !== null);
+    expect([
+      screen.queryByRole("alert")?.textContent?.includes("did not answer") ?? false,
+      button("Get a second opinion")?.hasAttribute("disabled"),
+    ]).toEqual([true, false]);
+  });
+
+  test("a card waiting for a free slot says that, not that a run is going", () => {
+    const { view } = setup();
+    render(view({ queued: true, sessionStatus: null }));
+    const off = button("Get a second opinion");
+    const why = off?.getAttribute("aria-describedby");
+    expect([
+      off?.hasAttribute("disabled"),
+      why ? (document.getElementById(why)?.textContent ?? "") : "",
+    ]).toEqual([true, "The card waits for a free slot: wait for it to start and end."]);
+  });
+
+  test("the result's live region is on the page before the answer, so it is announced", () => {
+    const { view } = setup();
+    render(view());
+    const region = screen.queryByRole("region", { name: "Second opinion" });
+    expect(region !== null && within(region).queryByRole("status") !== null).toBe(true);
+  });
+});
+
 const reviewer = (over: object = {}) => ({
   id: "r1",
   path: "src/cart.ts",
@@ -336,6 +370,50 @@ describe("second-opinion-ui: the Open PR confirm (#1446)", () => {
   test("it says how many reviewer findings are still open when a high one is", async () => {
     const out = await openPr([reviewer(), reviewer({ id: "r2", severity: "low" })]);
     expect(out.includes("2 reviewer findings not addressed (1 high)")).toBe(true);
+  });
+
+  test("a second click while the description is being made does not ask for it again", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    store.hostCommand = (async () => ({ comments: [] })) as never;
+    store.hostRequest = (async () => ({ ok: true, data: {} })) as never;
+    let release = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let described = 0;
+    store.describePr = (async () => {
+      described++;
+      await hold;
+      return { text: "Adds the cart", redacted: 0 };
+    }) as never;
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <CardRunForm
+          store={store}
+          hostId="h1"
+          card={card()}
+          features={{ bg: true, watch: true, secondOpinion: true }}
+          tab="diff"
+          canMerge={false}
+          gateWaiting={false}
+          onMerge={() => {}}
+          arenaStart={null}
+          onDiscarded={() => {}}
+          onShowDiff={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    const lead = screen.queryByRole("button", { name: "Open PR" });
+    expect(lead).not.toBeNull();
+    for (let i = 0; i < 2; i++) {
+      await act(async () => {
+        if (lead) fireEvent.click(lead);
+      });
+    }
+    release();
+    await settle(() => screen.queryByRole("dialog") !== null);
+    expect(described).toBe(1);
   });
 
   test("with only low findings, or none, it says nothing", async () => {
