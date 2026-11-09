@@ -4,7 +4,7 @@
  * the token of the config), and the daemon applies the same rules as for the app: the queue, the
  * holds and the limits. Exit codes: 0 done (a start that must wait says why), 1 refused, 2 no daemon.
  */
-import type { Card, Project } from "@flightdeck/protocol";
+import { type Card, type Project, WS_PATH } from "@flightdeck/protocol";
 import { DaemonClient, DaemonUnreachable, daemonUrl } from "./mcp.ts";
 
 export interface CardCliArgs {
@@ -94,12 +94,23 @@ function pick(projects: Project[], wanted: string | undefined): Project {
   throw new Refusal(`no project named "${wanted}"; the projects here: ${names(projects)}`);
 }
 
+/** A card's text comes from the board, an issue or the daemon: it is not allowed to drive the terminal. */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching these characters is the point
+const CONTROL = /[\u0000-\u001f\u007f-\u009f]/g;
+const plain = (text: string) => text.replace(CONTROL, " ");
+
 const json = (value: unknown): CardCliResult => ({
   code: 0,
-  out: [JSON.stringify(value, null, 2)],
+  // JSON leaves DEL and the C1 characters raw; its own line breaks are the only ones kept.
+  out: [
+    JSON.stringify(value, null, 2)
+      .split("\n")
+      .map((line) => plain(line))
+      .join("\n"),
+  ],
   err: [],
 });
-const said = (...out: string[]): CardCliResult => ({ code: 0, out, err: [] });
+const said = (...out: string[]): CardCliResult => ({ code: 0, out: out.map(plain), err: [] });
 
 async function perform(args: CardCliArgs, daemon: DaemonClient): Promise<CardCliResult> {
   switch (args.action) {
@@ -172,8 +183,14 @@ async function perform(args: CardCliArgs, daemon: DaemonClient): Promise<CardCli
 const failure = (code: 1 | 2, message: string): CardCliResult => ({
   code,
   out: [],
-  err: [message],
+  err: [plain(message)],
 });
+
+/** What a write that got no answer may have done. */
+const UNSURE: Partial<Record<CardCliArgs["action"], string>> = {
+  new: "; the card may or may not have been created: check with `card list` before trying again",
+  start: "; the card may or may not have been started: check with `card show` before trying again",
+};
 
 /** The daemon of this host, with the token of its config: never from the arguments or the environment. */
 export async function runCardCli(
@@ -182,11 +199,18 @@ export async function runCardCli(
   options: CardCliOptions = {},
 ): Promise<CardCliResult> {
   const url = daemonUrl(config);
-  const host = new URL(url).hostname;
-  if (!isLoopbackHost(host))
+  const target = new URL(url);
+  // The address, and nothing else the bind could smuggle into the URL (a user, a query, another path).
+  const plainAddress =
+    target.port === String(config.port) &&
+    target.pathname === WS_PATH &&
+    target.username === "" &&
+    target.search === "" &&
+    target.hash === "";
+  if (!isLoopbackHost(target.hostname) || !plainAddress)
     return failure(
       1,
-      `refusing to talk to ${host}: this command reaches only a daemon on the loopback (127.0.0.1 or ::1)`,
+      `refusing to talk to ${target.hostname}: this command reaches only a daemon on the loopback (127.0.0.1 or ::1)`,
     );
   // Whatever the daemon or the network say, the token is not in it.
   const hide = (text: string) => text.split(config.token).join("[token]");
@@ -207,7 +231,10 @@ export async function runCardCli(
     if (error instanceof DaemonUnreachable || message === "connection closed")
       return failure(2, `could not reach the daemon at ${url}: is it running?`);
     if (error instanceof TimedOut)
-      return failure(2, `the daemon at ${url} did not answer in ${Math.ceil(timeoutMs / 1000)} s`);
+      return failure(
+        2,
+        `the daemon at ${url} did not answer in ${Math.ceil(timeoutMs / 1000)} s${UNSURE[args.action] ?? ""}`,
+      );
     return failure(1, hide(message));
   } finally {
     clearTimeout(timer);
