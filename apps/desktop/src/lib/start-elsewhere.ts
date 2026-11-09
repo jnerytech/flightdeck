@@ -39,6 +39,8 @@ export interface ElsewhereOutcome {
   refused: BulkRefusal[];
   /** Started on the target, but the source card could not be marked or moved. */
   unmarked: Card[];
+  /** A copy made on the target that could not be removed after its start was refused. */
+  orphaned: Card[];
 }
 
 /**
@@ -93,7 +95,7 @@ export async function startElsewhere(run: {
   ask: ElsewhereAsk;
 }): Promise<ElsewhereOutcome> {
   const { t, target, ask } = run;
-  const outcome: ElsewhereOutcome = { moved: [], refused: [], unmarked: [] };
+  const outcome: ElsewhereOutcome = { moved: [], refused: [], unmarked: [], orphaned: [] };
   for (const card of run.cards) {
     const made = await ask(target.hostId, "card.create", {
       // NOSONAR: one card at a time, so the target's queue sees them in the board's order

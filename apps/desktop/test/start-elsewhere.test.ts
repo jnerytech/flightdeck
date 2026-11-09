@@ -87,6 +87,24 @@ describe("start-elsewhere: which hosts are offered", () => {
   });
 });
 
+describe("start-elsewhere: cards that must not leave", () => {
+  const offer = (cards: never[]) =>
+    offeredHosts({
+      waiting: cards,
+      sourceHostId: "src",
+      sourceKey: "git:acme/app",
+      hosts: [host("ok")],
+    }).map((e) => e.hostId);
+
+  test("a card waiting on a blocker would lose it there, and a card that holds others up would free them by going to Done", () => {
+    expect([
+      offer([card("a")]),
+      offer([card("a", { waitingOn: ["x"] })]),
+      offer([card("a", { blocking: ["y"] })]),
+    ]).toEqual([["ok"], [], []]);
+  });
+});
+
 describe("start-elsewhere: the hand-off", () => {
   const target = { hostId: "dst", name: "host dst", projectId: "p-dst" };
   type Call = [string, string, Record<string, unknown>];
@@ -145,6 +163,23 @@ describe("start-elsewhere: the hand-off", () => {
     expect(outcome.refused.map((r) => r.card.id)).toEqual(["a"]);
   });
 
+  test("a copy that could not be removed from the target after a refused start is reported", async () => {
+    const calls: Call[] = [];
+    const ask = (async (hostId: string, type: string, payload: Record<string, unknown>) => {
+      calls.push([hostId, type, payload]);
+      if (type === "card.start" || type === "card.delete") {
+        return { ok: false, message: `${type} refused` };
+      }
+      return { ok: true, data: { id: "n1" } };
+    }) as never;
+    const outcome = await run(ask);
+    expect(summary(calls)).toEqual(["dst card.create", "dst card.start", "dst card.delete"]);
+    expect([ids(outcome.refused.map((r) => r.card)), ids(outcome.orphaned)]).toEqual([
+      ["a"],
+      ["a"],
+    ]);
+  });
+
   test("a source that cannot be marked stays where it is, and is reported as started elsewhere", async () => {
     const { calls, ask } = asker("card.update");
     const outcome = await run(ask);
@@ -164,7 +199,12 @@ describe("start-elsewhere: what the notice says", () => {
   const names = (refused: Array<{ card: { title: string } }>) =>
     refused.map((r) => r.card.title).join(", ");
   const notice = (over: object, tt = t) =>
-    elsewhereNotice(tt, { moved: [], refused: [], unmarked: [], ...over } as never, "beta", names);
+    elsewhereNotice(
+      tt,
+      { moved: [], refused: [], unmarked: [], orphaned: [], ...over } as never,
+      "beta",
+      names,
+    );
 
   test("says how many started there, which did not start, and which stay on the board", () => {
     const a = { id: "a", title: "card a" };
@@ -180,6 +220,7 @@ describe("start-elsewhere: what the notice says", () => {
       notice({ refused: [{ card: a }] }),
       notice({ refused: [{ card: a }, { card: b }] }),
       notice({ moved: [{ card: a, as: "n1" }], unmarked: [a] }),
+      notice({ orphaned: [a] }),
       notice({}),
     ]).toEqual([
       "1 card started on beta.",
@@ -187,6 +228,7 @@ describe("start-elsewhere: what the notice says", () => {
       "1 card did not start: card a",
       "2 cards did not start: card a, card b",
       "1 card started on beta. Not moved to Done here: card a",
+      "A copy is left on beta: card a",
       null,
     ]);
   });

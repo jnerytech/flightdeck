@@ -81,6 +81,11 @@ function setup(
   const cards = [card("A", "backlog", 1), card("B", "backlog", 2), running("R")];
   internals.update({ cards: Object.fromEntries(cards.map((c) => [`h1/${c.id}`, c])) });
   const calls: Call[] = [];
+  /** The boards the app loaded to count the other host's running cards. */
+  const loaded: string[] = [];
+  store.loadBoard = (async (hostId: string, projectId: string) => {
+    loaded.push(`${hostId}/${projectId}`);
+  }) as never;
   const project = (id: string, key: string) => ({
     id,
     name: "api",
@@ -101,7 +106,9 @@ function setup(
     if (type === "project.list") {
       const own = hostId === "h1" ? project("p1", KEY) : project("p2", options.otherKey ?? KEY);
       const max = hostId === "h1" ? (options.sourceMax ?? 1) : (options.otherMax ?? 3);
-      return { projects: [own], maxParallelRuns: max };
+      // The other host has a second project, of another repository: its running cards count too.
+      const more = hostId === "h1" ? [] : [project("p3", "git:acme/other")];
+      return { projects: [own, ...more], maxParallelRuns: max };
     }
     if (type === "workflow.list") return { workflows: [] };
     return {};
@@ -122,7 +129,7 @@ function setup(
       onOpenSettings={() => {}}
     />,
   );
-  return { store, calls };
+  return { store, calls, loaded };
 }
 
 const li = (title: string) => screen.getByLabelText(`Card ${title}`);
@@ -143,11 +150,14 @@ const types = (calls: Call[]) =>
 
 describe("board-start-elsewhere-ui: Start on <host> in the Start N confirm (#1422)", () => {
   test("a full host offers the other host with the same project, and pressing it hands the cards over", async () => {
-    const { calls } = setup();
+    const { calls, loaded } = setup();
     await ready();
     await pickBoth();
     await settle(() => elsewhere("Start on beta") !== null);
     expect(elsewhere("Start on beta")).not.toBeNull();
+    // The hint says how many go, and every board of the other host was loaded to count its runs.
+    expect((dialog().textContent ?? "").includes("2 of them would wait here")).toBe(true);
+    expect([...loaded].sort((a, b) => a.localeCompare(b))).toEqual(["h2/p2", "h2/p3"]);
     // Nothing moved before the person pressed it.
     expect(types(calls)).toEqual([]);
     await act1(() => fireEvent.click(elsewhere("Start on beta") as HTMLElement));
