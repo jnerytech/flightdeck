@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import type { GhResult } from "../lib/ci-branch.ts";
 import {
   areaOf,
-  issueOf,
   type HighlightsDeps,
   highlightsDraft,
+  issueOf,
   type MergedPr,
   REPO,
   releaseHighlights,
