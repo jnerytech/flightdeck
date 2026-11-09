@@ -2941,14 +2941,6 @@ step(Then, "the board shows the card in the column {string}", async (c, column =
     .waitFor({ timeout: SESSION_WAIT });
 });
 
-step(Then, "the session answered that message", async (c) => {
-  // The fake Claude echoes what it is told: the turn of the person's message has ended.
-  await c.page
-    .getByText(`Echo: ${mine(c).entry ?? ""}`, { exact: true })
-    .first()
-    .waitFor({ timeout: SESSION_WAIT });
-});
-
 const alive = (pid: number) => {
   try {
     process.kill(pid, 0);
