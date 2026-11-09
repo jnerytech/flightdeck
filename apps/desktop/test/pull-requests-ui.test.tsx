@@ -25,10 +25,10 @@ const card = (id: string, over: object = {}) =>
     ...over,
   }) as never;
 
-const host = (id: string, name: string, features: string[]) => ({
+const host = (id: string, name: string, features: string[], status = "online") => ({
   id,
   name,
-  status: "online",
+  status,
   sessions: [],
   hostInfo: { features },
 });
@@ -37,6 +37,7 @@ interface Setup {
   cards?: Record<string, unknown>;
   watches?: Record<string, unknown>;
   features?: string[];
+  offline?: boolean;
   reply?: { ok: boolean; code?: string; message?: string };
 }
 
@@ -56,7 +57,10 @@ function open(setup: Setup = {}) {
   store.openLink = (url: string) => void opened.push(url);
   const features = setup.features ?? ["cardPrMerge", "watch"];
   (store as unknown as { update(patch: object): void }).update({
-    hosts: [host("h1", "alpha", features), host("h2", "beta", features)],
+    hosts: [
+      host("h1", "alpha", features, setup.offline ? "offline" : "online"),
+      host("h2", "beta", features, setup.offline ? "offline" : "online"),
+    ],
     projects: { h1: [{ id: "p1", name: "api" }], h2: [{ id: "p1", name: "web" }] },
     cards: setup.cards ?? {
       "h1/a": card("a", { checksState: "failing" }),
@@ -95,6 +99,13 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     expect(row("Card b").textContent).toContain("checks passing");
   });
 
+  test("with no host online it says that, not that nothing is open", async () => {
+    open({ offline: true });
+    await settle(() => screen.queryByText("No host is online.") !== null);
+    expect(screen.queryByText("No host is online.")).not.toBeNull();
+    expect(screen.queryByText("No open pull requests.")).toBeNull();
+  });
+
   test("with nothing open it says so", async () => {
     open({ cards: {} });
     await settle(() => screen.queryByText("No open pull requests.") !== null);
@@ -103,8 +114,9 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
 
   test("a row shows the watch: off, watching, or needing you with the reason", () => {
     open({
-      cards: { "h1/a": card("a"), "h1/b": card("b"), "h2/c": card("c") },
+      cards: { "h1/a": card("a"), "h1/b": card("b"), "h2/c": card("c"), "h2/d": card("d") },
       watches: {
+        "h1/a": { cardId: "a", enabled: false, status: "watching", reason: null, rounds: [] },
         "h1/b": { cardId: "b", enabled: true, status: "watching", reason: null, rounds: [] },
         "h2/c": {
           cardId: "c",
@@ -118,6 +130,9 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     expect(row("Card a").textContent).toContain("Watch and fix is off");
     expect(row("Card b").textContent).toContain("Watching the PR");
     expect(row("Card c").textContent).toContain("Needs you: the checks kept failing");
+    // Not read yet (or not readable): the row claims nothing, rather than "off".
+    expect(row("Card d").textContent).not.toContain("Watch and fix");
+    expect(row("Card d").textContent).not.toContain("Watching");
   });
 
   test("the title opens the card, and the PR link goes through the app", async () => {
@@ -170,6 +185,23 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     await click(inRow("Card a").queryByRole("button", { name: "Update from the base" }));
     await settle(() => screen.queryByRole("alert") !== null);
     expect(asked).toEqual([["h1", "card.updateFromBase", { cardId: "a" }]]);
-    expect(screen.queryByRole("alert")?.textContent).toContain("Conflict in src/cart.ts");
+    const alert = screen.queryByRole("alert");
+    expect(alert?.textContent).toContain("Conflict in src/cart.ts");
+    // It names the card it is about, and takes the focus, as the merge refusal does.
+    expect(alert?.textContent).toContain("Card a");
+    await settle(() => document.activeElement === screen.queryByRole("alert"));
+    expect(document.activeElement === screen.queryByRole("alert")).toBe(true);
+  });
+
+  test("the controls of a row point at the card's title, so a list of buttons says which PR", () => {
+    open();
+    const title = row("Card b").querySelector("h2");
+    expect(title?.id).toBeTruthy();
+    for (const name of ["Merge PR", "Update from the base"]) {
+      const control = inRow("Card b").queryByRole("button", { name });
+      expect(control?.getAttribute("aria-describedby") === title?.id).toBe(true);
+    }
+    const link = inRow("Card b").queryByRole("link", { name: "Open the PR" });
+    expect(link?.getAttribute("aria-describedby") === title?.id).toBe(true);
   });
 });
