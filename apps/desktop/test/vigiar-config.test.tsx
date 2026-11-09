@@ -33,13 +33,18 @@ const project = {
 
 const SECTION = "Vigiar e consertar PRs · alfa";
 
-async function openSettings(features: string[] = ["watch"]) {
+async function openSettings(
+  features: string[] = ["watch"],
+  /** Set on the fake host before the app opens, so its first read already has them. */
+  settings: Record<string, unknown> = {},
+) {
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
   daemon.watch.projects = [project];
+  daemon.watch.settings = { ...daemon.watch.settings, ...settings } as typeof daemon.watch.settings;
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -186,16 +191,8 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
   const fireIf = (target: HTMLElement | null, init: { target: { value: string } }) => {
     if (target) fireEvent.change(target, init);
   };
-  const loopHost = async () => {
-    const opened = await openSettings();
-    opened.daemon.watch.settings = {
-      ...opened.daemon.watch.settings,
-      checkRounds: 3,
-      checkEnv: ["JAVA_HOME"],
-      checkLoopDefault: false,
-    } as typeof opened.daemon.watch.settings;
-    return opened;
-  };
+  const loopHost = () =>
+    openSettings(["watch"], { checkRounds: 3, checkEnv: ["JAVA_HOME"], checkLoopDefault: false });
 
   test("a host with the check loop shows its rounds, its extra variables and the default for new cards", async () => {
     await loopHost();
@@ -232,31 +229,64 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
     });
   });
 
-  test("a variable the host refuses (shaped like a secret) or rounds out of 1 to 10 cannot be saved, with the reason", async () => {
+  /** Whether Save is off after `value` goes into `label`, and whether `reason` is said. */
+  const refuses = async (label: string, value: string, reason: string) => {
     await loopHost();
-    await settleMaybe(() => screen.queryByLabelText("Rodadas do laço de checks") !== null);
-    await act(async () => {
-      fireIf(maybe("Variáveis extras dos checks (uma por linha)"), {
-        target: { value: "GITHUB_TOKEN" },
-      });
-    });
-    const envReason = within(section() as HTMLElement).queryByText(
-      "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
-    );
-    await act(async () => {
-      fireIf(maybe("Variáveis extras dos checks (uma por linha)"), {
-        target: { value: "" },
-      });
-      fireIf(maybe("Rodadas do laço de checks"), { target: { value: "11" } });
-    });
+    await settleMaybe(() => screen.queryByLabelText(label) !== null);
+    await act(async () => fireIf(maybe(label), { target: { value } }));
     const save = section()
       ? within(section() as HTMLElement).queryByRole("button", { name: "Salvar" })
       : null;
+    const said = section() ? within(section() as HTMLElement).queryByText(reason) !== null : false;
+    const off = (save as HTMLButtonElement | null)?.disabled === true;
+    cleanup();
+    return [off, said];
+  };
+
+  test("a variable shaped like a secret, too many names or rounds out of 1 to 10 each turn Save off, with their reason", async () => {
+    const env = "Variáveis extras dos checks (uma por linha)";
     expect([
-      envReason !== null,
-      (save as HTMLButtonElement | null)?.disabled,
-      within(section() as HTMLElement).queryByText("Rodadas do laço de checks: de 1 a 10") !== null,
-    ]).toEqual([true, true, true]);
+      await refuses(
+        env,
+        "GITHUB_TOKEN",
+        "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+      ),
+      await refuses(
+        env,
+        Array.from({ length: 21 }, (_, i) => `TOOL${i}_HOME`).join("\n"),
+        "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
+      ),
+      await refuses("Rodadas do laço de checks", "11", "Rodadas do laço de checks: de 1 a 10"),
+    ]).toEqual([
+      [true, true],
+      [true, true],
+      [true, true],
+    ]);
+  });
+
+  test("the same name twice is sent once", async () => {
+    const { daemon } = await loopHost();
+    await settleMaybe(
+      () => screen.queryByLabelText("Variáveis extras dos checks (uma por linha)") !== null,
+    );
+    await act(async () => {
+      fireIf(maybe("Variáveis extras dos checks (uma por linha)"), {
+        target: { value: "JAVA_HOME\nGOPATH\nGOPATH" },
+      });
+    });
+    await act(async () => {
+      const button = section()
+        ? within(section() as HTMLElement).queryByRole("button", { name: "Salvar" })
+        : null;
+      if (button) fireEvent.click(button);
+    });
+    await settleMaybe(() =>
+      sent(daemon).some((p) => (p as { patch?: unknown }).patch !== undefined),
+    );
+    expect(sent(daemon).at(-1)).toEqual({
+      projectId: "p1",
+      patch: { checkEnv: ["JAVA_HOME", "GOPATH"] },
+    });
   });
 
   test("a host from before the check loop shows none of its fields", async () => {
