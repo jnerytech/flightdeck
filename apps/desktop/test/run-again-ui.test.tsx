@@ -135,7 +135,7 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     const { view, sent } = setup();
     render(view);
     await click(button("Run again"));
-    await settleMaybe(() => sent.length === 1, 5000);
+    await settleMaybe(() => sent.length === 2, 5000);
     // The button goes once the run starts: the focus moves to what says so, not to the page.
     const status = await settleMaybe(() => startedNote()?.textContent === "Started again.", 3000);
     const focused = await settleMaybe(() => document.activeElement === startedNote(), 2000);
