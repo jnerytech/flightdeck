@@ -208,3 +208,25 @@ describe("pull-requests-ui: every open PR across hosts (#1345)", () => {
     expect(link?.getAttribute("aria-describedby") === title?.id).toBe(true);
   });
 });
+
+describe("pull-requests-ui: what the poll says about each PR (#1352)", () => {
+  test("a row says it conflicts, what the review says and how long it has been open", () => {
+    open({
+      cards: {
+        "h1/a": card("a", {
+          prMergeable: "conflict",
+          prReview: "changes_requested",
+          prOpenedAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
+        }),
+        "h2/b": card("b"),
+      },
+    });
+    const facts = (title: string) =>
+      row(title).querySelector("[data-slot='pr-facts']")?.textContent ?? null;
+    expect([
+      row("Card a").textContent?.includes("alpha"),
+      facts("Card a"),
+      facts("Card b"),
+    ]).toEqual([true, "Conflicts with the base · Changes requested · Opened 3 h ago", null]);
+  });
+});

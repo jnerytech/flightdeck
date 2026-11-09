@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import { canMergeCardPr } from "@/lib/card-merge-pr";
-import type { PullRequestRow } from "@/lib/pull-requests";
+import { type PullRequestRow, prFacts } from "@/lib/pull-requests";
 
 const CHECK_ICONS = { passing: CircleCheck, pending: CircleDashed, failing: CircleAlert } as const;
 
@@ -25,6 +25,8 @@ function watchText(t: ReturnType<typeof useT>, watch: WatchInfo): string {
 export function PrRow(
   props: Readonly<{
     row: PullRequestRow;
+    /** The time the ages are counted to (`store.now()`). */
+    now: number;
     watch: WatchInfo | undefined;
     /** The host merges PRs (`cardPrMerge`). */
     canMerge: boolean;
@@ -41,6 +43,7 @@ export function PrRow(
   const titleId = useId();
   const { card } = props.row;
   const Checks = card.checksState ? CHECK_ICONS[card.checksState] : null;
+  const facts = prFacts(card, props.now, t);
   const where = [props.row.hostName, props.row.projectName].filter(Boolean).join(" · ");
   return (
     <li data-slot="pr-row" className="rounded-md border px-3 py-2 text-sm">
@@ -78,6 +81,11 @@ export function PrRow(
             </a>
           </Inline>
         </div>
+        {facts.length > 0 && (
+          <p data-slot="pr-facts" className="text-muted-foreground text-xs">
+            {facts.join(" · ")}
+          </p>
+        )}
         {props.withWatch && props.watch && (
           <p className="text-muted-foreground text-xs">{watchText(t, props.watch)}</p>
         )}

@@ -3172,6 +3172,13 @@ export const en: Dictionary = {
     refused: "{title}: {reason}",
     noHosts: "No host is online.",
     watchOff: "Watch and fix is off",
+    conflict: "Conflicts with the base",
+    mergeClean: "No conflicts",
+    mergeBlocked: "Blocked from merging",
+    reviewApproved: "Approved",
+    reviewChanges: "Changes requested",
+    reviewRequired: "Review required",
+    opened: "Opened {ago}",
   },
   cardMergePr: {
     action: "Merge PR",

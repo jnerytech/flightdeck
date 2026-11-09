@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { translator } from "../src/i18n/index.ts";
 import type { AppState } from "../src/lib/app-store.ts";
-import { openPullRequests } from "../src/lib/pull-requests.ts";
+import { openPullRequests, prFacts } from "../src/lib/pull-requests.ts";
 
 const card = (id: string, over: object = {}) =>
   ({
@@ -80,5 +81,76 @@ describe("pull-requests: the cards with an open PR, across hosts (#1345)", () =>
   test("a project the host has not listed yet still shows the card, with an empty project name", () => {
     const rows = openPullRequests(state({ "h1/a": card("a", { projectId: "gone" }) }));
     expect(rows.map((r) => r.projectName)).toEqual([""]);
+  });
+});
+
+describe("pull-requests: what the poll says about a PR (#1352)", () => {
+  const NOW = Date.parse("2026-11-09T12:00:00Z");
+  const t = translator("en");
+  const tPt = translator("pt-BR");
+
+  test("conflict, review and age come as short phrases, in that order", () => {
+    const facts = prFacts(
+      card("a", {
+        prMergeable: "conflict",
+        prReview: "changes_requested",
+        prOpenedAt: "2026-11-09T09:00:00Z",
+      }),
+      NOW,
+      t,
+    );
+    expect(facts).toEqual(["Conflicts with the base", "Changes requested", "Opened 3 h ago"]);
+  });
+
+  test("each merge state and review state has its own words; none says nothing", () => {
+    const one = (over: object) => prFacts(card("a", over), NOW, t);
+    expect([
+      one({ prMergeable: "clean" }),
+      one({ prMergeable: "blocked" }),
+      one({ prMergeable: "unknown" }),
+      one({ prReview: "approved" }),
+      one({ prReview: "required" }),
+      one({ prReview: "none" }),
+    ]).toEqual([
+      ["No conflicts"],
+      ["Blocked from merging"],
+      [],
+      ["Approved"],
+      ["Review required"],
+      [],
+    ]);
+  });
+
+  test("a host that reports none of it (older, or before the first poll) adds no phrase", () => {
+    expect([
+      prFacts(card("a"), NOW, t),
+      prFacts(card("a", { prMergeable: null, prReview: null, prOpenedAt: null }), NOW, t),
+    ]).toEqual([[], []]);
+  });
+
+  test("in pt-BR the phrases are translated", () => {
+    expect(
+      prFacts(
+        card("a", {
+          prMergeable: "conflict",
+          prReview: "required",
+          prOpenedAt: "2026-11-09T09:00:00Z",
+        }),
+        NOW,
+        tPt,
+      ),
+    ).toEqual(["Em conflito com a base", "Revisão pendente", "Aberto há 3 h"]);
+  });
+
+  test("a PR in conflict, or with changes requested, needs a look before one that only waits", () => {
+    const rows = openPullRequests(
+      state({
+        "h1/a": card("a", { checksState: "pending" }),
+        "h1/b": card("b", { prMergeable: "conflict" }),
+        "h1/c": card("c", { prReview: "changes_requested" }),
+        "h1/d": card("d"),
+      }),
+    );
+    expect(ids(rows)).toEqual(["h1:b", "h1:c", "h1:a", "h1:d"]);
   });
 });
