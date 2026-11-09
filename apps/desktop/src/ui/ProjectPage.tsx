@@ -52,10 +52,9 @@ export function ProjectPage(
   useEffect(() => {
     let current = true;
     setNoCards(false);
-    void store.hostRequest(hostId, "board.get", { projectId }).then((answer) => {
-      if (current && answer.ok) {
-        setNoCards(answer.data.columns.every((column) => column.cards.length === 0));
-      }
+    void store.hostCommand(hostId, "board.get", { projectId }).then((board) => {
+      const columns = board?.columns;
+      if (current && columns) setNoCards(columns.every((column) => column.cards.length === 0));
     });
     return () => {
       current = false;
