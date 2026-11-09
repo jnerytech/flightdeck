@@ -787,6 +787,13 @@ export const en: Dictionary = {
     saved:
       "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
     importTitle: "Restore a backup",
+    sourceLegend: "Restore from",
+    source: { file: "A file", drive: "Google Drive" },
+    driveLook: "Look in Google Drive",
+    driveNone: "No backups on Google Drive yet.",
+    driveChoiceLegend: "Backups on Google Drive",
+    driveNeedsSignIn: "Sign in to Google under Scheduled backups first.",
+    driveReadNeeds: "Choose a backup and type its passphrase.",
     filePassphrase: "File passphrase",
     read: "Read backup",
     needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",
@@ -816,6 +823,9 @@ export const en: Dictionary = {
       unreadable:
         "The file could not be read. Check the passphrase; a changed file is refused too.",
       failed: "The restore failed and nothing was changed.",
+      "drive-auth":
+        "Google Drive does not accept the sign-in. Sign in again under Scheduled backups.",
+      "drive-failed": "Google Drive could not be read. Try again.",
       unexpected: "Something went wrong. Nothing was changed.",
       "too-big":
         "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",

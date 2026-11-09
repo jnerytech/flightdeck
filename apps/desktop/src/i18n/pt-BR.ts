@@ -784,6 +784,13 @@ export const ptBR = {
     exportNeeds: "Digite a frase-senha e repita-a.",
     saved: "Backup salvo, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
     importTitle: "Restaurar um backup",
+    sourceLegend: "Restaurar de",
+    source: { file: "Um arquivo", drive: "Google Drive" },
+    driveLook: "Procurar no Google Drive",
+    driveNone: "Ainda não há backups no Google Drive.",
+    driveChoiceLegend: "Backups no Google Drive",
+    driveNeedsSignIn: "Entre no Google primeiro, em Backups agendados.",
+    driveReadNeeds: "Escolha um backup e digite a frase-senha dele.",
     filePassphrase: "Frase-senha do arquivo",
     read: "Ler backup",
     needsDesktop: "Restaurar um backup precisa do app para desktop: o navegador não abre arquivos.",
@@ -813,6 +820,8 @@ export const ptBR = {
       unreadable:
         "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
       failed: "A restauração falhou e nada foi alterado.",
+      "drive-auth": "O Google Drive não aceita a entrada. Entre de novo em Backups agendados.",
+      "drive-failed": "Não foi possível ler o Google Drive. Tente de novo.",
       unexpected: "Algo deu errado. Nada foi alterado.",
       "too-big":
         "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",
