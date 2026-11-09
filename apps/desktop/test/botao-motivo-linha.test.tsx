@@ -247,7 +247,19 @@ describe("botao-motivo-linha: beside a field the reason is a line of the row (#1
   const REASON = /& > \.action-button-box > \.action-reason \{([^}]*)\}/;
   const BOX = /& > \.action-button-box \{([^}]*)\}/;
   const ROW = /@utility field-with-action \{([^&@]*)/;
-  const NARROW = /@media \(width < 40rem\) \{([\s\S]*?)\n {2}\}/;
+  /** The body of the block that opens at `head` inside the utility, read by brace depth. */
+  const block = (head: string) => {
+    const text = utility();
+    const start = text.indexOf(head);
+    if (start < 0) return "";
+    const open = text.indexOf("{", start);
+    let depth = 0;
+    for (let at = open; at < text.length; at++) {
+      if (text[at] === "{") depth++;
+      else if (text[at] === "}" && --depth === 0) return text.slice(open + 1, at);
+    }
+    return "";
+  };
 
   test("the reason of a field's action button is a whole line of the row, under the field and the buttons", () => {
     const { container } = render(
@@ -275,8 +287,15 @@ describe("botao-motivo-linha: beside a field the reason is a line of the row (#1
     ]).toEqual([true, true, true, true, true, true, true, true]);
   });
 
+  // #1338's review: the row wraps now, so a field that cannot shrink below its content (the
+  // adjustment's, with no min-w-0) would push its button to a line of its own at any width.
+  test("the field shrinks before the row wraps: its buttons stay beside it above 40rem", () => {
+    const field = block("& > :first-child");
+    expect([/min-width: 0;/.test(field), /flex: 1 1 0%;/.test(field)]).toEqual([true, true]);
+  });
+
   test("below 40rem the field takes a line of its own and its buttons go under it, at the end", () => {
-    const narrow = utility().match(NARROW)?.[1] ?? "";
+    const narrow = block("@media (width < 40rem)");
     expect([
       /justify-content: flex-end;/.test(narrow),
       /& > :first-child \{\s*flex-basis: 100%;/.test(narrow),
