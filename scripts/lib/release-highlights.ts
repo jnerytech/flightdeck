@@ -40,11 +40,15 @@ export interface HighlightsDeps {
   warn: (line: string) => void;
 }
 
-const CONVENTIONAL = /^(\w+)(?:\(([^)]*)\))?!?:\s*/;
+/** A conventional commit's `type(scope):`; "Card:" in an issue title is not one. */
+const CONVENTIONAL =
+  /^(feat|fix|test|refactor|chore|docs|perf|style|build|ci|revert)(?:\(([^)]*)\))?!?:\s*/;
 /** Scopes that never reach a person: Sonar findings, the CI, and the BDD and e2e tests. */
 const INTERNAL_SCOPE = /^(sonar|ci\b|bdd\b|e2e\b)/;
-/** An issue a text names: `(#N)` or a `Refs #N` line. */
-const NAMED = /\(#(\d{1,9})\)|^Refs:?\s*#(\d{1,9})\b/gm;
+/** An issue a headline or a title names: `(#N)`. */
+const HEADLINE_REF = /\(#(\d{1,9})\)/g;
+/** An issue a message body names: a `Refs #N` line. */
+const REFS_LINE = /^Refs:?\s*#(\d{1,9})\b/gm;
 const ISO_DATE = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/;
 const VERSION_TAG = /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/;
 
@@ -61,33 +65,46 @@ export function userFacing(pr: MergedPr): boolean {
   return !pr.headRefName.startsWith("release-v") && userCommits(pr).length > 0;
 }
 
-/** The issues a text names, in order. */
-const namedIn = (text: string): number[] =>
-  [...text.matchAll(NAMED)].map((m) => Number(m[1] ?? m[2]));
+/** The issues a pattern finds in a text, in order. */
+const found = (text: string, re: RegExp): number[] =>
+  [...text.matchAll(re)].map((m) => Number(m[1]));
+
+/**
+ * The issues a commit names: the `(#N)` of its headline, with the tail GitHub moves to the body's
+ * first line when it cuts the headline with "…", and its `Refs #N` lines. A `(#N)` in the body's
+ * prose is not one.
+ */
+function commitRefs(c: { headline: string; body: string }): number[] {
+  const tail = c.headline.endsWith("…") ? (c.body.split("\n")[0] ?? "") : "";
+  return [...found(`${c.headline}${tail}`, HEADLINE_REF), ...found(c.body, REFS_LINE)];
+}
 
 /**
  * The issue a PR belongs to: the one it closes, else the one its feat and fix commits name most,
- * else the one its title names. A headline GitHub cut with "…" goes on in the body, so both count.
+ * else the one its title names.
  */
 export function issueOf(pr: MergedPr): number | null {
   if (pr.closes[0] !== undefined) return pr.closes[0];
   const counts = new Map<number, number>();
   for (const c of userCommits(pr)) {
-    for (const n of namedIn(`${c.headline}\n${c.body}`)) counts.set(n, (counts.get(n) ?? 0) + 1);
+    for (const n of commitRefs(c)) counts.set(n, (counts.get(n) ?? 0) + 1);
   }
   let best: number | null = null;
   for (const [n, count] of counts) if (best === null || count > (counts.get(best) ?? 0)) best = n;
-  return best ?? namedIn(pr.title)[0] ?? null;
+  return best ?? found(pr.title, HEADLINE_REF)[0] ?? null;
 }
 
 /** The first area whose words match; the strong Quality words go first, so a demo card is Quality. */
 const AREA_WORDS: [Area, RegExp][] = [
   ["Quality", /sonar|flak|\be2e\b|^(demo|lint|harness|ci)\b|\bbdd\b|coverage/],
   ["Backup", /backup|restore/],
-  ["Costs", /\bcosts?\b|budget|quota|usage|spend/],
+  ["Costs", /\bcosts?\b|budget|quota|\busage\b|\bspend/],
   ["Workflows", /workflow|\bgate\b|\bruns?\b/],
-  ["Hosts", /\bhosts?\b|pairing|daemon|service|boot|teleport|ssh|tailscale|setup/],
-  ["Board", /board|\bcards?\b|column|\bpr\b/],
+  [
+    "Hosts",
+    /\bhosts?\b|\bpairing\b|\bdaemon\b|\bservices?\b|\bboot\b|teleport|\bssh\b|tailscale|\bsetup\b/,
+  ],
+  ["Board", /\bboard\b|\bcards?\b|\bcolumns?\b|\bpr\b/],
   ["Sessions", /session|\bteams?\b|chat|transcript|needs you|sidebar|terminal|fork|persona/],
   ["Quality", /\btests?\b|lint|journey|tdd|hook|harness/],
 ];
@@ -116,9 +133,9 @@ export function highlightsDraft(
   for (const pr of kept) {
     const issue = issueOf(pr);
     const key = issue === null ? `pr${pr.number}` : `issue${issue}`;
-    const title =
-      (issue === null ? undefined : titles.get(issue)) ??
-      pr.title.replace(CONVENTIONAL, "").replace(/\s*\(#\d+\)$/, "");
+    // A fetched title can be a PR's (`feat(x): …`): both lose that prefix and a trailing (#N).
+    const raw = (issue === null ? undefined : titles.get(issue)) ?? pr.title;
+    const title = raw.replace(CONVENTIONAL, "").replace(/\s*\(#\d+\)$/, "");
     const entry = entries.get(key) ?? { title, prs: [], issue, scopes: [] };
     entry.prs.push(pr.number);
     for (const c of userCommits(pr)) entry.scopes.push(CONVENTIONAL.exec(c.headline)?.[2] ?? "");
@@ -168,6 +185,29 @@ async function read(deps: HighlightsDeps, args: string[], what: string): Promise
   return r.stdout;
 }
 
+/** The JSON GitHub answered, or null when it is not JSON. */
+function json(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+interface SearchPage {
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  nodes: SearchNode[];
+}
+
+/** One page of the search, or why it cannot be read. */
+function searchPage(text: string): SearchPage {
+  const search = (json(text) as { data?: { search?: SearchPage } } | null)?.data?.search;
+  if (!search || !Array.isArray(search.nodes) || !search.pageInfo) {
+    throw new Unread(`could not read the merged PRs: ${text.trim().split("\n")[0] ?? ""}`);
+  }
+  return search;
+}
+
 /** The PRs merged into main after `date`, page by page (at most 20 pages of 50). */
 async function mergedAfter(date: string, deps: HighlightsDeps): Promise<MergedPr[]> {
   const prs: MergedPr[] = [];
@@ -181,11 +221,7 @@ async function mergedAfter(date: string, deps: HighlightsDeps): Promise<MergedPr
     ];
     if (after) args.push("-f", `after=${after}`);
     args.push("-f", `query=${SEARCH}`);
-    const text = await read(deps, args, "the merged PRs");
-    const search = JSON.parse(text).data.search as {
-      pageInfo: { hasNextPage: boolean; endCursor: string | null };
-      nodes: SearchNode[];
-    };
+    const search = searchPage(await read(deps, args, "the merged PRs"));
     for (const n of search.nodes) {
       // The search's date is inclusive: what merged at the tag's own moment is in the tag.
       if (Date.parse(n.mergedAt) <= Date.parse(date)) continue;
@@ -204,11 +240,14 @@ async function mergedAfter(date: string, deps: HighlightsDeps): Promise<MergedPr
     after = search.pageInfo.hasNextPage ? search.pageInfo.endCursor : null;
     if (!after) return prs;
   }
-  deps.log("release-highlights: stopped at 1000 PRs; the draft leaves out the oldest ones");
+  deps.warn("release-highlights: stopped at 1000 PRs; the draft leaves out the oldest ones");
   return prs;
 }
 
-/** The titles of these issues, in one query. */
+/**
+ * The titles of these issues, in one query (a number can be a PR's). A number GitHub does not find fails only itself: gh exits 1 but still prints the others.
+ * When nothing can be read, the bullets keep their PRs' titles.
+ */
 async function titlesOf(issues: number[], deps: HighlightsDeps): Promise<Map<number, string>> {
   const titles = new Map<number, string>();
   if (issues.length === 0) return titles;
@@ -218,14 +257,19 @@ async function titlesOf(issues: number[], deps: HighlightsDeps): Promise<Map<num
     )
     .join(" ");
   const query = `{repository(owner:"${REPO.split("/")[0]}",name:"${REPO.split("/")[1]}"){${fields}}}`;
-  const text = await read(deps, ["api", "graphql", "-f", `query=${query}`], "the issue titles");
-  const repository = (JSON.parse(text).data?.repository ?? {}) as Record<
-    string,
-    { title?: string } | null
-  >;
+  const answer = await deps.gh(["api", "graphql", "-f", `query=${query}`]);
+  const repository = (
+    json(answer.stdout) as { data?: { repository?: Record<string, { title?: unknown } | null> } }
+  )?.data?.repository;
+  if (!repository) {
+    deps.warn(
+      `release-highlights: could not read the issue titles: ${said(answer)}; the bullets use the PR titles`,
+    );
+    return titles;
+  }
   for (const n of issues) {
     const title = repository[`i${n}`]?.title;
-    if (title) titles.set(n, title);
+    if (typeof title === "string" && title) titles.set(n, title);
   }
   return titles;
 }
@@ -235,7 +279,7 @@ export async function releaseHighlights(args: string[], deps: HighlightsDeps): P
   const at = args.indexOf("--since");
   let since = at >= 0 ? (args[at + 1] ?? "") : null;
   if (since !== null && !VERSION_TAG.test(since)) {
-    deps.log("release-highlights: --since takes a version tag such as v0.37.16");
+    deps.warn("release-highlights: --since takes a version tag such as v0.37.16");
     return 2;
   }
   try {
@@ -248,6 +292,7 @@ export async function releaseHighlights(args: string[], deps: HighlightsDeps): P
     ).trim();
     if (!VERSION_TAG.test(since))
       throw new Unread(`could not read the last release: "${since}" is not a tag`);
+    // The cutoff is the tagged commit's date: a release tags the merge commit of its own PR on main.
     const date = (
       await read(
         deps,
@@ -263,13 +308,9 @@ export async function releaseHighlights(args: string[], deps: HighlightsDeps): P
     deps.log(highlightsDraft(since, prs, await titlesOf(issues, deps)));
     return 0;
   } catch (error) {
-    if (!(error instanceof Unread || error instanceof SyntaxError || error instanceof TypeError))
-      throw error;
-    const why =
-      error instanceof Unread
-        ? error.message
-        : `GitHub's answer could not be read: ${error.message}`;
-    deps.log(`release-highlights: ${why}`);
+    // Only what GitHub answered is reported here; a bug in the draft code throws as it is.
+    if (!(error instanceof Unread)) throw error;
+    deps.warn(`release-highlights: ${error.message}`);
     return 1;
   }
 }
