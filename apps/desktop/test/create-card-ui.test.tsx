@@ -87,6 +87,20 @@ describe("create-card: the New card dialog keeps what was typed until the card e
   });
 });
 
+describe("create-card: the focus goes to the card that was made (#1546)", () => {
+  // Round 14 of #168: Create card closed the dialog and left the focus on the page body.
+  test("once the card is on the board, the focus is on it, and the page body does not hold it", async () => {
+    await filledDialog();
+    await submit();
+    await settle(() => screen.queryByRole("dialog", { name: t.kanban.newCard }) === null);
+    await settle(() => screen.queryByLabelText("Card Ship the cart") !== null);
+    const tile = () => screen.queryByLabelText("Card Ship the cart");
+    const opener = () => tile()?.querySelector<HTMLElement>("[data-card-open]") ?? null;
+    await settle(() => opener() !== null && document.activeElement === opener(), 5000);
+    expect(document.activeElement === opener()).toBe(true);
+  });
+});
+
 const BUG = {
   id: "bug",
   name: "Bug fix",
