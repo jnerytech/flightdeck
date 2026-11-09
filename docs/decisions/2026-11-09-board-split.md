@@ -50,7 +50,7 @@ a domain module is the stateful part that uses them.
 | `rule-writes.ts` | `ruleWrites`, list/remove rules, `applyProjectRules` | 2064–2110 | 60 |
 | `arena.ts` | `startArena`, `arena`, variants, `chooseVariant` | 994–1183 | 190 |
 | `blockers.ts` | blockers, `unsatisfied`, `dismissUnblocked`, `afterBlockerChange`, waiting | 1258–1402 | 150 |
-| `run-queue.ts` | `running`, `waiters`, `quotaWaiters`, `limit`, the four unwatchers; `startCard`, `pump`, `queueState`, holds (`budgetHeld`, `budgetBlocked`, `waitQuota`, `onLimits`), `acquire`, `takeSlots`, `release`, `maxParallelRuns` | 1535–1727, 2616–2627 | 260 |
+| `run-queue.ts` | `running`, `waiters`, `quotaWaiters`, `limit`, the four unwatchers; `pump`, `queueState`, holds (`budgetBlocked`, `waitQuota`, `onLimits`), `acquire`, `takeSlots`, `release`, `maxParallelRuns` (done, move 3a). `startCard` checks blockers and workflows before it queues, so it goes with `cards.ts` | 1535–1727, 2616–2627 | 260 |
 | `launch.ts` | `launch`, `startSpec`, `firstSession`, `closeRuns`, `finish`, `removeCleanWorktree`, `failRun` | 1742–1906 | 170 |
 | `card-pr-flow.ts` | `diff`, `createPr`, `mergePr`, PR comments and their cache, `updateFromBase`, `mergeLocal`, `removeMerged`, `commentOnIssue` | 2141–2412 | 280 |
 | `pr-poll.ts` | the poll timer and round, `onPrRound`, `pollPrs`, `readPr`; `checkWatchers` and `onChecksFailing`, which only `readPr` fires | 2495–2615 | 125 |
@@ -105,7 +105,7 @@ quiet. Moving them last, as #1288 did, would only make them conflict longer.
    and `board.ts` re-exports `BoardOptions`, so no import elsewhere changes.
 1. `projects.ts` and `rule-writes.ts`: no shared state. These prove the port and the facade.
 2. `session-follow.ts`, with the S3776 cut in a second commit.
-3. `run-queue.ts` and `launch.ts`: the queue and the holds.
+3. `run-queue.ts` (3a), then `launch.ts` (3b) in a PR of its own: the queue and the holds.
 4. `check-loop-host.ts`.
 5. `card-pr-flow.ts` and `pr-poll.ts`.
 6. `radar-feed.ts`, `arena.ts` and `blockers.ts`.
