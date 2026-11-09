@@ -7,7 +7,7 @@ walk whole: the first-run screen, pairing, the first project, card and PR were e
 
 ## Decision
 
-`first-hour.feature`, seven scenarios (en and pt-BR, 2 to 35 s each on the Pi), all on the page a first
+`first-hour.feature`, eight scenarios (en and pt-BR, 2 to 35 s each on the Pi), all on the page a first
 start opens (`?hosts=none`, #1052). The page is never reloaded after the pairing: the web build keeps
 the host's token in memory only, so a reload would lose it, which is also why these scenarios use their
 own in-page steps instead of the `open()` helper.
@@ -40,8 +40,12 @@ host set to none in the settings step (the card never says "PR open"); the card'
   without one, names its branch to push by hand, keeps Review changes as the lead on the Changes tab and
   offers no Open PR. Red when `noRemote` is forced off in `card-run-form.tsx`.
 
-Still waiting: #1546 (focus after Test and add, Add project, Create card, opening a card, Approve and
-Open PR), in PR #1569 as of this writing; its scenarios go in when it merges.
+- **#1546 (focus), the part that holds.** After Create card the focus is on the new card's tile. Red when
+  the board stops focusing the card it made (`onMade` in `new-card-dialog.tsx`).
+- **#1546, the part that does not hold in a real browser (issue #1580).** After Test and add and after Add
+  project the focus stays on the page body, in both languages, for as long as the check waits. No
+  scenario for these two until #1580 is fixed; they go in with it. The unit tests of #1569 pass in
+  happy-dom. Approve and Open PR are covered by `approval-focus-ui.test.tsx` and are not in this feature.
 
 ## Not covered
 
