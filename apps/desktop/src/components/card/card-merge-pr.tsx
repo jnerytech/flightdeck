@@ -33,6 +33,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
   const said = useRef<HTMLDivElement>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const url = card.prUrl ?? "";
+  const radar = radarMergeLine(card, t);
 
   const merge = async () => {
     props.onOpenChange(false);
@@ -109,7 +110,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
                 <span className="text-sm">{t(`checks.${card.checksState}` as Key)}</span>
               )}
             </Stack>
-            {radarMergeLine(card, t) && <p className="text-sm">{radarMergeLine(card, t)}</p>}
+            {radar && <p className="text-sm">{radar}</p>}
             <Field label={t("cardMergePr.how")}>
               {(control) => (
                 <NativeSelect

@@ -193,6 +193,7 @@ function CardTile(
 ) {
   const t = useT();
   const { card } = props;
+  const radar = radarBadge(card, t);
   /** The card's menu, opened by its ⋯ or by `m` (#1198). */
   const [menuOpen, setMenuOpen] = useState(false);
   const titleRef = useRef<HTMLButtonElement>(null);
@@ -330,9 +331,9 @@ function CardTile(
               : t("kanban.waitingQuota")}
           </Badge>
         )}
-        {radarBadge(card, t) && (
+        {radar && (
           <Badge variant="outline" className="text-status-needs-you">
-            {radarBadge(card, t)}
+            {radar}
           </Badge>
         )}
         {card.queueReason === "memory" && (
