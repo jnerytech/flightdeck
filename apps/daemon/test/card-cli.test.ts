@@ -313,3 +313,82 @@ describe("card: the token and the address (issue #1507)", () => {
     expect((await run({ action: "list" }, daemon, "0.0.0.0")).code).toBe(0);
   });
 });
+
+describe("card: what the daemon's text can do to the terminal, and to the address (issue #1507)", () => {
+  const nasty = "\u001b[31mred\u001b[0m\r\nfake: a forged line\u009b2J\u007f";
+  const handlers: Handlers = {
+    ...HOST,
+    "card.get": () => card("c1", { title: nasty, notice: nasty, branch: nasty }),
+    "card.start": () => card("c1", { title: nasty }),
+    "card.create": () => card("c9", { title: nasty }),
+    "board.get": () => ({
+      project: project("p1", "api"),
+      columns: [{ column: "backlog", cards: [card("c1", { title: nasty })] }],
+    }),
+  };
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: the point of the test is these characters
+  const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/;
+
+  test("no control character of a card's text reaches the terminal, in text or in --json", async () => {
+    const daemon = fakeDaemon(handlers);
+    for (const args of [
+      { action: "list", project: "api" },
+      { action: "list", project: "api", json: true },
+      { action: "show", id: "c1" },
+      { action: "show", id: "c1", json: true },
+      { action: "start", id: "c1" },
+      { action: "new", title: "T", project: "api" },
+    ] satisfies CardCliArgs[]) {
+      const result = await run(args, daemon);
+      expect(result.code).toBe(0);
+      expect(result.out.length).toBeGreaterThan(0);
+      for (const line of result.out) expect(CONTROL.test(line)).toBe(false);
+      // The text is still there, and its line break did not start a line of its own.
+      expect(result.out.join("\n")).toContain("red");
+      expect(result.out.some((line) => line.startsWith("fake:"))).toBe(false);
+    }
+  });
+
+  test("an error text of the daemon is cleaned the same way", async () => {
+    const daemon = fakeDaemon({
+      "project.list": () => ({ error: { code: "boom", message: nasty } }),
+    });
+    const result = await run({ action: "list" }, daemon);
+    expect(result.code).toBe(1);
+    expect(result.err.join("\n")).toContain("boom");
+    for (const line of result.err) expect(CONTROL.test(line)).toBe(false);
+    expect(result.err.length).toBe(1);
+  });
+
+  test("a bind that only looks like a loopback (a query, a user, a path) is refused, nothing is sent", async () => {
+    const daemon = fakeDaemon(HOST);
+    for (const bind of ["127.0.0.1?@evil.test", "127.0.0.1/x?", "user@127.0.0.1", "127.0.0.1#"]) {
+      const result = await run({ action: "list" }, daemon, bind);
+      expect(result.code).toBe(1);
+      expect(text(result)).toContain("loopback");
+    }
+    expect(daemon.calls).toEqual([]);
+  });
+
+  test("a write that got no answer says its result is unknown, so nobody retries blindly", async () => {
+    const silent = fakeDaemon({
+      ...HOST,
+      "card.create": undefined as never,
+      "card.start": undefined as never,
+    });
+    const created = await run(
+      { action: "new", title: "T", project: "api" },
+      silent,
+      undefined,
+      300,
+    );
+    expect(created.code).toBe(2);
+    expect(text(created)).toContain("may or may not have been created");
+    const started = await run({ action: "start", id: "c1" }, silent, undefined, 300);
+    expect(started.code).toBe(2);
+    expect(text(started)).toContain("may or may not have been started");
+    // A read has nothing to be unsure of.
+    const listed = await run({ action: "list" }, fakeDaemon({}), undefined, 300);
+    expect(text(listed)).not.toContain("may or may not");
+  });
+});
