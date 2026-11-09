@@ -280,7 +280,9 @@ For it to survive a reboot and a closed SSH session, [install it as a service](#
 In the app, click **Add host** and paste the pairing link (see [Pairing](#pairing)), or enter a
 name, address (`127.0.0.1`, or the configured `bind`), port (`7420`) and token (the `token` value
 in the daemon's `config.json`). **Test and add** performs `hello` and `host.info` before saving
-and shows the reason when it fails (token refused, host down).
+and shows the reason when it fails (token refused, host down). Once the pasted link is read, the
+field shows it with the token as dots (`token=••••`), as the **Token** field does, so a screen
+share or a screenshot of the form shows no token.
 
 The token is kept in the operating system's credential store (Windows Credential Manager,
 Keychain, Secret Service), not in plain text. Then use **+** next to the host to create a
