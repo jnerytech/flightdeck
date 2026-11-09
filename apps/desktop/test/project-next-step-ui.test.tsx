@@ -116,9 +116,8 @@ for (const [language, words] of LANGUAGES) {
       const line = screen.queryByText(words.projectPage.nextCard);
       expect(line).not.toBeNull();
       const tiles = document.querySelector("[data-slot='project-destinations']") as HTMLElement;
-      expect(Boolean(line?.compareDocumentPosition(tiles) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
-        true,
-      );
+      const where = (line as HTMLElement).compareDocumentPosition(tiles);
+      expect(Boolean(where & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     });
 
     test("a project that has a card shows no next step", async () => {
