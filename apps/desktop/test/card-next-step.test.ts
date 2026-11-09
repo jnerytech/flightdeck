@@ -82,3 +82,22 @@ describe("card-next-step: the one button a card leads with (#1197)", () => {
     expect(opensOnChanges(card({ queued: true, worktreePath: "/w" }))).toBe(false);
   });
 });
+
+describe("card-next-step: a project that cannot open a PR (#1543)", () => {
+  const noPr = (tab: "conversation" | "diff") => ({ ...view(tab, false), noPr: true });
+
+  test("a finished card is reviewed, and on the changes nothing leads: Open PR is not offered", () => {
+    expect(nextStep(card(finished), noPr("conversation"))).toBe("review");
+    expect(nextStep(card(finished), noPr("diff"))).toBeNull();
+    // The same card in a project that can: Open PR leads on the changes.
+    expect(nextStep(card(finished), view("diff", false))).toBe("open-pr");
+  });
+
+  test("it changes nothing for a card that has its PR, is running or never started", () => {
+    expect(
+      nextStep(card({ ...finished, prUrl: "u", prState: "open" }), { ...view("diff"), noPr: true }),
+    ).toBe("merge-pr");
+    expect(nextStep(card({ ...finished, sessionStatus: "running" }), noPr("diff"))).toBe("stop");
+    expect(nextStep(card(), noPr("conversation"))).toBe("start");
+  });
+});

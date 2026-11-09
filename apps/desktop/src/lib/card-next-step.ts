@@ -12,7 +12,7 @@ type Shape = Pick<
 /** The card's next step, from its state and what the page shows. `null`: nothing is waiting on the person. */
 export function nextStep(
   card: Shape,
-  view: { tab: "conversation" | "diff"; canMerge: boolean; gate: boolean },
+  view: { tab: "conversation" | "diff"; canMerge: boolean; gate: boolean; noPr?: boolean },
 ): NextStep | null {
   if (cardStartBlock(card) !== null) return "stop";
   // A run waiting at a gate is answered at the gate, where Approve and Deny are (#1269).
