@@ -162,6 +162,7 @@ describe("server-registry", () => {
     expect(Object.keys(DOMAINS.card ?? {}).sort()).toEqual(
       [
         "card.arena",
+        "card.checkLoop",
         "card.chooseVariant",
         "card.complete",
         "card.create",
