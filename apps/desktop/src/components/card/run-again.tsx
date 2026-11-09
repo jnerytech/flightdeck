@@ -44,6 +44,8 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
   const [check, setCheck] = useState<RunResumeCheck | null>(null);
   // The resume keeps the run's id: its note stays while the run runs, until it ends again.
   const [resumed, setResumed] = useState<{ from: string; end: string | null } | null>(null);
+  // One request at a time: a resume and a start of the same card would race each other.
+  const [busy, setBusy] = useState<"start" | "resume" | null>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const startedBox = useRef<HTMLOutputElement>(null);
   const reasonId = useId();
@@ -58,9 +60,13 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
     setCheck(null);
     if (checkFor === null) return;
     let live = true;
-    void store.hostRequest(hostId, "run.resume", { runId: run.id }).then((answer) => {
-      if (live && answer.ok) setCheck(answer.data);
-    });
+    // The check only advises: a failed request offers "Run again" alone.
+    void store
+      .hostRequest(hostId, "run.resume", { runId: run.id })
+      .then((answer) => {
+        if (live && answer.ok) setCheck(answer.data);
+      })
+      .catch(() => {});
     return () => {
       live = false;
     };
@@ -104,6 +110,14 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
     }
     if (result.ok) setResumed({ from: result.data.from, end });
   };
+  const one = (which: "start" | "resume", work: () => Promise<void>) => async () => {
+    setBusy(which);
+    try {
+      await work();
+    } finally {
+      setBusy(null);
+    }
+  };
   const offer = off === null && check?.ok === true ? check.from : null;
   // "Only a failed run" says nothing new on a failed run: the check raced its end.
   const why =
@@ -114,16 +128,21 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
     <Stack gap={2}>
       <Inline gap={2}>
         {offer !== null && (
-          <ActionButton variant="outline" size="sm" onClick={resume}>
+          <ActionButton
+            variant="outline"
+            size="sm"
+            disabled={busy === "start"}
+            onClick={one("resume", resume)}
+          >
             {t("runUi.again.resume", { step: offer })}
           </ActionButton>
         )}
         <ActionButton
           variant="outline"
           size="sm"
-          disabled={off !== null}
+          disabled={off !== null || busy === "resume"}
           aria-describedby={off ? reasonId : why ? resumeReasonId : undefined}
-          onClick={start}
+          onClick={one("start", start)}
         >
           {t("runUi.again.action")}
         </ActionButton>
