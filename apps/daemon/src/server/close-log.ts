@@ -21,6 +21,32 @@ export interface CloseFacts {
   pongAgoMs: number | null;
 }
 
-export function closeLine(_facts: CloseFacts, _token: string): string {
-  return "";
+const CLIENT_CAP = 64;
+/** A WebSocket close reason is at most 123 bytes. */
+const REASON_CAP = 123;
+
+/** One plain line of what a peer said: no token, no control character, no quote that closes the field. */
+function plain(text: string, token: string, cap: number): string {
+  const hidden = token ? text.split(token).join("[token]") : text;
+  return hidden
+    .replaceAll(/\p{Cc}+/gu, " ")
+    .replaceAll('"', "'")
+    .slice(0, cap);
+}
+
+const seconds = (ms: number) => `${Math.round(ms / 1000)} s`;
+
+export function closeLine(facts: CloseFacts, token: string): string {
+  const client = facts.client === null ? "unknown" : `"${plain(facts.client, token, CLIENT_CAP)}"`;
+  const by = facts.byDaemon === null ? "the peer" : `the daemon (${facts.byDaemon})`;
+  const pong =
+    facts.pongAgoMs === null ? "no pong yet" : `last pong ${seconds(facts.pongAgoMs)} ago`;
+  return [
+    `connection #${facts.id} closed: client ${client}`,
+    `code ${facts.code} "${plain(facts.reason, token, REASON_CAP)}"`,
+    `by ${by}`,
+    `up ${seconds(facts.upMs)}`,
+    `last frame ${seconds(facts.silentMs)} ago`,
+    pong,
+  ].join(", ");
 }
