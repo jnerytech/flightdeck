@@ -112,5 +112,13 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
     const out: string[] = [];
     expect(await sonarLeft([], { fetch: down, git, log: (l) => out.push(l) })).toBe(1);
     expect(out).toEqual(["sonar-left: SonarCloud answered 503"]);
+    const offline = async (): Promise<Fetched> => {
+      throw new Error("getaddrinfo ENOTFOUND");
+    };
+    const off: string[] = [];
+    expect(await sonarLeft([], { fetch: offline, git, log: (l) => off.push(l) })).toBe(1);
+    expect(off).toEqual([
+      "sonar-left: SonarCloud could not be reached: Error: getaddrinfo ENOTFOUND",
+    ]);
   });
 });
