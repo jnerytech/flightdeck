@@ -45,12 +45,19 @@ import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
-import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
+import { runChecks } from "../watch/check-run.ts";
+import {
+  type BoundedCheckRunner,
+  type CheckRunner,
+  shellCheckRunner,
+} from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
+import { cardMode } from "./check-loop.ts";
+import { CheckLoopEngine, type LoopCard, type RoundRecord } from "./check-loop-engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
@@ -154,6 +161,17 @@ export interface BoardOptions {
   memory?: { blocked(): unknown; watch(listener: () => void): () => void };
   /** Issue #1404: while the person has paused new runs on the host, new cards wait. */
   pause?: { blocked(): unknown; watch(listener: () => void): () => void };
+  /** Issue #1361: the check loop (a project's checks after a card's turn); off when absent. */
+  checkLoop?: {
+    settings(projectId: string): {
+      checks: string[];
+      checkTimeoutMin: number;
+      checkRounds: number;
+      checkEnv: string[];
+    };
+    isTrusted(path: string): boolean;
+    runner: Pick<BoundedCheckRunner, "run">;
+  };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
   /** Phase 22: refuses a PR description that carries a secret. */
@@ -457,6 +475,9 @@ export class Board {
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
+  /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
+  private readonly loop: CheckLoopEngine | null;
+
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
     this.workflows = new WorkflowEngine({
@@ -489,6 +510,9 @@ export class Board {
     this.unwatchPause = opts.pause?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
     this.armPoll();
+    this.loop = opts.checkLoop ? this.checkLoopEngine(opts.checkLoop) : null;
+    // Issue #1361: a round a restart left open is closed; the loop never resumes by itself.
+    this.sweepCheckLoops();
     // Back from a restart: keep moving cards whose run still has a session.
     const active = this.db
       .query<RunRow, []>(
@@ -1400,19 +1424,30 @@ export class Board {
       confirmedHash: string | null;
     },
   ): Card {
-    this.getCard(id);
-    this.db
-      .query(
-        `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
-         check_loop_confirmed_hash = ? WHERE id = ?`,
-      )
-      .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
+    const card = this.getCard(id);
+    // Switched on: the session's events so far are history, never a turn for the loop to check.
+    // Read before anything is written: a session that cannot be read throws here, so the switch is
+    // never saved without its mark.
+    const switching = value.on && card.checkLoop?.on !== true;
+    const mark = switching && card.sessionId ? this.opts.manager.get(card.sessionId).lastSeq : null;
+    this.db.transaction(() => {
+      this.db
+        .query(
+          `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
+           check_loop_confirmed_hash = ? WHERE id = ?`,
+        )
+        .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
+      if (switching) {
+        this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(mark, id);
+      }
+    })();
     return this.changed(id);
   }
 
   /** "Pedir ajuste": a message to the session of the active run. */
   message(id: string, text: string): { queued: boolean } {
     const { sessionId } = this.getCard(id);
+    this.loop?.onPersonTurn(id);
     if (!sessionId)
       throw new FlightdeckError(
         "invalid_state",
@@ -1536,7 +1571,12 @@ export class Board {
         "INSERT INTO card_runs (id, card_id, queued_at, persona, fix_prompt) VALUES (?, ?, ?, ?, ?)",
       )
       .run(runId, id, now(), persona ? JSON.stringify(persona) : null, options.fix?.prompt ?? null);
-    this.db.query("UPDATE cards SET notice = NULL, unblocked_at = NULL WHERE id = ?").run(id);
+    // A new run has a new session, whose events start again: the loop's mark of the last one goes.
+    this.db
+      .query(
+        "UPDATE cards SET notice = NULL, unblocked_at = NULL, check_loop_turn_seq = NULL WHERE id = ?",
+      )
+      .run(id);
     this.place(id, { type: "started" });
     this.pump();
     return this.changed(id);
@@ -1833,6 +1873,8 @@ export class Board {
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
   private async finish(id: string): Promise<void> {
     this.dropConflicts(id);
+    // Issue #1361: the worktree goes only once a check killed in it has exited.
+    await this.loop?.onStop(id);
     await this.closeRuns(id);
     await this.removeCleanWorktree(id);
     this.changed(id);
@@ -1893,6 +1935,9 @@ export class Board {
     }
     // The last forced move's notice is stale once the card moves on.
     if (card.noticeReason === "card_moved_anyway") this.clearNotice(id);
+    // Issue #1361: a card the person moved to another column leaves its check loop; a reorder in
+    // its own column, or a move that was refused above, does not.
+    if (before.column !== column) void this.loop?.onStop(id);
     const moved = this.moveCard(id, column, position);
     if (needs.length === 0) return moved;
     const lacked = why(
@@ -1990,6 +2035,7 @@ export class Board {
    */
   async stopCard(id: string): Promise<Card> {
     const card = this.getCard(id);
+    void this.loop?.onStop(id);
     if (card.queued) {
       this.db
         .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
@@ -2303,6 +2349,8 @@ export class Board {
     await mergeIntoBase(project.path, base, refArg(branch), mode, text);
     // The merge is in the base now and cannot be undone: nothing below may leave the card out of
     // Concluído. What could not be cleaned up stays on the card as a notice.
+    // Issue #1361: the worktree goes only once a check killed in it has exited.
+    await this.loop?.onStop(id);
     await this.closeRuns(id);
     const left = await this.removeMerged(project.path, worktree, branch);
     this.db
@@ -2369,6 +2417,8 @@ export class Board {
     if (!confirm)
       throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
     const card = this.getCard(id);
+    // Issue #1361: the worktree goes only once a check killed in it has exited.
+    await this.loop?.onStop(id);
     // The variants of an arena go with its card.
     await inSequence(this.variantIds(id), async (variant) => {
       await this.discardCard(variant, true);
@@ -2572,6 +2622,7 @@ export class Board {
 
   stop(): void {
     this.stopped = true;
+    this.loop?.dispose();
     if (this.pollTimer !== null) clearInterval(this.pollTimer);
     this.pollTimer = null;
     this.unwatchQuota();
@@ -2758,17 +2809,36 @@ export class Board {
   private follow(cardId: string, sessionId: string, sinceSeq: number): void {
     this.follows.get(cardId)?.();
     const sub = this.opts.manager.subscribe(sessionId, sinceSeq, (envelope) =>
-      this.onSessionEvent(cardId, envelope.event),
+      this.onSessionEvent(cardId, envelope.event, { live: true, seq: envelope.seq }),
     );
     this.follows.set(cardId, sub.unsubscribe);
-    for (const envelope of sub.replay) this.onSessionEvent(cardId, envelope.event);
+    // Replayed events are history: they move the card, but the check loop never acts on them.
+    for (const envelope of sub.replay) {
+      this.onSessionEvent(cardId, envelope.event, { live: false, seq: envelope.seq });
+    }
   }
 
-  private onSessionEvent(cardId: string, event: SessionEvent): void {
-    if (event.type === "session.status")
+  private onSessionEvent(
+    cardId: string,
+    event: SessionEvent,
+    at: { live: boolean; seq: number } = { live: false, seq: 0 },
+  ): void {
+    const loop = at.live ? this.loop : null;
+    // Issue #1361: whatever path wrote into the session (a review comment, a message between
+    // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
+    if (loop && event.type === "message.user") loop.onUserMessage(cardId, event.text);
+    if (event.type === "session.status") {
       this.place(cardId, { type: "session", status: event.status });
+      if (loop && !FREES_SLOT.has(event.status)) loop.onBusy(cardId);
+    }
     if (event.type === "turn.result") {
-      this.place(cardId, { type: "turn", isError: event.isError });
+      // Issue #1361: a live turn after the card's mark goes to the loop, which may keep the card
+      // where it is while its checks run (`hold`); otherwise it moves as it always did.
+      const decision =
+        loop && this.newTurn(cardId, at.seq)
+          ? loop.onTurnResult(cardId, { isError: event.isError, interrupted: false })
+          : "place";
+      if (decision === "place") this.place(cardId, { type: "turn", isError: event.isError });
       void this.refreshConflicts(cardId).catch(() => {});
       this.settleFix(cardId, {
         costUsd: event.costUsd ?? 0,
@@ -2779,6 +2849,154 @@ export class Board {
     if (event.type === "session.error") {
       this.settleFix(cardId, { isError: true, error: event.message });
     }
-    if (event.type === "session.status" && FREES_SLOT.has(event.status)) this.release(cardId);
+    if (event.type === "session.status" && FREES_SLOT.has(event.status)) {
+      this.releaseAfter(cardId, event.status, loop);
+    }
+  }
+
+  /** The slot a session that went idle, failed or ended frees, unless the check loop holds it. */
+  private releaseAfter(cardId: string, status: SessionStatus, loop: CheckLoopEngine | null): void {
+    let free: boolean;
+    if (!loop) free = true;
+    else if (status === "idle") free = loop.onIdle(cardId) === "release";
+    else free = !loop.onSessionGone(cardId);
+    if (free) this.release(cardId);
+  }
+
+  /**
+   * Issue #1361: whether a turn result is new for the card's check loop (after its mark), moving
+   * the mark to it; a card with the switch off has no mark to keep.
+   */
+  private newTurn(cardId: string, seq: number): boolean {
+    const row = this.db
+      .query<{ loop_on: number; mark: number | null }, [string]>(
+        "SELECT check_loop AS loop_on, check_loop_turn_seq AS mark FROM cards WHERE id = ?",
+      )
+      .get(cardId);
+    if (row?.loop_on !== 1) return true;
+    if (row.mark !== null && seq <= row.mark) return false;
+    this.db.query("UPDATE cards SET check_loop_turn_seq = ? WHERE id = ?").run(seq, cardId);
+    return true;
+  }
+
+  /** Issue #1361: the person wrote into a card's session, or answered it: the loop steps aside. */
+  personTurnOfSession(sessionId: string): void {
+    const run = this.db
+      .query<{ card_id: string }, [string]>(
+        "SELECT card_id FROM card_runs WHERE session_id = ? ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(sessionId);
+    if (run) this.loop?.onPersonTurn(run.card_id);
+  }
+
+  /** Issue #1361: the loop's effects on this board. */
+  private checkLoopEngine(options: NonNullable<BoardOptions["checkLoop"]>): CheckLoopEngine {
+    return new CheckLoopEngine({
+      card: (cardId) => this.loopCard(cardId),
+      settings: (projectId) => options.settings(projectId),
+      mode: (cardId) => cardMode(this.getCard(cardId), this.opts.manager),
+      trusted: (cardId) => options.isTrusted(this.getProject(this.getCard(cardId).projectId).path),
+      limit: (cardId) => this.loopLimit(cardId),
+      runChecks: (input) => runChecks({ ...input, runner: options.runner }),
+      // The round goes into the session as the board's own write, never through a person's command.
+      send: (cardId, text) => {
+        const { sessionId } = this.getCard(cardId);
+        if (sessionId) this.opts.manager.send(sessionId, text);
+      },
+      release: (cardId) => this.release(cardId),
+      place: (cardId) => this.place(cardId, { type: "turn", isError: false }),
+      record: (cardId, record) => this.recordRound(cardId, record),
+      timer: {
+        set: (fn, ms) => setTimeout(fn, ms),
+        clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      },
+    });
+  }
+
+  /** What the loop needs of a card; null when the card is gone. */
+  private loopCard(cardId: string): LoopCard | null {
+    const row = this.db
+      .query<
+        {
+          loop_on: number;
+          rounds: number | null;
+          hash: string | null;
+          worktree: string | null;
+          project: string;
+        },
+        [string]
+      >(
+        `SELECT check_loop AS loop_on, check_rounds AS rounds, check_loop_confirmed_hash AS hash,
+         worktree_path AS worktree, project_id AS project FROM cards WHERE id = ?`,
+      )
+      .get(cardId);
+    if (!row) return null;
+    const run = this.db
+      .query<{ id: string; fix_prompt: string | null }, [string]>(
+        "SELECT id, fix_prompt FROM card_runs WHERE card_id = ? ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(cardId);
+    // A watch's fixing run and a workflow run have checks of their own.
+    const plainRun = run !== null && run.fix_prompt === null && !this.workflows.has(run.id);
+    return {
+      on: row.loop_on === 1,
+      rounds: row.rounds,
+      confirmedHash: row.hash,
+      plainRun,
+      worktree: row.worktree,
+      projectId: row.project,
+    };
+  }
+
+  /** The limit that stops a round now: the quota, the host's memory, or the project's budget. */
+  private loopLimit(cardId: string): "budget" | "quota" | "memory" | null {
+    if (this.opts.quota?.blocked()) return "quota";
+    if (this.opts.memory?.blocked()) return "memory";
+    return this.budgetBlocked(this.getCard(cardId).projectId) ? "budget" : null;
+  }
+
+  /** One line of a card's loop: a round sent, or the loop's end with its reason. */
+  private recordRound(cardId: string, record: RoundRecord): void {
+    const run = this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM card_runs WHERE card_id = ? ORDER BY rowid DESC LIMIT 1",
+      )
+      .get(cardId);
+    this.db
+      .query(
+        `INSERT INTO card_check_rounds
+         (card_id, run_id, n, at, status, reason, command, exit_code, timed_out)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        cardId,
+        run?.id ?? "",
+        record.n,
+        now(),
+        record.status,
+        record.reason ?? null,
+        record.command ?? null,
+        record.exitCode ?? null,
+        record.timedOut ? 1 : 0,
+      );
+    this.changed(cardId);
+  }
+
+  /** Issue #1361: rounds a restart left open are closed as interrupted, one end line each. */
+  private sweepCheckLoops(): void {
+    const open = this.db
+      .query<{ card_id: string; run_id: string; n: number }, []>(
+        `SELECT card_id, run_id, n FROM card_check_rounds r
+         WHERE status = 'sent' AND id = (SELECT MAX(id) FROM card_check_rounds WHERE card_id = r.card_id)`,
+      )
+      .all();
+    for (const row of open) {
+      this.db
+        .query(
+          `INSERT INTO card_check_rounds (card_id, run_id, n, at, status, reason)
+           VALUES (?, ?, ?, ?, 'ended', 'interrupted')`,
+        )
+        .run(row.card_id, row.run_id, row.n, now());
+    }
   }
 }
