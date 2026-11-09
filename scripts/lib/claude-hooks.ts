@@ -2,7 +2,7 @@
  * The rules behind the project's Claude Code hooks (.claude/hooks), kept here to be tested.
  * The hooks only read the tool call from stdin and apply these.
  */
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits, uncommentedOffLinux } from "./tdd-audit.ts";
@@ -181,6 +181,15 @@ export interface EditedFileCheck {
   output: string;
 }
 
+/** Whether the file still holds exactly these bytes (it can be gone or changed while Biome runs). */
+function sameBytes(file: string, bytes: Buffer): boolean {
+  try {
+    return readFileSync(file).equals(bytes);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The biome-on-edit hook's check of one edited file (#1566): formatting, import order and safe
  * fixes are written into the file, and what is left is returned.
@@ -206,15 +215,33 @@ export function checkEditedFile(
     return { code: proc.exitCode, out: proc.stdout.toString(), err: proc.stderr.toString() };
   };
   const file = join(root, rel);
-  const before = readFileSync(file, "utf8");
+  let bytes: Buffer;
+  try {
+    // A symlink is not written through, and a file that is gone has nothing to report.
+    if (lstatSync(file).isSymbolicLink()) return { ok: true, output: "" };
+    bytes = readFileSync(file);
+  } catch {
+    return { ok: true, output: "" };
+  }
+  const before = bytes.toString("utf8");
   const fixed = run(["check", "--write", `--stdin-file-path=${rel}`], before);
-  if (fixed.code === 0 && fixed.out !== "" && fixed.out !== before) writeFileSync(file, fixed.out);
+  // Only a file that still holds what Biome was given (valid UTF-8, no edit since) is replaced.
+  if (
+    fixed.code === 0 &&
+    fixed.out !== "" &&
+    fixed.out !== before &&
+    Buffer.from(before).equals(bytes) &&
+    sameBytes(file, bytes)
+  ) {
+    writeFileSync(file, fixed.out);
+  }
   const left = run([
     "lint",
     "--skip=project",
     "--skip=types",
     "--no-errors-on-unmatched",
     "--files-ignore-unknown=true",
+    "--",
     rel,
   ]);
   if (left.code === 0) return { ok: true, output: "" };
