@@ -176,10 +176,10 @@ export const Config = z.object({
   /** Issue #1478: minutes a running session may say nothing before it is marked quiet; 0 is off. */
   stall: z
     .object({
-      afterMinutes: z.number().int().min(0).max(1440).catch(0).default(0),
+      afterMinutes: z.number().int().min(0).max(1440).catch(15).default(15),
     })
-    .catch(() => ({ afterMinutes: 0 }))
-    .default(() => ({ afterMinutes: 0 })),
+    .catch(() => ({ afterMinutes: 15 }))
+    .default(() => ({ afterMinutes: 15 })),
   /** Terminals embedded in the host (phase 14). */
   terminal: z
     .object({

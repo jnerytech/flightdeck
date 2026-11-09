@@ -169,6 +169,7 @@ import { appCanInstallService, installServiceFromApp } from "./service-from-app.
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { IdleSleeper } from "./sessions/sleeper.ts";
+import { StallWatcher } from "./sessions/stall.ts";
 import { settled } from "./settled.ts";
 import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
@@ -1471,6 +1472,8 @@ export async function startDaemon(
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
   // Idle sessions give back their process after N minutes (off by default: no timer then).
   const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
+  // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
+  const stall = new StallWatcher({ host: manager, minutes: config.stall.afterMinutes });
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -1583,6 +1586,7 @@ export async function startDaemon(
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
+    stall: { minutes: () => stall.minutes() },
     sleep: {
       minutes: () => sleeper.minutes(),
       set: async (minutes) => {
@@ -1990,6 +1994,7 @@ export async function startDaemon(
         await telemetry.stop();
         maintenance.stop();
         sleeper.stop();
+        stall.stop();
         updates?.stop();
         autoUpdater?.stop();
         await manager.shutdown();

@@ -25,7 +25,8 @@ describe("stall in the session manager (issue #1478)", () => {
     const { manager, sessionId } = await idleSession();
     const first = manager.activity(sessionId).lastEventAt;
     expect(first).not.toBeNull();
-    await Bun.sleep(5); // timing: the clock under test has millisecond resolution
+    // timing: the clock under test has millisecond resolution
+    await Bun.sleep(5);
     manager.send(sessionId, "again");
     await poll(() => manager.get(sessionId).status === "idle");
     expect(manager.activity(sessionId).lastEventAt ?? 0).toBeGreaterThan(first ?? 0);
