@@ -309,6 +309,18 @@ systemd a linha do **serviço** diz que não há serviço para instalar ali e qu
 `flightdeckd` no login com as ferramentas do próprio sistema, em vez de oferecer um comando que
 falha. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 
+#### Comparar hosts
+
+Com dois ou mais hosts, a aba **Visão geral** do host também tem **Comparar hosts**. **Mostrar
+comparação** abre uma tabela com uma coluna por host e uma linha para a versão do daemon, a versão
+do Claude Code, os hooks, o login do Claude e os recursos. Abrir (e **Atualizar**) lê cada host
+online de novo, rodando as mesmas verificações de **Saúde e dependências**; nada mais pergunta aos
+hosts. A célula que difere do que a maioria dos hosts tem fica marcada e diz o motivo em palavras
+("Difere da maioria dos hosts, que têm 1.4.0"). Sem maioria (dois hosts diferentes, ou metade para
+cada lado) nada é marcado, e um valor que o host não informa, ou qualquer valor de um host offline,
+aparece como um traço e nunca é marcado. Os recursos são contados; dois hosts com a mesma contagem
+e recursos diferentes continuam distintos.
+
 ### Confiar em um projeto
 
 Um projeto (um repositório) pode trazer configuração própria: hooks que rodam comandos sozinhos,
