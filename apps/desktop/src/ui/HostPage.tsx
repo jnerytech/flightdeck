@@ -11,6 +11,7 @@ import { HostHealth } from "@/components/hosts/host-health";
 import { HostLogs } from "@/components/hosts/host-logs";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
+import { HostPausePanel } from "@/components/hosts/host-pause-panel";
 import { HostResources } from "@/components/hosts/host-resources";
 import { HostVersionLine } from "@/components/hosts/host-version";
 import { HostWorktrees } from "@/components/hosts/host-worktrees";
@@ -292,6 +293,7 @@ export function HostPage(
               <SleepSetting store={store} host={host} />
               <SimpleModePanel store={store} host={host} />
               <KeepAwakePanel store={store} host={host} />
+              <HostPausePanel store={store} host={host} />
               <ResumePanel store={store} host={host} />
               {host.status === "online" && hasFeature(info?.features, "github", false) && (
                 <GithubPanel store={store} host={host} />

@@ -1393,6 +1393,12 @@ interrupted or goes idle.
   memory at**, or **Never**), or in `config.json` (`{ "resources": { "pauseAt": 0.9 } }`, `null`
   to turn it off). When the host cannot read its memory, nothing waits; macOS, which counts its
   cache as used memory, is not read.
+- **Pause new runs** (#1404): before restarting or updating a host, turn on **Pause new runs** on
+  its page (Settings tab). New cards wait with "waiting: host paused", ahead of any other reason,
+  and runs already going finish. The panel and the status bar say **Paused · 2 running**, then
+  **Paused · idle** once nothing runs; the status bar item opens the host. **Resume new runs** lets
+  the queue go. The pause is kept in `config.json` (`"pauseNewRuns": true`) across restarts, and
+  only a near connection (this computer or Tailscale) can change it.
 
 ### Card dependencies
 

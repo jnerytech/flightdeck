@@ -123,6 +123,7 @@ describe("protocolo-compat", () => {
       "cardTemplates",
       "cardPrMerge",
       "prDetails",
+      "conflictRadar",
     ]);
     const custom = new FrameClient(serve({ features: ["central", "maintenance"] }).url);
     cleanups.push(() => custom.close());

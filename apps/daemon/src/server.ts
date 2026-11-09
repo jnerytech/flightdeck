@@ -18,6 +18,7 @@ import {
   type HarnessDraft,
   type HarnessPreview,
   type HarnessStack,
+  type HostPauseStatus,
   type HostRuntime,
   type KeepAwakeStatus,
   type KnowledgeEntry,
@@ -53,7 +54,7 @@ import type { Snapshots } from "./checkpoints/snapshots.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { drainAll } from "./delta-coalescer.ts";
-import { FlightdeckError, featureOff } from "./errors.ts";
+import { FlightdeckError } from "./errors.ts";
 import type { AlertList } from "./github/alerts.ts";
 import type { GithubService } from "./github/service.ts";
 import type { PreviewPart } from "./harness/preview.ts";
@@ -86,13 +87,12 @@ import type { SessionCommits } from "./review/session-commit.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionPrs } from "./review/session-pr.ts";
 import type { RoiSummarizer } from "./roi/summary.ts";
-import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
+import type { PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { serverContext } from "./server/context.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
-import { need } from "./server/gates.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
@@ -118,7 +118,7 @@ import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
-import { requireVaultTransport, type Vault } from "./vault/vault.ts";
+import type { Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
 import type { Worktrees } from "./worktrees/worktrees.ts";
@@ -167,6 +167,8 @@ export interface ServerOptions {
   sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
+  /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
+  hostPause?: { status(): HostPauseStatus; set(paused: boolean): void | Promise<void> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
   /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
   peerOf?: (
@@ -449,6 +451,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.quotaPause, "quotaPause"),
     ...when(opts.memoryPause, "memoryPause"),
+    ...when(opts.hostPause, "hostPause"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.deps, "depsCheck"),
@@ -515,6 +518,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "cardPrMerge"),
     // Issue #1352: the card carries the PR's merge state, review state and open date.
     ...when(opts.board, "prDetails"),
+    // Issue #1405: cards whose changes touch the same files carry `mayConflict`.
+    ...when(opts.board, "conflictRadar"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),
@@ -624,10 +629,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return update ? { update } : {};
   }
 
-  function resources(): Resources {
-    return need(opts, "resources");
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
@@ -647,16 +648,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "resources.endOrphan":
-        // Like the other commands that change the host: not from beyond loopback and Tailscale.
-        requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
-        await resources().endOrphan(command.payload.pid, command.payload.startTicks);
-        return ok(command.type, { ended: true });
-      case "service.install":
-        return ok(
-          command.type,
-          await need(opts, "serviceInstall")(command.payload.confirm === true),
-        );
       case "host.info":
         return ok(command.type, {
           hostName: opts.hostName,
@@ -690,43 +681,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.fileLog ? logPathFor(opts.fileLog, ws.data.origin) : {}),
           ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
+          ...(opts.hostPause ? { pause: opts.hostPause.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...opts.terminal,
         });
-      case "roots.add": {
-        requireVaultTransport(ws.data.origin, "roots.add", opts.log);
-        const { path, confirm } = command.payload;
-        return ok(command.type, {
-          allowedRoots: await addAllowedRoot(
-            opts.allowedRoots as string[],
-            path,
-            confirm === true,
-            opts.persistRoots,
-            opts.rootsPlatform,
-          ),
-        });
-      }
-      case "ui.set": {
-        if (!opts.ui) throw featureOff("ui.mode");
-        const { mode, locked, confirm } = command.payload;
-        if (confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "changing how this host presents itself needs confirm: true",
-            "ui_confirm",
-          );
-        }
-        const next: UiSettings = {
-          mode: mode ?? opts.ui.mode,
-          locked: locked ?? opts.ui.locked,
-        };
-        await opts.onUiSettings?.(next);
-        opts.ui.mode = next.mode;
-        opts.ui.locked = next.locked;
-        return ok(command.type, { ...next });
-      }
     }
   }
 

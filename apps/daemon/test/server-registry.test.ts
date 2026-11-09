@@ -95,6 +95,7 @@ describe("server-registry", () => {
         "hooks.uninstall",
         "host.bypass",
         "host.keepAwake",
+        "host.pause",
         "host.sleep",
         "host.updates.set",
         "maintenance.backup",
@@ -268,6 +269,13 @@ describe("server-registry", () => {
   test("the prComments domain owns the pr.comments commands", () => {
     expect(Object.keys(DOMAINS.prComments ?? {}).sort()).toEqual(
       ["pr.comments", "pr.comments.send"].sort(),
+    );
+  });
+
+  // Issue #1288: the commands that change the host left the switch of server.ts.
+  test("the hostChanges domain owns the commands that change the host", () => {
+    expect(Object.keys(DOMAINS.hostChanges ?? {}).sort()).toEqual(
+      ["resources.endOrphan", "roots.add", "service.install", "ui.set"].sort(),
     );
   });
 });

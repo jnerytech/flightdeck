@@ -13,6 +13,7 @@ import { externalHandlers } from "./external.ts";
 import { filesHandlers } from "./files.ts";
 import { githubHandlers } from "./github.ts";
 import { hostHandlers } from "./host.ts";
+import { hostChangesHandlers } from "./hostChanges.ts";
 import { hostReadsHandlers } from "./hostReads.ts";
 import { issuesHandlers } from "./issues.ts";
 import { knowledgeHandlers } from "./knowledge.ts";
@@ -52,6 +53,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   worktrees: worktreesHandlers,
   external: externalHandlers,
   assistant: assistantHandlers,
+  hostChanges: hostChangesHandlers,
   hostReads: hostReadsHandlers,
   prComments: prCommentsHandlers,
 };

@@ -1402,6 +1402,13 @@ interrompida ou fica ociosa.
   (**Cartões novos esperam com a memória em**, ou **Nunca**), ou no `config.json`
   (`{ "resources": { "pauseAt": 0.9 } }`, `null` desliga). Quando o host não consegue ler a
   memória, nada espera; o macOS, que conta o cache como memória em uso, não é lido.
+- **Pausar novas execuções** (#1404): antes de reiniciar ou atualizar um host, ligue **Pausar novas
+  execuções** na página dele (aba Configurações). Cards novos esperam com "aguardando: host
+  pausado", à frente de qualquer outro motivo, e as execuções em andamento terminam. O painel e a
+  barra de status dizem **Pausado · 2 rodando**, depois **Pausado · ocioso** quando nada roda; o item
+  da barra abre o host. **Retomar novas execuções** libera a fila. A pausa fica no `config.json`
+  (`"pauseNewRuns": true`) entre reinícios, e só uma conexão próxima (este computador ou a
+  Tailscale) pode mudá-la.
 
 ### Dependências entre cards
 
