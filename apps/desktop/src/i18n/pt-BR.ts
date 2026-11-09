@@ -4887,6 +4887,7 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    nextCard: "Próximo passo: criar o primeiro card",
     knowledge: {
       title: "Conhecimento do projeto",
       hint: "Os PRDs, RFCs, ADRs e specs do projeto, com o status que cada um diz ter no seu front matter.",
@@ -5037,7 +5038,7 @@ export const ptBR = {
     },
     trust: {
       title: "Configuração do projeto",
-      hint: "Um projeto pode trazer hooks, servidores MCP, configurações, agentes e skills próprios. Eles só carregam em uma sessão quando você confia no projeto.",
+      hint: "Os cards rodam com ou sem confiança; confiar no projeto acrescenta às sessões os hooks, servidores MCP, configurações, agentes e skills dele.",
       untrusted:
         "Sem confiança. As sessões aqui carregam as suas configurações, não as deste projeto.",
       trusted: "Com confiança: a configuração própria deste projeto carrega nas sessões dele.",

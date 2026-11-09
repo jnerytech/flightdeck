@@ -349,6 +349,9 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   own MCP servers nor your plugins** (Claude Code is told to use only the MCP server Flightdeck
   gives it). The project's `CLAUDE.md`, agents and skills do not load either. A notice at the top
   of the session says so, with **Review and trust**.
+- A project with no cards opens its page with one line and one button, **Next: create the first
+  card**, which opens the Board's New card. Cards run whether or not the project is trusted:
+  trusting adds the project's own configuration to its sessions.
 - The project page has **Project configuration**: what the project would load, read without
   running anything (hooks by event and MCP servers with their whole command, in a scrollable block
   with a warning when a command is long or has several lines; programs the settings run, such as

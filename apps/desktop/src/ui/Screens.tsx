@@ -1023,6 +1023,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           store={store}
           hostId={route.host}
           projectId={route.projectId}
+          newCard={route.newCard === true}
           onOpenCard={(cardId, edit) =>
             go({
               name: "card",

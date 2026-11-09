@@ -1,12 +1,14 @@
 import { type LucideIcon, Settings } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
+import { Inline } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { KnowledgePanel } from "@/components/projects/knowledge-panel";
 import { SessionTiles } from "@/components/projects/session-tiles";
 import { TrustPanel } from "@/components/projects/trust-panel";
+import { Button } from "@/components/ui/button";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { HubRowState } from "../lib/hub.ts";
@@ -43,6 +45,22 @@ export function ProjectPage(
   useEffect(() => {
     void store.refreshHub();
   }, [store]);
+
+  // #1547: a project with no cards points at the first one. Unknown (not asked yet, or the board
+  // was not readable) says nothing: it must not send a project that has cards to a new one.
+  const [noCards, setNoCards] = useState(false);
+  useEffect(() => {
+    let current = true;
+    setNoCards(false);
+    void store.hostRequest(hostId, "board.get", { projectId }).then((answer) => {
+      if (current && answer.ok) {
+        setNoCards(answer.data.columns.every((column) => column.cards.length === 0));
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [store, hostId, projectId]);
 
   if (!project) {
     return (
@@ -110,6 +128,17 @@ export function ProjectPage(
         <InlineNotice tone="warn">
           {t("projectPage.baseInvalid", { name: project.baseBranch })}
         </InlineNotice>
+      )}
+      {noCards && (
+        <Inline gap={3}>
+          <p className="font-medium text-sm">{t("projectPage.nextCard")}</p>
+          <Button
+            size="sm"
+            onClick={() => props.go({ name: "board", host: hostId, projectId, newCard: true })}
+          >
+            {t("kanban.newCard")}
+          </Button>
+        </Inline>
       )}
       <ul aria-label={project.name} className="card-grid" data-slot="project-destinations">
         {destinations.map(({ key, labelKey, hint, icon: Icon, route }) => (
