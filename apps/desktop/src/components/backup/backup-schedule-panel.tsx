@@ -50,6 +50,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
               <label key={cadence} className="flex items-center gap-2">
                 <input
                   type="radio"
+                  className="hit-control"
                   name={`${id}-cadence`}
                   checked={schedule.cadence === cadence}
                   onChange={() => void scheduler.setCadence(cadence)}
