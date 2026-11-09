@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { CardReviewResult } from "@flightdeck/protocol";
 import { Costs } from "../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../src/costs/pricing.ts";
+import { startDaemon } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { newBoard } from "./board-helpers.ts";
+import { gitRepo, newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 /** Issue #1439: card.review over the protocol, the feature that offers it, and its cost on the card. */
@@ -76,5 +79,31 @@ describe("card-review over the protocol (#1439)", () => {
       )
       .run("card-review-c9-01J", 0.12);
     expect(new Costs({ db: store.db, pricing: DEFAULT_PRICING }).card("c9")).toBeCloseTo(0.12, 5);
+  });
+
+  test("the daemon wires the review when its runtime has the one-shot call", async () => {
+    const { root } = gitRepo();
+    const file = join(root, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        port: 0,
+        token: TOKEN,
+        dataDir: join(root, "data"),
+        allowedRoots: [root],
+        history: { roots: [join(root, "x")] },
+      }),
+    );
+    const running = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    cleanups.push(() => running.stop());
+    const client = new FrameClient(running.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const info = await client.data<{ features?: string[] }>("host.info", {});
+    expect(info?.features?.includes("cardReview")).toBe(true);
   });
 });
