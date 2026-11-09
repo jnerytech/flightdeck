@@ -653,11 +653,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "board");
   }
 
-  function assistant(): AssistantService {
-    if (!opts.assistant) throw featureOff("assistant");
-    return opts.assistant;
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
@@ -849,16 +844,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, ids } = command.payload;
         return ok(command.type, await board().sendPrComments(cardId, ids));
       }
-      case "assistant.run":
-        return ok(command.type, await assistant().run(command.payload));
-      case "assistant.cancel":
-        assistant().cancel(command.payload.requestId);
-        return ok(command.type);
-      case "assistant.context":
-        return ok(command.type, await assistant().context(command.payload));
-      case "assistant.record":
-        assistant().record(command.payload);
-        return ok(command.type);
     }
   }
 
