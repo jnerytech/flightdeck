@@ -9,8 +9,6 @@ import {
   type CommandType,
   type DepsResult,
   type DoctorResult,
-  type ExternalSession,
-  type ExternalStatus,
   FEATURE_HOLD_PROOF,
   FEATURE_RESUME_OFFER,
   FEATURE_SERVICE_INSTALL,
@@ -32,7 +30,6 @@ import {
   type ProjectLoad,
   type ProjectTrustState,
   type ServiceInstallResult,
-  type SessionLine,
   type UiSettings,
   WS_PATH,
 } from "@flightdeck/protocol";
@@ -47,7 +44,7 @@ import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
 import type { BoardSyncService } from "./boardsync/service.ts";
-import { type Central, messageExternal } from "./central/central.ts";
+import type { Central } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
@@ -427,14 +424,6 @@ export interface RunningServer {
 
 export { tokenMatches };
 
-const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
-  running: "running",
-  awaiting_permission: "waiting",
-  idle: "idle",
-  unknown: "idle",
-  ended: "ended",
-};
-
 /** The names a feature adds when the daemon has it. */
 const when = (has: unknown, ...names: string[]): string[] => (has ? names : []);
 
@@ -622,10 +611,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function central() {
-    return need(opts, "central");
-  }
-
   function roi(): RoiSummarizer {
     return need(opts, "roi");
   }
@@ -646,20 +631,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   function updateStatus() {
     const update = opts.updates?.status();
     return update ? { update } : {};
-  }
-
-  /** An external session as the lists and `external.updated` send it: with its line and name. */
-  function externalListed(s: ExternalSession): ExternalSession {
-    const waiting = opts.central?.permissions
-      .open()
-      .find((frame) => frame.claudeSessionId === s.claudeSessionId);
-    const summary = context.line(s.claudeSessionId, {
-      state: EXTERNAL_LINE[s.status],
-      waitingTool: waiting?.toolName ?? null,
-      since: s.lastEventAt,
-    });
-    const meta = opts.central?.meta.get(s.claudeSessionId);
-    return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
   function fileLog(): FileLog {
@@ -706,26 +677,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "external.message": {
-        const { claudeSessionId, text } = command.payload;
-        const hub = central();
-        if (!hub.external.get(claudeSessionId)) {
-          throw new FlightdeckError(
-            "not_found",
-            `session ${claudeSessionId} does not exist`,
-            "session_not_found",
-            { id: claudeSessionId },
-          );
-        }
-        if (!messageExternal(hub, claudeSessionId, text)) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "session has no channel: only sessions opened with flightdeckd claude receive messages",
-            "external_no_channel",
-          );
-        }
-        return ok(command.type);
-      }
       case "logs.tail":
         return ok(
           command.type,
@@ -772,37 +723,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await need(opts, "serviceInstall")(command.payload.confirm === true),
         );
-      case "external.list": {
-        const { external, meta } = central();
-        const sessions = external
-          .list()
-          .map((s) => ({ ...externalListed(s), meta: meta.get(s.claudeSessionId) }));
-        return ok(command.type, { sessions });
-      }
-      case "external.watch": {
-        // Ack, then the live sessions and the open requests, then every change: no gap.
-        const { external, permissions } = central();
-        ws.data.unwatchExternal?.();
-        const offSessions = external.onChange((session) =>
-          send(ws, { type: "external.updated", session: externalListed(session) }),
-        );
-        const offPermissions = permissions.watch((frame) => {
-          send(ws, frame);
-          // The session's line names the tool it waits for, known only once the request opens.
-          const session = external.get(frame.claudeSessionId);
-          if (session) send(ws, { type: "external.updated", session: externalListed(session) });
-        });
-        ws.data.unwatchExternal = () => {
-          offSessions();
-          offPermissions();
-        };
-        ok(command.type);
-        for (const session of external.list()) {
-          send(ws, { type: "external.updated", session: externalListed(session) });
-        }
-        for (const frame of permissions.open()) send(ws, frame);
-        return;
-      }
       case "host.info":
         return ok(command.type, {
           hostName: opts.hostName,
