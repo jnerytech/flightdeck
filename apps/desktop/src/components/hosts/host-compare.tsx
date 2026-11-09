@@ -15,12 +15,15 @@ import {
   type CompareField,
   type CompareRow,
   compareHosts,
+  featureDiff,
   hasFix,
   hostFacts,
 } from "../../lib/host-compare.ts";
 
 const COMPARE_KEYS = ["hosts", "doctor", "deps"] as const;
 const DASH = "—";
+/** A long list of differing features shows this many, then "and N more". */
+const FOLD_AT = 3;
 /** The first column stays in view while the table scrolls sideways. */
 const STICKY = " sticky left-0 z-1 bg-background";
 const CORNER = `py-1 pr-3${STICKY}`;
@@ -71,6 +74,39 @@ function shown(field: CompareField, value: string, t: T): string {
   return words ? t(words[value] ?? "hostCompare.unknown") : value;
 }
 
+/**
+ * The features a host lacks or adds, in words ("no stall, no checkLoop"): the first few, then
+ * "and N more" that opens the whole list in place.
+ */
+function FeatureDiffList(props: Readonly<{ missing: string[]; extra: string[]; t: T }>) {
+  const { missing, extra, t } = props;
+  const [all, setAll] = useState(false);
+  const items = [
+    ...missing.map((name) => t("hostCompare.featureMissing", { name })),
+    ...extra.map((name) => t("hostCompare.featureExtra", { name })),
+  ];
+  const folded = items.length > FOLD_AT;
+  const shownItems = folded && !all ? items.slice(0, FOLD_AT) : items;
+  return (
+    <span className="block text-muted-foreground text-xs">
+      {shownItems.join(", ")}
+      {folded && (
+        <Button
+          variant="link"
+          size="sm"
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+          className="h-auto p-0 pl-1 text-xs"
+        >
+          {all
+            ? t("hostCompare.featuresFewer")
+            : t("hostCompare.featuresMore", { n: items.length - FOLD_AT })}
+        </Button>
+      )}
+    </span>
+  );
+}
+
 function Cell(
   props: Readonly<{
     cell: CompareCell;
@@ -92,17 +128,20 @@ function Cell(
   }
   const value = shown(row.field, cell.value, t);
   if (!cell.marked) return <td className={padding}>{value}</td>;
-  const why =
-    row.field === "features"
-      ? t("hostCompare.differsFeatures")
-      : t("hostCompare.differs", { value: shown(row.field, row.majority ?? cell.value, t) });
+  const diff = row.field === "features" ? featureDiff(cell.value, row.majority) : null;
   return (
     <td className={padding}>
       <span className="inline-flex items-center gap-1 font-medium text-status-needs-you">
         <TriangleAlert aria-hidden="true" className="size-3.5" />
         {value}
       </span>
-      <span className="block text-muted-foreground text-xs">{why}</span>
+      {diff ? (
+        <FeatureDiffList missing={diff.missing} extra={diff.extra} t={t} />
+      ) : (
+        <span className="block text-muted-foreground text-xs">
+          {t("hostCompare.differs", { value: shown(row.field, row.majority ?? cell.value, t) })}
+        </span>
+      )}
       {fix && hasFix(row.field, cell.value) && (
         <Button variant="link" size="sm" onClick={fix}>
           {t("hostCompare.fix", { host })}

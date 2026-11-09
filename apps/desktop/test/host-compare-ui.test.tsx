@@ -393,7 +393,7 @@ describe("host-compare-ui: the table", () => {
     expect(store.router.current).toEqual(before);
   });
 
-  test("features show as a count, and a different set is marked even with the same count", async () => {
+  test("features show as a count, and the host that differs says which ones it lacks, in words", async () => {
     const { store } = mount([
       { id: "alfa", features: ["account", "central"] },
       { id: "beta", features: ["account", "central"] },
@@ -405,7 +405,45 @@ describe("host-compare-ui: the table", () => {
     expect(alfa).toBe("4");
     expect(beta).toBe("4");
     expect(gama).toContain("4");
-    expect(gama).toContain("Not the same features as most hosts");
+    expect(gama).toContain("no central, has quota");
+  });
+
+  test("a long list of differing features folds to the first 3 and 'and N more', and opens in one click", async () => {
+    const lacking = ["a1", "a2", "a3", "a4", "a5"];
+    const { store } = mount([
+      { id: "alfa", features: lacking },
+      { id: "beta", features: lacking },
+      { id: "gama", features: [] },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    const [alfa, , gama] = cells("Features");
+    expect(alfa).toBe("7");
+    expect(gama).toContain("no a1, no a2, no a3");
+    expect(gama).toContain("and 2 more");
+    expect(gama).not.toContain("a4");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "and 2 more" }));
+    });
+    const opened = cells("Features")[2] ?? "";
+    expect(opened).toContain("no a1, no a2, no a3, no a4, no a5");
+    expect(opened).not.toContain("and 2 more");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Show fewer" }));
+    });
+    expect(cells("Features")[2]).not.toContain("a4");
+  });
+
+  test("a list of 3 or fewer is shown whole, with nothing to open", async () => {
+    const { store } = mount([
+      { id: "alfa", features: ["a1", "a2", "a3"] },
+      { id: "beta", features: ["a1", "a2", "a3"] },
+      { id: "gama", features: [] },
+    ]);
+    await open();
+    expect(await answered(store, 3)).toBe(true);
+    expect(cells("Features")[2]).toContain("no a1, no a2, no a3");
+    expect(screen.queryByRole("button", { name: /more/ })).toBeNull();
   });
 });
 
@@ -445,5 +483,26 @@ describe("host-compare-ui: in Portuguese", () => {
     );
     expect(cells("Login do Claude", "pt-BR")[2] ?? "").toContain("Sem login");
     expect(cells("Versão do Claude Code", "pt-BR")[2] ?? "").toContain("Desconhecido");
+  });
+
+  test("the features that differ and the fold are said in Portuguese", async () => {
+    const lacking = ["a1", "a2", "a3", "a4", "a5"];
+    const { store } = mount(
+      [
+        { id: "alfa", features: lacking },
+        { id: "beta", features: lacking },
+        { id: "gama", features: ["a1", "zeta"] },
+      ],
+      "pt-BR",
+    );
+    await open("pt-BR");
+    expect(await answered(store, 3)).toBe(true);
+    const gama = cells("Recursos", "pt-BR")[2] ?? "";
+    expect(gama).toContain("sem a2, sem a3, sem a4");
+    expect(gama).toContain("e mais 2");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "e mais 2" }));
+    });
+    expect(cells("Recursos", "pt-BR")[2]).toContain("sem a5, tem zeta");
   });
 });

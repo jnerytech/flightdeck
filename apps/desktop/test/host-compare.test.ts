@@ -3,6 +3,7 @@ import {
   COMPARE_FIELDS,
   type CompareValues,
   compareHosts,
+  featureDiff,
   type HostFacts,
   hasFix,
   hostFacts,
@@ -294,5 +295,74 @@ describe("host-compare: which marked cells have a fix to link to", () => {
   test("a value the host does not report has nothing to fix", () => {
     expect(hasFix("hooks", null)).toBe(false);
     expect(hasFix("daemon", null)).toBe(false);
+  });
+});
+
+describe("host-compare: which features differ", () => {
+  const set = (...names: string[]) => [...names].sort().join(",");
+  const FULL = set("checkLoop", "doctor.run", "stall");
+
+  const row = (hosts: HostFacts[]) => rowOf(hosts, "features");
+  const diffOf = (hosts: HostFacts[], hostId: string) => {
+    const r = row(hosts);
+    const cell = r.cells.find((c) => c.hostId === hostId);
+    return featureDiff(cell?.value ?? null, r.majority);
+  };
+
+  test("a feature most hosts have and one host lacks is named as missing on that host", () => {
+    const hosts = [
+      facts("a", { features: FULL }),
+      facts("b", { features: FULL }),
+      facts("c", { features: set("doctor.run") }),
+    ];
+    expect(markedIds(hosts, "features")).toEqual(["c"]);
+    expect(diffOf(hosts, "c")).toEqual({ missing: ["checkLoop", "stall"], extra: [] });
+    expect(diffOf(hosts, "a")).toEqual({ missing: [], extra: [] });
+  });
+
+  test("a feature one host has and most hosts lack is named as extra on that host", () => {
+    const hosts = [
+      facts("a", { features: set("doctor.run") }),
+      facts("b", { features: set("doctor.run") }),
+      facts("c", { features: set("doctor.run", "quota") }),
+    ];
+    expect(markedIds(hosts, "features")).toEqual(["c"]);
+    expect(diffOf(hosts, "c")).toEqual({ missing: [], extra: ["quota"] });
+  });
+
+  test("a host can lack one feature and have another at once", () => {
+    const hosts = [
+      facts("a", { features: set("doctor.run", "stall") }),
+      facts("b", { features: set("doctor.run", "stall") }),
+      facts("c", { features: set("doctor.run", "quota") }),
+    ];
+    expect(diffOf(hosts, "c")).toEqual({ missing: ["stall"], extra: ["quota"] });
+  });
+
+  test("a host with no features at all lacks every one of the majority's", () => {
+    const hosts = [
+      facts("a", { features: set("stall") }),
+      facts("b", { features: set("stall") }),
+      facts("c", { features: "" }),
+    ];
+    expect(diffOf(hosts, "c")).toEqual({ missing: ["stall"], extra: [] });
+  });
+
+  test("a tie has no majority, so no host is marked and none lacks or adds anything", () => {
+    const hosts = [facts("a", { features: FULL }), facts("b", { features: set("doctor.run") })];
+    expect(markedIds(hosts, "features")).toEqual([]);
+    expect(row(hosts).majority).toBeNull();
+    expect(diffOf(hosts, "a")).toEqual({ missing: [], extra: [] });
+    expect(diffOf(hosts, "b")).toEqual({ missing: [], extra: [] });
+  });
+
+  test("hosts that do not report their features are not named, and do not vote", () => {
+    const hosts = [
+      facts("a", { features: FULL }),
+      facts("b", { features: FULL }),
+      facts("c", { features: null }),
+    ];
+    expect(markedIds(hosts, "features")).toEqual([]);
+    expect(featureDiff(null, FULL)).toEqual({ missing: [], extra: [] });
   });
 });
