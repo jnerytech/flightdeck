@@ -434,7 +434,7 @@ describe("check-loop: the security review's cases", () => {
   test("invisible characters that could hide text are stripped too: zero-width, word joiner, BOM and tags", () => {
     const hidden = "a\u200bb\u200cc\u200dd\u2060e\ufeff\u{E0041}\u{E007F}f";
     const text = roundMessage(1, 3, { ...FAIL, output: hidden });
-    expect(text.includes("abcdef")).toBe(true);
+    expect(text).toContain("abcdef");
   });
 
   test("a slot the board released at idle is never the loop's: a switch turned on before the result starts nothing", async () => {
