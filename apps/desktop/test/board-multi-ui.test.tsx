@@ -647,6 +647,8 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
     await settleMaybe(() => screen.queryByRole("menuitem", { name: "Done" }) !== null);
     await press("Escape");
     await settleMaybe(() => screen.queryByRole("menuitem", { name: "Done" }) === null);
+    // The menu gives the focus back when it has finished closing, a tick or more after it goes.
+    await settleMaybe(() => focused() === "Card B");
     expect([focused(), selected()]).toEqual(["Card B", ["B"]]);
   });
 

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ResourcesSnapshot } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { settleMaybe, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -151,21 +151,26 @@ describe("memory hold on the board and the host (#1343)", () => {
       fireEvent.change(select() as HTMLSelectElement, { target: { value: "0.8" } });
     });
     await settleMaybe(() => select()?.value === "0.8");
-    expect(
-      asked.some(
-        ([type, p]) => type === "resources.setPauseAt" && JSON.stringify(p) === '{"pauseAt":0.8}',
-      ),
-    ).toBe(true);
+    const sets = () => asked.filter(([type]) => type === "resources.setPauseAt");
+    expect(sets()).toEqual([["resources.setPauseAt", { pauseAt: 0.8 }]]);
     await act(async () => {
       fireEvent.change(select() as HTMLSelectElement, { target: { value: "off" } });
     });
     await settleMaybe(() => select()?.value === "off");
-    expect(asked.at(-1)).toEqual(["resources.setPauseAt", { pauseAt: null }]);
+    expect(sets()).toEqual([
+      ["resources.setPauseAt", { pauseAt: 0.8 }],
+      ["resources.setPauseAt", { pauseAt: null }],
+    ]);
   });
 
   test("a host without the setting shows no picker", async () => {
-    resources(["resources"], undefined);
-    await settleMaybe(() => document.querySelector("[data-slot='resources-memory']") !== null);
-    expect(screen.queryByLabelText("New cards wait from memory at, on pi") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    const { asked } = resources(["resources"], undefined);
+    const memory = () => document.querySelector("[data-slot='resources-memory']") !== null;
+    await settleMaybe(memory);
+    expect(memory()).toBe(true);
+    // The picker would come with the memory section; watch the window, not one read.
+    const noPicker = () => screen.queryByLabelText("New cards wait from memory at, on pi") === null; // NOSONAR: the boolean keeps a DOM node out of the failure diff
+    await stays(noPicker);
+    expect(asked.filter(([type]) => type === "resources.setPauseAt")).toEqual([]);
   });
 });

@@ -86,7 +86,7 @@ function VariantColumn(
         <dt className="text-muted-foreground">{t("arenaUi.cost")}</dt>
         <dd className="tabular-nums">
           <output aria-label={t("arenaUi.costOf")}>
-            {variant.costUsd === null ? "—" : usd(variant.costUsd)}
+            {variant.costUsd === null ? "—" : usd(variant.costUsd, t.lang)}
           </output>
         </dd>
         <dt className="text-muted-foreground">{t("arenaUi.files")}</dt>

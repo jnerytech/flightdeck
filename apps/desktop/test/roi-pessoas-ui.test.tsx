@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
 import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
+import { usd } from "../src/lib/costs.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
@@ -128,7 +129,7 @@ for (const [lang, t] of [
       await costsPage(lang, [{ name: "Cy", costLimit: 48 }]);
       await settle(() => peopleTable(T) !== null);
       expect(rowOf("Cy")).toContain(
-        T.roiUi.people.shareOfLimit.replace("{share}", "25").replace("{limit}", "US$ 48.00"),
+        T.roiUi.people.shareOfLimit.replace("{share}", "25").replace("{limit}", usd(48, lang)),
       );
     });
 

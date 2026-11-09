@@ -122,7 +122,7 @@ describe("resumo-ui", () => {
     expect(region.textContent).toContain("Retry added with backoff.");
     expect(region.textContent).toContain("/r/queue.ts");
     expect(region.textContent).toContain("/r/queue.test.ts");
-    expect(region.textContent).toContain("US$ 1.50");
+    expect(region.textContent).toContain("US$ 1,50");
     expect(region.textContent).toContain("Pergunta em aberto");
     expect(region.textContent).toContain("Rodar o teste?");
   });

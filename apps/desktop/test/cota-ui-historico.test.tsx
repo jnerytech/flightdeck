@@ -121,8 +121,8 @@ describe("cota-ui-historico", () => {
     expect(region("Janela de 7 dias")?.textContent).toContain("não esgota antes de 12:00");
     const consumers = region("Quem consumiu a janela de 5 horas");
     expect([...(consumers?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
-      "kA: 75% (US$ 3.00)",
-      "kB: 25% (US$ 1.00)",
+      "kA: 75% (US$ 3,00)",
+      "kB: 25% (US$ 1,00)",
     ]);
     expect(consumers?.textContent).toContain("atribuição aproximada");
   });
@@ -172,14 +172,14 @@ describe("cota-ui-historico", () => {
     await unfoldAll(act);
     const cost = (label: string) => screen.queryByLabelText(label)?.textContent ?? "";
     await settle(() => cost("Custo de p") !== "");
-    expect(cost("Custo de p")).toBe("US$ 1.25");
+    expect(cost("Custo de p")).toBe("US$ 1,25");
     const row = screen.queryByRole("listitem", { name: "p" })?.querySelector("button") ?? null;
     expect(row).not.toBeNull();
     await act(async () => {
       fireEvent.click(row as HTMLElement);
     });
     await settle(() => cost("Custo da sessão") !== "");
-    expect(cost("Custo da sessão")).toBe("US$ 1.25");
+    expect(cost("Custo da sessão")).toBe("US$ 1,25");
     await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
     await click("Abrir board de repo");
@@ -189,8 +189,8 @@ describe("cota-ui-historico", () => {
       fireEvent.click(open as HTMLElement);
     });
     await settle(() => cost("Custo da execução") !== "");
-    expect(cost("Custo do card")).toBe("US$ 2.00");
-    expect(cost("Custo da execução")).toBe("US$ 2.00");
+    expect(cost("Custo do card")).toBe("US$ 2,00");
+    expect(cost("Custo da execução")).toBe("US$ 2,00");
   });
   test("o custo aparece na sessão criada pelo + sem passar pela tela Sessões", async () => {
     const d = makeDaemon(cleanups, { costs: true });
@@ -214,7 +214,7 @@ describe("cota-ui-historico", () => {
     d.manager.send(sessionId, "mais");
     const cost = () => screen.queryByLabelText("Custo da sessão")?.textContent ?? "";
     // The first reading may come before the entry: the next turn reads it again.
-    await settle(() => cost() === "US$ 0.75");
-    expect(cost()).toBe("US$ 0.75");
+    await settle(() => cost() === "US$ 0,75");
+    expect(cost()).toBe("US$ 0,75");
   });
 });

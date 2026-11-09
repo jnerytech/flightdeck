@@ -12,10 +12,10 @@ export function TeamOutcome(props: Readonly<{ t: T; outcome: { text: string; don
   const { t, outcome } = props;
   const title = useId();
   return (
-    <section
+    <section // NOSONAR: the box scrolls, so it takes the keyboard (see tabIndex below)
       aria-labelledby={title}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a box that scrolls must take the keyboard
-      tabIndex={0}
+      tabIndex={0} // NOSONAR: a box that scrolls must take the keyboard
       className="max-h-48 min-w-0 overflow-y-auto rounded-md border p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Stack gap={1}>

@@ -181,6 +181,12 @@ async function readBundle(text: string, passphrase: string): Promise<Bundle> {
 
 type Status = "added" | "same" | "conflicting";
 
+/** Whether an item is new here, the same as what is here, or differs from it. */
+function statusOf(exists: boolean, same: boolean): Status {
+  if (!exists) return "added";
+  return same ? "same" : "conflicting";
+}
+
 /** One thing of the bundle, what it is called, and how it stands against this profile right now. */
 interface Judged<T> {
   id: string;
@@ -236,7 +242,7 @@ async function judge(platform: BackupPlatform, bundle: Bundle): Promise<Judgemen
       mine.name === host.name &&
       mine.url === host.url &&
       (await platform.secrets.get(host.id)) === host.token;
-    const status: Status = !mine ? "added" : same ? "same" : "conflicting";
+    const status = statusOf(mine !== undefined, same);
     judgedHosts.push({ id: host.id, name: hostLabel(host), status, item: host });
   });
   const judgedVault: Judgement["vault"] = [];
@@ -254,8 +260,7 @@ async function judge(platform: BackupPlatform, bundle: Bundle): Promise<Judgemen
       .filter((key) => BACKUP_SETTING_KEYS.includes(key))
       .map((key): Judged<string> => {
         const mine = platform.storage.getItem(key);
-        const status: Status =
-          mine === null ? "added" : mine === bundle.settings[key] ? "same" : "conflicting";
+        const status = statusOf(mine !== null, mine === bundle.settings[key]);
         return { id: key, name: settingName(key), status, item: bundle.settings[key] as string };
       }),
     personas: judgeItems(readList(platform, PERSONAS_KEY), bundle.personas, personaName),
@@ -331,24 +336,26 @@ export async function applyRestore(
   };
   // The keyring and the host tokens can fail, and can be undone: they go first. The plain
   // settings go last, where only a full disk can stop them.
-  for (const { item: entry } of taken(judged.vault)) {
+  await inSequence(taken(judged.vault), async ({ item: entry }) => {
     const meta = secrets.find((other) => other.id === entry.meta.id);
     const value = meta ? await vault.value(meta.id) : null;
     steps.push({
       apply: () => vault.restore(entry.meta, entry.value),
       undo: () => (meta ? vault.restore(meta, value ?? "") : vault.remove(entry.meta.id)),
     });
-  }
+  });
   const chosenHosts = taken(judged.hosts).map((one) => one.item);
-  for (const host of chosenHosts) {
-    if (host.token === null) continue;
-    const token = await platform.secrets.get(host.id);
-    steps.push({
-      apply: () => platform.secrets.set(host.id, host.token as string),
-      undo: () =>
-        token === null ? platform.secrets.delete(host.id) : platform.secrets.set(host.id, token),
-    });
-  }
+  await inSequence(
+    chosenHosts.filter((host) => host.token !== null),
+    async (host) => {
+      const token = await platform.secrets.get(host.id);
+      steps.push({
+        apply: () => platform.secrets.set(host.id, host.token as string),
+        undo: () =>
+          token === null ? platform.secrets.delete(host.id) : platform.secrets.set(host.id, token),
+      });
+    },
+  );
   const merged = (key: string, chosen: Item[]) => {
     if (chosen.length === 0) return;
     const ids = new Set(chosen.map((item) => item.id));
@@ -380,7 +387,7 @@ export async function applyRestore(
     });
   } catch (error) {
     // The step that failed may have done half of its work: it is undone with the others.
-    await inSequence(done.reverse(), (step) => step.undo().catch(() => {}));
+    await inSequence([...done].reverse(), (step) => step.undo().catch(() => {}));
     throw error;
   }
   held.delete(preview);

@@ -140,9 +140,9 @@ describe("backup-scheduler (#1264)", () => {
 
   test("the number to keep is saved, never below one", async () => {
     const { scheduler, platform } = setup();
-    await scheduler.setKeep(8);
+    scheduler.setKeep(8);
     const eight = loadSchedule(platform.storage).keep;
-    await scheduler.setKeep(0);
+    scheduler.setKeep(0);
     expect([eight, loadSchedule(platform.storage).keep, scheduler.schedule().keep]).toEqual([
       8, 1, 1,
     ]);
@@ -156,7 +156,7 @@ describe("backup-scheduler (#1264)", () => {
     });
     await scheduler.setCadence("weekly");
     off();
-    await scheduler.setKeep(2);
+    scheduler.setKeep(2);
     expect([heard > 0, scheduler.version > 0]).toEqual([true, true]);
   });
 

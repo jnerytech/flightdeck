@@ -30,11 +30,11 @@ export function ClientBudget(
           <span data-budget-line className="text-sm">
             {seen
               ? t("clients.budgetLine", {
-                  spent: usd(seen.spentUsd),
-                  limit: usd(seen.limitUsd),
+                  spent: usd(seen.spentUsd, t.lang),
+                  limit: usd(seen.limitUsd, t.lang),
                   percent: Math.round(seen.fraction * 100),
                 })
-              : t("clients.budgetLimitOnly", { limit: usd(limit) })}
+              : t("clients.budgetLimitOnly", { limit: usd(limit, t.lang) })}
           </span>
           <Button
             variant="ghost"

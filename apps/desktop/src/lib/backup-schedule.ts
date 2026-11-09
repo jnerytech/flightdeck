@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 import type { Platform } from "../platform/types.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
 
@@ -128,12 +129,12 @@ export async function runScheduledBackup(deps: {
   try {
     const others = (await folder.list())
       .filter((one) => NAME.test(one) && one !== name)
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      .sort(compareNames);
     const stale = others.slice(0, Math.max(0, others.length - (keep - 1)));
-    for (const old of stale) {
+    await inSequence(stale, async (old) => {
       await folder.remove(old);
       removed += 1;
-    }
+    });
     return {
       status: "done",
       name,
@@ -145,4 +146,10 @@ export async function runScheduledBackup(deps: {
   } catch {
     return { status: "done", name, kept: 1, removed, prune: "failed", at };
   }
+}
+
+/** Code-unit order: the names are dates, so the oldest sorts first. */
+function compareNames(a: string, b: string): number {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
 }

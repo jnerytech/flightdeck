@@ -277,7 +277,9 @@ function ManagedSession(
                 });
                 return found.ok ? found.data.files.length : 0;
               },
-              onCommitFirst: () => void store.sessionViews.select("changes"),
+              onCommitFirst: () => {
+                store.sessionViews.select("changes");
+              },
             }
           : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}

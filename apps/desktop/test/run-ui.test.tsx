@@ -91,10 +91,10 @@ describe("run-ui", () => {
     expect(shown[1] ?? "").toStartWith("lint · tentativa 1 · concluída");
     expect(shown[2] ?? "").toStartWith("ok · tentativa 1 · esperando você");
     // Usage of each agent step; checks and gates spend no turns.
-    expect(shown[0] ?? "").toContain("· 1 turno · US$ 0.50");
+    expect(shown[0] ?? "").toContain("· 1 turno · US$ 0,50");
     expect(shown[1] ?? "").not.toContain("turno");
     expect(text("Orçamento")).toContain("Turnos: 1 de 10");
-    expect(text("Orçamento")).toContain("Custo estimado: US$ 0.50 de US$ 2.00");
+    expect(text("Orçamento")).toContain("Custo estimado: US$ 0,50 de US$ 2,00");
     expect(text("Orçamento")).toContain("Minutos: 0.0 (sem limite)");
     const turns = screen.queryByRole("meter", { name: "Turnos" });
     expect(turns?.getAttribute("value")).toBe("1");
