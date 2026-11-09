@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { AppStore } from "../src/lib/app-store.ts";
 import { hubRows } from "../src/lib/hub.ts";
-import { QUIET_SNOOZE_MS, type QuietState, quietAlerts, quietText } from "../src/lib/quiet.ts";
+import { type QuietState, quietAlerts, quietText } from "../src/lib/quiet.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 const NOW = Date.parse("2026-11-09T12:30:00.000Z");
@@ -144,7 +144,7 @@ describe("stall-state: Not stuck, and the ways on", () => {
   test("Not stuck hides the session for an hour, only that session", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { now: () => NOW });
     store.snoozeQuiet("h", "s1");
-    expect(store.getState().quietSnooze).toEqual({ "h/s1": NOW + QUIET_SNOOZE_MS });
+    expect(store.getState().quietSnooze).toEqual({ "h/s1": NOW + 60 * 60_000 });
     store.snoozeQuiet("h", "s2");
     expect(Object.keys(store.getState().quietSnooze).sort((a, b) => a.localeCompare(b))).toEqual([
       "h/s1",

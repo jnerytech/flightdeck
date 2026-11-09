@@ -21,7 +21,7 @@ const summaryOf = (envelope: EventEnvelope, id: string) =>
     : null;
 
 describe("stall in the session manager (issue #1478)", () => {
-  test("every event, a delta too, moves the session's last activity", async () => {
+  test("a persisted event moves the session's last activity", async () => {
     const { manager, sessionId } = await idleSession();
     const first = manager.activity(sessionId).lastEventAt;
     expect(first).not.toBeNull();

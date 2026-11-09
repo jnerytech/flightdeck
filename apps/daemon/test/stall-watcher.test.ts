@@ -71,13 +71,16 @@ function rig(minutes: number, status: SessionStatus = "running", unitMs?: number
   const state = {
     now: T0,
     intervals: new Map<number, () => unknown>(),
+    periods: [] as number[],
     next: 1,
     status,
+    listed: true,
   };
   const timers: StallTimers = {
-    setInterval: ((fn: () => unknown) => {
+    setInterval: ((fn: () => unknown, ms: number) => {
       const id = state.next++;
       state.intervals.set(id, fn);
+      state.periods.push(ms);
       return id as unknown as ReturnType<typeof setInterval>;
     }) as never,
     clearInterval: ((id: number) => void state.intervals.delete(id)) as never,
@@ -85,7 +88,7 @@ function rig(minutes: number, status: SessionStatus = "running", unitMs?: number
   const activity = new ActivityClock();
   const marks: Array<[string, QuietInfo | null]> = [];
   const host: StallHost = {
-    list: () => [{ id: "s1", status: state.status } as SessionSummary],
+    list: () => (state.listed ? [{ id: "s1", status: state.status } as SessionSummary] : []),
     activity: (id) => ({ lastEventAt: activity.lastEventAt(id), tool: activity.tool(id) }),
     markQuiet: (id, info) => void marks.push([id, info]),
   };
@@ -180,6 +183,32 @@ describe("stall watcher: a running session that says nothing (issue #1478)", () 
     expect(r.watcher.tick()).toEqual([]);
     r.state.now = T0 + 2000;
     expect(r.watcher.tick()).toEqual(["s1"]);
+  });
+
+  test("the timer's own callback is what looks, at a period that suits the unit", () => {
+    const r = rig(10);
+    r.activity.observe("s1", delta, T0);
+    r.state.now = T0 + 10 * MIN;
+    expect(r.marks).toEqual([]);
+    for (const fire of r.state.intervals.values()) fire();
+    expect(r.marks.map(([id]) => id)).toEqual(["s1"]);
+    expect(r.state.periods).toEqual([30_000]);
+    expect(rig(2, "running", 1000).state.periods).toEqual([500]);
+    expect(rig(2, "running", 100).state.periods).toEqual([250]);
+  });
+
+  test("a session that leaves the list takes its mark with it, so a new one with that id can be marked", () => {
+    const r = rig(10);
+    r.activity.observe("s1", delta, T0);
+    r.state.now = T0 + 10 * MIN;
+    expect(r.watcher.tick()).toEqual(["s1"]);
+    r.state.status = "ended";
+    r.state.listed = false;
+    expect(r.watcher.tick()).toEqual([]);
+    r.state.listed = true;
+    r.state.status = "running";
+    expect(r.watcher.tick()).toEqual(["s1"]);
+    expect(r.marks).toHaveLength(2);
   });
 
   test("0 is off: no timer at all, nothing marked, and turning it off clears what was marked", () => {
