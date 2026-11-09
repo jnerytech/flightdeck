@@ -50,6 +50,14 @@ export interface Connection {
   pendingPings: Map<string, number>;
   /** When the last frame of any kind arrived from this client (the heartbeat clock). */
   lastFrameAt: number;
+  /** Issue #1532: what the close log says of this connection. */
+  id: number;
+  connectedAt: number;
+  /** The name the client gave in `hello`. */
+  client?: string;
+  lastPongAt?: number;
+  /** Set when the daemon closes it: why (the log tells the daemon's close from the peer's). */
+  closedBy?: string;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;
   /** Stops the `history.watch` stream, when active. */

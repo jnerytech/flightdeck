@@ -3812,6 +3812,14 @@ Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copi
 and system, each host's name, state, version and features (never an address or a token), and the
 last 50 log lines, to paste in a message. Neither button exists in a browser.
 
+When a host goes offline, the log says why, so a drop that repeats can be read (#939). The app writes one
+line for each drop of a link that was online (a warning): the close code and reason, whether the host
+or the app closed it, how long the link had been up, how long nothing had come from the host and how
+long since its last heartbeat ping. The daemon writes one line for each connection that closes: the
+name the client gave, the code and reason, whether the daemon (heartbeat timeout, wrong token, a
+rotated token) or the client closed it, and the same clocks. Neither line holds a token, an address or
+a message.
+
 The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
 `host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
 

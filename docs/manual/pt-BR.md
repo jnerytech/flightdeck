@@ -3833,6 +3833,14 @@ copia a versão e o sistema do app, o nome, o estado, a versão e os recursos de
 endereço ou token) e as últimas 50 linhas do log, para colar numa mensagem. Nenhum dos dois botões
 existe no navegador.
 
+Quando um host fica offline, o log diz por quê, para que uma queda que se repete possa ser lida (#939). O
+app escreve uma linha para cada queda de um link que estava online (um aviso): o código e o motivo do
+fechamento, se o host ou o app o fechou, há quanto tempo o link estava de pé, há quanto tempo nada vinha
+do host e há quanto tempo veio o último ping do heartbeat. O daemon escreve uma linha para cada conexão
+que fecha: o nome que o cliente deu, o código e o motivo, se foi o daemon (tempo do heartbeat, token
+errado, token trocado) ou o cliente que fechou, e os mesmos relógios. Nenhuma das linhas tem token,
+endereço ou mensagem.
+
 O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (também girado), e o
 `host.info` diz onde fica. Na página de um host, **Copiar as últimas linhas de log do host** copia
 até 100 delas.
