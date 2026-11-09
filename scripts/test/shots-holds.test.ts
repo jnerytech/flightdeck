@@ -12,13 +12,16 @@ const snapshot = { at: "x", memory: { totalBytes: 8000, freeBytes: 6000 }, memor
 const notify = { id: "b1", scope: "host", action: "notify", fraction: 0.1 };
 
 describe("shots-holds", () => {
-  test("the answer to resources.get reads 95% in use with the hold at 90%", () => {
+  test("the answer to resources.get reads 95% in use, the hold at 90%, and holding", () => {
     const rewriter = holdsRewriter();
     rewriter.fromApp(ask("r1", "resources.get"));
     const out = JSON.parse(rewriter.fromHost(ack("r1", snapshot)));
-    expect([out.data.memory.totalBytes, out.data.memory.freeBytes, out.data.memoryPauseAt]).toEqual(
-      [8000, 400, 0.9],
-    );
+    expect([
+      out.data.memory.totalBytes,
+      out.data.memory.freeBytes,
+      out.data.memoryPauseAt,
+      out.data.memoryHolding,
+    ]).toEqual([8000, 400, 0.9, true]);
   });
 
   test("the answer to budget.list keeps the host's budgets and adds one that holds, at its limit", () => {
@@ -125,5 +128,11 @@ describe("shots-holds: the page's WebSocket", () => {
     socket.send(ask("r1", "budget.list"));
     socket.play(ack("r1", { budgets: [notify] }));
     expect(JSON.parse(String(got[0])).data.budgets.length).toBe(2);
+  });
+
+  // From the review of #1418: a helper Bun's transpile puts outside a function would be missing in
+  // the page, where only the functions' own source goes.
+  test("the init script calls no transpile helper", () => {
+    expect(holdsScript().match(/\b__\w+/g) ?? []).toEqual([]);
   });
 });
