@@ -88,6 +88,8 @@ function setup(
     language?: "en" | "pt-BR";
     refuse?: string[];
     quota?: boolean;
+    /** The host's budgets, as `budget.updated` keeps them (#1393). */
+    budgets?: object[];
     max?: number;
     /** The host's answers to project.list and workflow.list wait until this resolves. */
     hold?: Promise<void>;
@@ -127,6 +129,7 @@ function setup(
       },
     });
   }
+  if (options.budgets) internals.update({ budgets: { h1: options.budgets } });
   const commands: Call[] = [];
   const requests: Call[] = [];
   store.hostCommand = (async (_hostId: string, type: string, payload: unknown) => {
@@ -268,6 +271,35 @@ describe("board-bulk-ui: the Start confirm (#1354)", () => {
       dialogText().includes("D — skipped: the card is already running"),
     ]).toEqual([true, true, true, true]);
     restore();
+  });
+
+  test("the confirm names a budget hold and a memory hold, one line each, in English and pt-BR (#1393)", async () => {
+    const holds = {
+      budgets: [{ id: "b", scope: "host", projectKey: null, action: "queue", fraction: 1.1 }],
+      cards: [...CARDS, card("Q", "backlog", 4, { queued: true, queueReason: "memory" })],
+    };
+    const { restore } = setup(holds);
+    await ready();
+    await ctrl("A", "B");
+    await click(button(bar(), "Start 2"));
+    await settleMaybe(() => dialogText().includes("budget"));
+    const english = dialogText();
+    restore();
+    cleanup();
+    const pt = setup({ ...holds, language: "pt-BR" });
+    await ready();
+    await ctrl("A", "B");
+    await click(button(bar("Seleção"), "Iniciar 2"));
+    await settleMaybe(() => dialogText().includes("orçamento"));
+    const portuguese = dialogText();
+    pt.restore();
+    expect([
+      english.includes("Start 2 cards?"),
+      english.includes("alfa reached a budget that holds new cards"),
+      english.includes("alfa is short of memory: new cards wait until it frees up."),
+      portuguese.includes("alfa chegou a um orçamento que segura cards novos"),
+      portuguese.includes("alfa está sem memória"),
+    ]).toEqual([true, true, true, true, true]);
   });
 
   test("Start asks the host for each card in the board's order; started cards leave the selection", async () => {

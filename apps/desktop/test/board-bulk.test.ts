@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
-import { bulkSplit, queueLine, queueSplit, runMany } from "../src/lib/board-bulk.ts";
+import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../src/lib/board-bulk.ts";
 
 /**
  * #1354 (docs/decisions/2026-11-09-board-bulk-actions.md): Start N and Stop N act on the selection.
@@ -93,6 +93,76 @@ describe("board-bulk: one card at a time (#1354)", () => {
       ["a", "b", "c"],
       1,
       ["b: no room (busy)"],
+    ]);
+  });
+});
+
+describe("board-bulk: what keeps new cards waiting (#1393)", () => {
+  const budget = (over: object = {}) =>
+    ({
+      id: "b",
+      scope: "host",
+      projectKey: null,
+      action: "queue",
+      fraction: 1.2,
+      ...over,
+    }) as never;
+  const none = { budgets: [], projectKey: "k1", cards: [] };
+
+  test("a host budget that holds new cards and is at its limit says so; a notify-only or under-limit one does not", () => {
+    const lines = (budgets: object[]) =>
+      holdLines(t, "alfa", { ...none, budgets: budgets as never });
+    expect([
+      lines([budget()]),
+      lines([budget({ action: "notify" })]),
+      lines([budget({ fraction: 0.5 })]),
+      lines([]),
+    ]).toEqual([
+      ["alfa reached a budget that holds new cards: they wait until its period resets."],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  test("a project budget counts only for its own project", () => {
+    const own = holdLines(t, "alfa", {
+      ...none,
+      budgets: [budget({ scope: "project", projectKey: "k1" })],
+    });
+    const other = holdLines(t, "alfa", {
+      ...none,
+      budgets: [budget({ scope: "project", projectKey: "k2" })],
+    });
+    expect([own.length, other.length]).toEqual([1, 0]);
+  });
+
+  test("a queued card the host says waits for a budget or for memory names that hold, once", () => {
+    const cards = [
+      card("a", { queued: true, queueReason: "memory" }),
+      card("b", { queued: true, queueReason: "memory" }),
+      card("c", { queued: true, queueReason: "slot" }),
+    ];
+    const memory = holdLines(t, "alfa", { ...none, cards });
+    const budget = holdLines(t, "alfa", {
+      ...none,
+      cards: [card("d", { queued: true, queueReason: "budget" })],
+    });
+    expect([memory, budget.length]).toEqual([
+      ["alfa is short of memory: new cards wait until it frees up."],
+      1,
+    ]);
+  });
+
+  test("in pt-BR the lines are translated, and a host with both holds gets both", () => {
+    const lines = holdLines(tPt, "alfa", {
+      budgets: [budget()],
+      projectKey: null,
+      cards: [card("a", { queued: true, queueReason: "memory" })],
+    });
+    expect(lines).toEqual([
+      "alfa chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
+      "alfa está sem memória: os cards novos esperam ela liberar.",
     ]);
   });
 });
