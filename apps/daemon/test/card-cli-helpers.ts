@@ -17,13 +17,24 @@ afterEach(async () => {
 });
 
 /** A daemon of this test: `hello` checks the token, every other command is a handler or silent. */
-export function fakeDaemon(handlers: Handlers, token = TOKEN) {
+/** A handler that answers with this closes the connection instead (a daemon that dies mid-command). */
+export const CLOSE = Symbol("close");
+
+export function fakeDaemon(
+  handlers: Handlers,
+  token = TOKEN,
+  options: { helloDelayMs?: number } = {},
+) {
   const calls: Array<{ type: string; payload: Record<string, unknown> }> = [];
+  let closes = 0;
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
     fetch: (req, srv) => (srv.upgrade(req) ? undefined : new Response("ws only", { status: 400 })),
     websocket: {
+      close() {
+        closes += 1;
+      },
       async message(ws, raw) {
         const { id, type, payload } = JSON.parse(String(raw)) as {
           id: string;
@@ -31,12 +42,15 @@ export function fakeDaemon(handlers: Handlers, token = TOKEN) {
           payload: Record<string, unknown>;
         };
         calls.push({ type, payload });
+        // timing: a daemon that is slow to say hello is the case under test
+        if (type === "hello" && options.helloDelayMs) await Bun.sleep(options.helloDelayMs);
         const answer =
           type === "hello"
             ? payload.token === token
               ? {}
               : { error: { code: "unauthorized", message: `bad token ${String(payload.token)}` } }
             : await handlers[type]?.(payload);
+        if (answer === CLOSE) return void ws.close();
         if (answer === undefined && type !== "hello") return; // a daemon that never answers
         const error = (answer as { error?: unknown } | undefined)?.error;
         ws.send(
@@ -50,7 +64,7 @@ export function fakeDaemon(handlers: Handlers, token = TOKEN) {
     },
   });
   stops.push(() => server.stop(true));
-  return { port: server.port as number, calls };
+  return { port: server.port as number, calls, closed: () => closes };
 }
 
 export const config = (port: number, bind = "127.0.0.1") => ({ bind, port, token: TOKEN });

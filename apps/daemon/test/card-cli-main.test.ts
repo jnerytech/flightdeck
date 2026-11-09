@@ -85,6 +85,16 @@ describe("card cli: flightdeckd card (issue #1507)", () => {
       expect(usage).toContain(line);
   });
 
+  test("--json, --description and --workflow belong to card, and no other command takes them", () => {
+    for (const flag of [["--json"], ["--description", "x"], ["--workflow", "x"]]) {
+      expect(() => parseArgs(["doctor", ...flag])).toThrow("only applies to flightdeckd card");
+      expect(() => parseArgs(["service", "status", ...flag])).toThrow(
+        "only applies to flightdeckd card",
+      );
+    }
+    expect(parseArgs(["card", "list", "--json"]).json).toBe(true);
+  });
+
   test("list prints one line per card and exits 0", async () => {
     const run = await terminal(["list", "--project", "web"]);
     expect(run.out).toEqual(["web  c3  backlog  Dark mode"]);

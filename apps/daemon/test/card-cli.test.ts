@@ -7,6 +7,7 @@ import {
   runCardCli,
 } from "../src/card-cli.ts";
 import {
+  CLOSE,
   card,
   config,
   fakeDaemon,
@@ -16,6 +17,7 @@ import {
   stops,
   TOKEN,
 } from "./card-cli-helpers.ts";
+import { poll } from "./helpers.ts";
 
 setDefaultTimeout(20_000);
 
@@ -390,5 +392,89 @@ describe("card: what the daemon's text can do to the terminal, and to the addres
     // A read has nothing to be unsure of.
     const listed = await run({ action: "list" }, fakeDaemon({}), undefined, 300);
     expect(text(listed)).not.toContain("may or may not");
+  });
+});
+
+describe("card: a command that gave up does not write later, and says what it knows (issue #1507)", () => {
+  test("the time ran out while the daemon was still saying hello: nothing is written afterwards", async () => {
+    const slow = fakeDaemon({ ...HOST, "card.create": () => card("c9") }, TOKEN, {
+      helloDelayMs: 600,
+    });
+    const result = await run({ action: "new", title: "T", project: "api" }, slow, undefined, 200);
+    expect(result.code).toBe(2);
+    // Nothing was sent, so there is nothing to be unsure about.
+    expect(text(result)).toContain("did not answer");
+    expect(text(result)).not.toContain("may or may not");
+    // timing: the late hello answer is what would have let the write go out
+    await Bun.sleep(900);
+    expect(slow.calls.map((call) => call.type)).toEqual(["hello"]);
+  });
+
+  test("a daemon that drops the connection after the write was sent leaves the result unknown, not 'is it running'", async () => {
+    const dying = fakeDaemon({ ...HOST, "card.create": () => CLOSE, "card.start": () => CLOSE });
+    const created = await run({ action: "new", title: "T", project: "api" }, dying);
+    expect(created.code).toBe(2);
+    expect(text(created)).toContain("closed the connection");
+    expect(text(created)).toContain("may or may not have been created");
+    const started = await run({ action: "start", id: "c1" }, dying);
+    expect(text(started)).toContain("may or may not have been started");
+    // A read that is cut has nothing to be unsure of, and still means the daemon is not there.
+    const dyingRead = fakeDaemon({ "project.list": () => CLOSE });
+    const listed = await run({ action: "list" }, dyingRead);
+    expect(listed.code).toBe(2);
+    expect(text(listed)).not.toContain("may or may not");
+  });
+
+  test("a hello the daemon refuses closes the socket it opened", async () => {
+    const strict = fakeDaemon(HOST, "another-token-0123456789abcdef");
+    expect((await run({ action: "list" }, strict)).code).toBe(1);
+    expect(await poll(() => strict.closed() === 1, 1000)).toBe(true);
+  });
+});
+
+describe("card: what is shown is only what the daemon said, cleaned (issue #1507)", () => {
+  const onlyTitle = (title: string): Handlers => ({
+    ...HOST,
+    "card.get": () => card("c1", { title }),
+    "board.get": () => ({
+      project: project("p1", "api"),
+      columns: [{ column: "backlog", cards: [card("c1", { title })] }],
+    }),
+  });
+
+  test("the token is not in a successful output either, even in a card's own text", async () => {
+    const daemon = fakeDaemon(onlyTitle(`leaks ${TOKEN} here`));
+    for (const args of [
+      { action: "show", id: "c1" },
+      { action: "show", id: "c1", json: true },
+      { action: "list", project: "api" },
+    ] satisfies CardCliArgs[]) {
+      const result = await run(args, daemon);
+      expect(result.code).toBe(0);
+      expect(text(result)).toContain("leaks");
+      expect(text(result)).not.toContain(TOKEN);
+    }
+  });
+
+  test("a bidi override, a line separator and a zero-width character cannot reorder or hide text", async () => {
+    const daemon = fakeDaemon(onlyTitle("a‮b⁦c d​e﻿f"));
+    const result = await run({ action: "show", id: "c1" }, daemon);
+    expect(result.out[0]).toBe("c1  a b c d e f");
+  });
+
+  test("a reason for waiting this CLI does not know is shown as it came, not as 'undefined'", async () => {
+    const daemon = fakeDaemon({
+      ...HOST,
+      "card.start": () => card("c1", { queued: true, queueReason: "maintenance" as never }),
+    });
+    const result = await run({ action: "start", id: "c1" }, daemon);
+    expect(result.code).toBe(0);
+    expect(result.out).toEqual(["queued c1  card c1: waiting (maintenance)"]);
+  });
+
+  test("a bind that is not an address at all is a refusal, not a crash", async () => {
+    const result = await run({ action: "list" }, fakeDaemon(HOST), "[::1]");
+    expect(result.code).toBe(1);
+    expect(text(result)).toContain("not a valid address");
   });
 });
