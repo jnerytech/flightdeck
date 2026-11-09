@@ -40,6 +40,9 @@ export interface ReviewComment {
   sentAt: string | null;
   /** The quoted lines are no longer in the file. */
   outdated: boolean;
+  /** Issue #1439: a second opinion's finding, until the person edits it. */
+  author?: "reviewer";
+  severity?: "blocker" | "high" | "medium" | "low";
 }
 
 export interface NewReviewComment {
@@ -49,6 +52,8 @@ export interface NewReviewComment {
   lineStart: number;
   lineEnd: number;
   body: string;
+  author?: "reviewer";
+  severity?: "blocker" | "high" | "medium" | "low";
 }
 
 /** Where `review.send` delivered the review; `copy` when the app has to hand it over. */
