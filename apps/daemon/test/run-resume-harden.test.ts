@@ -48,13 +48,19 @@ const reasonOf = async (call: () => Promise<unknown>) => {
 };
 
 /** A durable host whose run failed at b, then left as a resume waiting for its slot. */
-async function waitingAfterRestart(
-  moveBranch: boolean,
-  noHead = false,
-  cardGone = false,
-  reassigned = false,
-  tampered = false,
-) {
+interface Waiting {
+  moveBranch?: boolean;
+  noHead?: boolean;
+  cardGone?: boolean;
+  reassigned?: boolean;
+  tampered?: boolean;
+  untrusted?: boolean;
+  /** The column the card is in before the restart, as another run of it may have put it. */
+  column?: string;
+}
+
+async function waitingAfterRestart(options: Waiting = {}) {
+  const { moveBranch, noHead, cardGone, reassigned, tampered, untrusted, column } = options;
   const { runner } = scripted();
   const made = await durableWorkflowCard(YAML, { checks: runner });
   const { host } = made;
@@ -80,6 +86,11 @@ async function waitingAfterRestart(
     writeFileSync(join(worktree, "later.txt"), "later\n");
     git(worktree, "add", "--", "later.txt");
     git(worktree, "commit", "-q", "-m", "Later");
+  }
+  // As a workflow whose trust was taken back while the resume waited.
+  if (untrusted) host.store.db.exec("DELETE FROM trusted_workflows");
+  if (column) {
+    host.store.db.query("UPDATE cards SET board_column = ? WHERE id = ?").run(column, host.cardId);
   }
   // As a stored definition someone changed: its hash no longer names it.
   if (tampered) {
@@ -119,7 +130,7 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
   });
 
   test("a resumed run waiting for its slot goes on after a restart", async () => {
-    const { runWhen } = await waitingAfterRestart(false);
+    const { runWhen } = await waitingAfterRestart();
     const done = await runWhen((run) => run.status === "completed");
     expect(done?.steps.map((step) => `${step.stepId} ${step.status}`)).toEqual([
       "a completed",
@@ -128,7 +139,7 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
   });
 
   test("a branch moved while it waited fails it, and keeps its HEAD to say so again", async () => {
-    const { host, head, runWhen } = await waitingAfterRestart(true);
+    const { host, head, runWhen } = await waitingAfterRestart({ moveBranch: true });
     const failed = await runWhen((run) => run.status === "failed");
     const kept = host.store.db
       .query<{ head_at_end: string | null }, [string]>(
@@ -143,7 +154,7 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
   });
 
   test("a queued resume with no recorded HEAD fails after a restart, and never runs", async () => {
-    const { runWhen } = await waitingAfterRestart(false, true);
+    const { runWhen } = await waitingAfterRestart({ noHead: true });
     const failed = await runWhen((run) => run.status === "failed");
     // b, the step the resume would run, has no row: nothing ran.
     expect([failed?.reasonKey, failed?.steps.map((step) => step.stepId)]).toEqual([
@@ -177,13 +188,13 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
   });
 
   test("a queued resume whose card is gone fails after a restart, and the daemon still starts", async () => {
-    const made = await waitingAfterRestart(false, false, true);
+    const made = await waitingAfterRestart({ cardGone: true });
     const failed = await made.runWhen((run) => run.status === "failed");
     expect(failed?.reasonKey).toBe("run_resume_card");
   });
 
   test("a queued resume whose card has moved on to another run fails after a restart, and never runs", async () => {
-    const made = await waitingAfterRestart(false, false, false, true);
+    const made = await waitingAfterRestart({ reassigned: true });
     const failed = await made.runWhen((run) => run.status === "failed");
     expect([failed?.reasonKey, failed?.steps.map((step) => step.stepId)]).toEqual([
       "run_resume_card",
@@ -192,7 +203,7 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
   });
 
   test("a queued resume refused after a restart names the workflow and keeps its HEAD", async () => {
-    const made = await waitingAfterRestart(false, false, false, false, true);
+    const made = await waitingAfterRestart({ tampered: true });
     const failed = await made.runWhen((run) => run.status === "failed");
     const kept = made.host.store.db
       .query<{ head_at_end: string | null }, [string]>(
@@ -219,5 +230,23 @@ describe("run-resume-harden: a resume after its review (#1266)", () => {
     await made.restart();
     const failed = await made.runWhen((run) => run.status === "failed");
     expect(failed?.reasonKey).toBe("run_card_gone");
+  });
+
+  test("a queued resume refused after a restart leaves a card that moved on to another run where it is", async () => {
+    const made = await waitingAfterRestart({ reassigned: true, column: "in_progress" });
+    const failed = await made.runWhen((run) => run.status === "failed");
+    expect([failed?.reasonKey, made.host.board.getCard(made.host.cardId).column]).toEqual([
+      "run_resume_card",
+      "in_progress",
+    ]);
+  });
+
+  test("a queued resume whose workflow is no longer trusted says so after a restart", async () => {
+    const made = await waitingAfterRestart({ untrusted: true });
+    const failed = await made.runWhen((run) => run.status === "failed");
+    expect([failed?.reasonKey, failed?.reasonParams]).toEqual([
+      "workflow_not_trusted",
+      { name: "wf" },
+    ]);
   });
 });

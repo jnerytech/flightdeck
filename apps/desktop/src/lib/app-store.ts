@@ -85,7 +85,7 @@ import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
-import { BackupScheduler } from "./backup-scheduler.ts";
+import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
@@ -1091,6 +1091,7 @@ export class AppStore {
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
+      onAttention: (kind) => this.onBackupAttention(kind),
       ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
     });
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
@@ -1716,6 +1717,18 @@ export class AppStore {
     if (!result.ok) return;
     const files = result.data.files.length;
     this.setFinished(withFiles(this.state.finished, key, at, files), this.state.finishedLook);
+  }
+
+  /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
+  private onBackupAttention(kind: Attention): void {
+    const t = this.i18n.t;
+    this.notifyUser(
+      {
+        title: t(`backupSchedule.attention.${kind}.title`),
+        body: t(`backupSchedule.attention.${kind}.body`),
+      },
+      { name: "settings", section: "backup" },
+    );
   }
 
   /** Sends an OS notification and keeps it in the notification center. */

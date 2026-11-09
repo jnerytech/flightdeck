@@ -52,8 +52,11 @@ engine can already continue a run without repeating what finished: after a daemo
   the daemon is back, with the HEAD its resume recorded. It still needs the same HEAD once it
   gets a slot. Before that, it fails instead of running, for any of these reasons:
   - its card is gone or discarded, has no worktree, or runs another run (`run_resume_card`);
-  - its stored definition no longer matches its hash, or the workflow is no longer trusted
-    (`run_resume_workflow_changed`);
+  - its stored definition no longer matches its hash (`run_resume_workflow_changed`);
+  - the workflow is no longer trusted (`workflow_not_trusted`, with its name).
+
+  A card that has moved on to another run stays where that run put it; only a card that is
+  still the run's goes to waiting.
   - it has no recorded HEAD (`run_resume_no_head`).
 
   A step's own rows are the ones the engine names after it: `<id>.<n>` for a parallel item, and

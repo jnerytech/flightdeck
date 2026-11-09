@@ -828,6 +828,8 @@ export const ptBR = {
     noFolder: "Nenhuma pasta escolhida",
     chooseFolder: "Escolher pasta",
     keep: "Arquivos a manter",
+    keepInvalid:
+      "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
     passphrase: "Frase-senha desta sessão",
     passphraseHelp:
       "Pelo menos 12 caracteres. Fica na memória até você fechar o Flightdeck e nunca é salva.",
@@ -837,6 +839,20 @@ export const ptBR = {
     lastRun: "Último backup: {when}",
     neverRun: "Ainda não houve backup agendado.",
     pruneFailed: "O backup foi salvo, mas não deu para apagar os arquivos antigos.",
+    attention: {
+      passphrase: {
+        title: "Os backups agendados precisam da sua frase-senha",
+        body: "Digite-a em Configurações, seção Backup. Até lá, nenhum backup é feito.",
+      },
+      "no-folder": {
+        title: "Os backups agendados estão sem pasta",
+        body: "Escolha uma pasta em Configurações, seção Backup. Até lá, nenhum backup é feito.",
+      },
+      failed: {
+        title: "Um backup agendado falhou",
+        body: "Veja se a pasta ainda existe e tem espaço, em Configurações, seção Backup.",
+      },
+    },
     skipped: {
       "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
       "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
@@ -4074,6 +4090,8 @@ export const ptBR = {
     /** The card's details as a pane of their own once its conversation shows (#641). */
     infoPane: "O card, acima da conversa",
     runTitle: "Execução",
+    menu: "Ações",
+    loadingTitle: "Carregando card…",
     saveDescription: "Salvar descrição",
     validation: "Nota de validação",
     saveValidation: "Salvar nota de validação",

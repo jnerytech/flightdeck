@@ -489,6 +489,97 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     ]);
   });
 
+  // #1325: the reason adds no height to its row (#38), so one that wraps, or a row with text right
+  // under it, draws over that text. Only a disabled button's reason: a tooltip or a menu floats on
+  // purpose, and a reason that ends above the next line, or touches it by 2 px, covers nothing.
+  test("narrow (#1325): a disabled button's reason drawn over other text, by how much; a reason clear of it or a tooltip is not", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <section data-slot="details" data-rect="16,16,600,400">
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save spec file</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,82,584,110">Type the spec file's path to save it.</span>
+            </span>
+          </div>
+          <p data-rect="32,100,584,116">No spec file at docs/specs/login.md</p>
+          <div data-rect="32,200,584,240">
+            <span style="position: relative" data-rect="480,200,584,240">
+              <button data-rect="480,200,584,240">Save hours</button>
+              <span class="action-reason" style="position: absolute" data-rect="400,242,584,256">Type the hours.</span>
+            </span>
+          </div>
+          <p data-rect="32,254,584,270">Estimated hours of this card</p>
+          <span data-slot="tooltip-content" style="position: absolute" data-rect="32,300,300,330">A tooltip</span>
+          <p data-rect="32,310,584,326">Under the tooltip</p>
+        </section>
+      </div>`);
+    expect(narrow()).toEqual([
+      "reason-over: page-body > details > span.action-reason (over page-body > details > p[1], 284x10 px)",
+    ]);
+  });
+
+  // #1338's review: a reason in a dialog or a full-window sheet floats over the page with it, so the
+  // page's text behind the modal is not under it; the dialog's own text is. A tooltip drawn over a
+  // reason is a floating layer too. And text is judged by its own lines: a paragraph's box can reach
+  // under a reason where its short last line does not.
+  test("narrow (#1325): a reason in a dialog meets only the dialog's text, a tooltip over a reason is not counted, and a text's lines count, not its box", () => {
+    const proto = Range.prototype as unknown as {
+      selectNodeContents(node: Node): void;
+      getClientRects(): unknown;
+    };
+    const select = proto.selectNodeContents;
+    const rects = proto.getClientRects;
+    // The harness has no layout: a text's lines come from its element's data-lines ("l,t,r,b;…").
+    proto.selectNodeContents = function (this: { node?: Node }, node: Node) {
+      this.node = node;
+    };
+    proto.getClientRects = function (this: { node?: Node }) {
+      const spec = this.node?.parentElement?.getAttribute("data-lines");
+      return (spec ? spec.split(";") : []).map((line) => {
+        const [left = 0, top = 0, right = 0, bottom = 0] = line.split(",").map(Number);
+        return { left, top, right, bottom, width: right - left, height: bottom - top };
+      });
+    };
+    try {
+      page(`
+        <div data-slot="page-body" data-rect="0,0,640,800">
+          <p data-rect="0,700,640,760">The page's own text, behind the dialog</p>
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save hours</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,82,584,110">Type the hours to save them.</span>
+            </span>
+          </div>
+          <span data-slot="tooltip-content" style="position: absolute" data-rect="300,80,584,112">A tooltip over the reason</span>
+          <div data-rect="32,300,584,340">
+            <span style="position: relative" data-rect="480,300,584,340">
+              <button data-rect="480,300,584,340">Save spec file</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,342,584,370">Type the path to save it.</span>
+            </span>
+          </div>
+          <p data-rect="32,330,584,380" data-lines="32,330,584,341;32,341,200,357">A paragraph whose short last line ends before the reason</p>
+          <p data-rect="32,360,584,380" data-lines="32,360,584,376">A line right under the reason</p>
+        </div>
+        <div data-slot="dialog-content" style="position: fixed" data-rect="0,600,640,800">
+          <div data-rect="24,700,616,740">
+            <span style="position: relative" data-rect="500,700,616,740">
+              <button data-rect="500,700,616,740">Save</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,742,616,770">Name the action to save it.</span>
+            </span>
+          </div>
+          <p data-rect="24,760,616,776">The dialog's own text</p>
+        </div>`);
+      expect(narrow()).toEqual([
+        "reason-over: page-body > span.action-reason (over page-body > p[3], 284x10 px)",
+        "reason-over: dialog-content > span.action-reason (over dialog-content > p, 316x10 px)",
+      ]);
+    } finally {
+      proto.selectNodeContents = select;
+      proto.getClientRects = rects;
+    }
+  });
+
   test("narrow (#641): a box that scrolls inside another that scrolls is two scrollbars; one with nothing to hide is not", () => {
     page(`
       <div data-slot="scroll-area-viewport" style="overflow-y: auto" data-rect="0,0,640,800" data-ch="800" data-sh="1600">
