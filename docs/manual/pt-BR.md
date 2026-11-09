@@ -2271,7 +2271,10 @@ arquivo, então guarde-a.
 
 Para **Restaurar um backup**, digite a frase-senha do arquivo e use **Ler backup**; depois escolha o
 arquivo. O Flightdeck mostra, para cada tipo, quantos itens são novos, iguais ou diferentes aqui, e
-lista os diferentes pelo nome. Nada muda até você usar **Restaurar**: uma diferença mantém o que está
+lista os diferentes pelo nome. Um host aparece com o endereço para onde aponta, como
+`alfa (ws://100.64.0.2:7420)`, para você ver qual máquina volta; um login ou uma query no endereço não
+aparece. Onde o app não consegue abrir arquivos, a seção diz que restaurar precisa do app para
+desktop, em vez de oferecer **Ler backup**. Nada muda até você usar **Restaurar**: uma diferença mantém o que está
 aqui, a não ser que você escolha **Substituir pelo backup**, que pede confirmação. A restauração é
 tudo ou nada: se falhar no meio, tudo volta como estava. Uma frase-senha errada e um arquivo alterado
 são recusados, e nada muda. Feche e abra o Flightdeck de novo para usar as configurações e os hosts
@@ -2767,7 +2770,14 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
      worktree da executora;
   4. aceitar só commit verde;
   5. integrar na ordem combinada;
-  6. avisar você quando algo for decisão sua.
+  6. avisar você quando algo for decisão sua;
+  7. relatar o resultado do time.
+- **O resultado do time:** a coordenadora o relata com a ferramenta `team_report` (até 4000
+  caracteres); o host recusa qualquer outra sessão. O último relato abre o card do time em
+  **Resultado**, marcado **Concluído** ou **Em andamento**, como texto simples; um relato longo rola
+  numa caixa que o teclado alcança. Abaixo dele, a linha de cada executora mostra o **Último relato**,
+  a branch do card e quantos arquivos o card mudou. Quando a coordenadora relata o objetivo
+  concluído, uma notificação avisa e abre o time.
 - **Na linha do time dá para:**
   - pausar (STOP a todos os membros) e retomar;
   - mandar uma mensagem a todos;

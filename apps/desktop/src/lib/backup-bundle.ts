@@ -374,13 +374,13 @@ export async function applyRestore(
   for (const one of taken(judged.settings)) steps.push(storageStep(one.id, one.item));
   const done: Step[] = [];
   try {
-    for (const step of steps) {
+    await inSequence(steps, (step) => {
       done.push(step);
-      await step.apply();
-    }
+      return step.apply();
+    });
   } catch (error) {
     // The step that failed may have done half of its work: it is undone with the others.
-    for (const step of done.reverse()) await step.undo().catch(() => {});
+    await inSequence(done.reverse(), (step) => step.undo().catch(() => {}));
     throw error;
   }
   held.delete(preview);
