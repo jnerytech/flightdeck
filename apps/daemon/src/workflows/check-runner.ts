@@ -140,11 +140,13 @@ export function checkEnvironment(
 ): Record<string, string> {
   const windows = platform === "win32";
   // The project's names are checked again at use: the stored list is never trusted blindly.
-  const added = extra.filter(isCheckEnvName).map((name) => (windows ? name.toUpperCase() : name));
+  const added = new Set(
+    extra.filter(isCheckEnvName).map((name) => (windows ? name.toUpperCase() : name)),
+  );
   const env: Record<string, string> = {};
   for (const [name, value] of Object.entries(source)) {
     const key = windows ? name.toUpperCase() : name;
-    const kept = (windows ? WINDOWS_ENV.has(key) : POSIX_ENV.has(name)) || added.includes(key);
+    const kept = (windows ? WINDOWS_ENV.has(key) : POSIX_ENV.has(name)) || added.has(key);
     if (kept && value !== undefined) env[name] = value;
   }
   env.CI = "1";
