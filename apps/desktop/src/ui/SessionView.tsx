@@ -184,7 +184,7 @@ function PermissionItem(
 
 function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
-  const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
+  const cost = item.costUsd !== undefined ? ` · ${usd(item.costUsd, props.t.lang, 4)}` : "";
   const key = item.isError ? "session.turnFailed" : "session.turnDone";
   return (
     <div
@@ -720,12 +720,12 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             {typeof props.costUsd === "number" && (
               <span>
                 {t("session.cost")}{" "}
-                <output aria-label={t("session.costLabel")}>{usd(props.costUsd)}</output>
+                <output aria-label={t("session.costLabel")}>{usd(props.costUsd, t.lang)}</output>
               </span>
             )}
           </>
         }
-        hint={[session.cwd, typeof props.costUsd === "number" ? usd(props.costUsd) : null]
+        hint={[session.cwd, typeof props.costUsd === "number" ? usd(props.costUsd, t.lang) : null]
           .filter(Boolean)
           .join(" · ")}
         controls={

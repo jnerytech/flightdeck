@@ -67,6 +67,7 @@ function Breakdown(
     rows: Array<{ id?: string; label: string; costUsd: number }>;
   }>,
 ) {
+  const t = useT();
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>
@@ -75,7 +76,7 @@ function Breakdown(
             {props.rows.map((row) => (
               <tr key={row.id ?? row.label} className="border-t first:border-t-0">
                 <td className="py-1">{row.label}</td>
-                <td className="py-1 text-right">{usd(row.costUsd)}</td>
+                <td className="py-1 text-right">{usd(row.costUsd, t.lang)}</td>
               </tr>
             ))}
           </tbody>
@@ -433,8 +434,8 @@ export const CostsPage = memo(function CostsPage(props: {
                 .map((d) =>
                   t("costsUi.divergenceItem", {
                     model: d.model,
-                    computed: usd(d.computedUsd),
-                    sdk: usd(d.sdkUsd),
+                    computed: usd(d.computedUsd, t.lang),
+                    sdk: usd(d.sdkUsd, t.lang),
                   }),
                 )
                 .join("; "),
@@ -475,8 +476,8 @@ export const CostsPage = memo(function CostsPage(props: {
                 .map((d) =>
                   t("telemetry.divergenceItem", {
                     session: d.claudeSessionId.slice(0, 8),
-                    computed: usd(d.computedUsd),
-                    telemetry: usd(d.telemetryUsd),
+                    computed: usd(d.computedUsd, t.lang),
+                    telemetry: usd(d.telemetryUsd, t.lang),
                   }),
                 )
                 .join("; "),
@@ -534,11 +535,16 @@ export const CostsPage = memo(function CostsPage(props: {
           <>
             <dl className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
               {[
-                [t("costsUi.estimated"), usd(summary.totals.costUsd)],
+                [t("costsUi.estimated"), usd(summary.totals.costUsd, t.lang)],
                 [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
-                [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd)],
+                [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd, t.lang)],
                 ...(topModel
-                  ? [[t("costsUi.topModel"), `${topModel.model} · ${usd(topModel.costUsd)}`]]
+                  ? [
+                      [
+                        t("costsUi.topModel"),
+                        `${topModel.model} · ${usd(topModel.costUsd, t.lang)}`,
+                      ],
+                    ]
                   : []),
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
@@ -655,7 +661,7 @@ export const CostsPage = memo(function CostsPage(props: {
                           props.onOpenSession(sessionHost[s.claudeSessionId] ?? hostId, s)
                         }
                       >
-                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectName(s.projectKey)} · ${usd(s.costUsd)}`}
+                        {`${s.title ?? basename(s.cwd ?? s.claudeSessionId)} · ${projectName(s.projectKey)} · ${usd(s.costUsd, t.lang)}`}
                       </Button>
                     </li>
                   ))}

@@ -70,7 +70,7 @@ const WORDS = {
     row: "orçamento do host (janela de 5 horas) · notificar · 20% de 50% do plano (40%)",
     hostLabel: "orçamento do host (janela de 5 horas)",
     note: "alfa: orçamento do host (janela de 5 horas) em 50% de 50% do plano",
-    dollarRow: "orçamento do host (dia) · notificar · US$ 0.00 de US$ 10.00 (0%)",
+    dollarRow: "orçamento do host (dia) · notificar · US$ 0,00 de US$ 10,00 (0%)",
   },
 } as const;
 

@@ -162,7 +162,8 @@ export const CardDetail = memo(function CardDetail(props: {
       subtitle={
         cardCost !== null ? (
           <span>
-            {t("session.cost")} <output aria-label={t("cardUi.cost")}>{usd(cardCost)}</output>
+            {t("session.cost")}{" "}
+            <output aria-label={t("cardUi.cost")}>{usd(cardCost, t.lang)}</output>
           </span>
         ) : undefined
       }

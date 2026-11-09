@@ -31,7 +31,7 @@ export function nodeNumbers(node: TraceNode, t: T): string {
   const tokens = node.inputTokens + node.outputTokens;
   return [
     node.durationMs === null ? null : formatMs(node.durationMs, t),
-    node.costUsd === null ? null : usd(node.costUsd),
+    node.costUsd === null ? null : usd(node.costUsd, t.lang),
     tokens === 0 ? null : t("trace.tokens", { input: node.inputTokens, output: node.outputTokens }),
     node.error ? t("trace.failed") : null,
   ]
@@ -108,7 +108,7 @@ export function TracePanel(
   if (trace.turns.length === 0) return <EmptyState title={t("trace.empty")} />;
 
   const totals = [
-    trace.costUsd === null ? null : usd(trace.costUsd),
+    trace.costUsd === null ? null : usd(trace.costUsd, t.lang),
     trace.durationMs === null ? null : formatDuration(trace.durationMs, t),
   ]
     .filter((part) => part !== null)

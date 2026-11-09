@@ -103,7 +103,8 @@ export function RunTimeline(
       </h3>
       {typeof props.costUsd === "number" && (
         <p className="text-muted-foreground text-xs">
-          {t("runUi.costLine")} <output aria-label={t("runUi.cost")}>{usd(props.costUsd)}</output>
+          {t("runUi.costLine")}{" "}
+          <output aria-label={t("runUi.cost")}>{usd(props.costUsd, t.lang)}</output>
         </p>
       )}
       {run.quotaUntil ? (

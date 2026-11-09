@@ -36,8 +36,12 @@ export function periodRange(
   return { from, to: today };
 }
 
-/** `US$ 1.23`. */
-export const usd = (value: number, _lang?: string, _digits?: number) => `US$ ${value.toFixed(2)}`;
+/**
+ * Dollars in the language's own marks: `US$ 1.234,50` in pt-BR, `US$ 1,234.50` in English. A
+ * per-item cost can ask for more `digits` than the cents.
+ */
+export const usd = (value: number, lang: string, digits = 2) =>
+  `US$ ${new Intl.NumberFormat(lang, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value)}`;
 
 const HOST_KEY = /^host:([^:]+):(.+)$/;
 /** A path as the daemon writes it: from the root, a drive or a share. */

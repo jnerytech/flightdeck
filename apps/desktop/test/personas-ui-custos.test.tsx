@@ -65,6 +65,6 @@ describe("personas-ui: costs", () => {
           []),
       ].map((r) => r.textContent);
     await settle(() => rows().length === 2 && rows()[0]?.includes("QA") === true);
-    expect(rows()).toEqual(["QA / testesUS$ 3.00", "Sem personaUS$ 1.00"]);
+    expect(rows()).toEqual(["QA / testesUS$ 3,00", "Sem personaUS$ 1,00"]);
   });
 });

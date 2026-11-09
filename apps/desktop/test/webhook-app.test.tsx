@@ -88,7 +88,7 @@ describe("webhook-app", () => {
     expect(sent[0]?.url).toBe("https://93.184.216.34/services/T/B/SECRET");
     const body = JSON.parse(sent[0]?.body ?? "{}") as { text: string };
     expect(body.text).toContain("budget alert");
-    expect(JSON.stringify(body)).toContain("50% of US$ 10.00");
+    expect(JSON.stringify(body)).toContain("50% of US$ 10,00");
   });
 
   test("the sample goes through the host; a URL it refuses counts as a permanent 400", async () => {

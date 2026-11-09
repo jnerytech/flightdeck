@@ -108,7 +108,7 @@ describe("clients-budgets: the month limit on the Clients screen", () => {
     expect(store.clients.budgets()).toEqual({ acme: 120 });
     expect(limitField("Acme").value).toBe("");
     await settle(() => line("Acme") !== null);
-    expect(line("Acme")).toMatch(/US\$ 120\.00/);
+    expect(line("Acme")).toMatch(/US\$ 120,00/);
   });
 
   test("a limit that is blank or not above zero cannot be set, and the field says why", async () => {
@@ -128,7 +128,7 @@ describe("clients-budgets: the month limit on the Clients screen", () => {
     const { store } = await setup({ acme: 4 });
     await act(() => store.checkClientBudgets());
     await settle(() => line("Acme")?.includes("50%") === true);
-    expect(line("Acme")).toBe("Este mês: US$ 2.00 de US$ 4.00 (50%)");
+    expect(line("Acme")).toBe("Este mês: US$ 2,00 de US$ 4,00 (50%)");
     expect(line("Beta")).toBeNull();
   });
 

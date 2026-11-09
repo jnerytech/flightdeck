@@ -286,7 +286,7 @@ export function HistoryList(
                     `hub.originTags.${s.origin === "external" ? "terminal" : "flightdeck"}`,
                   )}
                   costLabel={t("hub.cost", { title })}
-                  {...(cost === undefined ? {} : { cost: usd(cost) })}
+                  {...(cost === undefined ? {} : { cost: usd(cost, t.lang) })}
                   {...(s.maybeActive ? { maybeActive: t("reader.maybeActive") } : {})}
                   {...(s.automated ? { automated: t("historyUi.automatedTag") } : {})}
                   current={props.openId === s.claudeSessionId}

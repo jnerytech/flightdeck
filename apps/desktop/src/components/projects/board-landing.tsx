@@ -91,7 +91,9 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
             </span>
             <span>
               {`${t("projectsOverview.costWeek")}: ${
-                card.costWeekUsd === null ? t("projectsOverview.noCost") : usd(card.costWeekUsd)
+                card.costWeekUsd === null
+                  ? t("projectsOverview.noCost")
+                  : usd(card.costWeekUsd, t.lang)
               }`}
               <Pause last />
             </span>
