@@ -3534,6 +3534,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("project.add", ProjectAddPayload),
   cmd("project.update", ProjectUpdatePayload),
   /**
+   * Issue #1568 (host `prDetect`): when the project has no PR provider, reads its `origin` remote and
+   * sets GitHub or Azure DevOps from it. Never returns the remote's address, only its host name.
+   */
+  cmd("project.detectProvider", z.object({ projectId: z.string() }).strict()),
+  /**
    * Adds a folder to the host's allowed folders (the config file too). The app asks the person
    * first and sends `confirm: true`; the host refuses system folders and a connection outside
    * loopback and Tailscale.
@@ -5559,6 +5564,21 @@ export type RootsResult = z.infer<typeof RootsResult>;
 export const BoardSettings = z.object({ maxParallelRuns: z.number().int().min(1) });
 export type BoardSettings = z.infer<typeof BoardSettings>;
 
+/** Issue #1568: what looking at the project's remote did (`project.detectProvider`). */
+export const ProjectDetectResult = z.object({
+  /** The project as it is now: with the provider set when the outcome is `set`. */
+  project: Project,
+  /**
+   * `set`: GitHub or Azure DevOps was found and saved. `kept`: the project had a provider already.
+   * `no_remote`: the repository has no `origin`. `unsupported`: it has one, on another service (or
+   * a GitHub Enterprise server, which is set by hand). `unreadable`: git could not read the repository.
+   */
+  outcome: z.enum(["set", "kept", "no_remote", "unsupported", "unreadable"]),
+  /** The remote's host name (`gitlab.com`), for `unsupported`; never the address with its path or credentials. */
+  host: z.string().nullable(),
+});
+export type ProjectDetectResult = z.infer<typeof ProjectDetectResult>;
+
 export const ProjectListResult = z.object({
   projects: z.array(Project),
   /** Host-wide limit of cards running at the same time. */
@@ -5781,6 +5801,7 @@ export interface CommandResults {
   "project.list": ProjectListResult;
   "project.add": Project;
   "project.update": Project;
+  "project.detectProvider": ProjectDetectResult;
   "board.get": BoardResult;
   "board.settings": BoardSettings;
   "roots.add": RootsResult;

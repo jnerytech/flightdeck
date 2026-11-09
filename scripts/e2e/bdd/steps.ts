@@ -3398,3 +3398,20 @@ step(Then, "Review changes still leads and Open PR is not offered", async (c) =>
     .count();
   if (open !== 0) throw new Error("Open PR is offered on a project with no PR provider");
 });
+
+// Round 14 (#1546): a step that removes the control that had the focus must not leave it on the page body.
+step(When, "I create my first card without starting it", async (c) => {
+  const title = unique(c, "bdd card 1");
+  mine(c).card = title;
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+  await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+  await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+});
+
+step(Then, "the focus is on the card I made", async (c) => {
+  const tile = tileOf(c, mine(c).card ?? "");
+  await waitFor(
+    () => tile.evaluate((el) => el.contains(document.activeElement)),
+    "the focus is on the new card",
+  );
+});

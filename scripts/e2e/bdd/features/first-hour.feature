@@ -73,3 +73,12 @@ Feature: The first hour
     Then the focus is on the heading of the page the step opened
     When I add a git repository of my own as my first project from the host page
     Then the focus is on the heading of the page the step opened
+
+  Scenario: The card just made takes the focus
+    Given the app starts with no host
+    When I paste the pairing link of the first demo host named "orange pi"
+    And I press Test and add
+    And I add a git repository of my own as my first project from the host page
+    And I open the board of my first project from its page
+    And I create my first card without starting it
+    Then the focus is on the card I made
