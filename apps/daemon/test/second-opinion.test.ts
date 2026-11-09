@@ -167,4 +167,32 @@ describe("second-opinion: the review's pure parts (#1439)", () => {
       "src/count.ts:11",
     ]);
   });
+
+  test("the fake review keeps a hunk's own lines as content, even a removed -- line before an added ++ one", async () => {
+    const sql = {
+      ...file("db/q.sql", []),
+      hunks: [
+        {
+          header: "@@ -10,2 +10,4 @@",
+          lines: [
+            { op: "-", text: "-- old comment" },
+            { op: "+", text: "++ counter" },
+            { op: "+", text: "select 1;" },
+            { op: " ", text: "end" },
+            { op: "+", text: "select 2;" },
+          ],
+        },
+      ],
+    } as DiffFile;
+    const prompt = reviewPrompt({ title: "t", description: "" }, [sql], false, (t) => t);
+    const answer = await new FakeRuntime().complete({
+      model: "m",
+      system: "review",
+      prompt,
+      cwd: "/tmp/x",
+      schema: REVIEW_SCHEMA,
+    });
+    const { anchored } = anchorFindings(parseReview(answer.text)?.findings ?? [], [sql]);
+    expect(anchored.map((f) => `${f.path}:${f.line}`)).toEqual(["db/q.sql:10", "db/q.sql:11"]);
+  });
 });
