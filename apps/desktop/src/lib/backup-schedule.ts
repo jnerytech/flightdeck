@@ -1,5 +1,5 @@
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
-import { type BackupFolder, folderTarget, keepNewest } from "./backup-target.ts";
+import { type BackupFolder, type BackupTarget, folderTarget, keepNewest } from "./backup-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
 export const SCHEDULE_KEY = "flightdeck.backupSchedule";
@@ -14,8 +14,12 @@ const PERIOD: Record<Cadence, number> = {
 
 export type Cadence = "off" | "daily" | "weekly";
 
+/** Where the backups go: the picked folder or the app's folder on Google Drive (#1444). */
+export type ScheduleTarget = "folder" | "drive";
+
 export interface BackupSchedule {
   cadence: Cadence;
+  target: ScheduleTarget;
   folder: string;
   keep: number;
   lastRunAt: number | null;
@@ -23,7 +27,7 @@ export interface BackupSchedule {
 
 export type { BackupFolder };
 
-export type SkipReason = "no-folder" | "no-passphrase" | "failed";
+export type SkipReason = "no-folder" | "no-passphrase" | "failed" | "drive-auth";
 
 export type RunReport =
   | {
@@ -37,7 +41,13 @@ export type RunReport =
   | { status: "skipped"; reason: SkipReason; at: number }
   | { status: "idle" };
 
-const OFF: BackupSchedule = { cadence: "off", folder: "", keep: DEFAULT_KEEP, lastRunAt: null };
+const OFF: BackupSchedule = {
+  cadence: "off",
+  target: "folder",
+  folder: "",
+  keep: DEFAULT_KEEP,
+  lastRunAt: null,
+};
 
 /** The saved schedule; an unset or damaged one is off. */
 export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule {
@@ -50,6 +60,7 @@ export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule
       raw.cadence === "daily" || raw.cadence === "weekly" ? raw.cadence : "off";
     return {
       cadence,
+      target: "folder",
       folder: typeof raw.folder === "string" ? raw.folder : "",
       keep:
         Number.isInteger(raw.keep) && (raw.keep as number) >= 1
@@ -64,8 +75,8 @@ export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule
 
 export function saveSchedule(storage: BackupPlatform["storage"], schedule: BackupSchedule): void {
   // Only the four fields: whatever else the object carries is not written.
-  const { cadence, folder, keep, lastRunAt } = schedule;
-  storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, folder, keep, lastRunAt }));
+  const { cadence, target, folder, keep, lastRunAt } = schedule;
+  storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, target, folder, keep, lastRunAt }));
 }
 
 /** Whether a run is owed: a cadence is set, a folder is chosen, and a period passed since the last. */
@@ -94,6 +105,8 @@ export function backupFileName(now: number): string {
 export async function runScheduledBackup(deps: {
   platform: BackupPlatform;
   folder: BackupFolder | undefined;
+  /** The Drive target, when the app can sign in; null or absent when it cannot. */
+  drive?: BackupTarget | null;
   schedule: BackupSchedule;
   passphrase: string | null;
   now: number;

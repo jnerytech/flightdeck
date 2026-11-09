@@ -11,6 +11,8 @@ import {
   runScheduledBackup,
   saveSchedule,
 } from "../src/lib/backup-schedule.ts";
+import type { BackupTarget } from "../src/lib/backup-target.ts";
+import { DriveError } from "../src/lib/drive-target.ts";
 
 /**
  * Issue #1264: a schedule (off, daily or weekly) writes an encrypted backup to a picked folder and
@@ -78,6 +80,7 @@ function fakeFolder(initial: string[], options: { failWrite?: boolean } = {}) {
 
 const schedule = (patch: Partial<BackupSchedule> = {}): BackupSchedule => ({
   cadence: "daily",
+  target: "folder",
   folder: "/backups",
   keep: 3,
   lastRunAt: null,
@@ -121,9 +124,9 @@ describe("backup-schedule: when it is due and what the file is called (#1264)", 
     storage.setItem("flightdeck.backupSchedule", "{not json");
     const damaged = loadSchedule(storage);
     expect([untouched, saved, damaged]).toEqual([
-      { cadence: "off", folder: "", keep: DEFAULT_KEEP, lastRunAt: null },
-      { cadence: "weekly", folder: "/backups", keep: 7, lastRunAt: NOON },
-      { cadence: "off", folder: "", keep: DEFAULT_KEEP, lastRunAt: null },
+      { cadence: "off", target: "folder", folder: "", keep: DEFAULT_KEEP, lastRunAt: null },
+      { cadence: "weekly", target: "folder", folder: "/backups", keep: 7, lastRunAt: NOON },
+      { cadence: "off", target: "folder", folder: "", keep: DEFAULT_KEEP, lastRunAt: null },
     ]);
   });
 });
@@ -311,5 +314,95 @@ describe("backup-schedule: a run (#1264)", () => {
       await runScheduledBackup({ ...base, schedule: schedule({ lastRunAt: NOON - HOUR }) }),
     ];
     expect([reports, files.size]).toEqual([[{ status: "idle" }, { status: "idle" }], 0]);
+  });
+});
+
+/** Issue #1444: the schedule can point at Google Drive instead of the folder. */
+function driveStub(initial: string[] = [], fail?: unknown) {
+  const files = new Map<string, string>(initial.map((name) => [name, "old"]));
+  const drive: BackupTarget = {
+    put: async (name, text) => {
+      if (fail) throw fail;
+      files.set(name, text);
+    },
+    list: async () => [...files.keys()],
+    get: async (name) => files.get(name) ?? "",
+    remove: async (name) => {
+      files.delete(name);
+    },
+  };
+  return { drive, files };
+}
+
+describe("backup-schedule: the Drive target (#1444)", () => {
+  test("the target is saved and loaded; an unknown one is the folder", () => {
+    const { storage } = platformWith();
+    saveSchedule(storage, schedule({ target: "drive", folder: "" }));
+    const saved = loadSchedule(storage);
+    storage.setItem(
+      "flightdeck.backupSchedule",
+      JSON.stringify({ cadence: "daily", target: "ftp" }),
+    );
+    expect([saved.target, loadSchedule(storage).target]).toEqual(["drive", "folder"]);
+  });
+
+  test("a Drive schedule needs no folder to be due", () => {
+    expect([
+      isDue(schedule({ target: "drive", folder: "" }), NOON),
+      isDue(schedule({ target: "folder", folder: "" }), NOON),
+    ]).toEqual([true, false]);
+  });
+
+  test("puts the backup on Drive, keeps the last N there and leaves the folder alone", async () => {
+    const { folder, files: onDisk } = fakeFolder([named(1)]);
+    const { drive, files } = driveStub([named(1), named(2), named(3)]);
+    const report = await runScheduledBackup({
+      platform: platformWith(),
+      folder,
+      drive,
+      schedule: schedule({ target: "drive", folder: "", keep: 2 }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    });
+    const name = backupFileName(NOON);
+    expect(report).toEqual({ status: "done", name, kept: 2, removed: 2, prune: "ok", at: NOON });
+    expect([...files.keys()].sort((a, b) => a.localeCompare(b))).toEqual(
+      [named(3), name].sort((a, b) => a.localeCompare(b)),
+    );
+    expect([...onDisk.keys()]).toEqual([named(1)]);
+    expect(files.get(name)?.startsWith("-----BEGIN AGE ENCRYPTED FILE-----")).toBe(true);
+  });
+
+  test("with no Drive to use, or a sign-in Google refused, the run is skipped as drive-auth", async () => {
+    const base = {
+      platform: platformWith(),
+      folder: undefined,
+      schedule: schedule({ target: "drive", folder: "" }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    };
+    const none = await runScheduledBackup({ ...base, drive: null });
+    const { drive } = driveStub([], new DriveError("auth", 401));
+    const refused = await runScheduledBackup({ ...base, drive });
+    expect([none, refused]).toEqual([
+      { status: "skipped", reason: "drive-auth", at: NOON },
+      { status: "skipped", reason: "drive-auth", at: NOON },
+    ]);
+  });
+
+  test("any other Drive failure is a failed run", async () => {
+    const { drive } = driveStub([], new DriveError("http", 500));
+    const report = await runScheduledBackup({
+      platform: platformWith(),
+      folder: undefined,
+      drive,
+      schedule: schedule({ target: "drive", folder: "" }),
+      passphrase: PASS,
+      now: NOON,
+      options: FAST,
+    });
+    expect(report).toEqual({ status: "skipped", reason: "failed", at: NOON });
   });
 });

@@ -854,12 +854,17 @@ export const en: Dictionary = {
         title: "A scheduled backup failed",
         body: "Check that the folder still exists and has room, in Settings, section Backup.",
       },
+      "drive-auth": {
+        title: "Scheduled backups to Google Drive need you to sign in",
+        body: "Sign in again in Settings, section Backup. Until then no backup is made.",
+      },
     },
     skipped: {
       "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
       "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
       failed:
         "The last backup could not be saved. Check that the folder still exists and has room.",
+      "drive-auth": "A backup is due, but Google Drive is not signed in. Sign in again.",
     },
   },
   approval: {

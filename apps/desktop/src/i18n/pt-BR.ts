@@ -852,11 +852,16 @@ export const ptBR = {
         title: "Um backup agendado falhou",
         body: "Veja se a pasta ainda existe e tem espaço, em Configurações, seção Backup.",
       },
+      "drive-auth": {
+        title: "Os backups agendados no Google Drive precisam que você entre",
+        body: "Entre de novo em Configurações, seção Backup. Até lá, nenhum backup é feito.",
+      },
     },
     skipped: {
       "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
       "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
       failed: "O último backup não pôde ser salvo. Veja se a pasta ainda existe e tem espaço.",
+      "drive-auth": "Há um backup a fazer, mas o Google Drive não está conectado. Entre de novo.",
     },
   },
   approval: {

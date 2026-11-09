@@ -10,7 +10,7 @@ import {
 } from "./backup-schedule.ts";
 
 /** What the person has to be told about: the passphrase to type, a folder to choose, a write that failed. */
-export type Attention = "passphrase" | "no-folder" | "failed";
+export type Attention = "passphrase" | "no-folder" | "failed" | "drive-auth";
 
 /** How often the app looks at whether a backup is owed. */
 const CHECK_INTERVAL_MS = 15 * 60_000;
