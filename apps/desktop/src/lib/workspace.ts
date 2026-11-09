@@ -62,6 +62,7 @@ export class Workspace {
         return focused().canForward;
       },
       push: (route) => focused().push(route),
+      replace: (route) => focused().replace(route),
       back: () => focused().back(),
       forward: () => focused().forward(),
       subscribe: this.subscribe,

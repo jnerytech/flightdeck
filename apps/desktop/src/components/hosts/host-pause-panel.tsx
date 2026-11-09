@@ -34,7 +34,7 @@ export function HostPausePanel(props: Readonly<{ store: AppStore; host: HostView
         : t("hostPage.pauseOnIdle");
   }
   return (
-    <Panel title={t("hostPage.pauseTitle")}>
+    <Panel title={t("hostPage.pauseTitle")} slot="host-section-pause">
       <p className="text-muted-foreground text-xs">{t("hostPage.pauseHint")}</p>
       <p className="text-sm">{state}</p>
       <div>

@@ -355,8 +355,8 @@ export function StatusBarSlot(
       summary={statusBarSummary(state, props.terminalTabs)}
       onRefreshQuota={props.onRefreshQuota}
       onOpenQuota={toHost}
-      onOpenKeepAwake={toHost}
-      onOpenPause={toHost}
+      onOpenKeepAwake={(host) => go({ name: "host", host, section: "keep-awake" })}
+      onOpenPause={(host) => go({ name: "host", host, section: "pause" })}
       onOpenTerminals={props.onOpenTerminals}
       onOpenHosts={() => go(hostsRoute(state.hosts, props.currentHostId ?? null))}
       onOpenUpdate={() => go({ name: "settings" })}

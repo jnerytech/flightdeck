@@ -12,7 +12,7 @@ export interface Tab {
 /** What the rest of the app uses of the navigation: always the active tab's. */
 export type Navigation = Pick<
   Router,
-  "current" | "canBack" | "canForward" | "push" | "back" | "forward" | "subscribe"
+  "current" | "canBack" | "canForward" | "push" | "replace" | "back" | "forward" | "subscribe"
 >;
 
 /** The most recently closed tabs `reopen` brings back. */
@@ -83,6 +83,7 @@ export class Tabs {
         if (this.newTab || this.tabs.length === 0) this.open(route);
         else if (!this.focusShown(route)) active()?.push(route);
       },
+      replace: (route) => active()?.replace(route),
       back: () => active()?.back(),
       forward: () => active()?.forward(),
       subscribe: this.subscribe,
