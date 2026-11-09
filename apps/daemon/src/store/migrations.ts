@@ -1009,7 +1009,8 @@ export const MIGRATIONS: readonly string[] = [
     at        TEXT NOT NULL,
     summary   TEXT,
     loose     TEXT,
-    cost_usd  REAL,
+    anchored  INTEGER NOT NULL DEFAULT 0,
+    moved     INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (card_id, diff_hash)
   );
   `,
