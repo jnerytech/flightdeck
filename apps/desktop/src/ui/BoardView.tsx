@@ -25,14 +25,13 @@ import {
 import { BoardNotice } from "@/components/board/board-notice";
 import { BoardStatus } from "@/components/board/board-status";
 import { BoardSyncControl } from "@/components/board/board-sync";
-import { BulkDiscardDialog, hasStartedWork } from "@/components/board/bulk-discard-dialog";
+import { BulkDiscardDialog, discardCommand } from "@/components/board/bulk-discard-dialog";
 import { ColumnHandle } from "@/components/board/column-handle";
 import { ColumnSwitcher } from "@/components/board/column-switcher";
 import { ContractDialog } from "@/components/board/contract-dialog";
 import { NeedsBadge, needsText } from "@/components/board/needs-badge";
 import { RadarBadge } from "@/components/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
-import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline, Toolbar } from "@/components/layout/stack";
@@ -43,7 +42,6 @@ import { RoiCard } from "@/components/roi/roi-card";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,24 +49,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
 import { useStartAsk } from "@/hooks/use-start-ask";
 import { useStartElsewhere } from "@/hooks/use-start-elsewhere";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import { AssistField } from "../components/assistant/assist-field.tsx";
 import { BulkRunDialog } from "../components/board/bulk-run-dialog.tsx";
 import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
-import {
-  applyTemplate,
-  CardTemplateField,
-  startPersonaOf,
-  startWorkflowOf,
-} from "../components/board/card-template-field.tsx";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
+import { startPersonaOf, startWorkflowOf } from "../components/board/card-template-field.tsx";
+import { DeleteCardDialog } from "../components/board/delete-card-dialog.tsx";
+import { NewCardDialog } from "../components/board/new-card-dialog.tsx";
 import { useSuggestedPersona } from "../components/personas/persona-picker.tsx";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
@@ -81,26 +74,25 @@ import {
   projectCards,
 } from "../lib/board.ts";
 import {
+  bulkRunOutcome,
+  bulkSkipReason,
   bulkSplit,
+  bulkTitle,
   holdLines,
-  queueLine,
-  queueSplit,
+  refusalNotice,
+  requestResult,
   runMany,
+  startConfirmLines,
+  startOffers,
+  startQuotaLines,
   updateMany,
   updateSummary,
 } from "../lib/board-bulk.ts";
 import { cardKey } from "../lib/board-card-keys.ts";
-import {
-  askAbout,
-  dragNeeds,
-  type Lacking,
-  missingFor,
-  startNeeds,
-} from "../lib/board-contracts.ts";
-import { boardFiles } from "../lib/board-files.ts";
+import { askAbout, dragNeeds, type Lacking, missingFor } from "../lib/board-contracts.ts";
+import { boardFiles, filesPanelOpen } from "../lib/board-files.ts";
 import type { BoardKeyAction } from "../lib/board-keys.ts";
 import {
-  answerOf,
   type BulkRefusal,
   COLUMN_GAP,
   columnCount,
@@ -117,15 +109,13 @@ import {
 import { cardStartBlock } from "../lib/card-start-block.ts";
 import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
-import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
-import { onSubscription, quotaBars } from "../lib/quota.ts";
+import { activeWorktreeFilter, cardInFilter, worktreeOfProject } from "../lib/project-tree.ts";
 import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { BoardFilesPanel } from "./BoardFiles.tsx";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
@@ -410,9 +400,6 @@ const BOARDVIEW_KEYS = [
 ] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
-/** A card that has a worktree, a branch or a session has work to clean up: it is discarded, not deleted. */
-const hasStarted = hasStartedWork;
-
 export const BoardView = memo(function BoardView(props: {
   store: AppStore;
   hostId: string;
@@ -435,11 +422,6 @@ export const BoardView = memo(function BoardView(props: {
   const [filter, setFilter] = useState("");
   /** Phase 31: only the cards that wait for a blocker. */
   const [onlyBlocked, setOnlyBlocked] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  /** Issue #1201: the card template picked in New card, and the text it put in the description. */
-  const [templateId, setTemplateId] = useState<string | null>(null);
-  const [filled, setFilled] = useState<string | null>(null);
   /**
    * Card being dragged. A ref, not state: the drop may come before a re-render. Not in
    * DataTransfer either, which some webviews leave empty.
@@ -554,7 +536,7 @@ export const BoardView = memo(function BoardView(props: {
   const all = projectCards(state, hostId, projectId);
   // The branch picked in the sidebar tree keeps the cards of that checkout (of this project only).
   const active = activeWorktreeFilter(state);
-  const treeBranch = active?.hostId === hostId && active.projectId === projectId ? active : null;
+  const treeBranch = worktreeOfProject(active, hostId, projectId);
   const shown = filterCards(all, filter)
     .filter((card) => !onlyBlocked || card.waitingOn.length > 0)
     .filter((card) => !treeBranch || cardInFilter(card, treeBranch));
@@ -564,9 +546,7 @@ export const BoardView = memo(function BoardView(props: {
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
   );
   // Wide, a picked worktree shows its files at once; narrow, they wait for the Files button.
-  const filesShown =
-    files !== null &&
-    (filesChoice !== null && filesChoice.path === treeBranch?.path ? filesChoice.open : !narrow);
+  const filesShown = filesPanelOpen(files, filesChoice, treeBranch, narrow);
   const filtering = filter.trim() !== "" || onlyBlocked;
   const counts = (inColumn: number, ofColumn: number) =>
     filtering
@@ -623,18 +603,17 @@ export const BoardView = memo(function BoardView(props: {
           ...(position !== undefined ? { position } : {}),
           ...(force ? { force } : {}),
         });
-        return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+        return requestResult(answer);
       },
       positions,
     );
     const stayed = new Set(refused.map((r) => r.card.id));
     setPicked((before) => before.filter((id) => stayed.has(id) || !ids.has(id)));
-    const stayedOne =
-      refused.length === 1 ? t("board.stayedOne", { names: nameRefusals(refused) }) : null;
     setNotice(
-      refused.length === 0
-        ? null
-        : (stayedOne ?? t("board.stayed", { count: refused.length, names: nameRefusals(refused) })),
+      refusalNotice(t, refused, nameRefusals(refused), {
+        one: "board.stayedOne",
+        many: "board.stayed",
+      }),
     );
     setBusy(false);
     boardRef.current?.focus();
@@ -649,29 +628,19 @@ export const BoardView = memo(function BoardView(props: {
     const cards = actingCards;
     setDiscardingMany(false);
     setBusy(true);
-    const failed: BulkRefusal[] = [];
-    for (const card of cards) {
-      const asking = store.hostRequest(
-        hostId,
-        hasStartedWork(card) ? "card.discard" : "card.delete",
-        {
-          cardId: card.id,
-          confirm: true,
-        },
-      );
-      const answer = await asking; // NOSONAR: one card at a time, so the host never runs two discards (git, worktrees) at once
-      if (!answer.ok) failed.push({ card, ...answerOf(answer) });
-    }
+    const failed = await runMany(cards, async (card) =>
+      requestResult(
+        await store.hostRequest(hostId, discardCommand(card), { cardId: card.id, confirm: true }),
+      ),
+    );
     // A discard is not atomic on the host: a card it refused may be partly cleaned up, so it is
     // not left selected for a second try that would fail on what is already gone.
     setPicked((before) => before.filter((id) => !acting.includes(id)));
-    const failedOne =
-      failed.length === 1 ? t("board.discardFailedOne", { names: nameRefusals(failed) }) : null;
     setNotice(
-      failed.length === 0
-        ? null
-        : (failedOne ??
-            t("board.discardFailed", { count: failed.length, names: nameRefusals(failed) })),
+      refusalNotice(t, failed, nameRefusals(failed), {
+        one: "board.discardFailedOne",
+        many: "board.discardFailed",
+      }),
     );
     setBusy(false);
     boardRef.current?.focus();
@@ -770,7 +739,7 @@ export const BoardView = memo(function BoardView(props: {
         const answer = await store.hostRequest(hostId, "card.updateFromBase", {
           cardId: card.id,
         });
-        return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+        return requestResult(answer);
       },
       onProgress: (done, total) => setUpdating({ done, total }),
     });
@@ -824,19 +793,12 @@ export const BoardView = memo(function BoardView(props: {
               ...(persona ? { persona } : {}),
             })
           : await store.hostRequest(hostId, "card.stop", { cardId: card.id });
-      return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+      return requestResult(answer);
     });
     const stayed = new Set(refused.map((r) => r.card.id));
     const went = new Set(cards.map((card) => card.id).filter((id) => !stayed.has(id)));
     setPicked((before) => before.filter((id) => !went.has(id)));
-    const one = kind === "start" ? "board.startFailedOne" : "board.stopFailedOne";
-    const many = kind === "start" ? "board.startFailed" : "board.stopFailed";
-    let outcome: string | null = null;
-    if (refused.length === 1) outcome = t(one, { names: nameRefusals(refused) });
-    else if (refused.length > 1) {
-      outcome = t(many, { count: refused.length, names: nameRefusals(refused) });
-    }
-    setNotice(outcome);
+    setNotice(bulkRunOutcome(t, kind, refused, nameRefusals(refused)));
     setBusy(false);
     boardRef.current?.focus();
   };
@@ -846,41 +808,31 @@ export const BoardView = memo(function BoardView(props: {
    * budget, the host's memory). A hold keeps every new card waiting, so the queue line then says they
    * all join the queue, never "N start now" (#1414).
    */
-  const quotaLines: string[] = [];
-  const holds: string[] = [];
-  const quota = state.quota[hostId];
-  if (onSubscription(quota, state.account[hostId])) {
-    const bars = quotaBars(quota, Date.now(), (iso) => store.formatTime(iso), t);
-    const fiveHour = bars[0];
-    if (fiveHour?.hasReading) {
-      quotaLines.push(
-        t("board.startQuota", {
-          host: hostName,
-          percent: fiveHour.percent,
-          reset: fiveHour.reset,
-        }),
-      );
-    }
-    if (bars.some((bar) => bar.hot)) holds.push(t("board.startQuotaHold", { host: hostName }));
-  }
+  const quota = startQuotaLines(t, hostName, {
+    quota: state.quota[hostId],
+    account: state.account[hostId],
+    now: Date.now(),
+    formatTime: (iso) => store.formatTime(iso),
+  });
+  const quotaLines = quota.lines;
+  const holds = [...quota.holds];
   holds.push(
     ...holdLines(t, hostName, {
       budgets: state.budgets[hostId] ?? [],
       projectKey: project ? store.projectKeyOf(hostId, project) : null,
       cards: all,
       memoryOver,
+      // #1481: a paused host is a hold like the others: the confirm names it and the cards join the queue.
+      paused: state.hosts.find((h) => h.id === hostId)?.hostInfo?.pause?.paused === true,
     }),
   );
-  /** #1481: a paused host is a hold like the others: the confirm names it and the cards join the queue. */
-  const hostPaused = state.hosts.find((h) => h.id === hostId)?.hostInfo?.pause?.paused === true;
-  if (hostPaused) holds.push(t("board.startPausedHold", { host: hostName }));
   /** #1422: the startable cards that would wait here, and the hosts they could start on. */
   const waiting = waitingCards(startable, {
     held: holds.length > 0,
     max: queueMax ?? null,
     running: runningOnHost,
   });
-  const otherHosts = bulk === "start" && startReady ? elsewhere.offers(waiting) : [];
+  const otherHosts = startOffers(bulk, startReady, () => elsewhere.offers(waiting));
   /** Hands the cards that would wait to another host: made and started there, then Done here. */
   const startOnOther = async (hostIdOther: string) => {
     const target = otherHosts.find((o) => o.hostId === hostIdOther);
@@ -895,51 +847,19 @@ export const BoardView = memo(function BoardView(props: {
     boardRef.current?.focus();
   };
   /** The confirm's lines: the host's queue, quota and holds for Start, where the cards land for Stop. */
-  const bulkLines = (): string[] => {
-    if (bulk === "stop") return [t("board.stopBody")];
-    const lines: string[] = workflowsFailed ? [t("board.workflowsUnread")] : [];
-    if (queueMax !== undefined) {
-      const split =
-        holds.length > 0
-          ? { now: 0, later: startable.length }
-          : queueSplit(startable.length, queueMax ?? 0, runningOnHost);
-      lines.push(queueLine(t, split, queueMax));
-    }
-    lines.push(...quotaLines, ...holds);
-    if (otherHosts.length > 0) {
-      lines.push(
-        waiting.length === 1
-          ? t("board.startOnHintOne")
-          : t("board.startOnHint", { n: waiting.length }),
-      );
-    }
-    const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
-    if (lacking > 0) {
-      lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
-    }
-    return lines;
-  };
-  /** The confirm's title: how many cards the action takes. */
-  const bulkTitle = (): string => {
-    if (bulk === "start") {
-      return startable.length === 1
-        ? t("board.startTitleOne")
-        : t("board.startTitle", { n: startable.length });
-    }
-    return split.stop.length === 1
-      ? t("board.stopTitleOne")
-      : t("board.stopTitle", { n: split.stop.length });
-  };
-  /** Why the action leaves a selected card out, for the confirm's list; undefined when it takes it. */
-  const skipReason = (card: Card): string | undefined => {
-    if (bulk === "start") {
-      return (
-        split.skipStart.find((s) => s.card.id === card.id)?.reason ??
-        (needsInputs(card) ? t("board.needsInputs") : undefined)
-      );
-    }
-    return split.skipStop.some((c) => c.id === card.id) ? t("board.notRunning") : undefined;
-  };
+  const bulkLines = (): string[] =>
+    bulk === "stop"
+      ? [t("board.stopBody")]
+      : startConfirmLines(t, {
+          workflowsFailed,
+          queueMax,
+          startable,
+          runningOnHost,
+          quotaLines,
+          holds,
+          waitingElsewhere: otherHosts.length > 0 ? waiting.length : 0,
+          contracts,
+        });
   /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
   const clearSelection = () => {
     anchor.current = null;
@@ -964,7 +884,7 @@ export const BoardView = memo(function BoardView(props: {
     ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 
   /** The card to focus once a move has happened: where it was, to tell when it has moved. */
-  const refocus = useRef<{ cardId: string; column: BoardColumn; index: number } | null>(null);
+  const refocus = useRef<MoveFocus | null>(null);
   const columnOf = (column: BoardColumn) =>
     all.filter((card) => card.column === column).sort((a, b) => a.position - b.position);
   const runMove = (cardId: string, column: BoardColumn, targetId?: string, force = false) => {
@@ -1083,52 +1003,14 @@ export const BoardView = memo(function BoardView(props: {
       cardId,
       e,
     );
-  useEffect(() => {
-    const wanted = refocus.current;
-    if (!wanted) return;
-    const card = all.find((other) => other.id === wanted.cardId);
-    if (!card) return;
-    const index = columnOf(card.column).findIndex((other) => other.id === card.id);
-    if (card.column === wanted.column && index === wanted.index) return;
-    // A narrow board follows the moved card to its column, then focuses it there.
-    if (switcher && card.column !== showing) {
-      setShownColumn(card.column);
-      return;
-    }
-    refocus.current = null;
-    boardRef.current
-      ?.querySelector<HTMLElement>(`li[data-card="${card.id}"] [data-card-open]`)
-      ?.focus();
+  useMoveFocus(refocus, {
+    cards: all,
+    columnOf,
+    board: boardRef,
+    narrow: switcher,
+    showing,
+    onShow: setShownColumn,
   });
-
-  const create = async () => {
-    // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
-    const made = await store.hostCommand(hostId, "card.create", {
-      projectId,
-      title: title.trim(),
-      description,
-      ...(templateId === null ? {} : { templateId }),
-      ...(createIn === "backlog" ? {} : { column: createIn }),
-    });
-    // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
-    // (the banner says why). A made card says so, with a way to open it (issue #188).
-    if (!made) return made;
-    close();
-    store.success(t("kanban.created", { title: made.title }), {
-      label: t("kanban.openCard"),
-      run: () => props.onOpenCard(made.id),
-    });
-    return made;
-  };
-  /** Closes the dialog and forgets what was typed. */
-  const close = () => {
-    setCreating(false);
-    setCreateIn("backlog");
-    setTitle("");
-    setDescription("");
-    setTemplateId(null);
-    setFilled(null);
-  };
 
   const selectedSaid =
     acting.length === 1 ? t("board.selectedOne") : t("board.selectedCount", { n: acting.length });
@@ -1450,28 +1332,16 @@ export const BoardView = memo(function BoardView(props: {
               );
             })}
           </div>
-          {filesShown && <BoardFilesPanel store={store} hostId={hostId} files={files} />}
+          {files && filesShown && <BoardFilesPanel store={store} hostId={hostId} files={files} />}
         </div>
       </div>
       {deleting && (
-        <ConfirmDialog
-          message={
-            hasStarted(deleting)
-              ? t("board.deleteStarted", { title: deleting.title })
-              : t("board.deleteMessage", { title: deleting.title })
-          }
-          confirmLabel={hasStarted(deleting) ? t("board.discardInstead") : t("board.deleteConfirm")}
-          destructive
-          onCancel={() => setDeleting(null)}
-          onConfirm={() => {
-            const card = deleting;
-            setDeleting(null);
-            // A started card has work to clean up, so it goes through the existing discard.
-            void store.hostCommand(hostId, hasStarted(card) ? "card.discard" : "card.delete", {
-              cardId: card.id,
-              confirm: true,
-            });
-          }}
+        <DeleteCardDialog
+          t={t}
+          store={store}
+          hostId={hostId}
+          card={deleting}
+          onClose={() => setDeleting(null)}
         />
       )}
       {ask && (
@@ -1517,10 +1387,10 @@ export const BoardView = memo(function BoardView(props: {
       {bulk && (
         <BulkRunDialog
           t={t}
-          title={bulkTitle()}
+          title={bulkTitle(t, bulk, { start: startable.length, stop: split.stop.length })}
           lines={bulkLines()}
           items={actingCards.map((card) => {
-            const skip = skipReason(card);
+            const skip = bulkSkipReason(t, bulk, split, card, needsInputs(card));
             return { id: card.id, title: card.title, ...(skip ? { skipped: skip } : {}) };
           })}
           confirmLabel={
@@ -1565,94 +1435,25 @@ export const BoardView = memo(function BoardView(props: {
           }
         />
       )}
-      <Dialog open={creating} onOpenChange={(open) => (open ? setCreating(true) : close())}>
-        <AppDialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>{t("kanban.newCard")}</DialogTitle>
-          </DialogHeader>
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void create();
-            }}
-          >
-            <CardTemplateField
-              store={store}
-              hostId={hostId}
-              projectId={projectId}
-              enabled={hasFeature(
-                state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-                "cardTemplates",
-                false,
-              )}
-              value={templateId}
-              onPick={(picked) => {
-                setTemplateId(picked?.id ?? null);
-                const next = applyTemplate({ description, filled }, picked);
-                setDescription(next.description);
-                setFilled(next.filled);
-              }}
-            />
-            <AssistField
-              binding={{
-                controller: store.assistant,
-                kind: "card.title",
-                fieldHostId: hostId,
-                ...(description.trim() ? { context: { description } } : {}),
-                openSettings: props.onOpenSettings,
-              }}
-              value={title}
-              onChange={setTitle}
-              t={t}
-            >
-              {(control) => (
-                <Input
-                  aria-label={t("kanban.titleLabel")}
-                  placeholder={t("kanban.titlePlaceholder")}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  {...control}
-                />
-              )}
-            </AssistField>
-            <AssistField
-              binding={{
-                controller: store.assistant,
-                kind: "card.description",
-                fieldHostId: hostId,
-                ...(title.trim() ? { context: { title } } : {}),
-                openSettings: props.onOpenSettings,
-              }}
-              value={description}
-              onChange={setDescription}
-              t={t}
-            >
-              {(control) => (
-                <Textarea
-                  aria-label={t("kanban.descriptionLabel")}
-                  placeholder={t("kanban.descriptionPlaceholder")}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  {...control}
-                />
-              )}
-            </AssistField>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={close}>
-                {t("common.cancel")}
-              </Button>
-              <ActionButton
-                type="submit"
-                disabled={!title.trim()}
-                disabledReason={t("kanban.needTitle")}
-              >
-                {t("kanban.create")}
-              </ActionButton>
-            </DialogFooter>
-          </form>
-        </AppDialogContent>
-      </Dialog>
+      <NewCardDialog
+        t={t}
+        store={store}
+        hostId={hostId}
+        projectId={projectId}
+        open={creating}
+        column={createIn}
+        cardTemplates={hasFeature(
+          state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
+          "cardTemplates",
+          false,
+        )}
+        onClose={() => {
+          setCreating(false);
+          setCreateIn("backlog");
+        }}
+        onOpenCard={props.onOpenCard}
+        onOpenSettings={props.onOpenSettings}
+      />
     </Page>
   );
 });
