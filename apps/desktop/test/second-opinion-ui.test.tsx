@@ -251,6 +251,49 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
     expect([afterResult, afterRefusal]).toEqual([true, true]);
   });
 
+  test("focus the person moved elsewhere while the host read is not taken back (#1495)", async () => {
+    let release = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { view } = setup({ hold });
+    render(
+      <>
+        {view()}
+        <textarea aria-label="Comment" />
+      </>,
+    );
+    await ask();
+    const comment = screen.queryByRole("textbox", { name: "Comment" });
+    expect(comment).not.toBeNull();
+    comment?.focus();
+    release();
+    await settle(() => text().includes("Two risks"));
+    await settleMaybe(() => document.activeElement === button("Get a second opinion"), 400);
+    expect(document.activeElement === comment).toBe(true);
+  });
+
+  test("two clicks in the same tick ask the host once, and the button says it is busy while it reads (#1495)", async () => {
+    let release = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { asked, view } = setup({ hold });
+    render(view());
+    const found = button("Get a second opinion");
+    expect(found).not.toBeNull();
+    await act(async () => {
+      if (found) {
+        fireEvent.click(found);
+        fireEvent.click(found);
+      }
+    });
+    const waiting = [asked.length, button("Get a second opinion")?.getAttribute("aria-busy")];
+    release();
+    await settle(() => text().includes("Two risks"));
+    expect(waiting).toEqual([1, "true"]);
+  });
+
   test("in pt-BR the button and the result are translated", async () => {
     const { view } = setup({ language: "pt-BR" });
     render(view());
