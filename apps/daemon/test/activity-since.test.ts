@@ -154,7 +154,7 @@ describe("activity-since (#1344)", () => {
     const digest = activitySince({ db }, SINCE, 7);
     expect([digest.sessions.items.length, digest.sessions.total]).toEqual([7, 200]);
     const defaults = activitySince({ db }, SINCE);
-    expect(defaults.sessions.items.length).toBe(20);
+    expect(defaults.sessions.items).toHaveLength(20);
   });
 
   test("the quota windows come from the reader when the host has one, none otherwise", () => {
