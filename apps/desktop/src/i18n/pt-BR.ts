@@ -1160,6 +1160,8 @@ export const ptBR = {
     versionDiffers: "{host}: versão diferente",
   },
   needsYou: {
+    quietFor: "Em silêncio há {span}",
+    quietLast: "{quiet} · última: {tool}",
     title: "Precisa de você",
     empty: "Nada espera por você.",
     seeSessions: "Ver as sessões",

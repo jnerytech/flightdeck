@@ -1183,6 +1183,8 @@ export const en: Dictionary = {
     release: "Free the pair",
     finished: "Finished",
     finishedOutcome: { done: "Finished", failed: "Failed", ended: "Ended" },
+    quietFor: "Quiet for {span}",
+    quietLast: "{quiet} · last: {tool}",
     finishedFilesOne: "1 file changed",
     finishedFilesMany: "{n} files changed",
     finishedNoFiles: "No files changed",

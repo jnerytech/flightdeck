@@ -1,9 +1,9 @@
+import { formatDuration } from "../i18n/format.ts";
 import type { T } from "../i18n/index.ts";
-import type { AppState } from "./app-store.ts";
+import { type AppState, sessionKey } from "./app-store.ts";
 import { type HubRowState, hubRows } from "./hub.ts";
 
-/** How long "Not stuck" keeps a quiet session out of Needs you. */
-export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
+export { QUIET_SNOOZE_MS } from "./app-store.ts";
 
 /** The parts of the state the quiet sessions are made of. */
 export type QuietState = HubRowState & Pick<AppState, "quietSnooze">;
@@ -21,12 +21,32 @@ export interface QuietAlert {
   tool: string | null;
 }
 
-export function quietAlerts(_state: QuietState, _nowMs: number): QuietAlert[] {
-  void hubRows;
-  return [];
+export function quietAlerts(state: QuietState, nowMs: number): QuietAlert[] {
+  return hubRows(state)
+    .flatMap((row) => {
+      if (row.origin !== "flightdeck" || row.state !== "running" || !row.sessionId) return [];
+      if (!row.quietSince) return [];
+      const key = sessionKey(row.hostId, row.sessionId);
+      if ((state.quietSnooze[key] ?? 0) > nowMs) return [];
+      return [
+        {
+          key,
+          hostId: row.hostId,
+          hostName: row.hostName,
+          sessionId: row.sessionId,
+          title: row.title,
+          since: row.quietSince,
+          tool: row.quietTool ?? null,
+        },
+      ];
+    })
+    .sort((a, b) => Date.parse(a.since) - Date.parse(b.since));
 }
 
 /** "Quiet for 23 min · last: Bash". */
-export function quietText(_alert: QuietAlert, _nowMs: number, _t: T): string {
-  return "";
+export function quietText(alert: QuietAlert, nowMs: number, t: T): string {
+  const quiet = t("needsYou.quietFor", {
+    span: formatDuration(Math.max(0, nowMs - Date.parse(alert.since)), t),
+  });
+  return alert.tool ? t("needsYou.quietLast", { quiet, tool: alert.tool }) : quiet;
 }

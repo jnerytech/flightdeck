@@ -169,6 +169,16 @@ export interface HubGroup {
   rows: HubRow[];
 }
 
+/** The quiet fields of a session's summary, when the host marked it quiet. */
+function quietOf(session: {
+  quietSince?: string | undefined;
+  quietTool?: string | null | undefined;
+}) {
+  return session.quietSince
+    ? { quietSince: session.quietSince, quietTool: session.quietTool ?? null }
+    : {};
+}
+
 const MANAGED: Record<SessionStatus, HubState> = {
   starting: "running",
   running: "running",
@@ -292,6 +302,8 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
         asleep: MANAGED[live?.status ?? s.status] === "idle" && s.asleep === true,
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
+        // Issue #1478: the live summary is newer than the list, so it alone says whether it is quiet.
+        ...quietOf(live ?? s),
         summary: liveLine(s.summary, live),
         persona: s.persona ?? null,
         ...(s.runtime === "opencode" ? { runtime: "opencode" as const } : {}),

@@ -922,6 +922,9 @@ export const TELEPORT_PREVIEW_KEY = "flightdeck.teleportPreview";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
+/** Issue #1478: how long "Not stuck" keeps a quiet session out of Needs you. */
+export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
+
 const REAL_TIMERS = {
   setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms),
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -3686,6 +3689,9 @@ export class AppStore {
         updatedAt: summary.updatedAt,
         ...(summary.runtime ? { runtime: summary.runtime } : {}),
         ...(summary.trustStale ? { trustStale: true } : {}),
+        ...(summary.quietSince
+          ? { quietSince: summary.quietSince, quietTool: summary.quietTool ?? null }
+          : {}),
       };
       const i = at.get(next.id);
       const prev = i === undefined ? undefined : sessions[i];
@@ -4929,10 +4935,23 @@ export class AppStore {
   }
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
-  snoozeQuiet(_hostId: string, _sessionId: string): void {}
+  snoozeQuiet(hostId: string, sessionId: string): void {
+    this.update({
+      quietSnooze: {
+        ...this.state.quietSnooze,
+        [sessionKey(hostId, sessionId)]: this.now() + QUIET_SNOOZE_MS,
+      },
+    });
+  }
 
   /** Issue #1478: interrupts any session of a host, open or not. */
-  async interruptSession(_hostId: string, _sessionId: string): Promise<void> {}
+  async interruptSession(hostId: string, sessionId: string): Promise<void> {
+    try {
+      await this.connections.get(hostId)?.request("session.interrupt", { sessionId });
+    } catch (error) {
+      this.fail(error);
+    }
+  }
 
   /**
    * Phase 21: frees a paused pair (its `loopPairKey`), keeping the host's messaging policy as it
