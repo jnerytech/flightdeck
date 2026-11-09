@@ -691,7 +691,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       // has no PR yet (`pr view <branch>` finds none), so the create answers with the PR's URL.
       { args: ["pr", "create"], stdout: `Creating pull request\n${DEMO_TEMPLATE_PR_URL}\n` },
       {
-        args: ["pr", "view", DEMO_PR_URL, "state,statusCheckRollup"],
+        args: [
+          "pr",
+          "view",
+          DEMO_PR_URL,
+          "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt",
+        ],
         stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
       },
       {
@@ -713,7 +718,12 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       // Issue #1345: beta's PR is open and mergeable, and the host's merge goes through. The fake keeps
       // saying "open" afterwards (its answers do not change), so the card stays on the page.
       {
-        args: ["pr", "view", DEMO_PR_BETA_URL, "state,statusCheckRollup"],
+        args: [
+          "pr",
+          "view",
+          DEMO_PR_BETA_URL,
+          "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt",
+        ],
         stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
       },
       { args: ["pr", "merge", DEMO_PR_BETA_URL], stdout: "Merged\n" },

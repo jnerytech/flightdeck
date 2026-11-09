@@ -183,7 +183,7 @@ const ghRules = (rollup: unknown[] = []) => [
   { args: ["view", "url"], code: 1 },
   { args: ["pr", "create"], stdout: `${PR_URL}\n` },
   {
-    args: ["view", "state,statusCheckRollup"],
+    args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
     stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: rollup }),
   },
 ];

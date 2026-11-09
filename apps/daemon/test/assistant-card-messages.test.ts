@@ -21,7 +21,10 @@ async function setup() {
   const gh = installFakeCli("gh", [
     { args: ["view", "url"], code: 1 },
     { args: ["pr", "create"], stdout: "https://github.com/acme/repo/pull/9\n" },
-    { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
+    {
+      args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+      stdout: JSON.stringify({ state: "OPEN" }),
+    },
   ]);
   cleanups.push(gh.restore);
   const ctx = newBoard({ prPollIntervalMs: 30 });
