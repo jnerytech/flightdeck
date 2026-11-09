@@ -199,7 +199,8 @@ describe("backup-bundle: one encrypted file with everything (#1241)", () => {
     const text = await createBackup(source.platform, PASS, PASS, FAST);
     const fresh = newProfile();
     const before = snapshot(fresh);
-    const corrupt = `${text.slice(0, 120)}A${text.slice(121)}`;
+    // A different character from the one there: swapping in the same one would leave the file intact.
+    const corrupt = `${text.slice(0, 120)}${text[120] === "A" ? "B" : "A"}${text.slice(121)}`;
     const codes = await Promise.all(
       [
         previewRestore(fresh.platform, text, "another passphrase"),

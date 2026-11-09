@@ -4,6 +4,7 @@
  */
 import type { Handlers } from "../dispatch.ts";
 import { agentsHandlers } from "./agents.ts";
+import { assistantHandlers } from "./assistant.ts";
 import { boardHandlers } from "./board.ts";
 import { cardHandlers } from "./card.ts";
 import { costsHandlers } from "./costs.ts";
@@ -42,6 +43,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   session: sessionHandlers,
   board: boardHandlers,
   external: externalHandlers,
+  assistant: assistantHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));
