@@ -1750,7 +1750,7 @@ step(
   async (c) => {
     const row = budgetRow(c);
     await row
-      .getByText(/US\$ 10\.00/)
+      .getByText(c.lang === "en" ? /US\$ 10\.00/ : /US\$ 10,00/)
       .first()
       .waitFor({ timeout: WAIT });
     const plan = dictionary(c).budgets.limitQuota.replace("{limit}", "");
