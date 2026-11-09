@@ -65,3 +65,12 @@ Feature: The first hour
     Then the card says no PR can be opened without a PR provider
     And the card names the branch to push by hand
     And Review changes still leads and Open PR is not offered
+
+  Scenario: The card just made takes the focus
+    Given the app starts with no host
+    When I paste the pairing link of the first demo host named "orange pi"
+    And I press Test and add
+    And I add a git repository of my own as my first project from the host page
+    And I open the board of my first project from its page
+    And I create my first card without starting it
+    Then the focus is on the card I made
