@@ -140,8 +140,23 @@ export async function updateMany(cards: Card[], steps: UpdateSteps): Promise<Upd
   return results;
 }
 
-/** A card already on its base is not rebased; one whose count is unknown is tried. */
+/**
+ * A card already on its base is not rebased; one whose count is unknown is tried. A step that
+ * throws (a dropped link) fails that card, and the run goes on.
+ */
 async function updateOne(card: Card, steps: UpdateSteps): Promise<UpdateResult> {
+  try {
+    return await tryUpdate(card, steps);
+  } catch (error) {
+    return {
+      card,
+      outcome: "failed",
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function tryUpdate(card: Card, steps: UpdateSteps): Promise<UpdateResult> {
   if ((await steps.behind(card)) === 0) return { card, outcome: "current" };
   const answer = await steps.update(card);
   if (answer.ok) return { card, outcome: "updated" };

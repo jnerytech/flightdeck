@@ -92,12 +92,6 @@ export function SelectionBar(
         >
           {t("board.startSelected", { n: props.startCount })}
         </ActionButton>
-        {/* #1406: the run's progress, seen on the bar; the summary after it is what is announced. */}
-        {props.updating && (
-          <span className="text-muted-foreground text-xs tabular-nums">
-            {t("board.updating", props.updating)}
-          </span>
-        )}
         {/* Only while a selected card runs or waits in the queue: most selections have none. */}
         {props.stopCount > 0 && (
           <ActionButton size="sm" variant="outline" disabled={props.busy} onClick={props.onStop}>
@@ -169,6 +163,13 @@ export function SelectionBar(
         <Button size="sm" variant="ghost" onClick={props.onClear}>
           {props.compact ? t("board.clearShort") : t("board.clearSelection")}
         </Button>
+        {/* #1406: the run's progress, seen on the bar; the summary after it is what is
+            announced. Last in the row, so no button moves while it counts. */}
+        {props.updating && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {t("board.updating", props.updating)}
+          </span>
+        )}
       </FieldRow>
     </fieldset>
   );
