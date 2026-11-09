@@ -245,6 +245,30 @@ describe("memory-pause: the hold is a host setting the app reads and changes (#1
   });
 });
 
+// #1414: the confirm asks whether the gate holds; asking never changes what the gate remembers, so a
+// release the question sees first still reaches the watchers on the gate's next look.
+describe("memory-gate: holds() asks without changing the gate (#1414)", () => {
+  test("holds() follows the margin, and the watcher still hears the release it saw first", () => {
+    const g = gateAt(0.95);
+    let heard = 0;
+    cleanups.push(g.gate.watch(() => heard++));
+    const over = g.gate.holds();
+    g.set(used(0.89));
+    const margin = g.gate.holds();
+    g.set(used(0.5));
+    const under = g.gate.holds();
+    g.advance(15_000);
+    expect([over, margin, under, heard]).toEqual([true, true, false, 1]);
+  });
+
+  test("no threshold or no reading never holds", () => {
+    const off = gateAt(0.99, null);
+    const unread = gateAt(0.99);
+    unread.set(null);
+    expect([off.gate.holds(), unread.gate.holds()]).toEqual([false, false]);
+  });
+});
+
 // #1414: the app's Start confirm reads whether the hold keeps new cards waiting now, from the gate
 // itself: its release margin, and no hold where the host has no reading (macOS counts the cache).
 describe("memory-pause: resources.get says whether the hold holds now (#1414)", () => {
