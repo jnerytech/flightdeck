@@ -89,17 +89,64 @@ export const ROUND_START_MS = 120_000;
 /** The output a round quotes, from its end. */
 const OUTPUT_MAX = 4000;
 
-/** Control characters and ANSI sequences out, line breaks and tabs kept. */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: ESC opens the ANSI sequences it removes
-const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]/g;
+/** ESC, which opens the ANSI sequences a check's colours and cursor moves are written in. */
+const ESC = String.fromCodePoint(0x1b);
+/** A CSI sequence (`ESC [ … final`) or a two-character escape (`ESC` and one of @ to _). */
+const ANSI = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]|${ESC}[@-_]`, "g");
+
 /**
- * Control characters (C0 but line breaks and tabs, DEL, C1), bidi controls, and the invisible ones
- * that can hide text: zero-width, word joiner, BOM and Unicode tags.
+ * The code points taken out of a check's output, as ranges: control characters (C0 but tab and
+ * line feed, DEL, C1), bidi controls, and the invisible ones that can hide text (soft hyphen,
+ * combining grapheme joiner, Arabic letter mark, Hangul fillers, Mongolian vowel separator,
+ * zero-width, line and paragraph separators, word joiner and invisible operators, variation
+ * selectors, BOM, interlinear annotation, and Unicode tags).
  */
-const CONTROL =
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
-  // biome-ignore lint/suspicious/noMisleadingCharacterClass: each is a character to remove, alone
-  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u00ad\u034f\u061c\u115f\u1160\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffb\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
+const HIDDEN: ReadonlyArray<readonly [number, number]> = [
+  [0x00, 0x08],
+  [0x0b, 0x1f],
+  [0x7f, 0x9f],
+  [0xad, 0xad],
+  [0x34f, 0x34f],
+  [0x61c, 0x61c],
+  [0x115f, 0x1160],
+  [0x180e, 0x180e],
+  [0x200b, 0x200f],
+  [0x2028, 0x202e],
+  [0x2060, 0x206f],
+  [0x3164, 0x3164],
+  [0xfe00, 0xfe0f],
+  [0xfeff, 0xfeff],
+  [0xffa0, 0xffa0],
+  [0xfff9, 0xfffb],
+  [0xe0000, 0xe007f],
+  [0xe0100, 0xe01ef],
+];
+
+const hidden = (point: number): boolean =>
+  HIDDEN.some(([low, high]) => point >= low && point <= high);
+
+/** The output with its ANSI sequences and its hidden code points removed; tabs and line feeds stay. */
+function visible(text: string): string {
+  let kept = "";
+  for (const char of text.replace(ANSI, "")) {
+    if (!hidden(char.codePointAt(0) ?? 0)) kept += char;
+  }
+  return kept;
+}
+
+/** Why a loop ends at a turn that was not the loop's to check. */
+function turnEnd(turn: { isError: boolean; interrupted: boolean }): CheckLoopReason {
+  if (turn.isError) return "turn_error";
+  if (turn.interrupted) return "person_turn";
+  return "stopped_by_you";
+}
+
+/** What happened to the check, for the round's first line. */
+function whatHappened(outcome: Extract<CheckOutcome, { kind: "failed" }>): string {
+  if (outcome.timedOut) return "timed out";
+  if (outcome.tooLarge) return "printed more than 4 MB and was stopped";
+  return `failed (exit ${outcome.exitCode})`;
+}
 
 /**
  * The round sent into the session. The output is the check's, from code the session wrote: it is
@@ -107,13 +154,9 @@ const CONTROL =
  */
 export function roundMessage(n: number, max: number, outcome: CheckOutcome): string {
   if (outcome.kind !== "failed") return `Round ${n} of ${max}: the checks did not pass.`;
-  const what = outcome.timedOut
-    ? "timed out"
-    : outcome.tooLarge
-      ? "printed more than 4 MB and was stopped"
-      : `failed (exit ${outcome.exitCode})`;
+  const what = whatHappened(outcome);
   // Stripped first, masked after: a secret split by a colour code is whole again when masked.
-  const clean = masked(outcome.output.replace(ANSI, "").replace(CONTROL, ""));
+  const clean = masked(visible(outcome.output));
   const output = clean.length > OUTPUT_MAX ? clean.slice(-OUTPUT_MAX) : clean;
   const longest = Math.max(0, ...(output.match(/`+/g) ?? []).map((run) => run.length));
   const fence = "`".repeat(Math.max(3, longest + 1));
@@ -186,12 +229,7 @@ export class CheckLoopEngine {
       if (!loop) this.passed.add(cardId);
       // What happened is the person's to see; a slot held at idle goes back now, with its line.
       if (loop) {
-        const why = turn.isError
-          ? "turn_error"
-          : turn.interrupted
-            ? "person_turn"
-            : "stopped_by_you";
-        this.end(cardId, loop, why, { release: true });
+        this.end(cardId, loop, turnEnd(turn), { release: true });
       }
       return "place";
     }
