@@ -35,6 +35,12 @@ export interface WatchSettings {
   dailyUsd: number | null;
   /** Issue #77: globs of files a round may change outside its PR; they never count as drift. */
   driftAllow: string[];
+  /** Issue #1361: rounds of the check loop per turn of the person. */
+  checkRounds: number;
+  /** Issue #1361: names added to the checks' allowlisted environment. */
+  checkEnv: string[];
+  /** Issue #1361: new cards in bypassPermissions start with the check loop on. */
+  checkLoopDefault: boolean;
 }
 
 export interface PrWatcherOptions {
@@ -59,6 +65,9 @@ const DEFAULT_SETTINGS: WatchSettings = {
   persona: "revisor",
   maxFailures: 2,
   dailyUsd: 20,
+  checkRounds: 3,
+  checkEnv: [],
+  checkLoopDefault: false,
   driftAllow: [
     "bun.lock",
     "bun.lockb",

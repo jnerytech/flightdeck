@@ -3082,6 +3082,17 @@ export type TeamsUpdatedFrame = z.infer<typeof TeamsUpdatedFrame>;
 export const isWatchCheck = (line: string): boolean =>
   /^[\w@+=:,./-]+(?: [\w@+=:,./-]+)*$/.test(line);
 
+/** Issue #1361: names that look like a secret's, or Flightdeck's own; any case (Windows reads both). */
+const SECRET_SHAPED_ENV =
+  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|^(ANTHROPIC|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK)_/i;
+
+/**
+ * Issue #1361: a variable a project adds to its checks' environment. A name only (the value stays
+ * the daemon's), and never one shaped like a secret: a check that needs one does not run unattended.
+ */
+export const isCheckEnvName = (name: string): boolean =>
+  /^[A-Za-z_]\w*(\(x86\))?$/.test(name) && !SECRET_SHAPED_ENV.test(name);
+
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({
   enabled: z.boolean(),
@@ -3107,6 +3118,17 @@ export const WatchSettings = z.object({
   maxFailures: z.number().int().min(1).max(10),
   /** Cost of every round of the project in a day, in US$; `null` for no limit. */
   dailyUsd: z.number().positive().nullable(),
+  /** Issue #1361: rounds of the check loop per turn of the person; absent from older daemons. */
+  checkRounds: z.number().int().min(1).max(10).optional(),
+  /** Issue #1361: names added to the checks' allowlisted environment. */
+  checkEnv: z
+    .array(
+      z.string().max(64).refine(isCheckEnvName, "a variable name, not one shaped like a secret"),
+    )
+    .max(20)
+    .optional(),
+  /** Issue #1361: new cards in bypassPermissions start with the check loop on. */
+  checkLoopDefault: z.boolean().optional(),
   /** Issue #77: globs of files a round may change outside its PR (lockfiles); absent from older daemons. */
   driftAllow: z
     .array(

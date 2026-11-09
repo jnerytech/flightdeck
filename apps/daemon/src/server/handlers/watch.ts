@@ -1,11 +1,37 @@
 /**
  * Issue #1288: the watch domain: a card's pull request watched and fixed (phase 22).
  */
+import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 
+/**
+ * Issue #1361: the fields that decide what runs unattended in a card's worktree. A patch that
+ * changes one needs a near connection; one that sends them unchanged (the whole form) does not.
+ */
+const NEAR_ONLY = [
+  "checks",
+  "checkTimeoutMin",
+  "checkRounds",
+  "checkEnv",
+  "checkLoopDefault",
+] as const;
+
 export const watchHandlers = {
-  "watch.settings": (payload, { server }) => {
-    return server.need("watch").settings(payload.projectId, payload.patch);
+  "watch.settings": (payload, { ws, server }) => {
+    const watch = server.need("watch");
+    const { projectId, patch } = payload;
+    if (patch) {
+      const current = watch.settings(projectId);
+      const changed = NEAR_ONLY.filter(
+        (key) => key in patch && JSON.stringify(patch[key]) !== JSON.stringify(current[key]),
+      );
+      if (changed.length > 0) {
+        requireVaultTransport(ws.data.origin, "watch.settings", server.opts.log);
+        // The project's trail of who changed what runs unattended: the fields, not their values.
+        server.opts.log?.(`watch.settings: project ${projectId} changed ${changed.join(", ")}`);
+      }
+    }
+    return watch.settings(projectId, patch);
   },
   "watch.set": (payload, { server }) => {
     return server.need("watch").set(payload.cardId, payload.enabled);
