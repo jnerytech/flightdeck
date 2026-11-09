@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { boardFiles } from "../src/lib/board-files.ts";
+import { boardFiles, filesPanelOpen } from "../src/lib/board-files.ts";
 
 const worktree = {
   hostId: "h1",
@@ -50,5 +50,26 @@ describe("board-files: what the files panel beside the board shows (#117)", () =
       boardFiles(worktree, cards, []),
       boardFiles(worktree, cards, undefined),
     ]).toEqual([null, null, null, null]);
+  });
+});
+
+/** #1125: whether the files panel shows; the person's choice for this worktree beats the width. */
+describe("filesPanelOpen: wide shows at once, narrow waits, the choice for this worktree wins", () => {
+  const files = { kind: "primary", branch: "main" } as const;
+  test("with no files it is closed; wide it is open; narrow it waits", () => {
+    expect([
+      filesPanelOpen(null, null, worktree, false),
+      filesPanelOpen(files, null, worktree, false),
+      filesPanelOpen(files, null, worktree, true),
+    ]).toEqual([false, true, false]);
+  });
+
+  test("a choice for this worktree wins over the width; one for another worktree does not", () => {
+    expect([
+      filesPanelOpen(files, { path: "/wt/b", open: true }, worktree, true),
+      filesPanelOpen(files, { path: "/wt/b", open: false }, worktree, false),
+      filesPanelOpen(files, { path: "/wt/other", open: true }, worktree, true),
+      filesPanelOpen(files, { path: "/wt/other", open: false }, worktree, false),
+    ]).toEqual([true, false, false, true]);
   });
 });

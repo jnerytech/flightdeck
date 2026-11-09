@@ -1,11 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import {
+  bulkRunOutcome,
+  bulkSkipReason,
   bulkSplit,
+  bulkTitle,
   holdLines,
   queueLine,
   queueSplit,
+  refusalNotice,
+  requestResult,
   runMany,
+  startConfirmLines,
+  startOffers,
+  startQuotaLines,
   updateMany,
   updateSummary,
 } from "../src/lib/board-bulk.ts";
@@ -296,5 +304,172 @@ describe("board-bulk: Update from the base for many cards (#1406)", () => {
       "Already current: card c.",
       "Atualizados: card a, card b. Já em dia: card c. Conflito, ficou como estava: card d (Atualizar com main dá conflito em: src/a.ts).",
     ]);
+  });
+});
+
+/** #1125: the confirm's pieces left BoardView for pure functions; each is checked on its own. */
+describe("board-bulk: the Start and Stop confirm's pieces (#1125)", () => {
+  test("the title says how many cards the action takes, one or many, for Start and for Stop", () => {
+    const counts = { start: 3, stop: 1 };
+    expect([
+      bulkTitle(t, "start", counts),
+      bulkTitle(t, "start", { start: 1, stop: 1 }),
+      bulkTitle(t, "stop", counts),
+      bulkTitle(t, "stop", { start: 3, stop: 2 }),
+    ]).toEqual([
+      t("board.startTitle", { n: 3 }),
+      t("board.startTitleOne"),
+      t("board.stopTitleOne"),
+      t("board.stopTitle", { n: 2 }),
+    ]);
+  });
+
+  test("a card left out says why: running or queued for Start, needing inputs, or not running for Stop", () => {
+    const split = bulkSplit([card("a"), card("b", { sessionStatus: "running" })], t);
+    const a = card("a");
+    const b = card("b", { sessionStatus: "running" });
+    expect([
+      bulkSkipReason(t, "start", split, b, false),
+      bulkSkipReason(t, "start", split, a, true),
+      bulkSkipReason(t, "start", split, a, false),
+      bulkSkipReason(t, "stop", split, a, false),
+      bulkSkipReason(t, "stop", split, b, false),
+    ]).toEqual([
+      t("board.startRunning"),
+      t("board.needsInputs"),
+      undefined,
+      t("board.notRunning"),
+      undefined,
+    ]);
+  });
+
+  test("a host's answer is a went, or a refusal that keeps its reason and values", () => {
+    expect([
+      requestResult({ ok: true }),
+      requestResult({ ok: false, message: "No", reason: "card_pr_conflict", params: { n: 2 } }),
+      requestResult({ ok: false, message: "Plain" }),
+    ]).toEqual([
+      { ok: true },
+      { ok: false, message: "No", reason: "card_pr_conflict", params: { n: 2 } },
+      { ok: false, message: "Plain" },
+    ]);
+  });
+
+  test("the refused cards are named in the one or many wording, and none says nothing", () => {
+    const refused = [{ card: card("a"), message: "no" }] as never;
+    const two = [...(refused as never[]), ...(refused as never[])] as never;
+    const keys = { one: "board.stayedOne", many: "board.stayed" } as const;
+    expect([
+      refusalNotice(t, [], "x", keys),
+      refusalNotice(t, refused, "A (no)", keys),
+      refusalNotice(t, two, "A (no), A (no)", keys),
+      bulkRunOutcome(t, "start", refused, "A (no)"),
+      bulkRunOutcome(t, "stop", two, "A, B"),
+      bulkRunOutcome(t, "stop", [], ""),
+    ]).toEqual([
+      null,
+      t("board.stayedOne", { names: "A (no)" }),
+      t("board.stayed", { count: 2, names: "A (no), A (no)" }),
+      t("board.startFailedOne", { names: "A (no)" }),
+      t("board.stopFailed", { count: 2, names: "A, B" }),
+      null,
+    ]);
+  });
+
+  test("a paused host is a hold line, after the budget and memory ones", () => {
+    const lines = holdLines(t, "pi", { budgets: [], projectKey: null, cards: [], paused: true });
+    expect([lines, holdLines(t, "pi", { budgets: [], projectKey: null, cards: [] })]).toEqual([
+      [t("board.startPausedHold", { host: "pi" })],
+      [],
+    ]);
+  });
+
+  test("the quota lines say the 5-hour reading, and a hot window is a hold", () => {
+    const reading = (used: number) => ({
+      windows: [
+        {
+          window: "five_hour",
+          utilization: used,
+          status: "allowed",
+          resetsAt: "2026-11-09T15:00:00Z",
+          readAt: new Date().toISOString(),
+        },
+      ],
+      pauseAt: 0.9,
+    });
+    const at = (quota: unknown, account: unknown) =>
+      startQuotaLines(t, "pi", {
+        quota: quota as never,
+        account: account as never,
+        now: Date.now(),
+        formatTime: () => "15:00",
+      });
+    const cool = at(reading(0.42), undefined);
+    const hot = at(reading(0.95), undefined);
+    expect([
+      at(undefined, undefined),
+      at(undefined, { status: "signed_in" }).holds,
+      cool.lines.length,
+      cool.lines[0]?.includes("42"),
+      cool.holds,
+      hot.holds,
+    ]).toEqual([
+      { lines: [], holds: [] },
+      [],
+      1,
+      true,
+      [],
+      [t("board.startQuotaHold", { host: "pi" })],
+    ]);
+  });
+
+  test("the Start lines: the queue, then the holds, the other host and the cards with no criteria", () => {
+    const base = {
+      workflowsFailed: false,
+      queueMax: 2,
+      startable: [card("a"), card("b"), card("c")],
+      runningOnHost: 0,
+      quotaLines: ["quota line"],
+      holds: [] as string[],
+      waitingElsewhere: 0,
+      contracts: {},
+    };
+    const plain = startConfirmLines(t, base);
+    const held = startConfirmLines(t, { ...base, holds: ["a hold"], waitingElsewhere: 1 });
+    const many = startConfirmLines(t, { ...base, waitingElsewhere: 3, workflowsFailed: true });
+    expect([
+      plain[0],
+      plain.includes("quota line"),
+      held[0],
+      held.includes("a hold"),
+      held.includes(t("board.startOnHintOne")),
+      many[0],
+      many.includes(t("board.startOnHint", { n: 3 })),
+      startConfirmLines(t, { ...base, queueMax: undefined }).some((l) => l.includes("2")),
+    ]).toEqual([
+      queueLine(t, queueSplit(3, 2, 0), 2),
+      true,
+      queueLine(t, { now: 0, later: 3 }, 2),
+      true,
+      true,
+      t("board.workflowsUnread"),
+      true,
+      false,
+    ]);
+  });
+
+  test("other hosts are asked about only while a Start confirm is open and ready", () => {
+    let asked = 0;
+    const offers = () => {
+      asked++;
+      return ["pi"];
+    };
+    expect([
+      startOffers("start", true, offers),
+      startOffers("start", false, offers),
+      startOffers("stop", true, offers),
+      startOffers(null, true, offers),
+      asked,
+    ]).toEqual([["pi"], [], [], [], 1]);
   });
 });
