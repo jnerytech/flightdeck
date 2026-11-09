@@ -137,11 +137,24 @@ describe("activity-since (#1344)", () => {
       {
         runId: "r1",
         cardId: "c",
+        projectId: "p1",
         workflowName: "ship",
         reasonKey: "run.budget",
         reasonParams: { limit: 5 },
         at: IN,
       },
+    ]);
+  });
+
+  test("a failed run names its card's project, null once the card is gone (#1408)", () => {
+    const { db, card, run } = seeded();
+    card("c", "waiting", IN);
+    run("r1", "c", "failed", IN);
+    run("r2", "gone", "failed", "2026-11-09T00:30:00.000Z");
+    const items = activitySince({ db }, SINCE).failedRuns.items;
+    expect(items.map((item) => [item.runId, item.projectId])).toEqual([
+      ["r2", null],
+      ["r1", "p1"],
     ]);
   });
 
