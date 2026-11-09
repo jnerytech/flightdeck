@@ -222,10 +222,10 @@ describe("server-registry", () => {
     );
   });
 
-  // Issue #1288: the board commands left the switch of server.ts.
-  test("the board domain owns the board.* commands", () => {
+  // Issue #1288: the board commands left the switch of server.ts (the gate answer is a board workflow's).
+  test("the board domain owns the board.* commands and gate.respond", () => {
     expect(Object.keys(DOMAINS.board ?? {}).sort()).toEqual(
-      ["board.get", "board.settings", "board.watch"].sort(),
+      ["board.get", "board.settings", "board.watch", "gate.respond"].sort(),
     );
   });
 

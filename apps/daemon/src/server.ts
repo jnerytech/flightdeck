@@ -86,7 +86,6 @@ import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { serverContext } from "./server/context.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
-import { need } from "./server/gates.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
 import { DAEMON_VERSION } from "./server/host-info.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
@@ -490,14 +489,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function board(): Board {
-    return need(opts, "board");
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
-    const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
-      send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
-
     // The messaging service lists every endpoint with its project key, read synchronously.
     if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
       await context.warmKeys([
@@ -513,11 +505,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "gate.respond": {
-        const { runId, stepId, attempt, decision, note } = command.payload;
-        board().workflows.respond(runId, stepId, attempt, decision, note);
-        return ok(command.type, board().workflows.getRun(runId));
-      }
     }
   }
 
