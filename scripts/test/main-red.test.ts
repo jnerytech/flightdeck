@@ -610,7 +610,7 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
   test("an age under an hour is told in minutes", async () => {
     const recent = { ...FULL_RED, createdAt: "2026-11-09T02:25:00Z" };
     const fake = fakeGh({ runs: [GREEN_RUN], schedule: [recent], jobsById: { 50: SUITE_FAILED } });
-    expect((await mainRedLine({ ...fake, now: () => NOW })) ?? "").toContain("(full run, 40m old)");
+    expect((await mainRedLine({ ...fake, now: () => NOW })) ?? "").toContain("(full run, 40m old;");
   });
 
   test("a red push run and a green full run: red, and the full run's green verdict is shown", async () => {
