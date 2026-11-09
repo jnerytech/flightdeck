@@ -11,6 +11,7 @@ import { messagingHandlers } from "./messaging.ts";
 import { reviewHandlers } from "./review.ts";
 import { runsHandlers } from "./runs.ts";
 import { securityHandlers } from "./security.ts";
+import { teleportHandlers } from "./teleport.ts";
 import { terminalHandlers } from "./terminal.ts";
 
 /** The domains, by name; no command may sit in two of them (a spread would let the last win). */
@@ -24,6 +25,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   review: reviewHandlers,
   github: githubHandlers,
   knowledge: knowledgeHandlers,
+  teleport: teleportHandlers,
 };
 
 export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));
