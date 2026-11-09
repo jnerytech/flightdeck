@@ -35,7 +35,7 @@ const finished = {
 };
 const project = (prProvider: string) => ({ id: "p1", name: "shop", prProvider });
 
-type Answer = { outcome: string; host: string | null; prProvider?: string };
+type Answer = { outcome: string; host: string | null; prProvider?: string; refuse?: boolean };
 
 function setup(options: {
   language?: "en" | "pt-BR";
@@ -57,6 +57,7 @@ function setup(options: {
     asked.push(`${type}:${payload.projectId ?? ""}`);
     if (type !== "project.detectProvider") return { ok: true, data: {} };
     const answer = answers.shift() ?? { outcome: "no_remote", host: null };
+    if (answer.refuse) return { ok: false, code: "offline", message: "connection lost" };
     return {
       ok: true,
       data: {
@@ -163,5 +164,41 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     await act(async () => {});
     expect(w.asked).toEqual([]);
     expect(button("Open PR") !== null).toBe(true);
+  });
+
+  test("a press always answers: no remote found yet is said, a host that cannot be reached is an error", async () => {
+    const w = setup({
+      answers: [
+        { outcome: "no_remote", host: null },
+        { outcome: "no_remote", host: null },
+        { outcome: "no_remote", host: null, refuse: true },
+      ],
+    });
+    await settle(() => w.asked.length === 1);
+    // Looking when the card shows is quiet: nobody asked.
+    expect(w.store.getState().notices).toEqual([]);
+    await press("Check the remote again");
+    expect(w.store.getState().notices.map((notice) => notice.text)).toEqual([
+      "No remote found yet: add one with git remote add origin <url>, then check again.",
+    ]);
+    await press("Check the remote again");
+    const notices = w.store.getState().notices;
+    expect(notices).toHaveLength(2);
+    expect(notices[1]?.kind).toBe("error");
+    expect(notices[1]?.text ?? "").toContain("connection lost");
+  });
+
+  test("when the provider is found, the focus lands on the button that takes the place of the one pressed", async () => {
+    const w = setup({
+      answers: [
+        { outcome: "no_remote", host: null },
+        { outcome: "set", host: null, prProvider: "github" },
+      ],
+    });
+    await settle(() => w.asked.length === 1);
+    (button("Check the remote again") as HTMLElement).focus();
+    await press("Check the remote again");
+    await settle(() => button("Open PR") !== null);
+    expect(document.activeElement === button("Open PR")).toBe(true);
   });
 });
