@@ -17,6 +17,10 @@ use std::time::{Duration, Instant};
 
 /// A state is base64url text the app made; anything else is not one of ours.
 const MAX_STATE: usize = 256;
+/// Shorter states can be guessed by a local process; the app sends 128 bits or more.
+const MIN_STATE: usize = 16;
+/// Everything the reply may spend reading what a client still sends, in total.
+const DRAIN_LIMIT: Duration = Duration::from_millis(200);
 /// The request line and headers of a browser's redirect fit well inside this.
 const MAX_REQUEST: usize = 8 * 1024;
 /// Google's codes are well under 512 characters.
@@ -64,7 +68,7 @@ pub struct Listener {
 
 /// Binds 127.0.0.1 on a free port for the sign-in whose `state` is given.
 pub fn bind(state: &str) -> Result<Listener, String> {
-    let well_formed = !state.is_empty()
+    let well_formed = state.len() >= MIN_STATE
         && state.len() <= MAX_STATE
         && state.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
     if !well_formed {
@@ -225,10 +229,15 @@ Content-Security-Policy: default-src 'none'\r\nConnection: close\r\n\r\n{body}",
     let _ = stream.shutdown(std::net::Shutdown::Write);
     // What the client still sends is read and dropped for a moment: closing with unread input resets
     // the connection and can lose the reply.
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
+    let started = Instant::now();
     let mut sink = [0u8; 4096];
     let mut left = 64 * 1024usize;
     while left > 0 {
+        // One deadline for the whole drain, so a client that trickles bytes cannot hold the wait.
+        let time = DRAIN_LIMIT.saturating_sub(started.elapsed());
+        if time.is_zero() || stream.set_read_timeout(Some(time)).is_err() {
+            break;
+        }
         match stream.read(&mut sink) {
             Ok(0) | Err(_) => break,
             Ok(n) => left = left.saturating_sub(n),
@@ -262,6 +271,9 @@ fn decode(text: &str) -> Option<String> {
         match bytes[i] {
             b'%' => {
                 let pair = text.get(i + 1..i + 3)?;
+                if !pair.bytes().all(|b| b.is_ascii_hexdigit()) {
+                    return None;
+                }
                 out.push(u8::from_str_radix(pair, 16).ok()?);
                 i += 3;
             }
