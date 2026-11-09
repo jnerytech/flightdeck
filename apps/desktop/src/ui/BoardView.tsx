@@ -466,6 +466,9 @@ export const BoardView = memo(function BoardView(props: {
   const [workflows, setWorkflows] = useState<Array<{ name: string; inputs: string[] }> | null>(
     null,
   );
+  const [workflowsFailed, setWorkflowsFailed] = useState(false);
+  /** Which open of Start N's confirm the host's replies belong to. */
+  const startAsked = useRef(0);
   const suggestedPersona = useSuggestedPersona(store, hostId, "dev");
   /** The card whose `m` opened that menu: the focus goes back to it when the menu closes. */
   const moveFrom = useRef<string | null>(null);
@@ -644,16 +647,29 @@ export const BoardView = memo(function BoardView(props: {
   /** Opens Start N's confirm, and asks the host its limit and the project's workflows for it. */
   const askStart = () => {
     if (busy || split.start.length === 0) return;
+    // Each open asks again; a reply to an earlier open is dropped (#1390's review).
+    const asked = ++startAsked.current;
     setQueueMax(undefined);
     setWorkflows(null);
+    setWorkflowsFailed(false);
     setBulk("start");
     // Start waits for both (the confirm's button is off): the queue line and each card's workflow.
     void store.hostCommand(hostId, "project.list", {}).then((list) => {
+      if (asked !== startAsked.current) return;
       setQueueMax(typeof list?.maxParallelRuns === "number" ? list.maxParallelRuns : null);
     });
-    void store.hostCommand(hostId, "workflow.list", { projectId }).then((list) => {
+    void store.hostCommand(hostId, "workflow.list", { projectId }).then((result) => {
+      if (asked !== startAsked.current) return;
+      // A read that failed is not an empty list: Start stays off and the confirm says why.
+      if (!result) {
+        setWorkflowsFailed(true);
+        return;
+      }
+      // As the start dialog does: only a trusted workflow with no errors goes with a card.
       setWorkflows(
-        Array.isArray(list) ? list.map((w) => ({ name: w.name, inputs: w.inputs })) : [],
+        (result?.workflows ?? [])
+          .filter((w) => w.trusted && w.errors.length === 0)
+          .map((w) => ({ name: w.name, inputs: w.inputs })),
       );
     });
   };
@@ -713,7 +729,7 @@ export const BoardView = memo(function BoardView(props: {
   /** The confirm's lines: the host's queue and quota for Start, where the cards land for Stop. */
   const bulkLines = (): string[] => {
     if (bulk === "stop") return [t("board.stopBody")];
-    const lines: string[] = [];
+    const lines: string[] = workflowsFailed ? [t("board.workflowsUnread")] : [];
     if (queueMax !== undefined) {
       lines.push(
         queueLine(t, queueSplit(startable.length, queueMax ?? 0, runningOnHost), queueMax),
