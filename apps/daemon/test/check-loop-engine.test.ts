@@ -653,10 +653,15 @@ describe("check-loop: the security review's cases", () => {
     const text = roundMessage(1, 3, { ...FAIL, output });
     expect([
       text.includes("ghp_abcdefghijklmnopqrstuvwxyz0123456789"),
+      // Neither half of the secret, and not the colour code that split it: the code is stripped
+      // before the mask runs, so the mask sees one token.
+      text.includes("ghp_abcdefghij"),
+      text.includes("klmnopqrstuvwxyz0123456789"),
+      text.includes("[0m"),
       text.includes("\u202e"),
       text.includes("\u009b"),
       text.includes("fine"),
-    ]).toEqual([false, false, false, true]);
+    ]).toEqual([false, false, false, false, false, false, true]);
   });
 });
 
@@ -726,11 +731,14 @@ describe("check-loop: the round's message", () => {
     expect([
       text.startsWith("Round 2 of 3: `bun test` failed (exit 1)."),
       text.includes("\u001b"),
+      // The colour codes go and the word they coloured stays.
+      text.includes("[31m") || text.includes("[0m"),
+      text.includes("\nred\n"),
       text.includes(`${fence}\n`),
       text.trimEnd().endsWith(fence),
       text.length < 4400,
       text.includes("z".repeat(100)),
-    ]).toEqual([true, false, true, true, true, true]);
+    ]).toEqual([true, false, false, true, true, true, true, true]);
   });
 
   test("a check that timed out or printed too much says so", () => {
