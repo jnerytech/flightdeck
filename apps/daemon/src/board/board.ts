@@ -8,6 +8,7 @@ import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
+  CheckLoopReason,
   ColumnContract,
   type ContractOverrides,
   contractOf,
@@ -821,11 +822,7 @@ export class Board {
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
-      checkLoop: {
-        on: row.check_loop === 1,
-        rounds: row.check_rounds,
-        confirmed: row.check_loop_confirmed_at !== null,
-      },
+      checkLoop: this.checkLoopOf(row),
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
       startWorkflow: row.start_workflow,
@@ -2906,11 +2903,50 @@ export class Board {
       release: (cardId) => this.release(cardId),
       place: (cardId) => this.place(cardId, { type: "turn", isError: false }),
       record: (cardId, record) => this.recordRound(cardId, record),
+      notify: (cardId) => this.changed(cardId),
       timer: {
         set: (fn, ms) => setTimeout(fn, ms),
         clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
       },
     });
+  }
+
+  /** Issue #1361: the card's switch and how its loop goes, for the app. */
+  private checkLoopOf(row: CardRow): Card["checkLoop"] {
+    const last = this.db
+      .query<
+        {
+          status: "sent" | "ended";
+          reason: string | null;
+          command: string | null;
+          exit_code: number | null;
+          at: string;
+        },
+        [string]
+      >(
+        "SELECT status, reason, command, exit_code, at FROM card_check_rounds WHERE card_id = ? ORDER BY id DESC LIMIT 1",
+      )
+      .get(row.id);
+    const project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
+    const max = project === undefined ? undefined : Math.min(row.check_rounds ?? project, project);
+    const reason = CheckLoopReason.safeParse(last?.reason);
+    return {
+      on: row.check_loop === 1,
+      rounds: row.check_rounds,
+      confirmed: row.check_loop_confirmed_at !== null,
+      active: this.loop?.phaseOf(row.id) ?? null,
+      round: this.loop?.sentOf(row.id) ?? 0,
+      ...(max === undefined ? {} : { max }),
+      last: last
+        ? {
+            state: last.status,
+            reason: reason.success ? reason.data : null,
+            command: last.command,
+            exitCode: last.exit_code,
+            at: last.at,
+          }
+        : null,
+    };
   }
 
   /** What the loop needs of a card; null when the card is gone. */

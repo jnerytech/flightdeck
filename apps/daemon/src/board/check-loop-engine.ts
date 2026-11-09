@@ -80,6 +80,8 @@ export interface CheckLoopEffects {
   place(cardId: string): void;
   record(cardId: string, record: RoundRecord): void;
   timer: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
+  /** The card's loop changed in a way no record says (its checks started): the app is told. */
+  notify?(cardId: string): void;
 }
 
 /** How long a held slot waits for the turn's result after the session went idle. */
@@ -249,6 +251,7 @@ export class CheckLoopEngine {
     current.abort?.abort();
     current.phase = "checking";
     current.abort = new AbortController();
+    this.fx.notify?.(cardId);
     current.running = this.check(cardId, current, current.abort.signal);
     this.track(cardId, current.running);
     return "hold";
@@ -298,6 +301,22 @@ export class CheckLoopEngine {
     const loop = this.loops.get(cardId);
     if (loop) this.end(cardId, loop, "stopped_by_you", { release: true });
     return this.drain(cardId);
+  }
+
+  /**
+   * What the card's loop does now, for the app: checking, or fixing a round it sent (a wait for the
+   * result of a turn counts as what came before it); `null` with no loop.
+   */
+  phaseOf(cardId: string): "checking" | "fixing" | null {
+    const loop = this.loops.get(cardId);
+    if (!loop) return null;
+    if (loop.phase === "awaiting_result") return loop.sent > 0 ? "fixing" : "checking";
+    return loop.phase;
+  }
+
+  /** The rounds the card's loop has sent so far. */
+  sentOf(cardId: string): number {
+    return this.loops.get(cardId)?.sent ?? 0;
   }
 
   /** Settles once every check the card still has running has exited. */
