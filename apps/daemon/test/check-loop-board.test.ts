@@ -1,11 +1,15 @@
+import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { join } from "node:path";
 import { Board } from "../src/board/board.ts";
 import { confirmationHash } from "../src/board/check-loop.ts";
 import { startServer } from "../src/server.ts";
+import { EventStore } from "../src/store/event-store.ts";
+import { MIGRATIONS } from "../src/store/migrations.ts";
 import { PrWatcher } from "../src/watch/watch.ts";
 import type { BoundedCheckResult } from "../src/workflows/check-runner.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
-import { poll } from "./helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 // Real git (a worktree per card): more than the default 5 s.
@@ -293,6 +297,45 @@ describe("check-loop: the person's input over the protocol", () => {
   });
 });
 
+describe("check-loop: input from any path", () => {
+  test("a message reaching the card's session by any path while its checks run steps the loop aside", async () => {
+    const ctx = await setup([PASSED]);
+    ctx.switchOn(ctx.card.id);
+    const open = ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    const sessionId = ctx.board.getCard(ctx.card.id).sessionId as string;
+    // As a review comment, a message between sessions or a persona hand-off write it.
+    ctx.manager.send(sessionId, "um comentário de revisão");
+    open();
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    expect(ctx.rounds(ctx.card.id)[0]?.reason).toBe("person_turn");
+  });
+});
+
+describe("check-loop: the rounds table upgrade", () => {
+  test("rounds stored by the table v0.37.18 shipped survive the change of its key, the summary as the reason", () => {
+    const path = join(tempDir(), "events.db");
+    const upgrade = MIGRATIONS.findIndex((sql) => sql.includes("card_check_rounds_card"));
+    expect(upgrade).toBeGreaterThan(0);
+    const old = new Database(path, { create: true });
+    for (const sql of MIGRATIONS.slice(0, upgrade)) old.exec(sql);
+    old.exec(`PRAGMA user_version = ${upgrade}`);
+    old.exec(
+      "INSERT INTO card_check_rounds (card_id, run_id, n, at, status, summary) VALUES ('c', 'r', 1, '2026-11-09', 'ended', 'passed')",
+    );
+    old.close();
+    const store = new EventStore(path);
+    cleanups.push(() => store.close());
+    const rows = store.db
+      .query<{ id: number; n: number; reason: string | null }, []>(
+        "SELECT id, n, reason FROM card_check_rounds",
+      )
+      .all();
+    expect(rows).toEqual([{ id: 1, n: 1, reason: "passed" }]);
+  });
+});
+
 describe("check-loop: across a restart", () => {
   test("turning the switch on marks the session's last event, so a restart replays no old turn into checks", async () => {
     const ctx = await setup();
@@ -305,18 +348,31 @@ describe("check-loop: across a restart", () => {
         "SELECT check_loop_turn_seq AS seq FROM cards WHERE id = ?",
       )
       .get(ctx.card.id)?.seq;
+    const ranAfter: string[] = [];
     const again = new Board({
       db: ctx.store.db,
       manager: ctx.manager,
       allowedRoots: [ctx.root],
       checkLoop: {
-        settings: () => ({}) as never,
+        settings: () => ({
+          checks: ["bun test"],
+          checkTimeoutMin: 1,
+          checkRounds: 3,
+          checkEnv: [],
+        }),
         isTrusted: () => true,
-        runner: { run: async () => PASSED },
+        runner: {
+          run: async (command: string) => {
+            ranAfter.push(command);
+            return PASSED;
+          },
+        },
       },
     });
     cleanups.push(() => again.stop());
-    expect([mark, ctx.ran]).toEqual([ctx.manager.get(sessionId).lastSeq, []]);
+    // Its follow of the card's session must start nothing, from the replay or after it.
+    const started = await poll(() => ranAfter.length > 0, 500);
+    expect([mark, started, ranAfter]).toEqual([ctx.manager.get(sessionId).lastSeq, null, []]);
   });
 
   test("a round left open by a restart is closed as interrupted", async () => {

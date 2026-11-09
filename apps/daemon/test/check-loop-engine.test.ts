@@ -63,6 +63,8 @@ function rig(
   /** Lets a test hold a check until it says so. */
   let gate: Promise<void> | null = null;
   let reads = 0;
+  /** Runs inside `send`: the real manager emits busy and the message's echo during it. */
+  let onSend: (() => void) | null = null;
   const engine = new CheckLoopEngine({
     card: () => {
       reads += 1;
@@ -86,6 +88,7 @@ function rig(
     send: (_id, text) => {
       sent.push(text);
       log.push("send");
+      onSend?.();
     },
     release: () => log.push("release"),
     place: () => log.push("place"),
@@ -115,6 +118,7 @@ function rig(
     setMode: (next: PermissionMode) => (mode = next),
     setTrusted: (next: boolean) => (trusted = next),
     setLimit: (next: typeof limit) => (limit = next),
+    duringSend: (fn: () => void) => (onSend = fn),
     hold: () => {
       let open = () => {};
       gate = new Promise<void>((done) => (open = done));
@@ -593,6 +597,27 @@ describe("check-loop: the security review's cases", () => {
     held.engine.onIdle("c");
     const none = rig({ card: { on: false } });
     expect([held.engine.onSessionGone("c"), none.engine.onSessionGone("c")]).toEqual([true, false]);
+  });
+
+  test("the round's own echo is not the person's input; any other user message is", async () => {
+    const r = rig({ outcomes: [FAIL, FAIL] });
+    r.duringSend(() => {
+      r.engine.onBusy("c");
+      r.engine.onUserMessage("c");
+    });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    const afterEcho = r.records.at(-1)?.status;
+    r.engine.onUserMessage("c");
+    expect([afterEcho, r.records.at(-1)?.reason]).toEqual(["sent", "person_turn"]);
+  });
+
+  test("the watchdog is armed before the send, so the busy the send itself causes clears it", async () => {
+    const r = rig({ outcomes: [FAIL] });
+    r.duringSend(() => r.engine.onBusy("c"));
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    expect(r.timers.at(-1)?.cleared).toBe(true);
   });
 
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
