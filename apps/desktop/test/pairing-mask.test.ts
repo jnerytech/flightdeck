@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { keptToken, maskPairingLink, TOKEN_MASK, tokenInText } from "../src/lib/pairing-mask.ts";
+import {
+  keptToken,
+  maskPairingLink,
+  readLinkEdit,
+  TOKEN_MASK,
+  tokenInText,
+} from "../src/lib/pairing-mask.ts";
 
 /** #1548: a pasted pairing link shows its token masked, as the Token field does. */
 describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", () => {
@@ -106,5 +112,47 @@ describe("pairing-mask: which token a link edited in the form carries (#1548)", 
       keptToken("••••", { address: "127.0.0.1", port: "7420" }, bound),
       keptToken("••••", same, null),
     ]).toEqual([null, null, null]);
+  });
+});
+
+/** The edit of the link field: typed as typed, anything else masked, a token bound to its host. */
+describe("pairing-mask: what an edit of the link field shows and keeps (#1548)", () => {
+  const LINK = "flightdeck://pc:7420?name=alfa&token=SECRET";
+  const DOTS = "flightdeck://pc:7420?name=alfa&token=••••";
+  const shown = (value: string, previous: string, inputType?: string) =>
+    readLinkEdit(value, previous, null, inputType).shown;
+
+  test("a link that is typed stays as typed; one that arrives any other way is masked", () => {
+    expect([
+      shown(LINK, LINK.slice(0, -1), "insertText"),
+      shown(LINK, "", "insertFromPaste"),
+      shown(LINK, "", "insertFromDrop"),
+      shown(LINK, LINK.slice(0, -1), "insertCompositionText"),
+      shown(LINK, LINK.slice(0, -1), "insertReplacementText"),
+      // No input type (a change event with none): a jump of more than one character is a paste.
+      shown(LINK, ""),
+      shown(LINK, LINK.slice(0, -1)),
+    ]).toEqual([LINK, DOTS, DOTS, DOTS, DOTS, DOTS, LINK]);
+  });
+
+  test("one typed event that carries many characters is not typing", () => {
+    expect(shown(LINK, "", "insertText")).toBe(DOTS);
+  });
+
+  test("a bare token or token=… pasted in the field is shown as dots, not as text", () => {
+    expect([
+      shown("SECRET-VALUE", "", "insertFromPaste"),
+      shown("token=SECRET", "", "insertFromPaste"),
+      shown("http://pc:7420?x=SECRET", "", "insertFromPaste"),
+    ]).toEqual(["••••", "••••", "http://pc:7420?x=••••"]);
+  });
+
+  test("a link with a space before it that loses its token drops the token it held", () => {
+    const bound = { address: "pc", port: "7420", token: "SECRET" };
+    expect([
+      readLinkEdit(" flightdeck://pc:7420?name=alfa", "", bound, "insertText").bound,
+      readLinkEdit("flightdeck://pc:7420?name=alfa", "", bound, "insertText").bound,
+      readLinkEdit(LINK, "", bound, "insertText").bound,
+    ]).toEqual([null, null, { address: "pc", port: "7420", token: "SECRET" }]);
   });
 });
