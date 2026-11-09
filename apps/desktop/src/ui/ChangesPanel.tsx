@@ -37,8 +37,10 @@ export function ChangesPanel(
     hostId: string;
     /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
     target: string;
-    /** Something above the files (a card's position against its base, its PR); gets the answer. */
-    /** Above the diff; `goToDrafts` puts the focus on the first reviewer draft of the list below. */
+    /**
+     * Something above the files (a card's position against its base, its PR); gets the answer, and
+     * `goToDrafts`, which puts the focus on the reviewer's first draft in the list below (#1496).
+     */
     extra?: (
       changes: ChangesResult,
       refresh: () => Promise<void>,
@@ -58,9 +60,14 @@ export function ChangesPanel(
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
   const panel = useRef<HTMLElement>(null);
-  // Focus brings the draft into view: it sits after the whole diff (#1496).
+  // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
+  // sent, the reviewer's first comment in the history is where they went.
   const goToDrafts = useCallback(() => {
-    panel.current?.querySelector<HTMLElement>("[data-reviewer-draft]")?.focus();
+    const list = panel.current;
+    const target =
+      list?.querySelector<HTMLElement>('[data-reviewer="draft"]') ??
+      list?.querySelector<HTMLElement>("[data-reviewer]");
+    target?.focus();
   }, []);
   /** The line button that started the comment, to give the focus back when the box closes. */
   const picker = useRef<HTMLElement | null>(null);

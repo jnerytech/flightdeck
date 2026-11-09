@@ -33,11 +33,13 @@ export function ReviewList(
           return (
             <li
               key={comment.id}
-              // A reviewer draft is where Go to the drafts puts the focus (#1496).
-              {...(comment.author === "reviewer" && comment.state === "draft"
-                ? { "data-reviewer-draft": "", tabIndex: -1 }
+              // A reviewer comment is where Go to the drafts puts the focus (#1496). The outline is
+              // on :focus, not :focus-visible: after a mouse click on that button, Chrome would not
+              // mark the draft it went to.
+              {...(comment.author === "reviewer"
+                ? { "data-reviewer": comment.state, tabIndex: -1 }
                 : {})}
-              className="flex flex-col gap-1 rounded-md border p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+              className="flex flex-col gap-1 rounded-md border p-3 text-sm focus:outline-2 focus:outline-ring"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs">{`${comment.path} · ${where}`}</span>
