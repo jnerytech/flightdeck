@@ -10,12 +10,31 @@
 //! listener (one use); it gives up at the limit or when cancelled. The code is never printed, and
 //! `Outcome`'s `Debug` leaves it out.
 
-use std::net::TcpListener;
-use std::sync::atomic::AtomicBool;
-use std::time::Duration;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
+
+/// A state is base64url text the app made; anything else is not one of ours.
+const MAX_STATE: usize = 256;
+/// The request line and headers of a browser's redirect fit well inside this.
+const MAX_REQUEST: usize = 8 * 1024;
+/// Google's codes are well under 512 characters.
+const MAX_CODE: usize = 2048;
+/// A connection that has not sent its request in this time is dropped, so one silent client cannot
+/// hold the listener (the connections are served one at a time).
+const CONNECTION_LIMIT: Duration = Duration::from_secs(2);
+const POLL: Duration = Duration::from_millis(25);
+
+const PAGE: &str = "<!doctype html><meta charset=utf-8><title>Flightdeck</title>\
+<p>Done. You can close this window and go back to Flightdeck.</p>";
+const DENIED_PAGE: &str = "<!doctype html><meta charset=utf-8><title>Flightdeck</title>\
+<p>The sign-in was cancelled. You can close this window.</p>";
+const REFUSED_PAGE: &str = "<!doctype html><meta charset=utf-8><title>Flightdeck</title>\
+<p>This request was not accepted.</p>";
 
 /// What a sign-in's wait ended with.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub enum Outcome {
     /// Google redirected back with a code.
     Code(String),
@@ -25,17 +44,36 @@ pub enum Outcome {
     Cancelled,
 }
 
+impl std::fmt::Debug for Outcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Outcome::Code(_) => "Code(..)",
+            Outcome::Denied => "Denied",
+            Outcome::Timeout => "Timeout",
+            Outcome::Cancelled => "Cancelled",
+        })
+    }
+}
+
 /// A bound listener for one sign-in.
 pub struct Listener {
     inner: TcpListener,
     port: u16,
+    state: String,
 }
 
 /// Binds 127.0.0.1 on a free port for the sign-in whose `state` is given.
-pub fn bind(_state: &str) -> Result<Listener, String> {
+pub fn bind(state: &str) -> Result<Listener, String> {
+    let well_formed = !state.is_empty()
+        && state.len() <= MAX_STATE
+        && state.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_');
+    if !well_formed {
+        return Err("the state is not valid".to_string());
+    }
     let inner = TcpListener::bind(("127.0.0.1", 0)).map_err(|e| e.to_string())?;
+    inner.set_nonblocking(true).map_err(|e| e.to_string())?;
     let port = inner.local_addr().map_err(|e| e.to_string())?.port();
-    Ok(Listener { inner, port })
+    Ok(Listener { inner, port, state: state.to_string() })
 }
 
 impl Listener {
@@ -44,9 +82,200 @@ impl Listener {
     }
 
     /// Waits for the redirect. Consumes the listener: the port closes when this returns.
-    pub fn wait(self, _timeout: Duration, _cancel: &AtomicBool) -> Outcome {
-        Outcome::Timeout
+    pub fn wait(self, timeout: Duration, cancel: &AtomicBool) -> Outcome {
+        let deadline = Instant::now() + timeout;
+        loop {
+            if cancel.load(Ordering::SeqCst) {
+                return Outcome::Cancelled;
+            }
+            if Instant::now() >= deadline {
+                return Outcome::Timeout;
+            }
+            match self.inner.accept() {
+                Ok((stream, _)) => {
+                    if let Some(outcome) = self.serve(stream) {
+                        return outcome;
+                    }
+                }
+                // Nothing yet, or a connection that failed before it was accepted: look again.
+                Err(_) => std::thread::sleep(POLL),
+            }
+        }
     }
+
+    /// Answers one connection; `Some` only for the request that ends the sign-in.
+    fn serve(&self, mut stream: TcpStream) -> Option<Outcome> {
+        // A stream accepted from a non-blocking listener may inherit that mode on some systems.
+        stream.set_nonblocking(false).ok()?;
+        stream.set_write_timeout(Some(CONNECTION_LIMIT)).ok()?;
+        let head = match read_head(&mut stream) {
+            Head::Complete(text) => text,
+            Head::TooLarge => {
+                respond(&mut stream, "431 Request Header Fields Too Large", REFUSED_PAGE);
+                return None;
+            }
+            Head::Gone => return None,
+        };
+        let outcome = self.judge(&head);
+        match &outcome {
+            Verdict::Answer(Outcome::Denied) => respond(&mut stream, "200 OK", DENIED_PAGE),
+            Verdict::Answer(_) => respond(&mut stream, "200 OK", PAGE),
+            Verdict::Refuse(status) => respond(&mut stream, status, REFUSED_PAGE),
+        }
+        match outcome {
+            Verdict::Answer(done) => Some(done),
+            Verdict::Refuse(_) => None,
+        }
+    }
+
+    fn judge(&self, head: &str) -> Verdict {
+        let mut lines = head.split("\r\n");
+        let mut request = lines.next().unwrap_or("").split(' ');
+        let (Some(method), Some(target), Some(version), None) =
+            (request.next(), request.next(), request.next(), request.next())
+        else {
+            return Verdict::Refuse("400 Bad Request");
+        };
+        if !version.starts_with("HTTP/1.") {
+            return Verdict::Refuse("400 Bad Request");
+        }
+        // The address the browser used must be the loopback address and this port: a page that
+        // rebinds a name to 127.0.0.1 sends its own name as the host.
+        let host = lines
+            .filter_map(|line| line.split_once(':'))
+            .find(|(name, _)| name.eq_ignore_ascii_case("host"))
+            .map(|(_, value)| value.trim());
+        if host != Some(format!("127.0.0.1:{}", self.port).as_str()) {
+            return Verdict::Refuse("421 Misdirected Request");
+        }
+        if method != "GET" {
+            return Verdict::Refuse("405 Method Not Allowed");
+        }
+        let (path, query) = target.split_once('?').unwrap_or((target, ""));
+        if path != "/" {
+            return Verdict::Refuse("404 Not Found");
+        }
+        let Some(pairs) = parse_query(query) else {
+            return Verdict::Refuse("400 Bad Request");
+        };
+        let first = |name: &str| pairs.iter().find(|(key, _)| key == name).map(|(_, v)| v.as_str());
+        // The state comes first: a request that is not the answer to this sign-in changes nothing.
+        match first("state") {
+            Some(state) if same(state, &self.state) => {}
+            _ => return Verdict::Refuse("400 Bad Request"),
+        }
+        if first("error").is_some() {
+            return Verdict::Answer(Outcome::Denied);
+        }
+        match first("code") {
+            Some(code) if !code.is_empty() && code.len() <= MAX_CODE => {
+                Verdict::Answer(Outcome::Code(code.to_string()))
+            }
+            _ => Verdict::Refuse("400 Bad Request"),
+        }
+    }
+}
+
+enum Verdict {
+    Answer(Outcome),
+    Refuse(&'static str),
+}
+
+enum Head {
+    Complete(String),
+    TooLarge,
+    Gone,
+}
+
+/// Reads up to the blank line that ends the headers, within the size and time limits.
+fn read_head(stream: &mut TcpStream) -> Head {
+    let started = Instant::now();
+    let mut buffer = Vec::with_capacity(1024);
+    let mut chunk = [0u8; 1024];
+    loop {
+        if let Some(end) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
+            return match String::from_utf8(buffer[..end].to_vec()) {
+                Ok(text) => Head::Complete(text),
+                Err(_) => Head::Gone,
+            };
+        }
+        if buffer.len() > MAX_REQUEST {
+            return Head::TooLarge;
+        }
+        let left = CONNECTION_LIMIT.saturating_sub(started.elapsed());
+        if left.is_zero() || stream.set_read_timeout(Some(left)).is_err() {
+            return Head::Gone;
+        }
+        match stream.read(&mut chunk) {
+            Ok(0) | Err(_) => return Head::Gone,
+            Ok(n) => buffer.extend_from_slice(&chunk[..n]),
+        }
+    }
+}
+
+fn respond(stream: &mut TcpStream, status: &str, body: &str) {
+    let reply = format!(
+        "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\n\
+Cache-Control: no-store\r\nReferrer-Policy: no-referrer\r\nX-Content-Type-Options: nosniff\r\n\
+Content-Security-Policy: default-src 'none'\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    let _ = stream.write_all(reply.as_bytes());
+    let _ = stream.flush();
+    let _ = stream.shutdown(std::net::Shutdown::Write);
+    // What the client still sends is read and dropped for a moment: closing with unread input resets
+    // the connection and can lose the reply.
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
+    let mut sink = [0u8; 4096];
+    let mut left = 64 * 1024usize;
+    while left > 0 {
+        match stream.read(&mut sink) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => left = left.saturating_sub(n),
+        }
+    }
+}
+
+/// Equal text, compared without stopping at the first difference.
+fn same(a: &str, b: &str) -> bool {
+    a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+/// `a=b&c=d` as decoded pairs; `None` when a percent sign is not followed by two hex digits or the
+/// decoded text is not UTF-8.
+fn parse_query(query: &str) -> Option<Vec<(String, String)>> {
+    query
+        .split('&')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let (key, value) = part.split_once('=').unwrap_or((part, ""));
+            Some((decode(key)?, decode(value)?))
+        })
+        .collect()
+}
+
+fn decode(text: &str) -> Option<String> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'%' => {
+                let pair = text.get(i + 1..i + 3)?;
+                out.push(u8::from_str_radix(pair, 16).ok()?);
+                i += 3;
+            }
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            other => {
+                out.push(other);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8(out).ok()
 }
 
 #[cfg(test)]
