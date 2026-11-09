@@ -282,4 +282,36 @@ describe("pagina-host", () => {
       columnsAreContainers: true,
     });
   });
+
+  // #1516: Compare hosts sat in the status column, half of a 1280 window, and cut the fifth host
+  // off. It is a band of its own under both columns, as wide as the Overview.
+  test("Comparar hosts ocupa a largura toda da visão geral, abaixo das duas colunas", async () => {
+    const { store } = await setup();
+    const second = makeDaemon(cleanups).listen(0, 20);
+    await act(() => store.addHost({ name: "pc2", url: second.url, token: TOKEN }));
+    await waitFor(() => expect(screen.queryByLabelText("pc2: online")).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Comparar hosts" })).not.toBeNull(),
+    );
+    const panel = screen.queryByRole("region", { name: "Comparar hosts" });
+    const grid = document.querySelector(".host-overview");
+    const columns = ["status", "work"].map((name) =>
+      document.querySelector(`[data-slot='host-overview-${name}']`),
+    );
+    const follows = (column: Element | null) =>
+      column !== null &&
+      panel !== null &&
+      (column.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect({
+      inAColumn: columns.map(
+        (column) => column !== null && panel !== null && column.contains(panel),
+      ),
+      afterTheColumns: columns.map(follows),
+      insideTheGrid: grid !== null && panel !== null && grid.contains(panel),
+    }).toEqual({
+      inAColumn: [false, false],
+      afterTheColumns: [true, true],
+      insideTheGrid: false,
+    });
+  });
 });
