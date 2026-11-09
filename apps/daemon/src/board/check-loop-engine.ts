@@ -26,7 +26,9 @@ export type CheckLoopReason =
   | "check_loop_mode"
   | "check_refused"
   /** The checks could not be run (a spawn or a write that failed). */
-  | "check_error";
+  | "check_error"
+  /** The turn the loop waited on ended in an error. */
+  | "turn_error";
 
 /** What the loop needs of a card. */
 export interface LoopCard {
@@ -87,8 +89,13 @@ const OUTPUT_MAX = 4000;
 /** Control characters and ANSI sequences out, line breaks and tabs kept. */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC opens the ANSI sequences it removes
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]/g;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
-const CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+/**
+ * Control characters (C0 but line breaks and tabs, DEL, C1), bidi controls, and the invisible ones
+ * that can hide text: zero-width, word joiner, BOM and Unicode tags.
+ */
+const CONTROL =
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
+  /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff\u{E0000}-\u{E007F}]/gu;
 
 /**
  * The round sent into the session. The output is the check's, from code the session wrote: it is
@@ -133,14 +140,17 @@ export class CheckLoopEngine {
 
   constructor(private readonly fx: CheckLoopEffects) {}
 
-  /** The session went idle: hold the slot for a loop going on, or for a turn whose result is due. */
-  onIdle(cardId: string): "hold" | "pass" {
+  /**
+   * The session went idle. `hold`: the loop keeps the run's slot (for a loop going on, or a turn
+   * whose result is due). `release`: not the loop's, the board releases the slot as it always did.
+   */
+  onIdle(cardId: string): "hold" | "release" {
     const loop = this.loops.get(cardId);
     if (loop) {
       if (loop.phase === "fixing") this.await(cardId, loop);
       return "hold";
     }
-    if (!this.isLoopCard(cardId)) return "pass";
+    if (!this.isLoopCard(cardId)) return "release";
     const fresh = this.fresh();
     this.loops.set(cardId, fresh);
     this.await(cardId, fresh);
@@ -148,16 +158,23 @@ export class CheckLoopEngine {
   }
 
   /**
-   * A live turn result: run the checks (`hold`), or let the card move on (`pass`: the board places
-   * it as it always did; a slot the loop held at idle is released here, so the board must not
-   * release it again).
+   * A live turn result. `hold`: the checks run, the loop places the card and releases the slot
+   * when it ends. `place`: the board places the card as it always did, and never releases here:
+   * a slot the loop held is released by the loop now, one it did not hold was released at idle.
    */
-  onTurnResult(cardId: string, turn: { isError: boolean; interrupted: boolean }): "hold" | "pass" {
+  onTurnResult(cardId: string, turn: { isError: boolean; interrupted: boolean }): "hold" | "place" {
     const loop = this.loops.get(cardId);
     if (turn.isError || turn.interrupted || !this.isLoopCard(cardId)) {
-      // What happened is the person's to see; a slot held at idle goes back now.
-      if (loop) this.close(cardId, loop, { release: true });
-      return "pass";
+      // What happened is the person's to see; a slot held at idle goes back now, with its line.
+      if (loop) {
+        const why = turn.isError
+          ? "turn_error"
+          : turn.interrupted
+            ? "person_turn"
+            : "stopped_by_you";
+        this.end(cardId, loop, why, { release: true });
+      }
+      return "place";
     }
     const current = loop ?? this.fresh();
     this.loops.set(cardId, current);
@@ -225,12 +242,7 @@ export class CheckLoopEngine {
     } catch {
       // A spawn or a write that failed: the loop ends and hands back its slot, never left held.
       if (!signal.aborted && this.loops.get(cardId) === loop) {
-        try {
-          this.end(cardId, loop, "check_error", { release: true, place: true });
-        } catch {
-          // Even a record that fails must not keep the slot: hand it back with nothing else.
-          this.close(cardId, loop, { release: true });
-        }
+        this.end(cardId, loop, "check_error", { release: true, place: true });
       }
     }
   }
@@ -241,9 +253,8 @@ export class CheckLoopEngine {
     const settings = this.fx.settings(card.projectId);
     // The gate comes before anything runs: an untrusted project, plan, or no matching
     // confirmation runs no check at all.
-    const before = this.gate(cardId, card, settings);
+    const before = this.gate(cardId, settings);
     if (before) return this.end(cardId, loop, before, { release: true, place: true });
-    loop.runs += 1;
     const outcome = await this.fx.runChecks({
       checks: settings.checks,
       worktree: card.worktree,
@@ -254,13 +265,15 @@ export class CheckLoopEngine {
     // Ended meanwhile (the person, a stop, the session): what came back is nobody's.
     if (signal.aborted || this.loops.get(cardId) !== loop) return;
     if (outcome.kind === "aborted") return;
+    // Counted only when its outcome is used: a run replaced by a later result is not one.
+    loop.runs += 1;
     if (outcome.kind === "passed")
       return this.end(cardId, loop, "passed", { release: true, place: true });
     if (outcome.kind === "refused") {
       return this.end(cardId, loop, "check_refused", { release: true, place: true });
     }
     const max = Math.min(card.rounds ?? settings.checkRounds, settings.checkRounds);
-    const stop = this.gate(cardId, card, settings) ?? (loop.sent >= max ? "rounds_spent" : null);
+    const stop = this.gate(cardId, settings) ?? (loop.sent >= max ? "rounds_spent" : null);
     const limit = stop ?? this.fx.limit(cardId);
     if (limit) return this.end(cardId, loop, limit, { release: true, place: true, outcome });
     loop.sent += 1;
@@ -282,15 +295,17 @@ export class CheckLoopEngine {
    */
   private gate(
     cardId: string,
-    card: LoopCard,
     settings: { checks: string[]; checkEnv: string[] },
   ): CheckLoopReason | null {
+    // The switch and the run are read again: turned off mid-loop, nothing more runs or is sent.
+    const now = this.fx.card(cardId);
+    if (!now?.on || !now.plainRun || !now.worktree) return "stopped_by_you";
     if (!this.fx.trusted(cardId)) return "check_loop_untrusted";
     const mode = this.fx.mode(cardId);
     if (mode === "plan") return "check_loop_mode";
     if (mode === "bypassPermissions") return null;
     const confirmed = confirmationHash(settings.checks, settings.checkEnv, mode);
-    return card.confirmedHash === confirmed ? null : "check_loop_confirm";
+    return now.confirmedHash === confirmed ? null : "check_loop_confirm";
   }
 
   private end(
@@ -300,12 +315,18 @@ export class CheckLoopEngine {
     how: { release: boolean; place?: boolean; outcome?: CheckOutcome },
   ): void {
     const last = how.outcome?.kind === "failed" ? how.outcome : null;
-    this.fx.record(cardId, {
-      n: loop.runs,
-      status: "ended",
-      reason,
-      ...(last ? { command: last.command, exitCode: last.exitCode, timedOut: last.timedOut } : {}),
-    });
+    try {
+      this.fx.record(cardId, {
+        n: loop.runs,
+        status: "ended",
+        reason,
+        ...(last
+          ? { command: last.command, exitCode: last.exitCode, timedOut: last.timedOut }
+          : {}),
+      });
+    } catch {
+      // The record is the trail's; the slot is the host's: a record that fails never keeps it.
+    }
     this.close(cardId, loop, how);
   }
 
@@ -315,7 +336,12 @@ export class CheckLoopEngine {
     this.loops.delete(cardId);
     loop.abort?.abort();
     this.clearTimer(loop);
-    if (how.place) this.fx.place(cardId);
-    if (how.release) this.fx.release(cardId);
+    try {
+      if (how.place) this.fx.place(cardId);
+    } catch {
+      // A placement that failed leaves the card where it is; the slot still goes back below.
+    } finally {
+      if (how.release) this.fx.release(cardId);
+    }
   }
 }
