@@ -122,12 +122,33 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     ]).toEqual([false, 1, null, true, true, true]);
   });
 
-  test("a number to keep that is not valid goes back to the saved one when the field is left", async () => {
+  // #1329: an invalid number snapped back to the saved one on blur, and nothing said why. Now the
+  // field keeps what was typed and says, tied to it, what it takes and how many files are still kept.
+  test("a number to keep that is not valid says why and what is still kept, after the field is left too; a valid one clears it", async () => {
     const { platform } = open();
-    await type("Files to keep", "0");
     const input = field("Files to keep") as HTMLInputElement;
+    const error = "Type a whole number from 1. Until then 5 files are kept.";
+    const says = () => {
+      const line = screen.queryByText(error);
+      return (
+        line !== null &&
+        input.getAttribute("aria-invalid") === "true" &&
+        (input.getAttribute("aria-describedby") ?? "").split(" ").includes(line.id)
+      );
+    };
+    await type("Files to keep", "0");
     await act(async () => fireEvent.blur(input));
-    expect([input.value, loadSchedule(platform.storage).keep]).toEqual(["5", 5]);
+    const afterZero = [says(), input.value, loadSchedule(platform.storage).keep];
+    await type("Files to keep", "2.5");
+    const afterFraction = says();
+    await type("Files to keep", "3");
+    expect([
+      ...afterZero,
+      afterFraction,
+      screen.queryByText(error) === null,
+      input.hasAttribute("aria-invalid"),
+      loadSchedule(platform.storage).keep,
+    ]).toEqual([true, "0", 5, true, true, false, 3]);
   });
 
   test("a write that fails is shown, not hidden", async () => {
@@ -142,5 +163,11 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
   test("the texts are in pt-BR too", () => {
     open({ language: "pt-BR" });
     expect([shown("Backups agendados"), shown("Escolher pasta")]).toEqual([true, true]);
+  });
+
+  test("in pt-BR an invalid number to keep says why too (#1329)", async () => {
+    open({ language: "pt-BR" });
+    await type("Arquivos a manter", "0");
+    expect(shown("Digite um número inteiro a partir de 1. Até lá ficam 5 arquivos.")).toBe(true);
   });
 });
