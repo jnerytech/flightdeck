@@ -281,4 +281,32 @@ describe("issue-claim: one session owns an issue (#1410)", () => {
     });
     expect([await mixed.code, posts(both.asked).length]).toEqual([2, 0]);
   });
+
+  test("from the third review: a misspelled flag prints the usage, and only the coordinator acts as fd-coordinator", async () => {
+    for (const args of [
+      ["7", "--relase"],
+      ["7", "--reasign"],
+      ["7", "--by=fd-a"],
+      ["7", "8"],
+    ]) {
+      const fake = fakeGh({});
+      const r = claim(args, fake, { session: "fd-a" });
+      expect([args.join(" "), await r.code, posts(fake.asked).length]).toEqual([
+        args.join(" "),
+        2,
+        0,
+      ]);
+    }
+    const worker = fakeGh({});
+    const posing = claim(["7", "--by", "fd-coordinator"], worker);
+    expect([await posing.code, posing.lines, posts(worker.asked).length]).toEqual([
+      1,
+      ["only fd-coordinator's own session acts as fd-coordinator"],
+      0,
+    ]);
+    const coordinator = fakeGh({});
+    expect(
+      await claim(["7", "--by", "fd-coordinator"], coordinator, { coordinator: true }).code,
+    ).toBe(0);
+  });
 });
