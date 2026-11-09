@@ -141,7 +141,7 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
   test("a number to keep that is not valid says why and what is still kept, after the field is left too; a valid one clears it", async () => {
     const { platform } = open();
     const input = field("Files to keep") as HTMLInputElement;
-    const error = "Type a whole number from 1. Until then 5 files are kept.";
+    const error = "Type a whole number from 1. The saved number (5) stays.";
     const says = () => {
       const line = screen.queryByText(error);
       return (
@@ -156,13 +156,20 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     await type("Files to keep", "2.5");
     const afterFraction = says();
     await type("Files to keep", "3");
-    expect([
-      ...afterZero,
-      afterFraction,
+    const afterThree = [
       screen.queryByText(error) === null,
       input.hasAttribute("aria-invalid"),
       loadSchedule(platform.storage).keep,
-    ]).toEqual([true, "0", 5, true, true, false, 3]);
+    ];
+    // What the number field takes as a whole number is saved and clears the message: one rule for both.
+    await type("Files to keep", "2.0");
+    expect([
+      ...afterZero,
+      afterFraction,
+      ...afterThree,
+      input.hasAttribute("aria-invalid"),
+      loadSchedule(platform.storage).keep,
+    ]).toEqual([true, "0", 5, true, true, false, 3, false, 2]);
   });
 
   test("a write that fails is shown, not hidden", async () => {
@@ -182,6 +189,6 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
   test("in pt-BR an invalid number to keep says why too (#1329)", async () => {
     open({ language: "pt-BR" });
     await type("Arquivos a manter", "0");
-    expect(shown("Digite um número inteiro a partir de 1. Até lá ficam 5 arquivos.")).toBe(true);
+    expect(shown("Digite um número inteiro a partir de 1. O número salvo (5) continua valendo.")).toBe(true);
   });
 });
