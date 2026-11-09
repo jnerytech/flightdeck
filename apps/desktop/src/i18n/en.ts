@@ -950,7 +950,9 @@ export const en: Dictionary = {
     startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
     startedElsewhere: "Started on {host} as {id}.",
     startOn: "Start on {host}",
-    startOnHint: "These cards would wait here. Another host with the same project has the places:",
+    startOnHint:
+      "{n} of them would wait here. Another host with the same project has the places for them:",
+    elsewhereOrphaned: "A copy is left on {host}: {names}",
     elsewhereDoneOne: "1 card started on {host}.",
     elsewhereDone: "{count} cards started on {host}.",
     elsewhereUnmarked: "Not moved to Done here: {names}",

@@ -57,8 +57,16 @@ export function waitingCards(
   return startable.slice(queueSplit(startable.length, host.max, host.running).now);
 }
 
-/** A card whose template names a workflow or a persona would start differently on another host. */
-const startsAsIs = (card: Card) => !card.startWorkflow && !card.startPersona;
+/**
+ * A card can leave only when it starts the same way there and its going changes nothing here: a
+ * template's workflow or persona would be lost, a blocker it waits on would not exist on the target,
+ * and a card that holds others up would free them by going to Done.
+ */
+const startsAsIs = (card: Card) =>
+  !card.startWorkflow &&
+  !card.startPersona &&
+  (card.waitingOn?.length ?? 0) === 0 &&
+  (card.blocking?.length ?? 0) === 0;
 
 /**
  * The hosts the waiting cards can go to: another online host that is not paused, has a project of
@@ -110,7 +118,8 @@ export async function startElsewhere(run: {
     const as = (made.data as { id: string }).id;
     const started = await ask(target.hostId, "card.start", { cardId: as });
     if (!started.ok) {
-      await ask(target.hostId, "card.delete", { cardId: as, confirm: true });
+      const removed = await ask(target.hostId, "card.delete", { cardId: as, confirm: true });
+      if (!removed.ok) outcome.orphaned.push(card);
       outcome.refused.push({ card, ...answerOf(started) });
       continue;
     }
@@ -135,7 +144,7 @@ export function elsewhereNotice(
   host: string,
   name: (refused: BulkRefusal[]) => string,
 ): string | null {
-  const { moved, refused, unmarked } = outcome;
+  const { moved, refused, unmarked, orphaned } = outcome;
   const parts: string[] = [];
   if (moved.length === 1) parts.push(t("board.elsewhereDoneOne", { host }));
   else if (moved.length > 1) parts.push(t("board.elsewhereDone", { count: moved.length, host }));
@@ -145,6 +154,11 @@ export function elsewhereNotice(
   }
   if (unmarked.length > 0) {
     parts.push(t("board.elsewhereUnmarked", { names: unmarked.map((c) => c.title).join(", ") }));
+  }
+  if (orphaned.length > 0) {
+    parts.push(
+      t("board.elsewhereOrphaned", { host, names: orphaned.map((c) => c.title).join(", ") }),
+    );
   }
   return parts.length === 0 ? null : parts.join(" ");
 }

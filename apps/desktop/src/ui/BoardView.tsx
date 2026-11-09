@@ -797,7 +797,7 @@ export const BoardView = memo(function BoardView(props: {
       if (bars.some((bar) => bar.hot)) lines.push(t("board.startQuotaHold", { host: hostName }));
     }
     lines.push(...holds);
-    if (otherHosts.length > 0) lines.push(t("board.startOnHint"));
+    if (otherHosts.length > 0) lines.push(t("board.startOnHint", { n: waiting.length }));
     const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
     if (lacking > 0) {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));

@@ -52,8 +52,10 @@ export function useStartElsewhere(options: {
           id: p.id,
           key: store.projectKeyOf(host.id, p),
         }));
-        const same = projects.find((p) => p.key === sourceKey);
-        if (same) await store.loadBoard(host.id, same.id);
+        // The limit is the host's, so the cards running in all its projects count against it.
+        if (projects.some((p) => p.key === sourceKey)) {
+          await Promise.all(projects.map((p) => store.loadBoard(host.id, p.id)));
+        }
         if (mine !== asked.current) return;
         setListed((before) => ({
           ...before,
