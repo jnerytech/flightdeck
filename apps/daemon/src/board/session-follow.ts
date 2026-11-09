@@ -103,40 +103,52 @@ export class SessionFollow {
   }
 
   /** One event of a card's session: `live` past the replay, `seq` its place in the session. */
-  onSessionEvent(
-    cardId: string,
-    event: SessionEvent,
-    at: { live: boolean; seq: number } = { live: false, seq: 0 },
-  ): void {
+  onSessionEvent(cardId: string, event: SessionEvent, at: { live: boolean; seq: number }): void {
     const loop = at.live ? this.port.loop() : null;
-    // Issue #1361: whatever path wrote into the session (a review comment, a message between
-    // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
-    if (loop && event.type === "message.user") loop.onUserMessage(cardId, event.text);
-    if (event.type === "session.status") {
-      this.port.place(cardId, { type: "session", status: event.status });
-      if (loop && !FREES_SLOT.has(event.status)) loop.onBusy(cardId);
+    switch (event.type) {
+      case "message.user":
+        // Issue #1361: whatever path wrote into the session (a review comment, a message between
+        // sessions, a persona hand-off), it is outside input unless it is the loop's own round.
+        loop?.onUserMessage(cardId, event.text);
+        break;
+      case "session.status":
+        this.onStatus(cardId, event.status, loop);
+        break;
+      case "turn.result":
+        this.onTurnResult(cardId, event, at.seq, loop);
+        break;
+      case "session.error":
+        this.settleFix(cardId, { isError: true, error: event.message });
+        break;
     }
-    if (event.type === "turn.result") {
-      // Issue #1361: a live turn after the card's mark goes to the loop, which may keep the card
-      // where it is while its checks run (`hold`); otherwise it moves as it always did.
-      const decision =
-        loop && this.newTurn(cardId, at.seq)
-          ? loop.onTurnResult(cardId, { isError: event.isError, interrupted: false })
-          : "place";
-      if (decision === "place") this.port.place(cardId, { type: "turn", isError: event.isError });
-      void this.port.refreshConflicts(cardId).catch(() => {});
-      this.settleFix(cardId, {
-        costUsd: event.costUsd ?? 0,
-        isError: event.isError,
-        error: event.isError ? event.subtype : null,
-      });
-    }
-    if (event.type === "session.error") {
-      this.settleFix(cardId, { isError: true, error: event.message });
-    }
-    if (event.type === "session.status" && FREES_SLOT.has(event.status)) {
-      this.releaseAfter(cardId, event.status, loop);
-    }
+  }
+
+  /** The session's status moves the card; one that went idle, failed or ended frees its slot. */
+  private onStatus(cardId: string, status: SessionStatus, loop: CheckLoopEngine | null): void {
+    this.port.place(cardId, { type: "session", status });
+    if (FREES_SLOT.has(status)) this.releaseAfter(cardId, status, loop);
+    else loop?.onBusy(cardId);
+  }
+
+  private onTurnResult(
+    cardId: string,
+    event: Extract<SessionEvent, { type: "turn.result" }>,
+    seq: number,
+    loop: CheckLoopEngine | null,
+  ): void {
+    // Issue #1361: a live turn after the card's mark goes to the loop, which may keep the card
+    // where it is while its checks run (`hold`); otherwise it moves as it always did.
+    const decision =
+      loop && this.newTurn(cardId, seq)
+        ? loop.onTurnResult(cardId, { isError: event.isError, interrupted: false })
+        : "place";
+    if (decision === "place") this.port.place(cardId, { type: "turn", isError: event.isError });
+    void this.port.refreshConflicts(cardId).catch(() => {});
+    this.settleFix(cardId, {
+      costUsd: event.costUsd ?? 0,
+      isError: event.isError,
+      error: event.isError ? event.subtype : null,
+    });
   }
 
   /** The slot a session that went idle, failed or ended frees, unless the check loop holds it. */
