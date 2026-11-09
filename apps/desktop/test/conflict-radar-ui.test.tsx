@@ -1,0 +1,89 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import type { Card } from "@flightdeck/protocol";
+import { registerDom } from "./dom.ts";
+import { memoryPlatform } from "./fixtures.ts";
+import { settleMaybe } from "./wait.ts";
+
+registerDom();
+const { cleanup, render, screen, within } = await import("@testing-library/react");
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { TContext } = await import("../src/i18n/context.tsx");
+const { CardConflicts } = await import("../src/components/card/card-conflicts.tsx");
+const { CardMergePr } = await import("../src/components/card/card-merge-pr.tsx");
+
+setDefaultTimeout(30_000);
+afterEach(cleanup);
+
+/**
+ * #1405: Details lists each card that changes the same files and the files they share; the Merge PR
+ * confirm says merging may leave those cards with conflicts. A card with no overlap shows neither.
+ */
+const overlap = [
+  { cardId: "c2", title: "Fix login", files: ["src/login.ts", "src/session.ts"] },
+  { cardId: "c3", title: "Rename user", files: ["src/session.ts"] },
+];
+const card = (over: Partial<Card> = {}) =>
+  ({
+    id: "c1",
+    prUrl: "https://github.com/acme/repo/pull/9",
+    prState: "open",
+    checksState: "passing",
+    ...over,
+  }) as Card;
+
+function store() {
+  const one = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+  one.i18n.start();
+  return one;
+}
+
+describe("conflict-radar-ui: Details and the Merge PR confirm (#1405)", () => {
+  test("Details lists each card and the files they share, under a heading", () => {
+    const one = store();
+    render(
+      <TContext.Provider value={one.i18n.t}>
+        <CardConflicts card={card({ mayConflict: overlap })} />
+      </TContext.Provider>,
+    );
+    const section = screen.queryByRole("region", { name: "May conflict with other cards" });
+    const text = (section?.textContent ?? "").replace(/\s+/g, " ");
+    expect([
+      section !== null,
+      text.includes("Fix login"),
+      text.includes("src/login.ts"),
+      text.includes("Rename user"),
+      within(section ?? document.body).queryAllByRole("listitem").length >= 2,
+    ]).toEqual([true, true, true, true, true]);
+  });
+
+  test("a card with no overlap has no section", () => {
+    const one = store();
+    render(
+      <TContext.Provider value={one.i18n.t}>
+        <CardConflicts card={card()} />
+      </TContext.Provider>,
+    );
+    expect(screen.queryByRole("region", { name: "May conflict with other cards" })).toBeNull();
+  });
+
+  test("the Merge PR confirm says merging may leave the other cards with conflicts", async () => {
+    const one = store();
+    render(
+      <TContext.Provider value={one.i18n.t}>
+        <CardMergePr
+          store={one}
+          hostId="h1"
+          card={card({ mayConflict: overlap })}
+          open
+          onOpenChange={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    await settleMaybe(() => screen.queryByRole("alertdialog") !== null, 5000);
+    const text = (screen.queryByRole("alertdialog")?.textContent ?? "").replace(/\s+/g, " ");
+    expect([
+      text.includes("Merge PR"),
+      text.includes("Other cards change the same files: Fix login, Rename user."),
+    ]).toEqual([true, true]);
+  });
+});
