@@ -28,7 +28,9 @@ export type CheckLoopReason =
   /** The checks could not be run (a spawn or a write that failed). */
   | "check_error"
   /** The turn the loop waited on ended in an error. */
-  | "turn_error";
+  | "turn_error"
+  /** The daemon stopped while a round was out: the loop does not resume after a restart. */
+  | "interrupted";
 
 /** What the loop needs of a card. */
 export interface LoopCard {
@@ -245,10 +247,20 @@ export class CheckLoopEngine {
   }
 
   /** The session errored or ended while the loop held its slot. */
-  onSessionGone(cardId: string): void {
+  onSessionGone(cardId: string): boolean {
     const loop = this.loops.get(cardId);
-    if (!loop) return;
+    if (!loop) return false;
     this.end(cardId, loop, "session_ended", { release: true });
+    return true;
+  }
+
+  /** The board is stopping: every loop is forgotten, its check aborted and its timer cleared. */
+  dispose(): void {
+    for (const loop of this.loops.values()) {
+      loop.abort?.abort();
+      this.clearTimer(loop);
+    }
+    this.loops.clear();
   }
 
   /** The person wrote into the session or interrupted it: the loop steps aside, nothing is sent. */

@@ -992,4 +992,22 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (card_id, run_id, n)
   );
   `,
+  // Issue #1361: the check loop's rounds keyed by their own id (a loop's end can share its n with
+  // its last round), with the end's reason. The table held no rows yet: the loop was not wired.
+  `
+  DROP TABLE card_check_rounds;
+  CREATE TABLE card_check_rounds (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    card_id   TEXT NOT NULL,
+    run_id    TEXT NOT NULL,
+    n         INTEGER NOT NULL,
+    at        TEXT NOT NULL,
+    status    TEXT NOT NULL,
+    reason    TEXT,
+    command   TEXT,
+    exit_code INTEGER,
+    timed_out INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX card_check_rounds_card ON card_check_rounds (card_id, id);
+  `,
 ];

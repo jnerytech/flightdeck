@@ -1035,6 +1035,13 @@ export async function startDaemon(
     manager,
     quota,
     memory: memoryGate,
+    // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
+    // below is ready by then) and the project's trust, through the bounded runner.
+    checkLoop: {
+      settings: (projectId) => prWatcher.settings(projectId),
+      isTrusted: (path) => projectTrust.isTrusted(path),
+      runner: boundedCheckRunner(),
+    },
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
     scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
