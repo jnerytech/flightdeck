@@ -1467,6 +1467,31 @@ step(When, "I cancel the merge", async (c) => {
   await dialog.waitFor({ state: "detached", timeout: WAIT });
 });
 
+step(Given, "the app counts the merges it asks of the hosts", async (c) => {
+  await c.page.addInitScript(() => {
+    const tap = window as unknown as { mergesAsked: number };
+    tap.mergesAsked = 0;
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (typeof data === "string" && data.includes('"card.pr.merge"')) tap.mergesAsked += 1;
+      send.call(this, data);
+    };
+  });
+});
+
+/** The merges the page has asked of a host since it loaded. */
+const mergesAsked = (c: Context) =>
+  c.page.evaluate(() => (window as unknown as { mergesAsked?: number }).mergesAsked ?? -1);
+
+step(Then, "no merge was asked of any host", async (c) => {
+  // The request leaves the page in the click that confirms, so nothing is still on its way.
+  if ((await mergesAsked(c)) !== 0) throw new Error("the page asked a host to merge");
+});
+
+step(Then, "one merge was asked of the host", async (c) => {
+  if ((await mergesAsked(c)) !== 1) throw new Error("the page did not ask exactly one merge");
+});
+
 step(
   Then,
   "the card says the merge waits for a review and links to the pull request",
@@ -2675,8 +2700,8 @@ step(Then, "host beta runs a copy of the card", async (c) => {
 
 step(Then, "host beta has no copy of the card", async (c) => {
   await openBetaBoard(c);
-  await c.page
-    .getByRole("button", { name: c.t("kanban.newCard"), exact: true })
-    .waitFor({ timeout: WAIT });
+  // The empty-board message is drawn only once the board is loaded and holds no card: a copy left
+  // on beta would keep it from ever appearing.
+  await c.page.getByText(c.t("states.emptyCards"), { exact: true }).waitFor({ timeout: WAIT });
   if ((await tile(c).count()) > 0) throw new Error("host beta holds a copy of the card");
 });

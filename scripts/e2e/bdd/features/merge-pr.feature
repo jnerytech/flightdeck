@@ -11,7 +11,9 @@ Feature: Merge PR
     And the card still offers Merge PR
 
   Scenario: Cancelling the merge leaves the pull request open
-    Given I open the board of the demo project
+    Given the app counts the merges it asks of the hosts
+    And I open the board of the demo project
     When I open the card whose pull request is open and ask to merge it
     And I cancel the merge
     Then the card still offers Merge PR
+    And no merge was asked of any host
