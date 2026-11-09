@@ -196,6 +196,36 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
  * `claim --note <issue> <status> "<text>"` (#1526), run by issue-note.sh before it posts: 0 lets
  * the note go, 1 refuses it, 2 is a usage error.
  */
-export async function noteCheck(_args: string[], _deps: ClaimDeps): Promise<number> {
+export async function noteCheck(args: string[], deps: ClaimDeps): Promise<number> {
+  const [n = "", status = "", text = ""] = args;
+  const issue = /^\d+$/.test(n) ? Number(n) : 0;
+  if (issue <= 0) {
+    deps.log('usage: bun run claim --note <issue> <status> "<text>"');
+    return 2;
+  }
+  // The prefix issue-note.sh turns into the owner mark (board-queue.ts withOwnerMark); only a
+  // progress note claims, so only that one could name the wrong owner.
+  const session = /^(fd-[\w.-]{1,29}): /.exec(text)?.[1];
+  if (status !== "progress" || !session) return 0;
+  let owner: string | null;
+  try {
+    owner = (await read(deps, issue)).owner;
+  } catch (error) {
+    // A note is never lost to a gh hiccup: it goes on, unchecked, and says so.
+    deps.log(
+      `issue-note: could not read #${issue}'s owner (${(error as Error).message}): the note goes on unchecked`,
+    );
+    return 0;
+  }
+  if (owner === null || owner === session) return 0;
+  if (!deps.coordinator) {
+    deps.log(
+      `#${issue} is owned by ${owner}: this note would not make it ${session}'s. Ask fd-coordinator to reassign it (bun run claim ${issue} --by ${session} --reassign)`,
+    );
+    return 1;
+  }
+  const mark = ownerMark(session, "reassign");
+  if (!(await post(deps, issue, `${session} owns this issue now (reassigned).`, mark))) return 1;
+  deps.log(`reassigned #${issue} from ${owner} to ${session} for this note`);
   return 0;
 }
