@@ -286,7 +286,7 @@ export const CardDetail = memo(function CardDetail(props: {
               library={has("knowledge")}
             />
           )}
-          <CardConflicts card={card} />
+          <CardConflicts card={card} onOpenCard={props.onOpenCard} />
           {withDeps && (
             <CardDeps
               store={store}
