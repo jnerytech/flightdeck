@@ -95,6 +95,7 @@ describe("server-registry", () => {
         "hooks.uninstall",
         "host.bypass",
         "host.keepAwake",
+        "host.pause",
         "host.sleep",
         "host.updates.set",
         "maintenance.backup",
