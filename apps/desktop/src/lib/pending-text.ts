@@ -11,3 +11,11 @@ export function pendingText(item: PendingItem, t: T): string {
   const summary = inputSummary(item.input);
   return summary ? `${item.toolName}: ${summary}` : item.toolName;
 }
+
+/**
+ * Who asks, as the row, its details, the search and the tray name it: host · project · card or
+ * session. The project keeps two cards of one title in two projects apart (#1545).
+ */
+export function pendingWhere(item: PendingItem): string {
+  return [item.hostName, item.projectName, item.sessionName].filter(Boolean).join(" · ");
+}

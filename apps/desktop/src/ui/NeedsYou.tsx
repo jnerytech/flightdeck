@@ -33,6 +33,7 @@ import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";
 import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { pendingWhere } from "../lib/pending-text.ts";
 import { type QuietAlert, quietAlerts, quietText } from "../lib/quiet.ts";
 import { CONTINUATION } from "../lib/resume-offer.ts";
 import type { Route } from "../lib/router.ts";
@@ -295,6 +296,7 @@ function RequestDetail(
         <p className="text-muted-foreground text-xs">
           {props.left === 1 ? t("needsYou.leftOne") : t("needsYou.leftMany", { n: props.left })}
         </p>
+        <p className="text-sm">{pendingWhere(item)}</p>
         <ApprovalCard
           key={item.requestId}
           request={{
