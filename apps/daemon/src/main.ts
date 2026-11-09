@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
-import { tmpdir, userInfo } from "node:os";
+import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import {
   formatPairingLink,
@@ -114,6 +114,7 @@ import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
+import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createResources } from "./resources/wiring.ts";
 import { Changes } from "./review/changes.ts";
@@ -785,6 +786,8 @@ export async function startDaemon(
     pty?: PtyFactory;
     /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
     resourcesProc?: ProcReader;
+    /** The host's memory for the hold on new cards (#1343); the OS's when absent (tests inject one). */
+    memoryReading?: () => MemoryReading | null;
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
     /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
@@ -848,6 +851,17 @@ export async function startDaemon(
   );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
+  // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
+  // is set only by the test preload, never in production: under it nothing of the real machine is
+  // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
+  const memoryGate = new MemoryGate({
+    pauseAt: config.resources.pauseAt,
+    read:
+      options.memoryReading ??
+      (process.env.FLIGHTDECK_SERVICE_GUARD
+        ? () => null
+        : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
+  });
   const quotaHistory = new QuotaHistory({ db: store.db });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
@@ -1019,6 +1033,7 @@ export async function startDaemon(
     db: store.db,
     manager,
     quota,
+    memory: memoryGate,
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
     scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
@@ -1478,6 +1493,18 @@ export async function startDaemon(
           ...raw,
           sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
         }));
+      },
+    },
+    memoryPause: {
+      pauseAt: () => memoryGate.pauseAt(),
+      set: async (pauseAt) => {
+        // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({
+          ...raw,
+          resources: { ...(raw.resources as object | undefined), pauseAt },
+        }));
+        config.resources.pauseAt = pauseAt;
+        memoryGate.setPauseAt(pauseAt);
       },
     },
     quotaPause: {

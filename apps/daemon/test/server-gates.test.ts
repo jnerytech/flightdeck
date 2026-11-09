@@ -44,6 +44,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   plugins: "plugins",
   quota: "quota",
   quotaPause: "quotaPause",
+  memoryPause: "memoryPause",
   releases: "releases",
   quotaHistory: "quotaHistory",
   review: "review",

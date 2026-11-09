@@ -5,6 +5,7 @@
 import type { Handlers } from "../dispatch.ts";
 import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
+import { cardHandlers } from "./card.ts";
 import { costsHandlers } from "./costs.ts";
 import { filesHandlers } from "./files.ts";
 import { githubHandlers } from "./github.ts";
@@ -35,6 +36,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   files: filesHandlers,
   teleport: teleportHandlers,
   activity: activityHandlers,
+  card: cardHandlers,
   project: projectHandlers,
 };
 

@@ -826,7 +826,7 @@ export const Card = z.object({
   /** Workflow run of the active run; `null` for a simple card (phase 4). */
   workflowRunId: z.string().nullable().default(null),
   /** Why a queued card waits: a free slot, or the host's plan quota (phase 7). */
-  queueReason: z.enum(["slot", "quota", "budget"]).nullable().default(null),
+  queueReason: z.enum(["slot", "quota", "memory", "budget"]).nullable().default(null),
   /** With `queueReason: quota`, when the window resets (ISO); `null` when unknown. */
   quotaUntil: z.string().nullable().default(null),
   /** Phase 13: an arena variant's parent card; variants are not on the board. */
@@ -3649,6 +3649,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("releases.list", z.object({ limit: z.number().int().min(1).max(20).optional() }).strict()),
   /** Issue #154: one snapshot of the host's memory, disk and what each session and terminal costs. */
   cmd("resources.get", z.object({}).strict()),
+  /** Issue #1343: from this share of used memory (0 to 1) on, new cards wait; null turns it off. */
+  cmd("resources.setPauseAt", z.object({ pauseAt: z.number().min(0).max(1).nullable() }).strict()),
   /** Ends a process the snapshot lists as an orphan; the daemon checks again that it is one. */
   cmd(
     "resources.endOrphan",
@@ -5479,6 +5481,8 @@ export const ResourcesSnapshot = z.object({
   reason: z.enum(["platform"]).nullable(),
   rows: z.array(ResourceRow),
   orphans: z.array(ResourceOrphan),
+  /** Issue #1343: the share of used memory from which new cards wait; null when off, absent on older hosts. */
+  memoryPauseAt: z.number().min(0).max(1).nullable().optional(),
 });
 export type ResourcesSnapshot = z.infer<typeof ResourcesSnapshot>;
 export type ResourceRow = z.infer<typeof ResourceRow>;
@@ -5642,6 +5646,7 @@ export interface CommandResults {
   "logs.tail": LogTail;
   "releases.list": ReleaseList;
   "resources.get": ResourcesSnapshot;
+  "resources.setPauseAt": { pauseAt: number | null };
   "resources.endOrphan": { ended: true };
   "worktree.list": WorktreesResult;
   "worktree.remove": WorktreeRemoveResult;

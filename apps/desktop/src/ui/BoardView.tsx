@@ -284,6 +284,11 @@ function CardTile(
               : t("kanban.waitingQuota")}
           </Badge>
         )}
+        {card.queueReason === "memory" && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {t("kanban.waitingMemory")}
+          </Badge>
+        )}
         {card.waitingOn.length > 0 && (
           <Badge
             variant="outline"

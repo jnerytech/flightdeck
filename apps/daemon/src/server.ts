@@ -50,7 +50,6 @@ import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
-import { manageCard } from "./board/manage.ts";
 import type { BoardSyncService } from "./boardsync/service.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
@@ -356,6 +355,8 @@ export interface ServerOptions {
   quota?: Quota;
   /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
   quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
+  /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
+  memoryPause?: { pauseAt(): number | null; set(pauseAt: number | null): void | Promise<void> };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -477,6 +478,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.quotaPause, "quotaPause"),
+    ...when(opts.memoryPause, "memoryPause"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.deps, "depsCheck"),
@@ -950,8 +952,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
       case "releases.list":
         return ok(command.type, await releases().list(command.payload.limit ?? 5));
-      case "resources.get":
-        return ok(command.type, await resources().snapshot());
+      case "resources.get": {
+        const snapshot = await resources().snapshot();
+        // Issue #1343: the memory hold's threshold travels with the reading the panel shows.
+        const pause = opts.memoryPause;
+        return ok(command.type, pause ? { ...snapshot, memoryPauseAt: pause.pauseAt() } : snapshot);
+      }
       case "resources.endOrphan":
         // Like the other commands that change the host: not from beyond loopback and Tailscale.
         requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
@@ -961,16 +967,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await worktrees().list(command.payload.projectId));
       case "worktree.remove":
         return ok(command.type, await worktrees().remove(command.payload.items));
-      case "card.startArena": {
-        const { cardId, ...input } = command.payload;
-        return ok(command.type, await board().startArena(cardId, input));
-      }
-      case "card.arena":
-        return ok(command.type, await board().arena(command.payload.cardId));
-      case "card.chooseVariant": {
-        const { cardId, variantId, confirm } = command.payload;
-        return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
-      }
       case "names.list":
         return ok(command.type, {
           names: names()
@@ -1108,33 +1104,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchBoard = cards.watch((card) => send(ws, { type: "card.updated", card }));
         return ok(command.type);
       }
-      case "card.create": {
-        const { projectId, ...input } = command.payload;
-        return ok(command.type, await board().createCardFrom(projectId, input));
-      }
-      case "card.templates":
-        return ok(command.type, await board().cardTemplates(command.payload.projectId));
-      case "card.update": {
-        const { cardId, ...patch } = command.payload;
-        const updated = board().updateCard(cardId, patch);
-        // A new spec path is looked at at once, so the card says what was found there.
-        return ok(
-          command.type,
-          patch.specPath === undefined ? updated : await board().refreshSpec(cardId),
-        );
-      }
-      case "card.dismissUnblocked":
-        return ok(command.type, board().dismissUnblocked(command.payload.cardId));
-      case "card.move": {
-        const { cardId, column, position, force } = command.payload;
-        return ok(command.type, await board().moveByHand(cardId, column, position, force === true));
-      }
-      case "card.get":
-        return ok(command.type, board().getCard(command.payload.cardId));
-      case "card.spec":
-        return ok(command.type, await board().refreshSpec(command.payload.cardId));
-      case "card.validationTemplate":
-        return ok(command.type, await board().validationTemplate(command.payload.cardId));
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
@@ -1201,12 +1170,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, ids } = command.payload;
         return ok(command.type, await board().sendPrComments(cardId, ids));
       }
-      case "card.updateFromBase":
-        return ok(command.type, await board().updateFromBase(command.payload.cardId));
-      case "card.mergeLocal": {
-        const { cardId, mode, confirm, message } = command.payload;
-        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true, message));
-      }
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1216,12 +1179,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
-      case "card.start": {
-        const { cardId, workflow, inputs, persona } = command.payload;
-        return ok(command.type, await board().startCard(cardId, { workflow, inputs, persona }));
-      }
-      case "card.stop":
-        return ok(command.type, await board().stopCard(command.payload.cardId));
       case "assistant.run":
         return ok(command.type, await assistant().run(command.payload));
       case "assistant.cancel":
@@ -1232,55 +1189,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "assistant.record":
         assistant().record(command.payload);
         return ok(command.type);
-      case "card.diff":
-        return ok(command.type, await board().diff(command.payload.cardId));
-      case "card.message":
-        return ok(command.type, board().message(command.payload.cardId, command.payload.text));
-      case "card.pr.create":
-        return ok(
-          command.type,
-          await board().createPr(command.payload.cardId, {
-            ...(command.payload.description === undefined
-              ? {}
-              : { description: command.payload.description }),
-            ...(command.payload.title === undefined ? {} : { title: command.payload.title }),
-          }),
-        );
-      case "card.manage":
-        return ok(
-          command.type,
-          await manageCard(
-            {
-              board: board(),
-              cwdOf: (sessionId) => {
-                try {
-                  return manager.get(sessionId).cwd;
-                } catch {
-                  return null;
-                }
-              },
-            },
-            command.payload,
-          ),
-        );
-      case "card.pr.merge": {
-        // It merges on the provider with this computer's gh login: a near connection only.
-        requireVaultTransport(ws.data.origin, "card.pr.merge", opts.log);
-        const { cardId, method, confirm } = command.payload;
-        return ok(command.type, await board().mergePr(cardId, method, confirm === true));
-      }
-      case "card.complete": {
-        const { cardId, confirm } = command.payload;
-        return ok(command.type, await board().completeCard(cardId, confirm === true));
-      }
-      case "card.delete": {
-        const { cardId, confirm } = command.payload;
-        return ok(command.type, board().deleteCard(cardId, confirm === true));
-      }
-      case "card.discard": {
-        const { cardId, confirm } = command.payload;
-        return ok(command.type, await board().discardCard(cardId, confirm === true));
-      }
       case "sessions.watch": {
         // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.
         ws.data.unwatch?.();

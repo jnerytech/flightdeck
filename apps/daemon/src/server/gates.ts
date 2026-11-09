@@ -42,6 +42,7 @@ export const GATES = {
   plugins: "plugins",
   quota: "quota",
   quotaPause: "quotaPause",
+  memoryPause: "memoryPause",
   releases: "releases",
   quotaHistory: "quotaHistory",
   review: "review",
