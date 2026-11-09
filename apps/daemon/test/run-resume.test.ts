@@ -150,12 +150,15 @@ describe("run-resume: a failed run resumes from its failed step (#1266)", () => 
       const refused = await send(far, true);
       const resumed = await send(near, true);
       const done = await runWhen((run) => run.status === "completed");
-      expect([checkedFar, checkedNear, refused, resumed, done?.status]).toEqual([
-        { from: "c", ok: false, reason: "transport_refused" },
+      // Far is refused before any check runs (no git for a far caller), whatever the run's state.
+      const farDone = await send(far, false);
+      expect([checkedFar, checkedNear, refused, resumed, done?.status, farDone]).toEqual([
+        { from: "", ok: false, reason: "transport_refused" },
         { from: "c", ok: true },
         "transport_refused",
         { from: "c", ok: true },
         "completed",
+        { from: "", ok: false, reason: "transport_refused" },
       ]);
     } finally {
       for (const client of clients) client.close();
