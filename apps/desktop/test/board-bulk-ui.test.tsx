@@ -191,7 +191,9 @@ describe("board-bulk-ui: Start N and Stop N in the bar (#1354)", () => {
     restore();
   });
 
-  test("with nothing to take, the button is off and says why", async () => {
+  // The narrow guard of the prints: a reason hung under a bar button was drawn over the cards at
+  // 1024 and past the window at 390. Start's reason is a line of the bar, in the flow.
+  test("with nothing to start, Start is off and says why on a line of the bar", async () => {
     const { restore } = setup();
     await ready();
     await ctrl("D");
@@ -202,8 +204,22 @@ describe("board-bulk-ui: Start N and Stop N in the bar (#1354)", () => {
     expect([
       start?.hasAttribute("disabled"),
       reason?.textContent,
+      reason?.classList.contains("field-help"),
       stop?.getAttribute("data-variant"),
-    ]).toEqual([true, "None of the selected cards can start", "outline"]);
+    ]).toEqual([true, "None of the selected cards can start", true, "outline"]);
+    restore();
+  });
+
+  test("Stop shows only while a selected card is running or queued", async () => {
+    const { restore } = setup();
+    await ready();
+    await ctrl("A", "B");
+    const none = within(bar() as HTMLElement).queryByRole("button", { name: /^Stop/ }) === null;
+    await ctrl("D");
+    expect([
+      none,
+      within(bar() as HTMLElement).queryByRole("button", { name: "Stop 1" }) !== null,
+    ]).toEqual([true, true]);
     restore();
   });
 });
@@ -314,13 +330,17 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
     await ready();
     await ctrl("A", "B");
     // The bar before the dialog opens: an open dialog hides the page from the accessibility tree.
-    const stop = bar("Seleção")?.querySelectorAll("button")[1]?.textContent ?? "";
+    // The bar before the dialog opens hides it: Iniciar, and no Parar with nothing running.
+    const labels = [...(bar("Seleção")?.querySelectorAll("button") ?? [])].map(
+      (b) => b.textContent,
+    );
     await click(button(bar("Seleção"), "Iniciar 2"));
     await settleMaybe(() => dialog() !== null);
-    expect([screen.queryByRole("heading", { name: "Iniciar 2 cards?" }) !== null, stop]).toEqual([
-      true,
-      "Parar 0",
-    ]);
+    expect([
+      screen.queryByRole("heading", { name: "Iniciar 2 cards?" }) !== null,
+      labels.includes("Iniciar 2"),
+      labels.some((label) => label?.startsWith("Parar")),
+    ]).toEqual([true, true, false]);
     restore();
   });
 });
