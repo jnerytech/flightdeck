@@ -58,7 +58,12 @@ import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import { cardMode } from "./check-loop.ts";
-import { CheckLoopEngine, type LoopCard, type RoundRecord } from "./check-loop-engine.ts";
+import {
+  CheckLoopEngine,
+  type LoopCard,
+  type RoundRecord,
+  roundsCap,
+} from "./check-loop-engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
@@ -2934,8 +2939,14 @@ export class Board {
         "SELECT status, reason, command, exit_code, at FROM card_check_rounds WHERE card_id = ? ORDER BY id DESC LIMIT 1",
       )
       .get(row.id);
-    const project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
-    const max = project === undefined ? undefined : Math.min(row.check_rounds ?? project, project);
+    // A board that starts before its watch settings can be read shows the loop without its cap.
+    let project: number | undefined;
+    try {
+      project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
+    } catch {
+      project = undefined;
+    }
+    const max = project === undefined ? undefined : roundsCap(row.check_rounds, project);
     const reason = CheckLoopReason.safeParse(last?.reason);
     return {
       ...own,
