@@ -3,7 +3,7 @@
  * agents ran up; the rate, the plan price and the billed amount are typed here and never leave the
  * app. Every figure carries how it was made, and what is an estimate says so.
  */
-import type { RoiPeriod, RoiWeek } from "@flightdeck/protocol";
+import type { RoiPeriod } from "@flightdeck/protocol";
 
 export const EMPTY_PERIOD: RoiPeriod = {
   costUsd: 0,

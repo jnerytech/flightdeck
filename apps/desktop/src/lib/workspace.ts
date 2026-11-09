@@ -1,4 +1,4 @@
-import { ROUTE_NAMES, type Route } from "./router.ts";
+import { homeRoute, ROUTE_NAMES, type Route } from "./router.ts";
 import { type Navigation, type Tab, Tabs } from "./tabs.ts";
 
 /** What is kept of the window between starts: the tabs' screens, not their histories. */
@@ -40,7 +40,7 @@ export class Workspace {
   private moving = false;
 
   constructor(
-    initial: Route = { name: "home" },
+    initial: Route = homeRoute(),
     private readonly newId?: () => string,
     restored?: Pick<Workspace, "areas" | "split" | "focus" | "fraction">,
   ) {
@@ -69,11 +69,7 @@ export class Workspace {
   }
 
   /** The window as it comes back after a restart; anything unusable gives a fresh window. */
-  static restore(
-    stored: unknown,
-    newId?: () => string,
-    fallback: Route = { name: "home" },
-  ): Workspace {
+  static restore(stored: unknown, newId?: () => string, fallback: Route = homeRoute()): Workspace {
     const data = (stored ?? {}) as Partial<Record<keyof WorkspaceSnapshot, unknown>>;
     const areas = (data.v === 1 && Array.isArray(data.areas) ? data.areas : [])
       .slice(0, 2)

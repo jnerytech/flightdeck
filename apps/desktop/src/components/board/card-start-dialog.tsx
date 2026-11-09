@@ -40,7 +40,7 @@ export function CardStartDialog(
   const { store, hostId, card } = props;
   const host = store.getState().hosts.find((h) => h.id === hostId);
   /** Issue #1201: until one is picked, the card's own (a template's) workflow, when the project has it. */
-  const [pickedWorkflow, setWorkflow] = useState<string | null>(null);
+  const [pickedWorkflow, setPickedWorkflow] = useState<string | null>(null);
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
   const workflow =
     pickedWorkflow ??
@@ -92,7 +92,7 @@ export function CardStartDialog(
             aria-label={t("cardUi.workflow")}
             value={workflow}
             onChange={(e) => {
-              setWorkflow(e.target.value);
+              setPickedWorkflow(e.target.value);
               setInputs({});
             }}
           >

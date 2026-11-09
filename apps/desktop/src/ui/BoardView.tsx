@@ -492,13 +492,13 @@ export const BoardView = memo(function BoardView(props: {
       }
     }
     const cards = only ?? actingCards;
-    const ids = cards.map((card) => card.id);
+    const ids = new Set(cards.map((card) => card.id));
     setBusy(true);
     // Dropped on a card, the group lands before it, in the board's order.
     const positions =
-      targetId && !ids.includes(targetId)
+      targetId && !ids.has(targetId)
         ? positionsBefore(
-            columnOf(column).filter((card) => !ids.includes(card.id)),
+            columnOf(column).filter((card) => !ids.has(card.id)),
             targetId,
             cards.length,
           )
@@ -517,8 +517,8 @@ export const BoardView = memo(function BoardView(props: {
       },
       positions,
     );
-    const stayed = refused.map((r) => r.card.id);
-    setPicked((before) => before.filter((id) => stayed.includes(id) || !ids.includes(id)));
+    const stayed = new Set(refused.map((r) => r.card.id));
+    setPicked((before) => before.filter((id) => stayed.has(id) || !ids.has(id)));
     const stayedOne =
       refused.length === 1 ? t("board.stayedOne", { names: nameRefusals(refused) }) : null;
     setNotice(
@@ -664,8 +664,10 @@ export const BoardView = memo(function BoardView(props: {
    * per column, not per board: each column's list scrolls, and axe asks a scrolling region to hold
    * something the keyboard reaches (scrollable-region-focusable).
    */
-  const stops = shownIds.map((ids) =>
-    focusedCard !== null && ids.includes(focusedCard) ? focusedCard : ids[0],
+  const stops = new Set(
+    shownIds.map((ids) =>
+      focusedCard !== null && ids.includes(focusedCard) ? focusedCard : ids[0],
+    ),
   );
   const titleOf = (cardId: string) =>
     boardRef.current?.querySelector<HTMLElement>(`li[data-card="${cardId}"] [data-card-open]`);
@@ -964,7 +966,7 @@ export const BoardView = memo(function BoardView(props: {
                           selected={selection.includes(card.id)}
                           onToggleSelect={() => select(card)}
                           onRangeSelect={() => selectRange(card)}
-                          tabbable={stops.includes(card.id)}
+                          tabbable={stops.has(card.id)}
                           hintId={hintId}
                           onFocus={() => setFocusedCard(card.id)}
                           onKey={keyOn(card.id)}
@@ -1018,7 +1020,7 @@ export const BoardView = memo(function BoardView(props: {
                       t={t}
                       width={width}
                       index={COLUMNS.findIndex((column) => column.id === id) + 1}
-                      last={id === COLUMNS[COLUMNS.length - 1]?.id}
+                      last={id === COLUMNS.at(-1)?.id}
                       onChange={(next) => store.boardWidth.set(next, false)}
                       onCommit={() => store.boardWidth.persist()}
                     />
@@ -1073,11 +1075,11 @@ export const BoardView = memo(function BoardView(props: {
           }}
           onMoveQualifying={() => {
             setAsk(null);
-            const lacks = ask.lacking.map((l) => l.card.id);
+            const lacks = new Set(ask.lacking.map((l) => l.card.id));
             void moveSelected(
               ask.column,
               ask.targetId,
-              ask.cards.filter((card) => !lacks.includes(card.id)),
+              ask.cards.filter((card) => !lacks.has(card.id)),
             );
           }}
         />

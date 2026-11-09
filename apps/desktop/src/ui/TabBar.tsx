@@ -433,7 +433,7 @@ export function TabBar(
             const group = groupOf(tab);
             const { label, kind, Icon, badge, cacheSince, ssh, prod, hostColor, ariaLabel } =
               tabFacts(tab, { t, state, store, host: ownHost(tab) });
-            const startsGroup = group !== undefined && group.tabs.tabs[0] === tab;
+            const startsGroup = group?.tabs.tabs[0] === tab;
             return (
               <Fragment key={tab.id}>
                 {startsGroup && (

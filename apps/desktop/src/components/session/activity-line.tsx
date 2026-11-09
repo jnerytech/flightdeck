@@ -6,12 +6,8 @@ import type { Activity } from "../../lib/session-activity.ts";
 
 /** The words for what the session is doing, from the dictionary. */
 export function activityText(activity: Activity, t: T): string {
-  switch (activity.kind) {
-    case "tool":
-      return t(`activity.${activity.group}`, { tool: activity.tool });
-    default:
-      return t(`activity.${activity.kind}`);
-  }
+  if (activity.kind === "tool") return t(`activity.${activity.group}`, { tool: activity.tool });
+  return t(`activity.${activity.kind}`);
 }
 
 /** Above the message box while a turn runs: a small spinner, what is happening and for how long. */

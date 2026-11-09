@@ -18,7 +18,13 @@ export interface NewSessionPrefsValue {
 }
 
 /** The modes worth keeping: bypass asks again each time, so it is never the starting point. */
-const KEPT_MODES: readonly PermissionMode[] = ["default", "acceptEdits", "plan", "auto", "dontAsk"];
+const KEPT_MODES: ReadonlySet<PermissionMode> = new Set([
+  "default",
+  "acceptEdits",
+  "plan",
+  "auto",
+  "dontAsk",
+]);
 
 /** The models the form offers for a Claude session; nothing else is kept as the starting model. */
 export const CLAUDE_MODELS: readonly string[] = ["opus", "sonnet", "haiku"];
@@ -28,8 +34,7 @@ const NOTHING: NewSessionPrefsValue = { mode: "default", model: "", folders: {} 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const isKept = (mode: unknown): mode is PermissionMode =>
-  KEPT_MODES.includes(mode as PermissionMode);
+const isKept = (mode: unknown): mode is PermissionMode => KEPT_MODES.has(mode as PermissionMode);
 
 /** No model (the account's default) or one the form offers. */
 const isOffered = (model: unknown): model is string =>
