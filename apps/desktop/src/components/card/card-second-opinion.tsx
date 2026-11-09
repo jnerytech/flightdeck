@@ -1,5 +1,5 @@
 import type { Card, CardReviewResult, ChangesResult } from "@flightdeck/protocol";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -43,10 +43,28 @@ export function CardSecondOpinion(
   const reasonId = useId();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const askButton = useRef<HTMLButtonElement>(null);
+  const asking = useRef(false);
+  const section = useRef<HTMLElement>(null);
+  /**
+   * Answers received: the button was off while the host read, so the browser dropped its focus and it
+   * goes back once the button is on (#1495). Focus the person moved somewhere else (a comment they
+   * began) stays where it is.
+   */
+  const [answered, setAnswered] = useState(0);
+  useEffect(() => {
+    if (answered === 0) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || section.current?.contains(active)) {
+      askButton.current?.focus();
+    }
+  }, [answered]);
   const off = whyOff(card, changes, t);
 
   const ask = async () => {
-    if (busy) return;
+    // A ref too: two clicks in the same event see the first one before React renders it.
+    if (busy || asking.current) return;
+    asking.current = true;
     setBusy(true);
     setOutcome(null);
     let next: Outcome;
@@ -64,22 +82,34 @@ export function CardSecondOpinion(
     }
     // The result and the button come back together: no moment with neither the result nor the wait.
     setOutcome(next);
+    asking.current = false;
     setBusy(false);
-    if (next.kind === "result" && next.result.anchored > 0) await props.onReviewed();
+    setAnswered((count) => count + 1);
+    if (next.kind === "result" && next.result.anchored > 0) {
+      try {
+        await props.onReviewed();
+      } catch {
+        // The review itself succeeded and its result is shown. Only this read failed (a dropped
+        // connection): the drafts appear on the panel's next read, a change on disk or Refresh.
+      }
+    }
   };
 
   return (
-    <section aria-label={t("secondOpinion.title")}>
+    <section ref={section} aria-label={t("secondOpinion.title")}>
       <Stack gap={2}>
         <h3 className="font-medium text-sm">{t("secondOpinion.title")}</h3>
         <p className="text-muted-foreground text-sm">{t("secondOpinion.intro")}</p>
         <div>
           <ActionButton
+            ref={askButton}
             variant="outline"
             size="sm"
             disabled={off !== null || busy}
+            pending={busy}
             aria-describedby={off ? reasonId : undefined}
-            onClick={ask}
+            // The wait is this component's own (busy), so the button is on again with the answer.
+            onClick={() => void ask()}
           >
             {t("secondOpinion.ask")}
           </ActionButton>

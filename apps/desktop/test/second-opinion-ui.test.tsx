@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -53,7 +53,14 @@ const result = (over: object = {}) => ({
 
 type Answer = { ok: true; data: unknown } | { ok: false; code: string; message: string } | object;
 
-function setup(options: { language?: "en" | "pt-BR"; answer?: Answer; hold?: Promise<void> } = {}) {
+function setup(
+  options: {
+    language?: "en" | "pt-BR";
+    answer?: Answer;
+    hold?: Promise<void>;
+    reviewed?: () => void | Promise<void>;
+  } = {},
+) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
   });
@@ -74,6 +81,7 @@ function setup(options: { language?: "en" | "pt-BR"; answer?: Answer; hold?: Pro
         changes={changes(files)}
         onReviewed={() => {
           seen.reviewed++;
+          return options.reviewed?.();
         }}
       />
     </TContext.Provider>
@@ -229,6 +237,79 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
     release();
     await settle(() => text().includes("Two risks"));
     expect(waiting).toEqual([true, true, 1]);
+  });
+
+  test("when the answer arrives, focus is back on the button, whether it brought a result or a refusal (#1495)", async () => {
+    const focused = () => document.activeElement === button("Get a second opinion");
+    const { store, view } = setup();
+    render(view());
+    // The button is off while the host reads, so the browser drops its focus: only the return after the
+    // answer can put it back.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await ask();
+    await settle(() => text().includes("Two risks"));
+    await settle(focused, 5000, "focus back on the button after a result");
+    store.hostRequest = (async () => {
+      throw new Error("the connection dropped");
+    }) as never;
+    (document.activeElement as HTMLElement | null)?.blur();
+    await ask();
+    await settle(() => screen.queryByRole("alert") !== null);
+    await settle(focused, 5000, "focus back on the button after a refusal");
+  });
+
+  test("focus the person moved elsewhere while the host read is not taken back (#1495)", async () => {
+    let release = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { view } = setup({ hold });
+    render(
+      <>
+        {view()}
+        <textarea aria-label="Comment" />
+      </>,
+    );
+    await ask();
+    const comment = screen.queryByRole("textbox", { name: "Comment" });
+    expect(comment).not.toBeNull();
+    comment?.focus();
+    release();
+    await settle(() => text().includes("Two risks"));
+    await stays(() => document.activeElement === comment, 300, "focus stays on the comment");
+  });
+
+  test("two clicks in the same tick ask the host once, and the button says it is busy while it reads (#1495)", async () => {
+    let release = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { asked, view } = setup({ hold });
+    render(view());
+    const found = button("Get a second opinion");
+    expect(found).not.toBeNull();
+    // One act, so React renders nothing between the clicks: only the ref guard stops the second.
+    await act(async () => {
+      found?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      found?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const waiting = [asked.length, button("Get a second opinion")?.getAttribute("aria-busy")];
+    release();
+    await settle(() => text().includes("Two risks"));
+    expect(waiting).toEqual([1, "true"]);
+  });
+
+  test("a failed read of the panel's comments after the review leaves the result shown and the button back (#1495)", async () => {
+    const { view } = setup({
+      reviewed: () => Promise.reject(new Error("the connection dropped")),
+    });
+    render(view());
+    await ask();
+    await settle(() => text().includes("Two risks"));
+    expect([
+      text().includes("2 findings are drafts"),
+      button("Get a second opinion")?.hasAttribute("disabled"),
+    ]).toEqual([true, false]);
   });
 
   test("in pt-BR the button and the result are translated", async () => {
