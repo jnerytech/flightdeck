@@ -211,6 +211,7 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
     await open();
     await waitingNow([], "offline");
     await stays(() => rowCount() === 1);
+    expect(rowCount()).toBe(1);
   });
 
   test("after an answer the focus stays in the panel: on the row that took its place, or the title", async () => {
@@ -257,6 +258,7 @@ describe("bell-approve-ui: a request is answered from the bell (#1131)", () => {
       });
     });
     await stays(() => answered.length === 0);
+    expect(answered).toEqual([]);
   });
 
   test("a row's buttons are a group named by what the row is about, so Approve is not anonymous", async () => {

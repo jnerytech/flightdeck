@@ -180,6 +180,8 @@ describe("harness-share-ui: the setup card shares the project's Markdown as a ho
       5000,
       "the first answer cleared",
     );
+    expect(sent).toHaveLength(2);
+    expect(screen.queryByText("Shared as the template Shop setup (2 files).") === null).toBe(true); // NOSONAR: the boolean keeps a DOM node out of the failure diff
   });
 
   test("sharing sends the path, an id made from the name and the title, then says what was shared", async () => {
