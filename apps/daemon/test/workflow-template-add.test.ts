@@ -181,6 +181,8 @@ describe("adding a workflow template from the app (#1221)", () => {
       now: AT,
     });
     expect(maybe(repo, "rev-parse", `${BRANCH}^`)).toBe(pushed);
+    // The remote still holds the pushed commit (a wrong cwd would also make cat-file fail).
+    expect(maybe(remote, "rev-parse", "main")).toBe(pushed);
     expect(maybe(remote, "cat-file", "-t", git(repo, "rev-parse", "main"))).toBeNull();
   });
 
