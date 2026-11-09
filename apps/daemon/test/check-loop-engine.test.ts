@@ -63,6 +63,8 @@ function rig(
   /** Lets a test hold a check until it says so. */
   let gate: Promise<void> | null = null;
   let reads = 0;
+  /** Runs inside `send`: the real manager emits busy and the message's echo during it. */
+  let onSend: (() => void) | null = null;
   const engine = new CheckLoopEngine({
     card: () => {
       reads += 1;
@@ -86,6 +88,7 @@ function rig(
     send: (_id, text) => {
       sent.push(text);
       log.push("send");
+      onSend?.();
     },
     release: () => log.push("release"),
     place: () => log.push("place"),
@@ -115,6 +118,7 @@ function rig(
     setMode: (next: PermissionMode) => (mode = next),
     setTrusted: (next: boolean) => (trusted = next),
     setLimit: (next: typeof limit) => (limit = next),
+    duringSend: (fn: () => void) => (onSend = fn),
     hold: () => {
       let open = () => {};
       gate = new Promise<void>((done) => (open = done));
@@ -364,7 +368,7 @@ describe("check-loop: the security review's cases", () => {
       });
       engine.onIdle("c");
       try {
-        if (end === "stop") engine.onStop("c");
+        if (end === "stop") void engine.onStop("c");
         if (end === "gone") engine.onSessionGone("c");
         if (end === "timer") r.timers[0]?.fn();
       } catch {
@@ -372,7 +376,7 @@ describe("check-loop: the security review's cases", () => {
       }
       // A second way out finds no loop: nothing is released twice.
       try {
-        engine.onStop("c");
+        void engine.onStop("c");
       } catch {
         // As above.
       }
@@ -588,6 +592,61 @@ describe("check-loop: the security review's cases", () => {
     expect([ended, fromTimer]).toEqual(["settled", "quiet"]);
   });
 
+  test("onSessionGone says whether the loop had the slot, so the board releases it only when not", () => {
+    const held = rig();
+    held.engine.onIdle("c");
+    const none = rig({ card: { on: false } });
+    expect([held.engine.onSessionGone("c"), none.engine.onSessionGone("c")]).toEqual([true, false]);
+  });
+
+  test("the round's own echo is not the person's input; any other user message is", async () => {
+    const r = rig({ outcomes: [FAIL, FAIL] });
+    r.duringSend(() => {
+      r.engine.onBusy("c");
+      r.engine.onUserMessage("c", r.sent.at(-1) ?? "");
+    });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    const afterEcho = r.records.at(-1)?.status;
+    r.engine.onUserMessage("c", "outra coisa");
+    expect([afterEcho, r.records.at(-1)?.reason]).toEqual(["sent", "person_turn"]);
+  });
+
+  test("an outside message that comes before the queued round's echo is the person's, not the echo", async () => {
+    const r = rig({ outcomes: [FAIL] });
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    // The round waits behind a turn; the person's message reaches the session first.
+    r.engine.onUserMessage("c", "deixa que eu faço");
+    expect(r.records.at(-1)?.reason).toBe("person_turn");
+  });
+
+  test("a stop waits for every check still exiting on the card: one of a loop already ended, one replaced", async () => {
+    const r = rig({ outcomes: [FAIL, FAIL] });
+    const open = r.hold();
+    r.engine.onTurnResult("c", ok);
+    // Replaced while running, then the loop ends by the person's turn: both checks are still out.
+    r.engine.onTurnResult("c", ok);
+    r.engine.onPersonTurn("c");
+    let stopped = false;
+    const stopping = r.engine.onStop("c").then(() => {
+      stopped = true;
+    });
+    await Promise.resolve();
+    const early = stopped;
+    open();
+    await stopping;
+    expect([r.signals.length, early, stopped]).toEqual([2, false, true]);
+  });
+
+  test("the watchdog is armed before the send, so the busy the send itself causes clears it", async () => {
+    const r = rig({ outcomes: [FAIL] });
+    r.duringSend(() => r.engine.onBusy("c"));
+    r.engine.onTurnResult("c", ok);
+    await r.checksDone();
+    expect(r.timers.at(-1)?.cleared).toBe(true);
+  });
+
   test("the message strips first and masks after: a secret split by a colour code, bidi and C1 characters never reach it", () => {
     const output =
       "token ghp_abcdefghij\u001b[0mklmnopqrstuvwxyz0123456789\nfine \u202e\u009b line";
@@ -629,7 +688,7 @@ describe("check-loop: what ends a loop early", () => {
     const stopped = rig({ outcomes: [FAIL] });
     stopped.engine.onIdle("c");
     stopped.engine.onTurnResult("c", ok);
-    stopped.engine.onStop("c");
+    void stopped.engine.onStop("c");
     await stopped.checksDone();
     expect([
       gone.log,

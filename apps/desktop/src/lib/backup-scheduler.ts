@@ -6,11 +6,19 @@ import {
   loadSchedule,
   type RunReport,
   runScheduledBackup,
+  type ScheduleTarget,
   saveSchedule,
 } from "./backup-schedule.ts";
+import { driveTarget } from "./drive-target.ts";
+import {
+  type GoogleConfig,
+  type GoogleSignIn,
+  googleSignIn,
+  type SignInResult,
+} from "./google-oauth.ts";
 
 /** What the person has to be told about: the passphrase to type, a folder to choose, a write that failed. */
-export type Attention = "passphrase" | "no-folder" | "failed";
+export type Attention = "passphrase" | "no-folder" | "failed" | "drive-auth";
 
 /** How often the app looks at whether a backup is owed. */
 const CHECK_INTERVAL_MS = 15 * 60_000;
@@ -32,6 +40,9 @@ export class BackupScheduler {
   /** What the app was already told this start (issue #1327): each kind is said once, not every check. */
   private readonly told = new Set<Attention>();
   private readonly listeners = new Set<() => void>();
+  /** The Google sign-in; null while no client id is configured or the shell has no loopback. */
+  private readonly google: GoogleSignIn | null;
+  private readonly net: typeof fetch;
 
   constructor(
     private readonly platform: Platform,
@@ -41,9 +52,56 @@ export class BackupScheduler {
       intervalMs?: number;
       /** Tells the app something needs the person's eyes (issue #1327); at most once per kind per start. */
       onAttention?: (kind: Attention) => void;
+      /** Issue #1444: Google Drive as a target; `config` is null while no client id is configured. */
+      google?: { config: GoogleConfig | null; fetch?: typeof fetch };
     } = {},
   ) {
     this.current = loadSchedule(platform.storage);
+    // A wrapper: the browser's fetch refuses to run as a method of another object.
+    this.net = options.google?.fetch ?? (((input, init) => fetch(input, init)) as typeof fetch);
+    const config = options.google?.config;
+    this.google =
+      config && platform.oauthLoopback
+        ? googleSignIn({
+            config,
+            fetch: this.net,
+            vault: platform.vault,
+            loopback: platform.oauthLoopback,
+            openExternal: (url) => platform.openExternal(url),
+            ...(options.now && { now: options.now }),
+          })
+        : null;
+  }
+
+  /** Whether Drive can be chosen: a client id is configured and the shell can listen on the loopback. */
+  get driveAvailable(): boolean {
+    return this.google !== null;
+  }
+
+  /** Whether a Google sign-in is held (its token is in the vault). */
+  driveSignedIn = false;
+
+  /** Chooses where the backups go. Drive is refused where it is not available. */
+  setTarget(target: ScheduleTarget): void {
+    this.current.target = target === "drive" && !this.driveAvailable ? "folder" : target;
+    this.save();
+  }
+
+  /** Opens Google's consent page and waits for the redirect; the token goes to the vault. */
+  async signInDrive(): Promise<SignInResult> {
+    if (!this.google) return "cancelled";
+    const result = await this.google.signIn();
+    this.driveSignedIn = await this.google.signedIn();
+    this.notify();
+    await this.tick();
+    return result;
+  }
+
+  async signOutDrive(): Promise<void> {
+    if (!this.google) return;
+    await this.google.signOut();
+    this.driveSignedIn = false;
+    this.notify();
   }
 
   /** False on the web build, where no folder can be written. */
@@ -68,6 +126,7 @@ export class BackupScheduler {
   async start(): Promise<void> {
     const folder = this.platform.backupFolder;
     if (!folder) return;
+    this.driveSignedIn = (await this.google?.signedIn().catch(() => false)) ?? false;
     this.folder = await folder.current().catch(() => null);
     if (this.folder && this.current.folder === "") this.current.folder = this.folder;
     // The passphrase lives in memory only, so every start with the schedule on has to ask for it.
@@ -125,12 +184,17 @@ export class BackupScheduler {
       const report = await runScheduledBackup({
         platform: this.platform,
         folder: this.platform.backupFolder,
-        schedule: this.current,
+        drive: this.drive(),
+        // Without Drive in this build a saved Drive target falls back to the folder.
+        schedule: this.google ? this.current : { ...this.current, target: "folder" },
         passphrase: this.passphrase,
         now: (this.options.now ?? Date.now)(),
         options:
           this.options.workFactor === undefined ? {} : { workFactor: this.options.workFactor },
       });
+      if (this.google && this.current.target === "drive") {
+        this.driveSignedIn = await this.google.signedIn().catch(() => false);
+      }
       if (report.status === "done") {
         this.current.lastRunAt = report.at;
         this.save();
@@ -142,6 +206,15 @@ export class BackupScheduler {
       this.running = false;
       this.notify();
     }
+  }
+
+  private drive() {
+    const google = this.google;
+    if (!google) return null;
+    return driveTarget({
+      fetch: this.net,
+      auth: google.auth,
+    });
   }
 
   private attend(kind: Attention): void {

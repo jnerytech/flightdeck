@@ -830,6 +830,15 @@ export const en: Dictionary = {
     folder: "Folder",
     noFolder: "No folder chosen",
     chooseFolder: "Choose folder",
+    targetLegend: "Where to save",
+    target: { folder: "A folder", drive: "Google Drive" },
+    driveHelp:
+      "Backups go to Flightdeck's own hidden folder in your Google Drive. Only this app can see it, and each file stays encrypted with your passphrase.",
+    driveSignedIn: "Signed in to Google",
+    driveSignedOut: "Not signed in to Google",
+    driveSignIn: "Sign in with Google",
+    driveSignOut: "Sign out",
+    driveRefused: "Google did not accept the sign-in. Try again.",
     keep: "Files to keep",
     keepInvalid: "Type a whole number from 1. The saved number ({count}) stays.",
     passphrase: "Passphrase for this session",
@@ -854,12 +863,17 @@ export const en: Dictionary = {
         title: "A scheduled backup failed",
         body: "Check that the folder still exists and has room, in Settings, section Backup.",
       },
+      "drive-auth": {
+        title: "Scheduled backups to Google Drive need you to sign in",
+        body: "Sign in again in Settings, section Backup. Until then no backup is made.",
+      },
     },
     skipped: {
       "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
       "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
       failed:
         "The last backup could not be saved. Check that the folder still exists and has room.",
+      "drive-auth": "A backup is due, but Google Drive is not signed in. Sign in again.",
     },
   },
   approval: {
@@ -974,6 +988,14 @@ export const en: Dictionary = {
     deselectCard: "Deselect card",
     /** #1354: the check on each card while a selection exists. */
     selectCardNamed: "Select {title}",
+    /** #1406: Update from the base for the selection, and its summary. */
+    updateSelected: "Update {n} from the base",
+    updateNoBranch: "the card has no branch yet",
+    updating: "Updating {done} of {total}…",
+    updatedNames: "Updated: {names}.",
+    currentNames: "Already current: {names}.",
+    conflictedNames: "Conflict, left as it was: {names}.",
+    notUpdatedNames: "Not updated: {names}.",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
     /** What a column asks of a card before it gets there (issue #78). */

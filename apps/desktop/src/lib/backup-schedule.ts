@@ -1,6 +1,6 @@
-import { inSequence } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
+import { type BackupFolder, type BackupTarget, folderTarget, keepNewest } from "./backup-target.ts";
+import { DriveError } from "./drive-target.ts";
 
 /** Issue #1264: scheduled backups to a picked folder, keeping the last N files. */
 export const SCHEDULE_KEY = "flightdeck.backupSchedule";
@@ -15,17 +15,20 @@ const PERIOD: Record<Cadence, number> = {
 
 export type Cadence = "off" | "daily" | "weekly";
 
+/** Where the backups go: the picked folder or the app's folder on Google Drive (#1444). */
+export type ScheduleTarget = "folder" | "drive";
+
 export interface BackupSchedule {
   cadence: Cadence;
+  target: ScheduleTarget;
   folder: string;
   keep: number;
   lastRunAt: number | null;
 }
 
-/** The folder of backups, as the Rust shell offers it: only files named like a backup. */
-export type BackupFolder = NonNullable<Platform["backupFolder"]>;
+export type { BackupFolder };
 
-export type SkipReason = "no-folder" | "no-passphrase" | "failed";
+export type SkipReason = "no-folder" | "no-passphrase" | "failed" | "drive-auth";
 
 export type RunReport =
   | {
@@ -39,10 +42,13 @@ export type RunReport =
   | { status: "skipped"; reason: SkipReason; at: number }
   | { status: "idle" };
 
-/** `flightdeck-backup-YYYYMMDD-HHMMSS.fdbackup`: the UTC time, so names sort by age. */
-const NAME = /^flightdeck-backup-\d{8}-\d{6}\.fdbackup$/;
-
-const OFF: BackupSchedule = { cadence: "off", folder: "", keep: DEFAULT_KEEP, lastRunAt: null };
+const OFF: BackupSchedule = {
+  cadence: "off",
+  target: "folder",
+  folder: "",
+  keep: DEFAULT_KEEP,
+  lastRunAt: null,
+};
 
 /** The saved schedule; an unset or damaged one is off. */
 export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule {
@@ -55,6 +61,7 @@ export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule
       raw.cadence === "daily" || raw.cadence === "weekly" ? raw.cadence : "off";
     return {
       cadence,
+      target: raw.target === "drive" ? "drive" : "folder",
       folder: typeof raw.folder === "string" ? raw.folder : "",
       keep:
         Number.isInteger(raw.keep) && (raw.keep as number) >= 1
@@ -69,13 +76,17 @@ export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule
 
 export function saveSchedule(storage: BackupPlatform["storage"], schedule: BackupSchedule): void {
   // Only the four fields: whatever else the object carries is not written.
-  const { cadence, folder, keep, lastRunAt } = schedule;
-  storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, folder, keep, lastRunAt }));
+  const { cadence, target, folder, keep, lastRunAt } = schedule;
+  storage.setItem(SCHEDULE_KEY, JSON.stringify({ cadence, target, folder, keep, lastRunAt }));
 }
 
-/** Whether a run is owed: a cadence is set, a folder is chosen, and a period passed since the last. */
+/**
+ * Whether a run is owed: a cadence is set, a folder is chosen (the Drive target needs none), and a
+ * period passed since the last.
+ */
 export function isDue(schedule: BackupSchedule, now: number): boolean {
-  if (schedule.cadence === "off" || schedule.folder === "") return false;
+  if (schedule.cadence === "off") return false;
+  if (schedule.target === "folder" && schedule.folder === "") return false;
   // A last run ahead of now (the clock moved back) cannot stand for a period that passed.
   return (
     schedule.lastRunAt === null ||
@@ -99,6 +110,8 @@ export function backupFileName(now: number): string {
 export async function runScheduledBackup(deps: {
   platform: BackupPlatform;
   folder: BackupFolder | undefined;
+  /** The Drive target, when the app can sign in; null or absent when it cannot. */
+  drive?: BackupTarget | null;
   schedule: BackupSchedule;
   passphrase: string | null;
   now: number;
@@ -107,49 +120,34 @@ export async function runScheduledBackup(deps: {
   const { platform, folder, schedule, passphrase, now } = deps;
   if (schedule.cadence === "off") return { status: "idle" };
   const at = now;
-  if (schedule.folder === "" || !folder) return { status: "skipped", reason: "no-folder", at };
+  const onDrive = schedule.target === "drive";
+  if (!onDrive && (schedule.folder === "" || !folder)) {
+    return { status: "skipped", reason: "no-folder", at };
+  }
   if (!isDue(schedule, now)) return { status: "idle" };
   // The folder in the saved schedule is only a copy; the one that counts is the stored pick.
-  if (!(await folder.current().catch(() => null)))
+  if (!onDrive && !(await folder?.current().catch(() => null))) {
     return { status: "skipped", reason: "no-folder", at };
+  }
   if (!passphrase) return { status: "skipped", reason: "no-passphrase", at };
+  const target = onDrive ? deps.drive : folder && folderTarget(folder);
+  if (!target) return { status: "skipped", reason: onDrive ? "drive-auth" : "no-folder", at };
   const keep = Math.max(1, Math.floor(schedule.keep));
   const name = backupFileName(now);
   try {
     // Loaded when a backup runs, so the encryption library stays out of the start-up chunk.
     const { createBackup } = await import("./backup-bundle.ts");
     const text = await createBackup(platform, passphrase, passphrase, deps.options);
-    await folder.write(name, text);
-  } catch {
-    return { status: "skipped", reason: "failed", at };
+    await target.put(name, text);
+  } catch (error) {
+    // A sign-in Google no longer honours is the person's to fix; anything else is a failed write.
+    const reason = error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "failed";
+    return { status: "skipped", reason, at };
   }
   // The backup exists now. Pruning keeps it and the newest others, whatever their dates say; if the
   // folder cannot be read or cleaned, the run still counts as done and says the prune failed.
-  let removed = 0;
-  try {
-    const others = (await folder.list())
-      .filter((one) => NAME.test(one) && one !== name)
-      .sort(compareNames);
-    const stale = others.slice(0, Math.max(0, others.length - (keep - 1)));
-    await inSequence(stale, async (old) => {
-      await folder.remove(old);
-      removed += 1;
-    });
-    return {
-      status: "done",
-      name,
-      kept: others.length - stale.length + 1,
-      removed,
-      prune: "ok",
-      at,
-    };
-  } catch {
-    return { status: "done", name, kept: 1, removed, prune: "failed", at };
-  }
-}
-
-/** Code-unit order: the names are dates, so the oldest sorts first. */
-function compareNames(a: string, b: string): number {
-  if (a < b) return -1;
-  return a > b ? 1 : 0;
+  const pruned = await keepNewest(target, keep, name);
+  return pruned.ok
+    ? { status: "done", name, kept: pruned.kept, removed: pruned.removed, prune: "ok", at }
+    : { status: "done", name, kept: 1, removed: pruned.removed, prune: "failed", at };
 }

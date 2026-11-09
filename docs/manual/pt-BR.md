@@ -1140,8 +1140,14 @@ aparece mascarado e como **Oculto**, e não abre.
   Parar também pergunta: o turno de um card rodando é
   interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
-  os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que
-  não aparecem, e **Mover para…** e **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
+  os que o host recusou. **Atualizar N com a base** aparece quando um card selecionado tem branch e
+  não está rodando: depois que a branch base anda, ele faz o rebase desses cards sobre ela, um de cada
+  vez, com "Atualizando 2 de 5…" na barra. Um card que já está na base fica como está, e um conflito
+  para só aquele card: o host aborta o rebase, então o worktree dele fica como estava. O resumo então
+  nomeia os cards atualizados, os já em dia e os com conflito, e os que o host recusou, com o motivo;
+  os com conflito e os recusados continuam selecionados. Numa janela estreita a barra diz quantos
+  selecionados estão em colunas que não aparecem, e **Mover para…**, **Atualizar N com a base** e
+  **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
 - **O que uma coluna pede de um card** (#78). **Em revisão** pede um link de PR e verificações
   passando; **Em andamento** pede critérios de aceite, um item de checklist (`- [ ] …`) na
@@ -2355,6 +2361,14 @@ der, um backup devido espera, e a seção avisa. Um backup que não pôde ser sa
 a data do último bom continua. O sino também avisa, uma vez por abertura, quando um backup não pode
 sair: falta a frase-senha, não há pasta escolhida ou um backup falhou. Um clique no aviso abre
 **Configurações**, seção **Backup** (#1327).
+
+Quando o build traz um cliente do Google, **Onde salvar** também oferece **Google Drive**. Ele guarda
+os backups na pasta oculta do próprio Flightdeck no seu Drive, que só este app enxerga, e cada
+arquivo continua criptografado com a sua frase-senha. **Entrar com o Google** abre a página do Google
+no navegador e o app espera a resposta só neste computador. O Flightdeck guarda o token no cofre,
+nunca num arquivo nem num log; **Sair** o remove. Se o Google deixar de aceitar a entrada, a seção e
+o sino avisam e nenhum backup é feito até você entrar de novo. Sem um cliente no build, a escolha não
+aparece (#1444).
 
 ## Ações: o Claude usa um segredo sem vê-lo
 

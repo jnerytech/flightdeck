@@ -827,6 +827,15 @@ export const ptBR = {
     folder: "Pasta",
     noFolder: "Nenhuma pasta escolhida",
     chooseFolder: "Escolher pasta",
+    targetLegend: "Onde salvar",
+    target: { folder: "Uma pasta", drive: "Google Drive" },
+    driveHelp:
+      "Os backups vão para a pasta oculta do Flightdeck no seu Google Drive. Só este app a enxerga, e cada arquivo continua criptografado com a sua frase-senha.",
+    driveSignedIn: "Conectado ao Google",
+    driveSignedOut: "Não conectado ao Google",
+    driveSignIn: "Entrar com o Google",
+    driveSignOut: "Sair",
+    driveRefused: "O Google não aceitou a entrada. Tente de novo.",
     keep: "Arquivos a manter",
     keepInvalid:
       "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
@@ -852,11 +861,16 @@ export const ptBR = {
         title: "Um backup agendado falhou",
         body: "Veja se a pasta ainda existe e tem espaço, em Configurações, seção Backup.",
       },
+      "drive-auth": {
+        title: "Os backups agendados no Google Drive precisam que você entre",
+        body: "Entre de novo em Configurações, seção Backup. Até lá, nenhum backup é feito.",
+      },
     },
     skipped: {
       "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
       "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
       failed: "O último backup não pôde ser salvo. Veja se a pasta ainda existe e tem espaço.",
+      "drive-auth": "Há um backup a fazer, mas o Google Drive não está conectado. Entre de novo.",
     },
   },
   approval: {
@@ -967,6 +981,14 @@ export const ptBR = {
     selectCard: "Selecionar card",
     deselectCard: "Desmarcar card",
     selectCardNamed: "Selecionar {title}",
+    /** #1406: Atualizar com a base para a seleção, e o resumo. */
+    updateSelected: "Atualizar {n} com a base",
+    updateNoBranch: "o card ainda não tem branch",
+    updating: "Atualizando {done} de {total}…",
+    updatedNames: "Atualizados: {names}.",
+    currentNames: "Já em dia: {names}.",
+    conflictedNames: "Conflito, ficou como estava: {names}.",
+    notUpdatedNames: "Não atualizados: {names}.",
     stayedOne: "1 card ficou onde estava: {names}",
     stayed: "{count} cards ficaram onde estavam: {names}",
     contract: {
