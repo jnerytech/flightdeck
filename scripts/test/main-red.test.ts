@@ -79,7 +79,17 @@ function fakeGh(opts: {
 }) {
   let madeOne = false;
   const asked: string[][] = [];
-  const gh = async (args: string[]): Promise<GhResult> => {
+  // How many gh calls were in flight at once (#1381: the warning asks GitHub in parallel).
+  let active = 0;
+  let peak = 0;
+  const answer = async (args: string[]): Promise<GhResult> => {
+    active++;
+    peak = Math.max(peak, active);
+    await Promise.resolve();
+    active--;
+    return reply(args);
+  };
+  const reply = (args: string[]): GhResult => {
     asked.push(args);
     const line = args.join(" ");
     const event = args.includes("--event") ? args[args.indexOf("--event") + 1] : undefined;
@@ -113,7 +123,7 @@ function fakeGh(opts: {
     if (line.startsWith("issue close")) return { code: 0, stdout: "" };
     return { code: 1, stdout: "", stderr: `unexpected gh ${line}` };
   };
-  return { gh, asked };
+  return { gh: answer, asked, peak: () => peak };
 }
 
 function run(args: string[], fake: ReturnType<typeof fakeGh>, owner = "fd-harness") {
@@ -539,10 +549,15 @@ describe("main-red: a red only main's full runs see is reported too (#1381)", ()
     expect(views.length).toBe(1);
   });
 
-  test("the warning reads no full run when the push run is already red (the hook has 3 s)", async () => {
-    const fake = fakeGh({ runs: [RED_RUN], schedule: [FULL_GREEN], jobsById: { 51: SUITE_GREEN } });
-    expect((await mainRedLine({ ...fake, now: () => NOW })) ?? "").toContain(RED_RUN.url);
-    expect(fake.asked.some((a) => a.includes("schedule"))).toBe(false);
+  test("the warning asks for the push run, the full runs and the claims at once, and no jobs of a green full run", async () => {
+    const fake = fakeGh({
+      runs: [GREEN_RUN],
+      schedule: [FULL_GREEN],
+      jobsById: { 51: SUITE_GREEN },
+    });
+    expect(await mainRedLine({ ...fake, now: () => NOW })).toBe(null);
+    expect(fake.peak()).toBe(4);
+    expect(fake.asked.some((a) => a[0] === "run" && a[1] === "view")).toBe(false);
   });
 
   test("a full run's red stays until a newer full run is green: a later green push run does not test it", async () => {
