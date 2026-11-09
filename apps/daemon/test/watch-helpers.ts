@@ -52,6 +52,8 @@ export interface FixtureOptions {
   checkExit?: Record<string, number>;
   /** Local check commands that run out of time. */
   checkTimedOut?: string[];
+  /** What a check prints, by command (#1361: the runner gives the whole output). */
+  checkOutput?: Record<string, string>;
   /** Runs while the local checks run: where the world changes under a round. */
   duringChecks?: () => void;
 }
@@ -154,7 +156,10 @@ export async function fixture(options: FixtureOptions = {}) {
         if (options.checkTimedOut?.includes(command)) {
           return { exitCode: 137, output: "", timedOut: true };
         }
-        return { exitCode: options.checkExit?.[command] ?? 0, output: `saída de ${command}` };
+        return {
+          exitCode: options.checkExit?.[command] ?? 0,
+          output: options.checkOutput?.[command] ?? `saída de ${command}`,
+        };
       },
     },
     git: (cwd, ...args) => {
