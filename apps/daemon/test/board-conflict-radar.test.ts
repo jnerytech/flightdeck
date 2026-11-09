@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cardWhen, newBoard } from "./board-helpers.ts";
+import { cardWhen, git, newBoard } from "./board-helpers.ts";
 import { must } from "./helpers.ts";
 
 setDefaultTimeout(20_000);
@@ -33,10 +33,11 @@ async function twoCards() {
 describe("board: the conflict radar (#1405)", () => {
   test("two cards editing the same file are both flagged; one that edits another file is not", async () => {
     const { board, ids, trees } = await twoCards();
+    // One card edits it first: nothing to flag yet. The turn that ended also refreshes by itself.
     writeFileSync(join(trees[0], "README.md"), "# first\n");
-    writeFileSync(join(trees[1], "README.md"), "# second\n");
     await board.refreshConflicts(ids[0]);
     expect(board.getCard(ids[0]).mayConflict).toBeUndefined();
+    writeFileSync(join(trees[1], "README.md"), "# second\n");
     await board.refreshConflicts(ids[1]);
     expect(board.getCard(ids[0]).mayConflict).toEqual([
       { cardId: ids[1], title: "Second", files: ["README.md"] },
@@ -44,7 +45,7 @@ describe("board: the conflict radar (#1405)", () => {
     expect(board.getCard(ids[1]).mayConflict).toEqual([
       { cardId: ids[0], title: "First", files: ["README.md"] },
     ]);
-    writeFileSync(join(trees[1], "README.md"), "");
+    git(trees[1], "checkout", "--", "README.md");
     writeFileSync(join(trees[1], "other.txt"), "x\n");
     await board.refreshConflicts(ids[1]);
     expect([board.getCard(ids[0]).mayConflict, board.getCard(ids[1]).mayConflict]).toEqual([
@@ -65,14 +66,14 @@ describe("board: the conflict radar (#1405)", () => {
 
   test("the watchers hear of the other card when its flag appears", async () => {
     const { board, ids, trees } = await twoCards();
+    const heard = new Set<string>();
+    const off = board.watch((card) => {
+      if (card.mayConflict) heard.add(card.id);
+    });
     for (const tree of trees) writeFileSync(join(tree, "README.md"), `# ${tree}\n`);
     await board.refreshConflicts(ids[0]);
-    const heard: string[] = [];
-    const off = board.watch((card) => {
-      if (card.mayConflict) heard.push(card.id);
-    });
     await board.refreshConflicts(ids[1]);
     off();
-    expect(heard.sort()).toEqual([...ids].sort());
+    expect([...heard].sort()).toEqual([...ids].sort());
   });
 });

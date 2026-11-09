@@ -53,6 +53,7 @@ import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
+import { ConflictRadar } from "./conflict-radar.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { cardDiff } from "./diff.ts";
 import {
@@ -66,7 +67,7 @@ import { pinnedPrompt } from "./pins.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
 import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
-import { assertBranchName, refArg } from "./ref-arg.ts";
+import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import { readSpec } from "./spec.ts";
 import {
@@ -86,6 +87,7 @@ import type {
   CardDiff,
   CardRun,
   ChecksState,
+  MayConflict,
   NewProject,
   Project,
   ProjectPatch,
@@ -437,6 +439,8 @@ export class Board {
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
+  /** Issue #1405: which cards of a project edit the same files. */
+  private readonly radar = new ConflictRadar((cwd, ...args) => git(cwd, ...args));
   /** Phase 22: the fix runs waiting for their first turn to end, by card. */
   private readonly fixes = new Map<string, (result: FixResult) => void>();
   private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
@@ -493,6 +497,8 @@ export class Board {
       this.afterBlockerChange(id);
     }
     this.pump();
+    // The radar starts empty: read the cards that already have a worktree, one at a time.
+    void this.refreshAllConflicts().catch(() => {});
   }
 
   listProjects(): Project[] {
@@ -756,6 +762,7 @@ export class Board {
       prUrl: row.pr_url,
       prState: row.pr_state,
       checksState: row.checks_state,
+      ...this.mayConflictOf(id),
       queued: active !== undefined && active.started_at === null && active.ended_at === null,
       sessionId,
       sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
@@ -1807,6 +1814,7 @@ export class Board {
 
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
   private async finish(id: string): Promise<void> {
+    this.dropConflicts(id);
     await this.closeRuns(id);
     await this.removeCleanWorktree(id);
     this.changed(id);
@@ -2391,6 +2399,7 @@ export class Board {
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
     forgetDone(this.db, id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
+    this.dropConflicts(id);
     const gone = { ...last, worktreePath: null, branch: null, discarded: true };
     this.emit(gone);
     // A card that is gone can never be done: the cards it held up are free of it.
@@ -2586,7 +2595,66 @@ export class Board {
   }
 
   /** Issue #1405: reads what the card changed and tells the cards that now share files with it. */
-  async refreshConflicts(_id: string): Promise<void> {}
+  async refreshConflicts(id: string): Promise<void> {
+    if (this.stopped) return;
+    const card = this.getCard(id);
+    const watching =
+      card.worktreePath !== null &&
+      card.column !== "done" &&
+      card.prState !== "merged" &&
+      card.prState !== "closed";
+    if (!watching) return this.dropConflicts(id);
+    const project = this.getProject(card.projectId);
+    let base: Rev;
+    try {
+      base = refArg(project.baseBranch);
+    } catch {
+      return this.dropConflicts(id);
+    }
+    const affected = await this.radar.update({
+      id,
+      projectId: card.projectId,
+      worktree: card.worktreePath as string,
+      base,
+      group: card.arenaOf ?? id,
+    });
+    if (this.stopped) return;
+    for (const other of affected) this.changed(other);
+  }
+
+  private async refreshAllConflicts(): Promise<void> {
+    const ids = this.db
+      .query<{ id: string }, []>("SELECT id FROM cards WHERE worktree_path IS NOT NULL")
+      .all()
+      .map(({ id }) => id);
+    await inSequence(ids, (id) => this.refreshConflicts(id));
+  }
+
+  /** The card no longer takes part in the radar; the cards that were flagged with it hear of it. */
+  private dropConflicts(id: string): void {
+    for (const other of this.radar.remove(id)) {
+      if (this.cardExists(other)) this.changed(other);
+    }
+  }
+
+  private cardExists(id: string): boolean {
+    return this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id) !== null;
+  }
+
+  /** The card's overlaps for its fields: nothing at all when it shares no file with another card. */
+  private mayConflictOf(id: string): { mayConflict?: MayConflict[] } {
+    const overlaps = this.radar.overlaps(id);
+    if (overlaps.length === 0) return {};
+    const titleOf = this.db.query<{ title: string }, [string]>(
+      "SELECT title FROM cards WHERE id = ?",
+    );
+    return {
+      mayConflict: overlaps.flatMap(({ cardId, files }) => {
+        const title = titleOf.get(cardId)?.title;
+        return title === undefined ? [] : [{ cardId, title, files }];
+      }),
+    };
+  }
 
   /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
   releaseWorktree(id: string, path: string, clearBranch: boolean): void {
@@ -2599,6 +2667,7 @@ export class Board {
       )
       .run(new Date().toISOString(), id, path);
     if (done.changes === 0) return;
+    this.dropConflicts(id);
     this.changed(id);
   }
 
@@ -2646,6 +2715,7 @@ export class Board {
       this.place(cardId, { type: "session", status: event.status });
     if (event.type === "turn.result") {
       this.place(cardId, { type: "turn", isError: event.isError });
+      void this.refreshConflicts(cardId).catch(() => {});
       this.settleFix(cardId, {
         costUsd: event.costUsd ?? 0,
         isError: event.isError,
