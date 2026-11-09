@@ -200,8 +200,11 @@ languages, re-measured at 1024, 640 and 390 by the narrow guard:
   the refused ones with their reason. The updated and current cards leave the selection; the others
   stay, to be opened. The focus goes back to the button, or to the board when the bar is gone.
 - **Progress:** "Updating 2 of 5…" is shown on the bar, not announced; the summary is announced.
-- **Still to come:** the same action on the Pull requests page (#1345), and the journey with three
-  cards and one conflict.
+- **Pull requests page (#1345):** one **Update N from the base** above the list, for every listed PR
+  that can take it, each on its own host, with the same runner and summary. It shows from two such
+  PRs on: a single one has its row's button. It has no row selection: it takes every listed PR
+  that can be updated, and a person who wants only some uses each row's own button. Row checkboxes,
+  if they are ever needed, are a feature of their own.
 
 ## Out of scope
 
