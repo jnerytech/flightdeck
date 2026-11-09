@@ -224,8 +224,14 @@ function jobsOnce<D extends Pick<MainRedDeps, "gh">>(deps: D): D {
 /** The failed jobs' names, Windows left out (a signal that gates nothing, #534). */
 const failed = (jobs: Job[]) =>
   jobs
-    .filter((j) => j.conclusion === "failure" && !/windows/i.test(j.name))
+    .filter((j) => !PASSED.has(j.conclusion) && !/windows/i.test(j.name))
     .map((j) => oneLine(j.name, 100));
+
+/** A job's conclusions that are no failure; timed out, cancelled or not started are (#1381). */
+const PASSED = new Set(["success", "skipped", "neutral"]);
+
+/** How a fixed full run's red is cleared: a newer full run, dispatched on main. */
+const RERUN = "gh workflow run CI --ref main -f only=all";
 
 /** How long ago a run started, as `2h 5m` or `40m`. */
 function age(createdAt: string, now: number): string {
@@ -252,7 +258,9 @@ function redOf(push: MainRun | null, full: MainRun | null): MainRun | null {
 
 /** How a red run is named: a full run says so, with its age. */
 const redName = (run: MainRun, now: number) =>
-  run.full ? `${run.url} (full run, ${age(run.createdAt, now)} old)` : run.url;
+  run.full
+    ? `${run.url} (full run, ${age(run.createdAt, now)} old; fixed since? ${RERUN})`
+    : run.url;
 
 /** The value of `<key>: <value>` in an issue body the tool wrote. */
 const field = (body: string, key: string) =>
@@ -397,11 +405,13 @@ async function status(deps: MainRedDeps): Promise<number> {
     deps.log(
       red.full && push
         ? `main is red: ${red.url} (full run, ${age(red.createdAt, now)} old; the push run is green: ${push.url})`
-        : `main is red: ${redName(red, now)}`,
+        : `main is red: ${red.full ? `${red.url} (full run, ${age(red.createdAt, now)} old)` : red.url}`,
     );
     for (const name of await failingOf(deps, red, await failedJobs(deps, red))) {
       deps.log(`failing: ${name}`);
     }
+    // A full run's red outlives its fix until a newer full run: say how to get one.
+    if (red.full) deps.log(`fixed since? a newer full run clears it: ${RERUN}`);
     if (!red.full && full && !full.red) {
       deps.log(`the full run is green: ${full.url} (${age(full.createdAt, now)} old)`);
     }
