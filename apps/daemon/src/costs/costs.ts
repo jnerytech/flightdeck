@@ -280,9 +280,9 @@ export class Costs {
     // Issue #1439: a second-opinion review has no session; its usage is recorded under the card.
     const reviews = this.db
       .query(
-        "SELECT TOTAL(cost_usd) AS cost FROM usage_entries WHERE message_id LIKE 'card-review-' || $id || '-%'",
+        "SELECT TOTAL(cost_usd) AS cost FROM usage_entries WHERE substr(message_id, 1, length($prefix)) = $prefix",
       )
-      .get({ id: cardId }) as { cost: number };
+      .get({ prefix: `card-review-${cardId}-` }) as { cost: number };
     return sessions + reviews.cost;
   }
 

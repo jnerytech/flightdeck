@@ -24,38 +24,24 @@ export interface SpecHooks {
 }
 
 /**
- * Looks for the spec file `path` (relative, Markdown) in the worktree `root`. Only two things
- * leave: whether a regular, non-empty file is there and the first heading in its first 8 KiB; the
- * contents never do. `path` is refused unless it is plain (`specPathProblem`); the file must not be
- * a link nor have a second name (a hard link may point outside), and once its folders are resolved
- * it must be inside the worktree's real path. It is opened without following a link or waiting on
- * a pipe, and the file opened must be the one that was checked (same device and inode) and, where
- * the system says where a descriptor points, still inside. Anything else is "not there": the
- * answer does not tell what exists beyond the worktree.
+ * The first `max` bytes of the spec file, read only when it is a plain file whose real place is
+ * inside the root (no link on the way, no hard link, not swapped after the check); null otherwise.
  */
-/** Issue #1439: the spec file's text (at most `max` bytes) with readSpec's checks; null when refused. */
-export async function readSpecText(
-  _root: string,
-  _path: string,
-  _max: number,
-): Promise<string | null> {
-  return "";
-}
-
-export async function readSpec(
+async function readChecked(
   root: string,
   path: string,
+  max: number,
   hooks: SpecHooks = {},
-): Promise<SpecFound> {
-  if (root === "" || specPathProblem(path) !== null) return NOTHING;
+): Promise<{ text: string; whole: boolean } | null> {
+  if (root === "" || specPathProblem(path) !== null) return null;
   try {
     const realRoot = await realpath(root);
     const target = resolve(realRoot, path);
     // BigInt: a 64-bit file id does not survive a Number.
     const info = await lstat(target, { bigint: true });
-    if (!info.isFile() || info.size === 0n || info.nlink > 1n) return NOTHING;
+    if (!info.isFile() || info.size === 0n || info.nlink > 1n) return null;
     // A folder on the way may be a link: where the file really is must still be inside.
-    if (!isInside(realRoot, await realpath(target))) return NOTHING;
+    if (!isInside(realRoot, await realpath(target))) return null;
     await hooks.beforeOpen?.();
     // O_NOFOLLOW stops a link at the file; O_NONBLOCK stops the wait on a pipe put there instead.
     const handle = await open(
@@ -65,22 +51,54 @@ export async function readSpec(
     try {
       const opened = await handle.stat({ bigint: true });
       // A folder on the way swapped for a link after the check leads to another file.
-      if (!opened.isFile() || opened.nlink !== 1n) return NOTHING;
-      if (opened.dev !== info.dev || opened.ino !== info.ino) return NOTHING;
-      if (!(await descriptorInside(realRoot, handle.fd))) return NOTHING;
-      const { bytesRead, buffer } = await handle.read(Buffer.alloc(LOOKED_AT), 0, LOOKED_AT, 0);
+      if (!opened.isFile() || opened.nlink !== 1n) return null;
+      if (opened.dev !== info.dev || opened.ino !== info.ino) return null;
+      if (!(await descriptorInside(realRoot, handle.fd))) return null;
+      const { bytesRead, buffer } = await handle.read(Buffer.alloc(max), 0, max, 0);
       // Where the system cannot say where the descriptor points, the path says it once more,
       // after the open: it must still be inside and still be the file that was opened.
-      if (!(await stillThere(realRoot, target, opened))) return NOTHING;
-      const { draft, body } = frontMatter(buffer.subarray(0, bytesRead).toString("utf8"));
-      const heading = firstHeading(body, bytesRead === LOOKED_AT);
-      return draft ? { found: true, heading, draft: true } : { found: true, heading };
+      if (!(await stillThere(realRoot, target, opened))) return null;
+      return {
+        text: buffer.subarray(0, bytesRead).toString("utf8"),
+        whole: BigInt(bytesRead) >= opened.size,
+      };
     } finally {
       await handle.close();
     }
   } catch {
-    return NOTHING;
+    return null;
   }
+}
+
+/**
+ * Looks for the spec file `path` (relative, Markdown) in the worktree `root`. Only two things
+ * leave: whether a regular, non-empty file is there and the first heading in its first 8 KiB; the
+ * contents never do (only `readSpecText`, for the card review's prompt, reads them, with the same checks). `path` is refused unless it is plain (`specPathProblem`); the file must not be
+ * a link nor have a second name (a hard link may point outside), and once its folders are resolved
+ * it must be inside the worktree's real path. It is opened without following a link or waiting on
+ * a pipe, and the file opened must be the one that was checked (same device and inode) and, where
+ * the system says where a descriptor points, still inside. Anything else is "not there": the
+ * answer does not tell what exists beyond the worktree.
+ */
+export async function readSpec(
+  root: string,
+  path: string,
+  hooks: SpecHooks = {},
+): Promise<SpecFound> {
+  const read = await readChecked(root, path, LOOKED_AT, hooks);
+  if (!read) return NOTHING;
+  const { draft, body } = frontMatter(read.text);
+  const heading = firstHeading(body, Buffer.byteLength(read.text) === LOOKED_AT);
+  return draft ? { found: true, heading, draft: true } : { found: true, heading };
+}
+
+/** Issue #1439: the spec file's text (at most `max` bytes) with readSpec's checks; null when refused. */
+export async function readSpecText(
+  root: string,
+  path: string,
+  max: number,
+): Promise<string | null> {
+  return (await readChecked(root, path, max))?.text ?? null;
 }
 
 /**

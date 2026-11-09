@@ -26,6 +26,7 @@ import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { HostPause } from "./board/host-pause.ts";
+import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -117,7 +118,6 @@ import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
-import { readRegular } from "./read-regular.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
@@ -1488,12 +1488,12 @@ export async function startDaemon(
           };
         },
         diff: (id) => board.diff(id),
-        // The spec file of the card, inside its worktree, never a credential file, at most 20 KB.
+        // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
+        // link on the way, no hard link), never a credential file, at most 20 KB.
         spec: async (id) => {
           const { specPath, worktreePath } = board.getCard(id);
           if (!specPath || !worktreePath || credential(specPath)) return undefined;
-          const bytes = await readRegular(join(worktreePath, specPath), 20_000).catch(() => null);
-          return bytes?.toString("utf8");
+          return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
         },
         hold: (projectId) => {
           if (hostPause.blocked()) return "paused";

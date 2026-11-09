@@ -68,7 +68,7 @@ export const REVIEW_BUDGET_USD = 0.5;
 export const REVIEWS_PER_DAY = 3;
 
 interface Row {
-  state: "running" | "done" | "failed";
+  state: "running" | "done" | "failed" | "error";
   summary: string | null;
   loose: string | null;
   anchored: number;
@@ -123,12 +123,17 @@ export class CardReviews {
     if (diff.files.length === 0) throw refused("card_review_no_diff", "the card has no changes");
     const hash = diffHash(diff);
     const stored = this.row(cardId, hash);
-    if (stored && stored.state !== "running") return { ...fromRow(stored), cached: true };
-    if (stored) throw refused("card_review_running", "a review of this diff is running");
+    if (stored?.state === "done" || stored?.state === "failed") {
+      return { ...fromRow(stored), cached: true };
+    }
+    if (stored?.state === "running") {
+      throw refused("card_review_running", "a review of this diff is running");
+    }
+    // Every attempt counts, also one that failed after it may have spent (an `error` row).
     const since = new Date(this.now() - 24 * 60 * 60 * 1000).toISOString();
     const today = this.deps.db
       .query<{ n: number }, [string, string]>(
-        "SELECT count(*) AS n FROM card_reviews WHERE card_id = ? AND at > ?",
+        "SELECT TOTAL(attempts) AS n FROM card_reviews WHERE card_id = ? AND at > ?",
       )
       .get(cardId, since);
     if ((today?.n ?? 0) >= REVIEWS_PER_DAY) {
@@ -138,7 +143,11 @@ export class CardReviews {
     }
     // The key first: neither a restart nor a crash mid-call allows a second spend on this diff.
     this.deps.db
-      .query("INSERT INTO card_reviews (card_id, diff_hash, state, at) VALUES (?, ?, 'running', ?)")
+      .query(
+        `INSERT INTO card_reviews (card_id, diff_hash, state, at) VALUES (?, ?, 'running', ?)
+         ON CONFLICT (card_id, diff_hash) DO UPDATE SET state = 'running', at = excluded.at,
+           attempts = attempts + 1`,
+      )
       .run(cardId, hash, new Date(this.now()).toISOString());
     this.running.add(cardId);
     try {
@@ -180,9 +189,10 @@ export class CardReviews {
         this.deps.record(card.id, worktree, error.tokens);
         return this.finish(card.id, hash, failed());
       }
-      // It never reached the model: no review is kept, so the person can ask again.
+      // It may or may not have reached the model: no review is kept, so the person can ask again,
+      // but the attempt stays counted toward the day's limit.
       this.deps.db
-        .query("DELETE FROM card_reviews WHERE card_id = ? AND diff_hash = ?")
+        .query("UPDATE card_reviews SET state = 'error' WHERE card_id = ? AND diff_hash = ?")
         .run(card.id, hash);
       throw error;
     }
