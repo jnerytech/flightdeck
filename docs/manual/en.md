@@ -1080,8 +1080,7 @@ live; the list is the project's, so a session of another project never shows her
   running), **Update N from the base** above the list updates them all, one at a time, each on its
   own host, as the board's selection bar does: a PR already on its base is left alone, a conflict
   stops only that card, and a line names the updated, already current and conflicted cards. The title opens the card. A line under the title says
-  whether the PR conflicts with the base, its review (approved, changes requested, review required)
-  and how long it has been open, as the host's PR poll reports them (about every minute); a host that
+  its review (approved, changes requested, review required) and how long it has been open, as the host's PR poll reports them (about every minute); a host that
   does not report them, or has not polled yet, adds nothing. A PR that conflicts with its base
   has no **Merge PR** (GitHub would refuse it): the conflict is a badge by the checks, **Update from
   the base** leads, and a card with no worktree here says to bring the branch up to date. A PR that

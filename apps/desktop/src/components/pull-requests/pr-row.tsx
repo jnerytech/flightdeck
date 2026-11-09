@@ -46,6 +46,7 @@ export function PrRow(
   const stance = mergeStance(card);
   const facts = prFacts(card, props.now, t, stance.kind !== "conflict");
   const heldId = useId();
+  const mergeable = props.canMerge && canMergeCardPr(card);
   const where = [props.row.hostName, props.row.projectName].filter(Boolean).join(" · ");
   return (
     <li data-slot="pr-row" className="rounded-md border px-3 py-2 text-sm">
@@ -100,7 +101,7 @@ export function PrRow(
           <p className="text-muted-foreground text-xs">{watchText(t, props.watch)}</p>
         )}
         <Inline gap={2}>
-          {props.canMerge && canMergeCardPr(card) && stance.kind !== "conflict" && (
+          {mergeable && stance.kind !== "conflict" && (
             <ActionButton
               variant={stance.kind === "held" ? "outline" : "default"}
               size="sm"
@@ -121,7 +122,7 @@ export function PrRow(
             </ActionButton>
           )}
         </Inline>
-        {stance.kind === "held" && (
+        {mergeable && stance.kind === "held" && (
           <p id={heldId} className="text-muted-foreground text-xs">
             {t("pullRequests.heldHint", { why: t(`pullRequests.heldWhy.${stance.why}` as Key) })}
           </p>
