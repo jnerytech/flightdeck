@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { GhResult } from "../lib/ci-branch.ts";
-import { latestMainRun, mainRed, mainRedLine, mainRedWithin, openClaims } from "../lib/main-red.ts";
+import {
+  latestFullRun,
+  latestMainRun,
+  mainRed,
+  mainRedLine,
+  mainRedWithin,
+  openClaims,
+} from "../lib/main-red.ts";
 
 /**
  * Issue #1246: a red main is claimed once. Every `gh` here is a fake that answers by its
@@ -61,20 +68,32 @@ function fakeGh(opts: {
   runsText?: string;
   /** `issue list` answers this text instead of JSON. */
   claimsText?: string;
+  /** #1381: `run list --event schedule` and `--event workflow_dispatch` (main's full runs). */
+  schedule?: object[];
+  dispatch?: object[];
+  /** `run view <id>`'s jobs and failed log, by run id (else `jobs` and `log`). */
+  jobsById?: Record<number, object[]>;
+  logById?: Record<number, string>;
 }) {
   let madeOne = false;
   const asked: string[][] = [];
   const gh = async (args: string[]): Promise<GhResult> => {
     asked.push(args);
     const line = args.join(" ");
+    const event = args.includes("--event") ? args[args.indexOf("--event") + 1] : undefined;
+    if (line.startsWith("run list") && event) {
+      const full = event === "schedule" ? opts.schedule : opts.dispatch;
+      return { code: 0, stdout: JSON.stringify(full ?? []) };
+    }
     if (line.startsWith("run list")) {
       return { code: 0, stdout: opts.runsText ?? JSON.stringify(opts.runs ?? []) };
     }
+    const id = Number(args[2]);
     if (line.startsWith("run view") && args.includes("--log-failed")) {
-      return { code: 0, stdout: opts.log ?? "" };
+      return { code: 0, stdout: opts.logById?.[id] ?? opts.log ?? "" };
     }
     if (line.startsWith("run view")) {
-      return { code: 0, stdout: JSON.stringify({ jobs: opts.jobs ?? [] }) };
+      return { code: 0, stdout: JSON.stringify({ jobs: opts.jobsById?.[id] ?? opts.jobs ?? [] }) };
     }
     if (line.startsWith("issue list")) {
       if (opts.claimsText !== undefined) return { code: 0, stdout: opts.claimsText };
@@ -373,5 +392,137 @@ describe("main-red: one claim per red main (#1246)", () => {
     expect((wcreate?.[wcreate.indexOf("--body") + 1] ?? "").includes("only on windows")).toBe(
       false,
     );
+  });
+});
+
+/** #1381: main's full runs (the schedule and a dispatch with only=all), which push runs are not. */
+const NOW = Date.parse("2026-11-09T03:05:00Z");
+const FULL_RED = {
+  databaseId: 50,
+  conclusion: "failure",
+  createdAt: "2026-11-09T01:00:00Z",
+  url: "https://github.com/o/r/actions/runs/50",
+};
+const FULL_GREEN = {
+  ...FULL_RED,
+  databaseId: 51,
+  conclusion: "success",
+  url: "https://github.com/o/r/actions/runs/51",
+};
+const SUITE_FAILED = [
+  { name: "test suite (ubuntu-latest)", conclusion: "failure" },
+  { name: "test suite (windows-latest)", conclusion: "failure" },
+];
+const SUITE_GREEN = [
+  { name: "test suite (ubuntu-latest)", conclusion: "success" },
+  { name: "test suite (windows-latest)", conclusion: "failure" },
+];
+const FULL_LOG = [
+  "test suite (ubuntu-latest)\tRun tests\t2026-11-09T01:20:00Z (fail) deps-gate > startCard is the only door [1.20ms]",
+  "test suite (windows-latest)\tRun tests\t2026-11-09T01:20:00Z (fail) windows only > a path [3.00ms]",
+].join("\n");
+
+function runAt(args: string[], fake: ReturnType<typeof fakeGh>) {
+  const lines: string[] = [];
+  return {
+    lines,
+    code: mainRed(args, {
+      gh: fake.gh,
+      log: (l) => lines.push(l),
+      owner: "fd-harness",
+      now: () => NOW,
+    }),
+  };
+}
+
+describe("main-red: a red only main's full runs see is reported too (#1381)", () => {
+  test("a green push run and a red full run: red, with the full run's failing tests and age", async () => {
+    const fake = fakeGh({
+      runs: [GREEN_RUN],
+      schedule: [FULL_RED],
+      jobsById: { 50: SUITE_FAILED },
+      logById: { 50: FULL_LOG },
+    });
+    const shown = runAt([], fake);
+    expect(await shown.code).toBe(1);
+    expect(shown.lines).toEqual([
+      `main is red: ${FULL_RED.url} (full run, 2h 5m old; the push run is green: ${GREEN_RUN.url})`,
+      "failing: deps-gate > startCard is the only door",
+      'unclaimed: bun run main-red -- claim "<cause>"',
+    ]);
+  });
+
+  test("a green push run and a green full run: green, and the claims close", async () => {
+    const fake = fakeGh({
+      runs: [GREEN_RUN],
+      schedule: [FULL_GREEN],
+      jobsById: { 51: SUITE_GREEN },
+      claims: [issue(30, "fd-qa", ["x"])],
+    });
+    const shown = runAt([], fake);
+    expect(await shown.code).toBe(0);
+    expect(shown.lines).toEqual([`main is green: ${GREEN_RUN.url}`, "closed: #30 (fd-qa)"]);
+  });
+
+  test("a full run red only on Windows is green; a screenshots dispatch is no full run, a newer full dispatch is", async () => {
+    const windowsOnly = fakeGh({
+      runs: [GREEN_RUN],
+      schedule: [FULL_RED],
+      jobsById: { 50: SUITE_GREEN },
+    });
+    expect(await runAt([], windowsOnly).code).toBe(0);
+    const shots = { ...FULL_RED, databaseId: 60, createdAt: "2026-11-09T02:00:00Z" };
+    const dispatched = { ...FULL_RED, databaseId: 61, createdAt: "2026-11-09T01:30:00Z" };
+    const fake = fakeGh({
+      schedule: [FULL_GREEN],
+      dispatch: [shots, dispatched],
+      jobsById: {
+        51: SUITE_GREEN,
+        60: [{ name: "screenshots", conclusion: "failure" }],
+        61: SUITE_FAILED,
+      },
+    });
+    const full = await latestFullRun(fake);
+    expect([full?.id, full?.red]).toEqual([61, true]);
+  });
+
+  test("a red push run and a green full run: red, and the full run's green verdict is shown", async () => {
+    const fake = fakeGh({
+      runs: [RED_RUN],
+      log: LOG,
+      schedule: [FULL_GREEN],
+      jobsById: { 51: SUITE_GREEN },
+    });
+    const shown = runAt([], fake);
+    expect(await shown.code).toBe(1);
+    expect(shown.lines).toEqual([
+      `main is red: ${RED_RUN.url}`,
+      "failing: protocolo-compat > host.info traz os recursos",
+      "failing: card detail > opens on changes",
+      `the full run is green: ${FULL_GREEN.url} (2h 5m old)`,
+      'unclaimed: bun run main-red -- claim "<cause>"',
+    ]);
+  });
+
+  test("the warning and a claim take the full run when only it is red", async () => {
+    const opts = {
+      runs: [GREEN_RUN],
+      schedule: [FULL_RED],
+      jobsById: { 50: SUITE_FAILED },
+      logById: { 50: FULL_LOG },
+    };
+    expect(await mainRedLine({ ...fakeGh(opts), now: () => NOW })).toBe(
+      `main is red since ${FULL_RED.url} (full run, 2h 5m old), unclaimed: bun run main-red -- claim "<cause>" before fixing it`,
+    );
+    const fake = fakeGh(opts);
+    expect(await runAt(["claim", "deps-gate after #1348"], fake).code).toBe(0);
+    const [create] = created(fake.asked);
+    const body = create?.[create.indexOf("--body") + 1] ?? "";
+    expect(body.split("\n").filter((l) => /^(Run|Failing|- )/.test(l))).toEqual([
+      `Run: ${FULL_RED.url}`,
+      `Run at: ${FULL_RED.createdAt}`,
+      "Failing:",
+      "- deps-gate > startCard is the only door",
+    ]);
   });
 });

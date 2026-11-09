@@ -10,6 +10,8 @@ export interface MainRedDeps {
   /** Runs `gh <args>` in the repository; stderr is how a missing label is told apart. */
   gh(args: string[]): Promise<GhResult>;
   log(line: string): void;
+  /** The clock, for a full run's age (#1381); `Date.now` by default. */
+  now?: () => number;
 }
 
 /** Main's latest CI run that finished green or red (a cancelled one says nothing). */
@@ -95,6 +97,14 @@ export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
     red: run.conclusion !== "success",
     lastGreenAt: finished.find((r) => r.conclusion === "success")?.createdAt ?? "",
   };
+}
+
+/**
+ * #1381: main's latest full run (the schedule, or a dispatch with only=all), red only when a job
+ * other than Windows failed; null when there is none or gh failed.
+ */
+export async function latestFullRun(_deps: Pick<MainRedDeps, "gh">): Promise<MainRun | null> {
+  return null;
 }
 
 /** The value of `<key>: <value>` in an issue body the tool wrote. */
@@ -186,7 +196,7 @@ const current = (claims: Claim[], run: MainRun) =>
 const owned = (claim: Claim) => `#${claim.number} by ${claim.owner} (${claim.cause})`;
 
 /** The one-line warning while main is red, or null when it is green or GitHub cannot say. */
-export async function mainRedLine(deps: Pick<MainRedDeps, "gh">): Promise<string | null> {
+export async function mainRedLine(deps: Pick<MainRedDeps, "gh" | "now">): Promise<string | null> {
   try {
     const run = await latestMainRun(deps);
     if (!run?.red) return null;
