@@ -43,7 +43,10 @@ engine can already continue a run without repeating what finished: after a daemo
   otherwise shows why. With `confirm: true` it checks again, records the resume, puts the card's
   run back to running (it waits for a slot like any run) and executes it. The confirm is
   near-only (`requireVaultTransport`), stricter than starting a card, since it runs the
-  project's commands again. The check answers anywhere.
+  project's commands again. The check answers anywhere, but over a far connection a run that
+  could resume answers `ok: false` with `transport_refused`: the app shows that reason instead
+  of a button whose confirm would be refused. Only the daemon sees the connection's origin; the
+  app's own guess from the host's address misses a Tailscale name.
 
 - **After a restart.** A resume still waiting for its slot when the daemon stops continues once
   the daemon is back, with the HEAD its resume recorded. It still needs the same HEAD once it
@@ -71,4 +74,5 @@ engine can already continue a run without repeating what finished: after a daemo
 - Each resume of a run is listed in its history. A step's earlier failure stays readable there,
   even though its rows are cleared.
 - The app (slice A) shows "Run again from <step>" on a failed run when the check says `ok`, and
-  the reason when it does not. "Run again" from the start stays.
+  the reason when it does not. "Run again" from the start stays. A host without `run.resume`
+  answers the check with an error, and the app then offers only "Run again".
