@@ -306,7 +306,7 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
     ]).toEqual([true, true, true]);
   });
 
-  test("#1498: the variables field says it takes names only, and a NAME=value line is shown under it, with the fix", async () => {
+  test("#1498: the variables field says it takes names only, and a NAME=value line is shown under it by its name, with the fix", async () => {
     await loopHost();
     const label = "Variáveis extras dos checks (uma por linha)";
     await settleMaybe(() => screen.queryByLabelText(label) !== null);
@@ -318,9 +318,7 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
     await act(async () => fireIf(maybe(label), { target: { value: "JAVA_HOME=/opt/jdk" } }));
     const field = maybe(label);
     const error = section()
-      ? within(section() as HTMLElement).queryByText(
-          "JAVA_HOME=/opt/jdk: escreva só o nome (JAVA_HOME).",
-        )
+      ? within(section() as HTMLElement).queryByText("JAVA_HOME=…: escreva só o nome (JAVA_HOME).")
       : null;
     const described = (field?.getAttribute("aria-describedby") ?? "").split(" ");
     const save = section()
@@ -335,5 +333,19 @@ describe("vigiar-config: the check loop's settings (#1361)", () => {
         ? within(section() as HTMLElement).queryByText("Corrija o campo marcado.") !== null
         : false,
     ]).toEqual([true, "true", true, true, true]);
+  });
+  test("#1498: a pasted value never shows on the screen, whatever the name: only the name is said", async () => {
+    await loopHost();
+    const label = "Variáveis extras dos checks (uma por linha)";
+    await settleMaybe(() => screen.queryByLabelText(label) !== null);
+    const shown = async (value: string) => {
+      await act(async () => fireIf(maybe(label), { target: { value } }));
+      const text = section()?.textContent ?? "";
+      return [text.includes("abc123"), text.includes(value.split("=")[0] as string)];
+    };
+    expect([await shown("GITHUB_TOKEN=abc123"), await shown("JAVA_HOME=abc123")]).toEqual([
+      [false, true],
+      [false, true],
+    ]);
   });
 });
