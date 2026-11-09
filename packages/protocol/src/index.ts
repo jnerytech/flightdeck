@@ -792,6 +792,16 @@ const CardDeps = {
   autoStart: z.object({ workflow: z.string().nullable() }).nullable().optional(),
 };
 
+/** Issue #1361: a card's switch for "keep going until the checks pass". */
+export const CheckLoopSwitch = z.object({
+  on: z.boolean(),
+  /** The card's own cap on rounds, below the project's; `null` takes the project's. */
+  rounds: z.number().int().min(1).max(10).nullable(),
+  /** The person confirmed that the checks run the card's code outside its permission mode. */
+  confirmed: z.boolean(),
+});
+export type CheckLoopSwitch = z.infer<typeof CheckLoopSwitch>;
+
 export const Card = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -857,6 +867,8 @@ export const Card = z.object({
   estimateHours: z.number().nullable().default(null),
   /** Issue #78: what the person did to validate the work, a note a column can ask for. */
   validationNote: z.string().nullable().default(null),
+  /** Issue #1361: the check loop's switch; absent from older daemons. */
+  checkLoop: CheckLoopSwitch.optional(),
   /** Issue #78: the spec file the card names in its worktree; `null` is `docs/specs/<slug>.md`. */
   specPath: z.string().nullable().default(null),
   /** Issue #78: what the host last found of the spec file; `null` until it looked. */
@@ -3495,6 +3507,21 @@ export const Command = z.discriminatedUnion("type", [
     }),
   ),
   cmd("card.templates", z.object({ projectId: z.string() })),
+  /**
+   * Issue #1361: turns the card's check loop on or off. Outside bypassPermissions it turns on only
+   * with `confirm`, which needs a near connection; off always works.
+   */
+  cmd(
+    "card.checkLoop",
+    z
+      .object({
+        cardId: z.string().min(1),
+        on: z.boolean(),
+        confirm: z.boolean().optional(),
+        rounds: z.number().int().min(1).max(10).nullable().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "card.update",
     z.object({
@@ -5587,6 +5614,7 @@ export interface CommandResults {
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;
+  "card.checkLoop": Card;
   "card.move": Card;
   "card.start": Card;
   "card.stop": Card;
