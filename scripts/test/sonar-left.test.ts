@@ -121,4 +121,20 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
       "sonar-left: SonarCloud could not be reached: Error: getaddrinfo ENOTFOUND",
     ]);
   });
+
+  test("every field printed is one plain line: no escape, C1 control or bidi override from the API", async () => {
+    const { analysed, git } = repo();
+    const hostile = {
+      component: "jnerytech_flightdeck:b\u202e.ts",
+      line: 1,
+      severity: "CRITICAL\u001b[31m",
+      rule: "rule\u009b2J",
+      message: "text\u2066x",
+    };
+    const { fetch } = fakeFetch(analysed, [hostile]);
+    const lines: string[] = [];
+    await sonarLeft([], { fetch, git, log: (l) => lines.push(l) });
+    const printed = lines.slice(1).join("\n");
+    expect(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/.test(printed)).toBe(false);
+  });
 });
