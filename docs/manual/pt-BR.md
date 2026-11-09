@@ -1130,7 +1130,8 @@ aparece mascarado e como **Oculto**, e não abre.
   **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
   quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
   uma linha para cada trava que segura os cards novos (o limite de pausa da cota, um orçamento no limite,
-  o host sem memória) e os cards que ficam de fora e por quê. Parar também pergunta: o turno de um card rodando é
+  o host sem memória), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de
+  fora e por quê. Parar também pergunta: o turno de um card rodando é
   interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
   os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que

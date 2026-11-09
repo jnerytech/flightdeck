@@ -1516,6 +1516,7 @@ export async function startDaemon(
     },
     memoryPause: {
       pauseAt: () => memoryGate.pauseAt(),
+      holding: () => memoryGate.holds(),
       set: async (pauseAt) => {
         // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
         await updateConfigFile(configFile, (raw) => ({
