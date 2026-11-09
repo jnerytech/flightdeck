@@ -221,7 +221,7 @@ import { Vault } from "./vault/vault.ts";
 import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
 import { Traces } from "./watch/trace.ts";
-import { PrWatcher } from "./watch/watch.ts";
+import { PrWatcher, readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
@@ -1101,7 +1101,8 @@ export async function startDaemon(
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
     checkLoop: {
-      settings: (projectId) => prWatcher.settings(projectId),
+      // From the database alone: the board reads them while it starts, before the watcher exists.
+      settings: (projectId) => readWatchSettings(store.db, projectId),
       isTrusted: (path) => projectTrust.isTrusted(path),
       runner: boundedCheckRunner(),
     },

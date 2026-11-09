@@ -809,13 +809,52 @@ const CardDeps = {
   autoStart: z.object({ workflow: z.string().nullable() }).nullable().optional(),
 };
 
-/** Issue #1361: a card's switch for "keep going until the checks pass". */
+/** Issue #1361: why a card's check loop ended; the app names each in its language. */
+export const CheckLoopReason = z.enum([
+  "passed",
+  "rounds_spent",
+  "budget",
+  "quota",
+  "memory",
+  "person_turn",
+  "stopped_by_you",
+  "session_ended",
+  "no_result",
+  "check_loop_confirm",
+  "check_loop_untrusted",
+  "check_loop_mode",
+  "check_refused",
+  "check_error",
+  "turn_error",
+  "interrupted",
+]);
+export type CheckLoopReason = z.infer<typeof CheckLoopReason>;
+
+/** Issue #1361: the last line of a card's loop: a round sent, or how the loop ended. */
+export const CheckLoopLine = z.object({
+  state: z.enum(["sent", "ended"]),
+  /** On an end; a reason a newer app does not know reads as `null`. */
+  reason: CheckLoopReason.nullable().catch(null),
+  /** The failed check's command, masked; `null` when no check failed. */
+  command: z.string().nullable(),
+  exitCode: z.number().int().nullable(),
+  at: z.string(),
+});
+export type CheckLoopLine = z.infer<typeof CheckLoopLine>;
+
+/** Issue #1361: a card's switch for "keep going until the checks pass", and how its loop goes. */
 export const CheckLoopSwitch = z.object({
   on: z.boolean(),
   /** The card's own cap on rounds, below the project's; `null` takes the project's. */
   rounds: z.number().int().min(1).max(10).nullable(),
   /** The person confirmed that the checks run the card's code outside its permission mode. */
   confirmed: z.boolean(),
+  /** What the loop does now: its checks run, or a round it sent is being worked on. */
+  active: z.enum(["checking", "fixing"]).nullable().optional(),
+  /** Rounds sent in the loop going on, and the most it may send. */
+  round: z.number().int().min(0).optional(),
+  max: z.number().int().min(1).optional(),
+  last: CheckLoopLine.nullable().optional(),
 });
 export type CheckLoopSwitch = z.infer<typeof CheckLoopSwitch>;
 
