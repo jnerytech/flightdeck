@@ -58,6 +58,8 @@ export const JOURNEYS: readonly string[] = [
   "merge-pr-recusa",
   "pull-requests",
   "enquanto-fora",
+  // #1406: Update from the base on three cards, one of them in conflict.
+  "board-atualizar",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
