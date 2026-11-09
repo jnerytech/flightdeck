@@ -76,6 +76,9 @@ export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
     "main",
     "--workflow",
     "CI",
+    // #1381: push runs only; the full runs (schedule, dispatch) are read by latestFullRun.
+    "--event",
+    "push",
     "--status",
     "completed",
     "--limit",
@@ -108,10 +111,10 @@ export async function latestMainRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
  */
 export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<MainRun | null> {
   // A run on main ran on one of main's commits, and main is never rewritten: it stays in history.
-  // Read at once: the SessionStart hook gives the whole lookup 3 seconds.
+  // Read at once: the SessionStart hook gives the whole lookup 6 seconds.
   const [scheduled, dispatched] = await Promise.all([
     finishedOn(deps, "schedule", 3),
-    finishedOn(deps, "workflow_dispatch", 5),
+    finishedOn(deps, "workflow_dispatch", 10),
   ]);
   // A dispatch with only=screenshots runs no test suite: only one that did is a full run. Only a
   // dispatch newer than the latest scheduled run can be the latest full run.
@@ -121,17 +124,26 @@ export async function latestFullRun(deps: Pick<MainRedDeps, "gh">): Promise<Main
       newer.map(async (r) => [r.databaseId, await runJobs(deps, r.databaseId)] as const),
     ),
   );
+  // A screenshots dispatch lists its test suite job too, skipped: only one that ran counts.
   const fullDispatch = newer.find((r) =>
-    (jobsOf.get(r.databaseId) ?? []).some((j) => /^test suite/i.test(j.name)),
+    (jobsOf.get(r.databaseId) ?? []).some(
+      (j) =>
+        /^test suite/i.test(j.name) && (j.conclusion === "success" || j.conclusion === "failure"),
+    ),
   );
   const full = [scheduled[0], fullDispatch]
     .filter((r): r is RunRow => r !== undefined)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   if (!full) return null;
-  // Windows gates nothing (#534): a full run red only there is green.
-  const red =
-    full.conclusion === "failure" &&
-    failed(jobsOf.get(full.databaseId) ?? (await runJobs(deps, full.databaseId))).length > 0;
+  // Windows gates nothing (#534): a full run red only there is green. Jobs gh cannot read leave
+  // a failed run red: the verdict fails closed, as the push run's does. A green run needs no jobs.
+  let red = false;
+  if (full.conclusion === "failure") {
+    const jobs = jobsOf.has(full.databaseId)
+      ? (jobsOf.get(full.databaseId) ?? null)
+      : await runJobs(deps, full.databaseId);
+    red = jobs === null || failed(jobs).length > 0;
+  }
   const greens = [...scheduled, ...(fullDispatch ? [fullDispatch] : [])]
     .filter((r) => r.conclusion === "success")
     .map((r) => r.createdAt)
@@ -186,11 +198,27 @@ async function finishedOn(
   );
 }
 
-/** A run's jobs, or none when gh cannot say. */
-async function runJobs(deps: Pick<MainRedDeps, "gh">, id: number): Promise<Job[]> {
+/** A run's jobs, or null when gh cannot say. */
+async function runJobs(deps: Pick<MainRedDeps, "gh">, id: number): Promise<Job[] | null> {
   const viewed = await deps.gh(["run", "view", String(id), "--json", "jobs"]);
   const answer = viewed.code === 0 ? parsed(viewed.stdout) : null;
-  return (answer as { jobs?: Job[] } | null)?.jobs ?? [];
+  const jobs = (answer as { jobs?: unknown } | null)?.jobs;
+  return Array.isArray(jobs) ? (jobs as Job[]) : null;
+}
+
+/** `deps` whose `run view <id> --json jobs` asks GitHub once per call of the tool. */
+function jobsOnce<D extends Pick<MainRedDeps, "gh">>(deps: D): D {
+  const seen = new Map<string, ReturnType<MainRedDeps["gh"]>>();
+  return {
+    ...deps,
+    gh: (args: string[]) => {
+      if (args[0] !== "run" || args[1] !== "view" || !args.includes("jobs")) return deps.gh(args);
+      const key = args.join(" ");
+      const asked = seen.get(key) ?? deps.gh(args);
+      seen.set(key, asked);
+      return asked;
+    },
+  };
 }
 
 /** The failed jobs' names, Windows left out (a signal that gates nothing, #534). */
@@ -206,11 +234,20 @@ function age(createdAt: string, now: number): string {
   return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
 }
 
-/** Main's push run and its full run, and which of them makes main red (the push run first). */
+/**
+ * Main's push run and its full run, read at once, and which of them makes main red (the push run
+ * first). A full run's red stays until a newer full run is green (up to the 3 hours of the
+ * schedule): a later green push run tests only what its merge changed, so it does not clear it.
+ */
 async function mainState(deps: Pick<MainRedDeps, "gh">) {
   const [push, full] = await Promise.all([latestMainRun(deps), latestFullRun(deps)]);
-  const red = push?.red ? push : full?.red ? full : null;
-  return { push, full, red };
+  return { push, full, red: redOf(push, full) };
+}
+
+/** The run that makes main red: the push run first, then the full run. */
+function redOf(push: MainRun | null, full: MainRun | null): MainRun | null {
+  if (push?.red) return push;
+  return full?.red ? full : null;
 }
 
 /** How a red run is named: a full run says so, with its age. */
@@ -271,7 +308,7 @@ export async function openClaims(deps: Pick<MainRedDeps, "gh">): Promise<Claim[]
 
 /** The failed jobs of a run, Windows left out (a signal that gates nothing, #534). */
 async function failedJobs(deps: Pick<MainRedDeps, "gh">, run: MainRun): Promise<string[]> {
-  return failed(await runJobs(deps, run.id));
+  return failed((await runJobs(deps, run.id)) ?? []);
 }
 
 /** The failing tests of a red run (its `(fail)` lines), else its failed jobs as `job: <name>`. */
@@ -303,9 +340,12 @@ const owned = (claim: Claim) => `#${claim.number} by ${claim.owner} (${claim.cau
 /** The one-line warning while main is red, or null when it is green or GitHub cannot say. */
 export async function mainRedLine(deps: Pick<MainRedDeps, "gh" | "now">): Promise<string | null> {
   try {
-    const run = (await mainState(deps)).red;
+    deps = jobsOnce(deps);
+    // Asked together: the hook's deadline, not GitHub, is what would hide a red.
+    const [state, open] = await Promise.all([mainState(deps), openClaims(deps)]);
+    const run = state.red;
     if (!run) return null;
-    const claims = current(await openClaims(deps), run);
+    const claims = current(open, run);
     const since = redName(run, (deps.now ?? Date.now)());
     const unclaimed = `main is red since ${since}, unclaimed: bun run main-red -- claim "<cause>" before fixing it`;
     if (claims.length === 0) return unclaimed;
@@ -476,6 +516,7 @@ export async function mainRed(
   deps: MainRedDeps & { owner: string },
 ): Promise<number> {
   const words = args.filter((a) => a !== "--");
+  deps = jobsOnce(deps);
   try {
     if (words.length === 0) return await status(deps);
     if (words[0] !== "claim") {
