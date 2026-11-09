@@ -143,6 +143,7 @@ describe("harness-templates-ui: the host lists its Claude Code setup templates a
       5000,
       "the focus back on the Delete button",
     );
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Delete template Shop setup");
   });
 
   test("a listing that fails says so and offers to try again, instead of looking for ever", async () => {

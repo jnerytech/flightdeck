@@ -2257,7 +2257,10 @@ now**; the system's save dialog asks where. Only that passphrase opens the file,
 
 To **Restore a backup**, type the file's passphrase and press **Read backup**, then pick the file.
 Flightdeck shows, for each kind, how many items are new, the same or different here, and lists the
-different ones by name. Nothing changes until you press **Restore**: a difference keeps what is here
+different ones by name. A host is named with where it points, such as `alfa (ws://100.64.0.2:7420)`, so
+you see which machine comes back; a login or a query in its address is not shown. Where the app
+cannot open a file, the section says that restoring needs the desktop app instead of offering
+**Read backup**. Nothing changes until you press **Restore**: a difference keeps what is here
 unless you choose **Replace with the backup**, which asks you to confirm. The restore is all or
 nothing: if it fails midway, everything is put back as it was. A wrong passphrase and a changed file
 are both refused, and change nothing. Close and reopen Flightdeck afterwards to use the restored
@@ -2747,7 +2750,14 @@ Claude Code sessions can message each other through Flightdeck, on the same host
      worktree;
   4. accept only a green commit;
   5. integrate in the agreed order;
-  6. tell you when something is your decision.
+  6. tell you when something is your decision;
+  7. report the team's outcome.
+- **The team's outcome:** the coordinator reports it with the `team_report` tool (up to 4000
+  characters); the host refuses any other session. Its last report heads the team's card under
+  **Outcome**, marked **Done** or **In progress**, as plain text; a long one scrolls in a box the
+  keyboard can reach. Below it, each worker's row shows its **Last report**, its card's branch and
+  how many files the card changed. When the coordinator reports the goal done, a notification says
+  so and opens the team.
 - **From the team's row you can:**
   - pause it (STOP to every member) and resume it;
   - send a message to everyone;
