@@ -127,7 +127,7 @@ export async function startElsewhere(run: {
     const note = t("board.startedElsewhere", { host: target.name, id: as });
     const marked = await ask(run.sourceHostId, "card.update", {
       cardId: card.id,
-      description: `${card.description}\n\n${note}`,
+      description: [card.description, note].join("\n\n"),
     });
     const done =
       marked.ok &&
