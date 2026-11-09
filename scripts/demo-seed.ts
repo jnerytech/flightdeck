@@ -32,6 +32,8 @@ import {
   DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
   DEMO_GATE_CARD,
+  DEMO_PR_BETA_CARD,
+  DEMO_PR_BETA_URL,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
@@ -680,6 +682,13 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
         args: ["pr", "checks", DEMO_PR_URL],
         stdout: JSON.stringify([{ name: "build", bucket: "pass", link: "" }]),
       },
+      // Issue #1345: beta's PR is open and mergeable, and the host's merge goes through. The fake keeps
+      // saying "open" afterwards (its answers do not change), so the card stays on the page.
+      {
+        args: ["pr", "view", DEMO_PR_BETA_URL, "state,statusCheckRollup"],
+        stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
+      },
+      { args: ["pr", "merge", DEMO_PR_BETA_URL], stdout: "Merged\n" },
       {
         args: ["pr", "merge", DEMO_PR_URL],
         code: 1,
@@ -1246,7 +1255,24 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     tool_input: { repo: "acme/flightdeck-web", title: "Login falha com SSO", labels: ["bug"] },
   });
 
-  // beta: a quieter host.
+  // beta: a quieter host, with one session and one open PR (issue #1345: the Pull requests page lists
+  // the PRs of both hosts).
+  const betaApi = repo(join(beta.projects, "flightdeck-api"), {
+    "README.md": "# flightdeck-api\n",
+  });
+  const apiProject = await beta.client.call<{ id: string }>("project.add", { path: betaApi });
+  await beta.client.call("project.update", { projectId: apiProject.id, prProvider: "github" });
+  const apiCard = await beta.client.call<{ id: string }>("card.create", {
+    projectId: apiProject.id,
+    title: DEMO_PR_BETA_CARD,
+    description: "A route that says the service is up.",
+    column: "review",
+  });
+  const betaPrs = new Database(join(beta.dataDir, "flightdeck.db"));
+  betaPrs
+    .query("UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = 'passing' WHERE id = ?")
+    .run(DEMO_PR_BETA_URL, apiCard.id);
+  betaPrs.close();
   await beta.client.call("session.create", {
     cwd: beta.projects,
     name: "Rotina de backup",

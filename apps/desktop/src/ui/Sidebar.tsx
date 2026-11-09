@@ -658,6 +658,13 @@ export function Sidebar(
               disabled={!navHost}
               onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
             />
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="pull-requests" aria-hidden="true" className={icon} />}
+              active={here === "pull-requests"}
+              label={t("sidebar.pullRequests")}
+              onClick={() => go({ name: "pull-requests" })}
+            />
           </NavGroup>
           <NavGroup
             label={t("sidebarGroups.automation")}
