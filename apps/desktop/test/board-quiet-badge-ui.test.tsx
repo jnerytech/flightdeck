@@ -105,16 +105,17 @@ function setup(language: "en" | "pt-BR" = "en") {
 
 const tile = (title: string) => screen.queryByLabelText(`Card ${title}`) as HTMLElement | null;
 const ready = () => settle(() => tile("Working") !== null);
+/** The words of each quiet badge on a card: the part the eye reads. */
 const wearing = (title: string) =>
   [...(tile(title)?.querySelectorAll("[data-slot='badge']") ?? [])]
-    .map((badge) => (badge.textContent ?? "").replace(/\s+/g, " ").trim())
+    .map((badge) => badge.querySelector("[aria-hidden='true']:not(svg)")?.textContent ?? "")
     .filter((text) => text.includes("Quiet") || text.includes("silêncio"));
 
 describe("board-quiet-badge-ui: a card whose session says nothing wears the Quiet badge (#1553)", () => {
   test("the quiet card has it, as words with the full line as the name; the others do not", async () => {
     setup();
     await ready();
-    expect(wearing("Quiet one")).toEqual(["Quiet 23 min Quiet for 23 min · last: Bash"]);
+    expect(wearing("Quiet one")).toEqual(["Quiet 23 min"]);
     // The words show; the full line is what a screen reader reads, in the same badge.
     const badge = tile("Quiet one")?.querySelector("[data-slot='badge']");
     const hidden = badge?.querySelector("[aria-hidden='true']:not(svg)")?.textContent;
@@ -137,9 +138,9 @@ describe("board-quiet-badge-ui: a card whose session says nothing wears the Quie
   test("Not stuck hides it with the row, and the same badge reads in Portuguese", async () => {
     const store = setup("pt-BR");
     await ready();
-    expect(wearing("Quiet one")).toEqual([
-      "Em silêncio 23 min Em silêncio há 23 min · última: Bash",
-    ]);
+    expect(wearing("Quiet one")).toEqual(["Em silêncio 23 min"]);
+    const spoken = tile("Quiet one")?.querySelector("[data-slot='badge'] .sr-only")?.textContent;
+    expect(spoken).toBe("Em silêncio há 23 min · última: Bash");
     await act(async () => store.snoozeQuiet("h1", "Q"));
     await settle(() => wearing("Quiet one").length === 0);
     expect(wearing("Quiet one")).toEqual([]);

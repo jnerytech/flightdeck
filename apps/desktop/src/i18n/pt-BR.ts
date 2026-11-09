@@ -1168,9 +1168,10 @@ export const ptBR = {
     quietBody:
       "Ela ainda consta como rodando, mas não produziu nada há um tempo. Um build longo também pode ficar em silêncio.",
     quietOpen: "Abrir",
-    quietInterrupt: "Interromper",
+    quietInterrupt: "Parar o turno",
     quietContinue: "Enviar “continue”",
     quietSnooze: "Não travou, adiar 1 h",
+    quietSnoozed: "Oculta até {time}.",
     quietLast: "{quiet} · última: {tool}",
     title: "Precisa de você",
     empty: "Nada espera por você.",
