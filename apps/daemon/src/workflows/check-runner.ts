@@ -162,8 +162,8 @@ export function boundedCheckRunner(
         };
       }
       // A time limit always: only a timed or signalled command gets its own process group, which
-      // is what the kill reaches. Only stdout counts toward the bound: stderr is read to its end
-      // and keeps its first 64 KB, so a check that floods stderr runs until its time limit.
+      // is what the kill reaches. Stdout and stderr together count toward the bound; stderr keeps
+      // its first 64 KB.
       const result = await runLimited(shellCommand(command), cwd, outputMax, timeoutMs, killTree, {
         signal,
         baseEnv: checkEnvironment(env),

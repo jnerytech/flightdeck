@@ -107,9 +107,32 @@ export interface LimitedMore {
   env?: Record<string, string>;
   /** The whole environment instead of the daemon's (#1361: a check gets an allowlist). */
   baseEnv?: Record<string, string>;
-  /** Past `limit`, kill the program's whole tree, not only the program (#1361). */
+  /**
+   * Past `limit`, kill the program's whole tree, not only the program, and count stderr toward the
+   * limit too (#1361: a check that floods stderr is stopped, not left to its time limit).
+   */
   overflowKillsTree?: boolean;
+  /** Starts the program (a test seam: a pipe that fails cannot be provoked with a real one). */
+  spawn?: (cmd: string[], options: SpawnOptions) => Spawned;
 }
+
+/** What `runLimited` asks of a started program. */
+export interface Spawned {
+  pid: number;
+  stdout: ReadableStream<Uint8Array>;
+  stderr: ReadableStream<Uint8Array>;
+  exited: Promise<number>;
+  kill(): void;
+}
+
+export interface SpawnOptions {
+  cwd: string;
+  env: Record<string, string | undefined>;
+  detached: boolean;
+}
+
+const spawnPiped = (cmd: string[], options: SpawnOptions): Spawned =>
+  Bun.spawn(cmd, { ...options, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
 
 /**
  * Like `git`, but reads at most `limit` bytes of output: when git writes more it is killed and the
@@ -156,6 +179,7 @@ const KILL_GRACE_MS = 2000;
 function readCapped(
   stream: ReadableStream<Uint8Array>,
   max: number,
+  onBytes?: (n: number) => void,
 ): { text: Promise<string>; cancel: () => void } {
   const reader = stream.getReader();
   const kept: Uint8Array[] = [];
@@ -166,6 +190,7 @@ function readCapped(
       if (done) break;
       if (size < max) kept.push(value.subarray(0, max - size));
       size += value.length;
+      onBytes?.(value.length);
     }
     return Buffer.concat(kept).toString("utf8");
   })();
@@ -186,22 +211,44 @@ export async function runLimited(
   kill: (pid: number) => Promise<void> = killTree,
   more?: LimitedMore,
 ): Promise<CommandResult & { truncated: boolean }> {
-  const { separator = 10, signal, env, baseEnv, overflowKillsTree } = more ?? {};
-  const proc = Bun.spawn(cmd, {
+  const {
+    separator = 10,
+    signal,
+    env,
+    baseEnv,
+    overflowKillsTree,
+    spawn = spawnPiped,
+  } = more ?? {};
+  const proc = spawn(cmd, {
     cwd,
     env: { ...(baseEnv ?? process.env), ...env },
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "ignore",
     // Its own process group (outside Windows), so the whole tree can be killed at the limit.
     detached: (timeoutMs !== undefined || signal !== undefined) && process.platform !== "win32",
   });
   let timedOut = false;
   let aborted = false;
   let killing: Promise<void> = Promise.resolve();
-  // Read at the same time as stdout: a program that fills the pipe's buffer with stderr would stall.
-  const errors = readCapped(proc.stderr, STDERR_MAX);
+  let size = 0;
+  let truncated = false;
   const reader = proc.stdout.getReader();
+  // Past the limit the tree goes and stdout stops being read (#1361).
+  const overflow = () => {
+    if (truncated) return;
+    truncated = true;
+    killTreeNow();
+    void reader.cancel().catch(() => {});
+  };
+  // Read at the same time as stdout: a program that fills the pipe's buffer with stderr would stall.
+  const errors = readCapped(
+    proc.stderr,
+    STDERR_MAX,
+    overflowKillsTree
+      ? (n) => {
+          size += n;
+          if (size > limit) overflow();
+        }
+      : undefined,
+  );
   // Once the tree is killed, the readers get a short grace, then stop: what kept a pipe open
   // outside the group is not waited for (#1361).
   let grace: ReturnType<typeof setTimeout> | null = null;
@@ -227,8 +274,6 @@ export async function runLimited(
           killTreeNow();
         }, timeoutMs);
   const chunks: Uint8Array[] = [];
-  let size = 0;
-  let truncated = false;
   let failed = false;
   let failure: unknown;
   try {
@@ -238,9 +283,9 @@ export async function runLimited(
       chunks.push(value);
       size += value.length;
       if (size > limit) {
-        truncated = true;
         // A child it left would hold the pipes open, and stderr would never end.
-        if (overflowKillsTree) killTreeNow();
+        if (overflowKillsTree) overflow();
+        truncated = true;
         await reader.cancel();
         break;
       }
@@ -267,7 +312,9 @@ export async function runLimited(
   }
   if (failed) throw failure;
   const all = Buffer.concat(chunks);
-  const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
+  // Only stdout that went past the limit itself is cut; a stop for stderr keeps what stdout gave.
+  const kept =
+    all.length > limit ? all.subarray(0, all.subarray(0, limit).lastIndexOf(separator) + 1) : all;
   return {
     code,
     stdout: kept.toString("utf8"),
