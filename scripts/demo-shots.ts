@@ -137,6 +137,22 @@ async function openTimeline(page: Page): Promise<void> {
 }
 
 /** Scrolls the first text matching `title` to the top of its scrolling box and lets it settle. */
+/** #1354: Ctrl-click four cards of the demo board, three in Backlog and the one at a gate. */
+async function selectCards(page: Page): Promise<void> {
+  for (const title of [
+    "Definir o esquema do carrinho",
+    "API do carrinho",
+    "Tela do carrinho",
+    "Revisar o fluxo de login",
+  ]) {
+    await page
+      .locator("li[data-card]", { hasText: title })
+      .first()
+      .click({ modifiers: ["Control"], position: { x: 40, y: 4 } });
+  }
+  await page.getByRole("group", { name: /^(Selection|Seleção)$/ }).waitFor();
+}
+
 function showSection(title: RegExp): (page: Page) => Promise<void> {
   return async (page) => {
     await page
@@ -241,6 +257,29 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
+    // #1354: four cards selected (three to start, one at a gate): the bar's Start N and Stop N, the
+    // checks on every card, and at 390 the compact bar with Move to and Discard under ⋯.
+    {
+      name: "board-selecao",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: selectCards,
+    },
+    // ...and Start N's confirm: the host's queue, its quota and the card it skips.
+    {
+      name: "board-selecao-iniciar",
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: async (page) => {
+        await selectCards(page);
+        await page
+          .getByRole("group", { name: /^(Selection|Seleção)$/ })
+          .getByRole("button", { name: /^(Start|Iniciar) \d+$/ })
+          .click();
+        await page.locator('[role="alertdialog"]').waitFor();
+        // The host's limit comes from project.list after the dialog opens.
+        await page.locator('[role="alertdialog"] p').first().waitFor();
+        await page.waitForTimeout(400);
+      },
+    },
     // #117: the files of a worktree picked in the sidebar tree, in a panel beside the columns.
     {
       name: "board-arquivos",

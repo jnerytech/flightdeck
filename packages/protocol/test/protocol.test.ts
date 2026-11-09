@@ -462,6 +462,7 @@ const validCommands: Record<CommandType, unknown> = {
   "projects.scan": { depth: 2 },
   "projects.clone": { url: "https://example.com/a/b.git", root: "/work" },
   "roi.summary": { from: "2026-10-01", to: "2026-10-31" },
+  "activity.since": { since: "2026-11-08T22:00:00.000Z", limit: 20 },
   "boardsync.boards": {},
   "boardsync.link": { projectId: "p1", boardId: "PVT_1" },
   "boardsync.unlink": { projectId: "p1" },

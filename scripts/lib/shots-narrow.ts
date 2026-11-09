@@ -51,6 +51,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-gate",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
+  // #1354: the selection bar and Start N's confirm, compact at 390.
+  "board-selecao",
+  "board-selecao-iniciar",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */
