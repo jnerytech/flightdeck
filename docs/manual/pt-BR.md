@@ -1368,7 +1368,7 @@ interrompida ou fica ociosa.
 
 - **Pouca memória** (#1343): enquanto a memória em uso do host estiver em `resources.pauseAt` ou
   acima (90% por padrão, o **Crítico** do painel Recursos), um card novo espera com "aguardando
-  memória" e começa sozinho quando a memória libera; o host olha de novo a cada 15 segundos.
+  memória" e começa sozinho quando a memória fica 2 pontos abaixo; o host olha de novo a cada 15 segundos.
   Execuções que já estão rodando nunca são paradas. Troque no painel **Recursos** da página do host
   (**Cartões novos esperam com a memória em**, ou **Nunca**), ou no `config.json`
   (`{ "resources": { "pauseAt": 0.9 } }`, `null` desliga). Quando o host não consegue ler a

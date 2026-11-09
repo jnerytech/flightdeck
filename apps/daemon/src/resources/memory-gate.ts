@@ -24,6 +24,8 @@ export interface MemoryGateOptions {
 
 /** The default share of used memory from which new runs wait. */
 export const MEMORY_PAUSE_AT = 0.9;
+/** Once holding, runs go again only this far under the threshold, so the hold does not flap. */
+export const MEMORY_RELEASE_MARGIN = 0.02;
 
 /**
  * The OS's memory as the hold reads it, or null where it would mislead. Linux (WSL too) gives
@@ -59,7 +61,7 @@ export class MemoryGate {
   private readonly timers: Timers;
   private readonly listeners = new Set<() => void>();
   private timer: unknown = null;
-  /** Whether the last look held new runs, so a watcher hears only of a change. */
+  /** Whether the last look held new runs: a watcher hears only of a change, and the margin applies. */
   private holding = false;
 
   constructor(private readonly opts: MemoryGateOptions) {
@@ -67,14 +69,21 @@ export class MemoryGate {
     this.timers = opts.timers ?? realTimers;
   }
 
-  /** The share of memory in use when it holds new runs, or null when they may go. */
+  /**
+   * The share of memory in use when it holds new runs, or null when they may go. Holding, it goes on
+   * holding until memory is `MEMORY_RELEASE_MARGIN` under the threshold.
+   */
   blocked(): { used: number } | null {
-    if (this.threshold === null) return null;
-    const share = usedShare(this.opts.read);
-    if (share === null) return null;
+    const used = this.threshold === null ? null : usedShare(this.opts.read);
+    if (this.threshold === null || used === null) {
+      this.holding = false;
+      return null;
+    }
     // To a tenth of a percent, the panel's precision: 90% in use is at a 0.9 threshold.
-    const used = Math.round(share * 1000) / 1000;
-    return used < this.threshold ? null : { used };
+    const share = Math.round(used * 1000) / 1000;
+    const from = this.holding ? this.threshold - MEMORY_RELEASE_MARGIN : this.threshold;
+    this.holding = share >= from;
+    return this.holding ? { used: share } : null;
   }
 
   /** The threshold in force (0 to 1), or null when the hold is off. */
@@ -85,7 +94,9 @@ export class MemoryGate {
   /** A new threshold; the watchers hear of it at once. */
   setPauseAt(pauseAt: number | null): void {
     this.threshold = pauseAt;
-    this.holding = this.blocked() !== null;
+    // A new threshold is looked at afresh, not from the margin of the old one.
+    this.holding = false;
+    this.blocked();
     for (const listener of this.listeners) listener();
   }
 
@@ -93,7 +104,7 @@ export class MemoryGate {
   watch(listener: () => void): () => void {
     this.listeners.add(listener);
     if (this.listeners.size === 1) {
-      this.holding = this.blocked() !== null;
+      this.blocked();
       this.schedule();
     }
     return () => {
@@ -110,11 +121,9 @@ export class MemoryGate {
     this.timer = this.timers.set(() => {
       this.timer = null;
       if (this.listeners.size === 0) return;
-      const holding = this.blocked() !== null;
-      if (holding !== this.holding) {
-        this.holding = holding;
-        for (const listener of this.listeners) listener();
-      }
+      const before = this.holding;
+      this.blocked();
+      if (this.holding !== before) for (const listener of this.listeners) listener();
       this.schedule();
     }, this.opts.everyMs ?? 15_000);
   }
