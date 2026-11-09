@@ -29,6 +29,17 @@ function setup() {
 
 const linkField = () => screen.queryByLabelText("Pairing link") as HTMLInputElement | null;
 const tokenField = () => screen.queryByLabelText("Token") as HTMLInputElement | null;
+/** Types text one character at a time, each on top of what the field shows (the real feedback loop). */
+const typeInto = async (text: string) => {
+  for (const char of text) {
+    await act(async () => {
+      const field = linkField();
+      if (field) {
+        fireEvent.input(field, { target: { value: field.value + char }, inputType: "insertText" });
+      }
+    });
+  }
+};
 /** Everything the person can read: the page's text and the value of every field but the Token one. */
 const onScreen = () =>
   [
@@ -130,7 +141,7 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
   test("typing the link by hand, one character at a time, keeps the whole token", async () => {
     const { submitted } = setup();
     const typed = "flightdeck://127.0.0.1:46507?name=alfa&token=abc";
-    for (let i = typed.length - 12; i <= typed.length; i++) await paste(typed.slice(0, i));
+    await typeInto(typed);
     const during = linkField()?.value;
     await act(async () => {
       if (linkField()) fireEvent.blur(linkField() as HTMLElement);
@@ -204,15 +215,24 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
     expect([first, tokenField()?.value]).toEqual([[true, ""], ""]);
   });
 
-  test("a bare token typed by hand, one character at a time, is dots once the field is left", async () => {
+  test("a bare token typed by hand, one character at a time, is dots once the field is left, even f, fl or flight", async () => {
     setup();
     const typed = "bare-token-value";
-    for (let i = 1; i <= typed.length; i++) await paste(typed.slice(0, i));
+    await typeInto(typed);
     const during = linkField()?.value;
     await act(async () => {
       if (linkField()) fireEvent.blur(linkField() as HTMLElement);
     });
-    expect([during, linkField()?.value]).toEqual([typed, "••••"]);
+    const after = [linkField()?.value];
+    for (const prefix of ["f", "fl", "flight"]) {
+      await paste("");
+      await typeInto(prefix);
+      await act(async () => {
+        if (linkField()) fireEvent.blur(linkField() as HTMLElement);
+      });
+      after.push(linkField()?.value);
+    }
+    expect([during, ...after]).toEqual([typed, "••••", "••••", "••••", "••••"]);
   });
 
   test("a token in a #fragment is dots too", async () => {
@@ -226,13 +246,33 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
 
   test("submitting with Enter, the field not left, masks the typed link", async () => {
     setup();
-    const typed = "flightdeck://127.0.0.1:46507?name=alfa&token=abc";
-    for (let i = typed.length - 8; i <= typed.length; i++) await paste(typed.slice(0, i));
+    await typeInto("flightdeck://127.0.0.1:46507?name=alfa&token=abc");
     await act(async () => {
       const form = document.querySelector("form");
       if (form) fireEvent.submit(form);
     });
     expect(linkField()?.value).toBe("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
+  });
+
+  test("the link field is not offered to autofill, history or the spellchecker", () => {
+    setup();
+    const field = linkField();
+    expect([
+      field?.getAttribute("autocomplete"),
+      field?.getAttribute("spellcheck"),
+      field?.getAttribute("autocapitalize"),
+    ]).toEqual(["off", "false", "off"]);
+  });
+
+  test("emptying the link field resets the token it carried: a dotted link after it has none", async () => {
+    setup();
+    await paste(LINK);
+    await paste("");
+    await paste("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
+    expect([screen.queryByText("The link has no token.") !== null, tokenField()?.value]).toEqual([
+      true,
+      "",
+    ]);
   });
 
   test("an input event that is a paste, even of one character, is taken as a paste", async () => {
