@@ -175,7 +175,13 @@ export function checkoutRoot(filePath: string, projectDir: string): string | nul
   }
 }
 
-/** The arguments `bun` gets to check one edited file with Biome (the biome-on-edit hook). */
+/**
+ * The arguments `bun` gets to check one edited file with Biome (the biome-on-edit hook, #1566).
+ * Biome 2 scans the whole project before it checks a file when a rule needs the types of other
+ * files (noFloatingPromises, useArraySortCompare): 3 to 13 s per edit. The `project` and `types`
+ * domains are skipped, so a run takes under a second; those rules stay in `bun run lint`, which
+ * CI and `handoff:check` run. Formatting, the import order and every other rule are unchanged.
+ */
 export function biomeEditArgs(rel: string): string[] {
   return [
     "x",
@@ -184,6 +190,8 @@ export function biomeEditArgs(rel: string): string[] {
     "--write",
     "--no-errors-on-unmatched",
     "--files-ignore-unknown=true",
+    "--skip=project",
+    "--skip=types",
     rel,
   ];
 }

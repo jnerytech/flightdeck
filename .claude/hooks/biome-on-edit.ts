@@ -4,7 +4,7 @@
  * to (the main one or a worktree); exit 2 hands what is left to Claude.
  */
 import { relative, resolve } from "node:path";
-import { checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
+import { biomeEditArgs, checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
 import { logHook } from "./log.ts";
 
 const CHECKED = /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$/i;
@@ -18,19 +18,11 @@ const root = checkoutRoot(filePath, ROOT);
 if (!root) process.exit(0);
 const rel = relative(root, resolve(ROOT, filePath));
 
-const proc = Bun.spawnSync(
-  [
-    "bun",
-    "x",
-    "biome",
-    "check",
-    "--write",
-    "--no-errors-on-unmatched",
-    "--files-ignore-unknown=true",
-    rel,
-  ],
-  { cwd: root, stdout: "pipe", stderr: "pipe" },
-);
+const proc = Bun.spawnSync(["bun", ...biomeEditArgs(rel)], {
+  cwd: root,
+  stdout: "pipe",
+  stderr: "pipe",
+});
 if (proc.exitCode === 0) {
   logHook("biome-on-edit", null);
   process.exit(0);
