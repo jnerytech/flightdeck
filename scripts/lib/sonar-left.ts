@@ -132,6 +132,7 @@ export async function sonarLeft(args: string[], deps: SonarLeftDeps): Promise<nu
     deps.log(
       oneLine(
         `${issues.length} open findings, analysed ${analysed.slice(0, 9)}; origin/main ${tip.stdout.trim().slice(0, 9)} (local: git fetch origin main to read the latest); STALE? = changed on main since`,
+      ),
     );
     const changedBy = new Map<string, string | null>();
     for (const file of new Set(issues.map((i) => i.file))) {
