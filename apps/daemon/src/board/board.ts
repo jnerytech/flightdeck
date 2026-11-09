@@ -351,6 +351,9 @@ interface CardRow {
   auto_start: string | null;
   unblocked_at: string | null;
   waiting: number;
+  check_loop: number;
+  check_rounds: number | null;
+  check_loop_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -773,6 +776,11 @@ export class Board {
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
+      checkLoop: {
+        on: row.check_loop === 1,
+        rounds: row.check_rounds,
+        confirmed: row.check_loop_confirmed_at !== null,
+      },
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
       startWorkflow: row.start_workflow,
@@ -1356,6 +1364,29 @@ export class Board {
       cards: cards.filter((card) => card.column === column),
     }));
     return { project, columns };
+  }
+
+  /**
+   * Issue #1361: stores the card's check loop switch; the decision is `CheckLoopSwitch`'s
+   * (board/check-loop.ts). A switch turned off forgets its confirmation.
+   */
+  storeCheckLoop(
+    id: string,
+    value: {
+      on: boolean;
+      rounds: number | null;
+      confirmedAt: string | null;
+      confirmedHash: string | null;
+    },
+  ): Card {
+    this.getCard(id);
+    this.db
+      .query(
+        `UPDATE cards SET check_loop = ?, check_rounds = ?, check_loop_confirmed_at = ?,
+         check_loop_confirmed_hash = ? WHERE id = ?`,
+      )
+      .run(value.on ? 1 : 0, value.rounds, value.confirmedAt, value.confirmedHash, id);
+    return this.changed(id);
   }
 
   /** "Pedir ajuste": a message to the session of the active run. */

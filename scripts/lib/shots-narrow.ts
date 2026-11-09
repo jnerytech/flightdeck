@@ -43,6 +43,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-novo-modelo",
   "claude-code-preparar",
   "card-fixados",
+  // #1344: Needs you with the "While you were away" summary above its list.
+  "precisa-de-voce-fora",
   // #1345: the Pull requests page, one row per open PR across the hosts.
   "pull-requests",
   // #1271: a Form dialog in the narrow sheet, its buttons at the sheet's bottom.
@@ -51,6 +53,9 @@ export const NARROW_SHOTS: readonly string[] = [
   "card-gate",
   // #1328: Settings > Backup schedule, waiting for the passphrase.
   "configuracoes-backup-agenda",
+  // #1354: the selection bar and Start N's confirm, compact at 390.
+  "board-selecao",
+  "board-selecao-iniciar",
 ];
 
 /** The sizes this print is re-measured at: none for a light print or a print not in the list. */

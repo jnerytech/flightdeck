@@ -792,6 +792,16 @@ const CardDeps = {
   autoStart: z.object({ workflow: z.string().nullable() }).nullable().optional(),
 };
 
+/** Issue #1361: a card's switch for "keep going until the checks pass". */
+export const CheckLoopSwitch = z.object({
+  on: z.boolean(),
+  /** The card's own cap on rounds, below the project's; `null` takes the project's. */
+  rounds: z.number().int().min(1).max(10).nullable(),
+  /** The person confirmed that the checks run the card's code outside its permission mode. */
+  confirmed: z.boolean(),
+});
+export type CheckLoopSwitch = z.infer<typeof CheckLoopSwitch>;
+
 export const Card = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -857,6 +867,8 @@ export const Card = z.object({
   estimateHours: z.number().nullable().default(null),
   /** Issue #78: what the person did to validate the work, a note a column can ask for. */
   validationNote: z.string().nullable().default(null),
+  /** Issue #1361: the check loop's switch; absent from older daemons. */
+  checkLoop: CheckLoopSwitch.optional(),
   /** Issue #78: the spec file the card names in its worktree; `null` is `docs/specs/<slug>.md`. */
   specPath: z.string().nullable().default(null),
   /** Issue #78: what the host last found of the spec file; `null` until it looked. */
@@ -1630,6 +1642,57 @@ export interface RoiSignalValues {
   issuesClosed?: number;
   /** Why the closed issues are missing: `gh_missing`, `gh_logged_out` or `gh_failed`. */
   issuesError?: string;
+}
+
+/**
+ * Issue #1344: what happened on a host since a time, for "While you were away" in Needs you. Each
+ * list is the newest `limit` items and its true `total`, so a night of runs never grows the answer.
+ */
+export interface ActivityList<T> {
+  items: T[];
+  total: number;
+}
+
+export interface ActivitySession {
+  id: string;
+  name: string | null;
+  cwd: string;
+  /** When the session ended. */
+  at: string;
+}
+
+export interface ActivityCard {
+  cardId: string;
+  projectId: string;
+  title: string;
+  /** When the card last changed. */
+  at: string;
+}
+
+export interface ActivityPr extends ActivityCard {
+  prUrl: string;
+  /** `merged`, or `checks-failed` when the PR is open and its checks fail. */
+  outcome: "merged" | "checks-failed";
+}
+
+export interface ActivityRun {
+  runId: string;
+  cardId: string;
+  workflowName: string;
+  /** Why it failed, as a key and params the app translates. */
+  reasonKey: string | null;
+  reasonParams: Record<string, string | number> | null;
+  at: string;
+}
+
+export interface ActivitySinceResult {
+  since: string;
+  sessions: ActivityList<ActivitySession>;
+  reviewCards: ActivityList<ActivityCard>;
+  prs: ActivityList<ActivityPr>;
+  failedRuns: ActivityList<ActivityRun>;
+  /** The plan quota windows now, when this host reads them. */
+  quota: Array<{ window: string; utilization: number | null }>;
 }
 
 export interface RoiSummaryResult {
@@ -3495,6 +3558,21 @@ export const Command = z.discriminatedUnion("type", [
     }),
   ),
   cmd("card.templates", z.object({ projectId: z.string() })),
+  /**
+   * Issue #1361: turns the card's check loop on or off. Outside bypassPermissions it turns on only
+   * with `confirm`, which needs a near connection; off always works.
+   */
+  cmd(
+    "card.checkLoop",
+    z
+      .object({
+        cardId: z.string().min(1),
+        on: z.boolean(),
+        confirm: z.boolean().optional(),
+        rounds: z.number().int().min(1).max(10).nullable().optional(),
+      })
+      .strict(),
+  ),
   cmd(
     "card.update",
     z.object({
@@ -4716,6 +4794,16 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
+  /** Issue #1344: what finished, reached review, merged or failed on this host since a time; read-only and capped. */
+  cmd(
+    "activity.since",
+    z
+      .object({
+        since: z.string().datetime(),
+        limit: z.number().int().min(1).max(50).optional(),
+      })
+      .strict(),
+  ),
   /** Phase 36: what the agents cost and delivered, per project key, for a period and the one before it. */
   cmd(
     "roi.summary",
@@ -5587,6 +5675,7 @@ export interface CommandResults {
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;
+  "card.checkLoop": Card;
   "card.move": Card;
   "card.start": Card;
   "card.stop": Card;
@@ -5850,6 +5939,7 @@ export interface CommandResults {
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
   "roi.summary": RoiSummaryResult;
+  "activity.since": ActivitySinceResult;
   "boardsync.boards": { boards: BoardSyncBoard[] };
   "boardsync.link": BoardSyncStatus;
   "boardsync.unlink": undefined;

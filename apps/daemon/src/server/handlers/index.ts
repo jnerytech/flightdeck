@@ -3,6 +3,7 @@
  * still a case of the switch in `server.ts`; at the end this is the whole `Handlers` record.
  */
 import type { Handlers } from "../dispatch.ts";
+import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
 import { assistantHandlers } from "./assistant.ts";
 import { cardHandlers } from "./card.ts";
@@ -40,6 +41,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   watch: watchHandlers,
   files: filesHandlers,
   teleport: teleportHandlers,
+  activity: activityHandlers,
   card: cardHandlers,
   project: projectHandlers,
   session: sessionHandlers,

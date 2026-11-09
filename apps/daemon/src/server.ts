@@ -1,4 +1,5 @@
 import {
+  type ActivitySinceResult,
   ASSISTANT_FEATURE,
   type AutoUpdateStatus,
   CLOSE_HEARTBEAT,
@@ -43,6 +44,7 @@ import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
+import type { CheckLoopSwitch } from "./board/check-loop.ts";
 import type { BoardSyncService } from "./boardsync/service.ts";
 import type { Central } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
@@ -245,6 +247,8 @@ export interface ServerOptions {
   github?: GithubService;
   /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
   roi?: RoiSummarizer;
+  /** Issue #1344: what happened on this host since a time (`activity.since`), read-only and capped. */
+  activity?: (since: string, limit: number) => ActivitySinceResult;
   /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
   boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
@@ -294,6 +298,8 @@ export interface ServerOptions {
   teams?: Teams;
   /** Phase 22: the PR watch of the cards. */
   watch?: PrWatch;
+  /** Issue #1361: the cards' check loop switch (it reads the watch's checks). */
+  checkLoop?: CheckLoopSwitch;
   /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
   messaging?: Messaging;
   /** Phase 21: the standard names of the sessions (`names.list`, and the rename of a session). */
@@ -465,6 +471,7 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.github, "github"),
     ...when(opts.boardsync, "boardsync"),
     ...when(opts.roi, "roi"),
+    ...when(opts.activity, "activity"),
     ...when(opts.central, "central"),
     ...when(opts.board, "workflows"),
     // Issue #1221: a template committed on a new branch and opened as a PR.

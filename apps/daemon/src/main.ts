@@ -15,6 +15,7 @@ import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
 import { Actions } from "./actions/actions.ts";
 import { runActionCli, runSnippetCli } from "./actions/cli.ts";
+import { activitySince } from "./activity/since.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
 import { assistantService } from "./assistant/factory.ts";
@@ -22,6 +23,7 @@ import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -1577,6 +1579,9 @@ export async function startDaemon(
     fsDirs: true,
     findProjects: true,
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
+    // Issue #1344: "While you were away": what happened since a time, from what is stored.
+    activity: (since, limit) =>
+      activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
     roi: new RoiSummarizer({
       db: store.db,
       keyOf: (path) => keys.known(path),
@@ -1666,6 +1671,13 @@ export async function startDaemon(
     idle,
     teams,
     watch: prWatch,
+    // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
+    checkLoop: new CheckLoopSwitch({
+      board,
+      settings: (projectId) => prWatcher.settings(projectId),
+      isTrusted: (path) => projectTrust.isTrusted(path),
+      modeOf: (card) => cardMode(card, manager),
+    }),
     vault,
     log: logger.log.bind(logger),
     actions,

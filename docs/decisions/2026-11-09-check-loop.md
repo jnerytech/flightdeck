@@ -110,7 +110,7 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   that code outside the session's permission mode. A session that must ask before each Bash call
   could, through the loop, have its edited files run without asking. So:
   - **In a mode that already runs Bash without asking** (`bypassPermissions`), the switch turns
-    on like any card setting.
+    on with no confirmation, over a near connection like every switch-on.
   - **In any other mode** (`default`, `acceptEdits`, `plan`, `dontAsk`, `auto`), turning the
     switch on needs the person's confirmation (`confirm: true`). The app first shows what it
     means: "The checks will run the code this card writes, without asking you each time. That
