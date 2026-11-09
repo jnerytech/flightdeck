@@ -2605,7 +2605,12 @@ export class AppStore {
       this.fail(
         error,
         undefined,
-        options.retry === false ? undefined : () => void this.hostCommand(hostId, type, payload),
+        options.retry === false
+          ? undefined
+          : () =>
+              void this.hostCommand(hostId, type, payload, {
+                focusRefusal: options.focusRefusal === true,
+              }),
         options.focusRefusal === true,
       );
       return null;

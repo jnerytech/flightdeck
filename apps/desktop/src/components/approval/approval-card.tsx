@@ -331,7 +331,10 @@ export function ApprovalCard(
     );
     // One in a hidden or inert panel (another session's tab) cannot take the focus.
     const next = Array.from(waiting).find(
-      (card) => card !== root.current && !card.closest("[inert],[hidden]"),
+      (card) =>
+        card !== root.current &&
+        !card.closest("[inert],[hidden],[aria-hidden=true]") &&
+        (card.checkVisibility?.() ?? true),
     );
     (next ?? root.current)?.focus();
   }, [answered]);

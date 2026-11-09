@@ -19,7 +19,6 @@ afterEach(cleanup);
  */
 const LABELS = { sidebar: "Side", collapse: "Collapse", expand: "Expand", skip: "Skip" };
 
-/** A tiny app: a form page whose button goes to the next page, and a page with its own control. */
 /** A page that is still loading: its Page, and so its heading, comes a moment later. */
 function Late() {
   const [ready, setReady] = useState(false);
@@ -36,6 +35,7 @@ function Late() {
   );
 }
 
+/** A tiny app: a form page whose button goes to the next page, and a page with its own control. */
 function Harness() {
   const [route, setRoute] = useState<"form" | "host" | "late">("form");
   return (

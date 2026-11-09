@@ -48,6 +48,7 @@ export function NewCardDialog(
 
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
+    made.current = false;
     props.onClose();
     setTitle("");
     setDescription("");
