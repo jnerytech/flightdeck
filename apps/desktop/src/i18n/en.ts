@@ -1878,6 +1878,7 @@ export const en: Dictionary = {
       "This run ended before Flightdeck kept where the code was, so it can only run again from the start.",
     run_resume_workflow_changed:
       "The workflow {name} changed since this run, so it can only run again from the start.",
+    run_card_gone: "The run's card is gone, so the run stopped when Flightdeck started again.",
     run_resume_branch_moved:
       "The card's branch changed since this run stopped, so it can only run again from the start.",
     workflow_input_required: "The workflow needs the input {input}.",

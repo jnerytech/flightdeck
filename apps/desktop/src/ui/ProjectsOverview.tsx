@@ -42,13 +42,13 @@ export function ProjectsOverview(
   const hostName = props.host ? state.hosts.find((h) => h.id === props.host)?.name : undefined;
   // A route's host wins; else the hosts the switcher shows (#932), so a pick never lands elsewhere.
   const switcher = useSwitcherHosts(store, state.hosts);
-  const shownHosts = switcher.map((host) => host.id);
+  const shownHosts = new Set(switcher.map((host) => host.id));
   /** The one host the page shows, if one: the route's, else the switcher's. */
   const onlySwitched = switcher.length === 1 ? switcher[0] : undefined;
   const one = props.host ? state.hosts.find((host) => host.id === props.host) : onlySwitched;
   const scoped = props.host
     ? cards.filter((card) => card.hostId === props.host)
-    : cards.filter((card) => shownHosts.includes(card.hostId));
+    : cards.filter((card) => shownHosts.has(card.hostId));
   const shown = sortProjectCards(filterProjectCards(scoped, query), sort);
 
   return (

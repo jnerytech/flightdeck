@@ -1,4 +1,4 @@
-import { ROUTE_NAMES, type Route } from "./router.ts";
+import { homeRoute, ROUTE_NAMES, type Route } from "./router.ts";
 import { type Navigation, type Tab, Tabs } from "./tabs.ts";
 import { NOT_KEPT, Workspace, type WorkspaceSnapshot } from "./workspace.ts";
 
@@ -173,11 +173,7 @@ export class HostTabs {
    * The window as it comes back after a restart: a kept window (v2), today's single list of tabs
    * (v1) split into sets by each tab's host, or a fresh window on `fallback`.
    */
-  static restore(
-    stored: unknown,
-    newId?: () => string,
-    fallback: Route = { name: "home" },
-  ): HostTabs {
+  static restore(stored: unknown, newId?: () => string, fallback: Route = homeRoute()): HostTabs {
     const data = (stored ?? {}) as Record<string, unknown>;
     let parts: Parts | null = null;
     if (data.v === 2) parts = fromV2(data, newId);
@@ -223,7 +219,7 @@ export class HostTabs {
    * switch is still the last one, so a later pick or switch is not undone.
    */
   returnAcross(from: string | null): void {
-    if (this.cameFrom && this.cameFrom.hostId === from) this.returnFrom();
+    if (this.cameFrom?.hostId === from) this.returnFrom();
   }
 
   /** Back past a switch: the host and the kind of tab the window was on (#932). */

@@ -85,6 +85,11 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   knowledgeStatus: "knowledgeStatus",
   knowledgeCreate: "knowledgeCreate",
   knowledgeFeedSwitch: "knowledgeFeed",
+  // The teleport gates moved out of the switch with the teleport domain (issue #1288): the three
+  // services name one feature.
+  teleport: "teleport",
+  teleportInbox: "teleport",
+  teleportImport: "teleport",
 };
 
 /** What `need` answers for an option: the service, or the refusal's reason and feature. */

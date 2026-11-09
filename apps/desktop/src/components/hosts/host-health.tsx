@@ -445,7 +445,7 @@ export function HostHealth(
         <ConfirmDialog
           message={
             os === "win32"
-              ? t("hostHealth.service.messageWindows", { task: "Flightdeck\\flightdeckd" })
+              ? t("hostHealth.service.messageWindows", { task: String.raw`Flightdeck\flightdeckd` })
               : t("hostHealth.service.messageLinux")
           }
           confirmLabel={t("hostHealth.service.turnOn")}

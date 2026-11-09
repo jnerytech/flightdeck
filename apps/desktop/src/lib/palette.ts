@@ -332,7 +332,7 @@ export function paletteSections(
     label: string,
     target: PaletteTarget,
     detail = t("palette.actionDetail"),
-    shortcut?: ShortcutAction | string,
+    shortcut?: string,
   ): PaletteItem => {
     // A registry action shows its keys; the approve and deny commands show their one key.
     const keys = shortcut

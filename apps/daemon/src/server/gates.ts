@@ -83,6 +83,10 @@ export const GATES = {
   knowledgeStatus: "knowledgeStatus",
   knowledgeCreate: "knowledgeCreate",
   knowledgeFeedSwitch: "knowledgeFeed",
+  // The three teleport services name one feature.
+  teleport: "teleport",
+  teleportInbox: "teleport",
+  teleportImport: "teleport",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;

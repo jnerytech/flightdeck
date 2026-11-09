@@ -43,7 +43,7 @@ export function boardKey(
       case "Home":
         return here[0];
       case "End":
-        return here[here.length - 1];
+        return here.at(-1);
       case "ArrowRight":
         return beside(columns.slice(col + 1), row);
       case "ArrowLeft":

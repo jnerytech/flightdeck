@@ -6,8 +6,10 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
+import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
+import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
@@ -213,6 +215,7 @@ const made = new WeakMap<
     counts?: number[];
     guard?: string;
     backup?: string;
+    backupFiles?: string[];
     origin?: string;
   }
 >();
@@ -1492,4 +1495,102 @@ step(Then, "the outcome can be reached with the keyboard", async (c) => {
     async () => outcomeBox(c).evaluate((node) => node === document.activeElement),
     "the outcome box has the focus",
   );
+});
+
+// Scheduled backups: a folder, a cadence, the last files kept, a passphrase that lives in memory (issue #1264).
+// The web build has no folder to write: the demo address `backupFolder=demo` gives the page one that keeps its files in the page.
+const scheduleText = (c: Context) => dictionary(c).backupSchedule;
+const withDemoFolder = { backupFolder: "demo" };
+/** The cadence's radio button, by the name the dictionary gives it. */
+const cadenceRadio = (c: Context, cadence: "off" | "daily" | "weekly") =>
+  c.page.getByRole("radio", { name: scheduleText(c).cadence[cadence], exact: true });
+const schedulePassphrase = (c: Context) =>
+  c.page.getByLabel(scheduleText(c).passphrase, { exact: true });
+/** The names of the files the demo's folder holds. */
+const folderFiles = (c: Context) =>
+  c.page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    return raw ? Object.keys((JSON.parse(raw) as { files: object }).files).sort() : [];
+  }, DEMO_BACKUP_FOLDER_KEY);
+
+step(Given, "I am on Settings > Backup with a folder for scheduled backups", async (c) => {
+  await open(c, { name: "settings", section: "backup" }, true, withDemoFolder);
+  await cadenceRadio(c, "daily").waitFor({ timeout: WAIT });
+});
+
+step(When, "I turn on the daily backup and choose the folder", async (c) => {
+  await cadenceRadio(c, "daily").check();
+  await c.page.getByRole("button", { name: scheduleText(c).chooseFolder, exact: true }).click();
+  await c.page.getByText(DEMO_BACKUP_FOLDER).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the page says a backup is due and waits for the passphrase", async (c) => {
+  await c.page
+    .getByText(scheduleText(c).skipped["no-passphrase"], { exact: true })
+    .waitFor({ timeout: WAIT });
+  await schedulePassphrase(c).waitFor({ timeout: WAIT });
+});
+
+step(When, "I give the schedule a passphrase", async (c) => {
+  await schedulePassphrase(c).fill(PASSPHRASE);
+  await c.page.getByRole("button", { name: scheduleText(c).usePassphrase, exact: true }).click();
+});
+
+step(Then, "the page says the passphrase is set and when the last backup was made", async (c) => {
+  await c.page.getByText(scheduleText(c).passphraseSet, { exact: true }).waitFor({ timeout: WAIT });
+  await c.page.getByText(pattern(scheduleText(c).lastRun)).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the folder holds {string} backup file", async (c, count = "") => {
+  await waitFor(
+    async () => (await folderFiles(c)).length === Number(count),
+    `the folder holds ${count} file`,
+  );
+});
+
+step(When, "a daily backup was made into the folder", async (c) => {
+  if (!(await cadenceRadio(c, "daily").isChecked())) await cadenceRadio(c, "daily").check();
+  await c.page.getByRole("button", { name: scheduleText(c).chooseFolder, exact: true }).click();
+  await schedulePassphrase(c).fill(PASSPHRASE);
+  await c.page.getByRole("button", { name: scheduleText(c).usePassphrase, exact: true }).click();
+  await waitFor(async () => (await folderFiles(c)).length > 0, "the first backup is in the folder");
+  mine(c).backupFiles = await folderFiles(c);
+});
+
+step(When, "I restart the app", async (c) => {
+  await open(c, { name: "settings", section: "backup" }, true, withDemoFolder);
+  await cadenceRadio(c, "daily").waitFor({ timeout: WAIT });
+});
+
+step(Then, "the daily backup is still on, with its folder", async (c) => {
+  await waitFor(() => cadenceRadio(c, "daily").isChecked(), "the daily backup is still on");
+  await c.page.getByText(DEMO_BACKUP_FOLDER).waitFor({ timeout: WAIT });
+});
+
+step(Then, "the passphrase is asked again", async (c) => {
+  await schedulePassphrase(c).waitFor({ timeout: WAIT });
+  await c.page
+    .getByText(scheduleText(c).passphraseSet, { exact: true })
+    .waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(When, "I set the schedule to keep {string} file", async (c, count = "") => {
+  await c.page.getByLabel(scheduleText(c).keep, { exact: true }).fill(count);
+});
+
+step(When, "two days pass and I restart the app", async (c) => {
+  // The last backup is moved two days back in the page's storage, as the clock would have.
+  await c.page.evaluate((key) => {
+    const schedule = JSON.parse(window.localStorage.getItem(key) ?? "{}") as { lastRunAt: number };
+    schedule.lastRunAt -= 2 * 24 * 3_600_000;
+    window.localStorage.setItem(key, JSON.stringify(schedule));
+  }, SCHEDULE_KEY);
+  await open(c, { name: "settings", section: "backup" }, true, withDemoFolder);
+  await cadenceRadio(c, "daily").waitFor({ timeout: WAIT });
+});
+
+step(Then, "that file is a newer backup than the first one", async (c) => {
+  const [now] = await folderFiles(c);
+  const [first] = mine(c).backupFiles ?? [];
+  if (!now || !first || now <= first) throw new Error(`${now} is not newer than ${first}`);
 });

@@ -3,12 +3,7 @@
  * `project.trust.inspect` already lists (#196). Each part is found or missing, with the names or
  * kinds that show it; never a score, and never an `env` value or name.
  */
-import {
-  type HarnessPreview,
-  HOOK_KINDS,
-  type HookKind,
-  type ProjectLoad,
-} from "@flightdeck/protocol";
+import { type HarnessPreview, HOOK_KINDS, type ProjectLoad } from "@flightdeck/protocol";
 
 export type HarnessPart = "claudeMd" | "hooks" | "skills" | "agents" | "permissions" | "mcp";
 
