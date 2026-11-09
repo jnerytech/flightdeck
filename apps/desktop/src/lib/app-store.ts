@@ -1,5 +1,6 @@
 import type {
   AccountState,
+  ActivitySinceResult,
   AskpassRequest,
   BgList,
   BgSession,
@@ -291,6 +292,20 @@ export interface Selection {
   sessionId: string | null;
 }
 
+/** What one host said happened since the app was last active (issue #1344). */
+export interface AwayHost {
+  hostId: string;
+  result: ActivitySinceResult;
+}
+
+export interface AwayState {
+  /** When the app was last active, when it was away long enough to summarise; else null. */
+  since: string | null;
+  hosts: AwayHost[];
+  /** The person closed the summary; it stays closed until the next start. */
+  dismissed: boolean;
+}
+
 export interface AppState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -375,6 +390,8 @@ export interface AppState {
   terminalEnv: TerminalEnv | null;
   /** Toasts still to show or still open (phase 10). */
   notices: Notice[];
+  /** Issue #1344: what happened on the hosts while the app was closed. */
+  away: AwayState;
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
   /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
@@ -533,6 +550,7 @@ export type HostCommandType = Extract<
   | `github.${string}`
   | `boardsync.${string}`
   | "roi.summary"
+  | "activity.since"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
@@ -1143,6 +1161,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
+      away: { since: null, hosts: [], dismissed: false },
       inbox: [],
       composerFill: {},
       finished: [],
@@ -4168,6 +4187,12 @@ export class AppStore {
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
   readonly globalPersonas: GlobalPersonas;
+  /** Issue #1344: asks each online host with the feature what happened since the app was last active. */
+  async loadAway(): Promise<void> {}
+
+  /** Issue #1344: closes the summary until the next start. */
+  dismissAway(): void {}
+
   /**
    * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
    * that cannot be reached, is left out; the card says how many answered.

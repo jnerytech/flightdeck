@@ -10,6 +10,7 @@ import type {
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
+import { activitySince } from "../../daemon/src/activity/since.ts";
 import { AgentConfig } from "../../daemon/src/agentcfg/files.ts";
 import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
@@ -183,6 +184,8 @@ export function daemon(
     boardsync?: boolean;
     /** What the agents cost and delivered, per project (phase 36). */
     roi?: boolean | { signals: ConstructorParameters<typeof RoiSummarizer>[0]["signals"] };
+    /** What happened since a time (issue #1344), read from this daemon's own database. */
+    activity?: boolean;
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
     /** The host's keep-awake status (issue #163): announced with `host.info`, switched by `host.keepAwake`. */
@@ -544,6 +547,12 @@ export function daemon(
       ...(githubService ? { github: githubService } : {}),
       ...(boardSyncService ? { boardsync: boardSyncService } : {}),
       ...(roiSummarizer ? { roi: roiSummarizer } : {}),
+      ...(options.activity
+        ? {
+            activity: (since: string, limit: number) =>
+              activitySince({ db: store.db }, since, limit),
+          }
+        : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       ...(options.opencode
