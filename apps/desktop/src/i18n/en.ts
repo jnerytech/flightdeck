@@ -4110,7 +4110,7 @@ export const en: Dictionary = {
     checkLoopDefault: "Turn the check loop on for new cards",
     badCheckRounds: "Check loop rounds: from 1 to 10",
     badCheckEnv: "{name}: only where a tool lives, like JAVA_HOME, never a secret.",
-    envNameOnly: "{line}: write the name only ({name}).",
+    envNameOnly: "{name}=…: write the name only ({name}).",
     checkEnvHelp:
       "Names only, like JAVA_HOME: the value comes from the host's environment. Never a secret.",
     loopTitle: "Check loop",

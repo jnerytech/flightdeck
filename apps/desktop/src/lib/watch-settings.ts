@@ -92,8 +92,9 @@ export function loopProblemsOf(draft: WatchDraft, t: T): LoopProblems {
 }
 
 /**
- * The first thing wrong with the variable names, naming its line: a `NAME=value` line gets the
- * name to keep, since the host reads the value from its own environment.
+ * The first thing wrong with the variable names, said by the name alone: a `NAME=value` line gets
+ * the name to keep, since the host reads the value from its own environment. The value is never
+ * shown: a pasted secret must not end up on the screen or read aloud.
  */
 function checkEnvProblem(text: string, t: T): string | null {
   const names = envNames(text);
@@ -105,9 +106,9 @@ function checkEnvProblem(text: string, t: T): string | null {
     if (isCheckEnvName(line)) continue;
     const name = line.split("=")[0]?.trim() ?? "";
     if (line.includes("=") && isCheckEnvName(name)) {
-      return t("watchSettingsUi.envNameOnly", { line, name });
+      return t("watchSettingsUi.envNameOnly", { name });
     }
-    return t("watchSettingsUi.badCheckEnv", { name: line });
+    return t("watchSettingsUi.badCheckEnv", { name });
   }
   return null;
 }
