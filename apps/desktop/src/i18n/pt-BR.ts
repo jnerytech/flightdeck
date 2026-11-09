@@ -5433,7 +5433,7 @@ export const ptBR = {
   hostCompare: {
     title: "Comparar hosts",
     intro:
-      "Versões, hooks, login e recursos de cada host lado a lado. A célula que difere do que a maioria dos hosts tem fica marcada.",
+      "Sistema, versões, hooks, login, ferramentas e recursos de cada host lado a lado. A célula que difere do que a maioria dos hosts tem fica marcada.",
     show: "Mostrar comparação",
     hide: "Ocultar comparação",
     refresh: "Atualizar",
@@ -5441,14 +5441,28 @@ export const ptBR = {
     unknown: "Desconhecido",
     differs: "Difere da maioria dos hosts, que têm {value}",
     differsFeatures: "Recursos diferentes dos da maioria dos hosts",
+    down: "Não comparado: {status}.",
+    fix: "Corrigir em {host}",
     fields: {
+      os: "Sistema operacional",
       daemon: "Versão do daemon",
       claude: "Versão do Claude Code",
       hooks: "Hooks",
       signin: "Login do Claude",
+      gh: "GitHub CLI (gh)",
+      az: "Azure CLI (az)",
+      boot: "Iniciar no boot",
       features: "Recursos",
     },
-    hooks: { ok: "OK", warn: "Aviso", fail: "Falhou" },
+    os: { linux: "Linux", darwin: "macOS", win32: "Windows" },
+    hooks: { ok: "Instalados", outdated: "Desatualizados", missing: "Ausentes" },
+    tool: {
+      ok: "Instalado",
+      outdated: "Desatualizado",
+      missing: "Não instalado",
+      na: "Não se aplica",
+    },
+    boot: { ok: "Ligado", outdated: "Desatualizado", missing: "Desligado", na: "Não se aplica" },
     signin: {
       ok: "Conectado",
       outdated: "Desatualizado",
