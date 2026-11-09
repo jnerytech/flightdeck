@@ -20,10 +20,12 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function start(options: { away?: number | null; features?: string[] } = {}) {
+async function start(
+  options: { away?: number | null; features?: string[]; withActivity?: boolean } = {},
+) {
   const mem = memoryPlatform(false, "en");
   if (options.away !== null) mem.items.set(AWAY_KEY, iso(NOW - (options.away ?? 8 * HOUR)));
-  const d = daemon(cleanups, { activity: true });
+  const d = daemon(cleanups, { activity: options.withActivity !== false });
   const db = d.eventStore.db;
   for (const [id, ended] of [
     ["s1", NOW - 2 * HOUR],
@@ -41,14 +43,15 @@ async function start(options: { away?: number | null; features?: string[] } = {}
     url: d.listen(0, undefined, options.features).url,
     token: TOKEN,
   });
-  await settle(() => store.getState().hosts[0]?.status === "online");
+  await settle(() => store.getState().hosts[0]?.hostInfo != null);
   return { store, mem, hostId: store.getState().hosts[0]?.id ?? "" };
 }
 
 describe("away-store (#1344)", () => {
-  test("after a long absence each host with the feature says what happened since", async () => {
+  test("after a long absence each host with the feature says what happened since, on its own", async () => {
     const { store, hostId } = await start();
-    await store.loadAway();
+    // The host's info arriving is what asks it: nothing here calls loadAway.
+    await settle(() => store.getState().away.hosts.length === 1);
     const away = store.getState().away;
     expect([
       away.since,
@@ -63,7 +66,16 @@ describe("away-store (#1344)", () => {
     const { store } = await start({ features: [] });
     await store.loadAway();
     const away = store.getState().away;
-    expect([away.since, away.hosts]).toEqual([iso(NOW - 8 * HOUR), []]);
+    expect([away.since, away.hosts, away.unreached]).toEqual([iso(NOW - 8 * HOUR), [], []]);
+  });
+
+  test("a host that announces the feature but does not answer is named in unreached, once", async () => {
+    // It announces `activity` but has nothing wired, so the ask is refused.
+    const { store, hostId } = await start({ features: ["activity"], withActivity: false });
+    await settle(() => store.getState().away.unreached.length === 1);
+    await store.loadAway();
+    const away = store.getState().away;
+    expect([away.hosts, away.unreached]).toEqual([[], [hostId]]);
   });
 
   test("a short absence, or the first start, asks nothing and shows nothing", async () => {
@@ -72,8 +84,8 @@ describe("away-store (#1344)", () => {
     const first = await start({ away: null });
     await first.store.loadAway();
     expect([short.store.getState().away, first.store.getState().away]).toEqual([
-      { since: null, hosts: [], dismissed: false },
-      { since: null, hosts: [], dismissed: false },
+      { since: null, hosts: [], unreached: [], dismissed: false },
+      { since: null, hosts: [], unreached: [], dismissed: false },
     ]);
   });
 
