@@ -148,8 +148,13 @@ describe("board-multi-ui: selecting cards (issue #161)", () => {
     setup();
     await ready();
     await ctrl("A");
-    const check = within(li("A")).queryByRole("checkbox", { name: "Select A" }) as HTMLInputElement | null;
-    expect([check?.checked, within(li("A")).queryByText("selected") === null]).toEqual([true, true]);
+    const check = within(li("A")).queryByRole("checkbox", {
+      name: "Select A",
+    }) as HTMLInputElement | null;
+    expect([check?.checked, within(li("A")).queryByText("selected") === null]).toEqual([
+      true,
+      true,
+    ]);
     await act(async () => {
       fireEvent.pointerDown(within(li("B")).getByRole("button", { name: "Actions for B" }), {
         button: 0,
@@ -551,7 +556,12 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
     await press("ArrowDown", { shiftKey: true });
     const first = [selected(), focused()];
     await press("ArrowDown", { shiftKey: true });
-    expect([...first, selected(), focused()]).toEqual([["A", "B"], "Card B", ["A", "B", "C"], "Card C"]);
+    expect([...first, selected(), focused()]).toEqual([
+      ["A", "B"],
+      "Card B",
+      ["A", "B", "C"],
+      "Card C",
+    ]);
   });
 
   test("Esc clears the selection, keeps the focus on the card and goes no further; with none it passes on", async () => {
@@ -598,7 +608,9 @@ describe("board-multi-ui: selecting with the keys and the checks (#1354)", () =>
     await ready();
     const before = document.querySelectorAll("li[data-card] input[type='checkbox']").length;
     await ctrl("A");
-    const checks = [...document.querySelectorAll<HTMLInputElement>("li[data-card] input[type='checkbox']")];
+    const checks = [
+      ...document.querySelectorAll<HTMLInputElement>("li[data-card] input[type='checkbox']"),
+    ];
     const b = within(li("B")).queryByRole("checkbox", { name: "Select B" });
     if (b) await click(b);
     expect([

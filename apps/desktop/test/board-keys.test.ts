@@ -115,7 +115,8 @@ describe("board-keys: selecting several cards (#1354)", () => {
   });
 
   test("Shift with an arrow, Home or End moves the focus as the key does, and extends the selection there", () => {
-    const extend = (at: string, k: string) => boardKey(board, at, key(k, { shiftKey: true }), false);
+    const extend = (at: string, k: string) =>
+      boardKey(board, at, key(k, { shiftKey: true }), false);
     expect([
       extend("a1", "ArrowDown"),
       extend("a3", "ArrowUp"),
