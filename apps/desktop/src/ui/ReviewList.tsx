@@ -47,9 +47,20 @@ export function ReviewList(
                   </Badge>
                 )}
               </div>
-              <pre className="overflow-x-auto rounded bg-muted px-2 py-1 font-mono text-xs">
-                {comment.quote}
-              </pre>
+              {comment.quote.trim() === "" ? (
+                // A blank line quoted as code is an empty grey bar that reads as a failed load (#1497).
+                <p className="text-muted-foreground text-xs italic">
+                  {t(
+                    comment.lineStart === comment.lineEnd
+                      ? "changes.blankLine"
+                      : "changes.blankLines",
+                  )}
+                </p>
+              ) : (
+                <pre className="overflow-x-auto rounded bg-muted px-2 py-1 font-mono text-xs">
+                  {comment.quote}
+                </pre>
+              )}
               {editing?.id === comment.id ? (
                 <div className="flex items-start gap-2">
                   <Textarea
