@@ -524,15 +524,30 @@ export function cannedReview(prompt: string): string {
   let path = "";
   let line = 0;
   const lines = diff.split("\n");
+  // Inside a hunk its header's counts say how many lines are content: there, no line is a header.
+  let oldLeft = 0;
+  let newLeft = 0;
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i] ?? "";
-    // A file header is the pair `--- old` then `+++ new`; any other +/- line is the diff's content.
-    if (text.startsWith("--- ") && lines[i + 1]?.startsWith("+++ ")) {
+    if (oldLeft > 0 || newLeft > 0) {
+      if (text.startsWith("+")) {
+        added.push({ path, line: line++ });
+        newLeft--;
+      } else if (text.startsWith("-")) oldLeft--;
+      else {
+        line++;
+        oldLeft--;
+        newLeft--;
+      }
+    } else if (text.startsWith("--- ") && lines[i + 1]?.startsWith("+++ ")) {
       path = (lines[i + 1] ?? "").slice(4);
       i++;
-    } else if (text.startsWith("@@")) line = Number(/\+(\d+)/.exec(text)?.[1] ?? 0);
-    else if (text.startsWith("+")) added.push({ path, line: line++ });
-    else if (text.startsWith(" ")) line++;
+    } else if (text.startsWith("@@")) {
+      const m = /-\d+(?:,(\d+))? \+(\d+)(?:,(\d+))?/.exec(text);
+      line = Number(m?.[2] ?? 0);
+      oldLeft = Number(m?.[1] ?? 1);
+      newLeft = Number(m?.[3] ?? 1);
+    }
   }
   const [first, second] = added;
   const findings = [
