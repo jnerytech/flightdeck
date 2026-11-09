@@ -456,4 +456,43 @@ mod tests {
         assert!(!shown.contains("secret-code"));
         assert_eq!(format!("{:?}", Outcome::Denied), "Denied");
     }
+
+    #[test]
+    fn the_state_must_be_long_enough_to_be_unguessable() {
+        assert!(bind("short").is_err());
+        assert!(bind(&"a".repeat(15)).is_err());
+        assert!(bind(&"a".repeat(16)).is_ok());
+    }
+
+    #[test]
+    fn a_hex_escape_with_a_sign_is_not_an_escape() {
+        let (port, cancel, handle) = waiting(LONG);
+        let reply = get(port, &format!("/?code=x&state={STATE}&scope=%+f"));
+        assert!(status(&reply).contains("400"), "{}", status(&reply));
+        cancel.store(true, Ordering::SeqCst);
+        assert_eq!(handle.join().unwrap(), Outcome::Cancelled);
+    }
+
+    #[test]
+    fn a_client_that_trickles_bytes_after_a_refused_request_cannot_outlast_the_limit() {
+        let (port, _cancel, handle) = waiting(Duration::from_secs(1));
+        let started = Instant::now();
+        let trickle = std::thread::spawn(move || {
+            let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
+                return;
+            };
+            if stream.write_all(b"POST / HTTP/1.1\r\nHost: x\r\n\r\n").is_err() {
+                return;
+            }
+            for _ in 0..50 {
+                std::thread::sleep(Duration::from_millis(100));
+                if stream.write_all(b"x").is_err() {
+                    return;
+                }
+            }
+        });
+        assert_eq!(handle.join().unwrap(), Outcome::Timeout);
+        assert!(started.elapsed() < Duration::from_millis(2500), "{:?}", started.elapsed());
+        let _ = trickle.join();
+    }
 }
