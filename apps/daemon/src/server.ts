@@ -628,7 +628,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "resources");
   }
 
-  function board(): Board {
+  function _board(): Board {
     return need(opts, "board");
   }
 
@@ -711,11 +711,6 @@ export function startServer(opts: ServerOptions): RunningServer {
             opts.rootsPlatform,
           ),
         });
-      }
-      case "gate.respond": {
-        const { runId, stepId, attempt, decision, note } = command.payload;
-        board().workflows.respond(runId, stepId, attempt, decision, note);
-        return ok(command.type, board().workflows.getRun(runId));
       }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");
