@@ -2200,14 +2200,20 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "needs-you" });
     const summary = c.page.getByRole("region", { name: c.t("away.title"), exact: true });
     await summary.waitFor({ timeout: WAIT });
-    // Both hosts with news are named, each with its cards in review.
+    // Both hosts with news are named, and each has cards in review. A group shows only the newest
+    // three lines, which earlier journeys also move, so the line that is followed is the first.
     await summary.getByRole("heading", { name: "alfa", exact: true }).waitFor({ timeout: WAIT });
     await summary.getByRole("heading", { name: BETA, exact: true }).waitFor({ timeout: WAIT });
-    await summary
-      .getByRole("button", { name: DEMO_PR_BETA_CARD, exact: true })
-      .waitFor({ timeout: WAIT });
-    await summary.getByRole("button", { name: DEMO_PR_CARD, exact: true }).click();
-    await c.page.getByRole("heading", { name: DEMO_PR_CARD }).first().waitFor({ timeout: WAIT });
+    const review = summary.getByRole("heading", { name: new RegExp(`^${c.t("away.review")}`) });
+    await review.nth(1).waitFor({ timeout: WAIT });
+    await review
+      .first()
+      .locator("xpath=following-sibling::ul[1]")
+      .getByRole("button")
+      .first()
+      .click();
+    // The line went to its card: the summary is not on screen any more.
+    await summary.waitFor({ state: "detached", timeout: WAIT });
     // Back in Needs you (a reload would read the time the app was just active), the summary is
     // still there, and Dismiss closes it.
     await c.page
