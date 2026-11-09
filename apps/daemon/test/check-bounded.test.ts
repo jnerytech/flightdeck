@@ -258,9 +258,9 @@ describe("check-loop: runLimited when reading fails", () => {
       thrown = error;
     }
     const atEnd = kills.length;
-    // Past the time limit, and with the signal fired: nothing armed by the call fires now.
-    await Bun.sleep(120);
+    // With the signal fired, and past the 50 ms time limit: no kill armed by the call comes.
     stop.abort();
+    await poll(() => kills.length > atEnd, 150);
     return { thrown, atEnd, later: kills.length - atEnd };
   }
 
