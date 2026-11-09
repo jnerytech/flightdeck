@@ -77,6 +77,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
 
   const doLook = async () => {
     setImportNote(null);
+    setPreview(null);
     const outcome = await store.listDriveBackups();
     if (outcome.ok) {
       setDriveNames(outcome.names);
@@ -177,6 +178,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                         className="hit-control"
                         name={`${id}-from`}
                         checked={from === one}
+                        disabled={reading.busy}
                         onChange={() => {
                           setFrom(one);
                           setImportNote(null);
@@ -218,7 +220,12 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                             className="hit-control"
                             name={`${id}-drive`}
                             checked={driveName === name}
-                            onChange={() => setDriveName(name)}
+                            disabled={reading.busy}
+                            onChange={() => {
+                              setDriveName(name);
+                              setPreview(null);
+                              setImportNote(null);
+                            }}
                           />
                           {name}
                         </label>
