@@ -213,6 +213,8 @@ const made = new WeakMap<
     counts?: number[];
     guard?: string;
     backup?: string;
+    budgetHost?: string;
+    budgetWindow?: string;
     origin?: string;
   }
 >();
@@ -1493,3 +1495,200 @@ step(Then, "the outcome can be reached with the keyboard", async (c) => {
     "the outcome box has the focus",
   );
 });
+
+// Budgets as a share of the plan quota (issues #1248, #1309). The demo host reads 62% of its 5-hour
+// window. A budget of a project of the scenario's own measures nothing and holds no card of another
+// project; one on the host is removed at the end of its scenario.
+const budgetsText = (c: Context) => dictionary(c).budgetsUi;
+const budgetsOf = (c: Context, host: string) =>
+  c.page.getByRole("region", { name: c.t("budgetsUi.title", { host }), exact: true });
+/** The windows a feature names, by the dictionary key of the "Measured in" option. */
+const WINDOW_UNITS: Record<string, "unitFiveHour" | "unitSevenDay"> = {
+  "5-hour": "unitFiveHour",
+  weekly: "unitSevenDay",
+};
+const WINDOW_LABELS: Record<string, "fiveHour" | "sevenDay"> = {
+  "5-hour": "fiveHour",
+  weekly: "sevenDay",
+};
+
+step(Given, "I am on the budgets of host {string}", async (c, host = "") => {
+  await open(c, { name: "settings", section: "budgets" });
+  await budgetsOf(c, host).waitFor({ timeout: WAIT });
+  mine(c).budgetHost = host;
+});
+
+/** The budget form's fields, in the section of the scenario's host. */
+async function fillBudget(
+  c: Context,
+  scope: "host" | "project",
+  percent: string,
+  window: string,
+  action: "notify" | "queue",
+) {
+  const section = budgetsOf(c, mine(c).budgetHost ?? "");
+  const text = budgetsText(c);
+  const unit = WINDOW_UNITS[window];
+  if (!unit) throw new Error(`no window called "${window}"`);
+  await section.getByLabel(text.scope, { exact: true }).selectOption({ label: text[scope] });
+  if (scope === "project") {
+    const key = `github.com/bdd/${unique(c, "budget")}`;
+    mine(c).project = projectNameOf(key);
+    const picker = section.getByLabel(text.projectLabel, { exact: true });
+    if ((await picker.evaluate((node) => node.tagName)) === "SELECT") {
+      await picker.selectOption({ label: text.otherProject });
+      await section.getByLabel(text.keyLabel, { exact: true }).fill(key);
+    } else await picker.fill(key);
+  }
+  await section.getByLabel(text.unit, { exact: true }).selectOption({ label: text[unit] });
+  await section.getByLabel(text.limitPct, { exact: true }).fill(percent);
+  await section
+    .getByLabel(text.action, { exact: true })
+    .selectOption({ label: dictionary(c).budgets[action] });
+  await section.getByRole("button", { name: text.create, exact: true }).click();
+}
+
+/** What the list names a project budget after (the last part of its key). */
+const projectNameOf = (key: string) => key.split("/").pop() ?? key;
+
+step(
+  When,
+  "I add a host budget of {string} percent of the {string} window that notifies",
+  async (c, percent = "", window = "") => {
+    mine(c).budgetWindow = window;
+    await fillBudget(c, "host", percent, window, "notify");
+  },
+);
+
+step(
+  When,
+  "I add a budget for a project of my own of {string} percent of the {string} window that notifies",
+  async (c, percent = "", window = "") => {
+    mine(c).budgetWindow = window;
+    await fillBudget(c, "project", percent, window, "notify");
+  },
+);
+
+step(
+  When,
+  "I add a budget for a project of my own of {string} percent of the {string} window that holds new cards",
+  async (c, percent = "", window = "") => {
+    mine(c).budgetWindow = window;
+    await fillBudget(c, "project", percent, window, "queue");
+  },
+);
+
+/** The list entry of the scenario's budget: the host's in the window it set, or its project's. */
+const budgetRow = (c: Context) =>
+  budgetsOf(c, mine(c).budgetHost ?? "")
+    .getByRole("listitem")
+    .filter({ hasText: budgetRowLabel(c) });
+
+step(
+  Then,
+  "the list shows that budget as {string} of the plan and past its limit",
+  async (c, limit = "") => {
+    const row = budgetRow(c);
+    await row
+      .getByText(pattern(dictionary(c).budgets.limitQuota.replace("{limit}", limit)))
+      .first()
+      .waitFor({ timeout: WAIT });
+    // The meter reads how far the share is over its limit: the demo host is past half its 5-hour window.
+    const meter = await row.getByRole("meter").first().getAttribute("aria-label");
+    const percent = Number(/(\d+)%/.exec(meter ?? "")?.[1]);
+    if (!(percent >= 100)) throw new Error(`the budget is not past its limit: ${meter}`);
+  },
+);
+
+step(
+  Then,
+  "the list shows that budget as {string} of the plan and marked as an estimate",
+  async (c, limit = "") => {
+    const row = budgetRow(c);
+    await row
+      .getByText(pattern(dictionary(c).budgets.limitQuota.replace("{limit}", limit)))
+      .first()
+      .waitFor({ timeout: WAIT });
+    await row
+      .getByText(dictionary(c).budgets.estimate.trim(), { exact: false })
+      .first()
+      .waitFor({ timeout: WAIT });
+  },
+);
+
+step(When, "I edit that budget into dollars with a limit of {string}", async (c, limit = "") => {
+  const text = budgetsText(c);
+  const section = budgetsOf(c, mine(c).budgetHost ?? "");
+  await section
+    .getByRole("button", {
+      name: c.t("budgetsUi.edit", { label: budgetRowLabel(c) }),
+      exact: true,
+    })
+    .click();
+  await section.getByLabel(text.unit, { exact: true }).selectOption({ label: text.unitUsd });
+  await section.getByLabel(text.limit, { exact: true }).fill(limit);
+  await section.getByRole("button", { name: text.save, exact: true }).click();
+  mine(c).budgetWindow = "";
+});
+
+/** The budget's label as the buttons name it (the window or period it is in). */
+function budgetRowLabel(c: Context) {
+  const budgets = dictionary(c).budgets;
+  const window = WINDOW_LABELS[mine(c).budgetWindow ?? ""];
+  const project = mine(c).project;
+  return c.t("budgets.label", {
+    scope: project ? c.t("budgets.scopeProject", { project }) : budgets.scopeHost,
+    period: window ? budgets[window] : budgets.day,
+  });
+}
+
+step(
+  Then,
+  "the list shows that one budget in dollars and not as a share of the plan",
+  async (c) => {
+    const row = budgetRow(c);
+    await row
+      .getByText(/US\$ 10\.00/)
+      .first()
+      .waitFor({ timeout: WAIT });
+    const plan = dictionary(c).budgets.limitQuota.replace("{limit}", "");
+    if ((await row.getByText(plan.trim()).count()) > 0)
+      throw new Error("the budget is still a share of the plan");
+    if ((await row.count()) !== 1) throw new Error("the edit made a second budget");
+  },
+);
+
+step(Then, "the list shows that budget holding new cards", async (c) => {
+  await budgetRow(c).getByText(dictionary(c).budgets.queue).first().waitFor({ timeout: WAIT });
+});
+
+step(Then, "I remove that budget", async (c) => {
+  const section = budgetsOf(c, mine(c).budgetHost ?? "");
+  await section
+    .getByRole("button", {
+      name: c.t("budgetsUi.remove", { label: budgetRowLabel(c) }),
+      exact: true,
+    })
+    .click();
+  await c.page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: budgetsText(c).removeConfirm, exact: true })
+    .click();
+  await budgetRow(c).waitFor({ state: "detached", timeout: WAIT });
+});
+
+step(Given, "I open the Costs page", async (c) => open(c, { name: "costs" }));
+
+step(
+  Then,
+  "the plan quota of host {string} leads the page, above the cost charts",
+  async (c, host = "") => {
+    const lead = c.page.getByRole("region", { name: dictionary(c).costsUi.quotaLead, exact: true });
+    await lead.getByText(dictionary(c).quota.windows.five_hour).first().waitFor({ timeout: WAIT });
+    const charts = c.page.getByRole("region", { name: dictionary(c).costsUi.perDay, exact: true });
+    await charts.waitFor({ timeout: WAIT });
+    const [top, below] = [await lead.boundingBox(), await charts.boundingBox()];
+    if (!top || !below || top.y + top.height > below.y)
+      throw new Error(`the quota of ${host} does not lead the page`);
+  },
+);
