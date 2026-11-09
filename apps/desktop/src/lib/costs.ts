@@ -37,7 +37,7 @@ export function periodRange(
 }
 
 /** `US$ 1.23`. */
-export const usd = (value: number) => `US$ ${value.toFixed(2)}`;
+export const usd = (value: number, _lang?: string, _digits?: number) => `US$ ${value.toFixed(2)}`;
 
 const HOST_KEY = /^host:([^:]+):(.+)$/;
 /** A path as the daemon writes it: from the root, a drive or a share. */
