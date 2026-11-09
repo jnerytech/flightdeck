@@ -94,3 +94,22 @@ export class CheckLoopSwitch {
     });
   }
 }
+
+/**
+ * The mode a card's switch is decided on: a live session's mode now; for a session that is over
+ * or gone, the mode its next run starts in (the variant's, else the host's default), never the one
+ * the old session ended in.
+ */
+export function cardMode(
+  card: Pick<Card, "sessionId" | "sessionStatus" | "variant">,
+  manager: { modeOf(sessionId: string | null): PermissionMode },
+): PermissionMode {
+  const next = () => card.variant?.permissionMode ?? manager.modeOf(null);
+  const over = card.sessionStatus === "ended" || card.sessionStatus === "error";
+  if (card.sessionId === null || over) return next();
+  try {
+    return manager.modeOf(card.sessionId);
+  } catch {
+    return next();
+  }
+}

@@ -22,7 +22,7 @@ import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
-import { CheckLoopSwitch } from "./board/check-loop.ts";
+import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -1672,10 +1672,7 @@ export async function startDaemon(
       board,
       settings: (projectId) => prWatcher.settings(projectId),
       isTrusted: (path) => projectTrust.isTrusted(path),
-      modeOf: (card) =>
-        card.sessionId === null
-          ? (card.variant?.permissionMode ?? manager.modeOf(null))
-          : manager.modeOf(card.sessionId),
+      modeOf: (card) => cardMode(card, manager),
     }),
     vault,
     log: logger.log.bind(logger),
