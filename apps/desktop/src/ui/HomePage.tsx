@@ -8,9 +8,10 @@ import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
+import type { T } from "@/i18n/index";
 import type { AppState, AppStore, HostView } from "../lib/app-store.ts";
 import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, awayKey, scopeHosts } from "../lib/data-scope.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
 import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
 import type { HomeLeaders } from "../lib/home-leaders.ts";
@@ -163,6 +164,72 @@ function nextBoard(
   return last?.entry === entry && last.leaders ? last : { entry, leaders: null };
 }
 
+/** The scope menu, when there is more than one host or a project to choose from. */
+function HomeScopeMenu(
+  props: Readonly<{
+    store: AppStore;
+    hosts: HostView[];
+    loaded: boolean;
+    projects: Array<{ key: string; label: string }>;
+    scope: DataScope;
+  }>,
+) {
+  if (!props.loaded || (props.hosts.length <= 1 && props.projects.length === 0)) return null;
+  return (
+    <ScopeMenu
+      store={props.store}
+      hosts={props.hosts}
+      projects={props.projects}
+      scope={props.scope}
+    />
+  );
+}
+
+/** The scoped host is away: without numbers the line above says it; with older numbers, this one. */
+function AwayNotice(
+  props: Readonly<{ store: AppStore; away: HostView | undefined; withNumbers: boolean }>,
+) {
+  const { store, away } = props;
+  const { t } = store.i18n;
+  if (!away) return null;
+  return (
+    <InlineNotice tone="info">
+      {props.withNumbers && <span>{t(awayKey(away.status, "numbers"), { host: away.name })} </span>}
+      <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
+        {t("scope.showAll")}
+      </Button>
+    </InlineNotice>
+  );
+}
+
+/** What is not whole about the numbers on screen: old ones, missing ones, an older host. */
+function ReadNotices(
+  props: Readonly<{
+    t: T;
+    stale: HostView[];
+    silent: HostView[];
+    ago: string;
+    olderDaemon: boolean;
+  }>,
+) {
+  const { t, stale, silent, ago } = props;
+  return (
+    <>
+      {stale.length > 0 && (
+        <InlineNotice tone="info">
+          {t("home.stale", { hosts: stale.map((h) => h.name).join(", "), ago })}
+        </InlineNotice>
+      )}
+      {silent.length > 0 && (
+        <InlineNotice>
+          {t("home.partial", { hosts: silent.map((h) => h.name).join(", ") })}
+        </InlineNotice>
+      )}
+      {props.olderDaemon && <InlineNotice tone="info">{t("home.olderDaemon")}</InlineNotice>}
+    </>
+  );
+}
+
 /**
  * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
  * turn), from the hosts' own costs and usage; no command of its own.
@@ -307,9 +374,13 @@ export function HomePage(
       title={t("home.title")}
       subtitle={subtitle}
       toolbar={
-        state.hostsLoaded && (state.hosts.length > 1 || projects.length > 0) ? (
-          <ScopeMenu store={store} hosts={state.hosts} projects={projects} scope={scope} />
-        ) : undefined
+        <HomeScopeMenu
+          store={store}
+          hosts={state.hosts}
+          loaded={state.hostsLoaded}
+          projects={projects}
+          scope={scope}
+        />
       }
     >
       {/* One live region from the first word to the numbers: its change is what is announced. */}
@@ -319,31 +390,17 @@ export function HomePage(
       >
         {message}
       </output>
-      {away && (
-        <InlineNotice tone="info">
-          {/* Without numbers the line above says it; with older numbers on screen, this one does. */}
-          {kpis && <span>{t(awayKey(away.status, "numbers"), { host: away.name })} </span>}
-          <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
-            {t("scope.showAll")}
-          </Button>
-        </InlineNotice>
-      )}
+      <AwayNotice store={store} away={away} withNumbers={kpis !== null} />
       {kpis && (
         <Stack gap={4}>
           <p className="text-muted-foreground text-xs">{t("home.updated", { ago })}</p>
-          {stale.length > 0 && (
-            <InlineNotice tone="info">
-              {t("home.stale", { hosts: stale.map((h) => h.name).join(", "), ago })}
-            </InlineNotice>
-          )}
-          {silent.length > 0 && (
-            <InlineNotice>
-              {t("home.partial", { hosts: silent.map((h) => h.name).join(", ") })}
-            </InlineNotice>
-          )}
-          {kpis.turns.failed === null && (
-            <InlineNotice tone="info">{t("home.olderDaemon")}</InlineNotice>
-          )}
+          <ReadNotices
+            t={t}
+            stale={stale}
+            silent={silent}
+            ago={ago}
+            olderDaemon={kpis.turns.failed === null}
+          />
           <Grid cols={{ base: 1, sm: 2, xl: 4 }} gap={4}>
             <KpiCard
               title={t("home.spend")}
