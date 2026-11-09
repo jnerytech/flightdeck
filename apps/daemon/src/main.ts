@@ -1741,6 +1741,7 @@ export async function startDaemon(
       snippets,
       terminals,
       manager,
+      onPersonInput: (sessionId) => board.personTurnOfSession(sessionId),
       central,
       exec: spawnExec,
       allowedRoots: config.allowedRoots,

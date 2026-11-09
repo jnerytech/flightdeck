@@ -1553,7 +1553,12 @@ export class Board {
         "INSERT INTO card_runs (id, card_id, queued_at, persona, fix_prompt) VALUES (?, ?, ?, ?, ?)",
       )
       .run(runId, id, now(), persona ? JSON.stringify(persona) : null, options.fix?.prompt ?? null);
-    this.db.query("UPDATE cards SET notice = NULL, unblocked_at = NULL WHERE id = ?").run(id);
+    // A new run has a new session, whose events start again: the loop's mark of the last one goes.
+    this.db
+      .query(
+        "UPDATE cards SET notice = NULL, unblocked_at = NULL, check_loop_turn_seq = NULL WHERE id = ?",
+      )
+      .run(id);
     this.place(id, { type: "started" });
     this.pump();
     return this.changed(id);
@@ -1891,7 +1896,6 @@ export class Board {
     force: boolean,
   ): Promise<Card> {
     const before = this.getCard(id);
-    this.loop?.onStop(id);
     const overrides = this.getProject(before.projectId).contractByColumn;
     const contract = contractOf(column, overrides);
     // A card already in the column is only reordered; a column that hints never holds a card back.
@@ -1906,6 +1910,9 @@ export class Board {
     }
     // The last forced move's notice is stale once the card moves on.
     if (card.noticeReason === "card_moved_anyway") this.clearNotice(id);
+    // Issue #1361: a card the person moved to another column leaves its check loop; a reorder in
+    // its own column, or a move that was refused above, does not.
+    if (before.column !== column) this.loop?.onStop(id);
     const moved = this.moveCard(id, column, position);
     if (needs.length === 0) return moved;
     const lacked = why(
