@@ -2913,6 +2913,13 @@ export class Board {
 
   /** Issue #1361: the card's switch and how its loop goes, for the app. */
   private checkLoopOf(row: CardRow): Card["checkLoop"] {
+    const own = {
+      on: row.check_loop === 1,
+      rounds: row.check_rounds,
+      confirmed: row.check_loop_confirmed_at !== null,
+    };
+    // Every card read comes here: a card with the switch off asks the rounds table nothing.
+    if (!own.on) return own;
     const last = this.db
       .query<
         {
@@ -2931,9 +2938,7 @@ export class Board {
     const max = project === undefined ? undefined : Math.min(row.check_rounds ?? project, project);
     const reason = CheckLoopReason.safeParse(last?.reason);
     return {
-      on: row.check_loop === 1,
-      rounds: row.check_rounds,
-      confirmed: row.check_loop_confirmed_at !== null,
+      ...own,
       active: this.loop?.phaseOf(row.id) ?? null,
       round: this.loop?.sentOf(row.id) ?? 0,
       ...(max === undefined ? {} : { max }),

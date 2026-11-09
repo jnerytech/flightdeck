@@ -518,6 +518,12 @@ export class CheckLoopEngine {
       // A placement that failed leaves the card where it is; the slot still goes back below.
     } finally {
       if (how.release) this.releaseSafely(cardId);
+      // The record told the app while the loop was still going: the card is told again, now idle.
+      try {
+        this.fx.notify?.(cardId);
+      } catch {
+        // A card that cannot be read any more has nothing to show.
+      }
     }
   }
 }
