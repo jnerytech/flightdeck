@@ -34,13 +34,13 @@ function Harness() {
       navKey={route}
     >
       {route === "form" ? (
-        <Page title="Connect your first host">
+        <Page key="form" title="Connect your first host">
           <button type="button" onClick={() => setRoute("host")}>
             Test and add
           </button>
         </Page>
       ) : (
-        <Page title="alfa">
+        <Page key="host" title="alfa">
           <button type="button">Add project</button>
         </Page>
       )}
