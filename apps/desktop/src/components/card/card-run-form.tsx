@@ -272,8 +272,14 @@ export function CardRunForm(
           }}
           onCancel={() => setDraft(null)}
           onConfirm={async (description, title) => {
-            setDraft(null);
-            await store.hostCommand(hostId, "card.pr.create", { cardId, description, title });
+            // The dialog closes once the host took it: a refusal leaves the text for the person to keep (#1543).
+            const opened = await store.hostCommand(
+              hostId,
+              "card.pr.create",
+              { cardId, description, title },
+              { retry: false },
+            );
+            if (opened !== null) setDraft(null);
           }}
         >
           {draft.note && <p className="text-status-needs-you text-sm">{draft.note}</p>}
