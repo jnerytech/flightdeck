@@ -150,6 +150,8 @@ export interface BoardOptions {
   budgets?: { blocked(projectKey: string): boolean; watch(listener: () => void): () => void };
   /** Issue #1343: while the host's memory is at or above `resources.pauseAt`, new cards wait. */
   memory?: { blocked(): unknown; watch(listener: () => void): () => void };
+  /** Issue #1404: while the person has paused new runs on the host, new cards wait. */
+  pause?: { blocked(): unknown; watch(listener: () => void): () => void };
   /** Phase 13: the estimated cost of a card's sessions, for the arena's comparison. */
   cardCost?: (cardId: string) => number | null;
   /** Phase 22: refuses a PR description that carries a secret. */
@@ -427,6 +429,7 @@ export class Board {
   private readonly quotaWaiters: Array<() => void> = [];
   private readonly unwatchQuota: () => void;
   private readonly unwatchMemory: () => void;
+  private readonly unwatchPause: () => void;
   private readonly unwatchBudgets: () => void;
   /** Review comments of each card's open PR, from the last poll (phase 11). */
   private readonly prCommentCache = new Map<string, PrComment[]>();
@@ -477,6 +480,7 @@ export class Board {
     });
     this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchMemory = opts.memory?.watch(() => this.onLimits()) ?? (() => {});
+    this.unwatchPause = opts.pause?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
     this.armPoll();
     // Back from a restart: keep moving cards whose run still has a session.
@@ -1538,6 +1542,8 @@ export class Board {
         waiter.resume();
         continue;
       }
+      // Paused by the person (#1404), queued cards wait for the resume; runs going on finish.
+      if (this.opts.pause?.blocked()) return;
       // Over the plan quota, queued cards wait for the window to reset (runs going on do not).
       if (this.opts.quota?.blocked()) return;
       // Short of memory (#1343), they wait for it to free up; the gate lets them go on any doubt.
@@ -1567,8 +1573,10 @@ export class Board {
     }
   }
 
-  /** Why a queued card waits, for the card itself: the quota, memory, a budget, then a slot. */
+  /** Why a queued card waits, for the card itself: the pause, the quota, memory, a budget, then a slot. */
   private queueState(queued: boolean, projectId: string): Pick<Card, "queueReason" | "quotaUntil"> {
+    // The person's own pause (#1404) is named first: it is the hold they can lift.
+    if (queued && this.opts.pause?.blocked()) return { queueReason: "paused", quotaUntil: null };
     const blocked = queued ? this.opts.quota?.blocked() : null;
     if (blocked) {
       const until = blocked.until === null ? null : new Date(blocked.until).toISOString();
@@ -2557,6 +2565,7 @@ export class Board {
     this.pollTimer = null;
     this.unwatchQuota();
     this.unwatchMemory();
+    this.unwatchPause();
     this.unwatchBudgets();
     for (const unfollow of this.follows.values()) unfollow();
     this.follows.clear();

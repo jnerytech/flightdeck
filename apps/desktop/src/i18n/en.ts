@@ -1027,6 +1027,11 @@ export const en: Dictionary = {
       off: "Keep awake: off",
     },
     keepAwakeShort: { holding: "Awake", on: "Keep awake", off: "Sleep ok" },
+    paused: {
+      running: "New runs paused on {host}: {n} still running",
+      idle: "New runs paused on {host}: idle, safe to update",
+    },
+    pausedShort: { running: "Paused · {n} running", idle: "Paused · idle" },
     terminals: "{n} open terminals",
     terminalsOne: "1 open terminal",
     hosts: "{online} of {total} hosts online",
@@ -1674,6 +1679,7 @@ export const en: Dictionary = {
     keepAwake: "keeping the computer awake",
     quotaPause: "the quota guard for new cards",
     memoryPause: "the memory hold for new cards",
+    hostPause: "the pause of new runs",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
@@ -4110,6 +4116,7 @@ export const en: Dictionary = {
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
     waitingMemory: "waiting for memory",
+    waitingPaused: "waiting: host paused",
     addCard: "Add card",
     addCardTo: "Add card to {column}",
     empty: "Empty",
@@ -5506,6 +5513,14 @@ export const en: Dictionary = {
     bypassAllowMessage:
       "Allow sessions on {host} to run without permission prompts? Claude could then edit and delete files and run commands in any allowed folder without asking. Only do this on a machine and in folders you accept that risk for.",
     bypassTurnOff: "Turn off",
+    pauseTitle: "Pause new runs",
+    pauseHint:
+      "Before restarting or updating this host: new cards wait in the queue, and runs already going finish. Resume to let the queue go.",
+    pauseOff: "New runs start as usual.",
+    pauseOnRunning: "New runs are paused. {n} still running.",
+    pauseOnIdle: "New runs are paused. Nothing is running: safe to restart or update.",
+    pauseTurnOn: "Pause new runs",
+    pauseTurnOff: "Resume new runs",
     keepAwakeTitle: "Keep this computer awake",
     keepAwakeHint:
       "While a session of this host runs or waits for your answer, the host asks the computer not to sleep, so approvals and notifications keep working. The screen may still turn off, and closing the lid follows the system's power settings.",

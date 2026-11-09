@@ -11,6 +11,8 @@ export interface StatusBarSummary {
   keepAwake: "holding" | "on" | "off" | null;
   /** The host a press on the keep-awake item opens. */
   keepAwakeHostId: string | null;
+  /** Issue #1404: the first online host whose new runs are paused, with how many sessions still run. */
+  paused?: { hostId: string; hostName: string; running: number } | null;
   /** The app's own update: ready to install, on offer, or the last check failed; null when none. */
   update: "ready" | "available" | "failed" | null;
   updateVersion: string | null;
@@ -29,6 +31,13 @@ function keepAwakeOf(hosts: HostView[]): Pick<StatusBarSummary, "keepAwake" | "k
   return first
     ? { keepAwake: "off", keepAwakeHostId: first.id }
     : { keepAwake: null, keepAwakeHostId: null };
+}
+
+/** The first online host whose new runs are paused (#1404); null when none is. */
+function pausedOf(hosts: HostView[]): StatusBarSummary["paused"] {
+  const host = hosts.find((h) => h.status === "online" && h.hostInfo?.pause?.paused);
+  const pause = host?.hostInfo?.pause;
+  return host && pause ? { hostId: host.id, hostName: host.name, running: pause.running } : null;
 }
 
 /** The app's own update: ready to install, then on offer, then a failed check. */
@@ -52,6 +61,7 @@ export function statusBarSummary(
     hostsTotal: state.hosts.length,
     terminals: terminalTabs,
     ...keepAwakeOf(state.hosts),
+    paused: pausedOf(state.hosts),
     ...updateOf(state.appUpdate),
   };
 }

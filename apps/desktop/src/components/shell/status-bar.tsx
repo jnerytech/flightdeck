@@ -1,6 +1,7 @@
 import {
   ArrowUpCircle,
   CircleAlert,
+  CirclePause,
   Coffee,
   Ellipsis,
   Moon,
@@ -9,7 +10,7 @@ import {
   SquareTerminal,
   TriangleAlert,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { QuotaDetail } from "@/components/shell/quota-detail";
 import { Meter } from "@/components/status/meter";
@@ -134,6 +135,8 @@ export function StatusBar(
     onRefreshQuota(): void;
     onOpenQuota(hostId: string): void;
     onOpenKeepAwake(hostId: string): void;
+    /** Issue #1404: the paused host's page. */
+    onOpenPause?(hostId: string): void;
     onOpenTerminals(): void;
     onOpenHosts(): void;
     onOpenUpdate(): void;
@@ -164,6 +167,25 @@ export function StatusBar(
     setOpen(false);
     action();
   };
+  // Issue #1404: a paused host stays in sight, so the pause is not forgotten.
+  const paused = summary.paused;
+  const pausedVars = { host: paused?.hostName ?? "", n: String(paused?.running ?? 0) };
+  const busy = (paused?.running ?? 0) > 0;
+  const pause = paused ? (
+    <Item
+      name={
+        busy ? t("statusBar.paused.running", pausedVars) : t("statusBar.paused.idle", pausedVars)
+      }
+      onClick={() => props.onOpenPause?.(paused.hostId)}
+    >
+      <CirclePause aria-hidden="true" />
+      <span className="status-short">
+        {busy
+          ? t("statusBar.pausedShort.running", pausedVars)
+          : t("statusBar.pausedShort.idle", pausedVars)}
+      </span>
+    </Item>
+  ) : null;
   const keepAwake =
     awake && summary.keepAwakeHostId ? (
       <Item
@@ -212,6 +234,7 @@ export function StatusBar(
       <div className="status-bar-group">
         {compact ? (
           <>
+            {pause}
             {keepAwake}
             <Popover open={open} onOpenChange={setOpen}>
               <IconTip label={t("statusBar.more")}>
@@ -259,6 +282,7 @@ export function StatusBar(
                 </span>
               </Item>
             )}
+            {pause}
             {keepAwake}
             <Item name={terminalsName} onClick={props.onOpenTerminals}>
               <SquareTerminal aria-hidden="true" />
@@ -308,6 +332,16 @@ export function StatusBarSlot(
   );
   const quotaHost = online.find((host) => host.id === glance?.hostId);
   const toHost = (host: string) => go({ name: "host", host });
+  // Issue #1404: a paused host's count is read again as its sessions change, whatever the page.
+  const pausedActivity = online
+    .filter((host) => host.hostInfo?.pause?.paused)
+    .map((host) => `${host.id}=${host.sessions.map((s) => `${s.id}:${s.status}`).join(",")}`)
+    .join(";");
+  useEffect(() => {
+    if (!store || pausedActivity === "") return;
+    for (const entry of pausedActivity.split(";"))
+      void store.reloadHostInfo(entry.split("=")[0] ?? "");
+  }, [store, pausedActivity]);
   return (
     <StatusBar
       t={props.t}
@@ -322,6 +356,7 @@ export function StatusBarSlot(
       onRefreshQuota={props.onRefreshQuota}
       onOpenQuota={toHost}
       onOpenKeepAwake={toHost}
+      onOpenPause={toHost}
       onOpenTerminals={props.onOpenTerminals}
       onOpenHosts={() => go(hostsRoute(state.hosts, props.currentHostId ?? null))}
       onOpenUpdate={() => go({ name: "settings" })}
