@@ -55,6 +55,11 @@ export const cardHandlers = {
   "card.get": (payload, { server }) => {
     return server.need("board").getCard(payload.cardId);
   },
+  "card.review": async (payload, { ws, server }) => {
+    // It spends the host's quota and sends the card's diff out: a near connection only (#1439).
+    requireVaultTransport(ws.data.origin, "card.review", server.opts.log);
+    return await server.need("cardReview").start(payload.cardId, payload.language);
+  },
   "card.spec": async (payload, { server }) => {
     return await server.need("board").refreshSpec(payload.cardId);
   },

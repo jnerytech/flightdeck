@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { descriptorInside, readSpec, stillThere } from "../src/board/spec.ts";
+import { descriptorInside, readSpec, readSpecText, stillThere } from "../src/board/spec.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
@@ -415,5 +415,24 @@ describe("card-spec: a column that asks for a spec", () => {
       "waiting",
     );
     expect(plain.board.getCard(plain.card.id).specState).toBeNull();
+  });
+});
+
+describe("readSpecText: the card review's spec read stays inside the worktree (#1439)", () => {
+  test("a spec file's text, capped; nothing through a folder link out, a hard link or a credential name", async () => {
+    const base = realpathSync.native(tempDir("fd-spec-text-"));
+    const root = join(base, "wt");
+    const outside = join(base, "out");
+    mkdirSync(join(root, "docs"), { recursive: true });
+    mkdirSync(outside);
+    writeFileSync(join(root, "docs", "spec.md"), "# Spec\nlogin works\n");
+    writeFileSync(join(outside, "notes.md"), "# Notes\nprivate\n");
+    symlinkSync(outside, join(root, "linked"));
+    linkSync(join(outside, "notes.md"), join(root, "hard.md"));
+    expect(await readSpecText(root, "docs/spec.md", 6)).toBe("# Spec");
+    expect(await readSpecText(root, "docs/spec.md", 1000)).toBe("# Spec\nlogin works\n");
+    expect(await readSpecText(root, "linked/notes.md", 1000)).toBeNull();
+    expect(await readSpecText(root, "hard.md", 1000)).toBeNull();
+    expect(await readSpecText(root, "../out/notes.md", 1000)).toBeNull();
   });
 });

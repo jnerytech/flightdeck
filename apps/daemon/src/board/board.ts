@@ -8,6 +8,7 @@ import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
+  CheckLoopReason,
   ColumnContract,
   type ContractOverrides,
   contractOf,
@@ -57,7 +58,12 @@ import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import { cardMode } from "./check-loop.ts";
-import { CheckLoopEngine, type LoopCard, type RoundRecord } from "./check-loop-engine.ts";
+import {
+  CheckLoopEngine,
+  type LoopCard,
+  type RoundRecord,
+  roundsCap,
+} from "./check-loop-engine.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
@@ -477,6 +483,8 @@ export class Board {
 
   /** Issue #1361: the check loop's state machine; null when the host runs no check loop. */
   private readonly loop: CheckLoopEngine | null;
+  /** Issue #1361: projects whose watch settings could not be read, logged once each. */
+  private readonly unreadableLoopSettings = new Set<string>();
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
@@ -821,11 +829,7 @@ export class Board {
       externalGone: row.external_gone === 1,
       estimateHours: row.estimate_hours,
       validationNote: row.validation_note,
-      checkLoop: {
-        on: row.check_loop === 1,
-        rounds: row.check_rounds,
-        confirmed: row.check_loop_confirmed_at !== null,
-      },
+      checkLoop: this.checkLoopOf(row),
       specPath: row.spec_path,
       pinnedDocs: pinnedDocsOf(row.pinned_docs),
       startWorkflow: row.start_workflow,
@@ -1658,6 +1662,11 @@ export class Board {
     if (!keys?.resolve) return;
     const rows = this.db.query<{ path: string }, []>("SELECT path FROM projects").all();
     await Promise.all(rows.map((row) => keys.resolve?.(row.path)));
+  }
+
+  /** Issue #1439: whether the project's budget holds new work now, for the card review's gate. */
+  budgetHeld(projectId: string): boolean {
+    return this.budgetBlocked(projectId);
   }
 
   /** A `queue` budget of the host or of the card's project is at 100%. */
@@ -2906,11 +2915,69 @@ export class Board {
       release: (cardId) => this.release(cardId),
       place: (cardId) => this.place(cardId, { type: "turn", isError: false }),
       record: (cardId, record) => this.recordRound(cardId, record),
+      notify: (cardId) => this.changed(cardId),
       timer: {
         set: (fn, ms) => setTimeout(fn, ms),
         clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
       },
     });
+  }
+
+  /** Issue #1361: the card's switch and how its loop goes, for the app. */
+  private checkLoopOf(row: CardRow): Card["checkLoop"] {
+    const own = {
+      on: row.check_loop === 1,
+      rounds: row.check_rounds,
+      confirmed: row.check_loop_confirmed_at !== null,
+    };
+    // Every card read comes here: a card with the switch off asks the rounds table nothing.
+    if (!own.on) return own;
+    const last = this.db
+      .query<
+        {
+          status: "sent" | "ended";
+          reason: string | null;
+          command: string | null;
+          exit_code: number | null;
+          at: string;
+        },
+        [string]
+      >(
+        "SELECT status, reason, command, exit_code, at FROM card_check_rounds WHERE card_id = ? ORDER BY id DESC LIMIT 1",
+      )
+      .get(row.id);
+    // A board that starts before its watch settings can be read shows the loop without its cap.
+    let project: number | undefined;
+    try {
+      project = this.opts.checkLoop?.settings(row.project_id).checkRounds;
+    } catch (error) {
+      project = undefined;
+      // Said once per project: a row that cannot be read would otherwise go unnoticed.
+      if (!this.unreadableLoopSettings.has(row.project_id)) {
+        this.unreadableLoopSettings.add(row.project_id);
+        const what = error instanceof Error ? error.name : "error";
+        this.opts.log?.(
+          `check loop: the watch settings of project ${row.project_id} could not be read (${what})`,
+        );
+      }
+    }
+    const max = project === undefined ? undefined : roundsCap(row.check_rounds, project);
+    const reason = CheckLoopReason.safeParse(last?.reason);
+    return {
+      ...own,
+      active: this.loop?.phaseOf(row.id) ?? null,
+      round: this.loop?.sentOf(row.id) ?? 0,
+      ...(max === undefined ? {} : { max }),
+      last: last
+        ? {
+            state: last.status,
+            reason: reason.success ? reason.data : null,
+            command: last.command,
+            exitCode: last.exit_code,
+            at: last.at,
+          }
+        : null,
+    };
   }
 
   /** What the loop needs of a card; null when the card is gone. */

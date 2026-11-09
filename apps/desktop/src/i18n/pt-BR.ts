@@ -1702,6 +1702,7 @@ export const ptBR = {
     quotaPause: "a trava da cota para cartões novos",
     memoryPause: "a trava de memória para cartões novos",
     hostPause: "a pausa de novas execuções",
+    cardReview: "a revisão de segunda opinião de um cartão",
     quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },
@@ -2185,6 +2186,11 @@ export const ptBR = {
     card_workflow_running: "O card tem uma execução de workflow em andamento.",
     rule_remove_confirm: "Confirme a remoção da regra.",
     card_no_worktree: "O card ainda não tem worktree.",
+    card_review_running: "O card está ocupado, ou a revisão dele já está rodando.",
+    card_review_held:
+      "Sem revisão agora: o host está pausado, no limite da cota, com pouca memória, ou o projeto está no orçamento.",
+    card_review_no_diff: "O card não tem mudanças para revisar.",
+    card_review_limit: "Este card já teve {max} revisões nas últimas 24 horas, o máximo por dia.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_push_timeout:
@@ -2942,6 +2948,31 @@ export const ptBR = {
     sessionFilesNone:
       "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
+  },
+  secondOpinion: {
+    title: "Segunda opinião",
+    intro:
+      "Uma segunda chamada do Claude lê o diff e deixa os achados como rascunhos do revisor. O diff, com os segredos mascarados, vai para a Anthropic, como a sessão do próprio card já o envia.",
+    ask: "Pedir uma segunda opinião",
+    running: "Uma execução está em andamento: espere ela terminar.",
+    noChanges: "O card não tem mudanças para revisar.",
+    reading: "Lendo o diff… isso pode levar um minuto.",
+    draftsOne:
+      "1 achado virou rascunho abaixo: Enviar revisão o manda ao card junto com os seus comentários.",
+    drafts:
+      "{n} achados viraram rascunhos abaixo: Enviar revisão os manda ao card junto com os seus comentários.",
+    cached: "Este diff já foi revisado: esta é essa revisão.",
+    moved:
+      "O diff mudou durante a revisão, então nada foi colocado numa linha: todos os achados estão listados aqui.",
+    failed: "A revisão não respondeu no formato esperado. Um novo commit permite outra.",
+    loose: "Fora de uma linha alterada ({n})",
+    place: "{path}:{line}",
+    reviewer: "Revisor",
+    dismiss: "Dispensar",
+    dismissFinding: "Dispensar o achado em {path}, {where}",
+    severity: { blocker: "Bloqueante", high: "Alto", medium: "Médio", low: "Baixo" },
+    notAddressedOne: "1 achado do revisor sem tratar ({high} alto)",
+    notAddressed: "{n} achados do revisor sem tratar ({high} alto)",
   },
   cardReview: {
     positionLabel: "Posição na base",

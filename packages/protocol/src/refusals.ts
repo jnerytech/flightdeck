@@ -157,6 +157,10 @@ export const DAEMON_REASONS = [
   "card_workflow_running",
   "rule_remove_confirm",
   "card_no_worktree",
+  "card_review_running",
+  "card_review_held",
+  "card_review_no_diff",
+  "card_review_limit",
   "pr_secret",
   "pr_title_secret",
   "pr_push_timeout",
@@ -599,6 +603,7 @@ export const DAEMON_FEATURES = [
   "quotaPause",
   "memoryPause",
   "hostPause",
+  "cardReview",
   "quotaBudgets",
   "autoUpdate",
 ] as const;

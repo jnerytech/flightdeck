@@ -233,4 +233,35 @@ describe("assistant-claude-complete", () => {
     });
     expect((await scripted.complete(options())).text).toBe("scripted");
   });
+
+  test("#1439: a call's own budget and answer schema reach the SDK; without them the defaults stay", async () => {
+    const { sdk, seen } = runtime([
+      { type: "result", subtype: "success", is_error: false, result: "{}", usage },
+      { type: "result", subtype: "success", is_error: false, result: "{}", usage },
+    ]);
+    const schema = { type: "object", properties: { findings: { type: "array" } } };
+    await sdk.complete(options({ budgetUsd: 0.5, schema }));
+    await sdk.complete(options());
+    expect([seen[0]?.options.maxBudgetUsd, seen[0]?.options.outputFormat]).toEqual([
+      0.5,
+      { type: "json_schema", schema },
+    ]);
+    expect([seen[1]?.options.maxBudgetUsd, seen[1]?.options.outputFormat]).toEqual([
+      0.25,
+      undefined,
+    ]);
+  });
+
+  test("#1439: a call cut short at its budget still says what it used", async () => {
+    const { sdk } = runtime([
+      { type: "result", subtype: "error_max_budget_usd", is_error: true, usage },
+    ]);
+    const error = await sdk.complete(options({ budgetUsd: 0.5 })).catch((e: unknown) => e);
+    expect(error instanceof FlightdeckError ? error.reason : null).toBe("assistant_truncated");
+    expect((error as { tokens?: object }).tokens).toMatchObject({
+      input: 300,
+      output: 20,
+      cacheRead: 5,
+    });
+  });
 });

@@ -227,6 +227,7 @@ const made = new WeakMap<
     origin?: string;
     cards?: string[];
     listsBefore?: number;
+    head?: string;
   }
 >();
 const mine = (c: Context) => {
@@ -2444,22 +2445,29 @@ const SHARED_FILE = "fake-1.txt";
 const tileOf = (c: Context, title: string) =>
   c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
 
-step(When, "I start two cards of my own on that project that each commit a file", async (c) => {
-  const titles: string[] = [];
-  for (const n of [1, 2]) {
-    const title = unique(c, `bdd card ${n}`);
-    titles.push(title);
-    await openOwnBoard(c);
-    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
-    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
-    // The fake Claude commits a file when the description says [commit]: the same name in each card.
-    await c.page.getByLabel(c.t("kanban.descriptionLabel"), { exact: true }).fill("[commit]");
-    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
-    await tileOf(c, title).locator("[data-card-open]").click({ timeout: WAIT });
-    await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
-    // Its run is over (changes to review, or the PR to open) before the next card starts.
-    await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+/** Makes and starts a card of the scenario's own project, and waits until its run is over. */
+async function startNumberedCard(c: Context, n: number, description: string): Promise<string> {
+  const title = unique(c, `bdd card ${n}`);
+  await openOwnBoard(c);
+  await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+  await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+  if (description) {
+    await c.page.getByLabel(c.t("kanban.descriptionLabel"), { exact: true }).fill(description);
   }
+  await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+  await tileOf(c, title).locator("[data-card-open]").click({ timeout: WAIT });
+  await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
+  // Its run is over (changes to review, or the PR to open) before the next card starts.
+  await startedLead(c).waitFor({ timeout: SESSION_WAIT });
+  return title;
+}
+
+step(When, "I start two cards of my own on that project that each commit a file", async (c) => {
+  // The fake Claude commits a file when the description says [commit]: the same name in each card.
+  const titles = [
+    await startNumberedCard(c, 1, "[commit]"),
+    await startNumberedCard(c, 2, "[commit]"),
+  ];
   mine(c).cards = titles;
   mine(c).card = titles[0] ?? "";
 });
@@ -2704,4 +2712,93 @@ step(Then, "host beta has no copy of the card", async (c) => {
   // on beta would keep it from ever appearing.
   await c.page.getByText(c.t("states.emptyCards"), { exact: true }).waitFor({ timeout: WAIT });
   if ((await tile(c).count()) > 0) throw new Error("host beta holds a copy of the card");
+});
+
+// Update N from the base: the selection's cards are rebased one at a time, and the summary names each outcome (issue #1406).
+/** The worktree of one card of the scenario, found by the branch its title gives it. */
+const worktreeOf = (c: Context, title: string) => {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 40)
+    .replace(/^-+|-+$/g, "");
+  return join(projectFolder(c), ".flightdeck", "worktrees", slug);
+};
+
+/** Whether the project's base branch is part of the card's history. */
+const hasBase = (c: Context, title: string) => {
+  try {
+    gitIn(worktreeOf(c, title), "merge-base", "--is-ancestor", "main", "HEAD");
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+step(
+  When,
+  "I start two cards of my own on that project, the first committing a file",
+  async (c) => {
+    const first = await startNumberedCard(c, 1, "[commit]");
+    const second = await startNumberedCard(c, 2, "");
+    mine(c).cards = [first, second];
+  },
+);
+
+step(When, "the base branch gets a commit that adds the same file with other text", async (c) => {
+  const folder = projectFolder(c);
+  writeFileSync(join(folder, SHARED_FILE), "from the base\n");
+  gitIn(folder, "add", SHARED_FILE);
+  gitIn(folder, "commit", "-q", "-m", "the base moves on");
+});
+
+step(When, "I start a third card of my own on that project", async (c) => {
+  const third = await startNumberedCard(c, 3, "");
+  mine(c).cards = [...(mine(c).cards ?? []), third];
+});
+
+step(When, "I select the three cards and update them from the base", async (c) => {
+  const [first = "", ...others] = mine(c).cards ?? [];
+  mine(c).head = gitIn(worktreeOf(c, first), "rev-parse", "HEAD").trim();
+  await openOwnBoard(c);
+  for (const title of [first, ...others]) {
+    await tileOf(c, title).click({ modifiers: ["Control"], timeout: WAIT });
+  }
+  await c.page
+    .getByRole("group", { name: c.t("board.selection"), exact: true })
+    .getByRole("button", { name: c.t("board.updateSelected", { n: "3" }), exact: true })
+    .click({ timeout: WAIT });
+});
+
+step(
+  Then,
+  "the summary names the card updated, the one already current and the one in conflict",
+  async (c) => {
+    const [first = "", second = "", third = ""] = mine(c).cards ?? [];
+    const board = dictionary(c).board;
+    const summary = c.page.getByRole("status");
+    const lead = (template: string) => template.split("{names}")[0] ?? "";
+    await summary
+      .filter({ hasText: board.updatedNames.replace("{names}", second) })
+      .filter({ hasText: board.currentNames.replace("{names}", third) })
+      .filter({ hasText: lead(board.conflictedNames) + first })
+      .waitFor({ timeout: SESSION_WAIT });
+  },
+);
+
+step(Then, "the card in conflict is left as it was", async (c) => {
+  const [first = ""] = mine(c).cards ?? [];
+  const worktree = worktreeOf(c, first);
+  // Not rebased, not half way: the same commit, a clean tree, no rebase in progress.
+  if (gitIn(worktree, "rev-parse", "HEAD").trim() !== mine(c).head)
+    throw new Error("its branch moved");
+  if (gitIn(worktree, "status", "--porcelain").trim() !== "")
+    throw new Error("its tree is not clean");
+  if (gitIn(worktree, "status").includes("rebase")) throw new Error("a rebase is left open");
+  if (hasBase(c, first)) throw new Error("it already holds the base commit");
+});
+
+step(Then, "the updated card holds the base commit", async (c) => {
+  const [, second = ""] = mine(c).cards ?? [];
+  if (!hasBase(c, second)) throw new Error("the updated card does not hold the base commit");
 });

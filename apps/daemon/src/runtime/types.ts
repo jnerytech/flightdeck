@@ -139,6 +139,10 @@ export interface CompleteOptions {
   /** Let `ANTHROPIC_API_KEY` through (the daemon's `allowApiKey`); the plan pays otherwise. */
   allowApiKey?: boolean;
   signal?: AbortSignal;
+  /** Issue #1439: this call's cap in dollars (the SDK's `maxBudgetUsd`); the default otherwise. */
+  budgetUsd?: number;
+  /** Issue #1439: a JSON schema the answer must match (the SDK's `outputFormat`). */
+  schema?: Record<string, unknown>;
 }
 
 export interface CompleteResult {

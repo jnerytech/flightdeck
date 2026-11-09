@@ -1713,6 +1713,7 @@ export const en: Dictionary = {
     quotaPause: "the quota guard for new cards",
     memoryPause: "the memory hold for new cards",
     hostPause: "the pause of new runs",
+    cardReview: "the second-opinion review of a card",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
@@ -2187,6 +2188,11 @@ export const en: Dictionary = {
     card_workflow_running: "The card has a workflow run in progress.",
     rule_remove_confirm: "Confirm removing the rule.",
     card_no_worktree: "The card has no worktree yet.",
+    card_review_running: "The card is busy, or its review is already running.",
+    card_review_held:
+      "No review now: the host is paused, at its quota guard, short of memory, or the project is at its budget.",
+    card_review_no_diff: "The card has no changes to review.",
+    card_review_limit: "This card has had {max} reviews in the last 24 hours, the most a day.",
     pr_secret:
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
     pr_title_secret:
@@ -2942,6 +2948,31 @@ export const en: Dictionary = {
     sessionFilesNone:
       "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
     bashNote: "Changes made through Bash do not count.",
+  },
+  secondOpinion: {
+    title: "Second opinion",
+    intro:
+      "A second Claude call reads the diff and leaves its findings as reviewer drafts. The diff, with secrets masked, goes to Anthropic, as the card's own session sends it.",
+    ask: "Get a second opinion",
+    running: "A run is going: wait for it to end.",
+    noChanges: "The card has no changes to review.",
+    reading: "Reading the diff… this can take a minute.",
+    draftsOne:
+      "1 finding is a draft below: Send review sends it to the card with your own comments.",
+    drafts:
+      "{n} findings are drafts below: Send review sends them to the card with your own comments.",
+    cached: "This diff was reviewed already: this is that review.",
+    moved:
+      "The diff changed during the review, so nothing was placed on a line: every finding is listed here.",
+    failed: "The review did not answer in the expected form. A new commit allows another.",
+    loose: "Not on a changed line ({n})",
+    place: "{path}:{line}",
+    reviewer: "Reviewer",
+    dismiss: "Dismiss",
+    dismissFinding: "Dismiss the finding at {path}, {where}",
+    severity: { blocker: "Blocker", high: "High", medium: "Medium", low: "Low" },
+    notAddressedOne: "1 reviewer finding not addressed ({high} high)",
+    notAddressed: "{n} reviewer findings not addressed ({high} high)",
   },
   cardReview: {
     positionLabel: "Position on the base",

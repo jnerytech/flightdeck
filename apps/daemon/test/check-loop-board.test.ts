@@ -6,7 +6,7 @@ import { confirmationHash } from "../src/board/check-loop.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
-import { PrWatcher } from "../src/watch/watch.ts";
+import { PrWatcher, readWatchSettings } from "../src/watch/watch.ts";
 import type { BoundedCheckResult } from "../src/workflows/check-runner.ts";
 import { cardWhen, newBoard } from "./board-helpers.ts";
 import { poll, tempDir } from "./helpers.ts";
@@ -316,6 +316,188 @@ describe("check-loop: the person's input over the protocol", () => {
     // An unknown request is refused after the lookup; the person's answer still counts first.
     await client.request("permission.respond", { requestId: "req-1", decision: "deny" });
     expect(stepped).toEqual([sessionId, sessionId, sessionId, sessionId, sessionId]);
+  });
+});
+
+describe("check-loop: what the card says about its loop", () => {
+  test("the card shows the loop checking, then the round it sent, then how it ended, and each step is a card update", async () => {
+    const ctx = await setup([FAILED, PASSED]);
+    ctx.switchOn(ctx.card.id);
+    const seen: Array<string | null> = [];
+    const sentBox: { last: { active: string | null; state: string | null } | null } = {
+      last: null,
+    };
+    ctx.board.watch((card) => {
+      if (card.id !== ctx.card.id) return;
+      seen.push(card.checkLoop?.active ?? null);
+      sentBox.last = {
+        active: card.checkLoop?.active ?? null,
+        state: card.checkLoop?.last?.state ?? null,
+      };
+    });
+    const open = ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    const checking = ctx.board.getCard(ctx.card.id).checkLoop;
+    open();
+    await poll(() => ctx.board.getCard(ctx.card.id).checkLoop?.active === "fixing", 10_000);
+    const fixing = ctx.board.getCard(ctx.card.id).checkLoop;
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    const ended = ctx.board.getCard(ctx.card.id).checkLoop;
+    expect([
+      checking?.active,
+      [
+        fixing?.active,
+        fixing?.round,
+        fixing?.max,
+        fixing?.last?.state,
+        fixing?.last?.command,
+        fixing?.last?.exitCode,
+      ],
+      [ended?.active, ended?.last?.state, ended?.last?.reason],
+      seen.includes("checking") && seen.includes("fixing"),
+      // The last card the app was sent agrees with the end: not active any more.
+      sentBox.last,
+    ]).toEqual([
+      "checking",
+      ["fixing", 1, 3, "sent", "bun test", 1],
+      [null, "ended", "passed"],
+      true,
+      { active: null, state: "ended" },
+    ]);
+  });
+
+  test("an end with no placement (a stop) still sends a card that is no longer active", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    const sentBox: { last: { active: string | null; reason: string | null } | null } = {
+      last: null,
+    };
+    ctx.board.watch((card) => {
+      if (card.id !== ctx.card.id) return;
+      sentBox.last = {
+        active: card.checkLoop?.active ?? null,
+        reason: card.checkLoop?.last?.reason ?? null,
+      };
+    });
+    ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    await ctx.board.stopCard(ctx.card.id);
+    expect(sentBox.last).toEqual({ active: null, reason: "stopped_by_you" });
+  });
+
+  test("a session that ends while its checks run sends a last card that is no longer active", async () => {
+    const ctx = await setup([FAILED]);
+    ctx.switchOn(ctx.card.id);
+    const sentBox: { last: { active: string | null; reason: string | null } | null } = {
+      last: null,
+    };
+    ctx.board.watch((card) => {
+      if (card.id !== ctx.card.id) return;
+      sentBox.last = {
+        active: card.checkLoop?.active ?? null,
+        reason: card.checkLoop?.last?.reason ?? null,
+      };
+    });
+    ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    await ctx.manager.close(ctx.board.getCard(ctx.card.id).sessionId as string);
+    await poll(() => sentBox.last?.reason === "session_ended", 5000);
+    expect(sentBox.last).toEqual({ active: null, reason: "session_ended" });
+  });
+
+  test("a card with the switch off carries no loop line, so reading it asks the rounds table nothing", async () => {
+    const ctx = await setup();
+    expect(ctx.board.getCard(ctx.card.id).checkLoop).toEqual({
+      on: false,
+      rounds: null,
+      confirmed: false,
+    });
+  });
+});
+
+describe("check-loop: the board starting with a looping card", () => {
+  test("a board whose watch settings are not readable yet still starts and reads a looping card", async () => {
+    const ctx = await setup([PASSED]);
+    ctx.switchOn(ctx.card.id);
+    await ctx.board.startCard(ctx.card.id);
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    let started = "yes";
+    let again: Board | null = null;
+    try {
+      again = new Board({
+        db: ctx.store.db,
+        manager: ctx.manager,
+        allowedRoots: [ctx.root],
+        checkLoop: {
+          // As main.ts's watcher before it is made: reading it throws.
+          settings: () => {
+            throw new ReferenceError("prWatcher is not initialized");
+          },
+          isTrusted: () => true,
+          runner: { run: async () => PASSED },
+        },
+      });
+      started = again.getCard(ctx.card.id).checkLoop?.on ? "yes" : "no switch";
+    } catch (error) {
+      started = (error as Error).message;
+    } finally {
+      again?.stop();
+    }
+    expect(started).toBe("yes");
+  });
+
+  test("a stored rounds cap out of 1 to 10 is read back inside it", async () => {
+    const ctx = await setup();
+    const store = (value: number) =>
+      ctx.store.db
+        .query(
+          `INSERT INTO pr_watch_project (project_id, settings) VALUES (?, ?)
+           ON CONFLICT (project_id) DO UPDATE SET settings = excluded.settings`,
+        )
+        .run(ctx.project.id, JSON.stringify({ checkRounds: value }));
+    store(0);
+    const low = readWatchSettings(ctx.store.db, ctx.project.id).checkRounds;
+    store(50);
+    const high = readWatchSettings(ctx.store.db, ctx.project.id).checkRounds;
+    expect([low, high]).toEqual([1, 10]);
+  });
+
+  test("settings that cannot be read leave the card without its cap, and say so once in the log", async () => {
+    const lines: string[] = [];
+    const ctx = await setup();
+    ctx.switchOn(ctx.card.id);
+    const again = new Board({
+      db: ctx.store.db,
+      manager: ctx.manager,
+      allowedRoots: [ctx.root],
+      log: (line: string) => lines.push(line),
+      checkLoop: {
+        settings: () => {
+          throw new SyntaxError("Unexpected token in JSON");
+        },
+        isTrusted: () => true,
+        runner: { run: async () => PASSED },
+      },
+    });
+    cleanups.push(() => again.stop());
+    const first = again.getCard(ctx.card.id).checkLoop?.max;
+    again.getCard(ctx.card.id);
+    expect([first, lines.filter((line) => line.includes("check loop")).length]).toEqual([
+      undefined,
+      1,
+    ]);
+  });
+
+  test("the watch settings can be read from the database alone, as the watcher reads them", async () => {
+    const ctx = await setup();
+    const watcher = new PrWatcher({ db: ctx.store.db, board: ctx.board });
+    watcher.setSettings(ctx.project.id, { checkRounds: 4 });
+    expect(readWatchSettings(ctx.store.db, ctx.project.id)).toEqual(
+      watcher.settings(ctx.project.id),
+    );
   });
 });
 

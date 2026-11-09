@@ -6,6 +6,7 @@ import {
   type LoopCard,
   type RoundRecord,
   roundMessage,
+  roundsCap,
 } from "../src/board/check-loop-engine.ts";
 import type { CheckOutcome } from "../src/watch/check-run.ts";
 
@@ -674,6 +675,33 @@ describe("check-loop: the security review's cases", () => {
     open();
     await stopping;
     expect([r.signals.length, early, stopped]).toEqual([2, false, true]);
+  });
+
+  test("a notify that throws when the checks start leaves the loop running, and it ends normally", async () => {
+    const r = rig();
+    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
+    const engine = new CheckLoopEngine({
+      ...fx,
+      notify: () => {
+        throw new Error("card gone");
+      },
+    });
+    let thrown = "none";
+    try {
+      engine.onTurnResult("c", ok);
+    } catch (error) {
+      thrown = (error as Error).message;
+    }
+    await engine.idle("c");
+    expect([thrown, r.log, r.records.at(-1)?.reason]).toEqual([
+      "none",
+      ["place", "release"],
+      "passed",
+    ]);
+  });
+
+  test("the rounds cap is the card's own when lower, else the project's", () => {
+    expect([roundsCap(2, 3), roundsCap(null, 3), roundsCap(5, 3)]).toEqual([2, 3, 3]);
   });
 
   test("the watchdog is armed before the send, so the busy the send itself causes clears it", async () => {

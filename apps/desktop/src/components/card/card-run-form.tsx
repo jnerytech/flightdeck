@@ -17,6 +17,7 @@ import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { findingsNote } from "@/lib/second-opinion";
 import { nextStep } from "../../lib/card-next-step.ts";
 import { cardStartBlock } from "../../lib/card-start-block.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
@@ -32,6 +33,8 @@ export interface CardRunFeatures {
   bg: boolean;
   /** Phase 22: the host watches PRs, so the PR description is offered before the PR opens. */
   watch: boolean;
+  /** #1446: the host offers the second-opinion review, so the PR description says what is open. */
+  secondOpinion?: boolean;
 }
 
 /**
@@ -74,7 +77,12 @@ export function CardRunForm(
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [finishing, setFinishing] = useState(false);
   /** Phase 22: the PR description offered for the person to edit, before the PR opens. */
-  const [draft, setDraft] = useState<{ text: string; redacted: number } | null>(null);
+  const [draft, setDraft] = useState<{
+    text: string;
+    redacted: number;
+    /** #1446: the reviewer findings still open, when a blocker or a high one is. */
+    note: string | null;
+  } | null>(null);
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -96,11 +104,18 @@ export function CardRunForm(
     }
   };
 
+  /** The reviewer findings still open on this card, as a line for the Open PR confirm. */
+  const openFindingsNote = async (): Promise<string | null> => {
+    if (!features.secondOpinion) return null;
+    const listed = await store.hostCommand(hostId, "review.list", { target: `card:${cardId}` });
+    return listed ? findingsNote(t, listed.comments) : null;
+  };
+
   /** Opens the PR: where the host watches PRs, the description is offered first and nothing opens until it is confirmed. */
   const openPr = async () => {
     if (!features.watch) return store.hostCommand(hostId, "card.pr.create", { cardId });
     const offered = await store.describePr(hostId, cardId);
-    if (offered) setDraft(offered);
+    if (offered) setDraft({ ...offered, note: await openFindingsNote() });
     return undefined;
   };
 
@@ -245,7 +260,9 @@ export function CardRunForm(
             setDraft(null);
             await store.hostCommand(hostId, "card.pr.create", { cardId, description, title });
           }}
-        />
+        >
+          {draft.note && <p className="text-status-needs-you text-sm">{draft.note}</p>}
+        </PrDescriptionDialog>
       )}
       {finishing && (
         <CardFinishDialog

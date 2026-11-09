@@ -1518,6 +1518,19 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     ou outro;
   - um comentário segue o trecho citado quando o arquivo muda, e mostra **Desatualizado** quando o
     trecho some. Os enviados continuam na lista como histórico.
+- **Segunda opinião** (num card, quando o host oferece): **Pedir uma segunda opinião** pede a uma
+  segunda chamada do Claude que leia o diff do card e deixe os achados como rascunhos do revisor.
+  Nada começa sozinho: você pede, o botão fica desligado enquanto uma execução roda ou quando não
+  há mudanças, e o host recusa (e diz por quê) enquanto está em pausa, no limite de pausa da cota
+  do plano, sem memória ou no orçamento do card, e depois de 3 revisões do card em um dia. O mesmo
+  diff é revisado uma vez: pedir de novo mostra essa revisão. A chamada não tem ferramentas e vê só
+  o texto do card e o diff, com os segredos mascarados; o diff vai para a Anthropic, como a sessão
+  do próprio card já o envia. Cada achado que cai numa linha alterada vira um rascunho marcado
+  **Revisor**, com a gravidade (Bloqueante, Alto, Médio ou Baixo): edite (aí ele passa a ser seu),
+  **Dispensar**, ou deixe, e **Enviar revisão** o manda ao card junto com os seus comentários, como
+  uma sugestão a conferir. Os achados fora de uma linha alterada ficam listados sob o botão, como
+  texto. **Abrir PR** diz quantos achados do revisor continuam abertos quando um é bloqueante ou
+  alto, e abre o PR do mesmo jeito.
 - **Reverter e editar:**
   - **Reverter** pede confirmação, volta ao `HEAD` (ou à base do card; um arquivo novo é removido),
     guarda uma cópia em `<dataDir>/review-trash/` por 7 dias e oferece **Desfazer** por 30 s;
