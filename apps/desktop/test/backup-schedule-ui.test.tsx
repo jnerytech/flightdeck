@@ -107,7 +107,9 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     open();
     await click("Choose folder");
     await click("Every day");
-    const notice = screen.queryByText("A backup is due, but it waits for the passphrase. Type it below.");
+    const notice = screen.queryByText(
+      "A backup is due, but it waits for the passphrase. Type it below.",
+    );
     const input = field("Passphrase for this session");
     expect(
       notice !== null &&
@@ -189,6 +191,8 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
   test("in pt-BR an invalid number to keep says why too (#1329)", async () => {
     open({ language: "pt-BR" });
     await type("Arquivos a manter", "0");
-    expect(shown("Digite um número inteiro a partir de 1. O número salvo (5) continua valendo.")).toBe(true);
+    expect(
+      shown("Digite um número inteiro a partir de 1. O número salvo (5) continua valendo."),
+    ).toBe(true);
   });
 });
