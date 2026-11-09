@@ -122,8 +122,7 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
     ]);
   });
 
-  test("every field printed is one plain line: no escape, C1 control or bidi override from the API", async () => {
-    const { analysed, git } = repo();
+  test("every field printed is one plain line: no escape, C1 control or bidi override from the API or git", async () => {
     const hostile = {
       component: "jnerytech_flightdeck:b\u202e.ts",
       line: 1,
@@ -131,19 +130,61 @@ describe("sonar-left: Sonar's open findings, stale ones marked (#1477)", () => {
       rule: "rule\u009b2J",
       message: "text\u2066x",
     };
-    const { fetch } = fakeFetch(analysed, [hostile]);
+    const { fetch } = fakeFetch("a".repeat(40), [hostile]);
     const lines: string[] = [];
-    await sonarLeft([], { fetch, git, log: (l) => lines.push(l) });
-    const printed = lines.slice(1).join("\n");
-    const bad = [...printed].filter((c) => {
-      const code = c.codePointAt(0) ?? 0;
-      return (
-        (code < 0x20 && c !== "\n") ||
-        (code >= 0x7f && code <= 0x9f) ||
-        (code >= 0x202a && code <= 0x202e) ||
-        (code >= 0x2066 && code <= 0x2069)
-      );
+    await sonarLeft([], {
+      fetch,
+      git: fakeGit({ log: "abc123456 fix\u001b[31m it\u202e" }),
+      log: (l) => lines.push(l),
     });
-    expect(bad).toEqual([]);
+    expect(lines[1]).toBe(
+      "CRITICAL [31m rule 2J b .ts:1 text x STALE? (changed by abc123456 fix [31m it )",
+    );
+  });
+
+  test("from the review: a missing origin/main or a failed git log fails closed; the header names origin/main", async () => {
+    const { fetch } = fakeFetch("a".repeat(40), [issue("a.ts", 1)]);
+    const lines: string[] = [];
+    expect(
+      await sonarLeft([], {
+        fetch,
+        git: fakeGit({ originMain: false }),
+        log: (l) => lines.push(l),
+      }),
+    ).toBe(1);
+    expect(lines).toEqual(["sonar-left: this clone has no origin/main: git fetch origin main"]);
+    const failing: string[] = [];
+    await sonarLeft([], { fetch, git: fakeGit({ logFails: true }), log: (l) => failing.push(l) });
+    expect(failing[0] ?? "").toContain(
+      "origin/main bbbbbbbbb (local: git fetch origin main to read the latest)",
+    );
+    expect(failing[1] ?? "").toEndWith("STALE? (git could not say what changed it)");
+  });
+
+  test("from the review: a change that only a merge brought in is named by that merge", async () => {
+    const { fetch } = fakeFetch("a".repeat(40), [issue("a.ts", 1)]);
+    const lines: string[] = [];
+    await sonarLeft([], {
+      fetch,
+      git: fakeGit({ log: "", merge: "ccc111222 Merge pull request #9" }),
+      log: (l) => lines.push(l),
+    });
+    expect(lines[1] ?? "").toEndWith("STALE? (changed by ccc111222 Merge pull request #9)");
   });
 });
+
+/** A fake git by its arguments: the analysed commit is there, origin/main resolves, log answers. */
+function fakeGit(o: { log?: string; merge?: string; originMain?: boolean; logFails?: boolean }) {
+  return async (args: string[]) => {
+    if (args[0] === "cat-file") return { code: 0, stdout: "" };
+    if (args[0] === "rev-parse") {
+      return o.originMain === false
+        ? { code: 128, stdout: "" }
+        : { code: 0, stdout: `${"b".repeat(40)}\n` };
+    }
+    if (args[0] === "log" && o.logFails) return { code: 128, stdout: "" };
+    if (args[0] === "log" && args.includes("--no-merges")) return { code: 0, stdout: o.log ?? "" };
+    if (args[0] === "log") return { code: 0, stdout: o.merge ?? o.log ?? "" };
+    return { code: 1, stdout: "" };
+  };
+}
