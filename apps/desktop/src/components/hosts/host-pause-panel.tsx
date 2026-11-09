@@ -15,11 +15,12 @@ export function HostPausePanel(props: Readonly<{ store: AppStore; host: HostView
   const pause = host.hostInfo?.pause;
   // The count of running sessions changes as they start and end: read the host again then.
   const activity = host.sessions.map((s) => `${s.id}:${s.status}`).join(",");
-  const known = pause !== undefined;
+  const paused = pause?.paused === true;
   // biome-ignore lint/correctness/useExhaustiveDependencies: `activity` is the trigger
   useEffect(() => {
-    if (known) void store.reloadHostInfo(host.id);
-  }, [store, host.id, activity, known]);
+    // The count only shows while paused: no round trip otherwise.
+    if (paused) void store.reloadHostInfo(host.id);
+  }, [store, host.id, activity, paused]);
   if (pause === undefined) return null;
   const set = async (paused: boolean) => {
     await store.hostCommand(host.id, "host.pause", { paused });

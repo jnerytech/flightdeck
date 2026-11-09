@@ -10,7 +10,7 @@ import {
   SquareTerminal,
   TriangleAlert,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { QuotaDetail } from "@/components/shell/quota-detail";
 import { Meter } from "@/components/status/meter";
@@ -170,14 +170,20 @@ export function StatusBar(
   // Issue #1404: a paused host stays in sight, so the pause is not forgotten.
   const paused = summary.paused;
   const pausedVars = { host: paused?.hostName ?? "", n: String(paused?.running ?? 0) };
-  const pausedKind = paused?.running ? "running" : "idle";
+  const busy = (paused?.running ?? 0) > 0;
   const pause = paused ? (
     <Item
-      name={t(`statusBar.paused.${pausedKind}`, pausedVars)}
+      name={
+        busy ? t("statusBar.paused.running", pausedVars) : t("statusBar.paused.idle", pausedVars)
+      }
       onClick={() => props.onOpenPause?.(paused.hostId)}
     >
       <CirclePause aria-hidden="true" />
-      <span className="status-short">{t(`statusBar.pausedShort.${pausedKind}`, pausedVars)}</span>
+      <span className="status-short">
+        {busy
+          ? t("statusBar.pausedShort.running", pausedVars)
+          : t("statusBar.pausedShort.idle", pausedVars)}
+      </span>
     </Item>
   ) : null;
   const keepAwake =
@@ -326,6 +332,16 @@ export function StatusBarSlot(
   );
   const quotaHost = online.find((host) => host.id === glance?.hostId);
   const toHost = (host: string) => go({ name: "host", host });
+  // Issue #1404: a paused host's count is read again as its sessions change, whatever the page.
+  const pausedActivity = online
+    .filter((host) => host.hostInfo?.pause?.paused)
+    .map((host) => `${host.id}=${host.sessions.map((s) => `${s.id}:${s.status}`).join(",")}`)
+    .join(";");
+  useEffect(() => {
+    if (!store || pausedActivity === "") return;
+    for (const entry of pausedActivity.split(";"))
+      void store.reloadHostInfo(entry.split("=")[0] ?? "");
+  }, [store, pausedActivity]);
   return (
     <StatusBar
       t={props.t}

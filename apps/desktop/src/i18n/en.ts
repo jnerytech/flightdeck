@@ -5507,7 +5507,7 @@ export const en: Dictionary = {
     pauseHint:
       "Before restarting or updating this host: new cards wait in the queue, and runs already going finish. Resume to let the queue go.",
     pauseOff: "New runs start as usual.",
-    pauseOnRunning: "New runs are paused. {n} sessions still running.",
+    pauseOnRunning: "New runs are paused. {n} still running.",
     pauseOnIdle: "New runs are paused. Nothing is running: safe to restart or update.",
     pauseTurnOn: "Pause new runs",
     pauseTurnOff: "Resume new runs",

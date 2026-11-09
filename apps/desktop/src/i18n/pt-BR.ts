@@ -5526,7 +5526,7 @@ export const ptBR = {
     pauseHint:
       "Antes de reiniciar ou atualizar este host: os cartões novos esperam na fila, e as execuções em andamento terminam. Retome para liberar a fila.",
     pauseOff: "Novas execuções começam normalmente.",
-    pauseOnRunning: "Novas execuções pausadas. {n} sessões ainda rodando.",
+    pauseOnRunning: "Novas execuções pausadas. {n} ainda rodando.",
     pauseOnIdle: "Novas execuções pausadas. Nada está rodando: pode reiniciar ou atualizar.",
     pauseTurnOn: "Pausar novas execuções",
     pauseTurnOff: "Retomar novas execuções",

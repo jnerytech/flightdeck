@@ -1501,7 +1501,12 @@ export async function startDaemon(
       },
     },
     hostPause: {
-      status: () => ({ paused: hostPause.paused(), running: manager.activeSessionCount() }),
+      // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
+      // run waiting at a gate has no session but resumes after a restart).
+      status: () => ({
+        paused: hostPause.paused(),
+        running: manager.activeSessionCount() + board.workflows.activeRuns().length,
+      }),
       set: async (paused) => {
         // The file first: when it cannot be written the pause stays as it was, for the client and the daemon.
         await updateConfigFile(configFile, (raw) => ({ ...raw, pauseNewRuns: paused }));
