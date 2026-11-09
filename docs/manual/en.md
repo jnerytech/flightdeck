@@ -1063,6 +1063,14 @@ live; the list is the project's, so a session of another project never shows her
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
   the top model with what it cost.
+- **Pull requests** (in the sidebar under Work, after Board; or **Go to Pull requests** in the
+  palette) lists every card with an open PR on the connected hosts, the ones that need a look first
+  (failing checks, or a watch that needs you). A row names the card, its host and project, its
+  checks, whether **Watch and fix** is off, watching or needs you, and a link to the PR. **Merge
+  PR** asks first, with the same confirm as the card page, and is offered only when the host can
+  merge and the checks are not failing; **Update from the base** rebases the card's branch, and a
+  conflict stays on screen with the files. The title opens the card. The row does not yet say
+  whether the PR conflicts or waits for a review, nor how old it is: the hosts do not report that.
 - **Activity** (in the sidebar after Costs; `g a`, or **Go to Activity** in the palette) shows every
   live session of every host in four columns: **Needs you** (the session is asking), **Working**,
   **Done** (a turn ended in the last 2 hours and you have not opened the session) and **Idle**,
