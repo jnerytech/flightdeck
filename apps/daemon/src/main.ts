@@ -251,13 +251,26 @@ export interface CliArgs {
     | "action"
     | "snippet"
     | "message"
+    | "card"
     | "version"
     | "db"
     | "backup"
     | "restore"
     | "update";
   /** `service <action>`, `hooks <action>`, `history reindex` or `action list|run`. */
-  action?: ServiceAction | "reindex" | "list" | "run" | "get" | "send" | "idle" | "read" | "team";
+  action?:
+    | ServiceAction
+    | "reindex"
+    | "list"
+    | "run"
+    | "get"
+    | "send"
+    | "idle"
+    | "read"
+    | "team"
+    | "show"
+    | "new"
+    | "start";
   /** `message send <to> <text>`. */
   to?: string;
   text?: string;
@@ -266,8 +279,14 @@ export interface CliArgs {
   last?: number;
   /** `message team <team>`. */
   team?: string;
-  /** `action ... --project <id>`. */
+  /** `action ... --project <id>`, `card ... --project <name or id>`. */
   project?: string;
+  /** `card show|start <card>` and `card new <title>`; `card new --description <text>`; `card start --workflow <name>`; `--json`. */
+  cardId?: string;
+  cardTitle?: string;
+  description?: string;
+  workflow?: string;
+  json?: true;
   /** `action run <name>`. */
   actionName?: string;
   /** `snippet get <name>` (phase 18). */
@@ -514,6 +533,19 @@ const HANDLERS: Record<string, Handler> = {
     if (action === "idle" || action === "read") args.session = operand(reader, "the session");
     if (action === "team") args.team = operand(reader, "the team");
   },
+  card: (args, reader) => {
+    args.command = "card";
+    subAction(reader, ["list", "show", "new", "start"], "invalid card action");
+  },
+  "--json": setFlag((args) => {
+    args.json = true;
+  }),
+  "--description": setValue((args, v) => {
+    args.description = v;
+  }),
+  "--workflow": setValue((args, v) => {
+    args.workflow = v;
+  }),
   "--out": setValue((args, v) => {
     args.out = v;
   }),
@@ -2716,6 +2748,7 @@ const COMMANDS: Partial<Record<CliArgs["command"], CommandRun>> = {
       ),
     );
   },
+  card: async () => 0,
   action: async (args, deps) => {
     const config = await loadConfig(configPath(args));
     return printed(
