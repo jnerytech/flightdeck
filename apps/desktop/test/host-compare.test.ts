@@ -1,0 +1,215 @@
+import { describe, expect, test } from "bun:test";
+import {
+  COMPARE_FIELDS,
+  type CompareValues,
+  compareHosts,
+  type HostFacts,
+  hostFacts,
+} from "../src/lib/host-compare.ts";
+
+const NONE: CompareValues = {
+  daemon: null,
+  claude: null,
+  hooks: null,
+  signin: null,
+  features: null,
+};
+
+const facts = (hostId: string, values: Partial<CompareValues>): HostFacts => ({
+  hostId,
+  values: { ...NONE, ...values },
+});
+
+const rowOf = (hosts: HostFacts[], field: (typeof COMPARE_FIELDS)[number]) => {
+  const row = compareHosts(hosts).find((r) => r.field === field);
+  expect(row?.field).toBe(field);
+  return row ?? { field, majority: null, cells: [] };
+};
+
+const markedIds = (hosts: HostFacts[], field: (typeof COMPARE_FIELDS)[number]) =>
+  rowOf(hosts, field)
+    .cells.filter((c) => c.marked)
+    .map((c) => c.hostId);
+
+describe("host-compare: the table's rows and cells", () => {
+  test("there is one row per field, in the order shown, and one cell per host in the order given", () => {
+    const rows = compareHosts([facts("a", {}), facts("b", {}), facts("c", {})]);
+    expect(rows.map((r) => r.field)).toEqual(["daemon", "claude", "hooks", "signin", "features"]);
+    expect(COMPARE_FIELDS).toEqual(["daemon", "claude", "hooks", "signin", "features"]);
+    for (const row of rows) expect(row.cells.map((c) => c.hostId)).toEqual(["a", "b", "c"]);
+  });
+
+  test("a cell carries the host's own value for that field", () => {
+    const hosts = [
+      facts("a", { daemon: "1.4.0", claude: "2.1.0" }),
+      facts("b", { daemon: "1.3.0" }),
+    ];
+    expect(rowOf(hosts, "daemon").cells.map((c) => c.value)).toEqual(["1.4.0", "1.3.0"]);
+    expect(rowOf(hosts, "claude").cells.map((c) => c.value)).toEqual(["2.1.0", null]);
+  });
+});
+
+describe("host-compare: the majority rule", () => {
+  test("the host that differs from the value most hosts share is marked, and the row names that value", () => {
+    const hosts = [
+      facts("a", { daemon: "1.4.0" }),
+      facts("b", { daemon: "1.4.0" }),
+      facts("c", { daemon: "1.3.0" }),
+    ];
+    expect(markedIds(hosts, "daemon")).toEqual(["c"]);
+    expect(rowOf(hosts, "daemon").majority).toBe("1.4.0");
+  });
+
+  test("every host off the majority is marked, even when they differ from each other", () => {
+    const hosts = [
+      facts("a", { claude: "2.1.0" }),
+      facts("b", { claude: "2.1.0" }),
+      facts("c", { claude: "2.0.0" }),
+      facts("d", { claude: "1.9.0" }),
+    ];
+    expect(markedIds(hosts, "claude")).toEqual(["c", "d"]);
+  });
+
+  test("hosts that all agree mark nothing", () => {
+    const hosts = [
+      facts("a", { hooks: "ok" }),
+      facts("b", { hooks: "ok" }),
+      facts("c", { hooks: "ok" }),
+    ];
+    expect(markedIds(hosts, "hooks")).toEqual([]);
+    expect(rowOf(hosts, "hooks").majority).toBeNull();
+  });
+
+  test("a tie marks no cell, since there is no majority to differ from", () => {
+    const two = [facts("a", { daemon: "1.4.0" }), facts("b", { daemon: "1.3.0" })];
+    expect(markedIds(two, "daemon")).toEqual([]);
+    expect(rowOf(two, "daemon").majority).toBeNull();
+    const four = [
+      facts("a", { signin: "ok" }),
+      facts("b", { signin: "ok" }),
+      facts("c", { signin: "missing" }),
+      facts("d", { signin: "missing" }),
+    ];
+    expect(markedIds(four, "signin")).toEqual([]);
+  });
+
+  test("a missing value shows as a dash, is never marked and does not vote", () => {
+    const hosts = [
+      facts("a", { claude: "2.1.0" }),
+      facts("b", { claude: "2.1.0" }),
+      facts("c", { claude: null }),
+      facts("d", { claude: null }),
+      facts("e", { claude: null }),
+    ];
+    expect(markedIds(hosts, "claude")).toEqual([]);
+    expect(rowOf(hosts, "claude").cells.map((c) => c.value)).toEqual([
+      "2.1.0",
+      "2.1.0",
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  test("a missing value beside a real majority leaves the majority's outlier marked and the dash alone", () => {
+    const hosts = [
+      facts("a", { hooks: "ok" }),
+      facts("b", { hooks: "ok" }),
+      facts("c", { hooks: "warn" }),
+      facts("d", { hooks: null }),
+    ];
+    expect(markedIds(hosts, "hooks")).toEqual(["c"]);
+  });
+
+  test("one known value alone has nothing to differ from", () => {
+    expect(markedIds([facts("a", { daemon: "1.4.0" }), facts("b", {})], "daemon")).toEqual([]);
+    expect(markedIds([facts("a", { daemon: "1.4.0" })], "daemon")).toEqual([]);
+  });
+
+  test("each row is judged on its own", () => {
+    const hosts = [
+      facts("a", { daemon: "1.4.0", hooks: "ok" }),
+      facts("b", { daemon: "1.4.0", hooks: "ok" }),
+      facts("c", { daemon: "1.3.0", hooks: "fail" }),
+    ];
+    expect(markedIds(hosts, "daemon")).toEqual(["c"]);
+    expect(markedIds(hosts, "hooks")).toEqual(["c"]);
+    expect(markedIds(hosts, "claude")).toEqual([]);
+  });
+
+  test("no hosts give a row per field with no cells", () => {
+    const rows = compareHosts([]);
+    expect(rows.map((r) => r.field)).toEqual(["daemon", "claude", "hooks", "signin", "features"]);
+    expect(rows.map((r) => r.cells.length)).toEqual([0, 0, 0, 0, 0]);
+  });
+});
+
+describe("host-compare: what a host reports for each field", () => {
+  const input = {
+    hostId: "alfa",
+    online: true,
+    info: {
+      daemonVersion: "1.4.0",
+      claudeVersion: "2.1.0",
+      features: ["central", "account", "doctor.run"],
+    },
+    doctor: {
+      checks: [
+        { id: "daemon" as const, status: "ok" as const, detail: "running" },
+        { id: "hooks" as const, status: "warn" as const, detail: "outdated" },
+      ],
+    },
+    deps: {
+      items: [
+        { id: "git" as const, state: "ok" as const },
+        { id: "claudeAuth" as const, state: "missing" as const },
+      ],
+    },
+  };
+
+  test("the versions come from host.info, hooks from the doctor's hooks check, the sign-in from the dependencies", () => {
+    expect(hostFacts(input)).toEqual({
+      hostId: "alfa",
+      values: {
+        daemon: "1.4.0",
+        claude: "2.1.0",
+        hooks: "warn",
+        signin: "missing",
+        features: "account,central,doctor.run",
+      },
+    });
+  });
+
+  test("the features are the same text however the host orders them", () => {
+    const other = {
+      ...input,
+      info: { ...input.info, features: ["doctor.run", "central", "account"] },
+    };
+    expect(hostFacts(other).values.features).toBe("account,central,doctor.run");
+  });
+
+  test("what the host does not report is missing, not a guess", () => {
+    const bare = hostFacts({
+      hostId: "old",
+      online: true,
+      info: { daemonVersion: "1.0.0", claudeVersion: null },
+      doctor: undefined,
+      deps: undefined,
+    });
+    expect(bare.values).toEqual({ ...NONE, daemon: "1.0.0" });
+  });
+
+  test("a check or dependency that is not in the answer is missing", () => {
+    const partial = hostFacts({
+      ...input,
+      doctor: { checks: [{ id: "daemon", status: "ok", detail: "running" }] },
+      deps: { items: [{ id: "git", state: "ok" }] },
+    });
+    expect(partial.values.hooks).toBeNull();
+    expect(partial.values.signin).toBeNull();
+  });
+
+  test("a host that is not online has nothing to compare, so every field is missing", () => {
+    expect(hostFacts({ ...input, online: false }).values).toEqual(NONE);
+  });
+});
