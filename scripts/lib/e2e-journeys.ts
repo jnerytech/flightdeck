@@ -55,6 +55,7 @@ export const JOURNEYS: readonly string[] = [
   "time-rodando",
   "merge-pr-recusa",
   "pull-requests",
+  "enquanto-fora",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -115,6 +116,9 @@ export const DEMO_GATE_CARD = "Revisar o fluxo de login";
 /** The In review card whose PR the demo keeps open, and that PR (issue #1244). */
 export const DEMO_PR_CARD = "Revisar mensagens de erro";
 export const DEMO_PR_URL = "https://github.com/acme/flightdeck-web/pull/42";
+
+/** When the demo's app was last active, for the "While you were away" summary: long before the seed (#1344). */
+export const DEMO_AWAY_SINCE = "2020-01-01T00:00:00.000Z";
 
 /** The In review card on beta, whose PR the fake gh merges, so the Pull requests page lists two hosts (#1345). */
 export const DEMO_PR_BETA_CARD = "Add the health endpoint";

@@ -16,6 +16,7 @@ import {
   CONTRACT_CARD,
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
+  DEMO_AWAY_SINCE,
   DEMO_CLOSED_TEAM,
   DEMO_PR_BETA_CARD,
   DEMO_PR_BETA_URL,
@@ -2185,6 +2186,37 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await dialog.getByText(DEMO_PR_BETA_URL, { exact: true }).waitFor({ timeout: WAIT });
     await dialog.getByRole("button", { name: c.t("cardMergePr.action"), exact: true }).click();
     await c.page.getByText(c.t("cardMergePr.done"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // Issue #1344: after a long absence, Needs you opens with a summary of what the hosts did; its
+  // lines go to the card, and Dismiss closes it.
+  "enquanto-fora": async (c) => {
+    // Any page of the demo holds the window's storage; the app was last active long ago.
+    if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+    await c.page.evaluate(
+      ([key, value]) => localStorage.setItem(key as string, value as string),
+      ["flightdeck.lastActive", DEMO_AWAY_SINCE],
+    );
+    await open(c, { name: "needs-you" });
+    const summary = c.page.getByRole("region", { name: c.t("away.title"), exact: true });
+    await summary.waitFor({ timeout: WAIT });
+    // Both hosts with news are named, each with its cards in review.
+    await summary.getByRole("heading", { name: "alfa", exact: true }).waitFor({ timeout: WAIT });
+    await summary.getByRole("heading", { name: BETA, exact: true }).waitFor({ timeout: WAIT });
+    await summary
+      .getByRole("button", { name: DEMO_PR_BETA_CARD, exact: true })
+      .waitFor({ timeout: WAIT });
+    await summary.getByRole("button", { name: DEMO_PR_CARD, exact: true }).click();
+    await c.page.getByRole("heading", { name: DEMO_PR_CARD }).first().waitFor({ timeout: WAIT });
+    // Back in Needs you (a reload would read the time the app was just active), the summary is
+    // still there, and Dismiss closes it.
+    await c.page
+      .getByRole("button", { name: new RegExp(`^${c.t("sidebar.needsYou")}`) })
+      .first()
+      .click();
+    await summary.waitFor({ timeout: WAIT });
+    await summary.getByRole("button", { name: c.t("away.dismiss"), exact: true }).click();
+    await summary.waitFor({ state: "detached", timeout: WAIT });
   },
 
   "escopo-dados": async (c) => {
