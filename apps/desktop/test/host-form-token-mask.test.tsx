@@ -29,6 +29,14 @@ function setup() {
 
 const linkField = () => screen.queryByLabelText("Pairing link") as HTMLInputElement | null;
 const tokenField = () => screen.queryByLabelText("Token") as HTMLInputElement | null;
+/** Everything the person can read: the page's text and the value of every field but the Token one. */
+const onScreen = () =>
+  [
+    document.body.textContent ?? "",
+    ...[...document.querySelectorAll<HTMLInputElement>("input")]
+      .filter((input) => input.type !== "password")
+      .map((input) => input.value),
+  ].join("\n");
 const paste = (value: string) =>
   act(async () => {
     const field = linkField();
@@ -44,7 +52,7 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
     expect([
       shown,
       // The Token field (a password input) holds it; nothing else on the page, in text or in the link field.
-      (document.body.textContent ?? "").includes(SECRET) || shown.includes(SECRET),
+      onScreen().includes(SECRET) || shown.includes(SECRET),
       tokenField()?.type,
       tokenField()?.value,
     ]).toEqual(["flightdeck://127.0.0.1:46507?name=alfa&token=••••", false, "password", SECRET]);
@@ -115,7 +123,7 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
       screen.queryByText("The token is not carried to another address: paste that host's link.") !==
         null,
       tokenField()?.value,
-      (document.body.textContent ?? "").includes(SECRET),
+      onScreen().includes(SECRET),
     ]).toEqual([true, SECRET, false]);
   });
 
@@ -143,12 +151,12 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
     await paste("flightdeck://127.0.0.1:abc?name=alfa&token=SECRET");
     const shown = linkField()?.value;
     const refused = screen.queryByText("The link's port is not valid.") !== null;
-    expect([
-      shown,
-      refused,
-      (document.body.textContent ?? "").includes("SECRET"),
-      tokenField()?.value,
-    ]).toEqual(["flightdeck://127.0.0.1:abc?name=alfa&token=••••", true, false, ""]);
+    expect([shown, refused, onScreen().includes("SECRET"), tokenField()?.value]).toEqual([
+      "flightdeck://127.0.0.1:abc?name=alfa&token=••••",
+      true,
+      false,
+      "",
+    ]);
     // Fixing the port in the dotted link finds no token read with this host: the link says so.
     await paste("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
     expect([screen.queryByText("The link has no token.") !== null, tokenField()?.value]).toEqual([
@@ -157,17 +165,18 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
     ]);
   });
 
-  test("a link of another host that does not read leaves the host and token of the one read alone", async () => {
+  test("a link that does not read leaves the host and token of the one read alone, and blocks Test and add", async () => {
     const { submitted } = setup();
     await paste(LINK);
     await paste("flightdeck://10.0.0.9:99999?name=beta&token=OTHER");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Test and add" }));
     });
-    expect([(document.body.textContent ?? "").includes("OTHER"), submitted]).toEqual([
-      false,
-      [{ name: "alfa", address: "127.0.0.1", port: "46507", token: SECRET }],
-    ]);
+    expect([
+      onScreen().includes("OTHER"),
+      submitted,
+      screen.queryAllByRole("alert").some((a) => a.textContent?.includes("port is not valid")),
+    ]).toEqual([false, [], true]);
   });
 
   test("a token typed in the Token field is never carried to a host named by a dotted link", async () => {
@@ -193,5 +202,47 @@ describe("host-form: the pasted pairing link hides its token (#1548)", () => {
     await paste(LINK);
     await paste("flightdeck://127.0.0.1:abc?name=alfa");
     expect([first, tokenField()?.value]).toEqual([[true, ""], ""]);
+  });
+
+  test("a bare token typed by hand, one character at a time, is dots once the field is left", async () => {
+    setup();
+    const typed = "bare-token-value";
+    for (let i = 1; i <= typed.length; i++) await paste(typed.slice(0, i));
+    const during = linkField()?.value;
+    await act(async () => {
+      if (linkField()) fireEvent.blur(linkField() as HTMLElement);
+    });
+    expect([during, linkField()?.value]).toEqual([typed, "••••"]);
+  });
+
+  test("a token in a #fragment is dots too", async () => {
+    setup();
+    await paste("flightdeck://127.0.0.1:46507#token=SECRET");
+    expect([linkField()?.value, onScreen().includes("SECRET")]).toEqual([
+      "flightdeck://127.0.0.1:46507#token=••••",
+      false,
+    ]);
+  });
+
+  test("submitting with Enter, the field not left, masks the typed link", async () => {
+    setup();
+    const typed = "flightdeck://127.0.0.1:46507?name=alfa&token=abc";
+    for (let i = typed.length - 8; i <= typed.length; i++) await paste(typed.slice(0, i));
+    await act(async () => {
+      const form = document.querySelector("form");
+      if (form) fireEvent.submit(form);
+    });
+    expect(linkField()?.value).toBe("flightdeck://127.0.0.1:46507?name=alfa&token=••••");
+  });
+
+  test("an input event that is a paste, even of one character, is taken as a paste", async () => {
+    setup();
+    await act(async () => {
+      const field = linkField();
+      if (field) {
+        fireEvent.input(field, { target: { value: "x" }, inputType: "insertFromPaste" });
+      }
+    });
+    expect(linkField()?.value).toBe("••••");
   });
 });

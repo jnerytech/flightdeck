@@ -127,12 +127,22 @@ describe("pairing-mask: what an edit of the link field shows and keeps (#1548)",
       shown(LINK, LINK.slice(0, -1), "insertText"),
       shown(LINK, "", "insertFromPaste"),
       shown(LINK, "", "insertFromDrop"),
-      shown(LINK, LINK.slice(0, -1), "insertCompositionText"),
       shown(LINK, LINK.slice(0, -1), "insertReplacementText"),
       // No input type (a change event with none): a jump of more than one character is a paste.
       shown(LINK, ""),
       shown(LINK, LINK.slice(0, -1)),
-    ]).toEqual([LINK, DOTS, DOTS, DOTS, DOTS, DOTS, LINK]);
+    ]).toEqual([LINK, DOTS, DOTS, DOTS, DOTS, LINK]);
+  });
+
+  test("a composition (an IME, a dead key) is typing: the field is not rewritten under it", () => {
+    expect(shown(LINK, LINK.slice(0, -1), "insertCompositionText")).toBe(LINK);
+  });
+
+  test("a percent-encoded dot in a pasted token is the mask, and with no token bound there is none", () => {
+    expect(
+      readLinkEdit("flightdeck://pc:7420?token=%E2%80%A2%E2%80%A2", "", null, "insertFromPaste")
+        .problem,
+    ).toBe("token");
   });
 
   test("one typed event that carries many characters is not typing", () => {
