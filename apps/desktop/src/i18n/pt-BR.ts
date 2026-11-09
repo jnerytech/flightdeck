@@ -3189,6 +3189,15 @@ export const ptBR = {
     reviewRequired: "Revisão pendente",
     opened: "Aberto {ago}",
   },
+  conflictRadar: {
+    badgeOne: "Pode conflitar com {title}",
+    badgeMany: "Pode conflitar com {n} cards",
+    title: "Pode conflitar com outros cards",
+    intro:
+      "Estes cards mudam os mesmos arquivos. Quem fizer o merge depois pode ter de resolver conflitos.",
+    mergeLine:
+      "Outros cards mudam os mesmos arquivos: {titles}. Quem fizer o merge depois pode ter de resolver conflitos.",
+  },
   cardMergePr: {
     action: "Fazer merge do PR",
     message:
