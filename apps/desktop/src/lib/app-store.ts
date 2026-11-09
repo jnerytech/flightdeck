@@ -4608,7 +4608,7 @@ export class AppStore {
 
   /** Issue #1462: the backups on Google Drive, newest first. */
   async listDriveBackups(): Promise<
-    { ok: true; names: string[] } | { ok: false; code: BackupOutcomeCode }
+    { ok: true; names: string[] } | { ok: false; code: "drive-auth" | "drive-failed" }
   > {
     try {
       const names = (await this.backupScheduler.driveBackups())

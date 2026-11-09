@@ -1,8 +1,9 @@
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
@@ -31,6 +32,14 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
     null,
   );
   const [replacing, setReplacing] = useState(false);
+  // Issue #1462: where the backup to restore comes from. Drive is offered only with a client id.
+  const scheduler = store.backupScheduler;
+  useSyncExternalStore(scheduler.subscribe, () => scheduler.version);
+  const [from, setFrom] = useState<"file" | "drive">("file");
+  const [driveNames, setDriveNames] = useState<string[] | null>(null);
+  const [driveName, setDriveName] = useState("");
+  const looking = useBusy();
+  const onDrive = scheduler.driveAvailable && from === "drive";
   const exportField = useRef<HTMLInputElement>(null);
   const importField = useRef<HTMLInputElement>(null);
   const exporting = useBusy();
@@ -53,13 +62,26 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   const doRead = async () => {
     setPreview(null);
     setImportNote(null);
-    const outcome = await store.previewBackup(filePassphrase);
+    const outcome = onDrive
+      ? await store.previewDriveBackup(driveName, filePassphrase)
+      : await store.previewBackup(filePassphrase);
     if (outcome.ok) {
       setPreview(outcome.preview);
       setChoice("skip");
       // The decrypted bundle is held by the preview; the passphrase is not needed again.
       setFilePassphrase("");
     } else if (outcome.code !== "cancelled") {
+      setImportNote({ tone: "error", text: t(`backupAll.error.${outcome.code}`) });
+    }
+  };
+
+  const doLook = async () => {
+    setImportNote(null);
+    const outcome = await store.listDriveBackups();
+    if (outcome.ok) {
+      setDriveNames(outcome.names);
+      setDriveName("");
+    } else {
       setImportNote({ tone: "error", text: t(`backupAll.error.${outcome.code}`) });
     }
   };
@@ -144,30 +166,96 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
             <h4 id={`${id}-import`} className="font-medium">
               {t("backupAll.importTitle")}
             </h4>
+            {scheduler.driveAvailable && store.canReadBackup() && (
+              <fieldset>
+                <legend className="sr-only">{t("backupAll.sourceLegend")}</legend>
+                <Stack gap={1}>
+                  {(["file", "drive"] as const).map((one) => (
+                    <label key={one} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        className="hit-control"
+                        name={`${id}-from`}
+                        checked={from === one}
+                        onChange={() => {
+                          setFrom(one);
+                          setImportNote(null);
+                          setPreview(null);
+                        }}
+                      />
+                      {t(`backupAll.source.${one}`)}
+                    </label>
+                  ))}
+                </Stack>
+              </fieldset>
+            )}
+            {onDrive && !scheduler.driveSignedIn && (
+              <InlineNotice tone="warn">{t("backupAll.driveNeedsSignIn")}</InlineNotice>
+            )}
+            {onDrive && scheduler.driveSignedIn && (
+              <Stack gap={2}>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={looking.busy}
+                    onClick={() => looking.run(doLook)}
+                  >
+                    {t("backupAll.driveLook")}
+                  </Button>
+                </div>
+                {driveNames?.length === 0 && (
+                  <p className="text-muted-foreground text-sm">{t("backupAll.driveNone")}</p>
+                )}
+                {driveNames && driveNames.length > 0 && (
+                  <fieldset>
+                    <legend className="sr-only">{t("backupAll.driveChoiceLegend")}</legend>
+                    <Stack gap={1}>
+                      {driveNames.map((name) => (
+                        <label key={name} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            className="hit-control"
+                            name={`${id}-drive`}
+                            checked={driveName === name}
+                            onChange={() => setDriveName(name)}
+                          />
+                          {name}
+                        </label>
+                      ))}
+                    </Stack>
+                  </fieldset>
+                )}
+              </Stack>
+            )}
             {store.canReadBackup() ? (
-              <Form variant="inline" onSubmit={() => reading.run(doRead)}>
-                <Field label={t("backupAll.filePassphrase")}>
-                  {(control) => (
-                    <Input
-                      {...control}
-                      ref={importField}
-                      type="password"
-                      autoComplete="off"
-                      value={filePassphrase}
-                      onChange={(event) => {
-                        setFilePassphrase(event.target.value);
-                        setImportNote(null);
-                      }}
-                    />
-                  )}
-                </Field>
-                <FormActions
-                  submit={t("backupAll.read")}
-                  busy={reading.busy}
-                  disabled={filePassphrase === ""}
-                  disabledReason={t("backupAll.readNeeds")}
-                />
-              </Form>
+              (!onDrive || scheduler.driveSignedIn) && (
+                <Form variant="inline" onSubmit={() => reading.run(doRead)}>
+                  <Field label={t("backupAll.filePassphrase")}>
+                    {(control) => (
+                      <Input
+                        {...control}
+                        ref={importField}
+                        type="password"
+                        autoComplete="off"
+                        value={filePassphrase}
+                        onChange={(event) => {
+                          setFilePassphrase(event.target.value);
+                          setImportNote(null);
+                        }}
+                      />
+                    )}
+                  </Field>
+                  <FormActions
+                    submit={t("backupAll.read")}
+                    busy={reading.busy}
+                    disabled={filePassphrase === "" || (onDrive && driveName === "")}
+                    disabledReason={
+                      onDrive ? t("backupAll.driveReadNeeds") : t("backupAll.readNeeds")
+                    }
+                  />
+                </Form>
+              )
             ) : (
               <p className="text-muted-foreground text-sm">{t("backupAll.needsDesktop")}</p>
             )}

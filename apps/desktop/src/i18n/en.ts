@@ -787,6 +787,13 @@ export const en: Dictionary = {
     saved:
       "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
     importTitle: "Restore a backup",
+    sourceLegend: "Restore from",
+    source: { file: "A file", drive: "Google Drive" },
+    driveLook: "Look in Google Drive",
+    driveNone: "No backups on Google Drive yet.",
+    driveChoiceLegend: "Backups on Google Drive",
+    driveNeedsSignIn: "Sign in to Google under Scheduled backups first.",
+    driveReadNeeds: "Choose a backup and type its passphrase.",
     filePassphrase: "File passphrase",
     read: "Read backup",
     needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",

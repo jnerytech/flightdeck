@@ -2370,6 +2370,11 @@ nunca num arquivo nem num log; **Sair** o remove. Se o Google deixar de aceitar 
 o sino avisam e nenhum backup é feito até você entrar de novo. Sem um cliente no build, a escolha não
 aparece (#1444).
 
+Para restaurar do Drive, **Backup de tudo** > **Restaurar um backup** oferece **Restaurar de**:
+**Um arquivo** ou **Google Drive** (só com o mesmo cliente do Google, e depois de entrar). **Procurar no
+Google Drive** lista os backups de lá, do mais novo ao mais antigo. Escolha um, digite a frase-senha e
+**Ler backup**: você vê a mesma prévia de um arquivo, e nada muda até você confirmar (#1462).
+
 ## Ações: o Claude usa um segredo sem vê-lo
 
 Uma **ação** é um comando que você declara, com lugares para segredos do cofre e para parâmetros.
