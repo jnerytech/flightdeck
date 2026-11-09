@@ -109,6 +109,9 @@ export const DANGER_SESSION = "Limpar a pasta build";
 /** The closed team the demo keeps for the journey that deletes it (issue #934). */
 export const DEMO_CLOSED_TEAM = "closed-crew";
 
+/** The card whose workflow run waits at a gate, which the demo keeps waiting (issue #1269). */
+export const DEMO_GATE_CARD = "Revisar o fluxo de login";
+
 /** The In review card whose PR the demo keeps open, and that PR (issue #1244). */
 export const DEMO_PR_CARD = "Revisar mensagens de erro";
 export const DEMO_PR_URL = "https://github.com/acme/flightdeck-web/pull/42";

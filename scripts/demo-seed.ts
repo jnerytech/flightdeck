@@ -31,6 +31,7 @@ import {
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_GATE_CARD,
   DEMO_PR_BETA_CARD,
   DEMO_PR_BETA_URL,
   DEMO_PR_CARD,
@@ -822,7 +823,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const diff = await card("Somar no total do carrinho", "Corrija a soma. [commit]");
   await client.call("card.start", { cardId: diff.id });
   // The run stops at its gate: an open request in "Precisa de você", with its steps on the card.
-  const gated = await card("Revisar o fluxo de login", "Faça o plano e peça aprovação.");
+  const gated = await card(DEMO_GATE_CARD, "Faça o plano e peça aprovação.");
   await client.call("card.start", { cardId: gated.id, workflow: "feature" });
   // Created in Review: a person's move there would ask for a PR (issue #78), and the demo has none.
   const inReview = await client.call<{ id: string }>("card.create", {
