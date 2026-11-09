@@ -1184,6 +1184,13 @@ export const en: Dictionary = {
     finished: "Finished",
     finishedOutcome: { done: "Finished", failed: "Failed", ended: "Ended" },
     quietFor: "Quiet for {span}",
+    quietTitle: "This session has gone quiet",
+    quietBody:
+      "It is still marked as running but has produced nothing for a while. A long build can be quiet too.",
+    quietOpen: "Open",
+    quietInterrupt: "Interrupt",
+    quietContinue: "Send “continue”",
+    quietSnooze: "Not stuck, snooze 1 h",
     quietLast: "{quiet} · last: {tool}",
     finishedFilesOne: "1 file changed",
     finishedFilesMany: "{n} files changed",
@@ -5519,6 +5526,7 @@ export const en: Dictionary = {
     empty: "No worktrees under .flightdeck/worktrees.",
   },
   activityBoard: {
+    quiet: "Quiet {span}",
     title: "Activity",
     columns: { needs_you: "Needs you", working: "Working", done: "Done", idle: "Idle" },
     none: "None",

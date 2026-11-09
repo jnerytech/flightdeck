@@ -40,11 +40,14 @@ function setup(language: "en" | "pt-BR" = "en", specs: Specs = SPECS) {
 }
 
 function page(store: InstanceType<typeof AppStore>, go: (route: unknown) => void = () => {}) {
-  return render(
+  const tree = () => (
     <TContext.Provider value={store.i18n.t}>
       <NeedsYou store={store} state={store.getState()} go={go} onOpenRequest={() => {}} />
-    </TContext.Provider>,
+    </TContext.Provider>
   );
+  const shown = render(tree());
+  /** The App hands the page the live state; here the test hands it the store's state again. */
+  return { refresh: () => shown.rerender(tree()) };
 }
 
 const rows = () =>
@@ -89,9 +92,10 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
 
   test("Not stuck, snooze 1 h takes it off the list and the focus does not fall on the page body", async () => {
     const { store } = setup();
-    page(store);
+    const view = page(store);
     await press(/alfa · api/);
     await press("Not stuck, snooze 1 h");
+    await act1(() => view.refresh());
     await settle(() => document.body.textContent?.includes("Nothing is waiting for you.") === true);
     expect(rows()).toEqual([]);
     expect(store.getState().quietSnooze).toEqual({ "h1/s1": NOW + 60 * 60_000 });

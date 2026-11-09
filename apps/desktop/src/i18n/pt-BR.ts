@@ -1161,6 +1161,13 @@ export const ptBR = {
   },
   needsYou: {
     quietFor: "Em silêncio há {span}",
+    quietTitle: "Esta sessão ficou em silêncio",
+    quietBody:
+      "Ela ainda consta como rodando, mas não produziu nada há um tempo. Um build longo também pode ficar em silêncio.",
+    quietOpen: "Abrir",
+    quietInterrupt: "Interromper",
+    quietContinue: "Enviar “continue”",
+    quietSnooze: "Não travou, adiar 1 h",
     quietLast: "{quiet} · última: {tool}",
     title: "Precisa de você",
     empty: "Nada espera por você.",
@@ -5533,6 +5540,7 @@ export const ptBR = {
     empty: "Nenhuma worktree em .flightdeck/worktrees.",
   },
   activityBoard: {
+    quiet: "Em silêncio {span}",
     title: "Atividade",
     columns: {
       needs_you: "Precisa de você",
