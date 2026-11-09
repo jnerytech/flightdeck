@@ -925,7 +925,6 @@ export const ptBR = {
     startSelected: "Iniciar {n}",
     stopSelected: "Parar {n}",
     noneCanStart: "Nenhum card selecionado pode iniciar",
-    noneRunning: "Nenhum card selecionado está rodando",
     otherColumnOne: "1 em outra coluna",
     otherColumns: "{n} em outras colunas",
     moreSelected: "Mais ações da seleção",

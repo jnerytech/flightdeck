@@ -2,6 +2,7 @@ import type { BoardColumn } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import type * as React from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -52,95 +53,100 @@ export function SelectionBar(
     <fieldset // NOSONAR: Escape leaves the selection from any control in the bar; the bar is a group, not a control
       aria-label={t("board.selection")}
       onKeyDown={leaveOnEscape}
-      className="m-0 flex min-h-8 min-w-0 flex-wrap items-center gap-2 rounded-md bg-muted pl-3 text-sm"
+      className="m-0 min-h-8 min-w-0 rounded-md bg-muted pl-3 text-sm"
     >
-      <span>
-        {props.shown === 1 ? t("board.selectedOne") : t("board.selectedCount", { n: props.shown })}
-      </span>
-      {props.hidden > 0 && (
-        <span className="text-muted-foreground text-xs">
-          {props.hidden === 1 ? t("board.hiddenOne") : t("board.hiddenCount", { n: props.hidden })}
+      {/* #1354: a row whose disabled buttons say why on a line of the bar (#732), in the flow: a
+          reason hung under a button was drawn over the cards at 1024 and past the window at 390. */}
+      <FieldRow>
+        <span>
+          {props.shown === 1
+            ? t("board.selectedOne")
+            : t("board.selectedCount", { n: props.shown })}
         </span>
-      )}
-      {props.otherColumns > 0 && (
-        <span className="text-muted-foreground text-xs">
-          {props.otherColumns === 1
-            ? t("board.otherColumnOne")
-            : t("board.otherColumns", { n: props.otherColumns })}
-        </span>
-      )}
-      {/* #1354: one primary, Start, while it has a card to take (#1197). */}
-      <ActionButton
-        size="sm"
-        variant={props.startCount > 0 ? "default" : "outline"}
-        disabled={props.startCount === 0 || props.busy}
-        disabledReason={props.startCount === 0 ? t("board.noneCanStart") : undefined}
-        onClick={props.onStart}
-      >
-        {t("board.startSelected", { n: props.startCount })}
-      </ActionButton>
-      <ActionButton
-        size="sm"
-        variant="outline"
-        disabled={props.stopCount === 0 || props.busy}
-        disabledReason={props.stopCount === 0 ? t("board.noneRunning") : undefined}
-        onClick={props.onStop}
-      >
-        {t("board.stopSelected", { n: props.stopCount })}
-      </ActionButton>
-      <DropdownMenu
-        {...(props.onMoveOpenChange
-          ? { open: props.moveOpen ?? false, onOpenChange: props.onMoveOpenChange }
-          : {})}
-      >
-        <DropdownMenuTrigger asChild>
-          {props.compact ? (
-            <Button
-              size="sm"
-              variant="outline"
-              aria-label={t("board.moreSelected")}
-              disabled={props.shown === 0 || props.busy}
-            >
-              <MoreHorizontal aria-hidden="true" />
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" disabled={props.shown === 0 || props.busy}>
-              {t("board.moveSelected")}
-            </Button>
-          )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          onCloseAutoFocus={(e) => {
-            if (props.onMoveClosed?.()) e.preventDefault();
-          }}
-        >
-          {COLUMNS.map(({ id }) => (
-            <DropdownMenuItem key={id} onSelect={() => props.onMove(id)}>
-              {props.compact
-                ? t("board.moveTo", { column: t(`kanban.columns.${id}` as Key) })
-                : t(`kanban.columns.${id}` as Key)}
-            </DropdownMenuItem>
-          ))}
-          {props.compact && (
-            <DropdownMenuItem onSelect={props.onDiscard}>
-              {t("board.discardSelected")}
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {!props.compact && (
-        <Button
+        {props.hidden > 0 && (
+          <span className="text-muted-foreground text-xs">
+            {props.hidden === 1
+              ? t("board.hiddenOne")
+              : t("board.hiddenCount", { n: props.hidden })}
+          </span>
+        )}
+        {props.otherColumns > 0 && (
+          <span className="text-muted-foreground text-xs">
+            {props.otherColumns === 1
+              ? t("board.otherColumnOne")
+              : t("board.otherColumns", { n: props.otherColumns })}
+          </span>
+        )}
+        {/* #1354: one primary, Start, while it has a card to take (#1197). */}
+        <ActionButton
           size="sm"
-          variant="outline"
-          disabled={props.shown === 0 || props.busy}
-          onClick={props.onDiscard}
+          variant={props.startCount > 0 ? "default" : "outline"}
+          disabled={props.startCount === 0 || props.busy}
+          disabledReason={props.startCount === 0 ? t("board.noneCanStart") : undefined}
+          onClick={props.onStart}
         >
-          {t("board.discardSelected")}
+          {t("board.startSelected", { n: props.startCount })}
+        </ActionButton>
+        {/* Only while a selected card runs or waits in the queue: most selections have none. */}
+        {props.stopCount > 0 && (
+          <ActionButton size="sm" variant="outline" disabled={props.busy} onClick={props.onStop}>
+            {t("board.stopSelected", { n: props.stopCount })}
+          </ActionButton>
+        )}
+        <DropdownMenu
+          {...(props.onMoveOpenChange
+            ? { open: props.moveOpen ?? false, onOpenChange: props.onMoveOpenChange }
+            : {})}
+        >
+          <DropdownMenuTrigger asChild>
+            {props.compact ? (
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label={t("board.moreSelected")}
+                disabled={props.shown === 0 || props.busy}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" disabled={props.shown === 0 || props.busy}>
+                {t("board.moveSelected")}
+              </Button>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            onCloseAutoFocus={(e) => {
+              if (props.onMoveClosed?.()) e.preventDefault();
+            }}
+          >
+            {COLUMNS.map(({ id }) => (
+              <DropdownMenuItem key={id} onSelect={() => props.onMove(id)}>
+                {props.compact
+                  ? t("board.moveTo", { column: t(`kanban.columns.${id}` as Key) })
+                  : t(`kanban.columns.${id}` as Key)}
+              </DropdownMenuItem>
+            ))}
+            {props.compact && (
+              <DropdownMenuItem onSelect={props.onDiscard}>
+                {t("board.discardSelected")}
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {!props.compact && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={props.shown === 0 || props.busy}
+            onClick={props.onDiscard}
+          >
+            {t("board.discardSelected")}
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={props.onClear}>
+          {props.compact ? t("board.clearShort") : t("board.clearSelection")}
         </Button>
-      )}
-      <Button size="sm" variant="ghost" onClick={props.onClear}>
-        {props.compact ? t("board.clearShort") : t("board.clearSelection")}
-      </Button>
+      </FieldRow>
     </fieldset>
   );
 }

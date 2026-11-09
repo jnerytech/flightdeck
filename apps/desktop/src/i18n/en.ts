@@ -930,7 +930,6 @@ export const en: Dictionary = {
     startSelected: "Start {n}",
     stopSelected: "Stop {n}",
     noneCanStart: "None of the selected cards can start",
-    noneRunning: "None of the selected cards is running",
     otherColumnOne: "1 in another column",
     otherColumns: "{n} in other columns",
     moreSelected: "More actions for the selection",
