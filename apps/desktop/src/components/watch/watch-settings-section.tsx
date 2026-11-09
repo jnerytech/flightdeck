@@ -1,26 +1,21 @@
 import type { Project, WatchSettings } from "@flightdeck/protocol";
-import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { FieldRow } from "@/components/layout/form";
+import { Field, FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Grid, Inline, Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { validateWatchDraft, watchDraftOf, watchPatchOf } from "../../lib/watch-settings.ts";
+import {
+  loopProblemsOf,
+  validateWatchDraft,
+  watchDraftOf,
+  watchPatchOf,
+} from "../../lib/watch-settings.ts";
 
-/** A labelled control: the label is tied to it by id. */
-function Field(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
-  const id = useId();
-  return (
-    <Stack gap={1}>
-      <label htmlFor={id} className="text-sm">
-        {props.label}
-      </label>
-      {props.children(id)}
-    </Stack>
-  );
-}
+const TEXTAREA =
+  "rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** One project's watch settings: loaded from the host, edited as text, saved as one patch. */
 function ProjectWatchSettings(
@@ -40,6 +35,7 @@ function ProjectWatchSettings(
   }, [store, hostId, project.id, keep]);
   const set = (patch: Partial<typeof draft>) => setDraft({ ...draft, ...patch });
   const problem = validateWatchDraft(draft, t);
+  const loopProblems = loopProblemsOf(draft, t);
   const save = async () => {
     if (!saved) return;
     const settings = await store.watchSettings(hostId, project.id, watchPatchOf(draft, saved));
@@ -61,10 +57,10 @@ function ProjectWatchSettings(
         </label>
       </Inline>
       <Grid cols={{ base: 1, sm: 3 }} gap={3}>
-        <Field label={t("watchSettingsUi.maxRounds")}>
-          {(id) => (
+        <Field label={t("watchSettingsUi.maxRounds")} help={t("watchSettingsUi.maxRoundsHelp")}>
+          {(control) => (
             <Input
-              id={id}
+              {...control}
               type="number"
               value={draft.maxRounds}
               onChange={(e) => set({ maxRounds: e.target.value })}
@@ -72,9 +68,9 @@ function ProjectWatchSettings(
           )}
         </Field>
         <Field label={t("watchSettingsUi.budget")}>
-          {(id) => (
+          {(control) => (
             <Input
-              id={id}
+              {...control}
               type="number"
               placeholder={t("watchSettingsUi.noLimit")}
               value={draft.budgetUsd}
@@ -83,9 +79,9 @@ function ProjectWatchSettings(
           )}
         </Field>
         <Field label={t("watchSettingsUi.daily")}>
-          {(id) => (
+          {(control) => (
             <Input
-              id={id}
+              {...control}
               type="number"
               placeholder={t("watchSettingsUi.noLimit")}
               value={draft.dailyUsd}
@@ -95,9 +91,9 @@ function ProjectWatchSettings(
         </Field>
       </Grid>
       <Field label={t("watchSettingsUi.timeout")}>
-        {(id) => (
+        {(control) => (
           <Input
-            id={id}
+            {...control}
             type="number"
             value={draft.checkTimeoutMin}
             onChange={(e) => set({ checkTimeoutMin: e.target.value })}
@@ -105,10 +101,10 @@ function ProjectWatchSettings(
         )}
       </Field>
       <Field label={t("watchSettingsUi.checks")}>
-        {(id) => (
+        {(control) => (
           <textarea
-            id={id}
-            className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            {...control}
+            className={TEXTAREA}
             rows={3}
             value={draft.checks}
             onChange={(e) => set({ checks: e.target.value })}
@@ -116,7 +112,9 @@ function ProjectWatchSettings(
         )}
       </Field>
       {draft.loop && (
-        <>
+        <Stack gap={3}>
+          <h5 className="font-medium text-sm">{t("watchSettingsUi.loopTitle")}</h5>
+          <p className="text-muted-foreground text-sm">{t("watchSettingsUi.loopIntro")}</p>
           <Inline gap={2}>
             <label className="text-sm">
               <input
@@ -134,10 +132,13 @@ function ProjectWatchSettings(
               {t("watchSettingsUi.checkLoopDefault")}
             </label>
           </Inline>
-          <Field label={t("watchSettingsUi.checkRounds")}>
-            {(id) => (
+          <Field
+            label={t("watchSettingsUi.checkRounds")}
+            error={loopProblems.checkRounds ?? undefined}
+          >
+            {(control) => (
               <Input
-                id={id}
+                {...control}
                 type="number"
                 value={draft.loop?.checkRounds ?? ""}
                 onChange={(e) =>
@@ -151,11 +152,15 @@ function ProjectWatchSettings(
               />
             )}
           </Field>
-          <Field label={t("watchSettingsUi.checkEnv")}>
-            {(id) => (
+          <Field
+            label={t("watchSettingsUi.checkEnv")}
+            help={t("watchSettingsUi.checkEnvHelp")}
+            error={loopProblems.checkEnv ?? undefined}
+          >
+            {(control) => (
               <textarea
-                id={id}
-                className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                {...control}
+                className={TEXTAREA}
                 rows={2}
                 value={draft.loop?.checkEnv ?? ""}
                 onChange={(e) =>
@@ -169,7 +174,7 @@ function ProjectWatchSettings(
               />
             )}
           </Field>
-        </>
+        </Stack>
       )}
       <FieldRow>
         <ActionButton
