@@ -2918,6 +2918,8 @@ export const en: Dictionary = {
     outdated: "Outdated",
     lines: "line {line}",
     linesRange: "lines {from}–{to}",
+    blankLine: "(blank line)",
+    blankLines: "(blank lines)",
     editComment: "Edit the comment on {path}, {where}",
     removeComment: "Remove the comment on {path}, {where}",
     commentText: "Comment text",
