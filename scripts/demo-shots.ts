@@ -37,6 +37,7 @@ import {
   waitForStable,
 } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
+import { holdsScript } from "./lib/shots-holds.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { narrowSizes, unknownNarrowShots } from "./lib/shots-narrow.ts";
 import { pickVariants } from "./lib/shots-variants.ts";
@@ -76,6 +77,8 @@ interface Shot {
   finished?: boolean;
   /** Issue #1344: the app was last active long ago, so Needs you opens with "While you were away". */
   away?: boolean;
+  /** #1414: the hosts answer with their memory and a budget over their holds (`holdsScript`). */
+  holds?: boolean;
   /** Demo switches added to the address (`update=<version>`: the update card shows). */
   query?: Record<string, string>;
   /** After the screen loads: open the palette, scroll a long list to its end… */
@@ -282,10 +285,12 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "board", host: ALFA, projectId: ids.project },
       prepare: selectCards,
     },
-    // ...and Start N's confirm: the host's queue, its quota and the card it skips.
+    // ...and Start N's confirm: the host's queue, its quota, its memory and budget holds (#1414)
+    // and the card it skips.
     {
       name: "board-selecao-iniciar",
       route: { name: "board", host: ALFA, projectId: ids.project },
+      holds: true,
       prepare: async (page) => {
         await selectCards(page);
         await page
@@ -293,8 +298,13 @@ function shots(ids: DemoIds): Shot[] {
           .getByRole("button", { name: /^(Start|Iniciar) \d+$/ })
           .click();
         await page.locator('[role="alertdialog"]').waitFor();
-        // The host's limit comes from project.list after the dialog opens.
+        // The host's limit comes from project.list after the dialog opens, its memory after it.
         await page.locator('[role="alertdialog"] p').first().waitFor();
+        await page
+          .locator('[role="alertdialog"]')
+          .getByText(/(memory|memória)/)
+          .first()
+          .waitFor();
         await page.waitForTimeout(400);
       },
     },
@@ -1186,6 +1196,9 @@ async function printShot(
       route: JSON.stringify(shot.route),
       ...shot.query,
     });
+    // Playwright's routeWebSocket never saw the app's sockets under Bun: the page's own WebSocket is
+    // wrapped instead.
+    if (shot.holds) await page.addInitScript({ content: holdsScript() });
     await page.goto(`${url}?${query}`);
     // The hosts connect and the screen loads its data.
     await page.waitForTimeout(1500);

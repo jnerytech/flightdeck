@@ -1123,7 +1123,7 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
   many wait in the host's queue, the host's 5-hour window on a subscription, a line for each hold that
   keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory),
-  and the cards it skips and why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
+  with every card in the queue while one of them holds, and the cards it skips and why. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
   one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
   the ones that went leave the selection, and the bar names any the host refused. In a narrow window
   the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit

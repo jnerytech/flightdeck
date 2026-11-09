@@ -110,7 +110,10 @@ confirm, only the column contract's question (#78).
 | Running now | the board's cards (running or queued) | as above |
 | Quota | `state.quota[hostId]`, only when `onSubscription` holds | no quota line (a host on an API key) |
 | A budget holds new cards | the host's budgets with "hold new cards" at or over the limit | no line |
-| Short of memory (#1343) | the host's queued reason, when the host reports it | no line: it fails open |
+| Short of memory (#1343, #1414) | `resources.get` when the confirm opens (used share to a tenth of a percent, at or over `memoryPauseAt`), or a card of the board queued with `queueReason: "memory"`, since the host goes on holding a margin under the share | no line: it fails open, and Start does not wait for it |
+
+With any hold (the quota's pause limit, a budget, memory) the queue line says they all join the queue,
+never "N start now": the host keeps every new card waiting (#1414).
 
 The board is one host's (`BoardView` takes one `hostId`), so the confirm names one host.
 
@@ -166,16 +169,21 @@ languages, re-measured at 1024, 640 and 390 by the narrow guard:
 
 - `board-selecao`: four cards selected, three to start and one at a gate. The bar, the checks, and at
   390 the compact bar with Move to and Discard under ⋯ and "1 in another column".
-- `board-selecao-iniciar`: Start N's confirm on the same selection, with the host's queue and quota.
+- `board-selecao-iniciar`: Start N's confirm on the same selection, with the host's queue, quota, and
+  budget and memory holds (#1414). The demo's hosts read the machine's own memory and keep their budgets
+  far from the limit, so the print wraps the page's WebSocket with `scripts/lib/shots-holds.ts` from an
+  init script: the answer to `resources.get` reads 95% in use with the hold at 90%, and `budget.list`
+  gains a host budget that holds new cards, at its limit. Playwright's `routeWebSocket` never saw the
+  app's sockets under Bun, so the page's own WebSocket is wrapped instead.
 
 ## Built in slice 2, and what waits
 
 - **Shown:** the count, Start N, Stop N while something runs, the queue line (from `project.list`'s
   `maxParallelRuns` and the host's running cards), the 5-hour quota line and the pause-limit line on a
   subscription, the cards with no acceptance criteria, and the skipped cards with their reason.
-- **Waits:** the budget line (`board.startBudgetHold`) needs the host's budgets with "hold new cards"
-  in the board's store, and the memory line (`board.startMemoryHold`) needs #1343's queued reason.
-  Neither is in the strings yet; each comes with its source.
+- **Built later:** the budget line (`board.startBudgetHold`) and the memory line
+  (`board.startMemoryHold`) came in #1400 (#1393). #1414 reads the memory hold when the confirm opens,
+  makes the queue line agree with any hold, and prints both lines.
 
 ## Out of scope
 
