@@ -70,13 +70,15 @@ export const runsHandlers = {
     return server.need("board").workflows.getRun(payload.runId);
   },
   // #1266: the check answers anywhere; the resume runs the project's commands again, so only a
-  // near connection may confirm it. A far check says so, so the app offers no resume that fails.
+  // near connection may confirm it. A far check says so before it runs (no git for a far caller),
+  // so the app offers no resume that fails.
   "run.resume": async (payload, { ws, server }) => {
     const confirm = payload.confirm === true;
     if (confirm) requireVaultTransport(ws.data.origin, "run.resume", server.opts.log);
-    const check = await server.need("board").resumeRun(payload.runId, confirm);
-    if (confirm || !check.ok || isVaultTransport(ws.data.origin)) return check;
-    return { from: check.from, ok: false, reason: "transport_refused" };
+    else if (!isVaultTransport(ws.data.origin)) {
+      return { from: "", ok: false, reason: "transport_refused" };
+    }
+    return await server.need("board").resumeRun(payload.runId, confirm);
   },
   "webhook.send": async (payload, { ws, server }) => {
     return await server.need("webhook").send(payload, ws.data.origin);
