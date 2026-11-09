@@ -167,11 +167,11 @@ describe("conflict-radar: the git it runs", () => {
     const seen: string[][] = [];
     const run = async (_cwd: string, _limit: number, args: string[]) => {
       seen.push(args);
-      return { code: 0, stdout: "x", stderr: "", truncated: args.includes("ls-files") };
+      return { code: 0, stdout: "x", stderr: "", truncated: args.includes("--cached") };
     };
     const git = radarGit(1024, 5000, run);
     const diff = await git("/wt", "diff", "--name-only", "-z", "HEAD", "--");
-    const files = await git("/wt", "ls-files", "--others", "-z");
+    const files = await git("/wt", "diff", "--cached", "--name-only", "-z");
     expect(seen[0]?.slice(0, 4)).toEqual([
       "-c",
       "core.fsmonitor=false",
