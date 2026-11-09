@@ -9,10 +9,15 @@ import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
+import { AWAY_KEY } from "../../../apps/desktop/src/lib/away.ts";
 import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
+import { HOSTS_KEY } from "../../../apps/desktop/src/lib/hosts.ts";
 import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
+  DEMO_AWAY_FAILING_CARD,
+  DEMO_AWAY_MERGED_CARD,
+  DEMO_AWAY_SINCE,
   DEMO_GATE_CARD,
   DEMO_PR_CARD,
   DEMO_PR_URL,
@@ -2010,3 +2015,190 @@ step(
       .waitFor({ timeout: WAIT });
   },
 );
+
+// While you were away: after a long absence, Needs you opens with what each host did (issues #1344, #1369).
+const summaryOf = (c: Context) =>
+  c.page.getByRole("region", { name: dictionary(c).away.title, exact: true });
+
+/** A host's part of the summary: the box that holds its name and its groups. */
+const awayHost = (c: Context, host: string) =>
+  summaryOf(c).locator(`xpath=.//h3[normalize-space()="${host}"]/..`);
+
+/** The lines of a group in a host's part, by the group's heading (its count is left open). */
+const awayGroup = (c: Context, host: string, title: string) => {
+  const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return awayHost(c, host)
+    .getByRole("heading", { name: new RegExp(`^${escaped} \\(\\d+\\)$`) })
+    .locator("xpath=following-sibling::ul[1]");
+};
+
+/** Any page of the demo holds the window's storage; `time` is when the app was last active. */
+async function lastActive(c: Context, time: string) {
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+  await c.page.evaluate(
+    ([key, value]) => localStorage.setItem(key as string, value as string),
+    [AWAY_KEY, time],
+  );
+}
+
+step(Given, "the app was last active long ago", async (c) => lastActive(c, DEMO_AWAY_SINCE));
+
+step(Given, "the app was last active a moment ago", async (c) =>
+  lastActive(c, new Date().toISOString()),
+);
+
+step(Given, "two hours pass", async (c) => {
+  // The page's clock moves; the hosts keep theirs, so nothing they did is after the last time.
+  await c.page.clock.setSystemTime(Date.now() + 2 * 3_600_000);
+});
+
+step(When, "I open Needs you", async (c) => open(c, { name: "needs-you" }));
+
+step(
+  Then,
+  "the summary tells what alfa did: finished sessions, cards in review and the quota used",
+  async (c) => {
+    const text = dictionary(c).away;
+    await summaryOf(c).waitFor({ timeout: WAIT });
+    await awayGroup(c, "alfa", text.sessions).waitFor({ timeout: WAIT });
+    await awayGroup(c, "alfa", text.review).waitFor({ timeout: WAIT });
+    await awayHost(c, "alfa").getByText(pattern(text.quota)).waitFor({ timeout: WAIT });
+  },
+);
+
+step(
+  Then,
+  "the summary tells what beta did: a merged pull request, a pull request with failing checks and cards in review",
+  async (c) => {
+    const text = dictionary(c).away;
+    const said = (template: string, title: string) => template.replace("{title}", title);
+    await summaryOf(c).waitFor({ timeout: WAIT });
+    const prs = awayGroup(c, "beta", text.prs);
+    await prs
+      .getByRole("button", { name: said(text.merged, DEMO_AWAY_MERGED_CARD), exact: true })
+      .waitFor({ timeout: WAIT });
+    await prs
+      .getByRole("button", { name: said(text.checksFailed, DEMO_AWAY_FAILING_CARD), exact: true })
+      .waitFor({ timeout: WAIT });
+    const review = awayGroup(c, "beta", text.review);
+    await review
+      .getByRole("button", { name: DEMO_AWAY_FAILING_CARD, exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+);
+
+step(When, "I follow the merged pull request line of beta", async (c) => {
+  const text = dictionary(c).away;
+  await awayGroup(c, "beta", text.prs)
+    .getByRole("button", {
+      name: text.merged.replace("{title}", DEMO_AWAY_MERGED_CARD),
+      exact: true,
+    })
+    .click({ timeout: WAIT });
+});
+
+step(Then, "the card of that pull request opens", async (c) => {
+  await c.page.getByText(DEMO_AWAY_MERGED_CARD, { exact: true }).first().waitFor({ timeout: WAIT });
+});
+
+step(Then, "the summary is gone", async (c) => {
+  await summaryOf(c).waitFor({ state: "detached", timeout: WAIT });
+});
+
+// A failed run's line is a link once the app knows its card: the card's page, opened in the app, tells it.
+step(When, "I look at my card", async (c) => {
+  await openOwnCard(c);
+  await c.page
+    .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+});
+
+step(When, "I go to Needs you from the sidebar", async (c) => {
+  await c.page
+    .getByRole("button", { name: new RegExp(`^${c.t("sidebar.needsYou")}`) })
+    .first()
+    .click({ timeout: WAIT });
+});
+
+step(Then, "the summary lists the failed run of my card under alfa", async (c) => {
+  const runs = awayGroup(c, "alfa", dictionary(c).away.runs);
+  await runs
+    .getByRole("button", { name: new RegExp(`^${FLOW}`) })
+    .first()
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I follow the failed run line of alfa", async (c) => {
+  await awayGroup(c, "alfa", dictionary(c).away.runs)
+    .getByRole("button", { name: new RegExp(`^${FLOW}`) })
+    .first()
+    .click({ timeout: WAIT });
+});
+
+step(Then, "my card opens", async (c) => {
+  // The card's page has Run again for its failed run; the board and the summary have none.
+  await c.page
+    .getByRole("button", { name: c.t("runUi.again.action"), exact: true })
+    .waitFor({ timeout: SESSION_WAIT });
+  await c.page
+    .getByText(mine(c).card ?? "", { exact: true })
+    .first()
+    .waitFor({ timeout: WAIT });
+});
+
+step(When, "I dismiss the summary", async (c) => {
+  await summaryOf(c)
+    .getByRole("button", { name: dictionary(c).away.dismiss, exact: true })
+    .click({ timeout: WAIT });
+});
+
+step(Then, "there is no summary", async (c) => {
+  // Needs you is drawn and the hosts have answered before the absence of a summary counts.
+  await c.page
+    .getByRole("heading", { name: c.t("needsYou.title") })
+    .first()
+    .waitFor({ timeout: WAIT });
+  const until = Date.now() + 2000;
+  do {
+    if ((await summaryOf(c).count()) > 0) throw new Error("the summary is on screen");
+    await c.page.waitForTimeout(100);
+  } while (Date.now() < until);
+});
+
+step(Given, "host beta does not answer what happened while the app was closed", async (c) => {
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+  const hosts = (await c.page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key) ?? "[]"),
+    HOSTS_KEY,
+  )) as Array<{ id: string; url: string }>;
+  const beta = hosts.find((host) => host.id === "demo-beta")?.url;
+  if (!beta) throw new Error("the demo has no host beta");
+  // Everything goes to the real host, but the one question: that one is answered with a refusal, in
+  // the page, as the host would. (Routing the sockets through Playwright left the app without hosts.)
+  await c.page.addInitScript((address) => {
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (this.url === address && typeof data === "string" && data.includes('"activity.since"')) {
+        const frame = JSON.parse(data) as { id: string };
+        const nack = {
+          type: "ack",
+          id: frame.id,
+          ok: false,
+          error: { code: "internal", message: "no answer" },
+        };
+        setTimeout(
+          () => this.dispatchEvent(new MessageEvent("message", { data: JSON.stringify(nack) })),
+          0,
+        );
+        return;
+      }
+      send.call(this, data);
+    };
+  }, beta);
+});
+
+step(Then, "the summary says beta did not answer", async (c) => {
+  await summaryOf(c)
+    .getByText(dictionary(c).away.unreached.replace("{host}", "beta"), { exact: true })
+    .waitFor({ timeout: WAIT });
+});

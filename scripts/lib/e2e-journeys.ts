@@ -120,6 +120,15 @@ export const DEMO_PR_URL = "https://github.com/acme/flightdeck-web/pull/42";
 /** When the demo's app was last active, for the "While you were away" summary: long before the seed (#1344). */
 export const DEMO_AWAY_SINCE = "2020-01-01T00:00:00.000Z";
 
+/**
+ * Beta's news for the "While you were away" summary (#1344, #1369): a card whose PR was merged and
+ * one whose PR has failing checks. Both in the project that holds beta's open PR, in English for both
+ * languages (a card's title is the person's own text).
+ */
+export const DEMO_AWAY_MERGED_CARD = "Update the lockfile";
+export const DEMO_AWAY_FAILING_CARD = "Fix the flaky retry";
+export const DEMO_AWAY_FAILING_URL = "https://github.com/acme/flightdeck-api/pull/58";
+
 /** The In review card on beta, whose PR the fake gh merges, so the Pull requests page lists two hosts (#1345). */
 export const DEMO_PR_BETA_CARD = "Add the health endpoint";
 export const DEMO_PR_BETA_URL = "https://github.com/acme/flightdeck-api/pull/57";

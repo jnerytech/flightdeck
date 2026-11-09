@@ -30,6 +30,9 @@ import {
   CONTRACT_CARD,
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
+  DEMO_AWAY_FAILING_CARD,
+  DEMO_AWAY_FAILING_URL,
+  DEMO_AWAY_MERGED_CARD,
   DEMO_CLOSED_TEAM,
   DEMO_GATE_CARD,
   DEMO_PR_BETA_CARD,
@@ -689,6 +692,14 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
         stdout: JSON.stringify({ state: "OPEN", statusCheckRollup: build }),
       },
       { args: ["pr", "merge", DEMO_PR_BETA_URL], stdout: "Merged\n" },
+      // Issue #1369: a PR whose checks fail, so the host's poll keeps it that way for the summary.
+      {
+        args: ["pr", "view", DEMO_AWAY_FAILING_URL, "state,statusCheckRollup"],
+        stdout: JSON.stringify({
+          state: "OPEN",
+          statusCheckRollup: [{ name: "build", status: "COMPLETED", conclusion: "FAILURE" }],
+        }),
+      },
       {
         args: ["pr", "merge", DEMO_PR_URL],
         code: 1,
@@ -1268,10 +1279,33 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     description: "A route that says the service is up.",
     column: "review",
   });
+  // Issue #1369: what beta did while the app was closed besides the cards in review: a card done with
+  // its PR merged, and a card in review whose PR has failing checks.
+  const lockfile = await beta.client.call<{ id: string }>("card.create", {
+    projectId: apiProject.id,
+    title: DEMO_AWAY_MERGED_CARD,
+    description: "Bump the lockfile.",
+    column: "review",
+  });
+  await beta.client.call("card.move", { cardId: lockfile.id, column: "done" });
+  const flaky = await beta.client.call<{ id: string }>("card.create", {
+    projectId: apiProject.id,
+    title: DEMO_AWAY_FAILING_CARD,
+    description: "The retry test fails one run in five.",
+    column: "review",
+  });
   const betaPrs = new Database(join(beta.dataDir, "flightdeck.db"));
   betaPrs
     .query("UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = 'passing' WHERE id = ?")
     .run(DEMO_PR_BETA_URL, apiCard.id);
+  betaPrs
+    .query(
+      "UPDATE cards SET pr_url = ?, pr_state = 'merged', checks_state = 'passing' WHERE id = ?",
+    )
+    .run("https://github.com/acme/flightdeck-api/pull/56", lockfile.id);
+  betaPrs
+    .query("UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = 'failing' WHERE id = ?")
+    .run(DEMO_AWAY_FAILING_URL, flaky.id);
   betaPrs.close();
   await beta.client.call("session.create", {
     cwd: beta.projects,
