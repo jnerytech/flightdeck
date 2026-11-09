@@ -476,7 +476,9 @@ async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
 export function reviewState(n: number, text: string | null): { line: string; wait: string | null } {
   if (text === null) return { line: "OpenCode review: none yet", wait: "is none yet" };
   const count = (re: RegExp) => text.split("\n").filter((l) => re.test(l)).length;
-  const verdict = /^VERDICT: *(\w+)/m.exec(text)?.[1] ?? "unknown";
+  // The last VERDICT line, as a whole word: a quoted one earlier, or approve-with-changes, is not approve.
+  const verdicts = [...text.matchAll(/^VERDICT: *([\w-]+)\s*$/gm)];
+  const verdict = verdicts.at(-1)?.[1] ?? "unknown";
   const line = `OpenCode review: VERDICT ${verdict}, ${count(/^\[(blocker|high)\]/)} blocker/high, ${count(/^\[medium\]/)} medium (pr-reviews/pr-${n}.md)`;
   return { line, wait: verdict === "approve" ? null : `says ${verdict}` };
 }
