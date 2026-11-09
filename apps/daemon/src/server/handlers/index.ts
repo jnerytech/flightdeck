@@ -6,6 +6,7 @@ import type { Handlers } from "../dispatch.ts";
 import { activityHandlers } from "./activity.ts";
 import { agentsHandlers } from "./agents.ts";
 import { assistantHandlers } from "./assistant.ts";
+import { boardHandlers } from "./board.ts";
 import { cardHandlers } from "./card.ts";
 import { costsHandlers } from "./costs.ts";
 import { externalHandlers } from "./external.ts";
@@ -44,6 +45,7 @@ export const DOMAINS: Record<string, Partial<Handlers>> = {
   card: cardHandlers,
   project: projectHandlers,
   session: sessionHandlers,
+  board: boardHandlers,
   issues: issuesHandlers,
   worktrees: worktreesHandlers,
   external: externalHandlers,

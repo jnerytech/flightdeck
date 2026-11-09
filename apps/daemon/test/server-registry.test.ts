@@ -220,6 +220,13 @@ describe("server-registry", () => {
     );
   });
 
+  // Issue #1288: the board commands left the switch of server.ts.
+  test("the board domain owns the board.* commands", () => {
+    expect(Object.keys(DOMAINS.board ?? {}).sort()).toEqual(
+      ["board.get", "board.settings", "board.watch"].sort(),
+    );
+  });
+
   // Issue #1344: "While you were away" reads what happened on the host since a time.
   test("the activity domain owns activity.since", () => {
     expect(Object.keys(DOMAINS.activity ?? {}).sort()).toEqual(["activity.since"]);
