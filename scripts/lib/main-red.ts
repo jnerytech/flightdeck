@@ -519,7 +519,7 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     return 1;
   }
   const held = holder(current(await openClaims(deps), run), failing);
-  if (held && held.owner === owner) {
+  if (held?.owner === owner) {
     deps.log(`already yours: #${held.number}`);
     return 0;
   }
