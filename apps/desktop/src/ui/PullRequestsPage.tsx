@@ -75,6 +75,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
             <PrRow
               key={key}
               row={row}
+              now={store.now()}
               watch={state.watches[key]}
               canMerge={hasFeature(features, "cardPrMerge", false)}
               withWatch={hasFeature(features, "watch", false)}

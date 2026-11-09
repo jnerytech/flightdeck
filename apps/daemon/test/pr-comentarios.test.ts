@@ -25,7 +25,10 @@ const GH_URL = "https://github.com/acme/repo/pull/7";
 const AZ_URL = "https://dev.azure.com/acme/Meu%20Projeto/_git/repo/pullrequest/12";
 
 const GH_RULES: FakeRule[] = [
-  { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "OPEN" }) },
+  {
+    args: ["view", "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt"],
+    stdout: JSON.stringify({ state: "OPEN" }),
+  },
   // `--paginate --slurp`: an array of pages (REST pages hold 30 by default, 100 at most).
   {
     args: ["api", "--paginate", "--slurp", "repos/acme/repo/pulls/7/comments?per_page=100"],

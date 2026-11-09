@@ -14,7 +14,7 @@ afterEach(() => {
   for (const fn of cleanups.splice(0).reverse()) fn();
 });
 
-const VIEW = "state,statusCheckRollup";
+const VIEW = "state,statusCheckRollup,mergeStateStatus,reviewDecision,createdAt";
 
 /** A card in Em revisão with an open PR on the fake `gh`, polled every 30 ms. */
 async function cardWithPr(overrides: Partial<BoardOptions> = {}) {

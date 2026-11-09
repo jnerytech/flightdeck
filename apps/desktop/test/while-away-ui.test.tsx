@@ -53,6 +53,15 @@ const ALFA = result({
       reasonParams: null,
       at: at(4),
     },
+    {
+      runId: "r9",
+      cardId: "c9",
+      projectId: "p9",
+      workflowName: "deploy",
+      reasonKey: null,
+      reasonParams: null,
+      at: at(3),
+    },
   ]),
 });
 
@@ -158,11 +167,14 @@ describe("while-away-ui: the summary at the top of Needs you (#1344)", () => {
     await click(inPanel().queryByRole("button", { name: /^Cart screen$/ }));
     await click(inPanel().queryByRole("button", { name: /Pay button: merged/ }));
     await click(inPanel().queryByRole("button", { name: /ship/ }));
+    // A run of a card the app has not loaded opens it by the project the run carries (#1408).
+    await click(inPanel().queryByRole("button", { name: /deploy/ }));
     expect(went).toEqual([
       { name: "session", host: "h1", id: "s1" },
       { name: "card", host: "h1", projectId: "p1", cardId: "c1" },
       { name: "card", host: "h1", projectId: "p1", cardId: "c2" },
       { name: "card", host: "h1", projectId: "p1", cardId: "c1" },
+      { name: "card", host: "h1", projectId: "p9", cardId: "c9" },
     ]);
   });
 

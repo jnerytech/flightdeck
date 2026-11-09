@@ -17,8 +17,10 @@ export type {
   DiffFile,
   DiffHunk,
   DiffLine,
+  PrMergeable,
   Project,
   PrProviderKind,
+  PrReview,
   PrState,
 } from "@flightdeck/protocol";
 

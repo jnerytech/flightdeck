@@ -52,7 +52,6 @@ import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
-import { statuslineData } from "./costs/statusline.ts";
 import { drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import type { AlertList } from "./github/alerts.ts";
@@ -63,7 +62,7 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { KnowledgeSwitch } from "./knowledge/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
-import { logPathFor, tailForOrigin } from "./logs/serve.ts";
+import { logPathFor } from "./logs/serve.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
@@ -78,7 +77,6 @@ import type { GitRunner } from "./project-find.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
-import { localDay } from "./quota/usage.ts";
 import type { ReleaseFeed } from "./releases/releases.ts";
 import type { Resources } from "./resources/resources.ts";
 import type { Changes } from "./review/changes.ts";
@@ -87,7 +85,7 @@ import type { ReviewFiles } from "./review/files.ts";
 import type { SessionCommits } from "./review/session-commit.ts";
 import type { SessionFiles } from "./review/session-files.ts";
 import type { SessionPrs } from "./review/session-pr.ts";
-import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
+import type { RoiSummarizer } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
@@ -515,6 +513,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "cardTemplates"),
     // Issue #1196: a card merges its open PR (`card.pr.merge`).
     ...when(opts.board, "cardPrMerge"),
+    // Issue #1352: the card carries the PR's merge state, review state and open date.
+    ...when(opts.board, "prDetails"),
     ...when(opts.issues, "issues"),
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),
@@ -618,30 +618,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function roi(): RoiSummarizer {
-    return need(opts, "roi");
-  }
-
-  function names(): Names {
-    return need(opts, "names");
-  }
-
-  function idle(): Idle {
-    return need(opts, "idle");
-  }
-
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
     const update = opts.updates?.status();
     return update ? { update } : {};
-  }
-
-  function fileLog(): FileLog {
-    return need(opts, "fileLog");
-  }
-
-  function releases(): ReleaseFeed {
-    return need(opts, "releases");
   }
 
   function resources(): Resources {
@@ -671,32 +651,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "logs.tail":
-        return ok(
-          command.type,
-          await tailForOrigin(fileLog(), ws.data.origin, command.payload.lines ?? 100, opts.log),
-        );
-      case "releases.list":
-        return ok(command.type, await releases().list(command.payload.limit ?? 5));
-      case "resources.get": {
-        const snapshot = await resources().snapshot();
-        // Issue #1343: the memory hold's threshold travels with the reading the panel shows.
-        const pause = opts.memoryPause;
-        return ok(command.type, pause ? { ...snapshot, memoryPauseAt: pause.pauseAt() } : snapshot);
-      }
       case "resources.endOrphan":
         // Like the other commands that change the host: not from beyond loopback and Tailscale.
         requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
         await resources().endOrphan(command.payload.pid, command.payload.startTicks);
         return ok(command.type, { ended: true });
-      case "names.list":
-        return ok(command.type, {
-          names: names()
-            .list()
-            .map(({ id, ...name }) => ({ sessionId: id, ...name })),
-        });
-      case "idle.subscribe":
-        return ok(command.type, idle().subscribe(command.payload));
       case "service.install":
         return ok(
           command.type,
@@ -757,36 +716,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
-      }
-      case "roi.summary":
-        return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
-      case "runtime.models": {
-        if (!opts.opencode?.info().available) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "OpenCode is not available on this host",
-            "runtime_unavailable",
-          );
-        }
-        return ok(command.type, { models: await opts.opencode.models() });
-      }
-      case "deps.check":
-        if (!opts.deps) throw featureOff("depsCheck");
-        return ok(command.type, await opts.deps());
-      case "doctor.run":
-        if (!opts.doctor) throw featureOff("doctor.run");
-        return ok(command.type, await opts.doctor(command.payload.appVersion));
-      case "statusline.get": {
-        const { claudeSessionId } = command.payload;
-        return ok(
-          command.type,
-          statuslineData({
-            ...(opts.quota ? { quota: opts.quota } : {}),
-            ...(opts.costs ? { costs: opts.costs } : {}),
-            today: localDay(Date.now()),
-            ...(claudeSessionId ? { claudeSessionId } : {}),
-          }),
-        );
       }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");

@@ -3175,6 +3175,13 @@ export const ptBR = {
     refused: "{title}: {reason}",
     noHosts: "Nenhum host está online.",
     watchOff: "Vigiar e consertar está desligado",
+    conflict: "Em conflito com a base",
+    mergeClean: "Sem conflitos",
+    mergeBlocked: "Merge bloqueado",
+    reviewApproved: "Aprovado",
+    reviewChanges: "Mudanças pedidas",
+    reviewRequired: "Revisão pendente",
+    opened: "Aberto {ago}",
   },
   cardMergePr: {
     action: "Fazer merge do PR",
