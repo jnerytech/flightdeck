@@ -52,6 +52,32 @@ describe("pr-provider: which PR provider a remote points to (issue #1568)", () =
   });
 });
 
+describe("pr-provider: only a plain host name leaves, whatever the address holds (issue #1568)", () => {
+  test("a password with an @ or a / in it, a port that is a word, a query and a bare word give no host", () => {
+    const hostile = [
+      "https://user:p@ss@gitlab.com/a/b",
+      "https://user:tok/en@gitlab.com/a/b",
+      "https://x:abc/def@evil.github.com/a/b",
+      "https://gitlab.com:secret",
+      "https://gitlab.com?token=abc/a",
+      "secret",
+      "https://example.com\n/x",
+    ];
+    for (const url of hostile) {
+      const found = providerOfRemote(url);
+      expect(found.host).toBeNull();
+      expect(JSON.stringify(found)).not.toMatch(/secret|tok|abc|ss@|p@ss/);
+    }
+  });
+
+  test("a plain host name, in any case and with a subdomain, is kept", () => {
+    expect(providerOfRemote("https://GitLab.Example.ORG/a/b").host).toBe("gitlab.example.org");
+    expect(providerOfRemote("git@git.corp.example.com:team/app.git").host).toBe(
+      "git.corp.example.com",
+    );
+  });
+});
+
 describe("pr-provider: looking at the project's origin (issue #1568)", () => {
   const remote =
     (url: string | null): AsyncGitRunner =>
