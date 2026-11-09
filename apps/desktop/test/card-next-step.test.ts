@@ -86,9 +86,9 @@ describe("card-next-step: the one button a card leads with (#1197)", () => {
 describe("card-next-step: a project that cannot open a PR (#1543)", () => {
   const noPr = (tab: "conversation" | "diff") => ({ ...view(tab, false), noPr: true });
 
-  test("a finished card is reviewed, and on the changes nothing leads: Open PR is not offered", () => {
+  test("a finished card is reviewed, on the changes too (so the button keeps the focus): Open PR is not offered", () => {
     expect(nextStep(card(finished), noPr("conversation"))).toBe("review");
-    expect(nextStep(card(finished), noPr("diff"))).toBeNull();
+    expect(nextStep(card(finished), noPr("diff"))).toBe("review");
     // The same card in a project that can: Open PR leads on the changes.
     expect(nextStep(card(finished), view("diff", false))).toBe("open-pr");
   });

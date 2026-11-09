@@ -38,8 +38,13 @@ function setup(provider: string | null, language: "en" | "pt-BR" = "en", refuseP
   const commands: string[] = [];
   store.hostCommand = (async (_host: string, type: string) => {
     commands.push(type);
-    // A host that refuses answers nothing: the app has shown its banner and the command is over.
-    return refusePr && type === "card.pr.create" ? null : {};
+    return {};
+  }) as never;
+  store.hostRequest = (async (_host: string, type: string) => {
+    commands.push(type);
+    return refusePr && type === "card.pr.create"
+      ? { ok: false, code: "project_no_pr_provider", message: "the project has no PR provider" }
+      : { ok: true, data: {} };
   }) as never;
   store.describePr = (async () => {
     commands.push("describePr");
@@ -95,6 +100,23 @@ describe("card-no-remote-ui: Open PR on a project that has no PR provider (#1543
     expect(screen.queryByRole("menuitem", { name: "Open PR" }) === null).toBe(true);
     // Nothing was asked of the host: no description, no form.
     expect(w.commands).toEqual([]);
+    // The changes stay the card's lead on its own tab: nothing unmounts under the person's focus.
+    expect(button("Review changes") !== null).toBe(true);
+  });
+
+  test("pressing Review changes keeps the focus on that same button when the changes open", async () => {
+    const w = setup("none");
+    const view = render(w.form("conversation"));
+    const review = button("Review changes");
+    expect(review !== null).toBe(true);
+    (review as HTMLElement).focus();
+    await act(async () => {
+      fireEvent.click(review as HTMLElement);
+    });
+    view.rerender(w.form("diff"));
+    const after = button("Review changes");
+    expect(after === review).toBe(true);
+    expect(document.activeElement === review).toBe(true);
   });
 
   test("the card's changes stay reachable: Review changes leads from the conversation", async () => {
@@ -161,6 +183,11 @@ describe("card-no-remote-ui: a refused Open PR keeps what the person wrote (#154
     await writeAndConfirm(w);
     expect(w.commands).toContain("card.pr.create");
     expect(dialogText()).toBe("what I wrote for the PR");
+    // The reason is in the dialog, where the person is, not in a toast behind it.
+    const reason = screen.queryByRole("alert");
+    expect(reason?.textContent ?? "").toContain("The project has no PR provider.");
+    expect(reason?.textContent ?? "").toContain("Add a GitHub or Azure DevOps remote");
+    expect(reason?.closest('[role="dialog"]') !== null).toBe(true);
   });
 
   test("the host accepts: the dialog closes", async () => {
