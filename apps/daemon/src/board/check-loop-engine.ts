@@ -192,6 +192,11 @@ export class CheckLoopEngine {
   private readonly released = new Set<string>();
   /** Cards whose turn result already passed without a loop: their idle is the board's to release. */
   private readonly passed = new Set<string>();
+  /**
+   * Every check still running per card, kept until it has exited: a loop that ended, or a run that
+   * a later result replaced, may still have a check exiting in the worktree.
+   */
+  private readonly inflight = new Map<string, Set<Promise<void>>>();
 
   constructor(private readonly fx: CheckLoopEffects) {}
 
@@ -245,6 +250,7 @@ export class CheckLoopEngine {
     current.phase = "checking";
     current.abort = new AbortController();
     current.running = this.check(cardId, current, current.abort.signal);
+    this.track(cardId, current.running);
     return "hold";
   }
 
@@ -290,10 +296,13 @@ export class CheckLoopEngine {
    */
   onStop(cardId: string): Promise<void> {
     const loop = this.loops.get(cardId);
-    if (!loop) return Promise.resolve();
-    const running = loop.running ?? Promise.resolve();
-    this.end(cardId, loop, "stopped_by_you", { release: true });
-    return running.catch(() => {});
+    if (loop) this.end(cardId, loop, "stopped_by_you", { release: true });
+    return this.drain(cardId);
+  }
+
+  /** Settles once every check the card still has running has exited. */
+  async drain(cardId: string): Promise<void> {
+    await Promise.all([...(this.inflight.get(cardId) ?? [])]);
   }
 
   /**
@@ -316,6 +325,16 @@ export class CheckLoopEngine {
   /** Settles when the card's running checks are done (for the tests and a clean stop). */
   async idle(cardId: string): Promise<void> {
     await this.loops.get(cardId)?.running;
+  }
+
+  private track(cardId: string, running: Promise<void>): void {
+    const set = this.inflight.get(cardId) ?? new Set<Promise<void>>();
+    set.add(running);
+    this.inflight.set(cardId, set);
+    void running.finally(() => {
+      set.delete(running);
+      if (set.size === 0 && this.inflight.get(cardId) === set) this.inflight.delete(cardId);
+    });
   }
 
   private fresh(): Loop {

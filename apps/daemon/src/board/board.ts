@@ -1873,6 +1873,8 @@ export class Board {
   /** The card is done: sessions closed, worktree removed unless something is still pending. */
   private async finish(id: string): Promise<void> {
     this.dropConflicts(id);
+    // Issue #1361: the worktree goes only once a check killed in it has exited.
+    await this.loop?.onStop(id);
     await this.closeRuns(id);
     await this.removeCleanWorktree(id);
     this.changed(id);
@@ -2347,6 +2349,8 @@ export class Board {
     await mergeIntoBase(project.path, base, refArg(branch), mode, text);
     // The merge is in the base now and cannot be undone: nothing below may leave the card out of
     // Concluído. What could not be cleaned up stays on the card as a notice.
+    // Issue #1361: the worktree goes only once a check killed in it has exited.
+    await this.loop?.onStop(id);
     await this.closeRuns(id);
     const left = await this.removeMerged(project.path, worktree, branch);
     this.db
