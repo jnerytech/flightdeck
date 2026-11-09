@@ -32,8 +32,10 @@ export function Page(
             <h1
               id={id}
               data-slot="page-title"
+              // A step that opens the page puts the focus here (#1546); never a Tab stop.
+              tabIndex={-1}
               title={typeof props.title === "string" ? props.title : undefined}
-              className="line-clamp-2 break-words font-semibold text-xl"
+              className="line-clamp-2 break-words rounded-sm font-semibold text-xl focus-visible:outline-2 focus-visible:outline-ring"
             >
               {props.title}
             </h1>

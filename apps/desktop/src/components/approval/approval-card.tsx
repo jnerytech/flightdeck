@@ -17,6 +17,7 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
+import { focusLost } from "@/hooks/use-page-focus";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
@@ -311,8 +312,32 @@ export function ApprovalCard(
   const [reason, setReason] = useState("");
   /** An answer is on its way: the card is busy and takes no other. */
   const { busy: pending, run } = useBusy();
-  const respond = (...args: Parameters<typeof props.onRespond>) =>
-    run(() => props.onRespond(...args));
+  const root = useRef<HTMLElement | null>(null);
+  /** The focus was inside the card when the answer left: Approve is gone once it is answered (#1546). */
+  const hadFocus = useRef(false);
+  const respond = (...args: Parameters<typeof props.onRespond>) => {
+    hadFocus.current = Boolean(root.current?.contains(document.activeElement));
+    return run(() => props.onRespond(...args));
+  };
+  // The buttons that had the focus went with the answer, and the browser left it on the page body: it
+  // goes to the next request waiting, or, with none, to this one, which says what was decided.
+  const answered = Boolean(resolution);
+  useEffect(() => {
+    if (!answered || !hadFocus.current) return;
+    hadFocus.current = false;
+    if (!focusLost()) return;
+    const waiting = document.querySelectorAll<HTMLElement>(
+      '[data-slot="approval-card"][data-state="waiting"]',
+    );
+    // One in a hidden or inert panel (another session's tab) cannot take the focus.
+    const next = Array.from(waiting).find(
+      (card) =>
+        card !== root.current &&
+        !card.closest("[inert],[hidden],[aria-hidden=true]") &&
+        (card.checkVisibility?.() ?? true),
+    );
+    (next ?? root.current)?.focus();
+  }, [answered]);
   const reasonRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (denying) reasonRef.current?.focus();
@@ -352,7 +377,12 @@ export function ApprovalCard(
     const outcome = t(`approval.resolved.${resolution.decision}` as Key);
     return (
       <details
+        ref={(el) => {
+          root.current = el;
+        }}
+        tabIndex={-1}
         data-answered
+        data-state="answered"
         data-request-id={request.requestId}
         className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
       >
@@ -375,8 +405,12 @@ export function ApprovalCard(
 
   return (
     <fieldset // NOSONAR: the card is the focus target of its A/N/Esc keys; a button inside would put them on the wrong element and change the focus order
+      ref={(el) => {
+        root.current = el;
+      }}
       aria-label={t("approval.label", { tool: request.toolName })}
       data-slot="approval-card"
+      data-state={resolution ? "answered" : "waiting"}
       data-request-id={request.requestId}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the card takes focus for its A/N/Esc keys
       tabIndex={0} // NOSONAR: same reason: the card itself takes the focus

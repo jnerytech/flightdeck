@@ -393,6 +393,9 @@ function CardTile(
   );
 }
 
+/** How long a card just made is waited for before the focus gives up on it (#1546). */
+const MADE_CARD_WAIT_MS = 5000;
+
 const BOARDVIEW_KEYS = [
   "runs",
   "hosts",
@@ -1473,6 +1476,15 @@ export const BoardView = memo(function BoardView(props: {
           setCreateIn("backlog");
         }}
         onOpenCard={props.onOpenCard}
+        onMade={(card) => {
+          // The card is not on the board yet: the focus waits for it (index -1 is never where it is).
+          refocus.current = {
+            cardId: card.id,
+            column: card.column,
+            index: -1,
+            until: Date.now() + MADE_CARD_WAIT_MS,
+          };
+        }}
         onOpenSettings={props.onOpenSettings}
       />
     </Page>

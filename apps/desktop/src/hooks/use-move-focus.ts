@@ -2,7 +2,13 @@ import type { BoardColumn, Card } from "@flightdeck/protocol";
 import { type RefObject, useEffect } from "react";
 
 /** The card to focus once a move has happened: where it was, to tell when it has moved. */
-export type MoveFocus = { cardId: string; column: BoardColumn; index: number };
+export type MoveFocus = {
+  cardId: string;
+  column: BoardColumn;
+  index: number;
+  /** A card still to show (just made) is waited for until this time (ms); a later one is not focused. */
+  until?: number;
+};
 
 /**
  * After a card is moved from its menu, puts the focus back on it where it landed (the menu closed and
@@ -24,6 +30,10 @@ export function useMoveFocus(
   useEffect(() => {
     const target = wanted.current;
     if (!target) return;
+    if (target.until !== undefined && Date.now() > target.until) {
+      wanted.current = null;
+      return;
+    }
     const card = input.cards.find((other) => other.id === target.cardId);
     if (!card) return;
     const index = input.columnOf(card.column).findIndex((other) => other.id === card.id);

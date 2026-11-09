@@ -1,6 +1,7 @@
-import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Toaster, toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { focusLost } from "@/hooks/use-page-focus";
 import { translateError } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
@@ -20,22 +21,46 @@ function ErrorToast(
     detail: string;
     action: NoticeAction | null;
     retry?: () => void;
+    /** The refusal of a command the person gave: it takes the focus when the step lost it (#1546). */
+    takesFocus?: boolean;
     t: T;
     onClose(): void;
   }>,
 ) {
-  const [open, setOpen] = useState(false);
-  const [asking, setAsking] = useState(false);
   const { t, store, noticeId } = props;
-  // Closed: gone at once, before sonner's exit animation ends.
+  const box = useRef<HTMLDivElement>(null);
+  // A refusal that holds the focus gives it to the page's heading however it goes away (Close, the
+  // timer, the store dropping it for a newer one), not to the body.
+  const holding = useRef(false);
   const alive = useSyncExternalStore(store.subscribe, () =>
     store.getState().notices.some((n) => n.id === noticeId),
   );
+  useLayoutEffect(() => {
+    if (alive || !holding.current) return;
+    holding.current = false;
+    document.querySelector<HTMLElement>("[data-slot=page-title]")?.focus();
+  }, [alive]);
+  // The dialog or button that gave the command is gone, and the browser left the focus on the page body.
+  useEffect(() => {
+    if (props.takesFocus && focusLost()) box.current?.focus();
+  }, [props.takesFocus]);
+  const [open, setOpen] = useState(false);
+  const [asking, setAsking] = useState(false);
+  // Closed: gone at once, before sonner's exit animation ends.
   if (!alive) return null;
   return (
     <div
+      ref={box}
       role="alert"
-      className="flex w-80 flex-col gap-2 rounded-lg border border-destructive/40 bg-popover p-3 text-popover-foreground text-sm shadow-lg"
+      tabIndex={-1}
+      onFocus={() => {
+        holding.current = true;
+      }}
+      onBlur={(event) => {
+        // A toast taken out of the page drops the focus without the person leaving it: not a blur here.
+        if (event.currentTarget.isConnected) holding.current = false;
+      }}
+      className="flex w-80 flex-col gap-2 rounded-lg border border-destructive/40 bg-popover p-3 text-popover-foreground text-sm shadow-lg focus-visible:outline-2 focus-visible:outline-ring"
     >
       <p className="font-medium">{props.title}</p>
       {open && <p className="break-words text-muted-foreground text-xs">{props.detail}</p>}
@@ -138,6 +163,7 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
             detail={detail}
             action={noticeAction(notice)}
             {...(notice.retry ? { retry: notice.retry } : {})}
+            takesFocus={notice.answersCommand === true}
             t={t}
             onClose={() => {
               toast.dismiss(id);
