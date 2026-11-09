@@ -28,6 +28,13 @@ function ErrorToast(
   }>,
 ) {
   const box = useRef<HTMLDivElement>(null);
+  // A refusal that holds the focus gives it to the page's heading when it closes, not to the body.
+  const close = () => {
+    if (box.current?.contains(document.activeElement)) {
+      document.querySelector<HTMLElement>("[data-slot=page-title]")?.focus();
+    }
+    props.onClose();
+  };
   // The dialog or button that gave the command is gone, and the browser left the focus on the page body.
   useEffect(() => {
     if (props.takesFocus && focusLost()) box.current?.focus();
@@ -45,7 +52,7 @@ function ErrorToast(
       ref={box}
       role="alert"
       tabIndex={-1}
-      className="flex w-80 flex-col gap-2 rounded-lg border border-destructive/40 bg-popover p-3 text-popover-foreground text-sm shadow-lg"
+      className="flex w-80 flex-col gap-2 rounded-lg border border-destructive/40 bg-popover p-3 text-popover-foreground text-sm shadow-lg focus-visible:outline-2 focus-visible:outline-ring"
     >
       <p className="font-medium">{props.title}</p>
       {open && <p className="break-words text-muted-foreground text-xs">{props.detail}</p>}
@@ -60,7 +67,7 @@ function ErrorToast(
             {t("toast.details")}
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={props.onClose}>
+        <Button size="sm" variant="outline" onClick={close}>
           {t("toast.close")}
         </Button>
       </div>

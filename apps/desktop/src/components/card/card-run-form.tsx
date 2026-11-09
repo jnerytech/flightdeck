@@ -258,7 +258,12 @@ export function CardRunForm(
           onCancel={() => setDraft(null)}
           onConfirm={async (description, title) => {
             setDraft(null);
-            await store.hostCommand(hostId, "card.pr.create", { cardId, description, title });
+            await store.hostCommand(
+              hostId,
+              "card.pr.create",
+              { cardId, description, title },
+              { focusRefusal: true },
+            );
           }}
         >
           {draft.note && <p className="text-status-needs-you text-sm">{draft.note}</p>}

@@ -2593,7 +2593,11 @@ export class AppStore {
     type: T,
     payload: CommandPayload<T>,
     /** `retry: false` for a command that opens something: repeated later, unseen, it would leave it behind. */
-    options: { retry?: boolean } = {},
+    options: {
+      retry?: boolean;
+      /** The person gave this command: its refusal takes the focus when the step lost it (#1546). */
+      focusRefusal?: boolean;
+    } = {},
   ): Promise<CommandResults[T] | null> {
     try {
       return await this.dispatch(hostId, type, payload);
@@ -2602,7 +2606,7 @@ export class AppStore {
         error,
         undefined,
         options.retry === false ? undefined : () => void this.hostCommand(hostId, type, payload),
-        true,
+        options.focusRefusal === true,
       );
       return null;
     }

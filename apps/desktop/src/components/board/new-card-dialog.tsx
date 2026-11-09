@@ -57,13 +57,19 @@ export function NewCardDialog(
 
   const create = async () => {
     // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
-    const card = await store.hostCommand(hostId, "card.create", {
-      projectId,
-      title: title.trim(),
-      description,
-      ...(templateId === null ? {} : { templateId }),
-      ...(props.column === "backlog" ? {} : { column: props.column }),
-    });
+    const card = await store.hostCommand(
+      hostId,
+      "card.create",
+      {
+        projectId,
+        title: title.trim(),
+        description,
+        ...(templateId === null ? {} : { templateId }),
+        ...(props.column === "backlog" ? {} : { column: props.column }),
+      },
+      // A refusal keeps the dialog open with what was typed; the toast takes the focus only if it was lost.
+      { focusRefusal: true },
+    );
     // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
     // (the banner says why). A made card says so, with a way to open it (issue #188).
     if (!card) return card;

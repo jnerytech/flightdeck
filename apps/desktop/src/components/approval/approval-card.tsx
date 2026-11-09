@@ -312,7 +312,7 @@ export function ApprovalCard(
   const [reason, setReason] = useState("");
   /** An answer is on its way: the card is busy and takes no other. */
   const { busy: pending, run } = useBusy();
-  const root = useRef<HTMLFieldSetElement>(null);
+  const root = useRef<HTMLElement | null>(null);
   /** The focus was inside the card when the answer left: Approve is gone once it is answered (#1546). */
   const hadFocus = useRef(false);
   const respond = (...args: Parameters<typeof props.onRespond>) => {
@@ -329,7 +329,11 @@ export function ApprovalCard(
     const waiting = document.querySelectorAll<HTMLElement>(
       '[data-slot="approval-card"][data-state="waiting"]',
     );
-    (Array.from(waiting).find((card) => card !== root.current) ?? root.current)?.focus();
+    // One in a hidden or inert panel (another session's tab) cannot take the focus.
+    const next = Array.from(waiting).find(
+      (card) => card !== root.current && !card.closest("[inert],[hidden]"),
+    );
+    (next ?? root.current)?.focus();
   }, [answered]);
   const reasonRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -370,7 +374,12 @@ export function ApprovalCard(
     const outcome = t(`approval.resolved.${resolution.decision}` as Key);
     return (
       <details
+        ref={(el) => {
+          root.current = el;
+        }}
+        tabIndex={-1}
         data-answered
+        data-state="answered"
         data-request-id={request.requestId}
         className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
       >
@@ -393,7 +402,9 @@ export function ApprovalCard(
 
   return (
     <fieldset // NOSONAR: the card is the focus target of its A/N/Esc keys; a button inside would put them on the wrong element and change the focus order
-      ref={root}
+      ref={(el) => {
+        root.current = el;
+      }}
       aria-label={t("approval.label", { tool: request.toolName })}
       data-slot="approval-card"
       data-state={resolution ? "answered" : "waiting"}
