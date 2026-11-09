@@ -271,12 +271,19 @@ export class Costs {
 
   /** Every session a card ran (its runs and their workflow steps). */
   card(cardId: string): number {
-    return this.ofManaged(
+    const sessions = this.ofManaged(
       `SELECT session_id FROM card_runs WHERE card_id = $id
        UNION SELECT st.session_id FROM step_runs st JOIN workflow_runs w ON w.id = st.run_id
        WHERE w.card_id = $id`,
       cardId,
     );
+    // Issue #1439: a second-opinion review has no session; its usage is recorded under the card.
+    const reviews = this.db
+      .query(
+        "SELECT TOTAL(cost_usd) AS cost FROM usage_entries WHERE substr(message_id, 1, length($prefix)) = $prefix",
+      )
+      .get({ prefix: `card-review-${cardId}-` }) as { cost: number };
+    return sessions + reviews.cost;
   }
 
   /** The sessions of one run of a card (the run itself and its workflow steps). */

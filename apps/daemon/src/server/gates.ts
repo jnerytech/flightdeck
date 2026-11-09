@@ -44,6 +44,7 @@ export const GATES = {
   quotaPause: "quotaPause",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
+  cardReview: "cardReview",
   releases: "releases",
   quotaHistory: "quotaHistory",
   review: "review",

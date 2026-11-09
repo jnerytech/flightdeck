@@ -4,6 +4,7 @@ import { stat } from "node:fs/promises";
 import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import {
+  DEFAULT_MODELS,
   formatPairingLink,
   PROTOCOL_VERSION,
   type ServiceInstallResult,
@@ -25,6 +26,7 @@ import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { HostPause } from "./board/host-pause.ts";
+import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
 import { BoardSync } from "./boardsync/engine.ts";
 import { GithubBoards } from "./boardsync/github.ts";
@@ -105,6 +107,7 @@ import { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./names/t
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
+import { credential } from "./permissions/sensitive-paths.ts";
 import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { type Prepare, preparePersonas } from "./personas/prepare.ts";
@@ -120,6 +123,7 @@ import { ReleaseFeed } from "./releases/releases.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createResources } from "./resources/wiring.ts";
+import { CardReviews, reviewHold } from "./review/card-review.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
@@ -197,6 +201,7 @@ import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
+import { ulid } from "./ulid.ts";
 import {
   binaryVersion,
   refusedAddress,
@@ -1498,6 +1503,57 @@ export async function startDaemon(
     const stale = manager.staleSessions(path);
     return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
   };
+  // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
+  const reviewComments = new ReviewComments({ db: store.db, changes, manager, board, central });
+  const complete = runtime.complete?.bind(runtime);
+  const reviewScanner = new SecretScanner(() => heldValues());
+  const cardReviews = complete
+    ? new CardReviews({
+        db: store.db,
+        card: (id) => {
+          const card = board.getCard(id);
+          return {
+            id: card.id,
+            projectId: card.projectId,
+            title: card.title,
+            description: card.description,
+            worktreePath: card.worktreePath,
+            running:
+              card.queued ||
+              ["starting", "running", "awaiting_permission"].includes(card.sessionStatus ?? ""),
+          };
+        },
+        diff: (id) => board.diff(id),
+        // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
+        // link on the way, no hard link), never a credential file, at most 20 KB.
+        spec: async (id) => {
+          const { specPath, worktreePath } = board.getCard(id);
+          if (!specPath || !worktreePath || credential(specPath)) return undefined;
+          return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
+        },
+        hold: (projectId) =>
+          reviewHold({
+            paused: hostPause.blocked() !== null,
+            quota: quota.blocked() !== null,
+            memory: memoryGate.blocked() !== null,
+            budget: board.budgetHeld(projectId),
+          }),
+        complete,
+        comments: reviewComments,
+        redact: (text) => reviewScanner.redact(text, false),
+        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
+        model: DEFAULT_MODELS.host.careful,
+        record: (cardId, worktree, tokens) =>
+          usageIndex.record({
+            at: new Date().toISOString(),
+            model: tokens.model,
+            tokens,
+            projectPath: worktree,
+            messageId: `card-review-${cardId}-${ulid()}`,
+            origin: "card",
+          }),
+      })
+    : undefined;
   const server = startServer({
     manager,
     opencode: {
@@ -1777,7 +1833,8 @@ export async function startDaemon(
     changes,
     sessionCommits,
     sessionPrs,
-    review: new ReviewComments({ db: store.db, changes, manager, board, central }),
+    review: reviewComments,
+    ...(cardReviews ? { cardReview: cardReviews } : {}),
     sessionFiles: new SessionFiles({ db: store.db }),
     ssh: sshTargets,
     // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.

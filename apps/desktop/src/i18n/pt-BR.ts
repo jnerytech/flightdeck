@@ -1702,6 +1702,7 @@ export const ptBR = {
     quotaPause: "a trava da cota para cartões novos",
     memoryPause: "a trava de memória para cartões novos",
     hostPause: "a pausa de novas execuções",
+    cardReview: "a revisão de segunda opinião de um cartão",
     quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },
@@ -2185,6 +2186,11 @@ export const ptBR = {
     card_workflow_running: "O card tem uma execução de workflow em andamento.",
     rule_remove_confirm: "Confirme a remoção da regra.",
     card_no_worktree: "O card ainda não tem worktree.",
+    card_review_running: "O card está ocupado, ou a revisão dele já está rodando.",
+    card_review_held:
+      "Sem revisão agora: o host está pausado, no limite da cota, com pouca memória, ou o projeto está no orçamento.",
+    card_review_no_diff: "O card não tem mudanças para revisar.",
+    card_review_limit: "Este card já teve {max} revisões nas últimas 24 horas, o máximo por dia.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_push_timeout:

@@ -1,6 +1,7 @@
 import {
   type ActivitySinceResult,
   type AutoUpdateStatus,
+  type CardReviewResult,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
   Command,
@@ -151,6 +152,8 @@ export interface ServerOptions {
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
   /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
   hostPause?: { status(): HostPauseStatus; set(paused: boolean): void | Promise<void> };
+  /** Issue #1439: the cards' second-opinion review, for the near-only `card.review`. */
+  cardReview?: { start(cardId: string, language?: "en" | "pt-BR"): Promise<CardReviewResult> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
   /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
   peerOf?: (
