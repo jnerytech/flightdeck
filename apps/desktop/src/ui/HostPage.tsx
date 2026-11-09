@@ -95,6 +95,8 @@ export function HostPage(
     onSeeAllProjects(): void;
     onNewSession(): void;
     onRemove(): void;
+    /** Issue #1484: open Settings at this panel, with the focus on its heading. */
+    section?: "pause" | "keep-awake";
   }>,
 ) {
   const t = useT();
@@ -105,7 +107,7 @@ export function HostPage(
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(props.section ? "settings" : "overview");
   const now = useNow();
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
@@ -129,6 +131,22 @@ export function HostPage(
     field?.focus();
     field?.scrollIntoView?.({ block: "center" });
   }, [folderAsk]);
+  // A status-bar item opens its section (#1484): Settings, the panel in view, the focus on its heading.
+  // The panel shows once the host says it has the feature, so the move waits for it.
+  const section = props.section;
+  const sectionShown =
+    (section === "pause" && info?.pause !== undefined) ||
+    (section === "keep-awake" && info?.keepAwake !== undefined);
+  useEffect(() => {
+    if (!section) return;
+    setTab("settings");
+    if (!sectionShown) return;
+    const heading = document.querySelector<HTMLElement>(`[data-slot="host-section-${section}"] h3`);
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.scrollIntoView?.({ block: "center" });
+    heading.focus();
+  }, [section, sectionShown]);
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;

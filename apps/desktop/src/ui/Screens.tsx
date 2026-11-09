@@ -757,6 +757,9 @@ function hostScreen(props: ScreenProps, host: HostInfo): ReactNode {
       key={host.id}
       store={store}
       host={host}
+      {...(props.route.name === "host" && props.route.section
+        ? { section: props.route.section }
+        : {})}
       onRename={(name) => store.renameHost(host.id, name)}
       onReconnect={() => void store.reconnectHost(host.id)}
       onPairAgain={(input) => store.pairAgain(host.id, input)}
