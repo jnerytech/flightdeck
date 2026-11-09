@@ -1125,7 +1125,7 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   **Stop N** (while some of them run or wait in the queue), **Move to…** (a column), **Discard…** and
   **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
   many wait in the host's queue, the host's 5-hour window on a subscription, a line for each hold that
-  keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory),
+  keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory, the host with new runs paused),
   with every card in the queue while one of them holds, and the cards it skips and why. When some of the cards would wait (the host is full, paused or held)
   and another online host has the same project (the same repository) with enough free places, the
   confirm also offers **Start on <host>**: it makes each of those cards on that host and starts it

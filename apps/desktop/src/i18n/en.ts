@@ -972,10 +972,13 @@ export const en: Dictionary = {
     startBudgetHold:
       "{host} reached a budget that holds new cards: they wait until its period resets.",
     startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
+    startPausedHold: "{host} has new runs paused: new cards wait until you resume it.",
     startedElsewhere: "Started on {host} as {id}.",
     startOn: "Start on {host}",
     startOnHint:
-      "{n} of them would wait here. Another host with the same project has the places for them:",
+      "{n} of them would wait here. Another host with the same project has places for them.",
+    startOnHintOne:
+      "This card would wait here. Another host with the same project has a place for it.",
     elsewhereOrphaned: "A copy is left on {host}: {names}",
     elsewhereDoneOne: "1 card started on {host}.",
     elsewhereDone: "{count} cards started on {host}.",
