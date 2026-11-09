@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { memoryPlatform, seedHosts } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, render, screen, within } = await import("@testing-library/react");
@@ -19,6 +19,8 @@ function setup(lang: "en" | "pt-BR" = "en", order?: string) {
     { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
   ]);
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+  // The hosts load once the app connects; the first tab reads Sessions only with one (#1551).
+  seedHosts(store, [{ id: "ha", name: "alfa" }]);
   store.i18n.start();
   store.tabs.open({ name: "costs" });
   store.tabs.open({ name: "settings" });

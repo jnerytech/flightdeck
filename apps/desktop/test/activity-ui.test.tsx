@@ -5,7 +5,7 @@ import { ROUTE_NAMES } from "../src/lib/router.ts";
 import { shortcutOf } from "../src/lib/shortcuts.ts";
 import { activityState, HOUR, MIN, NOW } from "./activity-fixtures.ts";
 import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { memoryPlatform, seedHosts } from "./fixtures.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -402,6 +402,7 @@ describe("activity-ui: the screen is reachable (issue #151)", () => {
   test("its breadcrumb names it", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
+    seedHosts(store, [{ id: "ha", name: "alfa" }]);
     expect(
       breadcrumb({ name: "activity" } as never, store.getState(), store.i18n.t).at(-1)?.label,
     ).toBe("Activity");
