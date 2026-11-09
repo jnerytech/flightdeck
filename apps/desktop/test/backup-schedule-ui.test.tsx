@@ -102,6 +102,20 @@ describe("backup-schedule-ui: Settings > Backup schedule (#1264)", () => {
     ]);
   });
 
+  // The print of #1328 met axe's target-size: a bare radio is under 24 px, and three stacked ones
+  // leave no room around them. Each is a 24 px target, like the other radios of the app.
+  test("each cadence radio is a target of at least 24 px", () => {
+    open();
+    const radios = ["Off", "Every day", "Every week"].map(
+      (name) => screen.queryByRole("radio", { name }) as HTMLInputElement | null,
+    );
+    expect(radios.map((radio) => radio?.className.split(" ").includes("hit-control"))).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
   // The print of #1328 showed "Type it below" under the passphrase field: the notice comes first.
   test("the notice of a waiting backup comes before the passphrase field it points to", async () => {
     open();
