@@ -82,7 +82,7 @@ export type CardTab = "conversation" | "diff";
 /** What goes above a card's files: its review, given the changes it shows. */
 const reviewPanel =
   (store: AppStore, hostId: string, card: Card, secondOpinion: boolean) =>
-  (changes: ChangesResult, refresh: () => Promise<void>) => (
+  (changes: ChangesResult, refresh: () => Promise<void>, goToDrafts: () => void) => (
     <>
       <CardReview store={store} hostId={hostId} card={card} changes={changes} refresh={refresh} />
       {secondOpinion && (
@@ -92,6 +92,7 @@ const reviewPanel =
           card={card}
           changes={changes}
           onReviewed={refresh}
+          onGoToDrafts={goToDrafts}
         />
       )}
     </>

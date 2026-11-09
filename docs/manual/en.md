@@ -1532,6 +1532,8 @@ conversation. It is where you check what the agent did and send it back what to 
   finding that falls on a changed line becomes a draft marked **Reviewer**, with its severity
   (Blocker, High, Medium or Low): edit it (then it is yours), **Dismiss** it, or leave it, and
   **Send review** sends it to the card with your own comments, framed as a suggestion to check.
+  The drafts sit after the whole diff: **Go to the drafts**, next to the line that counts them,
+  takes you to the first one.
   Findings on no changed line are listed under the button as text. **Open PR** says how many
   reviewer findings are still open when a blocker or a high one is, and opens the PR all the same.
 - **Revert and edit:**

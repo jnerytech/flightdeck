@@ -2,7 +2,8 @@ import type { Card, CardReviewResult, ChangesResult } from "@flightdeck/protocol
 import { useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
@@ -33,6 +34,8 @@ export function CardSecondOpinion(
     changes: ChangesResult;
     /** The reviewer drafts are on the host now: the Changes panel reads its comments again. */
     onReviewed(): void | Promise<void>;
+    /** Puts the focus on the first reviewer draft, which sits after the whole diff (#1496). */
+    onGoToDrafts?: () => void;
   }>,
 ) {
   const t = useT();
@@ -94,24 +97,34 @@ export function CardSecondOpinion(
           role="status"
           className="flex flex-col gap-2"
         >
-          {outcome?.kind === "result" && <ReviewOutcome result={outcome.result} />}
+          {outcome?.kind === "result" && (
+            <ReviewOutcome
+              result={outcome.result}
+              {...(props.onGoToDrafts ? { onGoToDrafts: props.onGoToDrafts } : {})}
+            />
+          )}
         </div>
       </Stack>
     </section>
   );
 }
 
+/** How many findings became drafts in the list below, or null when none did. */
+function draftsNote(anchored: number, t: T): string | null {
+  if (anchored === 0) return null;
+  return anchored === 1 ? t("secondOpinion.draftsOne") : t("secondOpinion.drafts", { n: anchored });
+}
+
 /** What the review said: its summary and notes, then the findings that are on no changed line. */
-function ReviewOutcome(props: Readonly<{ result: CardReviewResult }>) {
+function ReviewOutcome(props: Readonly<{ result: CardReviewResult; onGoToDrafts?: () => void }>) {
   const t = useT();
   const { result } = props;
   const notes = [
     result.cached ? t("secondOpinion.cached") : null,
     result.moved ? t("secondOpinion.moved") : null,
     result.state === "failed" ? t("secondOpinion.failed") : null,
-    result.anchored === 1 ? t("secondOpinion.draftsOne") : null,
-    result.anchored > 1 ? t("secondOpinion.drafts", { n: result.anchored }) : null,
   ].filter((note): note is string => note !== null);
+  const drafts = draftsNote(result.anchored, t);
   return (
     <>
       {result.summary && <p className="text-sm">{result.summary}</p>}
@@ -120,6 +133,16 @@ function ReviewOutcome(props: Readonly<{ result: CardReviewResult }>) {
           {note}
         </p>
       ))}
+      {drafts && (
+        <Inline gap={2}>
+          <p className="text-muted-foreground text-xs">{drafts}</p>
+          {props.onGoToDrafts && (
+            <Button variant="outline" size="sm" onClick={props.onGoToDrafts}>
+              {t("secondOpinion.goToDrafts")}
+            </Button>
+          )}
+        </Inline>
+      )}
       {result.loose.length > 0 && (
         <div>
           <h4 className="font-medium text-xs">

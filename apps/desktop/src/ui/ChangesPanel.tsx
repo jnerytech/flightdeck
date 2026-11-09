@@ -37,8 +37,15 @@ export function ChangesPanel(
     hostId: string;
     /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
     target: string;
-    /** Something above the files (a card's position against its base, its PR); gets the answer. */
-    extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
+    /**
+     * Something above the files (a card's position against its base, its PR); gets the answer, and
+     * `goToDrafts`, which puts the focus on the reviewer's first draft in the list below (#1496).
+     */
+    extra?: (
+      changes: ChangesResult,
+      refresh: () => Promise<void>,
+      goToDrafts: () => void,
+    ) => ReactNode;
     /** Where the collected review can be put to be edited and sent (a session's message box). */
     onCompose?: (text: string) => void;
   }>,
@@ -52,6 +59,16 @@ export function ChangesPanel(
   const [selection, setSelection] = useState<Selection | null>(null);
   const [body, setBody] = useState("");
   const commentBox = useRef<HTMLTextAreaElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  // Focus brings the draft into view: it sits after the whole diff (#1496). Once the drafts were
+  // sent, the reviewer's first comment in the history is where they went.
+  const goToDrafts = useCallback(() => {
+    const list = panel.current;
+    const target =
+      list?.querySelector<HTMLElement>('[data-reviewer="draft"]') ??
+      list?.querySelector<HTMLElement>("[data-reviewer]");
+    target?.focus();
+  }, []);
   /** The line button that started the comment, to give the focus back when the box closes. */
   const picker = useRef<HTMLElement | null>(null);
   const closeComposer = () => {
@@ -262,8 +279,8 @@ export function ChangesPanel(
       }
     : {};
   return (
-    <section aria-label={t("changes.region")} className="flex flex-col gap-4">
-      {props.extra?.(changes, refresh)}
+    <section ref={panel} aria-label={t("changes.region")} className="flex flex-col gap-4">
+      {props.extra?.(changes, refresh, goToDrafts)}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => void refresh()}>
           {t("changes.refresh")}

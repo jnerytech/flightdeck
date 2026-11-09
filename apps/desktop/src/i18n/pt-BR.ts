@@ -2977,6 +2977,7 @@ export const ptBR = {
       "1 achado virou rascunho abaixo: Enviar revisão o manda ao card junto com os seus comentários.",
     drafts:
       "{n} achados viraram rascunhos abaixo: Enviar revisão os manda ao card junto com os seus comentários.",
+    goToDrafts: "Ir para os rascunhos",
     cached: "Este diff já foi revisado: esta é essa revisão.",
     moved:
       "O diff mudou durante a revisão, então nada foi colocado numa linha: todos os achados estão listados aqui.",
