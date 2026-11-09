@@ -232,4 +232,11 @@ describe("server-registry", () => {
       ["issues.createCard", "issues.get", "issues.list"].sort(),
     );
   });
+
+  // Issue #1288: the PR comments commands left the switch of server.ts.
+  test("the prComments domain owns the pr.comments commands", () => {
+    expect(Object.keys(DOMAINS.prComments ?? {}).sort()).toEqual(
+      ["pr.comments", "pr.comments.send"].sort(),
+    );
+  });
 });
