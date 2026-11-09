@@ -3537,7 +3537,7 @@ export const Command = z.discriminatedUnion("type", [
    * Issue #1568 (host `prDetect`): when the project has no PR provider, reads its `origin` remote and
    * sets GitHub or Azure DevOps from it. Never returns the remote's address, only its host name.
    */
-  cmd("project.detectProvider", z.object({ projectId: z.string() })),
+  cmd("project.detectProvider", z.object({ projectId: z.string() }).strict()),
   /**
    * Adds a folder to the host's allowed folders (the config file too). The app asks the person
    * first and sends `confirm: true`; the host refuses system folders and a connection outside
@@ -5570,9 +5570,10 @@ export const ProjectDetectResult = z.object({
   project: Project,
   /**
    * `set`: GitHub or Azure DevOps was found and saved. `kept`: the project had a provider already.
-   * `no_remote`: the repository has no `origin`. `unsupported`: it has one, on another service.
+   * `no_remote`: the repository has no `origin`. `unsupported`: it has one, on another service (or
+   * a GitHub Enterprise server, which is set by hand). `unreadable`: git could not read the repository.
    */
-  outcome: z.enum(["set", "kept", "no_remote", "unsupported"]),
+  outcome: z.enum(["set", "kept", "no_remote", "unsupported", "unreadable"]),
   /** The remote's host name (`gitlab.com`), for `unsupported`; never the address with its path or credentials. */
   host: z.string().nullable(),
 });

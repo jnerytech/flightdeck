@@ -31,7 +31,7 @@ export function providerOfRemote(url: string | null): {
 }
 
 export interface Detection {
-  outcome: "set" | "kept" | "no_remote" | "unsupported";
+  outcome: "set" | "kept" | "no_remote" | "unsupported" | "unreadable";
   provider: DetectedProvider | null;
   host: string | null;
 }
@@ -50,6 +50,7 @@ async function originOf(path: string, git: AsyncGitRunner): Promise<string | nul
 export async function detectProvider(
   project: { path: string; prProvider: string },
   git: AsyncGitRunner = runGitAsync,
+  _timeoutMs = 5000,
 ): Promise<Detection> {
   if (project.prProvider !== "none") return { outcome: "kept", provider: null, host: null };
   const url = await originOf(project.path, git);

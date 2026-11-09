@@ -152,18 +152,18 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
 
   test("a host that cannot detect is not asked, and there is no button to ask", async () => {
     const w = setup({ detect: false });
-    // timing: the effect that would ask runs on mount; nothing should come after it
-    await act(async () => {});
+    await settle(() => panel().includes("no PR provider set"));
+    // The effect that would ask runs on mount; give anything it started the time to reach the host.
+    await act(async () => Bun.sleep(30));
     expect(w.asked).toEqual([]);
-    expect(panel()).toContain("no PR provider set");
     expect(button("Check the remote again") === null).toBe(true);
   });
 
   test("a project that has a provider is not looked at", async () => {
     const w = setup({ provider: "github" });
-    await act(async () => {});
+    await settle(() => button("Open PR") !== null);
+    await act(async () => Bun.sleep(30));
     expect(w.asked).toEqual([]);
-    expect(button("Open PR") !== null).toBe(true);
   });
 
   test("a press always answers: no remote found yet is said, a host that cannot be reached is an error", async () => {
@@ -200,5 +200,29 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
     await press("Check the remote again");
     await settle(() => button("Open PR") !== null);
     expect(document.activeElement === button("Open PR")).toBe(true);
+  });
+
+  test("a remote that is no host name, or git unable to read the repository, is said as it is", async () => {
+    const elsewhere = setup({ answers: [{ outcome: "unsupported", host: null }] });
+    await settle(() => panel().includes("not on github.com or Azure DevOps"));
+    expect(panel()).not.toContain("null");
+    expect(elsewhere.asked).toHaveLength(1);
+    cleanup();
+    setup({ answers: [{ outcome: "unreadable", host: null }] });
+    await settle(() => panel().includes("could not read"));
+    expect(panel()).not.toContain("git remote add");
+  });
+
+  test("an enterprise or other host is not GitHub from the name alone: the note says to set it by hand", async () => {
+    setup({ answers: [{ outcome: "unsupported", host: "git.corp.example.com" }] });
+    await settle(() => panel().includes("git.corp.example.com"));
+    expect(panel()).toContain("GitHub Enterprise");
+  });
+
+  test("a project the app has not listed yet is added when the host answers", async () => {
+    const w = setup({ answers: [{ outcome: "set", host: null, prProvider: "github" }] });
+    (w.store as unknown as { update(p: object): void }).update({ projects: { h1: [] } });
+    await w.store.detectPrProvider("h1", "p1");
+    expect(w.store.getState().projects.h1?.map((one) => one.id)).toEqual(["p1"]);
   });
 });

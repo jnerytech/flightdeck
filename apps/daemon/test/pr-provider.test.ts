@@ -20,9 +20,30 @@ describe("pr-provider: which PR provider a remote points to (issue #1568)", () =
       "https://github.com/acme/app.git",
       "git@github.com:acme/app.git",
       "ssh://git@github.com:22/acme/app",
-      "https://github.example.com/acme/app",
+      "https://acme.ghe.com/acme/app",
     ])
       expect(providerOfRemote(url).provider).toBe("github");
+  });
+
+  test("a host that only has github in its name is not GitHub: an enterprise server is set by hand", () => {
+    for (const url of [
+      "https://github.evil.test/acme/app",
+      "https://notgithub.io/acme/app",
+      "https://github.com.evil.test/acme/app",
+      "https://githubx.com/acme/app",
+      "https://github.example.com/acme/app",
+    ]) {
+      const found = providerOfRemote(url);
+      expect(found.provider).toBeNull();
+      expect(found.host).not.toBeNull();
+    }
+  });
+
+  test("a host with no dot is a host; an address that is a path has none", () => {
+    expect(providerOfRemote("https://gitserver/team/app.git").host).toBe("gitserver");
+    expect(providerOfRemote("ssh://git@localhost/team/app.git").host).toBe("localhost");
+    for (const url of ["/srv/git/app.git", "file:///srv/git/app.git", "C:\\repos\\app"])
+      expect(providerOfRemote(url).host).toBeNull();
   });
 
   test("Azure DevOps in its usual forms", () => {
@@ -117,11 +138,23 @@ describe("pr-provider: looking at the project's origin (issue #1568)", () => {
     expect(asked).toBe(0);
   });
 
-  test("a git that fails to run is no remote, not a crash", async () => {
+  test("git failing to read the repository is not 'no remote': it is unreadable, with no advice to add one", async () => {
     const broken: AsyncGitRunner = async () => {
       throw new Error("git not found");
     };
-    expect((await detectProvider(project, broken)).outcome).toBe("no_remote");
+    expect((await detectProvider(project, broken)).outcome).toBe("unreadable");
+    const notRepo: AsyncGitRunner = async () => ({ code: 128, stdout: "" });
+    expect((await detectProvider(project, notRepo)).outcome).toBe("unreadable");
+    // Exit 1 is git's own answer for a key that is not there.
+    const noKey: AsyncGitRunner = async () => ({ code: 1, stdout: "" });
+    expect((await detectProvider(project, noKey)).outcome).toBe("no_remote");
+  });
+
+  test("a git that never answers is unreadable after the time given", async () => {
+    const hung: AsyncGitRunner = () => new Promise(() => {});
+    const started = Date.now();
+    expect((await detectProvider(project, hung, 60)).outcome).toBe("unreadable");
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 });
 
@@ -166,6 +199,44 @@ describe("pr-provider: project.detectProvider on a real repository (issue #1568)
     expect([result.outcome, result.host]).toEqual(["unsupported", "gitlab.com"]);
     expect(JSON.stringify(result)).not.toContain("hunter2");
     expect(board.getProject(project.id).prProvider).toBe("none");
+  });
+
+  test("the person sets the provider by hand while git is reading: detection does not overwrite it", async () => {
+    const ctx = newBoard();
+    boards.push(ctx.board);
+    const project = await ctx.board.addProject({ path: ctx.repo });
+    const slowGit: AsyncGitRunner = async () => {
+      // The project form saves while git is still running.
+      ctx.board.updateProject(project.id, { prProvider: "azure-devops" });
+      return { code: 0, stdout: "https://github.com/acme/app.git\n" };
+    };
+    const server = startServer({
+      manager: ctx.manager,
+      board: ctx.board,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "detect-token-0123456789abcdef",
+      allowedRoots: [ctx.root],
+      projectGit: slowGit,
+    });
+    closers.push(() => server.stop());
+    const client = await DaemonClient.connect(server.url, "detect-token-0123456789abcdef", "test");
+    closers.push(() => client.close());
+    const result = await client.call("project.detectProvider", { projectId: project.id });
+    expect([result.outcome, result.project.prProvider]).toEqual(["kept", "azure-devops"]);
+    expect(ctx.board.getProject(project.id).prProvider).toBe("azure-devops");
+  });
+
+  test("a field the command does not know is refused", async () => {
+    const { client, project } = await serve();
+    const error = await client
+      .call("project.detectProvider", { projectId: project.id, extra: 1 } as never)
+      .then(
+        () => "answered",
+        (e: Error) => e.message,
+      );
+    expect(error).not.toBe("answered");
   });
 
   test("an unknown project is refused", async () => {
