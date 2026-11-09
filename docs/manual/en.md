@@ -333,8 +333,10 @@ older daemon, the cell has a **Fix on** button with the host's name, which opens
 dependencies has the install, the turn-on or the update; on the host's own page it scrolls there.
 With no majority (two hosts that differ, or an even split) nothing is marked. A host that is not
 online says so once ("Not compared: offline."), in place of a dash in every row, and a value an
-online host does not report shows as a dash and is never marked. The features are counted; two
-hosts with the same count but different features are still told apart.
+online host does not report shows as a dash and is never marked. The features row shows how
+many features a host has and, when it differs, names them in words: the ones it lacks and the ones
+it adds compared with most hosts ("no stall, no checkLoop"). A long list shows the first 3 and
+"and N more", which opens the whole list in place.
 
 ### Trusting a project
 
