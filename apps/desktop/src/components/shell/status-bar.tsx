@@ -134,6 +134,8 @@ export function StatusBar(
     onRefreshQuota(): void;
     onOpenQuota(hostId: string): void;
     onOpenKeepAwake(hostId: string): void;
+    /** Issue #1404: the paused host's page. */
+    onOpenPause?(hostId: string): void;
     onOpenTerminals(): void;
     onOpenHosts(): void;
     onOpenUpdate(): void;
