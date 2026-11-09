@@ -5,6 +5,7 @@ import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
+import { radarMergeLine } from "@/lib/conflict-radar";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 export interface CardMergePrProps {
@@ -108,6 +109,7 @@ export function CardMergePr(props: Readonly<CardMergePrProps>) {
                 <span className="text-sm">{t(`checks.${card.checksState}` as Key)}</span>
               )}
             </Stack>
+            {radarMergeLine(card, t) && <p className="text-sm">{radarMergeLine(card, t)}</p>}
             <Field label={t("cardMergePr.how")}>
               {(control) => (
                 <NativeSelect

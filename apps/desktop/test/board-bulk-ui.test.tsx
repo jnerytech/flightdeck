@@ -8,6 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -160,14 +161,17 @@ function setup(
       : { ok: true, data: {} };
   }) as never;
   const ro = fakeResizeObserver();
+  // As the app renders it: the card tiles read the language from the context.
   render(
-    <BoardView
-      store={store}
-      hostId="h1"
-      projectId="p1"
-      onOpenCard={() => {}}
-      onOpenSettings={() => {}}
-    />,
+    <TContext.Provider value={store.i18n.t}>
+      <BoardView
+        store={store}
+        hostId="h1"
+        projectId="p1"
+        onOpenCard={() => {}}
+        onOpenSettings={() => {}}
+      />
+    </TContext.Provider>,
   );
   return { store, commands, requests, ...ro };
 }

@@ -104,6 +104,7 @@ import {
   toggleSelection,
 } from "../lib/board-select.ts";
 import { cardStartBlock } from "../lib/card-start-block.ts";
+import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { onSubscription, quotaBars } from "../lib/quota.ts";
@@ -327,6 +328,11 @@ function CardTile(
             {card.quotaUntil
               ? t("kanban.waitingQuotaUntil", { time: props.formatTime(card.quotaUntil) })
               : t("kanban.waitingQuota")}
+          </Badge>
+        )}
+        {radarBadge(card, t) && (
+          <Badge variant="outline" className="text-status-needs-you">
+            {radarBadge(card, t)}
           </Badge>
         )}
         {card.queueReason === "memory" && (

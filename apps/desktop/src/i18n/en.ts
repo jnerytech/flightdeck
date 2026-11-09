@@ -3173,6 +3173,15 @@ export const en: Dictionary = {
     noHosts: "No host is online.",
     watchOff: "Watch and fix is off",
   },
+  conflictRadar: {
+    badgeOne: "May conflict with {title}",
+    badgeMany: "May conflict with {n} cards",
+    title: "May conflict with other cards",
+    intro:
+      "These cards change the same files. Whoever merges second may have to resolve conflicts.",
+    mergeLine:
+      "Other cards change the same files: {titles}. Whoever merges second may have to resolve conflicts.",
+  },
   cardMergePr: {
     action: "Merge PR",
     message:

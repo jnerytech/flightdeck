@@ -7,11 +7,18 @@ import type { T } from "../i18n/index.ts";
  */
 
 /** The badge on the card: the one card it may conflict with by name, or how many cards. */
-export function radarBadge(_card: Card, _t: T): string | null {
-  return null;
+export function radarBadge(card: Card, t: T): string | null {
+  const others = card.mayConflict ?? [];
+  const [first] = others;
+  if (!first) return null;
+  return others.length === 1
+    ? t("conflictRadar.badgeOne", { title: first.title })
+    : t("conflictRadar.badgeMany", { n: others.length });
 }
 
 /** The line in the Merge PR confirm: merging may leave those cards with conflicts. */
-export function radarMergeLine(_card: Card, _t: T): string | null {
-  return null;
+export function radarMergeLine(card: Card, t: T): string | null {
+  const others = card.mayConflict ?? [];
+  if (others.length === 0) return null;
+  return t("conflictRadar.mergeLine", { titles: others.map((other) => other.title).join(", ") });
 }
