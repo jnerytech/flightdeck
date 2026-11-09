@@ -1129,9 +1129,14 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   with every card in the queue while one of them holds, and the cards it skips and why. Stop asks
   first too: a running card's turn is cut off and it waits in **Needs you**, a queued one goes back to
   **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
-  the ones that went leave the selection, and the bar names any the host refused. In a narrow window
-  the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
-  under ⋯. Dragging a selected card drags the whole selection into the
+  the ones that went leave the selection, and the bar names any the host refused. **Update N from the
+  base** shows while a selected card has a branch and is not running: after the base branch moves, it
+  rebases those cards on it, one at a time, with "Updating 2 of 5…" on the bar. A card already on its
+  base is left alone, and a conflict stops only that card: the host aborts its rebase, so its worktree
+  stays as it was. The summary then names the updated, already current and conflicted cards, and any
+  the host refused, with why; the conflicted and refused ones stay selected. In a narrow window the bar
+  says how many selected cards are in columns not shown, and **Move to…**, **Update N from the base**
+  and **Discard…** sit under ⋯. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
 - **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
   **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's
