@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
  */
 export function PrRefusal(props: Readonly<{ text: string }>) {
   const box = useRef<HTMLDivElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new refusal text is the trigger to focus again
   useEffect(() => {
     const timer = setTimeout(() => box.current?.focus(), 0);
     return () => clearTimeout(timer);
