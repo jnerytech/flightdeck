@@ -79,6 +79,7 @@ import {
   projectCards,
 } from "../lib/board.ts";
 import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
+import { cardKey } from "../lib/board-card-keys.ts";
 import {
   askAbout,
   dragNeeds,
@@ -87,7 +88,7 @@ import {
   startNeeds,
 } from "../lib/board-contracts.ts";
 import { boardFiles } from "../lib/board-files.ts";
-import { type BoardKeyAction, boardKey } from "../lib/board-keys.ts";
+import type { BoardKeyAction } from "../lib/board-keys.ts";
 import {
   answerOf,
   type BulkRefusal,
@@ -108,7 +109,6 @@ import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { onSubscription, quotaBars } from "../lib/quota.ts";
-import { CHORD_TIMEOUT_MS } from "../lib/shortcuts.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -902,40 +902,24 @@ export const BoardView = memo(function BoardView(props: {
     pendingFocus.current = null;
     titleOf(cardId)?.focus();
   });
-  /**
-   * A key on a card's title: the arrows move the focus here, `s` and `m` are the card's (or the
-   * selection's, #1354), `x` toggles it, Shift with an arrow extends the selection, Esc clears it.
-   */
-  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) => {
-    const now = Date.now();
-    const afterG = lastKey.current.key === "g" && now - lastKey.current.at < CHORD_TIMEOUT_MS;
-    lastKey.current = { key: e.key, at: now };
-    const action = boardKey(shownIds, cardId, e, afterG);
-    if (action?.kind !== "extend") rangeBase.current = null;
-    if (action?.kind === "focus") focusCard(action.cardId);
-    if (action?.kind === "extend") {
-      // The anchor stays where the range began; with none, the card the focus leaves is it. The
-      // range is laid over the selection it started from, so going back shrinks it.
-      if (rangeBase.current === null) {
-        anchor.current ??= cardId;
-        rangeBase.current = selection;
-      }
-      setPicked(rangeSelection(boardOrder, anchor.current, action.cardId, rangeBase.current));
-      focusCard(action.cardId);
-    }
-    if (action?.kind === "toggle") {
-      const card = all.find((other) => other.id === cardId);
-      if (card) select(card);
-    }
-    if (action?.kind === "clear") {
-      // With no selection Esc goes on (a split view closes); with one it stops here, on the card.
-      if (selection.length === 0) return null;
-      e.stopPropagation();
-      anchor.current = null;
-      setPicked([]);
-    }
-    return action;
-  };
+  /** A key on a card's title (see `cardKey`): the action comes back for what is the board's own. */
+  const keyOn = (cardId: string) => (e: KeyboardEvent<HTMLButtonElement>) =>
+    cardKey(
+      {
+        lastKey,
+        rangeBase,
+        anchor,
+        shownIds,
+        boardOrder,
+        selection,
+        cards: all,
+        focusCard,
+        select,
+        setPicked,
+      },
+      cardId,
+      e,
+    );
   useEffect(() => {
     const wanted = refocus.current;
     if (!wanted) return;
