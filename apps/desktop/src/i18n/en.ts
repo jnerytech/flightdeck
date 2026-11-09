@@ -2955,6 +2955,8 @@ export const en: Dictionary = {
       "A second Claude call reads the diff and leaves its findings as reviewer drafts. The diff, with secrets masked, goes to Anthropic, as the card's own session sends it.",
     ask: "Get a second opinion",
     running: "A run is going: wait for it to end.",
+    queued: "The card waits for a free slot: wait for it to start and end.",
+    unreachable: "The host did not answer: the review may not have run. Try again.",
     noChanges: "The card has no changes to review.",
     reading: "Reading the diff… this can take a minute.",
     draftsOne:

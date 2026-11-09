@@ -2955,6 +2955,8 @@ export const ptBR = {
       "Uma segunda chamada do Claude lê o diff e deixa os achados como rascunhos do revisor. O diff, com os segredos mascarados, vai para a Anthropic, como a sessão do próprio card já o envia.",
     ask: "Pedir uma segunda opinião",
     running: "Uma execução está em andamento: espere ela terminar.",
+    queued: "O card espera uma vaga livre: espere ele começar e terminar.",
+    unreachable: "O host não respondeu: a revisão pode não ter rodado. Tente de novo.",
     noChanges: "O card não tem mudanças para revisar.",
     reading: "Lendo o diff… isso pode levar um minuto.",
     draftsOne:
@@ -2971,8 +2973,8 @@ export const ptBR = {
     dismiss: "Dispensar",
     dismissFinding: "Dispensar o achado em {path}, {where}",
     severity: { blocker: "Bloqueante", high: "Alto", medium: "Médio", low: "Baixo" },
-    notAddressedOne: "1 achado do revisor sem tratar ({high} alto)",
-    notAddressed: "{n} achados do revisor sem tratar ({high} alto)",
+    notAddressedOne: "1 achado do revisor sem tratar (alto: {high})",
+    notAddressed: "{n} achados do revisor sem tratar (alto: {high})",
   },
   cardReview: {
     positionLabel: "Posição na base",
