@@ -126,12 +126,6 @@ interface Entry {
 }
 
 /** The Markdown draft: one bullet per issue, with its PRs, under its area. */
-/** A title without its trailing issue reference (` (#12)`), matched without backtracking. */
-function withoutRef(title: string): string {
-  const ref = /\(#\d+\)$/.exec(title);
-  return ref ? title.slice(0, ref.index).trimEnd() : title;
-}
-
 export function highlightsDraft(
   since: string,
   prs: MergedPr[],
@@ -144,7 +138,7 @@ export function highlightsDraft(
     const key = issue === null ? `pr${pr.number}` : `issue${issue}`;
     // A fetched title can be a PR's (`feat(x): …`): both lose that prefix and a trailing (#N).
     const raw = (issue === null ? undefined : titles.get(issue)) ?? pr.title;
-    const title = withoutRef(raw.replace(CONVENTIONAL, ""));
+    const title = raw.replace(CONVENTIONAL, "").replace(/\s*\(#\d+\)$/, "");
     const entry = entries.get(key) ?? { title, prs: [], issue, scopes: [] };
     entry.prs.push(pr.number);
     for (const c of userCommits(pr)) entry.scopes.push(CONVENTIONAL.exec(c.headline)?.[2] ?? "");
