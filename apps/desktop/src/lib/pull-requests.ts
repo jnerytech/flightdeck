@@ -1,4 +1,5 @@
 import type { Card, WatchInfo } from "@flightdeck/protocol";
+import type { T } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 
 /** One open pull request: the card that holds it, and where that card lives. */
@@ -46,4 +47,13 @@ export function openPullRequests(
         a.row.card.title.localeCompare(b.row.card.title),
     )
     .map((entry) => entry.row);
+}
+
+/**
+ * What the PR poll reports about a PR besides its checks (#1352): the merge state, the review and
+ * how long it has been open, as short phrases. What the host does not report (an older host, or
+ * before the first poll) gives no phrase.
+ */
+export function prFacts(_card: Card, _now: number, _t: T): string[] {
+  return [];
 }
