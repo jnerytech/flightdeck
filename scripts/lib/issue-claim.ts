@@ -123,9 +123,10 @@ async function release(deps: ClaimDeps, issue: number, session: string, owner: s
     deps.log(ownedBy(issue, owner));
     return 1;
   }
-  if (!(await post(deps, issue, `${session} releases this issue.`, ownerMark(session, "todo"))))
-    return 1;
-  deps.log(`released #${issue} (${session})`);
+  // The coordinator releases in its own name: only the owner's or fd-coordinator's release counts.
+  const by = owner === session ? session : COORDINATOR;
+  if (!(await post(deps, issue, `${by} releases this issue.`, ownerMark(by, "todo")))) return 1;
+  deps.log(`released #${issue} (${by})`);
   return 0;
 }
 
@@ -140,6 +141,10 @@ export async function claimIssue(args: string[], deps: ClaimDeps): Promise<numbe
     return 2;
   }
   const reassign = words.includes("--reassign");
+  if (reassign && words.includes("--release")) {
+    deps.log(USAGE);
+    return 2;
+  }
   if (reassign && !deps.coordinator) {
     deps.log("only fd-coordinator reassigns an issue");
     return 1;
