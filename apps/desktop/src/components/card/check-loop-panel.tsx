@@ -15,7 +15,15 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
  * bypassPermissions the host asks for a confirmation first, which this panel shows with what it
  * means. A line says how the loop goes. A card from a host without the loop shows nothing.
  */
-export function CheckLoopPanel(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
+export function CheckLoopPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    /** What `host.info` says of the app's connection; `false`: far, so the loop cannot be turned on. */
+    near?: boolean;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card } = props;
   const [asking, setAsking] = useState(false);
@@ -23,10 +31,14 @@ export function CheckLoopPanel(props: Readonly<{ store: AppStore; hostId: string
   const [refused, setRefused] = useState<string | null>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const lineId = useId();
+  const farId = useId();
   const switchId = useId();
   const loop = card.checkLoop;
   if (!loop) return null;
   const line = checkLoopLine(loop);
+  // Only a near connection may turn the loop on (the host refuses it otherwise); off goes anywhere.
+  const locked = props.near === false && !loop.on;
+  const described = [line ? lineId : "", locked ? farId : ""].filter(Boolean).join(" ");
   const send = async (on: boolean, confirm?: true) => {
     setRefused(null);
     setBusy(true);
@@ -53,9 +65,9 @@ export function CheckLoopPanel(props: Readonly<{ store: AppStore; hostId: string
         <Inline gap={2}>
           <Switch
             id={switchId}
-            aria-describedby={line ? lineId : undefined}
+            aria-describedby={described || undefined}
             checked={loop.on}
-            disabled={busy}
+            disabled={busy || locked}
             onCheckedChange={(on) => void send(on)}
           />
           <Label htmlFor={switchId}>{t("checkLoopUi.switch")}</Label>
@@ -63,6 +75,11 @@ export function CheckLoopPanel(props: Readonly<{ store: AppStore; hostId: string
         {line && (
           <p id={lineId} className="text-muted-foreground text-xs">
             {t(line.key as Key, line.params)}
+          </p>
+        )}
+        {locked && (
+          <p id={farId} className="text-muted-foreground text-xs">
+            {t("checkLoopUi.farOff")}
           </p>
         )}
         <div

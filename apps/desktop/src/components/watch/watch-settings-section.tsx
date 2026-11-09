@@ -19,10 +19,10 @@ const TEXTAREA =
 
 /** One project's watch settings: loaded from the host, edited as text, saved as one patch. */
 function ProjectWatchSettings(
-  props: Readonly<{ store: AppStore; hostId: string; project: Project }>,
+  props: Readonly<{ store: AppStore; hostId: string; project: Project; far: boolean }>,
 ) {
   const t = useT();
-  const { store, hostId, project } = props;
+  const { store, hostId, project, far } = props;
   const [saved, setSaved] = useState<WatchSettings | null>(null);
   const [draft, setDraft] = useState(watchDraftOf(null));
   const keep = useCallback((settings: WatchSettings | null) => {
@@ -95,6 +95,7 @@ function ProjectWatchSettings(
           <Input
             {...control}
             type="number"
+            disabled={far}
             value={draft.checkTimeoutMin}
             onChange={(e) => set({ checkTimeoutMin: e.target.value })}
           />
@@ -106,6 +107,7 @@ function ProjectWatchSettings(
             {...control}
             className={TEXTAREA}
             rows={3}
+            disabled={far}
             value={draft.checks}
             onChange={(e) => set({ checks: e.target.value })}
           />
@@ -119,6 +121,7 @@ function ProjectWatchSettings(
             <label className="text-sm">
               <input
                 type="checkbox"
+                disabled={far}
                 checked={draft.loop.checkLoopDefault}
                 onChange={(e) =>
                   set({
@@ -140,6 +143,7 @@ function ProjectWatchSettings(
               <Input
                 {...control}
                 type="number"
+                disabled={far}
                 value={draft.loop?.checkRounds ?? ""}
                 onChange={(e) =>
                   set({
@@ -162,6 +166,7 @@ function ProjectWatchSettings(
                 {...control}
                 className={TEXTAREA}
                 rows={2}
+                disabled={far}
                 value={draft.loop?.checkEnv ?? ""}
                 onChange={(e) =>
                   set({
@@ -200,6 +205,8 @@ export function WatchSettingsSection(
     hostId: string;
     hostName: string;
     projects: Project[];
+    /** What `host.info` says of the app's connection (#1361); absent from an older host. */
+    near?: boolean;
   }>,
 ) {
   const t = useT();
@@ -208,10 +215,15 @@ export function WatchSettingsSection(
     void store.loadProjects(hostId);
   }, [store, hostId]);
   const title = t("watchSettingsUi.title", { host: props.hostName });
+  // Only a near connection may change what runs unattended: the host refuses it otherwise.
+  const far = props.near === false;
   return (
     <section aria-label={title}>
       <Panel title={title}>
         <Stack gap={4}>
+          {far && (
+            <p className="text-muted-foreground text-sm">{t("watchSettingsUi.farReadOnly")}</p>
+          )}
           {props.projects.length === 0 && (
             <p className="text-muted-foreground text-sm">{t("watchSettingsUi.noProjects")}</p>
           )}
@@ -221,6 +233,7 @@ export function WatchSettingsSection(
               store={store}
               hostId={hostId}
               project={project}
+              far={far}
             />
           ))}
         </Stack>
