@@ -98,6 +98,10 @@ function setup(
     cards?: object[];
     /** workflow.list fails: hostCommand answers null, as it does after raising the banner. */
     noWorkflows?: boolean;
+    /** The five-hour window's use, 0.42 by default; 0.9 and over is the host's pause limit. */
+    used?: number;
+    /** #1414: the host's memory and its hold, as resources.get answers; the host offers memoryPause. */
+    memory?: { totalBytes: number; freeBytes: number; pauseAt: number | null };
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -105,7 +109,8 @@ function setup(
   });
   store.i18n.start();
   const internals = store as unknown as { update(p: object): void };
-  internals.update({ hosts: [host] });
+  const features = options.memory ? ["resources", "memoryPause"] : [];
+  internals.update({ hosts: [{ ...host, hostInfo: { daemonVersion: "x", features } }] });
   internals.update({
     cards: Object.fromEntries(
       (options.cards ?? CARDS).map((c) => [`h1/${(c as { id: string }).id}`, c]),
@@ -118,7 +123,7 @@ function setup(
           windows: [
             {
               window: "five_hour",
-              utilization: 0.42,
+              utilization: options.used ?? 0.42,
               status: "allowed",
               resetsAt: "2026-11-09T15:00:00Z",
               readAt: new Date().toISOString(),
@@ -154,6 +159,10 @@ function setup(
   }) as never;
   store.hostRequest = (async (_hostId: string, type: string, payload: unknown) => {
     requests.push([type, payload]);
+    if (type === "resources.get" && options.memory) {
+      const { totalBytes, freeBytes, pauseAt } = options.memory;
+      return { ok: true, data: { memory: { totalBytes, freeBytes }, memoryPauseAt: pauseAt } };
+    }
     const id = (payload as { cardId?: string }).cardId ?? "";
     return options.refuse?.includes(id)
       ? { ok: false, message: "the host refused" }
@@ -495,6 +504,102 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
       screen.queryByRole("heading", { name: "Iniciar 2 cards?" }) !== null,
       labels.includes("Iniciar 2"),
       labels.some((label) => label?.startsWith("Parar")),
+    ]).toEqual([true, true, false]);
+    restore();
+  });
+});
+
+/** Opens the Start confirm of A and B and waits for the host's limit. */
+const openStart = async (language: "en" | "pt-BR" = "en") => {
+  await ready();
+  await ctrl("A", "B");
+  const [group, start] = language === "en" ? ["Selection", "Start 2"] : ["Seleção", "Iniciar 2"];
+  await click(button(bar(group), start));
+  await settleMaybe(() => /fila|queue|agora|now/.test(dialogText()));
+};
+const asked = (requests: Call[]) => requests.some(([type]) => type === "resources.get");
+/** The queue line says a card starts now: "1 starts now", "All of them start now", "iniciam agora". */
+const startsNow = () => /\b(now|agora)\b/.test(dialogText());
+
+// #1414: what #1400 left out. The memory hold is read when the confirm opens, not only from a
+// queued card's reason, and with any hold the queue line says they all wait.
+describe("board-bulk-ui: the holds agree with the queue line (#1414)", () => {
+  test("memory over the hold with nothing queued yet: the memory line, and they all wait", async () => {
+    const en = setup({ memory: { totalBytes: 100, freeBytes: 8, pauseAt: 0.9 } });
+    await openStart();
+    await settleMaybe(() => dialogText().includes("memory"));
+    const english = [
+      asked(en.requests),
+      dialogText().includes("alfa is short of memory: new cards wait until it frees up."),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ];
+    en.restore();
+    cleanup();
+    const pt = setup({
+      language: "pt-BR",
+      memory: { totalBytes: 100, freeBytes: 8, pauseAt: 0.9 },
+    });
+    await openStart("pt-BR");
+    await settleMaybe(() => dialogText().includes("memória"));
+    expect([
+      ...english,
+      dialogText().includes("alfa está sem memória: os cards novos esperam ela liberar."),
+      dialogText().includes("Eles entram na fila do board."),
+      startsNow(),
+    ]).toEqual([true, true, true, false, true, true, false]);
+    pt.restore();
+  });
+
+  test("memory under the hold, or a host without it: no memory line, and the split stands", async () => {
+    const under = setup({ memory: { totalBytes: 100, freeBytes: 40, pauseAt: 0.9 } });
+    await openStart();
+    await settleMaybe(() => asked(under.requests));
+    const free = [asked(under.requests), dialogText().includes("memory"), startsNow()];
+    under.restore();
+    cleanup();
+    const older = setup();
+    await openStart();
+    expect([...free, asked(older.requests), dialogText().includes("memory")]).toEqual([
+      true,
+      false,
+      true,
+      false,
+      false,
+    ]);
+    older.restore();
+  });
+
+  test("the quota over its pause limit: the queue line says they all wait, in both languages", async () => {
+    const en = setup({ quota: true, used: 0.95 });
+    await openStart();
+    const english = [
+      dialogText().includes("alfa is over its pause limit"),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
+    ];
+    en.restore();
+    cleanup();
+    const pt = setup({ language: "pt-BR", quota: true, used: 0.95 });
+    await openStart("pt-BR");
+    expect([
+      ...english,
+      dialogText().includes("alfa passou do limite de pausa"),
+      dialogText().includes("Eles entram na fila do board."),
+      startsNow(),
+    ]).toEqual([true, true, false, true, true, false]);
+    pt.restore();
+  });
+
+  test("a budget that holds: the queue line says they all wait", async () => {
+    const { restore } = setup({
+      budgets: [{ id: "b", scope: "host", projectKey: null, action: "queue", fraction: 1 }],
+    });
+    await openStart();
+    expect([
+      dialogText().includes("alfa reached a budget that holds new cards"),
+      dialogText().includes("They join the board's queue."),
+      startsNow(),
     ]).toEqual([true, true, false]);
     restore();
   });
