@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -229,6 +229,26 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
     release();
     await settle(() => text().includes("Two risks"));
     expect(waiting).toEqual([true, true, 1]);
+  });
+
+  test("when the answer arrives, focus is back on the button, whether it brought a result or a refusal (#1495)", async () => {
+    const focused = () => document.activeElement === button("Get a second opinion");
+    const { store, view } = setup();
+    render(view());
+    // The button is off while the host reads, so the browser drops its focus: only the return after the
+    // answer can put it back.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await ask();
+    await settle(() => text().includes("Two risks"));
+    const afterResult = await settleMaybe(focused);
+    store.hostRequest = (async () => {
+      throw new Error("the connection dropped");
+    }) as never;
+    (document.activeElement as HTMLElement | null)?.blur();
+    await ask();
+    await settle(() => screen.queryByRole("alert") !== null);
+    const afterRefusal = await settleMaybe(focused);
+    expect([afterResult, afterRefusal]).toEqual([true, true]);
   });
 
   test("in pt-BR the button and the result are translated", async () => {
