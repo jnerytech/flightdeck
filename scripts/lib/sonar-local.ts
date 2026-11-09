@@ -63,7 +63,8 @@ export async function sonarLocal(args: string[], deps: SonarLocalDeps): Promise<
     .filter((file) => isScanned(file) && file.startsWith(prefix));
   let found: LintFinding[];
   try {
-    found = await deps.lint(files);
+    // ESLint refuses an empty list of files: a prefix with no source is 0 functions.
+    found = files.length > 0 ? await deps.lint(files) : [];
   } catch (error) {
     deps.log(oneLine(`sonar-left --local: ${(error as Error).message}`));
     return 1;
