@@ -1,5 +1,5 @@
-import type { BoardColumn } from "@flightdeck/protocol";
-import { useState } from "react";
+import type { BoardColumn, Card } from "@flightdeck/protocol";
+import { useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { ActionButton } from "@/components/feedback/action-button";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
@@ -31,6 +31,8 @@ export function NewCardDialog(
     /** The dialog closed, by Cancel, Esc or a made card: the board forgets the column. */
     onClose(): void;
     onOpenCard(cardId: string): void;
+    /** A card was made: the board puts the focus on it once it shows (#1546). */
+    onMade(card: Card): void;
     /** Opens Settings, section Assistant (the wand found no provider). */
     onOpenSettings(): void;
   }>,
@@ -41,6 +43,8 @@ export function NewCardDialog(
   /** Issue #1201: the card template picked, and the text it put in the description. */
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [filled, setFilled] = useState<string | null>(null);
+  /** A card was made: the focus goes to it, not back to the + that opened the dialog. */
+  const made = useRef(false);
 
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
@@ -53,7 +57,7 @@ export function NewCardDialog(
 
   const create = async () => {
     // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
-    const made = await store.hostCommand(hostId, "card.create", {
+    const card = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
@@ -62,18 +66,27 @@ export function NewCardDialog(
     });
     // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
     // (the banner says why). A made card says so, with a way to open it (issue #188).
-    if (!made) return made;
+    if (!card) return card;
     close();
-    store.success(t("kanban.created", { title: made.title }), {
+    made.current = true;
+    props.onMade(card);
+    store.success(t("kanban.created", { title: card.title }), {
       label: t("kanban.openCard"),
-      run: () => props.onOpenCard(made.id),
+      run: () => props.onOpenCard(card.id),
     });
-    return made;
+    return card;
   };
 
   return (
     <Dialog open={props.open} onOpenChange={(open) => !open && close()}>
-      <AppDialogContent aria-describedby={undefined}>
+      <AppDialogContent
+        aria-describedby={undefined}
+        onCloseAutoFocus={(event) => {
+          if (!made.current) return;
+          made.current = false;
+          event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t("kanban.newCard")}</DialogTitle>
         </DialogHeader>

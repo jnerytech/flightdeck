@@ -1452,6 +1452,10 @@ export const BoardView = memo(function BoardView(props: {
           setCreateIn("backlog");
         }}
         onOpenCard={props.onOpenCard}
+        onMade={(card) => {
+          // The card is not on the board yet: the focus waits for it (index -1 is never where it is).
+          refocus.current = { cardId: card.id, column: card.column, index: -1 };
+        }}
         onOpenSettings={props.onOpenSettings}
       />
     </Page>
