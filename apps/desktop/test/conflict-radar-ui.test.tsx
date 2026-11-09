@@ -42,7 +42,7 @@ describe("conflict-radar-ui: Details and the Merge PR confirm (#1405)", () => {
     const one = store();
     render(
       <TContext.Provider value={one.i18n.t}>
-        <CardConflicts card={card({ mayConflict: overlap })} />
+        <CardConflicts card={card({ mayConflict: overlap })} onOpenCard={() => {}} />
       </TContext.Provider>,
     );
     const section = screen.queryByRole("region", { name: "May conflict with other cards" });
@@ -56,11 +56,46 @@ describe("conflict-radar-ui: Details and the Merge PR confirm (#1405)", () => {
     ]).toEqual([true, true, true, true, true]);
   });
 
+  test("each title is a button that opens that card, described by the section's heading", () => {
+    const opened: string[] = [];
+    const one = store();
+    render(
+      <TContext.Provider value={one.i18n.t}>
+        <CardConflicts
+          card={card({ mayConflict: overlap })}
+          onOpenCard={(cardId) => opened.push(cardId)}
+        />
+      </TContext.Provider>,
+    );
+    const open = screen.queryByRole("button", { name: "Fix login" });
+    const describedBy = open?.getAttribute("aria-describedby") ?? "";
+    expect([
+      open !== null,
+      screen.queryByRole("button", { name: "Rename user" }) !== null,
+      document.getElementById(describedBy)?.textContent,
+    ]).toEqual([true, true, "May conflict with other cards"]);
+    open?.click();
+    screen.queryByRole("button", { name: "Rename user" })?.click();
+    expect(opened).toEqual(["c2", "c3"]);
+  });
+
+  test("the entries are spaced like the other lists in Details", () => {
+    const one = store();
+    render(
+      <TContext.Provider value={one.i18n.t}>
+        <CardConflicts card={card({ mayConflict: overlap })} onOpenCard={() => {}} />
+      </TContext.Provider>,
+    );
+    const section = screen.queryByRole("region", { name: "May conflict with other cards" });
+    const lists = [...(section?.querySelectorAll("ul") ?? [])];
+    expect(lists[0]?.className.includes("gap-2")).toBe(true);
+  });
+
   test("a card with no overlap has no section", () => {
     const one = store();
     render(
       <TContext.Provider value={one.i18n.t}>
-        <CardConflicts card={card()} />
+        <CardConflicts card={card()} onOpenCard={() => {}} />
       </TContext.Provider>,
     );
     expect(screen.queryByRole("region", { name: "May conflict with other cards" })).toBeNull();

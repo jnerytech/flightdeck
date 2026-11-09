@@ -3,7 +3,7 @@ import { Stack } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 
 /** The cards that change the same files as this one, and the files they share (#1405). */
-export function CardConflicts(props: Readonly<{ card: Card }>) {
+export function CardConflicts(props: Readonly<{ card: Card; onOpenCard(cardId: string): void }>) {
   const t = useT();
   const others = props.card.mayConflict ?? [];
   if (others.length === 0) return null;
