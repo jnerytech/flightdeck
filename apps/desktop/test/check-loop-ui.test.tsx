@@ -165,12 +165,23 @@ describe("check-loop-ui: the switch on the card", () => {
       checkLoop: loop({ on: true, active: "fixing", round: 1, max: 3 }),
     });
     render(view);
-    const control = theSwitch();
+    const control = screen.queryByRole("switch", { name: "Continuar até os checks passarem" });
     expect([
-      control?.getAttribute("aria-label"),
+      control !== null,
       control?.getAttribute("aria-checked"),
       screen.queryByText(/Rodada 1 de 3/) !== null,
-    ]).toEqual(["Continuar até os checks passarem", "true", true]);
+    ]).toEqual([true, "true", true]);
+  });
+
+  test("the switch's text is its label: clicking it toggles the switch, and the name is said once", async () => {
+    const { view, sent } = setup({ checkLoop: loop({ on: true }) });
+    render(view);
+    await click(screen.queryByText("Keep going until the checks pass"));
+    await settleMaybe(() => sent.length === 1, 3000);
+    const named = document.querySelectorAll(
+      '[aria-label="Keep going until the checks pass"]',
+    ).length;
+    expect([sent, named]).toEqual([[["card.checkLoop", { cardId: "c1", on: false }]], 0]);
   });
 
   test("a card from a host without the loop shows nothing", () => {
