@@ -1,6 +1,7 @@
 import type { ReviewComment } from "@flightdeck/protocol";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { FindingSeverity } from "@/components/card/finding-severity";
 import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,10 @@ export function ReviewList(
                 <Badge variant="outline">
                   {t(comment.state === "draft" ? "changes.draft" : "changes.sent")}
                 </Badge>
+                {comment.author === "reviewer" && (
+                  <Badge variant="outline">{t("secondOpinion.reviewer")}</Badge>
+                )}
+                {comment.severity && <FindingSeverity severity={comment.severity} />}
                 {comment.outdated && (
                   <Badge variant="outline" className="text-status-needs-you">
                     {t("changes.outdated")}
@@ -79,14 +84,25 @@ export function ReviewList(
                   >
                     <Pencil aria-hidden="true" className="size-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={t("changes.removeComment", { path: comment.path, where })}
-                    onClick={() => props.onRemove(comment.id)}
-                  >
-                    <Trash2 aria-hidden="true" className="size-4" />
-                  </Button>
+                  {comment.author === "reviewer" ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("secondOpinion.dismissFinding", { path: comment.path, where })}
+                      onClick={() => props.onRemove(comment.id)}
+                    >
+                      {t("secondOpinion.dismiss")}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("changes.removeComment", { path: comment.path, where })}
+                      onClick={() => props.onRemove(comment.id)}
+                    >
+                      <Trash2 aria-hidden="true" className="size-4" />
+                    </Button>
+                  )}
                 </div>
               )}
             </li>

@@ -89,11 +89,8 @@ const ask = async (name: string | RegExp = "Get a second opinion") => {
     if (found) fireEvent.click(found);
   });
 };
-const text = () =>
-  (screen.queryByRole("region", { name: "Second opinion" })?.textContent ?? "").replace(
-    /\s+/g,
-    " ",
-  );
+const text = (name = "Second opinion") =>
+  (screen.queryByRole("region", { name })?.textContent ?? "").replace(/\s+/g, " ");
 
 describe("second-opinion-ui: asking for the review (#1446)", () => {
   test("the button asks the host once, says how many findings are drafts, and the panel reads them", async () => {
@@ -134,17 +131,19 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
 
   test("a review of the same diff, one the diff outran and one that did not answer each say so", async () => {
     const said = async (data: object) => {
-      const { view } = setup({ answer: { ok: true, data: result(data) } });
+      const { view } = setup({
+        answer: { ok: true, data: result({ summary: "Opened the review.", ...data }) },
+      });
       const one = render(view());
       await ask();
-      await settle(() => text().includes("Two risks"));
+      await settle(() => text().includes("Opened the review."));
       const out = text();
       one.unmount();
       return out;
     };
     const cached = await said({ cached: true });
     const moved = await said({ moved: true, anchored: 0 });
-    const failed = await said({ state: "failed", anchored: 0, summary: "" });
+    const failed = await said({ state: "failed", anchored: 0 });
     expect([
       cached.includes("This diff was reviewed already"),
       moved.includes("The diff changed during the review"),
@@ -236,8 +235,8 @@ describe("second-opinion-ui: asking for the review (#1446)", () => {
     const { view } = setup({ language: "pt-BR" });
     render(view());
     await ask("Pedir uma segunda opinião");
-    await settle(() => text().includes("Two risks"));
-    expect(text().includes("2 achados viraram rascunhos")).toBe(true);
+    await settle(() => text("Segunda opinião").includes("Two risks"));
+    expect(text("Segunda opinião").includes("2 achados viraram rascunhos")).toBe(true);
   });
 });
 
