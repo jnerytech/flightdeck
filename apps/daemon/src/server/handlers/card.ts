@@ -55,6 +55,16 @@ export const cardHandlers = {
   "card.get": (payload, { server }) => {
     return server.need("board").getCard(payload.cardId);
   },
+  "card.review": async (_payload, _call) => {
+    return {
+      state: "failed" as const,
+      summary: "",
+      anchored: 0,
+      loose: [],
+      cached: false,
+      moved: false,
+    };
+  },
   "card.spec": async (payload, { server }) => {
     return await server.need("board").refreshSpec(payload.cardId);
   },

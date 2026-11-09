@@ -1016,6 +1016,26 @@ export interface FileListing {
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
 
+/** Issue #1439: a finding of a second-opinion review. */
+export const ReviewFinding = z.object({
+  path: z.string(),
+  line: z.number().int().positive(),
+  severity: z.enum(["blocker", "high", "medium", "low"]),
+  body: z.string(),
+});
+export type ReviewFinding = z.infer<typeof ReviewFinding>;
+
+/** Issue #1439: a card's review: its findings are reviewer drafts; `loose` anchored nowhere. */
+export const CardReviewResult = z.object({
+  state: z.enum(["done", "failed"]),
+  summary: z.string(),
+  anchored: z.number().int().nonnegative(),
+  loose: z.array(ReviewFinding),
+  cached: z.boolean(),
+  moved: z.boolean(),
+});
+export type CardReviewResult = z.infer<typeof CardReviewResult>;
+
 // Phase 11: review of the changes of any session or card.
 /**
  * `session:<claudeSessionId>`, `card:<id>`, `terminal:<terminalId>` (its folder, #506) or
@@ -3651,6 +3671,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.validationTemplate", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Issue #1439: a second-opinion review of the card's diff; near only. */
+  cmd("card.review", CardIdPayload),
   /** Issue #100: teleport, the source side (feature `teleport`). */
   cmd("teleport.prepare", TeleportPreparePayload),
   cmd("teleport.read", TeleportReadPayload),
@@ -5719,6 +5741,7 @@ export interface CommandResults {
   "card.start": Card;
   "card.stop": Card;
   "card.diff": CardDiff;
+  "card.review": CardReviewResult;
   "assistant.run": AssistantResult;
   "assistant.cancel": undefined;
   "assistant.context": AssistantContextBundle;

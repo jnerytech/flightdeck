@@ -135,6 +135,7 @@ const validCommands: Record<CommandType, unknown> = {
   "card.templates": { projectId: "p" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
+  "card.review": { cardId: "c" },
   "assistant.run": {
     requestId: "r1",
     kind: "card.title",
