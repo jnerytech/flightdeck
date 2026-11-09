@@ -499,3 +499,22 @@ describe("board-bulk-ui: a narrow board (#1354)", () => {
     restore();
   });
 });
+
+describe("board-bulk-ui: the conflict radar badge on a card (#1405)", () => {
+  test("a card the host says may conflict with another shows it; the others show nothing", async () => {
+    const { restore } = setup({
+      cards: [
+        card("A", "backlog", 1, {
+          mayConflict: [{ cardId: "B", title: "B", files: ["src/a.ts"] }],
+        }),
+        card("B", "backlog", 2),
+      ],
+    });
+    await ready();
+    expect([
+      li("A").textContent?.includes("May conflict with B"),
+      li("B").textContent?.includes("May conflict"),
+    ]).toEqual([true, false]);
+    restore();
+  });
+});
