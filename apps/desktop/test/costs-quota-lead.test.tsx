@@ -107,7 +107,8 @@ for (const language of ["en", "pt-BR"] as const) {
       expect(meter(w.week)?.value).toBeCloseTo(0.4);
       const bars = lead(w.lead) as HTMLElement;
       const dollars = screen.queryByLabelText(w.total) as HTMLElement;
-      expect(bars.compareDocumentPosition(dollars) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      // Exactly "follows": a node inside the bars would add CONTAINED_BY and still pass a bit test.
+      expect(bars.compareDocumentPosition(dollars)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     test("with several hosts each one on a subscription has its bars, and one on an API key has none", async () => {
