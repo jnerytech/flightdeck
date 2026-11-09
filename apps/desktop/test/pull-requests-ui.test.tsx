@@ -303,6 +303,17 @@ describe("pull-requests-ui: the action a PR's state leads to (#1482)", () => {
       describedBy("Card a").includes("GitHub may refuse"),
     ]).toEqual(["outline", "outline", true, true, true]);
   });
+
+  test("a held PR with no Merge PR here does not say GitHub may refuse a merge", () => {
+    open({
+      features: ["watch"],
+      cards: { "h2/b": card("b", { prMergeable: "blocked" }) },
+    });
+    expect([
+      inRow("Card b").queryByRole("button", { name: "Merge PR" }) === null,
+      row("Card b").textContent?.includes("GitHub may refuse"),
+    ]).toEqual([true, false]);
+  });
 });
 
 // #1406: after the base moves, every listed PR is updated from it in one go, one card at a time, on
