@@ -80,7 +80,7 @@ describe("consertar: a round of fixing", () => {
     expect([
       f.ran.map((call) => call.command),
       round?.status,
-      (round?.summary ?? "").includes("local check refused"),
+      (round?.summary ?? "").includes("local check refused (outside_worktree)"),
       f.watcher.status(f.card.id).status,
       f.gitCalls.some((args) => args[0] === "push"),
     ]).toEqual([["bun test"], "failed", true, "needs_you", false]);

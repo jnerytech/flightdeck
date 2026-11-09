@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, chmodSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { checkCommandRefusal } from "../src/watch/check-command.ts";
+import { whichOnPath } from "../src/which.ts";
 import { boundedCheckRunner, checkEnvironment } from "../src/workflows/check-runner.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -165,6 +166,18 @@ describe.skipIf(process.platform === "win32")("check-loop: the bounded runner", 
     const result = await running;
     expect([result.aborted, Date.now() - started < 5000]).toEqual([true, true]);
   });
+
+  // A process that left the group (setsid) keeps the pipes open after the kill: the runner gives
+  // the readers a short grace, then stops reading, instead of hanging until it ends.
+  test.skipIf(!whichOnPath("setsid"))(
+    "after the kill, a process that left the group does not hold the runner",
+    async () => {
+      const dir = script("escapes", "setsid sleep 8 &\nsleep 8");
+      const started = Date.now();
+      const result = await boundedCheckRunner(process.env).run("escapes", dir, 300);
+      expect([result.timedOut, Date.now() - started < 5000]).toEqual([true, true]);
+    },
+  );
 
   test("a check that fails gives its exit code and its whole output, stdout then stderr", async () => {
     const dir = script("fails", "echo out\necho err >&2\nexit 3");
