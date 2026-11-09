@@ -144,7 +144,8 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   So:
   - **Changing the list needs a near connection.** `requireVaultTransport` applies to a
     `watch.settings` patch that has any of `checks`, `checkTimeoutMin`, `checkRounds`,
-    `checkEnv` or `checkLoopDefault` whose value differs from the stored one. A field sent
+    `checkEnv`, `checkLoopDefault`, `persona` (as whom the watch's rounds run) or `driftAllow`
+    (what a round may push outside its PR) whose value differs from the stored one. A field sent
     unchanged passes, so a far client that saves the whole form still saves `enabled` or
     `maxRounds`. The app sends a minimal patch anyway, and shows the five fields read-only on a
     far host. Slice 1 tests each of the five from a far origin, changed (refused) and unchanged
@@ -208,12 +209,11 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   - **A project can widen the list itself** (`checkEnv`, at most 20 names). This keeps a person
     who needs `JAVA_HOME` from turning the whole thing off. The project setting is edited only
     over a near connection, like the checks. It holds names only, and the values still come from
-    the daemon. The person owns that list. A name is refused when:
-    - the vault holds it;
-    - it starts with `FLIGHTDECK_`;
-    - it has the shape of a secret: it contains `TOKEN`, `KEY`, `SECRET`, `PASSWORD`, `PASSWD`,
-      `CREDENTIAL`, `AUTH`, `COOKIE` or `SESSION`, or it starts with `ANTHROPIC_`, `OPENAI_`,
-      `AWS_`, `AZURE_`, `GH_` or `GITHUB_`.
+    the daemon. The person owns that list. It is an allowlist of where a toolchain lives
+    (`*_HOME`, `*_ROOT`, `GOPATH` and the like, `isCheckEnvName`): a blocklist of the variables
+    that run or redirect code (`GIT_SSH_COMMAND`, `JAVA_TOOL_OPTIONS`, `npm_config_*`) is never
+    complete. A secret's shape, Flightdeck's, git's, npm's and a loader's prefixes are refused even
+    then. The stored list is filtered again on every read. The vault holds no variable names.
 
     Names are compared case-insensitively on every platform, because Windows reads `Path` and
     `PATH` as one name. There is no confirmation that lets a refused name through: a check that
