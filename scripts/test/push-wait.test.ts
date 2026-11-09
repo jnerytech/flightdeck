@@ -526,12 +526,13 @@ describe("push-wait: the run and the PR as gh prints them (#741)", () => {
     const view = (extra: object) =>
       JSON.stringify({ mergeable: "MERGEABLE", statusCheckRollup: [], ...extra });
     expect([
-      read(list("in_progress"), view({ autoMergeRequest: null }))?.autoMergeOff,
+      read(list("in_progress"), view({ autoMergeRequest: null, state: "OPEN" }))?.autoMergeOff,
+      read(list("in_progress"), view({ autoMergeRequest: null, state: "MERGED" }))?.autoMergeOff,
       read(list("in_progress"), view({ autoMergeRequest: { enabledAt: "2026-11-09T00:00:00Z" } }))
         ?.autoMergeOff,
       read(list("in_progress"), view({}))?.autoMergeOff,
       prRunFrom(list("in_progress"), null, now) === "none",
-    ]).toEqual([true, undefined, undefined, false]);
+    ]).toEqual([true, undefined, undefined, undefined, false]);
   });
 
   test("an empty list is no run; output gh could not give, or that does not parse, is GitHub unread (null, #741)", () => {
@@ -574,7 +575,7 @@ describe("push-wait: the gh calls the guard makes (#756 review)", () => {
     expect(prRunVia(gh, () => now)("fix-x", CWD)).toEqual(green);
     expect(calls).toEqual([
       `${CWD}: run list --branch=fix-x --event=pull_request --limit=1 --json=databaseId,status,startedAt,url`,
-      `${CWD}: pr view --json=mergeable,statusCheckRollup,autoMergeRequest -- fix-x`,
+      `${CWD}: pr view --json=mergeable,statusCheckRollup,autoMergeRequest,state -- fix-x`,
     ]);
   });
 

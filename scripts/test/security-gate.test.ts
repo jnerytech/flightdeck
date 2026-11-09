@@ -467,16 +467,26 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
       [PT, ['    secretSaved: "Segredo salvo no cofre",']],
       ["apps/desktop/src/i18n/index.ts", ["const token = read();"]],
     ]);
-    const leaked = new Map([[EN, ['    example: "ghp_abcdefghijklmnopqrstuvwxyz0123456789",']]]);
+    // Secret-shaped values are built here, so no scanner reads a token in this file.
+    const ghp = `ghp_${"a".repeat(36)}`;
+    const leaked = new Map([[EN, [`    example: "${ghp}",`]]]);
     const code = new Map([[PT, ['    run: () => Bun.spawn(["sh"]),']]]);
     // From the security review: an npm token, and a secret pasted in a comment, count too.
-    const npm = new Map([[EN, ["    // npm_abcdefghijklmnopqrstuvwxyz0123456789"]]]);
+    const npm = new Map([[EN, [`    // npm_${"b".repeat(36)}`]]]);
     expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code), riskyFiles(npm)]).toEqual([
       [{ path: "apps/desktop/src/i18n/index.ts", why: ["secret"] }],
       [{ path: EN, why: ["secret"] }],
       [{ path: PT, why: ["spawn"] }],
       [{ path: EN, why: ["secret"] }],
     ]);
+  });
+
+  test("from the OpenCode review: only plain text entries are exempt; code in a dictionary is read in every area", () => {
+    const code = new Map([
+      [EN, ["    mode: chmodSync(file, 0o600),", "    gh: process.env.GH_TOKEN,"]],
+      [PT, ["    saved: `Token salvo`,", "    \"permission-denied\": 'Permissão negada',"]],
+    ]);
+    expect(riskyFiles(code)).toEqual([{ path: EN, why: ["secret", "permission"] }]);
   });
 
   test("an edited key reads the dictionary at HEAD as text too; a secret-handling edit elsewhere still counts", () => {

@@ -154,7 +154,7 @@ describe("the guard logs what each refusal was for (#1541)", () => {
     const long = `bun run test:related holds the slot ${"x".repeat(300)}`;
     expect([
       blockDetail("first line\nsecond line"),
-      blockDetail("run \u001b[2Jit with GH_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123"),
+      blockDetail(`run \u001b[2Jit with GH_TOKEN=ghp_${"c".repeat(30)}`),
       blockDetail(long).length,
       blockDetail(long).startsWith("bun run test:related holds the slot"),
     ]).toEqual(["first line", "run [2Jit with GH_TOKEN=***", 160, true]);
@@ -162,5 +162,15 @@ describe("the guard logs what each refusal was for (#1541)", () => {
     expect(blockDetail('curl -H "Cookie: sid=abc123" -H "X-Api-Key: k-999" x')).toBe(
       'curl -H "Cookie: ***" -H "X-Api-Key: ***" x',
     );
+    // A header's whole value, to its closing quote or the end of the line, and the other auth headers.
+    expect([
+      blockDetail('curl -H "Cookie: sid=a1; csrf=b2" x'),
+      blockDetail("curl -H 'Set-Cookie: s=1; Path=/' -H 'X-Auth-Token: t 2' x"),
+      blockDetail("X-Amz-Security-Token: abc def"),
+    ]).toEqual([
+      'curl -H "Cookie: ***" x',
+      "curl -H 'Set-Cookie: ***' -H 'X-Auth-Token: ***' x",
+      "X-Amz-Security-Token: ***",
+    ]);
   });
 });

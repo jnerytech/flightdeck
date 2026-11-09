@@ -629,6 +629,11 @@ export async function lowerOthers(env: SlotEnv): Promise<number[]> {
 
 const TEST_ARG = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
+/** The CI timings table from its text (#1541): stub. */
+export function timingsFrom(_text: string | null): Record<string, number> | undefined {
+  return undefined;
+}
+
 /** How many test files a `bun ... test` command names; 0 for any other command (#833). */
 export function testFileCount(command: string[]): number {
   if (!isBunTest(command.join(" "))) return 0;
@@ -636,7 +641,11 @@ export function testFileCount(command: string[]): number {
 }
 
 /** The CI seconds a run's test files take (#1541): a file with no timing counts at their mean. */
-export function estimatedSeconds(command: string[], timings: Record<string, number>): number {
+export function estimatedSeconds(
+  command: string[],
+  timings: Record<string, number>,
+  _root = "",
+): number {
   const values = Object.values(timings);
   const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 1;
   return command
