@@ -5438,7 +5438,7 @@ export const en: Dictionary = {
   hostCompare: {
     title: "Compare hosts",
     intro:
-      "Versions, hooks, sign-in and features of every host side by side. A cell that differs from what most hosts have is marked.",
+      "The system, versions, hooks, sign-in, tools and features of every host side by side. A cell that differs from what most hosts have is marked.",
     show: "Show comparison",
     hide: "Hide comparison",
     refresh: "Refresh",
@@ -5446,14 +5446,23 @@ export const en: Dictionary = {
     unknown: "Not known",
     differs: "Differs from most hosts, which have {value}",
     differsFeatures: "Not the same features as most hosts",
+    down: "Not compared: {status}.",
+    fix: "Fix on {host}",
     fields: {
+      os: "Operating system",
       daemon: "Daemon version",
       claude: "Claude Code version",
       hooks: "Hooks",
       signin: "Claude sign-in",
+      gh: "GitHub CLI (gh)",
+      az: "Azure CLI (az)",
+      boot: "Start at boot",
       features: "Features",
     },
-    hooks: { ok: "OK", warn: "Warning", fail: "Failed" },
+    os: { linux: "Linux", darwin: "macOS", win32: "Windows" },
+    hooks: { ok: "Installed", outdated: "Outdated", missing: "Absent" },
+    tool: { ok: "Installed", outdated: "Outdated", missing: "Not installed", na: "Not applicable" },
+    boot: { ok: "On", outdated: "Outdated", missing: "Off", na: "Not applicable" },
     signin: {
       ok: "Signed in",
       outdated: "Outdated",

@@ -322,15 +322,20 @@ a terminal with `flightdeckd doctor`.
 
 #### Comparing hosts
 
-With two or more hosts, the host's **Overview** tab also has **Compare hosts**. **Show comparison**
-opens one table with a column per host and a row each for the daemon version, the Claude Code
-version, the hooks, the Claude sign-in and the features. Opening it (and **Refresh**) reads each
-online host again, which runs the same checks as **Health & dependencies**; nothing else asks the
-hosts. A cell that differs from what most hosts have is marked, and it says why in words ("Differs
-from most hosts, which have 1.4.0"). With no majority (two hosts that differ, or an even split)
-nothing is marked, and a value a host does not report, or any value of a host that is offline,
-shows as a dash and is never marked. The features are counted; two hosts with the same count but
-different features are still told apart.
+With two or more hosts, the host's **Overview** tab also has **Compare hosts**, a band as wide as
+the tab under its two columns. **Show comparison** opens one table with a column per host and a row
+each for the operating system, the daemon version, the Claude Code version, the hooks, the Claude
+sign-in, `gh`, `az`, Start at boot and the features. Opening it (and **Refresh**) reads each online
+host again, which runs the same checks as **Health & dependencies**; nothing else asks the hosts.
+Hooks read Installed, Outdated or Absent, as in that section. A cell that differs from what most
+hosts have is marked, and it says why in words ("Differs from most hosts, which have 1.4.0"). When
+what is marked is lacking (hooks, sign-in, `gh`, `az` or Start at boot missing or outdated) or is an
+older daemon, the cell has a **Fix on** button with the host's name, which opens that host's page, where Health &
+dependencies has the install, the turn-on or the update; on the host's own page it scrolls there.
+With no majority (two hosts that differ, or an even split) nothing is marked. A host that is not
+online says so once ("Not compared: offline."), in place of a dash in every row, and a value an
+online host does not report shows as a dash and is never marked. The features are counted; two
+hosts with the same count but different features are still told apart.
 
 ### Trusting a project
 
