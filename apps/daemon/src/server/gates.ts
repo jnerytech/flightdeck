@@ -66,6 +66,7 @@ export const GATES = {
   usage: "usage",
   vault: "vault",
   watch: "prWatch",
+  checkLoop: "prWatch",
   webhook: "webhook",
   // Written inline in a case before the split, each with a single name.
   bypass: "bypass",

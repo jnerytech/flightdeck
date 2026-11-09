@@ -1937,6 +1937,13 @@ export const en: Dictionary = {
     run_card_gone: "The run's card is gone, so the run stopped when Flightdeck started again.",
     run_resume_branch_moved:
       "The card's branch changed since this run stopped, so it can only run again from the start.",
+    check_loop_no_checks:
+      "The project has no checks to run: add them in the project's Watch settings first.",
+    check_loop_untrusted:
+      "The project is not trusted: trust it before its checks run on their own.",
+    check_loop_mode: "In plan mode the session cannot fix anything, so the checks do not run.",
+    check_loop_confirm:
+      "Confirm first: the checks will run the code this card writes, without asking you each time.",
     workflow_input_required: "The workflow needs the input {input}.",
     workflow_input_unknown: "The workflow has no input {input}.",
     workflow_gate_closed: "The gate {step} (attempt {attempt}) is not open.",
