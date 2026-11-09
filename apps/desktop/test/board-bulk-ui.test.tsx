@@ -770,10 +770,18 @@ const branched = (id: string, position: number, over: object = {}) =>
   });
 const UPDATABLE = [...CARDS, branched("F", 1), branched("G", 2), branched("H", 3)];
 const updated = (requests: Call[]) => started(requests, "card.updateFromBase");
+/** The board's notice, without its Dismiss button. */
 const noticeText = () =>
   screen
     .queryAllByRole("button", { name: /^Dismiss|^Dispensar/ })
-    .map((b) => (b.parentElement?.textContent ?? "").replace(/\s+/g, " "))
+    .map((b) =>
+      [...(b.parentElement?.childNodes ?? [])]
+        .filter((node) => node !== b)
+        .map((node) => node.textContent ?? "")
+        .join("")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
     .join("");
 
 describe("board-bulk-ui: Update from the base for the selection (#1406)", () => {
@@ -828,7 +836,7 @@ describe("board-bulk-ui: Update from the base for the selection (#1406)", () => 
       during: { progress: true, off: true },
       asked: ["F", "H"],
       notice:
-        "Updated: F. Already current: G. Conflict, left as it was: H (Updating with main conflicts in: src/a.ts). Dismiss",
+        "Updated: F. Already current: G. Conflict, left as it was: H (Updating with main conflicts in: src/a.ts).",
       selected: ["H"],
       focus: "Update 1 from the base",
     });
@@ -842,7 +850,7 @@ describe("board-bulk-ui: Update from the base for the selection (#1406)", () => 
     await click(button(bar(), "Update 2 from the base"));
     await settleMaybe(() => noticeText().includes("Not updated"));
     expect([noticeText(), selected()]).toEqual([
-      "Updated: F. Not updated: G (the host refused). Dismiss",
+      "Updated: F. Not updated: G (the host refused).",
       ["G"],
     ]);
     restore();
@@ -864,10 +872,12 @@ describe("board-bulk-ui: Update from the base for the selection (#1406)", () => 
     expect(item).not.toBeNull();
     await click(item as HTMLElement);
     await settleMaybe(() => noticeText().includes("Updated:"));
-    expect([
-      within(bar() as HTMLElement).queryByRole("button", { name: /from the base/ }),
-      updated(requests),
-    ]).toEqual([null, ["F", "G"]]);
+    // Both went: the selection is empty, so the bar is gone.
+    expect([bar() === null, updated(requests), noticeText()]).toEqual([
+      true,
+      ["F", "G"],
+      "Updated: F, G.",
+    ]);
     restore();
   });
 
@@ -877,7 +887,7 @@ describe("board-bulk-ui: Update from the base for the selection (#1406)", () => 
     await ctrl("F", "G");
     await click(button(bar("Seleção"), "Atualizar 2 com a base"));
     await settleMaybe(() => noticeText().includes("Atualizados"));
-    expect(noticeText()).toBe("Atualizados: F. Já em dia: G. Dispensar");
+    expect(noticeText()).toBe("Atualizados: F. Já em dia: G.");
     restore();
   });
 });
