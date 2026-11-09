@@ -1,5 +1,6 @@
 /**
- * Issue #248, #1288: the board domain: a project's board, its settings and its live card updates.
+ * Issue #248, #1288: the board domain: a project's board, its settings and its live card updates,
+ * and the answer to a workflow gate (the board runs the workflows).
  */
 import type { Handlers } from "../dispatch.ts";
 
@@ -19,5 +20,11 @@ export const boardHandlers = {
     const board = server.need("board");
     ws.data.unwatchBoard?.();
     ws.data.unwatchBoard = board.watch((card) => send({ type: "card.updated", card }));
+  },
+  "gate.respond": (payload, { server }) => {
+    const { runId, stepId, attempt, decision, note } = payload;
+    const { workflows } = server.need("board");
+    workflows.respond(runId, stepId, attempt, decision, note);
+    return workflows.getRun(runId);
   },
 } satisfies Partial<Handlers>;

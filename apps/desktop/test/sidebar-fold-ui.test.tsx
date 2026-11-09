@@ -34,7 +34,7 @@ afterEach(async () => {
   await viewport(1024);
 });
 
-const LABELS = { sidebar: "Side", collapse: "Collapse", expand: "Expand" };
+const LABELS = { sidebar: "Side", collapse: "Collapse", expand: "Expand", skip: "Skip" };
 const rail = () => document.querySelector("[data-slot='sidebar']")?.getAttribute("data-collapsed");
 
 describe("sidebar-fold-ui: the wide window's fold (issue #641)", () => {

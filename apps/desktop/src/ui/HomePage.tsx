@@ -230,22 +230,9 @@ function ReadNotices(
   );
 }
 
-/**
- * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
- * turn), from the hosts' own costs and usage; no command of its own.
- */
-export function HomePage(
-  props: Readonly<{
-    store: AppStore;
-    /** The parts of the state Home reads: the hosts, whether the list was read, and the budgets. */
-    state: Pick<AppState, "hosts" | "hostsLoaded" | "budgets">;
-    go(route: Route): void;
-    /** How often the numbers are read again, in milliseconds (a minute). */
-    refreshMs?: number;
-  }>,
-) {
-  const { store, state, go } = props;
-  const { t, lang } = store.i18n;
+/** What Home is about (#126): the scope it adds up, the hosts in it, the projects to pick, and the subtitle. */
+function useHomeScope(store: AppStore, state: Pick<AppState, "hosts" | "hostsLoaded">) {
+  const { t } = store.i18n;
   // The data scope (#126): Home adds up only the hosts in it; a host no longer there means all,
   // once the host list is read (before, a kept host is only not listed yet, and Home asks nobody).
   const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
@@ -283,6 +270,26 @@ export function HomePage(
     scoped,
     projectKey ? projectNames.get(projectKey) : undefined,
   );
+  return { scope, projectKey, hosts, away, projects, subtitle };
+}
+
+/**
+ * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
+ * turn), from the hosts' own costs and usage; no command of its own.
+ */
+export function HomePage(
+  props: Readonly<{
+    store: AppStore;
+    /** The parts of the state Home reads: the hosts, whether the list was read, and the budgets. */
+    state: Pick<AppState, "hosts" | "hostsLoaded" | "budgets">;
+    go(route: Route): void;
+    /** How often the numbers are read again, in milliseconds (a minute). */
+    refreshMs?: number;
+  }>,
+) {
+  const { store, state, go } = props;
+  const { t, lang } = store.i18n;
+  const { scope, projectKey, hosts, away, projects, subtitle } = useHomeScope(store, state);
   const online = hosts.filter((host) => host.status === "online");
   const key = online.map((host) => host.id).join(",");
   /** The cache's entry: every host of the set, whether it is online now or not. */

@@ -41,14 +41,13 @@ export function openPullRequests(
       row: { hostId: host.id, hostName: host.name, projectName, card },
     });
   }
-  return found
-    .sort(
-      (a, b) =>
-        a.rank - b.rank ||
-        a.row.hostName.localeCompare(b.row.hostName) ||
-        a.row.card.title.localeCompare(b.row.card.title),
-    )
-    .map((entry) => entry.row);
+  found.sort(
+    (a, b) =>
+      a.rank - b.rank ||
+      a.row.hostName.localeCompare(b.row.hostName) ||
+      a.row.card.title.localeCompare(b.row.card.title),
+  );
+  return found.map((entry) => entry.row);
 }
 
 /**
