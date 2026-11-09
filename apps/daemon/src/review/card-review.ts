@@ -132,7 +132,7 @@ export class CardReviews {
 
   constructor(readonly deps: CardReviewDeps) {
     this.now = deps.now ?? Date.now;
-    // A review left running by a restart is no longer running: its attempt still counts.
+    // A review left running by a restart is no longer running: its attempt (logged) still counts.
     deps.db.query("UPDATE card_reviews SET state = 'error' WHERE state = 'running'").run();
   }
 
@@ -141,6 +141,17 @@ export class CardReviews {
     const card = this.deps.card(cardId);
     if (card.running || this.running.has(cardId))
       throw refused("card_review_running", "the card is busy");
+    // The lock before the first await: a second ask meanwhile is refused, whatever it would read.
+    this.running.add(cardId);
+    try {
+      return await this.locked(card, language);
+    } finally {
+      this.running.delete(cardId);
+    }
+  }
+
+  private async locked(card: ReviewedCard, language: ReviewLanguage): Promise<CardReviewResult> {
+    const cardId = card.id;
     const hold = this.deps.hold(card.projectId);
     if (hold) {
       throw refused("card_review_held", `no review now: ${HOLD_TEXT[hold]}`, { hold });
@@ -159,11 +170,12 @@ export class CardReviews {
     if (stored?.state === "running") {
       throw refused("card_review_running", "a review of this diff is running");
     }
-    // Every attempt counts, also one that failed after it may have spent (an `error` row).
+    // Every attempt in the last 24 hours counts, also one that failed after it may have spent.
+    const at = new Date(this.now()).toISOString();
     const since = new Date(this.now() - 24 * 60 * 60 * 1000).toISOString();
     const today = this.deps.db
       .query<{ n: number }, [string, string]>(
-        "SELECT TOTAL(attempts) AS n FROM card_reviews WHERE card_id = ? AND at > ?",
+        "SELECT count(*) AS n FROM card_review_attempts WHERE card_id = ? AND at > ?",
       )
       .get(cardId, since);
     if ((today?.n ?? 0) >= REVIEWS_PER_DAY) {
@@ -173,13 +185,14 @@ export class CardReviews {
     }
     // The key first: neither a restart nor a crash mid-call allows a second spend on this diff.
     this.deps.db
+      .query("INSERT INTO card_review_attempts (card_id, at) VALUES (?, ?)")
+      .run(cardId, at);
+    this.deps.db
       .query(
         `INSERT INTO card_reviews (card_id, diff_hash, state, at) VALUES (?, ?, 'running', ?)
-         ON CONFLICT (card_id, diff_hash) DO UPDATE SET state = 'running', at = excluded.at,
-           attempts = attempts + 1`,
+         ON CONFLICT (card_id, diff_hash) DO UPDATE SET state = 'running', at = excluded.at`,
       )
-      .run(cardId, hash, new Date(this.now()).toISOString());
-    this.running.add(cardId);
+      .run(cardId, hash, at);
     try {
       return await this.review(card, card.worktreePath, diff, spec, hash, language);
     } catch (error) {
@@ -190,8 +203,6 @@ export class CardReviews {
         )
         .run(cardId, hash);
       throw error;
-    } finally {
-      this.running.delete(cardId);
     }
   }
 
