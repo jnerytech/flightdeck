@@ -95,6 +95,10 @@ export function HostForm(
             {...control}
             value={link}
             placeholder="flightdeck://…"
+            // A typed link shows its token until the field is left: not for autofill, history or the spellchecker.
+            autoComplete="off"
+            spellCheck={false}
+            autoCapitalize="off"
             onChange={(e) => {
               const inputType = (e.nativeEvent as { inputType?: string }).inputType ?? "";
               const edit = readLinkEdit(e.target.value, link, bound, inputType);

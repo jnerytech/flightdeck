@@ -28,13 +28,11 @@ export function maskPairingLink(link: string): string {
 }
 
 /**
- * The link field as it is left (it loses the focus, or the form is submitted): a link or the start of
- * one is masked as a link; anything else is a token typed by hand, all of it secret.
+ * The link field as it is left (it loses the focus, or the form is submitted): a link is masked as a
+ * link; anything else (even "f" or "flight") is a token typed by hand, all of it secret.
  */
 export function maskOnLeave(text: string): string {
-  const start = text.trim().toLowerCase();
-  const link = !start || text.includes("://") || "flightdeck://".startsWith(start);
-  return link ? maskPairingLink(text) : TOKEN_MASK;
+  return !text.trim() || text.includes("://") ? maskPairingLink(text) : TOKEN_MASK;
 }
 
 /** Text pasted into the link field: a bare token (no `://`) is all secret, anything else is masked as a link. */
@@ -110,7 +108,8 @@ export function readLinkEdit(
     value.length - previous.length > 1 ||
     previous.length - value.length > 1;
   const show = (text: string) => (bulk ? maskPasted(text) : text);
-  if (!value) return { shown: value, problem: null, fields: null, bound };
+  // An emptied field is a reset: the token it carried goes (the form drops it with the binding).
+  if (!value) return { shown: value, problem: null, fields: null, bound: null };
   const parsed = parsePairingLink(value);
   if (!parsed.ok) {
     // A link that was read and now has no token loses it, whatever else is wrong with it.
