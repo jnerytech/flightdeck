@@ -35,6 +35,7 @@ export const REFRESH_TOKEN_ID = "flightdeck-google-drive-refresh";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const SCOPE = "https://www.googleapis.com/auth/drive.appdata";
 /** An access token is renewed this long before it expires. */
 const MARGIN_MS = 60_000;
@@ -57,6 +58,7 @@ interface TokenReply {
   access_token?: string;
   expires_in?: number;
   refresh_token?: string;
+  scope?: string;
 }
 
 /**
@@ -70,7 +72,10 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
   const now = deps.now ?? Date.now;
   let access: { token: string; until: number } | null = null;
 
-  async function ask(form: Record<string, string>): Promise<TokenReply | null> {
+  /** The token endpoint's answer: the reply, or the status and the OAuth `error` of a refusal. */
+  async function ask(
+    form: Record<string, string>,
+  ): Promise<{ reply: TokenReply } | { status: number; error: string }> {
     const body = new URLSearchParams({ client_id: config.clientId, ...form });
     if (config.clientSecret) body.set("client_secret", config.clientSecret);
     const response = await deps.fetch(TOKEN_URL, {
@@ -78,8 +83,9 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body,
     });
-    if (!response.ok) return null;
-    return (await response.json()) as TokenReply;
+    if (response.ok) return { reply: (await response.json()) as TokenReply };
+    const error = ((await response.json().catch(() => ({}))) as { error?: string }).error;
+    return { status: response.status, error: error ?? "" };
   }
 
   function keep(reply: TokenReply): boolean {
@@ -91,14 +97,17 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
   async function refreshed(): Promise<string> {
     const stored = await vault.get(REFRESH_TOKEN_ID);
     if (!stored) throw new DriveError("auth");
-    const reply = await ask({ grant_type: "refresh_token", refresh_token: stored });
-    if (!reply || !keep(reply)) {
+    const answer = await ask({ grant_type: "refresh_token", refresh_token: stored });
+    if ("status" in answer) {
+      // Only a refusal of the token itself ends the sign-in; a server error or throttling is a retry.
+      if (answer.error !== "invalid_grant") throw new DriveError("http", answer.status);
       access = null;
       await vault.delete(REFRESH_TOKEN_ID);
-      throw new DriveError("auth", 400);
+      throw new DriveError("auth", answer.status);
     }
-    if (reply.refresh_token && reply.refresh_token !== stored) {
-      await vault.set(REFRESH_TOKEN_ID, reply.refresh_token);
+    if (!keep(answer.reply)) throw new DriveError("http");
+    if (answer.reply.refresh_token && answer.reply.refresh_token !== stored) {
+      await vault.set(REFRESH_TOKEN_ID, answer.reply.refresh_token);
     }
     return access?.token ?? "";
   }
@@ -132,8 +141,17 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
           code_verifier: verifier,
           redirect_uri: redirect,
         });
-        if (!reply?.refresh_token || !keep(reply)) return "refused";
-        await vault.set(REFRESH_TOKEN_ID, reply.refresh_token);
+        if (!("reply" in reply)) return "refused";
+        const granted = reply.reply;
+        // Google lets the person untick a permission: without the app data scope there is no backup.
+        if (
+          !granted.refresh_token ||
+          !granted.scope?.split(" ").includes(SCOPE) ||
+          !keep(granted)
+        ) {
+          return "refused";
+        }
+        await vault.set(REFRESH_TOKEN_ID, granted.refresh_token);
         return "signed-in";
       } finally {
         listener.cancel();
@@ -144,6 +162,17 @@ export function googleSignIn(deps: GoogleDeps): GoogleSignIn {
     },
     async signOut() {
       access = null;
+      const stored = await vault.get(REFRESH_TOKEN_ID);
+      // Best effort: the token is dropped here whether or not Google could be told.
+      if (stored) {
+        await deps
+          .fetch(REVOKE_URL, {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ token: stored }),
+          })
+          .catch(() => null);
+      }
       await vault.delete(REFRESH_TOKEN_ID);
     },
     auth: {
