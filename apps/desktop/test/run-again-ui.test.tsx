@@ -171,7 +171,10 @@ describe("run-again-ui: Run again on a failed run (#1219)", () => {
     const back = await settleMaybe(() => button("Run again") !== null, 3000);
     await click(button("Run again"));
     await settleMaybe(() => sent.length === 4, 3000);
-    const start = ["card.start", { cardId: "c1", workflow: "feature", inputs: { topic: "login" } }];
+    const start: [string, unknown] = [
+      "card.start",
+      { cardId: "c1", workflow: "feature", inputs: { topic: "login" } },
+    ];
     expect([started, back, sent]).toEqual([
       true,
       true,
