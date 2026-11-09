@@ -91,6 +91,7 @@ describe("direcao-visual: barra lateral", () => {
       "Precisa de você",
       "Projetos",
       "Board",
+      "Pull requests",
       "Automação",
       "Workflows",
       "Observabilidade",
