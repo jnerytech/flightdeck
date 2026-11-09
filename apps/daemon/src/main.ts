@@ -214,7 +214,7 @@ import { Traces } from "./watch/trace.ts";
 import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
-import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
@@ -1101,7 +1101,7 @@ export async function startDaemon(
     db: store.db,
     board,
     watcher: prWatcher,
-    checks: shellCheckRunner(),
+    checks: boundedCheckRunner(),
     onUpdate: (cardId) => prWatch.notify(cardId),
   });
   // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.

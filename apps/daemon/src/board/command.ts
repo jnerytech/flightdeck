@@ -105,6 +105,10 @@ export interface LimitedMore {
   signal?: AbortSignal;
   /** Added to the process's environment for this call. */
   env?: Record<string, string>;
+  /** The whole environment instead of the daemon's (#1361: a check gets an allowlist). */
+  baseEnv?: Record<string, string>;
+  /** Past `limit`, kill the program's whole tree, not only the program (#1361). */
+  overflowKillsTree?: boolean;
 }
 
 /**
@@ -164,10 +168,10 @@ export async function runLimited(
   kill: (pid: number) => Promise<void> = killTree,
   more?: LimitedMore,
 ): Promise<CommandResult & { truncated: boolean }> {
-  const { separator = 10, signal, env } = more ?? {};
+  const { separator = 10, signal, env, baseEnv, overflowKillsTree } = more ?? {};
   const proc = Bun.spawn(cmd, {
     cwd,
-    env: { ...process.env, ...env },
+    env: { ...(baseEnv ?? process.env), ...env },
     stdout: "pipe",
     stderr: "pipe",
     stdin: "ignore",
@@ -205,6 +209,8 @@ export async function runLimited(
       size += value.length;
       if (size > limit) {
         truncated = true;
+        // A child it left would hold the pipes open, and stderr would never end.
+        if (overflowKillsTree) killing = kill(proc.pid).catch(() => {});
         await reader.cancel();
         break;
       }
