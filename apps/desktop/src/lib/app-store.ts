@@ -1749,7 +1749,7 @@ export class AppStore {
 
   /** The requests waiting now, and every one this run has seen waiting (`host/request`). */
   private waiting = new Set<string>();
-  private everWaiting = new Set<string>();
+  private readonly everWaiting = new Set<string>();
 
   /** Remembers what waits, so a request that stops waiting is known to have been answered. */
   private rememberWaiting(): void {

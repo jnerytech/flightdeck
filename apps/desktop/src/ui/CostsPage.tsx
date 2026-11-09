@@ -113,6 +113,95 @@ function hostScope(scope: DataScope, hosts: Array<{ id: string }>) {
   return { acrossHosts, hostId, hostIds: hostId ? [hostId] : [] };
 }
 
+/** The scope a route's host asks for (`__all__` is every host), or null when it asks for none. */
+function routeScopeOf(routeHost: string | null): DataScope | null {
+  if (routeHost === ALL_HOSTS) return ALL_SCOPE;
+  return routeHost === null ? null : { kind: "host", hostId: routeHost };
+}
+
+/** The scoped host when it has no numbers to show: offline, or not reporting costs. */
+function awayHost<H extends { id: string; status: string }>(
+  hostSide: DataScope,
+  known: H[],
+  reporting: Array<{ id: string }>,
+): H | null {
+  const scoped = hostSide.kind === "host" ? known.find((h) => h.id === hostSide.hostId) : null;
+  if (!scoped || reporting.some((h) => h.id === scoped.id)) return null;
+  return scoped.status === "connecting" ? null : scoped;
+}
+
+/**
+ * What the screen asks for: the hosts, the period, the filters, the client and how the client's
+ * projects are placed (a change to the clients asks again). Gives the period's summary, the same
+ * period without filters (the filters offer its projects and models), which host each session came
+ * from and the hosts that failed. An answer that arrives after the question changed is dropped.
+ */
+function useCostsLoad(
+  store: AppStore,
+  ask: {
+    hostIds: string[];
+    filter: CostsFilter;
+    days: { from: string; to: string };
+    unfiltered: boolean;
+    selection: string;
+    placed: string;
+  },
+) {
+  const { hostIds, filter, days, unfiltered, selection, placed } = ask;
+  const [summary, setSummary] = useState<CostsSummary | null>(null);
+  /** The period without filters: the filters offer every project and model of it. */
+  const [all, setAll] = useState<CostsSummary | null>(null);
+  const [sessionHost, setSessionHost] = useState<Record<string, string>>({});
+  const [failed, setFailed] = useState<string[]>([]);
+  const key = JSON.stringify([hostIds, filter, selection, placed]);
+  useEffect(() => {
+    const [ids, asked] = JSON.parse(key) as [string[], CostsFilter];
+    if (ids.length === 0) {
+      // No host to read (the scoped one is away): no numbers, not the last host's.
+      setSummary(null);
+      setAll(null);
+      return;
+    }
+    let live = true;
+    void askCosts(store, ids, asked, selection).then((loaded) => {
+      if (!live) return;
+      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
+      setSummary(loaded.summary);
+      if (Object.keys(asked).length === 2) setAll(loaded.summary);
+      setSessionHost(loaded.sessionHost);
+      setFailed(loaded.failed);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, key, selection]);
+  const daysKey = JSON.stringify([unfiltered ? [] : hostIds, days, selection, placed]);
+  useEffect(() => {
+    const [ids, asked] = JSON.parse(daysKey) as [string[], CostsFilter];
+    if (ids.length === 0) return;
+    let live = true;
+    void askCosts(store, ids, asked, selection).then((loaded) => {
+      if (!live) return;
+      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
+      setAll(loaded.summary);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, daysKey, selection]);
+  return { summary, all, sessionHost, failed };
+}
+
+/** The cost status of the one host in view (price divergences and models without a price). */
+function useCostsStatus(store: AppStore, hostId: string, acrossHosts: boolean) {
+  const [status, setStatus] = useState<CostsStatus | null>(null);
+  useEffect(() => {
+    if (hostId && !acrossHosts) void store.hostCommand(hostId, "costs.status", {}).then(setStatus);
+    else setStatus(null);
+  }, [store, hostId, acrossHosts]);
+  return status;
+}
+
 /**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
  * transcripts, in API prices: totals, a daily chart stacked by project, breakdowns, the most
@@ -142,9 +231,7 @@ export const CostsPage = memo(function CostsPage(props: {
   const [routeHost, setRouteHost] = useState<string | null>(props.host ?? null);
   const [routeProject, setRouteProject] = useState<string | null>(props.projectKey ?? null);
   // Home opens Costs with `__all__` when several hosts have costs: every host, for this visit.
-  let routeScope: DataScope | null = null;
-  if (routeHost === ALL_HOSTS) routeScope = ALL_SCOPE;
-  else if (routeHost !== null) routeScope = { kind: "host", hostId: routeHost };
+  const routeScope = routeScopeOf(routeHost);
   const kept = activeScope(keptScope, state.hosts, state.hostsLoaded);
   /** The project whose costs these are, if one: the route's, else the kept scope's. */
   const projectKey =
@@ -153,13 +240,7 @@ export const CostsPage = memo(function CostsPage(props: {
   const hostSide = routeScope ?? (kept.kind === "project" ? ALL_SCOPE : kept);
   const dataScope: DataScope = projectKey ? { kind: "project", projectKey } : hostSide;
   const { acrossHosts, hostId, hostIds } = hostScope(hostSide, hosts);
-  /** The scoped host when it has no numbers to show: offline, or not reporting costs. */
-  const scopedHost =
-    hostSide.kind === "host" ? state.hosts.find((h) => h.id === hostSide.hostId) : null;
-  const away =
-    scopedHost && !hosts.some((h) => h.id === scopedHost.id) && scopedHost.status !== "connecting"
-      ? scopedHost
-      : null;
+  const away = awayHost(hostSide, state.hosts, hosts);
   const endVisit = () => {
     setRouteHost(null);
     setRouteProject(null);
@@ -202,61 +283,21 @@ export const CostsPage = memo(function CostsPage(props: {
     setFilters({});
     if (alertClient) store.setClientSelection(alertClient);
   }, [store, alertHost, alertProject, alertClient]);
-  const [summary, setSummary] = useState<CostsSummary | null>(null);
-  /** The period without filters: the filters offer every project and model of it. */
-  const [all, setAll] = useState<CostsSummary | null>(null);
-  const [status, setStatus] = useState<CostsStatus | null>(null);
   const days = period === "range" ? range : periodRange(period, today);
   const filter: CostsFilter = { ...days, ...filters, ...(projectKey ? { projectKey } : {}) };
   const selection = state.clientSelection;
-  const [sessionHost, setSessionHost] = useState<Record<string, string>>({});
-  const [failed, setFailed] = useState<string[]>([]);
-  // What the screen asks for: the hosts, the period, the filters, the client and how the client's
-  // projects are placed (a change to the clients asks again).
-  const placed = JSON.stringify([state.clientList, state.clientOverrides]);
-  const key = JSON.stringify([hostIds, filter, selection, placed]);
-  useEffect(() => {
-    const [ids, asked] = JSON.parse(key) as [string[], CostsFilter];
-    if (ids.length === 0) {
-      // No host to read (the scoped one is away): no numbers, not the last host's.
-      setSummary(null);
-      setAll(null);
-      return;
-    }
-    let live = true;
-    void askCosts(store, ids, asked, selection).then((loaded) => {
-      if (!live) return;
-      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
-      setSummary(loaded.summary);
-      if (Object.keys(asked).length === 2) setAll(loaded.summary);
-      setSessionHost(loaded.sessionHost);
-      setFailed(loaded.failed);
-    });
-    return () => {
-      live = false;
-    };
-  }, [store, key, selection]);
   // The filters offer every project and model of the period: with no filter set, that is the
   // summary itself, and it is not asked for twice.
   const unfiltered = Object.keys(filters).length === 0 && !projectKey;
-  const daysKey = JSON.stringify([unfiltered ? [] : hostIds, days, selection, placed]);
-  useEffect(() => {
-    const [ids, asked] = JSON.parse(daysKey) as [string[], CostsFilter];
-    if (ids.length === 0) return;
-    let live = true;
-    void askCosts(store, ids, asked, selection).then((loaded) => {
-      if (!live) return;
-      store.projectKeys.note(loaded.summary?.byProject.map((p) => p.projectKey) ?? []);
-      setAll(loaded.summary);
-    });
-    return () => {
-      live = false;
-    };
-  }, [store, daysKey, selection]);
-  useEffect(() => {
-    if (hostId && !acrossHosts) void store.hostCommand(hostId, "costs.status", {}).then(setStatus);
-    else setStatus(null);
-  }, [store, hostId, acrossHosts]);
+  const { summary, all, sessionHost, failed } = useCostsLoad(store, {
+    hostIds,
+    filter,
+    days,
+    unfiltered,
+    selection,
+    placed: JSON.stringify([state.clientList, state.clientOverrides]),
+  });
+  const status = useCostsStatus(store, hostId, acrossHosts);
   const setFilter = (name: keyof typeof filters, value: string) => {
     const { [name]: _old, ...rest } = filters;
     setFilters(value ? { ...rest, [name]: value } : rest);

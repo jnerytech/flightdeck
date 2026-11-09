@@ -26,7 +26,7 @@ export interface LabelInput {
 export function sessionLabel(input: LabelInput, t?: T): string | null {
   const { names } = input;
   if (input.metaName) return input.metaName;
-  if (names && names.standard === false) return names.display;
+  if (names?.standard === false) return names.display;
   // Without the dictionaries (a caller with no language), a team session keeps its plain name.
   if (names?.team && t) return teamLabel(names, names.team, input.personas, t);
   if (input.createdName) return input.createdName;
