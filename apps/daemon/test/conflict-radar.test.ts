@@ -80,6 +80,24 @@ describe("conflict-radar: who edits the same files", () => {
     edit("a", ["src/a.ts", "src/more.ts"], [], "a-2");
     await radar.update(card("a"));
     expect(committed()).toBe(2);
+    // The HEAD moved with the same files (an amend): the commits are read once more, and the new HEAD
+    // is the one kept, so the next update with it asks for nothing.
+    edit("a", ["src/a.ts", "src/more.ts"], [], "a-3");
+    await radar.update(card("a"));
+    expect(committed()).toBe(3);
+    await radar.update(card("a"));
+    expect(committed()).toBe(3);
+  });
+
+  test("a card that joins the group of its peer is no longer flagged with it, with the same files", async () => {
+    const { radar, edit } = setup();
+    edit("a", ["src/shared.ts"]);
+    edit("b", ["src/shared.ts"]);
+    await radar.update(card("a", { group: "arena" }));
+    await radar.update(card("b"));
+    expect(radar.overlaps("a")).toEqual([{ cardId: "b", files: ["src/shared.ts"] }]);
+    expect((await radar.update(card("b", { group: "arena" }))).sort()).toEqual(["a", "b"]);
+    expect([radar.overlaps("a"), radar.overlaps("b")]).toEqual([[], []]);
   });
 
   test("cards of another project, or of the same group, are never flagged together", async () => {
@@ -179,6 +197,18 @@ describe("conflict-radar: the git it runs", () => {
       "core.quotePath=false",
     ]);
     expect([diff.code, files.code]).toEqual([0, 1]);
+  });
+
+  test("a read that timed out is a failure too", async () => {
+    const run = async () => ({
+      code: 0,
+      stdout: "x",
+      stderr: "",
+      truncated: false,
+      timedOut: true,
+    });
+    const git = radarGit(1024, 5000, run);
+    expect((await git("/wt", "diff", "--name-only", "-z")).code).toBe(1);
   });
 });
 

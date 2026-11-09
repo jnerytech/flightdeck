@@ -1079,7 +1079,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   checks, se **Vigiar e consertar** está desligado, vigiando ou precisa de você, e um link para o
   PR. **Fazer merge do PR** pergunta antes, com a mesma confirmação da página do card, e só aparece
   quando o host faz merge e os checks não estão falhando; **Atualizar com a base** faz o rebase da
-  branch do card, e um conflito fica na tela com os arquivos. O título abre o card. Uma linha sob o título diz se o PR
+  branch do card, e um conflito fica na tela com os arquivos. Com dois ou mais PRs que podem ser
+  atualizados (com branch, e sem estar rodando), **Atualizar N com a base** acima da lista atualiza
+  todos, um de cada vez, cada um no seu host, como a barra de seleção do board: um PR que já está na
+  base fica como está, um conflito para só aquele card, e uma linha nomeia os atualizados, os já em
+  dia e os com conflito. O título abre o card. Uma linha sob o título diz se o PR
   conflita com a base, a revisão (aprovado, mudanças pedidas, revisão pendente) e há quanto tempo está
   aberto, como a checagem de PRs do host informa (a cada cerca de um minuto); um host que não informa,
   ou que ainda não checou, não acrescenta nada.
@@ -1130,7 +1134,7 @@ aparece mascarado e como **Oculto**, e não abre.
   **Descartar…** e **Limpar seleção**. `S` com uma seleção é **Iniciar N**. Iniciar pergunta antes:
   quantos iniciam agora e quantos esperam na fila do host, a janela de 5 horas do host numa assinatura,
   uma linha para cada trava que segura os cards novos (o limite de pausa da cota, um orçamento no limite,
-  o host sem memória), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
+  o host sem memória, o host com novas execuções pausadas), com todos os cards na fila enquanto uma delas segura, e os cards que ficam de fora e por quê. Quando alguns cards esperariam (o host
   está cheio, pausado ou travado) e outro host online tem o mesmo projeto (o mesmo repositório) com
   vagas para todos eles, a confirmação também oferece **Iniciar em <host>**: ela cria cada um desses
   cards nesse host e o inicia lá, depois marca o card daqui "Iniciado em <host> como <card>" e o move
@@ -1140,8 +1144,14 @@ aparece mascarado e como **Oculto**, e não abre.
   Parar também pergunta: o turno de um card rodando é
   interrompido e ele espera em **Esperando você**, um card na fila volta para o **Backlog**, e worktrees,
   branches e commits ficam. Os cards vão um de cada vez; os que foram saem da seleção, e a barra nomeia
-  os que o host recusou. Numa janela estreita a barra diz quantos selecionados estão em colunas que
-  não aparecem, e **Mover para…** e **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
+  os que o host recusou. **Atualizar N com a base** aparece quando um card selecionado tem branch e
+  não está rodando: depois que a branch base anda, ele faz o rebase desses cards sobre ela, um de cada
+  vez, com "Atualizando 2 de 5…" na barra. Um card que já está na base fica como está, e um conflito
+  para só aquele card: o host aborta o rebase, então o worktree dele fica como estava. O resumo então
+  nomeia os cards atualizados, os já em dia e os com conflito, e os que o host recusou, com o motivo;
+  os com conflito e os recusados continuam selecionados. Numa janela estreita a barra diz quantos
+  selecionados estão em colunas que não aparecem, e **Mover para…**, **Atualizar N com a base** e
+  **Descartar…** ficam sob ⋯. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
 - **O que uma coluna pede de um card** (#78). **Em revisão** pede um link de PR e verificações
   passando; **Em andamento** pede critérios de aceite, um item de checklist (`- [ ] …`) na
@@ -1512,6 +1522,19 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     ou outro;
   - um comentário segue o trecho citado quando o arquivo muda, e mostra **Desatualizado** quando o
     trecho some. Os enviados continuam na lista como histórico.
+- **Segunda opinião** (num card, quando o host oferece): **Pedir uma segunda opinião** pede a uma
+  segunda chamada do Claude que leia o diff do card e deixe os achados como rascunhos do revisor.
+  Nada começa sozinho: você pede, o botão fica desligado enquanto uma execução roda ou quando não
+  há mudanças, e o host recusa (e diz por quê) enquanto está em pausa, no limite de pausa da cota
+  do plano, sem memória ou no orçamento do card, e depois de 3 revisões do card em um dia. O mesmo
+  diff é revisado uma vez: pedir de novo mostra essa revisão. A chamada não tem ferramentas e vê só
+  o texto do card e o diff, com os segredos mascarados; o diff vai para a Anthropic, como a sessão
+  do próprio card já o envia. Cada achado que cai numa linha alterada vira um rascunho marcado
+  **Revisor**, com a gravidade (Bloqueante, Alto, Médio ou Baixo): edite (aí ele passa a ser seu),
+  **Dispensar**, ou deixe, e **Enviar revisão** o manda ao card junto com os seus comentários, como
+  uma sugestão a conferir. Os achados fora de uma linha alterada ficam listados sob o botão, como
+  texto. **Abrir PR** diz quantos achados do revisor continuam abertos quando um é bloqueante ou
+  alto, e abre o PR do mesmo jeito.
 - **Reverter e editar:**
   - **Reverter** pede confirmação, volta ao `HEAD` (ou à base do card; um arquivo novo é removido),
     guarda uma cópia em `<dataDir>/review-trash/` por 7 dias e oferece **Desfazer** por 30 s;
@@ -2355,6 +2378,19 @@ der, um backup devido espera, e a seção avisa. Um backup que não pôde ser sa
 a data do último bom continua. O sino também avisa, uma vez por abertura, quando um backup não pode
 sair: falta a frase-senha, não há pasta escolhida ou um backup falhou. Um clique no aviso abre
 **Configurações**, seção **Backup** (#1327).
+
+Quando o build traz um cliente do Google, **Onde salvar** também oferece **Google Drive**. Ele guarda
+os backups na pasta oculta do próprio Flightdeck no seu Drive, que só este app enxerga, e cada
+arquivo continua criptografado com a sua frase-senha. **Entrar com o Google** abre a página do Google
+no navegador e o app espera a resposta só neste computador. O Flightdeck guarda o token no cofre,
+nunca num arquivo nem num log; **Sair** o remove. Se o Google deixar de aceitar a entrada, a seção e
+o sino avisam e nenhum backup é feito até você entrar de novo. Sem um cliente no build, a escolha não
+aparece (#1444).
+
+Para restaurar do Drive, **Backup de tudo** > **Restaurar um backup** oferece **Restaurar de**:
+**Um arquivo** ou **Google Drive** (só com o mesmo cliente do Google, e depois de entrar). **Procurar no
+Google Drive** lista os backups de lá, do mais novo ao mais antigo. Escolha um, digite a frase-senha e
+**Ler backup**: você vê a mesma prévia de um arquivo, e nada muda até você confirmar (#1462).
 
 ## Ações: o Claude usa um segredo sem vê-lo
 

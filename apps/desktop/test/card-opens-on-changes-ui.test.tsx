@@ -152,6 +152,21 @@ describe("card-opens-on-changes-ui: a finished run opens on its changes (#1197)"
   });
 });
 
+describe("card-opens-on-changes-ui: the conflict radar's section is part of the card's page (#1405)", () => {
+  test("Details lists the cards that change the same files, and a card with no overlap has no section", async () => {
+    await open({
+      mayConflict: [{ cardId: "c2", title: "Fix login", files: ["src/login.ts"] }],
+    });
+    const section = () => screen.queryByRole("region", { name: "May conflict with other cards" });
+    await settle(() => section() !== null);
+    expect((section()?.textContent ?? "").includes("Fix login")).toBe(true);
+    cleanup();
+    await open({});
+    await settle(() => pressed("Conversation") !== null);
+    expect(section()).toBeNull();
+  });
+});
+
 describe("card-opens-on-changes-ui: a gate waiting is the card's one primary (#1269)", () => {
   const names = () =>
     Array.from(document.querySelectorAll('[data-slot="card-run"] button')).map(

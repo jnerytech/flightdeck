@@ -12,6 +12,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AssistantBlock, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
+import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { quotaReadings } from "../quota/quota.ts";
@@ -107,11 +108,7 @@ function completeResult(
     cacheWrite1h: 0,
   };
   if (message.subtype === "error_max_turns" || message.subtype === "error_max_budget_usd") {
-    throw new FlightdeckError(
-      "invalid_state",
-      `cut short: ${message.subtype}`,
-      "assistant_truncated",
-    );
+    throw new CompleteCutShort(message.subtype, tokens);
   }
   if (message.subtype !== "success") throw hostUnavailable(message.subtype);
   // A logged-out claude answers "success" with is_error and the reason as its result.
@@ -135,6 +132,16 @@ async function readAnswer(
     }
   }
   return null;
+}
+
+/** Issue #1439: a one-shot call cut short (turns or budget), with what it used, so the cost counts. */
+export class CompleteCutShort extends FlightdeckError {
+  constructor(
+    subtype: string,
+    readonly tokens: UsageTokens,
+  ) {
+    super("invalid_state", `cut short: ${subtype}`, "assistant_truncated");
+  }
 }
 
 /** What a failed one-shot stands for: our own refusals pass, a cancel is a cancel, the rest is the host. */
@@ -427,7 +434,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       tools: [],
       systemPrompt: opts.system,
       strictMcpConfig: true,
-      maxBudgetUsd: COMPLETE_BUDGET_USD,
+      maxBudgetUsd: opts.budgetUsd ?? COMPLETE_BUDGET_USD,
+      ...(opts.schema ? { outputFormat: { type: "json_schema", schema: opts.schema } } : {}),
       ...(opts.effort ? { effort: opts.effort } : {}),
       thinking: off ? { type: "disabled" } : { type: "adaptive" },
       env: {

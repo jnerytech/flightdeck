@@ -58,6 +58,8 @@ export const JOURNEYS: readonly string[] = [
   "merge-pr-recusa",
   "pull-requests",
   "enquanto-fora",
+  // #1406: Update from the base on three cards, one of them in conflict.
+  "board-atualizar",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
@@ -118,6 +120,12 @@ export const DEMO_GATE_CARD = "Revisar o fluxo de login";
 /** The In review card whose PR the demo keeps open, and that PR (issue #1244). */
 export const DEMO_PR_CARD = "Revisar mensagens de erro";
 export const DEMO_PR_URL = "https://github.com/acme/flightdeck-web/pull/42";
+
+/**
+ * #1406: the billing cards whose branches lag behind main, for Update N from the base; the last one
+ * changes the line main changed too, so its update conflicts.
+ */
+export const DEMO_UPDATE_CARDS = ["Cobrança por PIX", "Recibo em PDF", "Juros por atraso"] as const;
 
 /** When the demo's app was last active, for the "While you were away" summary: long before the seed (#1344). */
 export const DEMO_AWAY_SINCE = "2020-01-01T00:00:00.000Z";

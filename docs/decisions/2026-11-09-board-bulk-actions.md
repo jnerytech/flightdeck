@@ -185,6 +185,33 @@ languages, re-measured at 1024, 640 and 390 by the narrow guard:
   (`board.startMemoryHold`) came in #1400 (#1393). #1414 reads the memory hold when the confirm opens,
   makes the queue line agree with any hold, and prints both lines.
 
+## Update from the base for many cards (#1406)
+
+- **What:** **Update N from the base** in the selection bar takes the selected cards that have a
+  branch and a worktree and are neither running nor queued. It runs `card.updateFromBase`, one card
+  at a time, as the single-card button does.
+- **Already current:** `card.updateFromBase` answers with the card, so its reply cannot tell
+  "updated" from "nothing to do". Each card is read first with `changes.get` (`card:<id>`): a
+  `position.behind` of 0 means already current, and that card is not rebased. A card whose count is
+  unknown is tried. This keeps the change in the desktop, at one extra request per card.
+- **A conflict:** the host aborts the rebase (`rebase_conflict`), so the card's worktree is as it
+  was. The run goes on to the next card.
+- **Afterwards:** the board's notice names the updated, already current and conflicted cards, and
+  the refused ones with their reason. The updated and current cards leave the selection; the others
+  stay, to be opened. The focus goes back to the button, or to the board when the bar is gone.
+- **Progress:** "Updating 2 of 5…" is shown on the bar, not announced; the summary is announced.
+- **Pull requests page (#1345):** one **Update N from the base** above the list, for every listed PR
+  that can take it, each on its own host, with the same runner and summary. It shows from two such
+  PRs on: a single one has its row's button. It has no row selection: it takes every listed PR
+  that can be updated, and a person who wants only some uses each row's own button. Row checkboxes,
+  if they are ever needed, are a feature of their own.
+- **Checked by:** the `board-atualizar` journey and print, on the demo's billing project. Its three
+  cards (`DEMO_UPDATE_CARDS`) each have a branch one commit behind main, and the last one changes the
+  README line that main changed too (`scripts/lib/demo-lagging.ts`, tested with the host's own
+  rebase). The journey selects them by keyboard, runs Update 3 from the base, and waits for the
+  summary to name the conflicted card and its file, with the other two updated (or already current on
+  the second language's run).
+
 ## Out of scope
 
 - Selecting every card in a column (Ctrl+A).

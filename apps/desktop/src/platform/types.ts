@@ -216,6 +216,22 @@ export interface Platform {
     list(): Promise<string[]>;
     remove(name: string): Promise<void>;
   };
+  /**
+   * Issue #1444, #1462: a one-shot listener on 127.0.0.1 for a sign-in redirect (OAuth for a desktop
+   * app), for the sign-in whose `state` is given. The shell binds loopback only, takes a request only
+   * with the `Host` header `127.0.0.1:<port>`, takes one `GET /`, keeps waiting past a request whose
+   * `state` is not this one (so a stray local request cannot cancel the sign-in), answers the good one
+   * with a short "you can close this" page and closes. `wait` gives the `code` and the `state`; null
+   * when the person refused, it timed out or `cancel` was called. Absent in a browser, which has no
+   * loopback to offer: Google Drive backups are then not offered.
+   */
+  oauthLoopback?: {
+    listen(state: string): Promise<{
+      port: number;
+      wait(): Promise<{ code: string; state: string } | null>;
+      cancel(): void;
+    }>;
+  };
   /** Saves `text` through the system's save dialog; `false` when the user cancels. */
   saveFile(name: string, text: string): Promise<boolean>;
   /** The system's language (`navigator.language`), for the app's first language (phase 10). */

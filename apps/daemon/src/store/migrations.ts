@@ -1021,4 +1021,25 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE card_check_rounds_v2 RENAME TO card_check_rounds;
   CREATE INDEX card_check_rounds_card ON card_check_rounds (card_id, id);
   `,
+  // Issue #1439: a second opinion's findings among the review drafts, and the card's reviews.
+  `
+  ALTER TABLE review_comments ADD COLUMN author TEXT;
+  ALTER TABLE review_comments ADD COLUMN severity TEXT;
+  CREATE TABLE card_reviews (
+    card_id   TEXT NOT NULL,
+    diff_hash TEXT NOT NULL,
+    state     TEXT NOT NULL,
+    at        TEXT NOT NULL,
+    summary   TEXT,
+    loose     TEXT,
+    anchored  INTEGER NOT NULL DEFAULT 0,
+    moved     INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (card_id, diff_hash)
+  );
+  CREATE TABLE card_review_attempts (
+    card_id TEXT NOT NULL,
+    at      TEXT NOT NULL
+  );
+  CREATE INDEX card_review_attempts_card ON card_review_attempts (card_id, at);
+  `,
 ];

@@ -79,7 +79,15 @@ import {
   positionsBefore,
   projectCards,
 } from "../lib/board.ts";
-import { bulkSplit, holdLines, queueLine, queueSplit, runMany } from "../lib/board-bulk.ts";
+import {
+  bulkSplit,
+  holdLines,
+  queueLine,
+  queueSplit,
+  runMany,
+  updateMany,
+  updateSummary,
+} from "../lib/board-bulk.ts";
 import { cardKey } from "../lib/board-card-keys.ts";
 import {
   askAbout,
@@ -735,6 +743,53 @@ export const BoardView = memo(function BoardView(props: {
       );
     });
   };
+  /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
+  const [updated, setUpdated] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a finished run is the only trigger
+  useEffect(() => {
+    if (updated > 0) restoreOpener();
+  }, [updated]);
+  /** #1406: the run of Update from the base, card by card: how far it got. */
+  const [updating, setUpdating] = useState<{ done: number; total: number } | null>(null);
+  /**
+   * #1406: updates the selection's idle cards with a branch from their base, one at a time. A card
+   * already on its base is not rebased; a conflicted or refused one stays selected, named.
+   */
+  const updateSelected = async () => {
+    if (busy || split.update.length === 0) return;
+    const cards = split.update;
+    rememberOpener();
+    setBusy(true);
+    setNotice(null);
+    setUpdating({ done: 0, total: cards.length });
+    const results = await updateMany(cards, {
+      behind: async (card) => {
+        const answer = await store.hostRequest(hostId, "changes.get", {
+          target: `card:${card.id}`,
+        });
+        return answer.ok ? (answer.data.position?.behind ?? null) : null;
+      },
+      update: async (card) => {
+        const answer = await store.hostRequest(hostId, "card.updateFromBase", {
+          cardId: card.id,
+        });
+        return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+      },
+      onProgress: (done, total) => setUpdating({ done, total }),
+    });
+    const went = new Set(
+      results
+        .filter((r) => r.outcome === "updated" || r.outcome === "current")
+        .map((r) => r.card.id),
+    );
+    setPicked((before) => before.filter((id) => !went.has(id)));
+    setNotice(updateSummary(t, results));
+    setUpdating(null);
+    setBusy(false);
+    // The button was disabled while it ran, and a browser takes the focus off a disabled button:
+    // it goes back once the render has turned the button on again.
+    setUpdated((n) => n + 1);
+  };
   const askStop = () => {
     if (busy || split.stop.length === 0) return;
     rememberOpener();
@@ -819,10 +874,12 @@ export const BoardView = memo(function BoardView(props: {
       memoryOver,
     }),
   );
-  /** #1422: the startable cards that would wait here, and the hosts they could start on. */
+  /** #1481: a paused host is a hold like the others: the confirm names it and the cards join the queue. */
   const hostPaused = state.hosts.find((h) => h.id === hostId)?.hostInfo?.pause?.paused === true;
+  if (hostPaused) holds.push(t("board.startPausedHold", { host: hostName }));
+  /** #1422: the startable cards that would wait here, and the hosts they could start on. */
   const waiting = waitingCards(startable, {
-    held: hostPaused || holds.length > 0,
+    held: holds.length > 0,
     max: queueMax ?? null,
     running: runningOnHost,
   });
@@ -852,7 +909,13 @@ export const BoardView = memo(function BoardView(props: {
       lines.push(queueLine(t, split, queueMax));
     }
     lines.push(...quotaLines, ...holds);
-    if (otherHosts.length > 0) lines.push(t("board.startOnHint", { n: waiting.length }));
+    if (otherHosts.length > 0) {
+      lines.push(
+        waiting.length === 1
+          ? t("board.startOnHintOne")
+          : t("board.startOnHint", { n: waiting.length }),
+      );
+    }
     const lacking = startable.filter((card) => startNeeds(card, contracts).length > 0).length;
     if (lacking > 0) {
       lines.push(lacking === 1 ? t("board.noCriteriaOne") : t("board.noCriteria", { n: lacking }));
@@ -1101,6 +1164,9 @@ export const BoardView = memo(function BoardView(props: {
                   stopCount={split.stop.length}
                   onStart={askStart}
                   onStop={askStop}
+                  updateCount={split.update.length}
+                  onUpdate={() => void updateSelected()}
+                  updating={updating}
                   otherColumns={
                     switcher ? actingCards.filter((card) => card.column !== showing).length : 0
                   }

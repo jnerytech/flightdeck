@@ -29,5 +29,5 @@ Feature: Keep going until the checks pass
     When I turn on keep going until the checks pass on a new card of that project and start it
     And I send the card a message of my own while its checks run
     Then the card says the loop stepped aside
-    And the session answered that message
+    And the check the message interrupted is gone
     And the session was sent "0" rounds of the loop

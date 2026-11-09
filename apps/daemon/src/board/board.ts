@@ -1664,6 +1664,11 @@ export class Board {
     await Promise.all(rows.map((row) => keys.resolve?.(row.path)));
   }
 
+  /** Issue #1439: whether the project's budget holds new work now, for the card review's gate. */
+  budgetHeld(projectId: string): boolean {
+    return this.budgetBlocked(projectId);
+  }
+
   /** A `queue` budget of the host or of the card's project is at 100%. */
   private budgetBlocked(projectId: string): boolean {
     if (!this.opts.budgets) return false;

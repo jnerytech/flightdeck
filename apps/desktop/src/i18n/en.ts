@@ -787,6 +787,13 @@ export const en: Dictionary = {
     saved:
       "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
     importTitle: "Restore a backup",
+    sourceLegend: "Restore from",
+    source: { file: "A file", drive: "Google Drive" },
+    driveLook: "Look in Google Drive",
+    driveNone: "No backups on Google Drive yet.",
+    driveChoiceLegend: "Backups on Google Drive",
+    driveNeedsSignIn: "Sign in to Google under Scheduled backups first.",
+    driveReadNeeds: "Choose a backup and type its passphrase.",
     filePassphrase: "File passphrase",
     read: "Read backup",
     needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",
@@ -816,6 +823,9 @@ export const en: Dictionary = {
       unreadable:
         "The file could not be read. Check the passphrase; a changed file is refused too.",
       failed: "The restore failed and nothing was changed.",
+      "drive-auth":
+        "Google Drive does not accept the sign-in. Sign in again under Scheduled backups.",
+      "drive-failed": "Google Drive could not be read. Try again.",
       unexpected: "Something went wrong. Nothing was changed.",
       "too-big":
         "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",
@@ -830,6 +840,15 @@ export const en: Dictionary = {
     folder: "Folder",
     noFolder: "No folder chosen",
     chooseFolder: "Choose folder",
+    targetLegend: "Where to save",
+    target: { folder: "A folder", drive: "Google Drive" },
+    driveHelp:
+      "Backups go to Flightdeck's own hidden folder in your Google Drive. Only this app can see it, and each file stays encrypted with your passphrase.",
+    driveSignedIn: "Signed in to Google",
+    driveSignedOut: "Not signed in to Google",
+    driveSignIn: "Sign in with Google",
+    driveSignOut: "Sign out",
+    driveRefused: "Google did not accept the sign-in. Try again.",
     keep: "Files to keep",
     keepInvalid: "Type a whole number from 1. The saved number ({count}) stays.",
     passphrase: "Passphrase for this session",
@@ -854,12 +873,17 @@ export const en: Dictionary = {
         title: "A scheduled backup failed",
         body: "Check that the folder still exists and has room, in Settings, section Backup.",
       },
+      "drive-auth": {
+        title: "Scheduled backups to Google Drive need you to sign in",
+        body: "Sign in again in Settings, section Backup. Until then no backup is made.",
+      },
     },
     skipped: {
       "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
       "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
       failed:
         "The last backup could not be saved. Check that the folder still exists and has room.",
+      "drive-auth": "A backup is due, but Google Drive is not signed in. Sign in again.",
     },
   },
   approval: {
@@ -948,10 +972,13 @@ export const en: Dictionary = {
     startBudgetHold:
       "{host} reached a budget that holds new cards: they wait until its period resets.",
     startMemoryHold: "{host} is short of memory: new cards wait until it frees up.",
+    startPausedHold: "{host} has new runs paused: new cards wait until you resume it.",
     startedElsewhere: "Started on {host} as {id}.",
     startOn: "Start on {host}",
     startOnHint:
-      "{n} of them would wait here. Another host with the same project has the places for them:",
+      "{n} of them would wait here. Another host with the same project has places for them.",
+    startOnHintOne:
+      "This card would wait here. Another host with the same project has a place for it.",
     elsewhereOrphaned: "A copy is left on {host}: {names}",
     elsewhereDoneOne: "1 card started on {host}.",
     elsewhereDone: "{count} cards started on {host}.",
@@ -974,6 +1001,14 @@ export const en: Dictionary = {
     deselectCard: "Deselect card",
     /** #1354: the check on each card while a selection exists. */
     selectCardNamed: "Select {title}",
+    /** #1406: Update from the base for the selection, and its summary. */
+    updateSelected: "Update {n} from the base",
+    updateNoBranch: "the card has no branch yet",
+    updating: "Updating {done} of {total}…",
+    updatedNames: "Updated: {names}.",
+    currentNames: "Already current: {names}.",
+    conflictedNames: "Conflict, left as it was: {names}.",
+    notUpdatedNames: "Not updated: {names}.",
     stayedOne: "1 card stayed where it was: {names}",
     stayed: "{count} cards stayed where they were: {names}",
     /** What a column asks of a card before it gets there (issue #78). */
@@ -1691,6 +1726,7 @@ export const en: Dictionary = {
     quotaPause: "the quota guard for new cards",
     memoryPause: "the memory hold for new cards",
     hostPause: "the pause of new runs",
+    cardReview: "the second-opinion review of a card",
     quotaBudgets: "budgets as a share of the plan quota",
     autoUpdate: "automatic host updates",
   },
@@ -2165,6 +2201,11 @@ export const en: Dictionary = {
     card_workflow_running: "The card has a workflow run in progress.",
     rule_remove_confirm: "Confirm removing the rule.",
     card_no_worktree: "The card has no worktree yet.",
+    card_review_running: "The card is busy, or its review is already running.",
+    card_review_held:
+      "No review now: the host is paused, at its quota guard, short of memory, or the project is at its budget.",
+    card_review_no_diff: "The card has no changes to review.",
+    card_review_limit: "This card has had {max} reviews in the last 24 hours, the most a day.",
     pr_secret:
       "The description looks like it has a secret ({found}): take it out before opening the PR.",
     pr_title_secret:
@@ -2920,6 +2961,31 @@ export const en: Dictionary = {
     sessionFilesNone:
       "None yet. Changes made by commands (Bash) or outside the session are not listed here.",
     bashNote: "Changes made through Bash do not count.",
+  },
+  secondOpinion: {
+    title: "Second opinion",
+    intro:
+      "A second Claude call reads the diff and leaves its findings as reviewer drafts. The diff, with secrets masked, goes to Anthropic, as the card's own session sends it.",
+    ask: "Get a second opinion",
+    running: "A run is going: wait for it to end.",
+    noChanges: "The card has no changes to review.",
+    reading: "Reading the diff… this can take a minute.",
+    draftsOne:
+      "1 finding is a draft below: Send review sends it to the card with your own comments.",
+    drafts:
+      "{n} findings are drafts below: Send review sends them to the card with your own comments.",
+    cached: "This diff was reviewed already: this is that review.",
+    moved:
+      "The diff changed during the review, so nothing was placed on a line: every finding is listed here.",
+    failed: "The review did not answer in the expected form. A new commit allows another.",
+    loose: "Not on a changed line ({n})",
+    place: "{path}:{line}",
+    reviewer: "Reviewer",
+    dismiss: "Dismiss",
+    dismissFinding: "Dismiss the finding at {path}, {where}",
+    severity: { blocker: "Blocker", high: "High", medium: "Medium", low: "Low" },
+    notAddressedOne: "1 reviewer finding not addressed ({high} high)",
+    notAddressed: "{n} reviewer findings not addressed ({high} high)",
   },
   cardReview: {
     positionLabel: "Position on the base",
@@ -4039,6 +4105,12 @@ export const en: Dictionary = {
     badCheck:
       "Local checks: a command and its arguments, with no quotes, pipes, ; & $ or redirections",
     badLimit: "{label}: empty or above zero",
+    checkRounds: "Check loop rounds",
+    checkEnv: "Extra check variables (one per line)",
+    checkLoopDefault: "Turn the check loop on for new cards",
+    badCheckRounds: "Check loop rounds: from 1 to 10",
+    badCheckEnv: "Extra variables: only where a tool lives (like JAVA_HOME), never a secret",
+    tooManyCheckEnv: "Extra variables: at most 20 names, each up to 64 characters",
   },
   sessionFinish: {
     commit: "Commit on a new branch",

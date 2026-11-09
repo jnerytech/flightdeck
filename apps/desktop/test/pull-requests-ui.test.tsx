@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -39,10 +39,15 @@ interface Setup {
   features?: string[];
   offline?: boolean;
   reply?: { ok: boolean; code?: string; message?: string };
+  /** #1406: answers by request, before `reply`; undefined falls through to it. */
+  answer?(hostId: string, type: string, payload: { cardId?: string; target?: string }): unknown;
+  language?: "en" | "pt-BR";
 }
 
 function open(setup: Setup = {}) {
-  const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+  const store = new AppStore(memoryPlatform(false, setup.language ?? "en").platform, {
+    baseDelayMs: 600_000,
+  });
   store.i18n.start();
   const asked: Array<[string, string, unknown]> = [];
   const opened: string[] = [];
@@ -52,6 +57,8 @@ function open(setup: Setup = {}) {
   store.hostCommand = (async () => null) as never;
   store.hostRequest = (async (hostId: string, type: string, payload: unknown) => {
     asked.push([hostId, type, payload]);
+    const answered = setup.answer?.(hostId, type, payload as never);
+    if (answered !== undefined) return answered;
     return setup.reply ?? { ok: true, data: {} };
   }) as never;
   store.openLink = (url: string) => void opened.push(url);
@@ -228,5 +235,87 @@ describe("pull-requests-ui: what the poll says about each PR (#1352)", () => {
       facts("Card a"),
       facts("Card b"),
     ]).toEqual([true, "Conflicts with the base · Changes requested · Opened 3 h ago", null]);
+  });
+});
+
+// #1406: after the base moves, every listed PR is updated from it in one go, one card at a time, on
+// its own host. A card already on its base is left alone, a conflict stops only that card, and a
+// summary names each group.
+describe("pull-requests-ui: Update from the base for every listed PR (#1406)", () => {
+  const branched = (id: string, over: object = {}) =>
+    card(id, { branch: `fd/${id}`, sessionStatus: "idle", queued: false, ...over });
+  const behind: Record<string, number> = { a: 2, b: 0, c: 1, d: 3 };
+  const answer = (_hostId: string, type: string, payload: { cardId?: string; target?: string }) => {
+    if (type === "changes.get") {
+      const id = (payload.target ?? "").replace(/^card:/, "");
+      return {
+        ok: true,
+        data: { files: [], base: "main", position: { ahead: 1, behind: behind[id] } },
+      };
+    }
+    if (type === "card.updateFromBase" && payload.cardId === "c") {
+      return {
+        ok: false,
+        code: "invalid_state",
+        message: "conflict updating with main: src/c.ts",
+        reason: "rebase_conflict",
+        params: { base: "main", files: "src/c.ts" },
+      };
+    }
+    return undefined;
+  };
+  const CARDS = {
+    "h1/a": branched("a"),
+    "h2/b": branched("b"),
+    "h2/c": branched("c"),
+    "h1/d": branched("d", { sessionStatus: "running" }),
+  };
+  const updates = (asked: Array<[string, string, unknown]>) =>
+    asked
+      .filter(([, type]) => type === "card.updateFromBase")
+      .map(([hostId, , p]) => `${hostId}/${(p as { cardId: string }).cardId}`);
+  const summary = () =>
+    screen
+      .queryAllByRole("status")
+      .map((el) => (el.textContent ?? "").trim())
+      .find((text) => text.length > 0) ?? null;
+
+  test("one action takes the idle PRs with a branch, on their own hosts, and sums up", async () => {
+    const { asked } = open({ cards: CARDS, answer });
+    const action = screen.queryByRole("button", { name: "Update 3 from the base" });
+    expect(action).not.toBeNull();
+    // The focus starts elsewhere: only the return after the run can put it on the button.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await click(action);
+    await settleMaybe(
+      () =>
+        (summary() ?? "").includes("Updated") &&
+        document.activeElement?.textContent === "Update 3 from the base",
+    );
+    expect({
+      // b is on its base already; d is running, so it stays out.
+      updates: updates(asked),
+      summary: summary(),
+      focus: document.activeElement?.textContent ?? null,
+    }).toEqual({
+      updates: ["h1/a", "h2/c"],
+      summary:
+        "Updated: Card a. Already current: Card b. Conflict, left as it was: Card c (Updating with main conflicts in: src/c.ts).",
+      focus: "Update 3 from the base",
+    });
+  });
+
+  test("with one PR to update, its row's own button is enough: no page action", () => {
+    open({ cards: { "h1/a": branched("a"), "h2/b": card("b", { worktreePath: null }) } });
+    expect(screen.queryByRole("button", { name: /^Update \d+ from the base$/ })).toBeNull();
+  });
+
+  test("pt-BR: Atualizar com a base, and the summary in Portuguese", async () => {
+    open({ cards: CARDS, answer, language: "pt-BR" });
+    await click(screen.queryByRole("button", { name: "Atualizar 3 com a base" }));
+    await settle(() => (summary() ?? "").includes("Atualizados"));
+    expect(summary()).toBe(
+      "Atualizados: Card a. Já em dia: Card b. Conflito, ficou como estava: Card c (Atualizar com main dá conflito em: src/c.ts).",
+    );
   });
 });

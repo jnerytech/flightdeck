@@ -784,6 +784,13 @@ export const ptBR = {
     exportNeeds: "Digite a frase-senha e repita-a.",
     saved: "Backup salvo, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
     importTitle: "Restaurar um backup",
+    sourceLegend: "Restaurar de",
+    source: { file: "Um arquivo", drive: "Google Drive" },
+    driveLook: "Procurar no Google Drive",
+    driveNone: "Ainda não há backups no Google Drive.",
+    driveChoiceLegend: "Backups no Google Drive",
+    driveNeedsSignIn: "Entre no Google primeiro, em Backups agendados.",
+    driveReadNeeds: "Escolha um backup e digite a frase-senha dele.",
     filePassphrase: "Frase-senha do arquivo",
     read: "Ler backup",
     needsDesktop: "Restaurar um backup precisa do app para desktop: o navegador não abre arquivos.",
@@ -813,6 +820,8 @@ export const ptBR = {
       unreadable:
         "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
       failed: "A restauração falhou e nada foi alterado.",
+      "drive-auth": "O Google Drive não aceita a entrada. Entre de novo em Backups agendados.",
+      "drive-failed": "Não foi possível ler o Google Drive. Tente de novo.",
       unexpected: "Algo deu errado. Nada foi alterado.",
       "too-big":
         "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",
@@ -827,6 +836,15 @@ export const ptBR = {
     folder: "Pasta",
     noFolder: "Nenhuma pasta escolhida",
     chooseFolder: "Escolher pasta",
+    targetLegend: "Onde salvar",
+    target: { folder: "Uma pasta", drive: "Google Drive" },
+    driveHelp:
+      "Os backups vão para a pasta oculta do Flightdeck no seu Google Drive. Só este app a enxerga, e cada arquivo continua criptografado com a sua frase-senha.",
+    driveSignedIn: "Conectado ao Google",
+    driveSignedOut: "Não conectado ao Google",
+    driveSignIn: "Entrar com o Google",
+    driveSignOut: "Sair",
+    driveRefused: "O Google não aceitou a entrada. Tente de novo.",
     keep: "Arquivos a manter",
     keepInvalid:
       "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
@@ -852,11 +870,16 @@ export const ptBR = {
         title: "Um backup agendado falhou",
         body: "Veja se a pasta ainda existe e tem espaço, em Configurações, seção Backup.",
       },
+      "drive-auth": {
+        title: "Os backups agendados no Google Drive precisam que você entre",
+        body: "Entre de novo em Configurações, seção Backup. Até lá, nenhum backup é feito.",
+      },
     },
     skipped: {
       "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
       "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
       failed: "O último backup não pôde ser salvo. Veja se a pasta ainda existe e tem espaço.",
+      "drive-auth": "Há um backup a fazer, mas o Google Drive não está conectado. Entre de novo.",
     },
   },
   approval: {
@@ -943,9 +966,12 @@ export const ptBR = {
     startBudgetHold:
       "{host} chegou a um orçamento que segura cards novos: eles esperam o período renovar.",
     startMemoryHold: "{host} está sem memória: os cards novos esperam ela liberar.",
+    startPausedHold:
+      "{host} está com novas execuções pausadas: os cards novos esperam até você retomar.",
     startedElsewhere: "Iniciado em {host} como {id}.",
     startOn: "Iniciar em {host}",
-    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles:",
+    startOnHint: "{n} deles esperariam aqui. Outro host com o mesmo projeto tem vagas para eles.",
+    startOnHintOne: "Este card esperaria aqui. Outro host com o mesmo projeto tem vaga para ele.",
     elsewhereOrphaned: "Uma cópia ficou em {host}: {names}",
     elsewhereDoneOne: "1 card iniciado em {host}.",
     elsewhereDone: "{count} cards iniciados em {host}.",
@@ -967,6 +993,14 @@ export const ptBR = {
     selectCard: "Selecionar card",
     deselectCard: "Desmarcar card",
     selectCardNamed: "Selecionar {title}",
+    /** #1406: Atualizar com a base para a seleção, e o resumo. */
+    updateSelected: "Atualizar {n} com a base",
+    updateNoBranch: "o card ainda não tem branch",
+    updating: "Atualizando {done} de {total}…",
+    updatedNames: "Atualizados: {names}.",
+    currentNames: "Já em dia: {names}.",
+    conflictedNames: "Conflito, ficou como estava: {names}.",
+    notUpdatedNames: "Não atualizados: {names}.",
     stayedOne: "1 card ficou onde estava: {names}",
     stayed: "{count} cards ficaram onde estavam: {names}",
     contract: {
@@ -1680,6 +1714,7 @@ export const ptBR = {
     quotaPause: "a trava da cota para cartões novos",
     memoryPause: "a trava de memória para cartões novos",
     hostPause: "a pausa de novas execuções",
+    cardReview: "a revisão de segunda opinião de um cartão",
     quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },
@@ -2163,6 +2198,11 @@ export const ptBR = {
     card_workflow_running: "O card tem uma execução de workflow em andamento.",
     rule_remove_confirm: "Confirme a remoção da regra.",
     card_no_worktree: "O card ainda não tem worktree.",
+    card_review_running: "O card está ocupado, ou a revisão dele já está rodando.",
+    card_review_held:
+      "Sem revisão agora: o host está pausado, no limite da cota, com pouca memória, ou o projeto está no orçamento.",
+    card_review_no_diff: "O card não tem mudanças para revisar.",
+    card_review_limit: "Este card já teve {max} revisões nas últimas 24 horas, o máximo por dia.",
     pr_secret: "A descrição parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_title_secret: "O título parece ter um segredo ({found}): tire-o antes de abrir o PR.",
     pr_push_timeout:
@@ -2920,6 +2960,31 @@ export const ptBR = {
     sessionFilesNone:
       "Nenhum ainda. Mudanças feitas por comandos (Bash) ou fora da sessão não aparecem aqui.",
     bashNote: "Mudanças feitas pelo Bash não entram.",
+  },
+  secondOpinion: {
+    title: "Segunda opinião",
+    intro:
+      "Uma segunda chamada do Claude lê o diff e deixa os achados como rascunhos do revisor. O diff, com os segredos mascarados, vai para a Anthropic, como a sessão do próprio card já o envia.",
+    ask: "Pedir uma segunda opinião",
+    running: "Uma execução está em andamento: espere ela terminar.",
+    noChanges: "O card não tem mudanças para revisar.",
+    reading: "Lendo o diff… isso pode levar um minuto.",
+    draftsOne:
+      "1 achado virou rascunho abaixo: Enviar revisão o manda ao card junto com os seus comentários.",
+    drafts:
+      "{n} achados viraram rascunhos abaixo: Enviar revisão os manda ao card junto com os seus comentários.",
+    cached: "Este diff já foi revisado: esta é essa revisão.",
+    moved:
+      "O diff mudou durante a revisão, então nada foi colocado numa linha: todos os achados estão listados aqui.",
+    failed: "A revisão não respondeu no formato esperado. Um novo commit permite outra.",
+    loose: "Fora de uma linha alterada ({n})",
+    place: "{path}:{line}",
+    reviewer: "Revisor",
+    dismiss: "Dispensar",
+    dismissFinding: "Dispensar o achado em {path}, {where}",
+    severity: { blocker: "Bloqueante", high: "Alto", medium: "Médio", low: "Baixo" },
+    notAddressedOne: "1 achado do revisor sem tratar ({high} alto)",
+    notAddressed: "{n} achados do revisor sem tratar ({high} alto)",
   },
   cardReview: {
     positionLabel: "Posição na base",
@@ -4045,6 +4110,13 @@ export const ptBR = {
     badCheck:
       "Checks locais: um comando e seus argumentos, sem aspas, pipes, ; & $ nem redirecionamentos",
     badLimit: "{label}: vazio ou maior que zero",
+    checkRounds: "Rodadas do laço de checks",
+    checkEnv: "Variáveis extras dos checks (uma por linha)",
+    checkLoopDefault: "Ligar o laço de checks em cards novos",
+    badCheckRounds: "Rodadas do laço de checks: de 1 a 10",
+    badCheckEnv:
+      "Variáveis extras: só nomes de onde fica uma ferramenta (como JAVA_HOME), nunca um segredo",
+    tooManyCheckEnv: "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
   },
   sessionFinish: {
     commit: "Fazer commit num branch novo",

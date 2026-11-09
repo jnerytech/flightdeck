@@ -41,7 +41,8 @@ function ProjectWatchSettings(
   const set = (patch: Partial<typeof draft>) => setDraft({ ...draft, ...patch });
   const problem = validateWatchDraft(draft, t);
   const save = async () => {
-    const settings = await store.watchSettings(hostId, project.id, watchPatchOf(draft));
+    if (!saved) return;
+    const settings = await store.watchSettings(hostId, project.id, watchPatchOf(draft, saved));
     keep(settings);
     if (settings) store.success(t("watchSettingsUi.saved"));
   };
@@ -114,6 +115,62 @@ function ProjectWatchSettings(
           />
         )}
       </Field>
+      {draft.loop && (
+        <>
+          <Inline gap={2}>
+            <label className="text-sm">
+              <input
+                type="checkbox"
+                checked={draft.loop.checkLoopDefault}
+                onChange={(e) =>
+                  set({
+                    loop: {
+                      ...(draft.loop as NonNullable<typeof draft.loop>),
+                      checkLoopDefault: e.target.checked,
+                    },
+                  })
+                }
+              />{" "}
+              {t("watchSettingsUi.checkLoopDefault")}
+            </label>
+          </Inline>
+          <Field label={t("watchSettingsUi.checkRounds")}>
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                value={draft.loop?.checkRounds ?? ""}
+                onChange={(e) =>
+                  set({
+                    loop: {
+                      ...(draft.loop as NonNullable<typeof draft.loop>),
+                      checkRounds: e.target.value,
+                    },
+                  })
+                }
+              />
+            )}
+          </Field>
+          <Field label={t("watchSettingsUi.checkEnv")}>
+            {(id) => (
+              <textarea
+                id={id}
+                className="rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                rows={2}
+                value={draft.loop?.checkEnv ?? ""}
+                onChange={(e) =>
+                  set({
+                    loop: {
+                      ...(draft.loop as NonNullable<typeof draft.loop>),
+                      checkEnv: e.target.value,
+                    },
+                  })
+                }
+              />
+            )}
+          </Field>
+        </>
+      )}
       <FieldRow>
         <ActionButton
           size="sm"

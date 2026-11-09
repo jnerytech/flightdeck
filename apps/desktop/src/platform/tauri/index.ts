@@ -105,6 +105,24 @@ export function tauriPlatform(
       list: () => call<string[]>("backup_folder_list"),
       remove: (name) => call("backup_folder_remove", { name }),
     },
+    oauthLoopback: {
+      // The Rust listener checks the state itself and answers null for anything but a good redirect.
+      listen: async (state) => {
+        const { id, port } = await call<{ id: number; port: number }>("oauth_loopback_listen", {
+          state,
+        });
+        return {
+          port,
+          wait: async () => {
+            const code = await call<string | null>("oauth_loopback_wait", { id });
+            return code === null ? null : { code, state };
+          },
+          cancel: () => {
+            void call("oauth_loopback_cancel", { id }).catch(() => {});
+          },
+        };
+      },
+    },
     async notify(notification) {
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
       if (!granted) return false;

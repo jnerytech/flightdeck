@@ -324,4 +324,17 @@ describe("what counts as user-facing, and its issue (#1334)", () => {
     );
     expect(text.split("\n").at(-1)).toBe("- the outcome heads the card (#3, #9)");
   });
+
+  test("a title loses a trailing (#N) with the spaces before it; one that is not last stays", () => {
+    const one = { ...pr(["feat(a): x (#9)"]), number: 3 };
+    const draft = (title: string) =>
+      highlightsDraft("v1.0.0", [one], new Map([[9, title]]))
+        .split("\n")
+        .at(-1);
+    expect(draft("feat(a): fix (#12) the thing   (#13)")).toBe("- fix (#12) the thing (#3, #9)");
+    expect(draft("Plain title (#13)")).toBe("- Plain title (#3, #9)");
+    expect(draft(`Plain title${" ".repeat(5000)}x`)).toBe(
+      `- Plain title${" ".repeat(5000)}x (#3, #9)`,
+    );
+  });
 });

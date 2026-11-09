@@ -1055,6 +1055,26 @@ export interface FileListing {
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
 
+/** Issue #1439: a finding of a second-opinion review. */
+export const ReviewFinding = z.object({
+  path: z.string(),
+  line: z.number().int().positive(),
+  severity: z.enum(["blocker", "high", "medium", "low"]),
+  body: z.string(),
+});
+export type ReviewFinding = z.infer<typeof ReviewFinding>;
+
+/** Issue #1439: a card's review: its findings are reviewer drafts; `loose` anchored nowhere. */
+export const CardReviewResult = z.object({
+  state: z.enum(["done", "failed"]),
+  summary: z.string(),
+  anchored: z.number().int().nonnegative(),
+  loose: z.array(ReviewFinding),
+  cached: z.boolean(),
+  moved: z.boolean(),
+});
+export type CardReviewResult = z.infer<typeof CardReviewResult>;
+
 // Phase 11: review of the changes of any session or card.
 /**
  * `session:<claudeSessionId>`, `card:<id>`, `terminal:<terminalId>` (its folder, #506) or
@@ -2004,6 +2024,9 @@ export const ReviewComment = z.object({
   sentAt: z.string().nullable(),
   /** The quoted lines are no longer in the file. */
   outdated: z.boolean(),
+  /** Issue #1439: a second opinion's finding, until the person edits it. */
+  author: z.literal("reviewer").optional(),
+  severity: z.enum(["blocker", "high", "medium", "low"]).optional(),
 });
 export type ReviewComment = z.infer<typeof ReviewComment>;
 
@@ -3223,12 +3246,17 @@ const TOOLCHAIN_ENV =
  * files, tokens), Flightdeck's own, git's and npm's, or a loader's. Over-blocking is fine: a check
  * that needs a secret does not run unattended. Any case (Windows reads both).
  */
-const REFUSED_ENV =
-  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|_PASS$|^PWD$|CREDENTIAL|AUTH|COOKIE|SESSION|JWT|BEARER|SAS|SIGNATURE|WEBHOOK|_PAT$|DSN|DATABASE_URL|CONN|PRIVATE|CERT|^(?:ANTHROPIC|CLAUDE|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK|GIT|NPM|LD|DYLD|XDG)_/i;
+const REFUSED_ENV = [
+  /TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|JWT/i,
+  /BEARER|SAS|SIGNATURE|WEBHOOK|DSN|DATABASE_URL|CONN|PRIVATE|CERT/i,
+  // Today no name that passes TOOLCHAIN_ENV ends this way; kept, as the one pattern had them.
+  /_PASS$|^PWD$|_PAT$/i,
+  /^(?:ANTHROPIC|CLAUDE|OPENAI|AWS|AZURE|GH|GITHUB|FLIGHTDECK|GIT|NPM|LD|DYLD|XDG)_/i,
+];
 
 /** Issue #1361: a name a project may add to its checks' environment (the value stays the daemon's). */
 export const isCheckEnvName = (name: string): boolean =>
-  TOOLCHAIN_ENV.test(name) && !REFUSED_ENV.test(name);
+  TOOLCHAIN_ENV.test(name) && !REFUSED_ENV.some((refused) => refused.test(name));
 
 /** Phase 22: how a card's PR is watched and fixed, per project. */
 export const WatchSettings = z.object({
@@ -3687,6 +3715,11 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.validationTemplate", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Issue #1439: a second-opinion review of the card's diff; near only. */
+  cmd(
+    "card.review",
+    z.object({ cardId: z.string(), language: z.enum(["en", "pt-BR"]).optional() }).strict(),
+  ),
   /** Issue #100: teleport, the source side (feature `teleport`). */
   cmd("teleport.prepare", TeleportPreparePayload),
   cmd("teleport.read", TeleportReadPayload),
@@ -5760,6 +5793,7 @@ export interface CommandResults {
   "card.start": Card;
   "card.stop": Card;
   "card.diff": CardDiff;
+  "card.review": CardReviewResult;
   "assistant.run": AssistantResult;
   "assistant.cancel": undefined;
   "assistant.context": AssistantContextBundle;

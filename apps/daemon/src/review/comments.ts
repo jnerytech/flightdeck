@@ -14,6 +14,7 @@ import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes, ResolvedTarget } from "./changes.ts";
 import { linesOf, located, refuseCredential } from "./paths.ts";
+import { frameReviewerComment } from "./second-opinion.ts";
 
 export interface ReviewCommentsOptions {
   db: Database;
@@ -40,6 +41,9 @@ export interface ReviewComment {
   sentAt: string | null;
   /** The quoted lines are no longer in the file. */
   outdated: boolean;
+  /** Issue #1439: a second opinion's finding, until the person edits it. */
+  author?: "reviewer";
+  severity?: "blocker" | "high" | "medium" | "low";
 }
 
 export interface NewReviewComment {
@@ -49,6 +53,8 @@ export interface NewReviewComment {
   lineStart: number;
   lineEnd: number;
   body: string;
+  author?: "reviewer";
+  severity?: "blocker" | "high" | "medium" | "low";
 }
 
 /** Where `review.send` delivered the review; `copy` when the app has to hand it over. */
@@ -70,6 +76,8 @@ interface Row {
   state: "draft" | "sent";
   created_at: string;
   sent_at: string | null;
+  author?: string | null;
+  severity?: string | null;
 }
 
 const toComment = (row: Row, outdated: boolean): ReviewComment => ({
@@ -85,6 +93,8 @@ const toComment = (row: Row, outdated: boolean): ReviewComment => ({
   createdAt: row.created_at,
   sentAt: row.sent_at,
   outdated,
+  ...(row.author === "reviewer" ? { author: "reviewer" as const } : {}),
+  ...(row.severity ? { severity: row.severity as NonNullable<ReviewComment["severity"]> } : {}),
 });
 
 /** Where the quote's lines start, at the occurrence nearest to `near`; `null` without one. */
@@ -207,15 +217,17 @@ export class ReviewComments {
       state: "draft",
       created_at: new Date(this.now()).toISOString(),
       sent_at: null,
+      author: input.author ?? null,
+      severity: input.severity ?? null,
     };
     this.db
       .query(
         `INSERT INTO review_comments (id, target, path, side, line_start, line_end, quote, body,
-           state, created_at, sent_at)
+           state, created_at, sent_at, author, severity)
          VALUES ($id, $target, $path, $side, $line_start, $line_end, $quote, $body, $state,
-           $created_at, $sent_at)`,
+           $created_at, $sent_at, $author, $severity)`,
       )
-      .run({ ...row });
+      .run({ ...row, author: row.author ?? null, severity: row.severity ?? null });
     return toComment(row, false);
   }
 
@@ -232,7 +244,8 @@ export class ReviewComments {
     if (!body.trim()) {
       throw new FlightdeckError("bad_request", "the comment is empty", "review_comment_empty");
     }
-    this.db.query("UPDATE review_comments SET body = ? WHERE id = ?").run(body, id);
+    // An edited reviewer draft becomes the person's (#1439): they now stand behind the text.
+    this.db.query("UPDATE review_comments SET body = ?, author = NULL WHERE id = ?").run(body, id);
     return (await this.list(row.target)).find((c) => c.id === id) ?? null;
   }
 
@@ -254,8 +267,14 @@ export class ReviewComments {
       throw new FlightdeckError("invalid_state", "no comment in draft", "review_no_drafts");
     }
     const resolved = await this.opts.changes.resolve(target);
+    // The daemon frames a reviewer comment (#1439): its model-written body cannot pass as the person's.
     const text = reviewMessage(
-      drafts.map((d) => toComment(d, false)),
+      drafts.map((d) => {
+        const comment = toComment(d, false);
+        return comment.author === "reviewer"
+          ? { ...comment, body: frameReviewerComment(comment.body) }
+          : comment;
+      }),
       language,
     );
     const via = this.deliver(resolved, text);

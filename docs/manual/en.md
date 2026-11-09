@@ -1076,7 +1076,10 @@ live; the list is the project's, so a session of another project never shows her
   checks, whether **Watch and fix** is off, watching or needs you, and a link to the PR. **Merge
   PR** asks first, with the same confirm as the card page, and is offered only when the host can
   merge and the checks are not failing; **Update from the base** rebases the card's branch, and a
-  conflict stays on screen with the files. The title opens the card. A line under the title says
+  conflict stays on screen with the files. With two or more PRs that can take it (a branch, and not
+  running), **Update N from the base** above the list updates them all, one at a time, each on its
+  own host, as the board's selection bar does: a PR already on its base is left alone, a conflict
+  stops only that card, and a line names the updated, already current and conflicted cards. The title opens the card. A line under the title says
   whether the PR conflicts with the base, its review (approved, changes requested, review required)
   and how long it has been open, as the host's PR poll reports them (about every minute); a host that
   does not report them, or has not polled yet, adds nothing.
@@ -1125,7 +1128,7 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   **Stop N** (while some of them run or wait in the queue), **Move to…** (a column), **Discard…** and
   **Clear selection**. `S` with a selection is **Start N**. Start asks first: how many start now and how
   many wait in the host's queue, the host's 5-hour window on a subscription, a line for each hold that
-  keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory),
+  keeps new cards waiting (the quota's pause limit, a budget at its limit, the host short of memory, the host with new runs paused),
   with every card in the queue while one of them holds, and the cards it skips and why. When some of the cards would wait (the host is full, paused or held)
   and another online host has the same project (the same repository) with enough free places, the
   confirm also offers **Start on <host>**: it makes each of those cards on that host and starts it
@@ -1134,9 +1137,14 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
   persona, a card waiting on a blocker and a card that holds others up are not offered: they would
   start differently there, or going to Done would free the others too soon. Stop asks first too: a running card's turn is cut off and it waits in **Needs you**, a queued
   one goes back to **Backlog**, and worktrees, branches and commits stay. The cards go one at a time;
-  the ones that went leave the selection, and the bar names any the host refused. In a narrow window
-  the bar says how many selected cards are in columns not shown, and **Move to…** and **Discard…** sit
-  under ⋯. Dragging a selected card drags the whole selection into the
+  the ones that went leave the selection, and the bar names any the host refused. **Update N from the
+  base** shows while a selected card has a branch and is not running: after the base branch moves, it
+  rebases those cards on it, one at a time, with "Updating 2 of 5…" on the bar. A card already on its
+  base is left alone, and a conflict stops only that card: the host aborts its rebase, so its worktree
+  stays as it was. The summary then names the updated, already current and conflicted cards, and any
+  the host refused, with why; the conflicted and refused ones stay selected. In a narrow window the bar
+  says how many selected cards are in columns not shown, and **Move to…**, **Update N from the base**
+  and **Discard…** sit under ⋯. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
 - **What a column asks of a card** (#78). **In review** asks for a PR link and passing checks;
   **In progress** asks for acceptance criteria, a checklist item (`- [ ] …`) in the card's
@@ -1497,6 +1505,18 @@ conversation. It is where you check what the agent did and send it back what to 
     other;
   - a comment follows the quoted lines when the file changes, and shows **Outdated** when they are
     gone. Sent comments stay in the list as history.
+- **Second opinion** (on a card, when the host offers it): **Get a second opinion** asks a second
+  Claude call to read the card's diff and leave its findings as reviewer drafts. Nothing starts on
+  its own: you ask, the button is off while a run goes or when there are no changes, and the host
+  refuses (and says why) while it is paused, at the plan quota's pause limit, short of memory or
+  at the card's budget, and after 3 reviews of the card in a day. The same diff is reviewed once:
+  asking again shows that review. The call has no tools and sees only the card's text and the diff,
+  with secrets masked; the diff goes to Anthropic, as the card's own session sends it. Each
+  finding that falls on a changed line becomes a draft marked **Reviewer**, with its severity
+  (Blocker, High, Medium or Low): edit it (then it is yours), **Dismiss** it, or leave it, and
+  **Send review** sends it to the card with your own comments, framed as a suggestion to check.
+  Findings on no changed line are listed under the button as text. **Open PR** says how many
+  reviewer findings are still open when a blocker or a high one is, and opens the PR all the same.
 - **Revert and edit:**
   - **Revert** asks for confirmation, goes back to `HEAD` (or the card's base; a new file is
     removed), keeps a copy in `<dataDir>/review-trash/` for 7 days and offers **Undo** for 30
@@ -2337,6 +2357,19 @@ backup that is due waits, and the section says so. A backup that could not be sa
 too, and the date of the last good one stays. The bell says it too, once per start, when a backup
 cannot go: the passphrase is missing, no folder is chosen, or a backup failed. A click on the notice
 opens **Settings**, section **Backup** (#1327).
+
+When the build carries a Google client, **Where to save** also offers **Google Drive**. It keeps the
+backups in Flightdeck's own hidden folder in your Drive, which only this app can see, and each file is
+still encrypted with your passphrase. **Sign in with Google** opens Google's page in your browser and
+the app waits for the answer on this computer only. Flightdeck keeps the token in the vault, never in
+a file or a log; **Sign out** removes it. If Google stops accepting the sign-in, the section and the
+bell say so and no backup is made until you sign in again. Without a client in the build, the choice
+is not shown (#1444).
+
+To restore from Drive, **Back up everything** > **Restore a backup** offers **Restore from**: **A file**
+or **Google Drive** (only with the same Google client, and once you are signed in). **Look in Google
+Drive** lists the backups there, newest first. Pick one, type its passphrase and **Read backup**: you
+get the same preview as for a file, and nothing changes until you confirm (#1462).
 
 ## Actions: Claude uses a secret without seeing it
 

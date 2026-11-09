@@ -411,44 +411,43 @@ export async function mainRedWithin(
   }
 }
 
-/** Prints main's state; on green, closes the claims made before that run. Red is exit 1. */
-async function status(deps: MainRedDeps): Promise<number> {
-  const { push, full, red, fullUnread } = await mainState(deps);
-  const run = red ?? push ?? full;
-  if (!run) {
-    deps.log("main's CI state is unknown: gh found no finished run, or could not answer");
-    return 1;
+/** The first line of a red main: which run, its age when it is a full run, and a green push run. */
+function redHeadline(red: MainRun, push: MainRun | null, now: number): string {
+  if (!red.full) return `main is red: ${red.url}`;
+  const old = `full run, ${age(red.createdAt, now)} old`;
+  // Both verdicts are shown when they differ: a push run checks less than a full run.
+  if (push) return `main is red: ${red.url} (${old}; the push run is green: ${push.url})`;
+  return `main is red: ${red.url} (${old})`;
+}
+
+/** Prints a red main: the run, what fails, how a full run's red clears, and the claims. */
+async function reportRed(
+  deps: MainRedDeps,
+  state: { red: MainRun; push: MainRun | null; full: MainRun | null },
+  claims: Claim[],
+  now: number,
+): Promise<void> {
+  const { red, push, full } = state;
+  deps.log(redHeadline(red, push, now));
+  for (const name of await failingOf(deps, red, await failedJobs(deps, red))) {
+    deps.log(`failing: ${name}`);
   }
-  const now = (deps.now ?? Date.now)();
-  const claims = await openClaims(deps);
-  if (red) {
-    // Both verdicts are shown when they differ: a push run checks less than a full run.
-    deps.log(
-      red.full && push
-        ? `main is red: ${red.url} (full run, ${age(red.createdAt, now)} old; the push run is green: ${push.url})`
-        : `main is red: ${red.full ? `${red.url} (full run, ${age(red.createdAt, now)} old)` : red.url}`,
-    );
-    for (const name of await failingOf(deps, red, await failedJobs(deps, red))) {
-      deps.log(`failing: ${name}`);
-    }
-    // A full run's red outlives its fix until a newer full run: say how to get one.
-    if (red.full) deps.log(`fixed since? a newer full run clears it: ${RERUN}`);
-    if (!red.full && full && !full.red) {
-      deps.log(`the full run is green: ${full.url} (${age(full.createdAt, now)} old)`);
-    }
-    if (claims.length === 0) deps.log('unclaimed: bun run main-red -- claim "<cause>"');
-    for (const claim of claims) deps.log(`claimed: ${owned(claim)}`);
-    return 1;
+  // A full run's red outlives its fix until a newer full run: say how to get one.
+  if (red.full) deps.log(`fixed since? a newer full run clears it: ${RERUN}`);
+  if (!red.full && full && !full.red) {
+    deps.log(`the full run is green: ${full.url} (${age(full.createdAt, now)} old)`);
   }
-  if (fullUnread) {
-    // A full run's red may still be there: nothing closes on the push run alone.
-    deps.log(`main is green: ${run.url} (the full runs could not be read: the claims stay open)`);
-    return 0;
-  }
-  deps.log(`main is green: ${run.url}`);
-  // The newest green run, push or full: a claim made on a red full run closes on a newer one.
-  const greenAt =
-    [push?.createdAt ?? "", full?.createdAt ?? ""].sort((a, b) => b.localeCompare(a))[0] ?? "";
+  if (claims.length === 0) deps.log('unclaimed: bun run main-red -- claim "<cause>"');
+  for (const claim of claims) deps.log(`claimed: ${owned(claim)}`);
+}
+
+/** Closes the tool's own claims made before `greenAt`, the newest green run (push or full). */
+async function closeClaims(
+  deps: MainRedDeps,
+  claims: Claim[],
+  run: MainRun,
+  greenAt: string,
+): Promise<void> {
   for (const claim of claims) {
     // Only a run newer than the red one the claim was about closes it, and only a claim the tool
     // wrote (it has its run's time): an issue labelled by hand stays for a person.
@@ -463,6 +462,32 @@ async function status(deps: MainRedDeps): Promise<number> {
     const closed = await closing; // NOSONAR: one issue at a time, each logged as it closes
     if (closed.code === 0) deps.log(`closed: #${claim.number} (${claim.owner})`);
   }
+}
+
+/** Prints main's state; on green, closes the claims made before that run. Red is exit 1. */
+async function status(deps: MainRedDeps): Promise<number> {
+  const { push, full, red, fullUnread } = await mainState(deps);
+  const run = red ?? push ?? full;
+  if (!run) {
+    deps.log("main's CI state is unknown: gh found no finished run, or could not answer");
+    return 1;
+  }
+  const now = (deps.now ?? Date.now)();
+  const claims = await openClaims(deps);
+  if (red) {
+    await reportRed(deps, { red, push, full }, claims, now);
+    return 1;
+  }
+  if (fullUnread) {
+    // A full run's red may still be there: nothing closes on the push run alone.
+    deps.log(`main is green: ${run.url} (the full runs could not be read: the claims stay open)`);
+    return 0;
+  }
+  deps.log(`main is green: ${run.url}`);
+  // The newest green run, push or full: a claim made on a red full run closes on a newer one.
+  const greenAt =
+    [push?.createdAt ?? "", full?.createdAt ?? ""].sort((a, b) => b.localeCompare(a))[0] ?? "";
+  await closeClaims(deps, claims, run, greenAt);
   return 0;
 }
 
@@ -494,7 +519,7 @@ async function claim(deps: MainRedDeps, cause: string, owner: string): Promise<n
     return 1;
   }
   const held = holder(current(await openClaims(deps), run), failing);
-  if (held && held.owner === owner) {
+  if (held?.owner === owner) {
     deps.log(`already yours: #${held.number}`);
     return 0;
   }

@@ -51,6 +51,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.quotaPause, "quotaPause"),
     ...when(opts.memoryPause, "memoryPause"),
     ...when(opts.hostPause, "hostPause"),
+    ...when(opts.cardReview, "cardReview"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.deps, "depsCheck"),
