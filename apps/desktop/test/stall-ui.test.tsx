@@ -99,7 +99,24 @@ describe("stall-ui: a quiet session in Needs you (issue #1478)", () => {
     await settle(() => document.body.textContent?.includes("Nothing is waiting for you.") === true);
     expect(rows()).toEqual([]);
     expect(store.getState().quietSnooze).toEqual({ "h1/s1": NOW + 60 * 60_000 });
-    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement === document.body).toBe(false);
+  });
+
+  test("Interrupt and Send continue that make the row go also leave the focus on the list, not on the body", async () => {
+    for (const name of ["Interrupt", "Send “continue”"]) {
+      cleanup();
+      const { store } = setup();
+      const view = page(store);
+      await press(/alfa · api/);
+      await press(name);
+      // The host answers by clearing the quiet mark; the test stands in for it with the snooze.
+      store.snoozeQuiet("h1", "s1");
+      await act1(() => view.refresh());
+      await settle(
+        () => document.body.textContent?.includes("Nothing is waiting for you.") === true,
+      );
+      expect(document.activeElement === document.body).toBe(false);
+    }
   });
 
   test("the same row and buttons in Portuguese", async () => {
@@ -136,5 +153,34 @@ describe("stall-ui: the Working card on the Activity board says it is quiet (iss
   test("in Portuguese", async () => {
     board("pt-BR");
     expect(card("api")?.textContent ?? "").toContain("Em silêncio 23 min");
+  });
+});
+
+describe("stall-ui: the Needs you badge counts the quiet rows (issue #1478)", () => {
+  test("one quiet session is a 1 on the Needs you entry, and snoozing it takes the 1 away", async () => {
+    const { store } = setup();
+    const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+    const tree = () => (
+      <Sidebar
+        store={store}
+        state={store.getState()}
+        collapsed={false}
+        t={store.i18n.t}
+        go={() => {}}
+        onOpenProjectScreen={() => {}}
+        onNewSession={() => {}}
+        onRemoveHost={() => {}}
+        onRenameHost={() => null}
+        onOpenSearch={() => {}}
+        onNewTab={() => {}}
+        onToggleTheme={() => {}}
+      />
+    );
+    const shown = render(tree());
+    const entry = () => screen.queryByRole("button", { name: /Needs you/ })?.textContent ?? "";
+    expect(entry()).toContain("Needs you1");
+    store.snoozeQuiet("h1", "s1");
+    await act1(() => shown.rerender(tree()));
+    expect(entry()).not.toContain("Needs you1");
   });
 });
