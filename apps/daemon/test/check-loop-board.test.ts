@@ -319,6 +319,44 @@ describe("check-loop: the person's input over the protocol", () => {
   });
 });
 
+describe("check-loop: what the card says about its loop", () => {
+  test("the card shows the loop checking, then the round it sent, then how it ended, and each step is a card update", async () => {
+    const ctx = await setup([FAILED, PASSED]);
+    ctx.switchOn(ctx.card.id);
+    const seen: Array<string | null> = [];
+    ctx.board.watch((card) => {
+      if (card.id === ctx.card.id) seen.push(card.checkLoop?.active ?? null);
+    });
+    const open = ctx.holdChecks();
+    await ctx.board.startCard(ctx.card.id);
+    await poll(() => ctx.ran.length === 1, 10_000);
+    const checking = ctx.board.getCard(ctx.card.id).checkLoop;
+    open();
+    await poll(() => ctx.board.getCard(ctx.card.id).checkLoop?.active === "fixing", 10_000);
+    const fixing = ctx.board.getCard(ctx.card.id).checkLoop;
+    await cardWhen(ctx.board, ctx.card.id, (c) => c.column === "review");
+    const ended = ctx.board.getCard(ctx.card.id).checkLoop;
+    expect([
+      checking?.active,
+      [
+        fixing?.active,
+        fixing?.round,
+        fixing?.max,
+        fixing?.last?.state,
+        fixing?.last?.command,
+        fixing?.last?.exitCode,
+      ],
+      [ended?.active, ended?.last?.state, ended?.last?.reason],
+      seen.includes("checking") && seen.includes("fixing"),
+    ]).toEqual([
+      "checking",
+      ["fixing", 1, 3, "sent", "bun test", 1],
+      [null, "ended", "passed"],
+      true,
+    ]);
+  });
+});
+
 describe("check-loop: input from any path", () => {
   test("a message reaching the card's session by any path while its checks run steps the loop aside", async () => {
     const ctx = await setup([PASSED]);
