@@ -156,18 +156,40 @@ const FIXED_WHEN_LACKING: ReadonlySet<CompareField> = new Set([
   "boot",
 ]);
 
+/** Splits a version into its numbers and whether it has a pre-release tag (`1.4.0-rc.1`). */
+function parseVersion(version: string): { nums: number[]; pre: boolean } {
+  const [core = "", pre] = version.split("-", 2);
+  return {
+    nums: core.split(".").map((part) => Number.parseInt(part, 10) || 0),
+    pre: pre !== undefined,
+  };
+}
+
+/** Whether `a` is an older version than `b`; a pre-release is older than its release. */
+function isOlder(a: string, b: string): boolean {
+  const left = parseVersion(a);
+  const right = parseVersion(b);
+  const length = Math.max(left.nums.length, right.nums.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (left.nums[i] ?? 0) - (right.nums[i] ?? 0);
+    if (diff !== 0) return diff < 0;
+  }
+  return left.pre && !right.pre;
+}
+
 /**
  * Whether a cell has a fix the app already offers on its host's page: what is missing or outdated
- * has its install, sign-in or turn-on there, and an older daemon has its update. The OS, the Claude
- * Code version and the features have none.
+ * has its install, sign-in or turn-on there, and a daemon older than the newest one in the row
+ * (`row`, every host's value) has its update. The newest daemon, the OS, the Claude Code version
+ * and the features have none.
  */
 export function hasFix(
   field: CompareField,
   value: string | null,
-  _row: ReadonlyArray<string | null>,
+  row: ReadonlyArray<string | null>,
 ): boolean {
   if (value === null) return false;
-  if (field === "daemon") return true;
+  if (field === "daemon") return row.some((other) => other !== null && isOlder(value, other));
   return FIXED_WHEN_LACKING.has(field) && (value === "missing" || value === "outdated");
 }
 
