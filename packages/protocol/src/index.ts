@@ -215,6 +215,10 @@ export const SessionSummary = z.object({
   persona: SessionPersona.nullable().optional(),
   /** Phase 39: `claude` when absent. */
   runtime: SessionRuntime.optional(),
+  /** Issue #1478 (host `stall`): a running session that went quiet, since when; absent otherwise. */
+  quietSince: z.string().optional(),
+  /** Issue #1478: the last tool it called; `null` when it called none. */
+  quietTool: z.string().nullable().optional(),
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
@@ -484,6 +488,10 @@ export const SessionEvent = z.discriminatedUnion("type", [
     runtime: SessionRuntime.optional(),
     /** Issue #463: its folder's trust was revoked after the run loaded the project's setup; set when true only. */
     trustStale: z.boolean().optional(),
+    /** Issue #1478 (host `stall`): the session went quiet at this time; absent when it did not. */
+    quietSince: z.string().optional(),
+    /** Issue #1478: the last tool it called; `null` when it called none. */
+    quietTool: z.string().nullable().optional(),
   }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;
