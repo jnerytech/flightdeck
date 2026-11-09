@@ -140,6 +140,22 @@ describe("stall-state: the quiet sessions Needs you lists", () => {
   });
 });
 
+describe("stall-state: the quiet sessions come from the live summaries (issue #1478)", () => {
+  test("a quiet session is listed before the host's session list was ever fetched, with its meta name", () => {
+    const base = state([
+      { managed: managed("s1"), live: live("s1", { quietSince: at(25), quietTool: "Bash" }) },
+      { managed: managed("s2"), live: live("s2", { quietSince: at(30), name: "api" }) },
+    ]) as unknown as { hub: object; meta: object };
+    base.hub = {};
+    base.meta = { "h/s2": { name: "Renamed by hand" } };
+    const alerts = quietAlerts(base as never, NOW);
+    expect(alerts.map((a) => [a.key, a.title, a.since, a.tool])).toEqual([
+      ["h/s2", "Renamed by hand", at(30), null],
+      ["h/s1", "session s1", at(25), "Bash"],
+    ]);
+  });
+});
+
 describe("stall-state: Not stuck, and the ways on", () => {
   test("Not stuck hides the session for an hour, only that session", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { now: () => NOW });
