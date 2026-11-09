@@ -628,10 +628,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "resources");
   }
 
-  function _board(): Board {
-    return need(opts, "board");
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
