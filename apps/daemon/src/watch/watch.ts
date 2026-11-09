@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import { isCheckEnvName } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type PrCheck, type PrComment, type PrProvider, prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
@@ -35,6 +36,12 @@ export interface WatchSettings {
   dailyUsd: number | null;
   /** Issue #77: globs of files a round may change outside its PR; they never count as drift. */
   driftAllow: string[];
+  /** Issue #1361: rounds of the check loop per turn of the person. */
+  checkRounds: number;
+  /** Issue #1361: names added to the checks' allowlisted environment. */
+  checkEnv: string[];
+  /** Issue #1361: new cards in bypassPermissions start with the check loop on. */
+  checkLoopDefault: boolean;
 }
 
 export interface PrWatcherOptions {
@@ -59,6 +66,9 @@ const DEFAULT_SETTINGS: WatchSettings = {
   persona: "revisor",
   maxFailures: 2,
   dailyUsd: 20,
+  checkRounds: 3,
+  checkEnv: [],
+  checkLoopDefault: false,
   driftAllow: [
     "bun.lock",
     "bun.lockb",
@@ -99,7 +109,15 @@ export class PrWatcher {
         "SELECT settings FROM pr_watch_project WHERE project_id = ?",
       )
       .get(projectId);
-    return { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
+    const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
+    // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
+    const names: unknown[] = Array.isArray(stored.checkEnv) ? stored.checkEnv : [];
+    return {
+      ...stored,
+      checkEnv: names.filter(
+        (name): name is string => typeof name === "string" && isCheckEnvName(name),
+      ),
+    };
   }
 
   setSettings(projectId: string, patch: Partial<WatchSettings>): WatchSettings {
