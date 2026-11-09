@@ -1067,6 +1067,7 @@ export const ptBR = {
     breadcrumbMore: "Mostrar os passos do meio",
     collapse: "Recolher barra lateral",
     expand: "Mostrar barra lateral",
+    skip: "Pular para o conteúdo",
   },
   start: {
     title: "Nada aberto",

@@ -3649,6 +3649,9 @@ você, `g p` Projetos, `g c` Custos, `g a` Atividade, `g ,` Configurações. Out
 `Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
 `j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 
+O primeiro `Tab` em qualquer tela mostra **Pular para o conteúdo** no canto superior esquerdo; `Enter`
+leva o foco além da barra de título e da barra lateral, para a própria tela (#1430).
+
 ### Atalho global
 
 `Ctrl+Alt+F` traz o app para frente com a busca global aberta, mesmo com ele em segundo plano ou

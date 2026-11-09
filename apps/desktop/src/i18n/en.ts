@@ -1075,6 +1075,7 @@ export const en: Dictionary = {
     breadcrumbMore: "Show the steps in between",
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
+    skip: "Skip to content",
   },
   start: {
     title: "Nothing open",
