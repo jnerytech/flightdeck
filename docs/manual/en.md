@@ -3625,6 +3625,9 @@ Projects, `g c` Costs, `g a` Activity, `g ,` Settings. Other shortcuts: `Ctrl+K`
 forward, `Alt+Shift+C` next client, `Ctrl+T`/`W`/`Tab`/`1…9` tabs, `j`/`k`/`Enter` in lists and
 `A`/`N` on a request. None of them fires while you type in a field.
 
+The first `Tab` on any screen shows **Skip to content** at the top left; `Enter` moves the focus past
+the title bar and the sidebar to the screen itself (#1430).
+
 ### Global shortcut
 
 `Ctrl+Alt+F` brings the app to the front with the global search open, even with it in the
