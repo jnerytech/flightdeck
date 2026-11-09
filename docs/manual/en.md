@@ -1357,6 +1357,13 @@ interrupted or goes idle.
 { "maxParallelRuns": 2, "board": { "prPollIntervalMs": 60000 } }
 ```
 
+- **Short of memory** (#1343): while the host's memory in use is at or above `resources.pauseAt`
+  (90% by default, the Resources panel's **Critical**), a new card waits with "waiting for memory"
+  and starts on its own once memory frees up; the host looks again every 15 seconds. Runs already
+  going are never stopped. Change it in the host page's **Resources** panel (**New cards wait from
+  memory at**, or **Never**), or in `config.json` (`{ "resources": { "pauseAt": 0.9 } }`, `null`
+  to turn it off). When the host cannot read its memory, nothing waits.
+
 ### Card dependencies
 
 A card can be **blocked by** other cards of the same project, so an order you keep in your head is

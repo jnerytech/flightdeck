@@ -1623,6 +1623,7 @@ export const ptBR = {
     harnessTemplates: "o compartilhamento da configuração do Claude Code como modelo",
     keepAwake: "a função de manter o computador acordado",
     quotaPause: "a trava da cota para cartões novos",
+    memoryPause: "a trava de memória para cartões novos",
     quotaBudgets: "orçamentos como parte da cota do plano",
     autoUpdate: "atualização automática do host",
   },
@@ -4032,6 +4033,7 @@ export const ptBR = {
     queued: "na fila",
     waitingQuotaUntil: "aguardando cota até {time}",
     waitingQuota: "aguardando cota",
+    waitingMemory: "aguardando memória",
     addCard: "Adicionar card",
     addCardTo: "Adicionar card em {column}",
     empty: "Vazio",
@@ -5266,6 +5268,12 @@ export const ptBR = {
   },
   resources: {
     title: "Recursos",
+    guard: {
+      label: "Cartões novos esperam com a memória em",
+      labelFor: "Cartões novos esperam com a memória em, em {host}",
+      off: "Nunca",
+      hint: "Só cartões novos esperam, e começam quando a memória libera; sessões que já estão rodando nunca são paradas.",
+    },
     memory: "Memória",
     disk: "Disco",
     load: "Carga {n}%",

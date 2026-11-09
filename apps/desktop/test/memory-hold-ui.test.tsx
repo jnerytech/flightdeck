@@ -74,7 +74,7 @@ function board(language: "en" | "pt-BR") {
   (store as unknown as { update(p: object): void }).update({
     hosts: [hostRow([])],
     projects: { h1: [{ id: "p1", name: "api", path: "/x/api" }] },
-    cards: {},
+    cards: { "h1/c1": card() },
   });
   store.hostCommand = (async (_hostId: string, type: string) =>
     type === "board.get" ? { project: { id: "p1", name: "api" }, cards: [card()] } : {}) as never;

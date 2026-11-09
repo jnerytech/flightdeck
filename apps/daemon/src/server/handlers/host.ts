@@ -8,9 +8,10 @@ import { requireVaultTransport } from "../../vault/vault.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 
 export const hostHandlers = {
-  "resources.setPauseAt": (_payload, { server }) => {
-    server.need("memoryPause");
-    return { pauseAt: null };
+  "resources.setPauseAt": async (payload, { server }) => {
+    // Like quota.setPauseAt: it only decides whether a new card starts now or waits; nothing stops.
+    await server.need("memoryPause").set(payload.pauseAt);
+    return { pauseAt: payload.pauseAt };
   },
   "host.sleep": async (payload, { server }) => {
     const { sleep } = server.opts;
