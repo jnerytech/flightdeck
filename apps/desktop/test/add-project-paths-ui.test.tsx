@@ -10,13 +10,15 @@ const { AddProject } = await import("../src/components/projects/add-project.tsx"
 
 afterEach(cleanup);
 
-// #1049: a worktree's folder is wider than the dialog. Shown whole, it pushed Cancel and Add out of
-// the dialog at 1280, and at 390 the rows were cut at the end, where the folders differ.
+// #1049: a deep folder is wider than the dialog. Shown whole, it pushed Cancel and Add out of the
+// dialog at 1280, and at 390 the rows were cut at the end, where the folders differ.
 const ROOT = "/srv/git";
 const LONG = [
-  `${ROOT}/web/.flightdeck/worktrees/fd-login-fix`,
-  `${ROOT}/web/.flightdeck/worktrees/fd-cart-total`,
+  `${ROOT}/clients/acme/storefront/login-service`,
+  `${ROOT}/clients/acme/storefront/cart-service`,
 ] as const;
+/** A card's worktree (#1544): Flightdeck's own folder, never a project to add. */
+const CARD_WORKTREE = `${ROOT}/web/.flightdeck/worktrees/first-card`;
 
 function setup(language: "en" | "pt-BR") {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
@@ -27,7 +29,10 @@ function setup(language: "en" | "pt-BR") {
     return { id: "p1", name: "p1", path: payload.path };
   }) as never;
   const real = store.getState();
-  const sessions = LONG.map((cwd, i) => ({ cwd, updatedAt: `2026-11-0${i + 1}T10:00:00Z` }));
+  const sessions = [
+    ...LONG.map((cwd, i) => ({ cwd, updatedAt: `2026-11-0${i + 1}T10:00:00Z` })),
+    { cwd: CARD_WORKTREE, updatedAt: "2026-11-05T10:00:00Z" },
+  ];
   store.getState = () =>
     ({
       ...real,
@@ -53,14 +58,28 @@ describe("Add project: a long recent folder fits the dialog (#1049)", () => {
       expect(list).not.toBeNull();
       const rows = Array.from(list?.querySelectorAll("button") ?? []);
       expect(rows.map((b) => b.textContent)).toEqual([
-        "/srv/git/…/worktrees/fd-cart-total",
-        "/srv/git/…/worktrees/fd-login-fix",
+        "/srv/git/…/storefront/cart-service",
+        "/srv/git/…/storefront/login-service",
       ]);
       expect(rows.map((b) => b.getAttribute("title"))).toEqual([LONG[1], LONG[0]]);
       await act(async () => {
         fireEvent.click(rows[0] as HTMLElement);
       });
       expect(sent).toEqual([["project.add", LONG[1]]]);
+    });
+  }
+});
+
+describe("Add project: the first focus is the folder field (#1544)", () => {
+  for (const [language, field] of [
+    ["en", "Project folder"],
+    ["pt-BR", "Pasta do projeto"],
+  ] as const) {
+    test(`${language}: the dialog opens with the focus on the folder field, not on a suggestion`, () => {
+      setup(language);
+      const input = screen.queryByRole("textbox", { name: field });
+      expect(input).not.toBeNull();
+      expect(document.activeElement === input).toBe(true);
     });
   }
 });
