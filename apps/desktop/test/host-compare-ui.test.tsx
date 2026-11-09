@@ -288,7 +288,12 @@ describe("host-compare-ui: the table", () => {
   });
 
   test("an offline host says so once, in place of a column of dashes", async () => {
-    const { store } = mount([{ id: "alfa" }, { id: "beta" }, { id: "gama", status: "offline" }]);
+    const known = { hooks: "ok", signin: "ok", gh: "ok", az: "ok", boot: "ok" } as const;
+    const { store } = mount([
+      { id: "alfa", ...known },
+      { id: "beta", ...known },
+      { id: "gama", status: "offline" },
+    ]);
     await open();
     expect(await answered(store, 2)).toBe(true);
     const rows = [...(table()?.querySelectorAll("tbody tr") ?? [])];
@@ -409,7 +414,8 @@ describe("host-compare-ui: in Portuguese", () => {
     expect(cells("Hooks", "pt-BR")[2] ?? "").toContain("Desatualizados");
     expect(cells("GitHub CLI (gh)", "pt-BR")[2]).toContain("Não instalado");
     expect(cells("Iniciar no boot", "pt-BR")[2] ?? "").toContain("Ligado");
-    expect(screen.queryByRole("button", { name: "Corrigir em gama" }) !== null).toBe(true);
+    // The daemon, hooks, sign-in and gh of gama are marked and lacking; Start at boot is marked, but on.
+    expect(screen.queryAllByRole("button", { name: "Corrigir em gama" }).length).toBe(4);
     const first = table("pt-BR")?.querySelectorAll("tbody tr")[0]?.querySelectorAll("td");
     expect(first?.[3]?.textContent).toBe("Não comparado: offline.");
     expect(cells("Versão do daemon", "pt-BR")[2] ?? "").toContain(
