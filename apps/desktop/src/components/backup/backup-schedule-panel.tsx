@@ -93,6 +93,12 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
             )}
           </Field>
         </Form>
+        {/* Before the passphrase field: the waiting notice says "Type it below". */}
+        {report.status === "skipped" && (
+          <InlineNotice tone={report.reason === "failed" ? "error" : "warn"}>
+            {t(`backupSchedule.skipped.${report.reason}`)}
+          </InlineNotice>
+        )}
         {waiting && (
           <Form
             variant="inline"
@@ -125,11 +131,6 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
         )}
         {schedule.cadence !== "off" && scheduler.hasPassphrase && (
           <p className="text-muted-foreground text-sm">{t("backupSchedule.passphraseSet")}</p>
-        )}
-        {report.status === "skipped" && (
-          <InlineNotice tone={report.reason === "failed" ? "error" : "warn"}>
-            {t(`backupSchedule.skipped.${report.reason}`)}
-          </InlineNotice>
         )}
         {report.status === "done" && report.prune === "failed" && (
           <InlineNotice tone="warn">{t("backupSchedule.pruneFailed")}</InlineNotice>
