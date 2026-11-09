@@ -100,4 +100,52 @@ describe("approval-focus-ui: after Approve the focus goes to what comes next (#1
     elsewhere.remove();
     expect([kept, card("r1")?.getAttribute("data-state")]).toEqual([true, "answered"]);
   });
+
+  test("an answered question, with no other request waiting, takes the focus: the summary of what was answered", async () => {
+    function Asking() {
+      const [done, setDone] = useState(false);
+      return (
+        <TContext.Provider value={t}>
+          <ApprovalCard
+            request={{
+              requestId: "q1",
+              toolName: "AskUserQuestion",
+              input: {
+                questions: [
+                  {
+                    question: "Which database?",
+                    header: "Database",
+                    multiSelect: false,
+                    options: [{ label: "SQLite", description: "Embedded" }],
+                  },
+                ],
+              },
+              cwd: "/w",
+              createdAt: null,
+            }}
+            t={t}
+            nowMs={0}
+            {...(done ? { resolution: { decision: "allow" as const } } : {})}
+            onRespond={() => setDone(true)}
+          />
+        </TContext.Provider>
+      );
+    }
+    render(<Asking />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("radio", { name: /SQLite/ }));
+    });
+    const send = screen.getByRole("button", { name: "Send answers" });
+    send.focus();
+    await act(async () => {
+      fireEvent.click(send);
+    });
+    const answered = () => document.querySelector<HTMLElement>("[data-answered]");
+    await settle(
+      () => document.activeElement === answered(),
+      5000,
+      "focus on the answered question",
+    );
+    expect(document.activeElement?.textContent?.includes("Database")).toBe(true);
+  });
 });

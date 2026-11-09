@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -20,20 +20,43 @@ afterEach(cleanup);
 const LABELS = { sidebar: "Side", collapse: "Collapse", expand: "Expand", skip: "Skip" };
 
 /** A tiny app: a form page whose button goes to the next page, and a page with its own control. */
+/** A page that is still loading: its Page, and so its heading, comes a moment later. */
+function Late() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setReady(true), 80);
+    return () => clearTimeout(timer);
+  }, []);
+  return ready ? (
+    <Page key="late" title="beta">
+      <button type="button">Later</button>
+    </Page>
+  ) : (
+    <p>Loading…</p>
+  );
+}
+
 function Harness() {
-  const [route, setRoute] = useState<"form" | "host">("form");
+  const [route, setRoute] = useState<"form" | "host" | "late">("form");
   return (
     <AppShell
       header={<button type="button">Menu</button>}
       sidebar={() => (
-        <button type="button" onClick={() => setRoute("host")}>
-          Go from the sidebar
-        </button>
+        <>
+          <button type="button" onClick={() => setRoute("host")}>
+            Go from the sidebar
+          </button>
+          <button type="button" onClick={() => setRoute("late")}>
+            Go to the slow page
+          </button>
+        </>
       )}
       labels={LABELS}
       navKey={route}
     >
-      {route === "form" ? (
+      {route === "late" ? (
+        <Late />
+      ) : route === "form" ? (
         <Page key="form" title="Connect your first host">
           <button type="button" onClick={() => setRoute("host")}>
             Test and add
@@ -80,5 +103,34 @@ describe("shell-page-focus-ui: a page that opens takes the focus when the step l
     });
     await settle(() => title()?.textContent === "alfa");
     expect(document.activeElement === side).toBe(true);
+  });
+
+  test("a page that is still loading takes the focus when its heading comes, if the step lost it", async () => {
+    render(<Harness />);
+    const step = screen.queryByRole("button", { name: "Test and add" });
+    step?.focus();
+    // The sidebar button stays, so the focus is moved off to the removed step: the page's own, lost.
+    const go = screen.queryByRole("button", { name: "Go to the slow page" });
+    (document.activeElement as HTMLElement | null)?.blur();
+    await act(async () => {
+      if (go) fireEvent.click(go);
+    });
+    (document.activeElement as HTMLElement | null)?.blur();
+    await settle(() => title()?.textContent === "beta", 5000, "the heading of the slow page");
+    await settle(() => document.activeElement === title(), 5000, "focus on the late heading");
+    expect(document.activeElement === title()).toBe(true);
+  });
+
+  test("a control the person moved to while the page loaded keeps the focus when the heading comes", async () => {
+    render(<Harness />);
+    const go = screen.queryByRole("button", { name: "Go to the slow page" });
+    await act(async () => {
+      if (go) fireEvent.click(go);
+    });
+    (document.activeElement as HTMLElement | null)?.blur();
+    const menu = screen.queryByRole("button", { name: "Menu" });
+    menu?.focus();
+    await settle(() => title()?.textContent === "beta", 5000, "the heading of the slow page");
+    await stays(() => document.activeElement === menu, 300, "focus stays on the control");
   });
 });
