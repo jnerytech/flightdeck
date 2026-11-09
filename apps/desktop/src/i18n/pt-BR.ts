@@ -5433,14 +5433,17 @@ export const ptBR = {
   hostCompare: {
     title: "Comparar hosts",
     intro:
-      "Sistema, versões, hooks, login, ferramentas e recursos de cada host lado a lado. A célula que difere do que a maioria dos hosts tem fica marcada.",
+      "Sistema, versões, hooks, login, ferramentas e recursos de cada host lado a lado. A célula que difere do que a maioria dos hosts tem fica marcada, e a linha de recursos diz quais um host não tem ou tem a mais.",
     show: "Mostrar comparação",
     hide: "Ocultar comparação",
     refresh: "Atualizar",
     table: "Hosts comparados",
     unknown: "Desconhecido",
     differs: "Difere da maioria dos hosts, que têm {value}",
-    differsFeatures: "Recursos diferentes dos da maioria dos hosts",
+    featureMissing: "sem {name}",
+    featureExtra: "tem {name}",
+    featuresMore: "e mais {n}",
+    featuresFewer: "Mostrar menos",
     down: "Não comparado: {status}.",
     fix: "Corrigir em {host}",
     fields: {
