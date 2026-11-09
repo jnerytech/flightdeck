@@ -1100,9 +1100,14 @@ aparece mascarado e como **Oculto**, e não abre.
 
 - **Selecionar.** `Ctrl`-clique (`⌘`-clique no Mac) num card para selecioná-lo ou desmarcá-lo;
   `Shift`-clique seleciona o intervalo desde o último card escolhido, dentro da coluna. O menu do
-  card tem **Selecionar card** para o teclado, e um card selecionado diz "selecionado" a um leitor
-  de tela. `Esc` limpa a seleção. Um filtro esconde cards mas os mantém selecionados; o que você
-  faz então vale só para os cards que aparecem, e a barra diz quantos estão escondidos.
+  card tem **Selecionar card** também. Enquanto há uma seleção, cada card mostra uma caixa que o
+  seleciona ou desmarca, e um leitor de tela ouve o estado dela e a contagem.
+- **Selecionar pelo teclado** (#1354). Num card, `X` seleciona ou desmarca, e `Shift` com uma seta,
+  `Home` ou `End` anda e seleciona o trecho desde o primeiro card escolhido, na ordem do board.
+  Enquanto há uma seleção, `M` abre o **Mover para…** da barra e `S` não inicia um card sozinho. `Esc`
+  limpa a seleção e deixa o foco no card; sem seleção, faz o que fazia antes (uma tela dividida
+  fecha). Um filtro esconde cards mas os mantém selecionados; o que você faz então vale só para os
+  cards que aparecem, e a barra diz quantos estão escondidos.
 - **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
   **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
   coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.

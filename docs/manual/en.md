@@ -1096,9 +1096,14 @@ a path or line with a token or a vault value in it, shows masked and as **Hidden
 
 - **Select.** `Ctrl`-click (`⌘`-click on a Mac) a card to select it or unselect it; `Shift`-click
   selects the range from the last card you picked, within its column. A card's menu has **Select
-  card** for the keyboard, and a selected card says "selected" to a screen reader. `Esc` clears the
-  selection. A filter hides cards but keeps them selected; what you do then applies only to the
-  cards you can see, and the bar says how many are hidden.
+  card** too. While a selection exists, every card shows a check that selects or unselects it, and a
+  screen reader hears its state and the count.
+- **Select from the keyboard** (#1354). On a card, `X` selects it or unselects it, and `Shift` with an
+  arrow, `Home` or `End` moves and selects the range from the first card picked, in the board's order.
+  While a selection exists, `M` opens the bar's **Move to…** and `S` starts no single card. `Esc` clears
+  the selection and leaves the focus on the card; with none, it does what it did before (a split view
+  closes). A filter hides cards but keeps them selected; what you do then applies only to the cards
+  you can see, and the bar says how many are hidden.
 - **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
   **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
   column you drop it on, in the board's order; dropped on a card, they land before it.
