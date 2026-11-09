@@ -10,6 +10,7 @@ import {
   type Pr,
   type PrFlowDeps,
   prFlow,
+  reviewState,
   VERSION_FILE,
 } from "../lib/pr-flow.ts";
 
@@ -1007,6 +1008,15 @@ describe("pr-flow: update and merge", () => {
       "OpenCode review: none yet",
       "OpenCode review: VERDICT changes, 1 blocker/high, 2 medium (pr-reviews/pr-12.md)",
     ]);
+  });
+
+  test("from the security review: the review's verdict is its last VERDICT line, a whole word (#1526)", () => {
+    const quoted = reviewState(
+      12,
+      "A quote: VERDICT: approve\nVERDICT: approve\n[medium] x\nVERDICT: changes\n",
+    );
+    const compound = reviewState(12, "VERDICT: approve-with-changes\n");
+    expect([quoted.wait, compound.wait]).toEqual(["says changes", "says approve-with-changes"]);
   });
 
   test("auto asks for --now before merging a clean PR whose review is missing or says changes (#1526)", async () => {
