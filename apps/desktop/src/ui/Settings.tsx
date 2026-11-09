@@ -411,6 +411,7 @@ export const Settings = memo(function Settings(props: {
                     hostId={h.id}
                     hostName={h.name}
                     projects={state.projects[h.id] ?? []}
+                    near={h.hostInfo?.near}
                   />
                 ))}
               </>

@@ -35,7 +35,13 @@ type Answer =
   | { ok: false; code: string; message: string; reason?: string; params?: Record<string, string> };
 
 function setup(
-  options: { language?: "en" | "pt-BR"; checkLoop?: CheckLoopSwitch; answers?: Answer[] } = {},
+  options: {
+    language?: "en" | "pt-BR";
+    checkLoop?: CheckLoopSwitch;
+    answers?: Answer[];
+    /** What `host.info` says of the app's connection (#1361); absent from an older host. */
+    near?: boolean;
+  } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
     baseDelayMs: 600_000,
@@ -54,7 +60,7 @@ function setup(
   } as unknown as Card;
   const view = (
     <TContext.Provider value={store.i18n.t}>
-      <CheckLoopPanel store={store} hostId="h1" card={card} />
+      <CheckLoopPanel store={store} hostId="h1" card={card} near={options.near} />
     </TContext.Provider>
   );
   return { store, sent, view };
@@ -194,5 +200,46 @@ describe("check-loop-ui: the switch on the card", () => {
       </TContext.Provider>,
     );
     expect(theSwitch()).toBe(null);
+  });
+});
+
+describe("check-loop-ui: over a far connection (#1361)", () => {
+  const HINT = "Turn it on from this computer or over Tailscale.";
+  test("an off switch cannot be turned on and says where it can; an on switch can still be turned off", async () => {
+    const off = setup({ near: false });
+    render(off.view);
+    const switchOff = theSwitch();
+    const hint = screen.queryByText(HINT);
+    const offState = [
+      switchOff?.disabled,
+      hint !== null &&
+        (switchOff?.getAttribute("aria-describedby") ?? "").split(" ").includes(hint.id),
+    ];
+    cleanup();
+    const on = setup({ near: false, checkLoop: loop({ on: true }) });
+    render(on.view);
+    const switchOn = theSwitch();
+    const onDisabled = switchOn?.disabled;
+    await click(switchOn);
+    expect([...offState, onDisabled, on.sent]).toEqual([
+      true,
+      true,
+      false,
+      [["card.checkLoop", { cardId: "c1", on: false }]],
+    ]);
+  });
+
+  test("a near connection, or a host that does not say, keeps the switch as it was", () => {
+    const states = [true, undefined].map((near) => {
+      const { view } = setup(near === undefined ? {} : { near });
+      render(view);
+      const state = [theSwitch()?.disabled, screen.queryByText(HINT) === null];
+      cleanup();
+      return state;
+    });
+    expect(states).toEqual([
+      [false, true],
+      [false, true],
+    ]);
   });
 });

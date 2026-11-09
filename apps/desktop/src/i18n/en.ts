@@ -4132,6 +4132,8 @@ export const en: Dictionary = {
       "When a card's turn ends, it runs these checks and sends what fails back to its session, at most this many rounds, before it moves on.",
     maxRoundsHelp: "Rounds of fixing a PR's failing CI.",
     fixMarked: "Fix the marked field.",
+    farReadOnly:
+      "The checks and the check loop change only over a near connection: this computer or Tailscale.",
     tooManyCheckEnv: "Extra variables: at most 20 names, each up to 64 characters",
   },
   sessionFinish: {
@@ -4165,6 +4167,7 @@ export const en: Dictionary = {
     confirm:
       "The checks will run the code this card writes, without asking you each time. That code can read your files and reach the network, as the session itself can.",
     confirmAction: "Turn on",
+    farOff: "Turn it on from this computer or over Tailscale.",
     ready: "On: when a turn ends, the project's checks run.",
     checking: "Running the checks…",
     fixing: "Round {round} of {max}: the session is fixing what the checks found.",

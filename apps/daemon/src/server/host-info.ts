@@ -14,6 +14,7 @@ import { logPathFor } from "../logs/serve.ts";
 import { present } from "../present.ts";
 import type { OpenCodeInfo } from "../runtime/opencode-discovery.ts";
 import type { ServerOptions } from "../server.ts";
+import { isVaultTransport } from "../vault/vault.ts";
 import type { ServerContext } from "./context.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -160,6 +161,9 @@ export async function hostInfo(server: ServerContext, origin: string) {
     uptimeSec: Math.floor((Date.now() - server.startedAt) / 1000),
     activeSessions: server.manager.activeSessionCount(),
     apiKeySanitized: server.manager.apiKeySanitized(),
+    // Issue #1361: whether this connection is near (loopback or Tailscale); only a near one may
+    // change what runs unattended, so the app shows those settings read-only otherwise.
+    near: isVaultTransport(origin),
     // The terminal can be turned on and off while the daemon runs: asked each time.
     features: [
       ...(opts.features ?? server.features),

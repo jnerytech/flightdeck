@@ -4136,6 +4136,8 @@ export const ptBR = {
       "Quando o turno de um card termina, ele roda estes checks e devolve o que falha para a própria sessão, no máximo este número de rodadas, antes de seguir.",
     maxRoundsHelp: "Rodadas para consertar a CI de um PR que falha.",
     fixMarked: "Corrija o campo marcado.",
+    farReadOnly:
+      "Os checks e o laço de checks só mudam por uma conexão próxima: este computador ou o Tailscale.",
     tooManyCheckEnv: "Variáveis extras: no máximo 20 nomes, cada um com até 64 caracteres",
   },
   sessionFinish: {
@@ -4169,6 +4171,7 @@ export const ptBR = {
     confirm:
       "Os checks vão rodar o código que este card escreve, sem perguntar a cada vez. Esse código pode ler seus arquivos e acessar a rede, como a própria sessão pode.",
     confirmAction: "Ligar",
+    farOff: "Ligue-o neste computador ou pelo Tailscale.",
     ready: "Ligado: quando um turno termina, os checks do projeto rodam.",
     checking: "Rodando os checks…",
     fixing: "Rodada {round} de {max}: a sessão está corrigindo o que os checks acharam.",
