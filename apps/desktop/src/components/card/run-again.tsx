@@ -1,7 +1,7 @@
-import type { WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
+import type { RunResumeCheck, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { useEffect, useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { Stack } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
@@ -25,6 +25,10 @@ export interface RunAgainProps {
  * Issue #1219: a failed run starts again from the card, with the same workflow, inputs, card and
  * branch (`card.start`), or says why it cannot: when the workflow file is the problem, the way is
  * the Workflows page. A refusal of the host shows here, not in the banner.
+ *
+ * Issue #1266: when the host's check says the run can go on from its failed step (`run.resume`),
+ * "Run again from <step>" comes first; otherwise the check's reason is said under "Run again". A
+ * host without the command answers the check with an error, and only "Run again" is offered.
  */
 export function RunAgain(props: Readonly<RunAgainProps>) {
   // Keyed by the run: the next failed run of the card starts with a clean state, not the last one's note.
@@ -37,17 +41,37 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
   const state = runAgain(run, props.workflow, props.known);
   const [refused, setRefused] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
+  const [check, setCheck] = useState<RunResumeCheck | null>(null);
+  // The resume keeps the run's id: its note stays while the run runs, until it ends again.
+  const [resumed, setResumed] = useState<{ from: string; end: string | null } | null>(null);
   const refusedBox = useRef<HTMLDivElement>(null);
   const startedBox = useRef<HTMLOutputElement>(null);
   const reasonId = useId();
+  const resumeReasonId = useId();
+  const going = resumed !== null && (run.status !== "failed" || run.endedAt === resumed.end);
+  // Only when "Run again" is on: a file that is the problem keeps its own reason.
+  const checkFor = state.show && state.off === null && !going ? `${run.id}@${run.endedAt}` : null;
   useEffect(() => {
-    if (started) startedBox.current?.focus();
-  }, [started]);
+    if (started || going) startedBox.current?.focus();
+  }, [started, going]);
+  useEffect(() => {
+    setCheck(null);
+    if (checkFor === null) return;
+    let live = true;
+    void store.hostRequest(hostId, "run.resume", { runId: run.id }).then((answer) => {
+      if (live && answer.ok) setCheck(answer.data);
+    });
+    return () => {
+      live = false;
+    };
+  }, [checkFor, store, hostId, run.id]);
   // Once started the button is gone (the new run is not failed): the note takes its place and the focus.
-  if (started) {
+  if (started || going) {
     return (
       <output ref={startedBox} tabIndex={-1} className="block text-sm" data-started>
-        {t("runUi.again.started")}
+        {resumed && going
+          ? t("runUi.again.resumed", { step: resumed.from })
+          : t("runUi.again.started")}
       </output>
     );
   }
@@ -67,19 +91,48 @@ function RunAgainOf(props: Readonly<RunAgainProps>) {
     }
     setStarted(true);
   };
+  const resume = async () => {
+    setRefused(null);
+    const end = run.endedAt;
+    const result = await store.hostRequest(hostId, "run.resume", { runId: run.id, confirm: true });
+    const no = !result.ok ? result : result.data.ok ? null : result.data;
+    if (no) {
+      if (result.ok) setCheck(result.data);
+      setRefused(refusalText(result.ok ? "invalid_state" : result.code, "", t, no));
+      refusedBox.current?.focus();
+      return;
+    }
+    if (result.ok) setResumed({ from: result.data.from, end });
+  };
+  const offer = off === null && check?.ok === true ? check.from : null;
+  // "Only a failed run" says nothing new on a failed run: the check raced its end.
+  const why =
+    off === null && check && !check.ok && check.reason !== "run_resume_not_failed" && !refused
+      ? refusalText("invalid_state", "", t, check)
+      : null;
   return (
     <Stack gap={2}>
-      <div>
+      <Inline gap={2}>
+        {offer !== null && (
+          <ActionButton variant="outline" size="sm" onClick={resume}>
+            {t("runUi.again.resume", { step: offer })}
+          </ActionButton>
+        )}
         <ActionButton
           variant="outline"
           size="sm"
           disabled={off !== null}
-          aria-describedby={off ? reasonId : undefined}
+          aria-describedby={off ? reasonId : why ? resumeReasonId : undefined}
           onClick={start}
         >
           {t("runUi.again.action")}
         </ActionButton>
-      </div>
+      </Inline>
+      {why && (
+        <p id={resumeReasonId} className="text-muted-foreground text-xs">
+          {why}
+        </p>
+      )}
       {off && (
         <p id={reasonId} className="text-muted-foreground text-xs">
           {t(`runUi.again.${off}` as Key, { name: run.workflowName })}

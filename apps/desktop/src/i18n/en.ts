@@ -4155,6 +4155,8 @@ export const en: Dictionary = {
         "The workflow {name} changed since you trusted it: review and trust it again before it runs.",
       invalid: "The workflow {name} has errors: fix the file and commit it.",
       openWorkflows: "Open Workflows",
+      resume: "Run again from {step}",
+      resumed: "Going on from {step}.",
       started: "Started again.",
     },
     budget: "Budget",
