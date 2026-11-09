@@ -5,8 +5,8 @@ import type { ResourcesSnapshot } from "@flightdeck/protocol";
 import { loadConfig } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "../src/resources/memory-gate.ts";
-import { cardWhen, newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import type { ProcReader } from "../src/resources/resources.ts";
+import { cardWhen, gitRepo, newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { manualTime } from "./time-helpers.ts";
 
@@ -84,6 +84,23 @@ describe("memory-gate: new cards wait while the host's memory is at or above res
     expect(osMemoryReading(os("darwin"))).toBeNull();
   });
 
+  test("once holding, it lets runs go only 2 points under the threshold, so it does not flap", () => {
+    const g = gateAt(0.95);
+    let heard = 0;
+    cleanups.push(g.gate.watch(() => heard++));
+    expect(g.gate.blocked()).toEqual({ used: 0.95 });
+    g.set(used(0.89));
+    g.advance(15_000);
+    expect([g.gate.blocked(), heard]).toEqual([{ used: 0.89 }, 0]);
+    g.set(used(0.87));
+    g.advance(15_000);
+    expect([g.gate.blocked(), heard]).toEqual([null, 1]);
+    // Free again, it holds from the threshold itself, not from the margin.
+    g.set(used(0.89));
+    g.advance(15_000);
+    expect([g.gate.blocked(), heard]).toEqual([null, 1]);
+  });
+
   test("a new threshold applies at once and tells the watchers", () => {
     const g = gateAt(0.85);
     let heard = 0;
@@ -137,30 +154,73 @@ describe("memory-gate: new cards wait while the host's memory is at or above res
 
 const TOKEN = "memory-pause-token-0123456789abcdef";
 
-describe("memory-pause: the hold is a host setting the app reads and changes (#1343)", () => {
-  test("resources.setPauseAt writes the config, answers the new value and resources.get agrees", async () => {
-    const dir = tempDir();
-    const file = join(dir, "config.json");
-    writeFileSync(
-      file,
-      JSON.stringify({
-        port: 0,
-        token: TOKEN,
-        dataDir: join(dir, "data"),
-        allowedRoots: [dir],
-        history: { roots: [join(dir, "nada")] },
-      }),
-    );
-    const running = await startDaemon(
-      { command: "start", config: file, runtime: "fake" },
-      {},
-      { log: () => {}, error: () => {} },
-    );
-    cleanups.push(() => running.stop());
-    const client = new FrameClient(`ws://127.0.0.1:${new URL(running.url).port}/v1/ws`);
-    cleanups.push(() => client.close());
-    await client.request("hello", { token: TOKEN, client: "t" });
+/** A /proc with only the daemon in it: resources.get reads nothing of the machine. */
+const proc = (ownPid: number): ProcReader => ({
+  pageSize: 4096,
+  ticksPerSecond: 100,
+  pids: async () => [ownPid],
+  stat: async (pid) => ({
+    pid,
+    ppid: 1,
+    name: "flightdeckd",
+    cpuTicks: 0,
+    startTicks: 0,
+    rssPages: 10,
+  }),
+  cwd: async () => "/gone",
+  uptimeSec: async () => 10_000,
+});
 
+/** A daemon over a temp repository, its memory read from `reading`. */
+async function daemon(reading: () => MemoryReading | null) {
+  const { root, repo } = gitRepo();
+  const file = join(root, "config.json");
+  writeFileSync(
+    file,
+    JSON.stringify({
+      port: 0,
+      token: TOKEN,
+      dataDir: join(root, "data"),
+      allowedRoots: [root],
+      history: { roots: [join(root, "nada")] },
+    }),
+  );
+  const running = await startDaemon(
+    { command: "start", config: file, runtime: "fake" },
+    {},
+    { log: () => {}, error: () => {} },
+    { resourcesProc: proc(process.pid), memoryReading: reading },
+  );
+  cleanups.push(() => running.stop());
+  const client = new FrameClient(running.url);
+  cleanups.push(() => client.close());
+  await client.request("hello", { token: TOKEN, client: "t" });
+  return { client, file, repo };
+}
+
+describe("memory-pause: the hold is a host setting the app reads and changes (#1343)", () => {
+  test("the daemon's board waits on the host's reading: a card started at 95% is queued for memory", async () => {
+    const { client, repo } = await daemon(() => used(0.95));
+    const project = await client.data<{ id: string }>("project.add", {
+      path: repo,
+      promptTemplate: "",
+    });
+    const card = await client.data<{ id: string }>("card.create", {
+      projectId: project?.id,
+      title: "Heavy",
+      description: "oi",
+    });
+    const started = await client.data<{ queued: boolean; queueReason: string | null }>(
+      "card.start",
+      {
+        cardId: card?.id,
+      },
+    );
+    expect([started?.queued, started?.queueReason]).toEqual([true, "memory"]);
+  });
+
+  test("resources.setPauseAt writes the config, answers the new value and resources.get agrees", async () => {
+    const { client, file } = await daemon(() => used(0.5));
     expect((await loadConfig(file)).resources.pauseAt).toBe(0.9);
     const info = await client.data<{ features?: string[] }>("host.info", {});
     expect(info?.features?.includes("memoryPause")).toBe(true);
