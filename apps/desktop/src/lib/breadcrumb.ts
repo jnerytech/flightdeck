@@ -18,6 +18,7 @@ const TOP_LEVEL = {
   overview: "nav.overview",
   "needs-you": "sidebar.needsYou",
   activity: "sidebar.activity",
+  "pull-requests": "sidebar.pullRequests",
   "all-projects": "sidebar.projects",
   costs: "sidebar.costs",
   connections: "sidebar.connections",

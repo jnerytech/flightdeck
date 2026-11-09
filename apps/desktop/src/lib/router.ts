@@ -22,6 +22,8 @@ export type Route =
   | { name: "needs-you" }
   /** Every session of every host by state (issue #151). */
   | { name: "activity" }
+  /** Every card with an open PR across the hosts (#1345). */
+  | { name: "pull-requests" }
   | { name: "session"; host: string; id: string; focus?: string }
   /** `prompt`: the first prompt, filled in (a snippet, phase 18). */
   | { name: "new-session"; host: string; prompt?: string; persona?: string }
@@ -192,6 +194,7 @@ const NAMES: Record<Route["name"], true> = {
   plugins: true,
   setup: true,
   conversations: true,
+  "pull-requests": true,
   teams: true,
   vault: true,
   "add-host": true,

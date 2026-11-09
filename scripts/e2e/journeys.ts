@@ -17,6 +17,8 @@ import {
   DANGER_SESSION,
   DEMO_ACTIVE_TEAM,
   DEMO_CLOSED_TEAM,
+  DEMO_PR_BETA_CARD,
+  DEMO_PR_BETA_URL,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_REPORT,
@@ -2161,6 +2163,28 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     // The PR is still open: the card offers Merge PR again.
     await mergePr.waitFor({ timeout: WAIT });
+  },
+
+  // Issue #1345: the Pull requests page lists the open PRs of both hosts, and Merge PR on one goes
+  // through the same confirm as the card page.
+  "pull-requests": async (c) => {
+    await open(c, { name: "pull-requests" });
+    const list = c.page.getByRole("list", { name: c.t("pullRequests.list"), exact: true });
+    const rowOf = (title: string) =>
+      list.locator("[data-slot='pr-row']").filter({
+        has: c.page.getByRole("heading", { name: title, exact: true }),
+      });
+    const alfa = rowOf(DEMO_PR_CARD);
+    const beta = rowOf(DEMO_PR_BETA_CARD);
+    await alfa.waitFor({ timeout: WAIT });
+    await beta.waitFor({ timeout: WAIT });
+    await alfa.getByText("alfa").first().waitFor({ timeout: WAIT });
+    await beta.getByText(BETA).first().waitFor({ timeout: WAIT });
+    await beta.getByRole("button", { name: c.t("cardMergePr.action"), exact: true }).click();
+    const dialog = c.page.getByRole("alertdialog");
+    await dialog.getByText(DEMO_PR_BETA_URL, { exact: true }).waitFor({ timeout: WAIT });
+    await dialog.getByRole("button", { name: c.t("cardMergePr.action"), exact: true }).click();
+    await c.page.getByText(c.t("cardMergePr.done"), { exact: true }).waitFor({ timeout: WAIT });
   },
 
   "escopo-dados": async (c) => {
