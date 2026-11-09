@@ -143,9 +143,10 @@ the same session, the same trust as the watch's round prompt. It never reaches a
   anything beyond a command and its arguments. `rm -rf /`, `curl …` and `node ./x.js` all pass it.
   So:
   - **Changing the list needs a near connection.** `requireVaultTransport` applies to a
-    `watch.settings` patch that has any of `checks`, `checkTimeoutMin`, `checkRounds`,
-    `checkEnv`, `checkLoopDefault`, `persona` (as whom the watch's rounds run) or `driftAllow`
-    (what a round may push outside its PR) whose value differs from the stored one. A field sent
+    `watch.settings` patch that changes any field but the switch and the spend brakes (`enabled`,
+    `maxRounds`, `maxTurns`, `maxFailures`, `budgetUsd`, `dailyUsd`: they bound money, not what
+    runs): the checks, their timeout and rounds, `checkEnv`, `checkLoopDefault`, `persona` and
+    `driftAllow`, and any field added later until it is named far-editable. A field sent
     unchanged passes, so a far client that saves the whole form still saves `enabled` or
     `maxRounds`. The app sends a minimal patch anyway, and shows the five fields read-only on a
     far host. Slice 1 tests each of the five from a far origin, changed (refused) and unchanged
