@@ -9,6 +9,9 @@ import {
   saveSchedule,
 } from "./backup-schedule.ts";
 
+/** What the person has to be told about: the passphrase to type, a folder to choose, a write that failed. */
+export type Attention = "passphrase" | "no-folder" | "failed";
+
 /** How often the app looks at whether a backup is owed. */
 const CHECK_INTERVAL_MS = 15 * 60_000;
 
@@ -30,7 +33,13 @@ export class BackupScheduler {
 
   constructor(
     private readonly platform: Platform,
-    private readonly options: { workFactor?: number; now?: () => number; intervalMs?: number } = {},
+    private readonly options: {
+      workFactor?: number;
+      now?: () => number;
+      intervalMs?: number;
+      /** Tells the app something needs the person's eyes (issue #1327); at most once per kind per start. */
+      onAttention?: (kind: Attention) => void;
+    } = {},
   ) {
     this.current = loadSchedule(platform.storage);
   }
