@@ -828,7 +828,7 @@ export const ptBR = {
     noFolder: "Nenhuma pasta escolhida",
     chooseFolder: "Escolher pasta",
     keep: "Arquivos a manter",
-    keepInvalid: "Digite um número inteiro a partir de 1. Até lá ficam {count} arquivos.",
+    keepInvalid: "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
     passphrase: "Frase-senha desta sessão",
     passphraseHelp:
       "Pelo menos 12 caracteres. Fica na memória até você fechar o Flightdeck e nunca é salva.",

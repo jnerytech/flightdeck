@@ -12,6 +12,12 @@ import type { AppStore } from "@/lib/app-store";
 import type { Cadence } from "@/lib/backup-schedule";
 
 const CADENCES: readonly Cadence[] = ["off", "daily", "weekly"];
+/** The number of files to keep that `text` means, or null when it is not a whole number from 1. */
+function validKeep(text: string): number | null {
+  const keep = Number(text);
+  return text.trim() !== "" && Number.isInteger(keep) && keep >= 1 ? keep : null;
+}
+
 /** The same floor as a backup file's passphrase (the bundle refuses a shorter one). */
 const MIN_PASSPHRASE = 12;
 
@@ -30,7 +36,7 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
   const schedule = scheduler.schedule();
   const report = scheduler.report;
   // #1329: what was typed stays, and says why it is not saved, until it is a whole number from 1.
-  const keepValid = /^\d+$/.test(keepText.trim()) && Number(keepText) >= 1;
+  const keepValid = validKeep(keepText) !== null;
   const waiting = schedule.cadence !== "off" && !scheduler.hasPassphrase;
 
   return (
@@ -86,8 +92,8 @@ export function BackupSchedulePanel(props: Readonly<{ store: AppStore }>) {
                 value={keepText}
                 onChange={(event) => {
                   setKeepText(event.target.value);
-                  const keep = Number(event.target.value);
-                  if (Number.isInteger(keep) && keep >= 1) void scheduler.setKeep(keep);
+                  const keep = validKeep(event.target.value);
+                  if (keep !== null) void scheduler.setKeep(keep);
                 }}
               />
             )}

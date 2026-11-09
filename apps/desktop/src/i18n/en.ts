@@ -831,7 +831,7 @@ export const en: Dictionary = {
     noFolder: "No folder chosen",
     chooseFolder: "Choose folder",
     keep: "Files to keep",
-    keepInvalid: "Type a whole number from 1. Until then {count} files are kept.",
+    keepInvalid: "Type a whole number from 1. The saved number ({count}) stays.",
     passphrase: "Passphrase for this session",
     passphraseHelp:
       "At least 12 characters. Kept in memory until you close Flightdeck, never saved.",
