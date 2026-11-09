@@ -54,6 +54,7 @@ function rateLimitWindows(text: string) {
  * `[commit]`, fails the run on `[fail]` and honors `interrupt`. `[cost:x]` adds `x` to the
  * session's cumulative cost, which every `turn.result` reports (like `total_cost_usd`).
  * `[ratelimit:<window>=<fraction>@<epoch seconds>]` reports a plan quota reading, and
+ * `[quiet]` holds the turn open and silent until it is interrupted (a stalled session, #1478).
  * `[bash]` asks permission for a Bash command, with suggestions. `[vault]` asks for a secret
  * from the vault (a command only someone with full access may approve). `[result:<path>]` writes a
  * small Markdown file at `<path>` under the cwd, as a task that made a result would.
@@ -289,6 +290,14 @@ class FakeRun implements AgentRun {
     if (signal.aborted) throw new Interrupted();
   }
 
+  /** `[quiet]`: the turn says nothing more and stays open until it is interrupted (a stalled session). */
+  private silence(signal: AbortSignal): Promise<void> {
+    return new Promise((_, reject) => {
+      if (signal.aborted) reject(new Interrupted());
+      signal.addEventListener("abort", () => reject(new Interrupted()), { once: true });
+    });
+  }
+
   private async stream(text: string, signal: AbortSignal): Promise<void> {
     await inSequence(text.match(/.{1,4}/gsu) ?? [], async (chunk) => {
       this.emit({ type: "message.delta", text: chunk });
@@ -334,6 +343,7 @@ class FakeRun implements AgentRun {
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[bash]")) await this.bashCall(abort.signal);
       if (text.includes("[vault]")) await this.vaultCall(abort.signal);
+      if (text.includes("[quiet]")) await this.silence(abort.signal);
       if (text.includes("[commit]")) await this.commit(text);
       await inSequence(text.matchAll(/\[result:([^\]]+)\]/g), async ([, path]) => {
         await this.writeResult(path ?? "");
