@@ -40,6 +40,11 @@ export const projectHandlers = {
     const board = server.need("board");
     return await board.forWire(board.updateProject(projectId, patch));
   },
+  "project.detectProvider": async (payload, { server }) => {
+    const board = server.need("board");
+    const project = board.getProject(payload.projectId);
+    return { project: await board.forWire(project), outcome: "kept" as const, host: null };
+  },
   "project.trust.state": async (payload, { server }) => {
     const trust = server.opts.projectTrust;
     if (!trust) throw featureOff("projectTrust");
