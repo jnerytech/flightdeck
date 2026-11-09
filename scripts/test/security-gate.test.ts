@@ -483,7 +483,7 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
 
   test("from the OpenCode review: only plain text entries are exempt; code in a dictionary is read in every area", () => {
     const code = new Map([
-      [EN, ["    mode: chmodSync(file, 0o600),", "    gh: process.env.GH_TOKEN,"]],
+      [EN, ["    mode: chmodSync(file, 0o600),", '    gh: localStorage.getItem("token"),']],
       [PT, ["    saved: `Token salvo`,", "    \"permission-denied\": 'Permissão negada',"]],
     ]);
     expect(riskyFiles(code)).toEqual([{ path: EN, why: ["secret", "permission"] }]);
