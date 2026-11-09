@@ -22,6 +22,8 @@ export function nextStep(
     return open && view.canMerge ? "merge-pr" : null;
   }
   if (!card.worktreePath) return "start";
+  // A project that cannot open a PR (#1543): the changes are reviewed, and nothing else leads.
+  if (view.noPr) return view.tab === "diff" ? null : "review";
   return view.tab === "diff" ? "open-pr" : "review";
 }
 

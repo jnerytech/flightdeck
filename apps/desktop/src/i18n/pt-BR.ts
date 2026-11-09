@@ -4381,6 +4381,9 @@ export const ptBR = {
     start: "Iniciar",
     stop: "Parar",
     openPr: "Abrir PR",
+    noRemote:
+      "O repositório deste projeto não tem remote do GitHub nem do Azure DevOps: adicione um (git remote add origin <url>) e entre com gh auth login, depois Abrir PR. Se tiver um, defina o provedor de PR nas configurações do projeto.",
+    noRemoteBranch: "O trabalho do card está na branch {branch}: você pode enviá-la à mão.",
     reviewChanges: "Revisar mudanças",
     startWith: "Iniciar com workflow ou persona…",
     complete: "Concluir",

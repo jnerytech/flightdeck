@@ -5,6 +5,7 @@ import { CardStartDialog } from "@/components/board/card-start-dialog";
 import { ActionButton } from "@/components/feedback/action-button";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
+import { Stack } from "@/components/layout/stack";
 import { useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,10 +120,15 @@ export function CardRunForm(
     return undefined;
   };
 
+  const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
+  // A project with no PR provider (no remote) cannot open one: say so, instead of asking for the text first (#1543).
+  const provider = store.getState().projects[hostId]?.find((one) => one.id === card.projectId);
+  const noRemote = canOpenPr && provider?.prProvider === "none";
   const step = nextStep(card, {
     tab: props.tab,
     canMerge: props.canMerge,
     gate: props.gateWaiting,
+    noPr: noRemote,
   });
   const running = cardStartBlock(card) !== null;
   /** A card starts when nothing runs for it and no run waits at a gate: the host refuses a start over a waiting run. */
@@ -164,7 +170,6 @@ export function CardRunForm(
     gate: null,
     none: null,
   }[step ?? "none"];
-  const canOpenPr = Boolean(card.worktreePath) && !card.prUrl;
 
   return (
     <>
@@ -219,7 +224,7 @@ export function CardRunForm(
                   {t("cardMergePr.action")}
                 </DropdownMenuItem>
               )}
-              {step !== "open-pr" && canOpenPr && (
+              {step !== "open-pr" && canOpenPr && !noRemote && (
                 <DropdownMenuItem onSelect={() => void openPr()}>
                   {t("cardUi.openPr")}
                 </DropdownMenuItem>
@@ -233,6 +238,16 @@ export function CardRunForm(
             </DropdownMenuContent>
           </DropdownMenu>
         </FieldRow>
+        {noRemote && (
+          <Stack gap={1}>
+            <p className="text-sm">{t("cardUi.noRemote")}</p>
+            {card.branch && (
+              <p className="text-muted-foreground text-sm">
+                {t("cardUi.noRemoteBranch", { branch: card.branch })}
+              </p>
+            )}
+          </Stack>
+        )}
       </Panel>
       {startingWith && (
         <CardStartDialog

@@ -4376,6 +4376,9 @@ export const en: Dictionary = {
     start: "Start",
     stop: "Stop",
     openPr: "Open PR",
+    noRemote:
+      "This project's repository has no GitHub or Azure DevOps remote: add one (git remote add origin <url>) and sign in with gh auth login, then Open PR. If it has one, set the PR provider in the project's settings.",
+    noRemoteBranch: "The card's work is on the branch {branch}: you can push it by hand.",
     reviewChanges: "Review changes",
     startWith: "Start with a workflow or persona…",
     complete: "Complete",
