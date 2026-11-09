@@ -449,6 +449,48 @@ describe("check-loop: the board starting with a looping card", () => {
     expect(started).toBe("yes");
   });
 
+  test("a stored rounds cap out of 1 to 10 is read back inside it", async () => {
+    const ctx = await setup();
+    const store = (value: number) =>
+      ctx.store.db
+        .query(
+          `INSERT INTO pr_watch_project (project_id, settings) VALUES (?, ?)
+           ON CONFLICT (project_id) DO UPDATE SET settings = excluded.settings`,
+        )
+        .run(ctx.project.id, JSON.stringify({ checkRounds: value }));
+    store(0);
+    const low = readWatchSettings(ctx.store.db, ctx.project.id).checkRounds;
+    store(50);
+    const high = readWatchSettings(ctx.store.db, ctx.project.id).checkRounds;
+    expect([low, high]).toEqual([1, 10]);
+  });
+
+  test("settings that cannot be read leave the card without its cap, and say so once in the log", async () => {
+    const lines: string[] = [];
+    const ctx = await setup();
+    ctx.switchOn(ctx.card.id);
+    const again = new Board({
+      db: ctx.store.db,
+      manager: ctx.manager,
+      allowedRoots: [ctx.root],
+      log: (line: string) => lines.push(line),
+      checkLoop: {
+        settings: () => {
+          throw new SyntaxError("Unexpected token in JSON");
+        },
+        isTrusted: () => true,
+        runner: { run: async () => PASSED },
+      },
+    });
+    cleanups.push(() => again.stop());
+    const first = again.getCard(ctx.card.id).checkLoop?.max;
+    again.getCard(ctx.card.id);
+    expect([first, lines.filter((line) => line.includes("check loop")).length]).toEqual([
+      undefined,
+      1,
+    ]);
+  });
+
   test("the watch settings can be read from the database alone, as the watcher reads them", async () => {
     const ctx = await setup();
     const watcher = new PrWatcher({ db: ctx.store.db, board: ctx.board });
