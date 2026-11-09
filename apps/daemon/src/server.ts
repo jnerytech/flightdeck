@@ -86,7 +86,6 @@ import type { RunManager } from "./runenv/manager.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { serverContext } from "./server/context.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
-import { need } from "./server/gates.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
 import { DAEMON_VERSION } from "./server/host-info.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
@@ -329,7 +328,12 @@ export interface ServerOptions {
   /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
   quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
   /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
-  memoryPause?: { pauseAt(): number | null; set(pauseAt: number | null): void | Promise<void> };
+  memoryPause?: {
+    pauseAt(): number | null;
+    /** Issue #1414: the gate holds new cards now (its margin; never without a reading). */
+    holding?(): boolean;
+    set(pauseAt: number | null): void | Promise<void>;
+  };
   /** The Claude account behind `account.*` (phase 34). */
   account?: Account;
   /** Usage by day and project behind `usage.summary` (phase 7). */
@@ -490,14 +494,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function board(): Board {
-    return need(opts, "board");
-  }
-
   async function dispatch(ws: Socket, command: Command): Promise<void> {
-    const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
-      send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
-
     // The messaging service lists every endpoint with its project key, read synchronously.
     if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
       await context.warmKeys([
@@ -513,11 +510,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "gate.respond": {
-        const { runId, stepId, attempt, decision, note } = command.payload;
-        board().workflows.respond(runId, stepId, attempt, decision, note);
-        return ok(command.type, board().workflows.getRun(runId));
-      }
     }
   }
 
