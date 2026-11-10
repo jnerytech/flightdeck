@@ -3,12 +3,13 @@ import { join } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { TELEMETRY_FILE } from "../central/wrapper.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
+import type { Logger } from "../logger.ts";
 import { type OtlpEvent, startOtlpReceiver } from "./otlp.ts";
 
 export interface TelemetryOptions {
   config: Config;
   configFile: string;
-  log: { error(message: string): void };
+  log: Pick<Logger, "error">;
   onEvents: (events: OtlpEvent[]) => void;
   /** Deletes what is past the retention; runs at start and every `purgeEveryMs` while listening. */
   purge?: () => void;
