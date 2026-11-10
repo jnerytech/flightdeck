@@ -110,3 +110,6 @@ export type EffortLevel = z.infer<typeof EffortLevel>;
 
 export const SessionSendResult = z.object({ queued: z.boolean() });
 export type SessionSendResult = z.infer<typeof SessionSendResult>;
+
+export const SessionCreateResult = z.object({ sessionId: z.string() });
+export type SessionCreateResult = z.infer<typeof SessionCreateResult>;
