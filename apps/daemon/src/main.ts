@@ -61,17 +61,11 @@ import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
-import { featureOff } from "./errors.ts";
 import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
-import { applyHarness } from "./harness/apply.ts";
-import { commitHarness } from "./harness/commit.ts";
-import { HarnessDrafts } from "./harness/draft.ts";
-import { previewHarness } from "./harness/preview.ts";
-import { detectStack } from "./harness/stack.ts";
-import { HarnessTemplates } from "./harness/templates-store.ts";
+import { createHarness } from "./harness/wiring.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { createKnowledgeDoc } from "./knowledge/create.ts";
@@ -873,15 +867,12 @@ export async function startDaemon(
   // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
   // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
   await projectTrust.prepareSessions(manager.list());
-  // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
-  // Issue #75, slice G1: CLAUDE.md drafts on this host's claude, held by digest until applied.
-  const harnessDrafts = new HarnessDrafts({
-    complete: (opts) =>
-      runtime.complete ? runtime.complete(opts) : Promise.reject(featureOff("harnessDraft")),
+  const harness = createHarness({
+    runtime,
     quota,
     scanner: snippetScanner,
     cwd: assistantDir(config.dataDir),
-    allowApiKey: config.allowApiKey,
+    config,
   });
   const assistant = assistantService({
     runtime,
@@ -1035,7 +1026,6 @@ export async function startDaemon(
         keepAwake.setEnabled(enabled);
       },
     },
-    harnessStack: detectStack,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
@@ -1059,18 +1049,7 @@ export async function startDaemon(
         config.knowledge.feedOff = next.map((entry) => resolve(expandHome(entry)));
       },
     }),
-    harnessPreview: previewHarness,
-    harnessApply: (path, parts, digests, options) =>
-      applyHarness(path, parts, digests, { ...options, drafts: harnessDrafts }),
-    // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
-    ...present({
-      harnessDraft: runtime.complete && ((path: string) => harnessDrafts.draft(path)),
-    }),
-    harnessCommit: (path, digests) => commitHarness(path, digests, { scanner: snippetScanner }),
-    harnessTemplates: new HarnessTemplates(
-      join(config.dataDir, "harness-templates"),
-      snippetScanner,
-    ),
+    ...harness,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),
