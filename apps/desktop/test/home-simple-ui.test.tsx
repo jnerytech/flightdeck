@@ -20,6 +20,8 @@ function view(
     lang?: "en" | "pt-BR";
     canPickFolder?: boolean;
     templates?: typeof BUILTIN_TEMPLATES;
+    status?: "online" | "offline" | "connecting" | "unauthorized" | "incompatible";
+    folders?: string[];
   } = {},
 ) {
   const calls: string[] = [];
@@ -32,6 +34,12 @@ function view(
       onPickFolder={async () => "/work/Notes"}
       onStart={async (id, values) => void calls.push(`start:${id}:${JSON.stringify(values)}`)}
       onOpenTask={(id) => void calls.push(`open:${id}`)}
+      where={{
+        hostName: "Office PC",
+        status: over.status ?? "online",
+        folders: over.folders ?? ["/work"],
+        onOpenSettings: () => void calls.push("settings"),
+      }}
     />,
   );
   return calls;
@@ -49,9 +57,14 @@ describe("home-simple-ui: where simple mode begins", () => {
     expect(screen.getByRole("button", { name: /Resumir uma pasta/ })).toBeTruthy();
   });
 
-  test("Given no task yet, Then a first-task prompt shows, and no waiting strip", () => {
+  test("Given no task yet, Then the three steps of a task show, and no waiting strip", () => {
     view();
-    expect(screen.getByText(/Pick one of the cards above/)).toBeTruthy();
+    const steps = screen.getByRole("list", { name: "How a task goes" });
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Pick a card above.",
+      "Answer the few questions it asks.",
+      "Get the files in the Flightdeck results folder.",
+    ]);
     expect(screen.queryByRole("region", { name: "Waiting for your answer" })).toBeNull();
   });
 
@@ -185,5 +198,58 @@ describe("home-simple-ui: where simple mode begins", () => {
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(calls).toEqual([]);
+  });
+
+  test("Given the first screen, Then it says what a task is, that it asks before changing anything and where results go, in both languages", () => {
+    view();
+    expect(screen.queryByText(/Claude works on your files on this computer/)).not.toBeNull();
+    expect(screen.queryByText(/Flightdeck results/)).not.toBeNull();
+    cleanup();
+    view({ lang: "pt-BR" });
+    expect(screen.queryByText(/O Claude trabalha nos seus arquivos neste computador/)).not.toBeNull();
+    expect(screen.queryByRole("list", { name: "Como uma tarefa acontece" })).not.toBeNull();
+  });
+
+  test("Given a card, Then it says what it asks for and whether it only reads or may change files", () => {
+    view();
+    const summarise = screen.getByRole("button", { name: /Summarise a folder/ });
+    expect(summarise.textContent).toContain("Asks for: Which folder?");
+    expect(summarise.textContent).toContain("Only reads: nothing changes.");
+    const draft = screen.getByRole("button", { name: /Draft a report/ });
+    expect(draft.textContent).toContain("Asks for: Folder with the files, What is the report about?");
+    expect(draft.textContent).toContain("Asks before it changes anything.");
+    cleanup();
+    view({ lang: "pt-BR" });
+    expect(
+      screen.getByRole("button", { name: /Resumir uma pasta/ }).textContent,
+    ).toContain("Pede: Qual pasta?");
+  });
+
+  test("Given the host, Then Home says which computer the tasks run on and that it is connected", () => {
+    view();
+    expect(screen.queryByText("Tasks run on Office PC (connected).")).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    cleanup();
+    view({ lang: "pt-BR" });
+    expect(screen.queryByText("As tarefas rodam em Office PC (conectado).")).not.toBeNull();
+  });
+
+  test("Given the host is offline, Then a notice says tasks cannot start until it is back", () => {
+    view({ status: "offline" });
+    const notice = screen.queryByRole("alert");
+    expect(notice?.textContent ?? "").toContain("Office PC is not connected");
+    expect(screen.queryByText("Tasks run on Office PC (not connected).")).not.toBeNull();
+  });
+
+  test("Given no folder is allowed yet, Then Home says so before a card is picked, and the link opens Settings", async () => {
+    const calls = view({ folders: [] });
+    expect(screen.queryByText(/No folder is set up yet/)).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Open Settings to add a folder" }));
+    });
+    expect(calls).toEqual(["settings"]);
+    cleanup();
+    view({ folders: ["/work"] });
+    expect(screen.queryByText(/No folder is set up yet/)).toBeNull();
   });
 });

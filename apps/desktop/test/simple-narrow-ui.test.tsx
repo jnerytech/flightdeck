@@ -48,6 +48,7 @@ describe("simple-narrow: simple mode fits a narrow window", () => {
         onPickFolder={async () => null}
         onStart={async () => {}}
         onOpenTask={() => {}}
+        where={{ hostName: "Office PC", status: "online", folders: ["/work"], onOpenSettings: () => {} }}
       />,
     );
     const open = screen.queryAllByRole("button", { name: /^Open A very long title/ })[0];

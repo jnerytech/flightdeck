@@ -118,6 +118,7 @@ function home(lang: Lang) {
       onPickFolder={async () => null}
       onStart={async () => {}}
       onOpenTask={() => {}}
+      where={{ hostName: "Office PC", status: "online", folders: ["/work"], onOpenSettings: () => {} }}
     />,
   );
 }

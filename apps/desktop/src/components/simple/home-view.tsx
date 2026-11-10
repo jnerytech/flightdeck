@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { T } from "../../i18n/index.ts";
+import type { ConnectionStatus } from "../../lib/host-connection.ts";
 import type { TaskState } from "../../lib/simple-task.ts";
 
 export interface HomeTask {
@@ -21,7 +22,16 @@ export interface HomeTask {
   state: TaskState;
 }
 
+/** Where the tasks run and what they may use: the host's name, link and allowed folders. */
+export interface HomeWhere {
+  hostName: string;
+  status: ConnectionStatus;
+  folders: string[];
+  onOpenSettings(): void;
+}
+
 export interface HomeViewProps {
+  where: HomeWhere;
   templates: Template[];
   tasks: HomeTask[];
   t: T;
