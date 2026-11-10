@@ -55,12 +55,27 @@ describe("trust-notice-ui: a session in an untrusted folder says what did not lo
     expect(reviewed()).toBe(1);
   });
 
-  test("a trusted folder, a host that does not announce it, and a folder with no project show nothing or no button", async () => {
+  test("a trusted folder says so, with no warning and no review button (#1704)", async () => {
     const trusted = setup({ trusted: true });
-    const first = render(trusted.view);
+    const view = render(trusted.view);
     await waitFor(() => expect(trusted.asked).toHaveLength(1));
-    expect(first.container.textContent).toBe("");
-    first.unmount();
+    await waitFor(() =>
+      expect(view.container.textContent).toBe("Trusted folder: its own configuration loads."),
+    );
+    expect(screen.getByRole("status").textContent).toBe(view.container.textContent);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  test("a trusted folder says so in Portuguese too (#1704)", async () => {
+    const view = render(setup({ trusted: true, language: "pt-BR" }).view);
+    await waitFor(() =>
+      expect(view.container.textContent).toBe(
+        "Pasta com confiança: a configuração própria dela carrega.",
+      ),
+    );
+  });
+
+  test("a host that does not announce it, and a folder with no project show nothing or no button", async () => {
     const none = setup({ trusted: false, announced: false });
     const second = render(none.view);
     await act(async () => {});
