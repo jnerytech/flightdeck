@@ -1,0 +1,12 @@
+/**
+ * The messaging's public entry in the app (#1589, #1596): the messages between sessions; for now,
+ * the loops a host paused. Another domain imports from here, never a file inside.
+ */
+export {
+  initialMessagingState,
+  type LoopAlert,
+  loopPairKey,
+  type MessagingCore,
+  MessagingSlice,
+  type MessagingSliceState,
+} from "./store.ts";
