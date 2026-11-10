@@ -224,8 +224,14 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   Decisão, Consequências) a partir dele, você edita, dá um título e **Salvar como ADR** grava em
   `docs/adr` do projeto como rascunho, sem commit, do mesmo jeito que acima.
 - Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
-  projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
+  projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. Uma raiz
+  liberada que é ela mesma um projeto (um `.git` próprio e nenhum outro repositório dentro) pode
+  ser confiada, e a confiança aparece na hora; se depois você clonar outro repositório dentro
+  dela, a confiança deixa de valer até você tirar esse clone dali. Uma sessão numa pasta com confiança diz "Pasta com confiança" no topo. As sessões em
   segundo plano seguem a mesma regra das sessões do app.
+- Esta confiança é do Flightdeck e decide só o que uma sessão rodada pelo Flightdeck carrega. A
+  pergunta que o Claude Code faz num terminal (ou no VS Code) é outra: aceitá-la lá não dá
+  confiança à pasta aqui.
 - O worktree de um card sempre lê a configuração do projeto da pasta principal dele, então uma
   branch nunca traz hooks próprios, com confiança ou sem.
 - Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.

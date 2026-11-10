@@ -211,8 +211,11 @@ export interface ServerOptions {
     digests: Readonly<Record<string, string>>,
   ) => Promise<HarnessCommitted>;
   projectTrust?: {
-    /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
-    refresh(): Promise<void>;
+    /**
+     * Reads what `state` and `set` compare with (the roots' real paths) and the git boundaries of
+     * `paths` (a nested clone is not covered by the folder around it) before they answer.
+     */
+    refresh(paths?: readonly string[]): Promise<void>;
     state(paths: string[]): ProjectTrustState[];
     inspect(path: string): Promise<ProjectLoad>;
     set(path: string, trusted: boolean): ProjectTrustState;

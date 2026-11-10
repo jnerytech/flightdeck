@@ -72,6 +72,30 @@ for (const [lang, dict] of [
       ).toBe(true);
       expect(screen.queryByText(trust.sessionNoticeShort, { exact: false })).toBeNull();
     });
+
+    // #1704: the trusted mark is for a tall area; a short one keeps its room for the conversation.
+    test("a trusted folder gets its mark in a tall area and no line at all in a short one", async () => {
+      const asked: string[] = [];
+      const store = {
+        i18n: { t: translator(lang) },
+        hostCommand: async () => {
+          asked.push("state");
+          return { items: [{ trusted: true }] };
+        },
+      } as never;
+      const tall = render(<UntrustedNotice store={store} hostId="h" announced cwd="/p" />);
+      await settle(() => tall.container.textContent === trust.sessionTrusted);
+      expect(tall.container.textContent).toBe(trust.sessionTrusted);
+      tall.unmount();
+      const short = render(
+        <ShortArea.Provider value={true}>
+          <UntrustedNotice store={store} hostId="h" announced cwd="/p" />
+        </ShortArea.Provider>,
+      );
+      await settle(() => asked.length === 2);
+      await act(async () => {});
+      expect(short.container.textContent).toBe("");
+    });
   });
 }
 

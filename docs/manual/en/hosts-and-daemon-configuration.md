@@ -218,8 +218,15 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   Consequences) from it, you edit it and give it a title, and **Save as ADR** writes it to
   `docs/adr` of the project as a draft, uncommitted, the same way as above.
 - Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
-  project, and a folder that holds your allowed roots cannot be trusted at all. Background
-  sessions follow the same rule as the sessions in the app.
+  project, and a folder that holds your allowed roots cannot be trusted at all. An allowed root
+  that is itself one project (a `.git` of its own and no other repository inside) can be trusted,
+  and its trust shows at once; if you later clone another repository inside it, the trust stops
+  applying until you move that clone out. A session in a
+  trusted folder says "Trusted folder" at the top. Background sessions follow the same rule as
+  the sessions in the app.
+- This trust is Flightdeck's own and decides only what a session run by Flightdeck loads. The
+  question Claude Code asks in a terminal (or in VS Code) is separate: accepting it there does
+  not trust the folder here.
 - A card's worktree always reads its project configuration from the project's main folder, so a
   branch never brings hooks of its own, trusted or not.
 - Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.

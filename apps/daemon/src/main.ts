@@ -475,7 +475,7 @@ export async function startDaemon(
     checkLoop: {
       // From the database alone: the board reads them while it starts, before the watcher exists.
       settings: (projectId) => readWatchSettings(store.db, projectId),
-      isTrusted: (path) => projectTrust.isTrusted(path),
+      isTrusted: (path) => projectTrust.isTrustedFolder(path),
       runner: boundedCheckRunner(),
     },
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
@@ -763,9 +763,8 @@ export async function startDaemon(
   });
   /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
   const trustState = (path: string) => {
-    const via = projectTrust.via(path);
-    const stale = manager.staleSessions(path);
-    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+    const staleSessions = manager.staleSessions(path);
+    return { path, ...projectTrust.judged(path), ...(staleSessions > 0 ? { staleSessions } : {}) };
   };
   // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
   const reviewComments = new ReviewComments({ db: store.db, changes, manager, board, central });
@@ -888,7 +887,7 @@ export async function startDaemon(
     ...serverPart(knowledge),
     ...serverPart(harness),
     projectTrust: {
-      refresh: projectTrust.refreshRoots.bind(projectTrust),
+      refresh: (paths) => projectTrust.refresh(paths),
       state: (paths) => paths.map(trustState),
       inspect: (path) => inspectProject(path),
       set: (path, trusted) => {
@@ -942,7 +941,7 @@ export async function startDaemon(
     checkLoop: new CheckLoopSwitch({
       board,
       settings: (projectId) => prWatcher.settings(projectId),
-      isTrusted: (path) => projectTrust.isTrusted(path),
+      isTrusted: (path) => projectTrust.isTrustedFolder(path),
       modeOf: (card) => cardMode(card, manager),
     }),
     vault,

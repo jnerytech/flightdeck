@@ -61,7 +61,7 @@ export const projectHandlers = {
     const paths = await Promise.all(
       payload.paths.map((p) => resolveAllowedCwd(p, server.opts.allowedRoots)),
     );
-    await trust.refresh();
+    await trust.refresh(paths);
     return { items: trust.state(paths) };
   },
   "project.trust.inspect": async (payload, { ws, server }) => {
@@ -93,7 +93,11 @@ export const projectHandlers = {
       );
     }
     await trust.refresh();
-    return trust.set(path, payload.trusted);
+    const done = trust.set(path, payload.trusted);
+    // The boundary read before the record existed (a `state` call on a nested clone) would make the
+    // answer say untrusted: read it again, now that the record is there (#1704).
+    await trust.refresh([path]);
+    return trust.state([path])[0] ?? done;
   },
   "project.harness.stack": async (payload, { server }) => {
     const stack = server.opts.harnessStack;

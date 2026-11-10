@@ -138,6 +138,22 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     expect(trust.isTrusted("/work/app/src")).toBe(true);
   });
 
+  test("a gate that cannot see git boundaries trusts a one-project root at the root only, a session folder inside it too (#1704)", async () => {
+    const root = tempDir("fd-trust-one-");
+    mkdirSync(join(root, ".git"));
+    mkdirSync(join(root, "vendor", "lib", ".git"), { recursive: true });
+    const { trust } = fresh({ roots: () => [root] });
+    trust.trust(root);
+    await trust.refreshRoots();
+    expect(trust.isTrustedFolder(root)).toBe(true);
+    expect(trust.isTrustedFolder(join(root, "vendor", "lib"))).toBe(false);
+    expect(trust.isTrusted(root)).toBe(true);
+    expect(trust.isTrusted(join(root, "vendor", "lib"))).toBe(true);
+    // A record on an ordinary project folder is unchanged for both.
+    trust.trust("/work/app");
+    expect(trust.isTrustedFolder("/work/app/src")).toBe(true);
+  });
+
   test("an allowed root given as a symlink still grants nothing by prefix: the record is compared with its real path (review of #196)", async () => {
     const real = tempDir("fd-trust-real-");
     const link = join(tempDir("fd-trust-link-"), "code");

@@ -3,6 +3,7 @@ import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { isInside, rootNames, samePath } from "../paths.ts";
+import { trustsManyProjects } from "./trust-root.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -65,6 +66,11 @@ export class ProjectTrust {
   private scans = 0;
   /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
   private realRoots: string[] = [];
+  /**
+   * The roots that are one project (a `.git` of its own, no clone inside), read by `refreshRoots`:
+   * the person added the project's own folder as the root, so a record on it covers only that project (#1704).
+   */
+  private projectRoots: string[] = [];
 
   constructor(
     private readonly db: Database,
@@ -76,15 +82,29 @@ export class ProjectTrust {
     return this.via(cwd) !== null;
   }
 
+  /**
+   * Whether a gate that reads the answer without looking at git boundaries (the check loop) may
+   * count `cwd` as trusted: a record on an allowed root that is one project counts only at the
+   * root itself, never for a folder inside it (a nested clone is not seen here).
+   */
+  isTrustedFolder(cwd: string): boolean {
+    return this.via(cwd, false) !== null;
+  }
+
   /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
-  via(cwd: string): string | null {
+  via(cwd: string, deep = true): string | null {
     const here = resolve(cwd);
     const roots = [...(this.opts.roots?.() ?? []).map((root) => resolve(root)), ...this.realRoots];
     const granting = this.rows()
       .filter((row) => {
         if (row.scope === "exact") return (this.opts.sameFolder ?? samePath)(row.path, here);
-        // A root, or a folder that holds one, would trust every clone made inside it.
-        if (roots.some((root) => isInside(row.path, root))) return false;
+        // A root, or a folder that holds one, would trust every clone made inside it, unless the
+        // root is itself one project: then its own record is the person's trust of that project.
+        // `deep` off: only at the root itself, since nothing here looks at git boundaries below it.
+        const oneProject =
+          this.projectRoots.some((root) => samePath(root, row.path)) &&
+          (deep || samePath(row.path, here));
+        if (!oneProject && roots.some((root) => isInside(row.path, root))) return false;
         return isInside(row.path, here);
       })
       .sort((a, b) => b.path.length - a.path.length);
@@ -141,9 +161,33 @@ export class ProjectTrust {
     await Promise.all([...folders].map((cwd) => this.prepare(cwd)));
   }
 
+  /** What a session in `cwd` would run with, for the clients: its git boundary counts, and the record that grants. */
+  judged(cwd: string): { trusted: boolean; via: string | null } {
+    const judged = this.sessionTrust(cwd);
+    return {
+      trusted: judged.trusted,
+      via: judged.trusted ? this.via(judged.configRoot ?? cwd) : null,
+    };
+  }
+
+  /** Reads the roots, and the git boundaries of `paths`, so `judged` (synchronous) answers from them. */
+  async refresh(paths: readonly string[] = []): Promise<void> {
+    await this.refreshRoots();
+    await Promise.all(paths.map((path) => this.prepare(path)));
+  }
+
   /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
   async refreshRoots(): Promise<void> {
     this.realRoots = await rootNames(this.opts.roots?.() ?? []);
+    // The same rule `project.trust.set` applies when the record is made; a root with no `.git` of
+    // its own costs one stat. Read for every root, not only recorded ones, because `set` answers
+    // from this list right after it writes the record.
+    const looked = await Promise.all(
+      this.realRoots.map(async (root) =>
+        (await trustsManyProjects(root, this.realRoots)) ? null : root,
+      ),
+    );
+    this.projectRoots = looked.filter((root): root is string => root !== null);
   }
 
   private async scan(here: string): Promise<void> {
