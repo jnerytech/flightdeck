@@ -3,4 +3,5 @@
  * never a file inside.
  */
 export { OpenSessionPersonas } from "./open-session.ts";
+export type { Prepare } from "./prepare.ts";
 export type { Personas } from "./store.ts";

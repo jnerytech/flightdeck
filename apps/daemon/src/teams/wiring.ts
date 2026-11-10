@@ -3,7 +3,7 @@ import type { Central, ProjectKeys } from "../central/index.ts";
 import type { Config } from "../config.ts";
 import { LocalEndpoints, type LocalEndpointsOptions, Messaging } from "../messaging/index.ts";
 import { type Names, type TrackOptions, trackNames, warmKnown } from "../names/index.ts";
-import { OpenSessionPersonas, type Personas } from "../personas/index.ts";
+import { OpenSessionPersonas, type Personas, type Prepare } from "../personas/index.ts";
 import { present } from "../present.ts";
 import { Teams, type TeamsOptions } from "./teams.ts";
 
@@ -18,7 +18,8 @@ export interface TeamsWiringDeps {
   autoApprove: LocalEndpointsOptions["autoApprove"];
   names: Names;
   personaStore: Personas;
-  prepare: NonNullable<TeamsOptions["preparePersonas"]>;
+  /** Prepares the personas of a coordinator this wiring starts. */
+  prepare: Prepare;
   quota: TeamsOptions["quota"];
 }
 
