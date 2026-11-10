@@ -11,9 +11,9 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
+import { budgetLabel, budgetLine, projectName } from "../features/budgets/index.ts";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
-import { budgetLabel, budgetLine, projectName } from "../lib/budgets.ts";
 import { periodRange } from "../lib/costs.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -151,13 +151,13 @@ export function BudgetsSection(
       action: draft.action,
     };
     if (draft.unit === "usd") {
-      await store.setBudget(hostId, {
+      await store.budgets.set(hostId, {
         ...common,
         period: draft.period,
         limitUsd: Number(draft.limitUsd),
       });
     } else {
-      await store.setQuotaBudget(hostId, {
+      await store.budgets.setQuota(hostId, {
         ...common,
         window: draft.unit,
         limitPct: Number(draft.limitPct) / 100,
@@ -389,7 +389,7 @@ export function BudgetsSection(
           confirmLabel={t("budgetsUi.removeConfirm")}
           destructive
           onConfirm={() => {
-            void store.removeBudget(hostId, removing);
+            void store.budgets.remove(hostId, removing);
             setRemoving(null);
           }}
           onCancel={() => setRemoving(null)}

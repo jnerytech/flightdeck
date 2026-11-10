@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Budget } from "@flightdeck/protocol";
+import { budgetAlerts, budgetLabel, budgetLine } from "../src/features/budgets/index.ts";
 import { translator } from "../src/i18n/index.ts";
 import type { AppState } from "../src/lib/app-store.ts";
-import { budgetAlerts, budgetLabel, budgetLine } from "../src/lib/budgets.ts";
 
 /**
  * Issue #1248: a budget in terms of the plan window is named by its window and read as a share

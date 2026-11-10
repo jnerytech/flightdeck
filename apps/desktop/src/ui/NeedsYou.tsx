@@ -18,12 +18,12 @@ import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "@/components/needs-yo
 import { WhileAway } from "@/components/needs-you/while-away";
 import { Button } from "@/components/ui/button";
 import { awayView } from "../features/activity/index.ts";
+import { budgetAlerts } from "../features/budgets/index.ts";
 import { type LoopAlert, loopPairKey } from "../features/messaging/index.ts";
 import { CONTINUATION } from "../features/sessions/index.ts";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../lib/app-store.ts";
-import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";
 import { hubRows } from "../lib/hub.ts";

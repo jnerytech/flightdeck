@@ -3,9 +3,6 @@ import type {
   AskpassRequest,
   BgList,
   BgSession,
-  Budget,
-  BudgetInput,
-  BudgetUpdated,
   Card,
   ChangesUpdated,
   CommandPayload,
@@ -31,7 +28,6 @@ import type {
   PlainInfo,
   Project,
   ProjectDetectResult,
-  QuotaBudgetInput,
   QuotaState,
   ReleaseNote,
   RiskLevel,
@@ -71,6 +67,11 @@ import {
   type ActivitySliceState,
   initialActivityState,
 } from "../features/activity/index.ts";
+import {
+  BudgetsSlice,
+  type BudgetsSliceState,
+  initialBudgetsState,
+} from "../features/budgets/index.ts";
 import {
   HistorySlice,
   type HistorySliceState,
@@ -117,7 +118,6 @@ import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BACKUP_NAME } from "./backup-target.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
-import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
@@ -326,6 +326,7 @@ export interface AppState
     ActivitySliceState,
     SessionsSliceState,
     MessagingSliceState,
+    BudgetsSliceState,
     SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -360,8 +361,6 @@ export interface AppState
   quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
   account: Record<string, AccountState>;
-  /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
-  budgets: Record<string, Budget[]>;
   /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
   setupProbes: Record<string, SetupProbe>;
   /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
@@ -998,6 +997,8 @@ export class AppStore {
   readonly sessions: SessionsSlice;
   /** The messages between sessions: the loops a host paused (phase 21, #1596). */
   readonly messaging: MessagingSlice;
+  /** The spending limits of each host (phase 8, #1596). */
+  readonly budgets: BudgetsSlice;
   readonly settings: SettingsSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
@@ -1035,6 +1036,18 @@ export class AppStore {
       get: (hostId, id) => this.hostCommand(hostId, "snippets.get", { id }),
       render: (hostId, id, cwd) =>
         this.hostRequest(hostId, "snippets.render", { id, context: { cwd } }),
+    });
+    this.budgets = new BudgetsSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      set: (hostId, input) => this.hostCommand(hostId, "budget.set", input),
+      setQuota: (hostId, input) => this.hostCommand(hostId, "budget.setQuota", input),
+      remove: (hostId, id) => this.hostCommand(hostId, "budget.remove", { id }),
+      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
+      feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
+      notify: (notification, route, source) =>
+        this.notifyUser(notification, route, undefined, source),
+      t: () => this.i18n.t,
     });
     this.messaging = new MessagingSlice({
       state: () => this.state,
@@ -1158,13 +1171,13 @@ export class AppStore {
       doctor: {},
       healthAt: {},
       healthError: {},
-      budgets: {},
       setupProbes: {},
       ssh: {},
       ...initialSnippetsState(),
       personas: {},
       background: {},
       ...initialMessagingState(),
+      ...initialBudgetsState(),
       quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
       watches: {},
       names: {},
@@ -3159,7 +3172,7 @@ export class AppStore {
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
       onAccountUpdated: (state) =>
         this.update({ account: { ...this.state.account, [config.id]: state } }),
-      onBudgetUpdated: (update) => this.onBudget(config.id, update),
+      onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
       onTerminal: (frame) => {
         for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
           []) {
@@ -3298,7 +3311,7 @@ export class AppStore {
       void this.sessions.offerResume(hostId, conn);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
-      if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
+      if (list) this.budgets.replace(hostId, list.budgets);
     }
   }
 
@@ -3737,18 +3750,6 @@ export class AppStore {
     const state = await this.hostCommand(hostId, "account.refresh", {});
     if (state) this.update({ account: { ...this.state.account, [hostId]: state } });
     return state !== null;
-  }
-
-  /** Creates a budget or changes the one with `input.id`; the list follows the answer. */
-  async setBudget(hostId: string, input: BudgetInput): Promise<void> {
-    const budget = await this.hostCommand(hostId, "budget.set", input);
-    if (budget) this.keepBudget(hostId, budget, false);
-  }
-
-  /** The same for a budget in terms of a plan quota window (issue #1248). */
-  async setQuotaBudget(hostId: string, input: QuotaBudgetInput): Promise<void> {
-    const budget = await this.hostCommand(hostId, "budget.setQuota", input);
-    if (budget) this.keepBudget(hostId, budget, false);
   }
 
   /** Terminals opened from a ssh destino, by `hostId/terminalId`, for the badge of their screen. */
@@ -5044,54 +5045,6 @@ export class AppStore {
       void this.dispatch(config.id, "vault.deny", { requestId: request.requestId }).catch(() => {});
     }
     for (const listener of this.vaultListeners) listener(outcome);
-  }
-
-  async removeBudget(hostId: string, budget: Budget): Promise<void> {
-    const removed = await this.hostCommand(hostId, "budget.remove", { id: budget.id });
-    if (removed !== null) this.keepBudget(hostId, budget, true);
-  }
-
-  /** A crossed threshold notifies (the daemon sends each one once per period). */
-  private onBudget(hostId: string, update: BudgetUpdated): void {
-    this.keepBudget(hostId, update.budget, update.removed);
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    if (update.threshold === null || !host) return;
-    this.webhookFeed.budget(
-      { id: hostId, name: host.name },
-      budgetLabel(update.budget, this.i18n.t),
-      Math.round(update.threshold * 100),
-      budgetLimitText(update.budget, this.i18n.t),
-    );
-    const window = update.budget.limitPct !== null;
-    this.notifyUser(
-      {
-        title: this.i18n.t("messages.budgetTitle"),
-        body: this.i18n.t(window ? "messages.budgetBodyQuota" : "messages.budgetBody", {
-          host: host.name,
-          label: budgetLabel(update.budget, this.i18n.t),
-          percent: Math.round(update.threshold * 100),
-          limit: window
-            ? share(update.budget.limitPct ?? 0, this.i18n.t.lang)
-            : usd(update.budget.limitUsd, this.i18n.t.lang),
-          estimate: estimateNote(update.budget, this.i18n.t),
-        }),
-      },
-      {
-        name: "costs",
-        host: hostId,
-        ...(update.budget.projectKey ? { projectKey: update.budget.projectKey } : {}),
-      },
-      undefined,
-      { event: "budget-quota", hostId },
-    );
-  }
-
-  private keepBudget(hostId: string, budget: Budget, removed: boolean): void {
-    const others = (this.state.budgets[hostId] ?? []).filter((b) => b.id !== budget.id);
-    const list = removed
-      ? others
-      : [...others, budget].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    this.update({ budgets: { ...this.state.budgets, [hostId]: list } });
   }
 
   private onRun(hostId: string, run: WorkflowRun): void {
