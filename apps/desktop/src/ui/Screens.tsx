@@ -253,7 +253,7 @@ function ManagedSession(
         t={store.i18n.t}
         nowMs={store.now()}
         {...(hasFeature(host?.hostInfo?.features, "snippets", false)
-          ? { prompts: store.promptSnippets(hostId, summary?.cwd ?? session.cwd ?? "") }
+          ? { prompts: store.snippets.prompts(hostId, summary?.cwd ?? session.cwd ?? "") }
           : {})}
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         scrollKey={sessionKey(hostId, sessionId)}
@@ -738,7 +738,7 @@ function externalScreen(
         onResumed={() => go({ name: "home" })}
         {...(has("snippets")
           ? {
-              prompts: store.promptSnippets(
+              prompts: store.snippets.prompts(
                 route.host,
                 state.externals[`${route.host}/${route.claudeSessionId}`]?.cwd ?? "",
               ),

@@ -127,7 +127,7 @@ export function GlobalSearch(
     : paletteSections(props.state, query, {
         costs,
         t: store.i18n.t,
-        globalSnippets: store.globalSnippets.list(),
+        globalSnippets: store.snippets.global.list(),
         recents: frozen.current ?? store.paletteRecents(),
         keepRecentOrder: frozen.current !== null,
         ...oldestOf(needsYou(props.state, store.i18n.t), store.i18n.t),

@@ -30,14 +30,14 @@ export function SnippetPicker(
       const listed = await store.hostCommand(hostId, "snippets.list", { type: "command" });
       if (!alive) return;
       // The use dialog finds a host's snippet in the list the palette keeps: keep it current.
-      if (listed) store.keepSnippets(hostId, listed.snippets);
+      if (listed) store.snippets.keep(hostId, listed.snippets);
       setOffers([
         ...(listed?.snippets ?? []).map((s) => ({
           key: `host:${s.id}`,
           name: s.name,
           choice: { hostId, snippetId: s.id },
         })),
-        ...store.globalSnippets.list({ type: "command" }).map((s) => ({
+        ...store.snippets.global.list({ type: "command" }).map((s) => ({
           key: `global:${s.id}`,
           name: s.name,
           choice: { hostId: null, snippetId: s.id },

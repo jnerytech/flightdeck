@@ -48,7 +48,6 @@ import type {
   SessionSubscribeResult,
   SessionSummary,
   SettableMode,
-  Snippet,
   SshTarget,
   TeamInfo,
   TeamsUpdatedFrame,
@@ -96,6 +95,11 @@ import {
   SettingsSlice,
   type SettingsSliceState,
 } from "../features/settings/index.ts";
+import {
+  initialSnippetsState,
+  SnippetsSlice,
+  type SnippetsSliceState,
+} from "../features/snippets/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -147,7 +151,6 @@ import {
   saveFinished,
   withFiles,
 } from "./finished.ts";
-import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { googleConfig } from "./google-config.ts";
 import type { GoogleConfig } from "./google-oauth.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
@@ -322,6 +325,7 @@ const AWAY_MARK_MS = 60_000;
 
 export interface AppState
   extends HistorySliceState,
+    SnippetsSliceState,
     ActivitySliceState,
     SessionsSliceState,
     MessagingSliceState,
@@ -376,12 +380,8 @@ export interface AppState
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
   ssh: Record<string, SshTarget[]>;
-  /** The snippets of each host that keeps them, by host id; read when the palette opens (phase 18). */
-  snippets: Record<string, Snippet[]>;
-  /** The snippet to fill and use now, from the palette or a terminal's list (phase 18). */
   /** Phase 27: each host's Claude Code background sessions, as `bg.list` gave them. */
   background: Record<string, BgList>;
-  snippetChoice: { hostId: string | null; snippetId: string; snippet?: AppSnippet } | null;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
   /** Phase 16: the vault's usage log, newest first; never holds a value. */
@@ -1003,6 +1003,8 @@ export class AppStore {
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
   readonly settings: SettingsSlice;
+  /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
+  readonly snippets: SnippetsSlice;
 
   constructor(
     private readonly platform: Platform,
@@ -1036,6 +1038,15 @@ export class AppStore {
       list: (hostId, language) =>
         this.hostCommand(hostId, "personas.list", { scope: "host", language }),
       language: () => this.i18n.lang,
+    });
+    this.snippets = new SnippetsSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      storage: platform.storage,
+      list: (hostId, type) => this.hostCommand(hostId, "snippets.list", { type }),
+      get: (hostId, id) => this.hostCommand(hostId, "snippets.get", { id }),
+      render: (hostId, id, cwd) =>
+        this.hostRequest(hostId, "snippets.render", { id, context: { cwd } }),
     });
     this.messaging = new MessagingSlice({
       state: () => this.state,
@@ -1084,7 +1095,6 @@ export class AppStore {
     this.rules = new VaultRules(platform.storage);
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
-    this.globalSnippets = new GlobalSnippets(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
     this.roi = new RoiSettings(platform, {
       onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
@@ -1162,8 +1172,7 @@ export class AppStore {
       budgets: {},
       setupProbes: {},
       ssh: {},
-      snippets: {},
-      snippetChoice: null,
+      ...initialSnippetsState(),
       background: {},
       ...initialMessagingState(),
       ...initialPersonasState(),
@@ -2209,8 +2218,7 @@ export class AppStore {
       )
       .map(async (host) => {
         const listed = await quiet(this.dispatch(host.id, "snippets.list", {}));
-        if (listed)
-          this.update({ snippets: { ...this.state.snippets, [host.id]: listed.snippets } });
+        if (listed) this.snippets.keep(host.id, listed.snippets);
       });
     await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets, ...personas]);
   }
@@ -3846,11 +3854,6 @@ export class AppStore {
     this.update({ askpass: [...this.state.askpass, { hostId, request }] });
   }
 
-  /** Keeps a host's snippets as listed, for the palette and the use dialog (phase 18). */
-  keepSnippets(hostId: string, snippets: Snippet[]): void {
-    this.update({ snippets: { ...this.state.snippets, [hostId]: snippets } });
-  }
-
   /** Reads a host's background sessions (`claude agents`), for the hub and their screen. */
   async loadBackground(hostId: string): Promise<void> {
     const list = await this.hostCommand(hostId, "bg.list", {});
@@ -3898,50 +3901,6 @@ export class AppStore {
     return started.id;
   }
 
-  /** Opens the use dialog for a snippet (`null` closes it): from the palette or a terminal's list. */
-  chooseSnippet(
-    choice: { hostId: string | null; snippetId: string; snippet?: AppSnippet } | null,
-  ): void {
-    this.update({ snippetChoice: choice });
-  }
-
-  /**
-   * Phase 18: the prompt snippets a session's message box offers after `/`, the host's and the
-   * app's, and the text of one: filled from the session's folder, or as written when a field
-   * still needs a value (the person completes it in the box).
-   */
-  promptSnippets(hostId: string, cwd: string) {
-    return {
-      list: async () => {
-        const listed = await this.hostCommand(hostId, "snippets.list", { type: "prompt" });
-        return [
-          ...(listed?.snippets ?? []).map((s) => ({ key: `host:${s.id}`, name: s.name })),
-          ...this.globalSnippets
-            .list({ type: "prompt" })
-            .map((s) => ({ key: `global:${s.id}`, name: s.name })),
-        ];
-      },
-      fill: async (key: string): Promise<string> => {
-        const [kind, id] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
-        if (kind === "global") {
-          const snippet = this.globalSnippets.list().find((s) => s.id === id);
-          try {
-            return this.globalSnippets.use(id, {}, { cwd });
-          } catch {
-            return snippet?.text ?? "";
-          }
-        }
-        const rendered = await this.hostRequest(hostId, "snippets.render", {
-          id,
-          context: { cwd },
-        });
-        if (rendered.ok) return rendered.data.text;
-        const got = await this.hostCommand(hostId, "snippets.get", { id });
-        return got?.text ?? "";
-      },
-    };
-  }
-
   /**
    * Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused.
    * `privateKey` is the vault key of a `vault-key` destino, for this connection only.
@@ -3967,8 +3926,6 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /** Phase 18: the global snippets, kept by the app. */
-  readonly globalSnippets: GlobalSnippets;
   /**
    * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
    * that cannot be reached, is left out; the card says how many answered.

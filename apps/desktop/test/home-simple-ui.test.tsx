@@ -20,6 +20,8 @@ function view(
     lang?: "en" | "pt-BR";
     canPickFolder?: boolean;
     templates?: typeof BUILTIN_TEMPLATES;
+    status?: "online" | "offline" | "connecting" | "unauthorized" | "incompatible";
+    folders?: string[] | null;
   } = {},
 ) {
   const calls: string[] = [];
@@ -32,6 +34,12 @@ function view(
       onPickFolder={async () => "/work/Notes"}
       onStart={async (id, values) => void calls.push(`start:${id}:${JSON.stringify(values)}`)}
       onOpenTask={(id) => void calls.push(`open:${id}`)}
+      where={{
+        hostName: "Office PC",
+        status: over.status ?? "online",
+        folders: over.folders === undefined ? ["/work"] : over.folders,
+        onOpenSettings: () => void calls.push("settings"),
+      }}
     />,
   );
   return calls;
@@ -49,9 +57,18 @@ describe("home-simple-ui: where simple mode begins", () => {
     expect(screen.getByRole("button", { name: /Resumir uma pasta/ })).toBeTruthy();
   });
 
-  test("Given no task yet, Then a first-task prompt shows, and no waiting strip", () => {
+  test("Given no task yet, Then the three steps of a task show, and no waiting strip", () => {
     view();
-    expect(screen.getByText(/Pick one of the cards above/)).toBeTruthy();
+    const steps = screen.getByRole("list", { name: "How a task goes" });
+    expect(
+      within(steps)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual([
+      "Pick a card above.",
+      "Answer the few questions it asks.",
+      "Get what it made in the Flightdeck results folder, inside the folder you picked.",
+    ]);
     expect(screen.queryByRole("region", { name: "Waiting for your answer" })).toBeNull();
   });
 
@@ -185,5 +202,117 @@ describe("home-simple-ui: where simple mode begins", () => {
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(calls).toEqual([]);
+  });
+
+  test("Given the first screen, Then it says what a task is, that it asks before changing anything and where results go, in both languages", () => {
+    view();
+    // One short line: with a few tasks waiting above it, a longer intro pushed the first card
+    // past a phone's window on CI (#1716).
+    expect(screen.queryByText("Each card says what it asks and edits.")).not.toBeNull();
+    expect(screen.queryByText(/Flightdeck results/)).not.toBeNull();
+    cleanup();
+    view({ lang: "pt-BR" });
+    expect(screen.queryByText("Cada cartão diz o que pergunta e edita.")).not.toBeNull();
+    expect(screen.queryByRole("list", { name: "Como uma tarefa acontece" })).not.toBeNull();
+  });
+
+  test("Given a card, Then it says what it asks for and whether it only reads or may change files", () => {
+    view();
+    const summarise = screen.getByRole("button", { name: /Summarise a folder/ });
+    expect(summarise.textContent).toContain("Questions: Which folder?");
+    expect(summarise.textContent).toContain("Only reads your files.");
+    const draft = screen.getByRole("button", { name: /Draft a report/ });
+    expect(draft.textContent).toContain(
+      "Questions: Folder with the files, What is the report about?",
+    );
+    expect(draft.textContent).toContain("Asks before it changes anything.");
+    cleanup();
+    view({ lang: "pt-BR" });
+    expect(screen.getByRole("button", { name: /Resumir uma pasta/ }).textContent).toContain(
+      "Perguntas: Qual pasta?",
+    );
+  });
+
+  test("Given the host, Then Home says which computer the tasks run on and that it is connected", () => {
+    view();
+    expect(screen.queryByText("Tasks run on Office PC (connected).")).not.toBeNull();
+    expect(screen.queryByRole("alert") === null).toBe(true);
+    cleanup();
+    view({ lang: "pt-BR" });
+    expect(screen.queryByText("As tarefas rodam em Office PC (conectado).")).not.toBeNull();
+  });
+
+  test("Given the host, Then the first card comes before the line about where tasks run, so it stays in a phone's window", () => {
+    view();
+    const card = screen
+      .getByRole("region", { name: "Start something" })
+      .querySelector("button") as HTMLElement;
+    const line = screen.getByText("Tasks run on Office PC (connected).");
+    // 4 = DOCUMENT_POSITION_FOLLOWING: the line follows the card.
+    expect((card.compareDocumentPosition(line) & 4) === 4).toBe(true);
+  });
+
+  test("Given the host is offline, Then a notice says tasks cannot start until it is back", () => {
+    view({ status: "offline" });
+    const notice = screen.queryByRole("alert");
+    expect(notice?.textContent ?? "").toContain("Office PC is not connected");
+    expect(screen.queryByText("Tasks run on Office PC (not connected).")).not.toBeNull();
+  });
+
+  test("Given no folder is allowed yet, Then Home says so before a card is picked, and the link opens Settings", async () => {
+    const calls = view({ folders: [] });
+    expect(screen.queryByText(/No folder is set up yet/)).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Open Settings to add a folder" }));
+    });
+    expect(calls).toEqual(["settings"]);
+    cleanup();
+    view({ folders: ["/work"] });
+    expect(screen.queryByText(/No folder is set up yet/) === null).toBe(true);
+  });
+
+  test("Given the host does not accept this app or needs an update, Then the notice says that, not 'check it is on'", () => {
+    view({ status: "unauthorized" });
+    expect(screen.queryByRole("alert")?.textContent ?? "").toContain("did not accept this app");
+    cleanup();
+    view({ status: "incompatible" });
+    expect(screen.queryByRole("alert")?.textContent ?? "").toContain("needs an update");
+    cleanup();
+    view({ status: "incompatible", lang: "pt-BR" });
+    expect(screen.queryByRole("alert")?.textContent ?? "").toContain("precisa de uma atualização");
+  });
+
+  test("Given the host is not connected, When a card is opened, Then Start is held with the reason", async () => {
+    view({ status: "offline" });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Summarise a folder/ }));
+    });
+    const dialog = screen.getByRole("dialog", { name: "Summarise a folder" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Which folder?" }), {
+      target: { value: "/work/Notes" },
+    });
+    const start = within(dialog).getByRole("button", { name: "Start this task" });
+    expect((start as HTMLButtonElement).disabled).toBe(true);
+    expect(within(dialog).queryByText("Office PC is not connected.")).not.toBeNull();
+  });
+
+  test("Given the host's folders are not known yet, Then Home does not say none is set up", () => {
+    view({ folders: null });
+    expect(screen.queryByText(/No folder is set up yet/) === null).toBe(true);
+  });
+
+  test("Given a card that edits files, Then it says so without promising a question each time", () => {
+    const edits: typeof BUILTIN_TEMPLATES = [
+      { ...(BUILTIN_TEMPLATES[0] as (typeof BUILTIN_TEMPLATES)[number]), preset: "edit_folder" },
+    ];
+    view({ templates: edits });
+    const card = screen.getByRole("button", { name: /Summarise a folder/ });
+    expect(card.textContent).toContain("Edits files in the folder you pick.");
+    expect(card.textContent).not.toContain("asking");
+  });
+
+  test("Given no ready-made tasks and no task yet, Then no steps point at cards that are not there", () => {
+    view({ templates: [] });
+    expect(screen.queryByRole("list", { name: "How a task goes" }) === null).toBe(true);
   });
 });

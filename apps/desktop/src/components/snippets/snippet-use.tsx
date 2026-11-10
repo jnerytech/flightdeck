@@ -4,10 +4,10 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { AppSnippet } from "@/features/snippets";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppState, AppStore } from "@/lib/app-store";
-import type { AppSnippet } from "@/lib/global-snippets";
 import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../feedback/dialog-content.tsx";
 
@@ -30,7 +30,7 @@ export function chosenSnippet(
   if (choice.snippet) return choice.snippet;
   return choice.hostId
     ? state.snippets[choice.hostId]?.find((s) => s.id === choice.snippetId)
-    : store.globalSnippets.list().find((s) => s.id === choice.snippetId);
+    : store.snippets.global.list().find((s) => s.id === choice.snippetId);
 }
 
 const SNIPPETUSE_KEYS = ["hosts", "snippets", "externals"] as const;
@@ -149,7 +149,7 @@ export const SnippetUse = memo(function SnippetUse(props: {
   /** A global snippet is filled by the app itself; the use counts. */
   const fillGlobal = (): string | null => {
     try {
-      return store.globalSnippets.use(snippet.id, own, context);
+      return store.snippets.global.use(snippet.id, own, context);
     } catch (error_) {
       if (!(error_ instanceof SnippetModelError)) throw error_;
       fail(refusalText(error_.code, error_.message, t, error_));

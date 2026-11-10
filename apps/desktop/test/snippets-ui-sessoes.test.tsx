@@ -40,7 +40,7 @@ async function open(onExternal = false) {
   cleanups.push(() => store.dispose());
   const h = await snippetsHost(cleanups, store);
   await h.save({ name: "revisar", type: "prompt", text: "Revise o projeto em {{cwd}}." });
-  store.globalSnippets.save({ name: "resumir", type: "prompt", text: "Resuma o que mudou." });
+  store.snippets.global.save({ name: "resumir", type: "prompt", text: "Resuma o que mudou." });
   // What the app asks of the host, to see what a send carries (the daemon has no such session).
   const asked: Array<{ type: string; payload: unknown }> = [];
   const request = store.hostRequest.bind(store);

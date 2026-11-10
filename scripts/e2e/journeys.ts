@@ -1674,6 +1674,12 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const templates = c.page.getByRole("region", { name: c.t("simple.home.templates") });
     const first = templates.getByRole("button").first();
     await first.waitFor({ timeout: WAIT });
+    // #1716: the first screen says what a task is and that each card names what it asks for.
+    await c.page.getByText(c.t("simple.home.intro")).waitFor({ timeout: WAIT });
+    await templates
+      .getByText(c.t("simple.home.preset.read_only"))
+      .first()
+      .waitFor({ timeout: WAIT });
     for (const size of [
       { width: 390, height: 844 },
       { width: 640, height: 800 },

@@ -29,8 +29,10 @@ function recorder(
     toggleUiMode: () => void calls.push("ui-mode"),
     i18n: { setLang: (lang: string) => void calls.push(`lang ${lang}`) },
     setClientSelection: (id: string) => void calls.push(`client ${id}`),
-    chooseSnippet: (c: { hostId: string; snippetId: string }) =>
-      void calls.push(`snippet ${c.hostId}/${c.snippetId}`),
+    snippets: {
+      choose: (c: { hostId: string; snippetId: string }) =>
+        void calls.push(`snippet ${c.hostId}/${c.snippetId}`),
+    },
     openPrLink: (url: string) => {
       calls.push(`pr ${url}`);
       return Promise.resolve(opts.link ?? null);

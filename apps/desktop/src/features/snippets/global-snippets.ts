@@ -9,7 +9,7 @@ import {
   type SnippetInput,
   SnippetModelError,
 } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** A snippet the screen and the palette show: the daemon's, or a global one kept by the app. */
 export type AppSnippet = Omit<Snippet, "scope" | "source"> & {
