@@ -24,6 +24,7 @@ import { Arenas } from "./arena.ts";
 import { Blockers } from "./blockers.ts";
 import { CardLifecycle } from "./card-lifecycle.ts";
 import { CardPrFlow } from "./card-pr-flow.ts";
+import { CardView } from "./card-view.ts";
 import { Cards } from "./cards.ts";
 import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
@@ -42,8 +43,6 @@ import type {
   BoardOptions,
   Card,
   CardDiff,
-  CardRow,
-  CardRun,
   NewProject,
   Project,
   ProjectPatch,
@@ -55,24 +54,7 @@ export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
 export type { BoardOptions } from "./types.ts";
 
-/** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
-function pinnedDocsOf(stored: string | null): string[] {
-  try {
-    const parsed: unknown = JSON.parse(stored ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
 const now = () => new Date().toISOString();
-
-const toRun = (row: RunRow): CardRun => ({
-  sessionId: row.session_id,
-  queuedAt: row.queued_at,
-  startedAt: row.started_at,
-  endedAt: row.ended_at,
-});
 
 /**
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
@@ -97,6 +79,8 @@ export class Board {
   private readonly lifecycle: CardLifecycle;
   /** Making, editing and starting cards (issue #1523). */
   private readonly cards: Cards;
+  /** A card as the app sees it (issue #1523). */
+  private readonly view: CardView;
   /** The PR polling: timer, rounds and reads of the open PRs (issue #1523). */
   private readonly prPoll: PrPoll;
   /** A card's diff, PR, PR comments, rebase and local merge (issue #1523). */
@@ -291,6 +275,15 @@ export class Board {
       stopped: () => this.stopped,
       forgetDone: (id) => forgetDone(this.db, id),
     });
+    this.view = new CardView({
+      db: opts.db,
+      sessionStatus: (sessionId) => opts.manager.get(sessionId).status,
+      mayConflictOf: (id) => this.radarFeed.mayConflictOf(id),
+      isWorkflowRun: (runId) => this.workflows.has(runId),
+      checkLoopOf: (row) => this.loopHost.of(row),
+      blockers: this.blockers,
+      queueState: (queued, projectId) => this.queue.queueState(queued, projectId),
+    });
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.queue.watchLimits();
     this.prPoll.arm();
@@ -380,82 +373,7 @@ export class Board {
   }
 
   getCard(id: string): Card {
-    const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
-    if (!row)
-      throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", { id });
-    const rows = this.db
-      .query<RunRow, [string]>(
-        "SELECT * FROM card_runs WHERE card_id = ? ORDER BY queued_at, rowid",
-      )
-      .all(id);
-    const runs = rows.map(toRun);
-    const active = rows.at(-1);
-    const sessionId = active?.session_id ?? null;
-    return {
-      id: row.id,
-      projectId: row.project_id,
-      title: row.title,
-      description: row.description,
-      column: row.board_column,
-      columnLocked: row.column_locked === 1,
-      position: row.position,
-      slug: row.slug,
-      branch: row.branch,
-      worktreePath: row.worktree_path,
-      prUrl: row.pr_url,
-      prState: row.pr_state,
-      checksState: row.checks_state,
-      prMergeable: row.pr_mergeable,
-      prReview: row.pr_review,
-      prOpenedAt: row.pr_opened_at,
-      ...this.radarFeed.mayConflictOf(id),
-      queued: active !== undefined && active.started_at === null && active.ended_at === null,
-      sessionId,
-      sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
-      notice: row.notice,
-      noticeReason: row.notice_reason,
-      noticeParams: row.notice_params ? JSON.parse(row.notice_params) : null,
-      discarded: false,
-      runs,
-      workflowRunId: active && this.workflows.has(active.id) ? active.id : null,
-      arenaOf: row.arena_of,
-      variant: row.variant ? JSON.parse(row.variant) : null,
-      arenaVariants: this.db
-        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM cards WHERE arena_of = ?")
-        .get(id)?.n as number,
-      issueRef: row.issue_ref,
-      issueExternal: row.issue_external === 1,
-      externalUrl: row.external_url,
-      externalGone: row.external_gone === 1,
-      estimateHours: row.estimate_hours,
-      validationNote: row.validation_note,
-      checkLoop: this.loopHost.of(row),
-      specPath: row.spec_path,
-      pinnedDocs: pinnedDocsOf(row.pinned_docs),
-      startWorkflow: row.start_workflow,
-      startPersona: row.start_persona,
-      specState:
-        row.spec_checked_path === null
-          ? null
-          : {
-              path: row.spec_checked_path,
-              found: row.spec_found === 1,
-              heading: row.spec_heading,
-              ...(row.spec_draft === 1 ? { draft: true } : {}),
-            },
-      blockedBy: this.blockers.blockersOf(id),
-      blocking: this.blockers.blockingOf(id),
-      waitingOn: rows.length === 0 ? this.blockers.unsatisfied(id, row.unblock_when) : [],
-      unblockWhen: row.unblock_when,
-      autoStart: row.auto_start ? JSON.parse(row.auto_start) : null,
-      unblockedAt: row.unblocked_at,
-      ...this.queueState(
-        active !== undefined && active.started_at === null && active.ended_at === null,
-        row.project_id,
-      ),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return this.view.read(id);
   }
 
   /**
@@ -668,10 +586,6 @@ export class Board {
   }
 
   /** Why a queued card waits, for the card itself: the pause, the quota, memory, a budget, then a slot. */
-  private queueState(queued: boolean, projectId: string): Pick<Card, "queueReason" | "quotaUntil"> {
-    return this.queue.queueState(queued, projectId);
-  }
-
   /** Issue #1439: whether the project's budget holds new work now, for the card review's gate. */
   budgetHeld(projectId: string): boolean {
     return this.queue.budgetBlocked(projectId);
