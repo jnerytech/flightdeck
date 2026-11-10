@@ -37,5 +37,9 @@ export function useLiveElsewhereGuard(
         onCancel={() => setPending(null)}
       />
     ) : null;
-  return { guarded, dialog };
+  /** Whether another terminal holds the conversation right now (the transcript's age does not say). */
+  const held =
+    claudeSessionId !== null &&
+    liveElsewhere(store.getState().externals, hostId, claudeSessionId) !== null;
+  return { guarded, dialog, held };
 }

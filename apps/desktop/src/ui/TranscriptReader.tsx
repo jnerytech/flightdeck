@@ -209,7 +209,9 @@ export function TranscriptReader(
                     size="sm"
                     disabled={blocked}
                     // Two processes writing the same conversation corrupt it: ask first.
-                    onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
+                    onClick={() =>
+                      session.maybeActive || live.held ? setConfirming(true) : void resume(false)
+                    }
                   >
                     {t("reader.continue")}
                   </Button>
