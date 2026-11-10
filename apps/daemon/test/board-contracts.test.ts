@@ -285,6 +285,7 @@ describe("board-contracts: what moves cards on its own is never refused", () => 
     // The card.move handler (Issue #1288 moved it out of server.ts) is the one caller besides the board.
     expect(users.sort()).toEqual([
       "apps/daemon/src/board/board.ts",
+      "apps/daemon/src/board/card-lifecycle.ts",
       "apps/daemon/src/server/handlers/card.ts",
     ]);
   });

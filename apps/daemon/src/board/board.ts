@@ -5,18 +5,13 @@ import {
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
-  contractOf,
   type EffortLevel,
-  inSequence,
-  missingFor,
   type PermissionMode,
   type PersonaRef,
   PINNED_DOCS_MAX,
   pinnedDocProblem,
   type RunResumeCheck,
   type SessionEvent,
-  type SpecState,
-  specExpectedPath,
   specPathProblem,
   type UnblockWhen,
   type WorkflowInfo,
@@ -34,28 +29,21 @@ import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/find
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { Arenas } from "./arena.ts";
 import { Blockers } from "./blockers.ts";
+import { CardLifecycle } from "./card-lifecycle.ts";
 import { CardPrFlow } from "./card-pr-flow.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
-import { git } from "./command.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import { type PrComment, prProvider } from "./pr.ts";
 import { PrPoll } from "./pr-poll.ts";
 import { Projects } from "./projects.ts";
 import { RadarFeed } from "./radar-feed.ts";
-import { refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
 import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
-import { readSpec } from "./spec.ts";
-import {
-  projectTemplate,
-  type TemplateIgnored,
-  type TemplateName,
-  untrustedTemplate,
-} from "./spec-template.ts";
+import type { TemplateIgnored, TemplateName } from "./spec-template.ts";
 import type {
   BoardColumn,
   BoardOptions,
@@ -68,7 +56,6 @@ import type {
   ProjectPatch,
   RunRow,
 } from "./types.ts";
-import { must } from "./worktree.ts";
 
 export { DEFAULT_PR_POLL_MS } from "./pr-poll.ts";
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
@@ -146,8 +133,8 @@ export class Board {
   private readonly launcher: Launcher;
   private readonly waits: Array<() => Promise<unknown>> = [];
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
-  /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
-  private readonly specLooks = new Map<string, number>();
+  /** Moves, spec, stop, completion, discard and delete of a card (issue #1523). */
+  private readonly lifecycle: CardLifecycle;
   /** The PR polling: timer, rounds and reads of the open PRs (issue #1523). */
   private readonly prPoll: PrPoll;
   /** A card's diff, PR, PR comments, rebase and local merge (issue #1523). */
@@ -304,6 +291,29 @@ export class Board {
       fetchComments: (id) => this.prFlow.fetchComments(id),
       pendingNotice: PENDING_NOTICE,
     });
+    this.lifecycle = new CardLifecycle({
+      db: opts.db,
+      opts,
+      workflows: this.workflows,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      place: (id, event, via) => this.place(id, event, via),
+      emit: (card) => this.emit(card),
+      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
+      settleFix: (id, result) => this.settleFix(id, result),
+      loop: () => this.loop,
+      closeRuns: (id) => this.closeRuns(id),
+      finish: (id) => this.finish(id),
+      unfollow: (id) => this.sessions.unfollow(id),
+      runEnds: (id) => Promise.all(this.ends.map((end) => end(id))),
+      settle: () => this.settle(),
+      variantIds: (id) => this.arenas.variantIds(id),
+      dropConflicts: (id) => this.dropConflicts(id),
+      blockers: this.blockers,
+      stopped: () => this.stopped,
+      forgetDone: (id) => forgetDone(this.db, id),
+    });
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.queue.watchLimits();
     this.prPoll.arm();
@@ -426,7 +436,7 @@ export class Board {
           this.opts.suspendApproval?.(card.id, "card raised from an agent's findings");
         } catch (error) {
           // A card without its suspension must not stay: the ones before it have theirs.
-          this.removeFromBoard(card.id, "discarded");
+          this.lifecycle.removeFromBoard(card.id, "discarded");
           throw error;
         }
         raised.created.push(card.id);
@@ -993,17 +1003,7 @@ export class Board {
 
   /** Moves the card by hand; Backlog and Concluído lock it there until the next start. */
   moveCard(id: string, column: BoardColumn, position?: number): Card {
-    const card = this.getCard(id);
-    const { last } = this.db
-      .query<{ last: number | null }, [string, string, string]>(
-        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = ? AND id <> ?",
-      )
-      .get(card.projectId, column, id) ?? { last: null };
-    this.place(id, { type: "moved", column });
-    this.db
-      .query("UPDATE cards SET position = ? WHERE id = ?")
-      .run(position ?? (last ?? 0) + 1, id);
-    return this.changed(id);
+    return this.lifecycle.moveCard(id, column, position);
   }
 
   /**
@@ -1011,66 +1011,22 @@ export class Board {
    * its contract asks, unless `force`, which records what the card lacked (issue #78). Every other
    * caller of the board moves with `moveCard`, which asks nothing.
    */
-  async moveByHand(
+  moveByHand(
     id: string,
     column: BoardColumn,
     position: number | undefined,
     force: boolean,
   ): Promise<Card> {
-    const before = this.getCard(id);
-    const overrides = this.getProject(before.projectId).contractByColumn;
-    const contract = contractOf(column, overrides);
-    // A card already in the column is only reordered; a column that hints never holds a card back.
-    const asks = before.column !== column && contract?.enforce === "confirm";
-    // The spec is a file that comes and goes: it is looked at now, only when the column asks.
-    const card = asks && contract.checks.includes("spec") ? await this.refreshSpec(id) : before;
-    const needs = asks ? missingFor(column, card, overrides) : [];
-    const why = (code: "contract_unmet" | "invalid_state", text: string, reason: string) =>
-      new FlightdeckError(code, text, reason, { column, needs: needs.join(",") });
-    if (needs.length > 0 && !force) {
-      throw why("contract_unmet", `${column} needs: ${needs.join(", ")}`, "card_contract_unmet");
-    }
-    // The last forced move's notice is stale once the card moves on.
-    if (card.noticeReason === "card_moved_anyway") this.clearNotice(id);
-    // Issue #1361: a card the person moved to another column leaves its check loop; a reorder in
-    // its own column, or a move that was refused above, does not.
-    if (before.column !== column) void this.loop?.onStop(id);
-    const moved = this.moveCard(id, column, position);
-    if (needs.length === 0) return moved;
-    const lacked = why(
-      "invalid_state",
-      `Moved to ${column} anyway: it lacked ${needs.join(", ")}.`,
-      "card_moved_anyway",
-    );
-    this.setNotice(id, lacked.message, lacked);
-    return this.changed(id);
+    return this.lifecycle.moveByHand(id, column, position, force);
   }
 
-  /**
-   * A project's own template from its trusted checkout, or why it gives none: the body when it is
-   * there and used, `ignored` when it is there and not (an untrusted project, a link, too big,
-   * empty), neither when there is none or the trust check failed (logged, never quoted).
-   */
-  private async templateFor(
+  /** A project's own template from its trusted checkout, or why it gives none (`CardLifecycle.templateFor`). */
+  private templateFor(
     cwd: string,
     name: TemplateName,
     own?: true,
   ): Promise<{ body: string | null; ignored: TemplateIgnored | null }> {
-    if (!this.opts.specTemplateRoot) return { body: null, ignored: null };
-    const asked = await this.opts.specTemplateRoot(cwd, own).then(
-      (root) => ({ root }),
-      (error: unknown) => {
-        // The built-in template then, but a trust bug must not go unseen. Trust is unknown, so
-        // the card says nothing about a template.
-        this.opts.log?.(
-          `${name} template: trust check failed for ${cwd}, built-in template used: ${String(error)}`,
-        );
-        return null;
-      },
-    );
-    if (asked === null) return { body: null, ignored: null };
-    if (asked.root) return projectTemplate(asked.root, name);
-    return { body: null, ignored: (await untrustedTemplate(cwd, name)) ? "untrusted" : null };
+    return this.lifecycle.templateFor(cwd, name, own);
   }
 
   /**
@@ -1079,73 +1035,26 @@ export class Board {
    * (issue #1058). Read from the trusted checkout; the card's worktree is only looked at by name
    * for an untrusted project, and a card with no worktree is asked for by its project's folder.
    */
-  async validationTemplate(
+  validationTemplate(
     id: string,
   ): Promise<{ text: string | null; ignored: TemplateIgnored | null }> {
-    const card = this.getCard(id);
-    const found = card.worktreePath
-      ? await this.templateFor(card.worktreePath, "validation")
-      : await this.templateFor(this.getProject(card.projectId).path, "validation", true);
-    return { text: found.body, ignored: found.ignored };
+    return this.lifecycle.validationTemplate(id);
   }
 
   /**
    * Looks at the card's spec file again (the path set on the card, else `docs/specs/<slug>.md`)
    * in its worktree, and keeps whether it is there and its first heading (issue #78).
    */
-  async refreshSpec(id: string): Promise<Card> {
-    const card = this.getCard(id);
-    const path = specExpectedPath(card);
-    const look = (this.specLooks.get(id) ?? 0) + 1;
-    this.specLooks.set(id, look);
-    const seen: SpecState | null =
-      card.worktreePath && path ? { path, ...(await readSpec(card.worktreePath, path)) } : null;
-    // The card may have been discarded, or the board stopped, while the files were read.
-    if (this.stopped || this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id) === null) {
-      return card;
-    }
-    // A look that ended after the card named another path or got another worktree says nothing
-    // about the new one, and an older look never writes over a newer one.
-    const now = this.getCard(id);
-    if (specExpectedPath(now) !== path || now.worktreePath !== card.worktreePath) return now;
-    if (this.specLooks.get(id) !== look) return now;
-    if (JSON.stringify(seen) === JSON.stringify(now.specState)) return now;
-    this.db
-      .query(
-        "UPDATE cards SET spec_checked_path = ?, spec_found = ?, spec_heading = ?, spec_draft = ? WHERE id = ?",
-      )
-      .run(seen?.path ?? null, seen?.found ? 1 : 0, seen?.heading ?? null, seen?.draft ? 1 : 0, id);
-    return this.changed(id);
-  }
-
-  private clearNotice(id: string): void {
-    this.db
-      .query(
-        "UPDATE cards SET notice = NULL, notice_reason = NULL, notice_params = NULL WHERE id = ?",
-      )
-      .run(id);
+  refreshSpec(id: string): Promise<Card> {
+    return this.lifecycle.refreshSpec(id);
   }
 
   /**
    * A queued card leaves the queue and goes back to the Backlog. A running one has its turn
    * interrupted, and the interrupted turn sends it to Esperando você.
    */
-  async stopCard(id: string): Promise<Card> {
-    const card = this.getCard(id);
-    void this.loop?.onStop(id);
-    if (card.queued) {
-      this.db
-        .query("UPDATE card_runs SET ended_at = ? WHERE card_id = ? AND started_at IS NULL")
-        .run(now(), id);
-      this.workflows.abandon(id, "card parado antes de começar");
-      this.settleFix(id, { isError: true, error: "stopped before it started" });
-      this.place(id, { type: "moved", column: "backlog" });
-    } else if (card.workflowRunId) {
-      await this.workflows.interrupt(card.workflowRunId);
-    } else if (card.sessionId) {
-      await this.opts.manager.interrupt(card.sessionId);
-    }
-    return this.changed(id);
+  stopCard(id: string): Promise<Card> {
+    return this.lifecycle.stopCard(id);
   }
 
   /** Resolves when every rule accepted so far is in its file. */
@@ -1241,41 +1150,16 @@ export class Board {
   }
 
   /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */
-  async completeCard(id: string, confirm: boolean): Promise<Card> {
-    if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirm completing the card", "complete_confirm");
-    this.place(id, { type: "moved", column: "done" }, "completed");
-    await this.finish(id);
-    return this.getCard(id);
+  completeCard(id: string, confirm: boolean): Promise<Card> {
+    return this.lifecycle.completeCard(id, confirm);
   }
 
   /**
    * Throws the card away: sessions closed, worktree removed even with changes, local branch
    * deleted, card off the board. Returns its last state, marked `discarded`.
    */
-  async discardCard(id: string, confirm: boolean): Promise<Card> {
-    if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
-    const card = this.getCard(id);
-    // Issue #1361: the worktree goes only once a check killed in it has exited.
-    await this.loop?.onStop(id);
-    // The variants of an arena go with its card.
-    await inSequence(this.arenas.variantIds(id), async (variant) => {
-      await this.discardCard(variant, true);
-    });
-    await this.closeRuns(id);
-    this.sessions.unfollow(id);
-    const repo = this.getProject(card.projectId).path;
-    if (card.worktreePath) {
-      await Promise.all(this.ends.map((end) => end(id)));
-      await this.settle();
-      must(
-        await git(repo, "worktree", "remove", "--force", card.worktreePath),
-        "git worktree remove",
-      );
-    }
-    if (card.branch) must(await git(repo, "branch", "-D", refArg(card.branch)), "git branch -D");
-    return this.removeFromBoard(id, "discarded");
+  discardCard(id: string, confirm: boolean): Promise<Card> {
+    return this.lifecycle.discardCard(id, confirm);
   }
 
   /**
@@ -1284,41 +1168,7 @@ export class Board {
    * A card that started has work to clean up and goes through `discardCard`.
    */
   deleteCard(id: string, confirm: boolean): Card {
-    if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirm deleting the card", "delete_confirm");
-    const card = this.getCard(id);
-    const ran = this.db.query("SELECT 1 FROM card_runs WHERE card_id = ?").get(id) !== null;
-    if (card.worktreePath || card.branch || card.sessionId || ran) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card already started: discard it instead of deleting it",
-        "card_delete_started",
-      );
-    }
-    return this.removeFromBoard(id, "deleted");
-  }
-
-  /** The card leaves the board and the cards it held up are free of it; `discardCard` cleans its worktree first. */
-  private removeFromBoard(id: string, verb: "discarded" | "deleted"): Card {
-    const last = this.getCard(id);
-    this.workflows.forget(id);
-    const holdingUp = this.blockers.blockingOf(id);
-    const heldBy = this.blockers.blockersOf(id);
-    this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
-    forgetDone(this.db, id);
-    this.db.query("DELETE FROM cards WHERE id = ?").run(id);
-    this.dropConflicts(id);
-    const gone = { ...last, worktreePath: null, branch: null, discarded: true };
-    this.emit(gone);
-    // A card that is gone can never be done: the cards it held up are free of it.
-    const notice = `Blocker "${last.title}" was ${verb} and no longer blocks this card.`;
-    for (const dependent of holdingUp) {
-      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, dependent);
-      this.blockers.afterBlockerChange(dependent);
-      this.changed(dependent);
-    }
-    for (const blocker of heldBy) this.changed(blocker);
-    return gone;
+    return this.lifecycle.deleteCard(id, confirm);
   }
 
   /** Calls `listener` after every round of the PR polling. */

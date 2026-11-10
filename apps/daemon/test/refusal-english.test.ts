@@ -176,6 +176,7 @@ const MSGS3_FILES = [
   "board/rule-writes.ts",
   "board/launch.ts",
   "board/card-pr-flow.ts",
+  "board/card-lifecycle.ts",
   "central/wrapper.ts",
 ];
 
@@ -207,7 +208,7 @@ const MSGS3_SHOWN: Record<string, string[]> = {
     "O objetivo do time mudou",
     "Os comandos de verificação do time",
   ],
-  "board/board.ts": ["card parado antes de começar"],
+  "board/card-lifecycle.ts": ["card parado antes de começar"],
   // Issue #1523: the board split moved these with their code.
   "board/projects.ts": ["Trabalhe somente nesta worktree", "com mensagens descritivas"],
   "board/rule-writes.ts": ["regra não gravada no "],
