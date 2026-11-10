@@ -24,6 +24,9 @@ describe("md-size", () => {
     expect(mdLimit("docs/manual/en.md")).toBe(400);
     expect(mdLimit("docs/manual/pt-BR/board.md")).toBe(400);
     expect(oversized([{ path: "docs/manual/en/board.md", text: lines(400) }])).toEqual({});
+    expect(oversized([{ path: "docs/manual/en/board.md", text: lines(401) }])).toEqual({
+      "docs/manual/en/board.md": 401,
+    });
     expect(oversized([{ path: "docs/manual/pt-BR.md", text: lines(401) }])).toEqual({
       "docs/manual/pt-BR.md": 401,
     });
