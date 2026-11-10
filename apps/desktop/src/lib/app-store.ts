@@ -71,7 +71,7 @@ import {
   BudgetsSlice,
   type BudgetsSliceState,
   initialBudgetsState,
-} from "../features/budgets/index.ts";
+} from "../features/costs/index.ts";
 import {
   HistorySlice,
   type HistorySliceState,

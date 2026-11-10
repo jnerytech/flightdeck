@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Budget } from "@flightdeck/protocol";
-import { budgetAlerts, budgetLabel, budgetLine } from "../src/features/budgets/index.ts";
+import { budgetAlerts, budgetLabel, budgetLine } from "../src/features/costs/index.ts";
 import { translator } from "../src/i18n/index.ts";
 import type { AppState } from "../src/lib/app-store.ts";
 

@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
-import { budgetAlerts } from "../features/budgets/index.ts";
+import { budgetAlerts } from "../features/costs/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { requiredMissing } from "../lib/deps-summary.ts";

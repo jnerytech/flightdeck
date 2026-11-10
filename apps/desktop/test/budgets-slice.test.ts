@@ -7,7 +7,7 @@ import {
   budgetLimitText,
   initialBudgetsState,
   share,
-} from "../src/features/budgets/index.ts";
+} from "../src/features/costs/index.ts";
 import { translator } from "../src/i18n/index.ts";
 import { usd } from "../src/lib/costs.ts";
 

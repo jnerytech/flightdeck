@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { budgetLabel } from "../src/features/budgets/index.ts";
+import { budgetLabel } from "../src/features/costs/index.ts";
 import { translator } from "../src/i18n/index.ts";
 
 /**
