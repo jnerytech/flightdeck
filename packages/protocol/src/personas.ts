@@ -1,6 +1,8 @@
 // Phase 20: the persona model, shared by the daemon (which keeps the host's and the projects'
 // personas) and the app (which keeps the global ones), so both check a persona the same way.
+
 import { z } from "zod";
+import { cmd } from "./command.ts";
 import { PermissionMode } from "./permissions.ts";
 import { hasControl, type SecretScanner } from "./snippets.ts";
 
@@ -240,4 +242,148 @@ export function clampPermissionMode(
   session: PermissionMode,
 ): PermissionMode {
   return suggested !== null && RANK[suggested] < RANK[session] ? suggested : session;
+}
+
+/** Which personas become subagents in a project: the pack and the project's, only the project's, or none. */
+export const PersonaSubagentsMode = z.enum(["all", "project", "none"]);
+export type PersonaSubagentsMode = z.infer<typeof PersonaSubagentsMode>;
+
+/** A persona of this host: where it lives, the hash of a versioned file and whether it is trusted. */
+export const Persona = PersonaFields.extend({
+  scope: z.enum(["pack", "host", "project"]),
+  /** The SHA-256 of the project's file; `null` for the others. */
+  hash: z.string().nullable(),
+  /** A project persona is trusted once its hash is; the others always are. */
+  trusted: z.boolean(),
+  /** A pack persona the host has edited. */
+  modified: z.boolean(),
+});
+export type Persona = z.infer<typeof Persona>;
+
+/** A persona as a subagent: what the SDK's `agents` and claude's `--agents` take. */
+export const PersonaAgent = z.object({
+  description: z.string(),
+  prompt: z.string(),
+  tools: z.array(z.string()).optional(),
+  model: z.string().optional(),
+});
+export type PersonaAgent = z.infer<typeof PersonaAgent>;
+
+/** The agents `persona-<id>` of a project, and the versioned personas left out for lack of trust. */
+export const PersonaSubagents = z.object({
+  agents: z.record(z.string(), PersonaAgent),
+  untrusted: z.array(z.string()),
+});
+export type PersonaSubagents = z.infer<typeof PersonaSubagents>;
+
+/** What applying or leaving a persona answers: the persona and the message that was sent. */
+export const PersonaSwitchResult = z.object({
+  persona: SessionPersona,
+  text: z.string(),
+  /**
+   * How the message went: `sent` to an idle managed session, `queued` behind a turn or a pending
+   * request, `terminal` to a terminal session's channel (it shows when Claude takes it). Absent
+   * from an older host.
+   */
+  delivery: z.enum(["sent", "queued", "terminal"]).optional(),
+});
+export type PersonaSwitchResult = z.infer<typeof PersonaSwitchResult>;
+
+/** The project's `.flightdeck/personas` folder and the files in it that were left out. */
+export const PersonaProjectInfo = z.object({ path: z.string(), errors: z.array(z.string()) });
+export type PersonaProjectInfo = z.infer<typeof PersonaProjectInfo>;
+
+/** A persona ready to use, with where it came from. */
+export const ResolvedPersonaResult = z.object({
+  persona: PersonaFields,
+  source: z.enum(["project", "host", "pack", "inline"]),
+  /** The hash of the versioned file, for the ones from a project. */
+  hash: z.string().nullable(),
+});
+export type ResolvedPersonaResult = z.infer<typeof ResolvedPersonaResult>;
+
+/** The personas commands; index.ts spreads them into `Command`. */
+export const personasCommands = [
+  /** The personas of the host and, with `projectPath`, of that project. */
+  cmd(
+    "personas.list",
+    z
+      .object({
+        scope: z.enum(["host", "project", "all"]).optional(),
+        projectPath: z.string().optional(),
+        /** The language of the pack personas that are shown (`pt-BR` when absent). */
+        language: z.enum(["pt-BR", "en"]).optional(),
+      })
+      .strict(),
+  ),
+  /** Creates or edits a persona; a secret in it is refused with `persona_secret`. */
+  cmd(
+    "personas.save",
+    z
+      .object({
+        scope: z.enum(["host", "project"]),
+        projectPath: z.string().optional(),
+        persona: PersonaInput,
+      })
+      .strict(),
+  ),
+  cmd(
+    "personas.remove",
+    z
+      .object({
+        scope: z.enum(["host", "project"]),
+        id: z.string(),
+        projectPath: z.string().optional(),
+      })
+      .strict(),
+  ),
+  /** The personas that hold in the project, as the agents `persona-<id>` a session can call. */
+  cmd(
+    "personas.subagents",
+    z
+      .object({
+        projectPath: z.string().optional(),
+        language: z.enum(["pt-BR", "en"]).optional(),
+      })
+      .strict(),
+  ),
+  /** Writes a persona as the project agent `.claude/agents/persona-<id>.md`; asks for `confirm`. */
+  cmd(
+    "personas.publishAgent",
+    z
+      .object({
+        id: z.string(),
+        projectPath: z.string(),
+        language: z.enum(["pt-BR", "en"]).optional(),
+        confirm: z.boolean(),
+      })
+      .strict(),
+  ),
+  /** The persona to use, as `session.create` and `flightdeckd claude --persona` would resolve it. */
+  cmd(
+    "personas.resolve",
+    z.object({ ref: PersonaRef, projectPath: z.string().optional() }).strict(),
+  ),
+  /** Puts a pack persona back as it came (the host's edit goes away). */
+  cmd(
+    "personas.reset",
+    z.object({ id: z.string(), language: z.enum(["pt-BR", "en"]).optional() }).strict(),
+  ),
+  /** Trusts a project's versioned persona, by the hash `personas.list` showed. */
+  cmd(
+    "personas.trust",
+    z.object({ projectPath: z.string(), id: z.string(), hash: z.string() }).strict(),
+  ),
+] as const;
+
+/** The `data` of each personas command's ack; `CommandResults` extends it. */
+export interface PersonasResults {
+  "personas.list": { personas: Persona[]; project: PersonaProjectInfo | null };
+  "personas.save": Persona;
+  "personas.remove": undefined;
+  "personas.reset": Persona;
+  "personas.resolve": ResolvedPersonaResult;
+  "personas.subagents": PersonaSubagents;
+  "personas.publishAgent": { path: string };
+  "personas.trust": Persona;
 }
