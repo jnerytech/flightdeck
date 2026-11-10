@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cmd } from "./command.ts";
 
 // Phase 24: the run environment's shared checks, so the daemon (which waits for a process to
 // answer) and the app (which shows it) agree on which addresses a preview may open.
@@ -72,3 +73,30 @@ export const RunState = z.object({
   error: z.string().nullable(),
 });
 export type RunState = z.infer<typeof RunState>;
+
+/** Sent after `run.watch` with the whole workflow run after each change. Not a session event. */
+/** A card's run environment changed (after `runenv.watch`). */
+export const RunEnvUpdated = z.object({ type: z.literal("runenv.updated"), state: RunState });
+export type RunEnvUpdated = z.infer<typeof RunEnvUpdated>;
+
+/** The run commands; index.ts spreads them into `Command`. */
+export const runCommands = [
+  // Phase 24: the run environment of a card (scripts, a block of ports, a preview).
+  cmd("runenv.config", z.object({ projectId: z.string() })),
+  /** `hash` is the run.yaml the user reviewed; one that changed since is refused. */
+  cmd("runenv.trust", z.object({ projectId: z.string(), hash: z.string().min(1) })),
+  cmd("runenv.start", z.object({ cardId: z.string() })),
+  cmd("runenv.stop", z.object({ cardId: z.string() })),
+  cmd("runenv.get", z.object({ cardId: z.string() })),
+  cmd("runenv.watch", z.object({}).strict()),
+] as const;
+
+/** The `data` of each run command's ack; `CommandResults` extends it. */
+export interface RunResults {
+  "runenv.config": RunConfigInfo;
+  "runenv.trust": RunConfigInfo;
+  "runenv.start": RunState;
+  "runenv.stop": RunState;
+  "runenv.get": RunState;
+  "runenv.watch": undefined;
+}
