@@ -32,7 +32,6 @@ import { runCardCli } from "./card-cli.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
-import { hooksStatus, hookTarget } from "./central/hooks-install.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { runClaude } from "./central/wrapper.ts";
 import { Forker } from "./checkpoints/fork.ts";
@@ -61,9 +60,7 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
-import { checkDeps } from "./deps/deps.ts";
-import { probeVersion } from "./deps/probe.ts";
-import { runDoctor } from "./doctor.ts";
+import { createHostChecks } from "./deps/wiring.ts";
 import { featureOff } from "./errors.ts";
 import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
@@ -82,12 +79,11 @@ import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
 import { knowledgeSwitchFor } from "./knowledge/switch.ts";
-import { lingerState } from "./linger.ts";
 import { AlreadyRunningError, acquireLock } from "./lock.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
-import { daemonUrl, identityOf, mcpReachable, startMcp } from "./mcp.ts";
+import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
 import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { runMessageCli } from "./messaging/cli.ts";
@@ -96,7 +92,6 @@ import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
 import { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./names/track.ts";
-import { tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
@@ -131,10 +126,10 @@ import { RunManager } from "./runenv/manager.ts";
 import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
-import { type CreatedOpenCode, createOpenCode, openCodeState } from "./runtime/opencode-wiring.ts";
+import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
-import { daemonCommand, type ServiceContext, serviceCommand } from "./service.ts";
+import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
@@ -1007,6 +1002,15 @@ export async function startDaemon(
           }),
       })
     : undefined;
+  const hostChecks = createHostChecks({
+    config,
+    env,
+    opencode,
+    claude,
+    claudePath,
+    account: async () => (await account?.get())?.status ?? null,
+    options,
+  });
   const server = startServer({
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
     manager,
@@ -1176,63 +1180,7 @@ export async function startDaemon(
     ),
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
-    doctor: (appVersion) =>
-      runDoctor({
-        config: () => ({ bind: config.bind, port: config.port, allowedRoots: config.allowedRoots }),
-        isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
-        serviceInstalled:
-          options.serviceInstalled ??
-          (async () =>
-            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
-        healthy: () => Promise.resolve(true),
-        mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
-        opencode: () => openCodeState(config, env, opencode.info),
-
-        linger:
-          options.linger ??
-          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
-        tailscaleIp: () => tailscaleIp(spawnExec),
-        hooks: () =>
-          hooksStatus(
-            claudeSettingsPath(),
-            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
-          ),
-        claudePath: () => claude?.path ?? whichOnPath("claude"),
-        templateProblems: async () =>
-          (
-            await loadTemplates({
-              dir: join(config.dataDir, "templates"),
-              builtins: BUILTIN_TEMPLATES,
-            })
-          ).problems,
-        version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
-      }),
-    // The dependencies of this host: the same probes as the doctor, the program on the PATH and its version.
-    deps: () =>
-      checkDeps({
-        platform: process.platform,
-        // Like host.info: the path `flightdeckd setup` wrote, since a service's PATH does not see claude.
-        which: async (name) => {
-          const configured = name === "claude" ? claudePath : undefined;
-          if (!configured) return whichOnPath(name);
-          return (await Bun.file(configured).exists()) ? configured : null;
-        },
-        version: (path) => probeVersion([path, "--version"]),
-        allowedRoots: config.allowedRoots,
-        serviceInstalled:
-          options.serviceInstalled ??
-          (async () =>
-            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
-        linger:
-          options.linger ??
-          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
-        account: async () => (await account?.get())?.status ?? null,
-        hooks: () =>
-          hooksStatus(
-            claudeSettingsPath(),
-            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
-          ),
-      }),
+    ...hostChecks,
     sessionSettings: true,
     messaging,
     names,

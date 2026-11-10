@@ -1,0 +1,115 @@
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
+import type { DepsResult, DoctorResult } from "@flightdeck/protocol";
+import { hooksStatus, hookTarget } from "../central/index.ts";
+import { type Config, claudeSettingsPath } from "../config.ts";
+import { runDoctor } from "../doctor.ts";
+import { spawnExec } from "../exec.ts";
+import { lingerState } from "../linger.ts";
+import { mcpReachable } from "../mcp.ts";
+import { tailscaleIp } from "../pairing.ts";
+import { openCodeState } from "../runtime/index.ts";
+import { DAEMON_VERSION } from "../server.ts";
+import { daemonCommand, type ServiceContext, serviceCommand } from "../service.ts";
+import { osServiceContext } from "../service-os.ts";
+import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
+import { whichOnPath } from "../which.ts";
+import { checkDeps, type DepsEnv } from "./deps.ts";
+import { probeVersion } from "./probe.ts";
+
+/** What the host's checks read: the daemon's config and what it found at start. */
+export interface HostChecksDeps {
+  config: Config;
+  env: Record<string, string | undefined>;
+  /** What discovery found of OpenCode when the daemon started. */
+  opencode: { info: Parameters<typeof openCodeState>[2] };
+  /** The runtime's `claude`, when the real runtime has one. */
+  claude?: { path: string | null };
+  /** The `claude` `flightdeckd setup` wrote into the config, if any. */
+  claudePath: string | undefined;
+  /** Who the host's own `claude` is signed in as, as the account card reads it. */
+  account: DepsEnv["account"];
+  /** The service and linger probes; tests give theirs, the real ones ask the OS. */
+  options: {
+    serviceInstalled?: () => Promise<boolean>;
+    linger?: () => Promise<"on" | "off" | null>;
+    serviceContext?: (dryRun: boolean) => ServiceContext;
+  };
+}
+
+/**
+ * The host's checks as the app asks for them (issue #1593): the doctor's rows and the
+ * Dependencies section, over the same probes as `flightdeckd doctor`.
+ */
+export function createHostChecks({
+  config,
+  env,
+  opencode,
+  claude,
+  claudePath,
+  account,
+  options,
+}: HostChecksDeps): {
+  doctor: (appVersion?: string) => Promise<DoctorResult>;
+  deps: () => Promise<DepsResult>;
+} {
+  return {
+    doctor: (appVersion) =>
+      runDoctor({
+        config: () => ({ bind: config.bind, port: config.port, allowedRoots: config.allowedRoots }),
+        isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
+        serviceInstalled:
+          options.serviceInstalled ??
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
+        healthy: () => Promise.resolve(true),
+        mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
+        opencode: () => openCodeState(config, env, opencode.info),
+
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
+        tailscaleIp: () => tailscaleIp(spawnExec),
+        hooks: () =>
+          hooksStatus(
+            claudeSettingsPath(),
+            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
+          ),
+        claudePath: () => claude?.path ?? whichOnPath("claude"),
+        templateProblems: async () =>
+          (
+            await loadTemplates({
+              dir: join(config.dataDir, "templates"),
+              builtins: BUILTIN_TEMPLATES,
+            })
+          ).problems,
+        version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
+      }),
+    // The dependencies of this host: the same probes as the doctor, the program on the PATH and its version.
+    deps: () =>
+      checkDeps({
+        platform: process.platform,
+        // Like host.info: the path `flightdeckd setup` wrote, since a service's PATH does not see claude.
+        which: async (name) => {
+          const configured = name === "claude" ? claudePath : undefined;
+          if (!configured) return whichOnPath(name);
+          return (await Bun.file(configured).exists()) ? configured : null;
+        },
+        version: (path) => probeVersion([path, "--version"]),
+        allowedRoots: config.allowedRoots,
+        serviceInstalled:
+          options.serviceInstalled ??
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
+        account,
+        hooks: () =>
+          hooksStatus(
+            claudeSettingsPath(),
+            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
+          ),
+      }),
+  };
+}
