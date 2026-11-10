@@ -181,7 +181,7 @@ export function CardRunForm(
     card.queued ||
     (card.sessionId !== null && !["ended", "error"].includes(card.sessionStatus ?? ""));
   const startPlain = () => {
-    const ref = store.personaRef(suggested);
+    const ref = store.personas.ref(suggested);
     // A card from a template (#1201) starts through the dialog, so its workflow and persona show.
     if (card.startWorkflow || card.startPersona) {
       startAsk.ask(card, contracts, () => setStartingWith(true));

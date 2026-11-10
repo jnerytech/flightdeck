@@ -46,7 +46,7 @@ function recorder(
     },
     newSessionPrefs: { value: opts.prefs ?? { mode: "default", model: "", folders: {} } },
     clientScope: () => ({ defaultPersona: () => opts.persona ?? "" }),
-    personaRef: () => opts.ref ?? null,
+    personas: { ref: () => opts.ref ?? null },
     getState: () => ({ cards: {}, projects: {} }),
   } as unknown as Store;
   const ui = (lang = "pt-BR") => ({

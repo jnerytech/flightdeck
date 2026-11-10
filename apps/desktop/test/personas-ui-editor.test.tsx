@@ -113,7 +113,7 @@ describe("personas-ui: the editor", () => {
     await newPersona();
     await fill("Onde guardar", "app");
     await click("Salvar persona");
-    expect(store.globalPersonas.list().map((p) => p.id)).toEqual(["meu-qa"]);
+    expect(store.personas.global.list().map((p) => p.id)).toEqual(["meu-qa"]);
   });
 
   test("or to the project's versioned folder, when a project is chosen", async () => {
@@ -163,7 +163,7 @@ describe("personas-ui: the editor", () => {
     await fill("Instruções", "Use o token ghp_abcdefghijklmnopqrstuvwxyz0123456789 no deploy.");
     await click("Salvar persona");
     expect(screen.queryByRole("alert")?.textContent).toContain("A persona tem um segredo");
-    expect(store.globalPersonas.list()).toEqual([]);
+    expect(store.personas.global.list()).toEqual([]);
   });
 
   test("the icon typed is kept with the persona", async () => {
@@ -172,6 +172,6 @@ describe("personas-ui: the editor", () => {
     await fill("Ícone", "flask");
     await fill("Onde guardar", "app");
     await click("Salvar persona");
-    expect(store.globalPersonas.list()[0]?.icon).toBe("flask");
+    expect(store.personas.global.list()[0]?.icon).toBe("flask");
   });
 });

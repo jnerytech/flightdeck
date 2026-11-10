@@ -5,7 +5,7 @@ import {
   type PersonaRef,
   SecretScanner,
 } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** A persona the library shows: one of a host (the pack's, the host's, a project's) or the app's. */
 export type AppPersona = PersonaFields & {

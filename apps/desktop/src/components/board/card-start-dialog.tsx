@@ -72,7 +72,7 @@ export function CardStartDialog(
     // A second click while the first is on its way would start the card twice.
     if (starting.current) return;
     starting.current = true;
-    const ref = store.personaRef(persona);
+    const ref = store.personas.ref(persona);
     const started = await store.hostCommand(hostId, "card.start", {
       cardId: card.id,
       ...(chosen ? { workflow: chosen.name, inputs } : {}),

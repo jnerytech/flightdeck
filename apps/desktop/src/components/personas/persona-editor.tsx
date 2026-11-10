@@ -4,10 +4,10 @@ import { AssistField } from "@/components/assistant/assist-field";
 import { Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { type AppPersona, personaInput } from "@/features/personas";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { type AppPersona, personaInput } from "@/lib/global-personas";
 import { MODELS } from "./model-select";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
@@ -107,7 +107,7 @@ export function PersonaEditor(
     setError(null);
     if (place === "app") {
       try {
-        store.globalPersonas.save(input);
+        store.personas.global.save(input);
         return props.onSaved();
       } catch (error_) {
         if (!(error_ instanceof PersonaModelError)) throw error_;

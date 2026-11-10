@@ -61,7 +61,7 @@ describe("clients-defaults: the persona a new session opens in", () => {
     const store = newStore();
     const h = await personasHost(cleanups, store);
     if (persona !== null) addClient(store, "Acme", h.d.root, { persona });
-    store.globalPersonas.save({ id: "minha", name: "Minha persona", description: "d", body: "b" });
+    store.personas.global.save({ id: "minha", name: "Minha persona", description: "d", body: "b" });
     render(<App store={store} />);
     await settle(
       () => store.getState().hosts[0]?.hostInfo?.features?.includes("personas") === true,
