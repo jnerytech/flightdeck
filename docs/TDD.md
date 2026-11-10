@@ -298,8 +298,8 @@ em vez de depender de cuidado.
   anchor that matches no heading (with GitHub's slugs, accents included), and on a `docs/...md` path
   in the code (not in the tests) that does not exist. `md-size.test.ts` fails on a tracked Markdown
   file over its line limit beyond `md-size-baseline.json`, which only goes down. The limits are
-  150 for a nested `CLAUDE.md`, `.claude/rules` and `.claude/agents`, 300 for a `SKILL.md`, 260
-  for the root `CLAUDE.md`, 4000 for each manual and 400 otherwise. The frozen
+  150 for a nested `CLAUDE.md`, `.claude/rules` and `.claude/agents`, 300 for a `SKILL.md`, 290
+  for the root `CLAUDE.md` and 400 otherwise (a manual is one file per chapter, #1711). The frozen
   `docs/DECISIONS.md` has no limit.
 
 ## Armadilhas conhecidas

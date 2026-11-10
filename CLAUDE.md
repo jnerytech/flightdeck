@@ -184,7 +184,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Each phase runs in a sibling worktree (`../flightdeck-faseN`, branch `fase-N`, from `main`).
   Start its session there (`cd ../flightdeck-faseN && claude`, or `/cd` into it): the worktree's
   own rules and hooks load only for a session whose folder is that worktree.
-  Each phase also updates both manuals (`docs/manual/en.md` and `pt-BR.md`).
+  Each phase also updates both manuals: the chapter in `docs/manual/en/` and its twin in `pt-BR/`.
 - Divergences from the spec and decisions go to a file of their own under `docs/decisions/`, named
   `<yyyy-mm-dd>-<topic>.md` with a first line `# <title> (issue #N)` or `(phase N)` (#304). Never
   append to `docs/DECISIONS.md`: it is frozen, and a test fails when it changes.
