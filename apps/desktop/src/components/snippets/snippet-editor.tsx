@@ -9,7 +9,7 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
-import type { AppSnippet } from "@/lib/global-snippets";
+import type { AppSnippet } from "@/features/snippets";
 import { placeholders, SPECIAL_VARS } from "@/lib/snippets";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
@@ -115,7 +115,7 @@ export function SnippetEditor(
     };
     if (snippet ? snippet.scope === "global" : place === "global") {
       try {
-        store.globalSnippets.save({ ...(snippet ? { id: snippet.id } : {}), ...fields });
+        store.snippets.global.save({ ...(snippet ? { id: snippet.id } : {}), ...fields });
         return props.onSaved();
       } catch (error_) {
         if (!(error_ instanceof SnippetModelError)) throw error_;

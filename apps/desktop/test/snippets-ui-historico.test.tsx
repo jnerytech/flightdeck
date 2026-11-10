@@ -130,7 +130,7 @@ describe("snippets-ui: import from the shell history", () => {
       });
     });
     await click("Importar selecionados");
-    expect(store.globalSnippets.list().map((s) => [s.run, s.tags])).toEqual([
+    expect(store.snippets.global.list().map((s) => [s.run, s.tags])).toEqual([
       ["bun test", ["histórico"]],
     ]);
     expect((await store.hostCommand(hostId, "snippets.list", {}))?.snippets).toEqual([]);
@@ -183,7 +183,7 @@ describe("snippets-ui: import from the shell history", () => {
 
   test("a line imported to the app next to a global snippet of the same name gets a name of its own", async () => {
     const { store } = await open();
-    store.globalSnippets.save({ name: "bun-test", type: "command", run: "bun test --watch" });
+    store.snippets.global.save({ name: "bun-test", type: "command", run: "bun test --watch" });
     await act(async () => {
       fireEvent.click(screen.queryByLabelText("bun test") as HTMLElement);
       fireEvent.change(screen.queryByLabelText("Importar para") as HTMLElement, {
@@ -191,10 +191,10 @@ describe("snippets-ui: import from the shell history", () => {
       });
     });
     await click("Importar selecionados");
-    const names = store.globalSnippets.list().map((s) => s.name);
+    const names = store.snippets.global.list().map((s) => s.name);
     expect(names).toHaveLength(2);
     expect(new Set(names).size).toBe(2);
-    expect(store.globalSnippets.list().find((s) => s.run === "bun test")?.name).not.toBe(
+    expect(store.snippets.global.list().find((s) => s.run === "bun test")?.name).not.toBe(
       "bun-test",
     );
   });

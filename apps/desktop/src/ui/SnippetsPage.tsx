@@ -13,7 +13,7 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import { selectedClient, tagsFirst } from "../lib/client-scope.ts";
-import type { AppSnippet } from "../lib/global-snippets.ts";
+import type { AppSnippet } from "../features/snippets/index.ts";
 import type { Route } from "../lib/router.ts";
 import { actionSeedFromCommand } from "../lib/snippets.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -63,7 +63,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const reload = useCallback(async () => {
     if (project === GLOBAL) {
       setSnippets(
-        store.globalSnippets.list({ ...(query ? { query } : {}), ...(type ? { type } : {}) }),
+        store.snippets.global.list({ ...(query ? { query } : {}), ...(type ? { type } : {}) }),
       );
       setFile(null);
       return;
@@ -85,7 +85,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
 
   const favorite = async (snippet: AppSnippet) => {
     if (snippet.scope === "global") {
-      store.globalSnippets.favorite(snippet.id, !snippet.favorite);
+      store.snippets.global.favorite(snippet.id, !snippet.favorite);
       return reload();
     }
     if (!hostId) return;
@@ -99,7 +99,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const remove = async (snippet: AppSnippet) => {
     setRemoving(null);
     if (snippet.scope === "global") {
-      store.globalSnippets.remove(snippet.id);
+      store.snippets.global.remove(snippet.id);
       return reload();
     }
     if (!hostId) return;
@@ -274,7 +274,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
                   size="sm"
                   aria-label={t("snippets.useFor", { name: snippet.name })}
                   onClick={() =>
-                    store.chooseSnippet({
+                    store.snippets.choose({
                       hostId: snippet.scope === "global" ? null : (hostId ?? null),
                       snippetId: snippet.id,
                       snippet,

@@ -268,7 +268,7 @@ export function runPaletteTarget(
       store.setClientSelection(target.clientId);
       return;
     case "snippet":
-      store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
+      store.snippets.choose({ hostId: target.hostId, snippetId: target.snippetId });
       return;
     case "pull-link":
       void store.openPrLink(target.url).then((route) => {
@@ -713,7 +713,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             <SnippetUse
               store={store}
               choice={state.snippetChoice}
-              onClose={() => store.chooseSnippet(null)}
+              onClose={() => store.snippets.choose(null)}
             />
           )}
           {whatsNew && <WhatsNewDialog store={store} onClose={() => setWhatsNew(false)} />}

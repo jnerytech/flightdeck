@@ -110,9 +110,9 @@ export function HistoryImport(
       if (!result) return;
       setMessage(t("snippets.history.imported", { n: result.created.length }));
     } else {
-      const taken = new Set(store.globalSnippets.list().map((s) => s.name));
+      const taken = new Set(store.snippets.global.list().map((s) => s.name));
       for (const line of chosen) {
-        store.globalSnippets.save({
+        store.snippets.global.save({
           name: freeName(line.command ?? "", taken),
           type: "command",
           run: line.command ?? "",

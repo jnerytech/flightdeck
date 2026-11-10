@@ -26,7 +26,7 @@ async function setup() {
   const h = await snippetsHost(cleanups, store);
   const status = await h.save({ name: "status", type: "command", run: "git status" });
   await h.save({ name: "explicar", type: "prompt", text: "Explique." });
-  const eco = store.globalSnippets.save({ name: "eco", type: "command", run: "echo oi" });
+  const eco = store.snippets.global.save({ name: "eco", type: "command", run: "echo oi" });
   const { terminalId } = await store.terminalHost(h.hostId).open(h.d.project, 80, 24);
   const x = fakeXterm();
   render(

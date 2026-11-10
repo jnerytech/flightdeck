@@ -36,7 +36,7 @@ async function open(withTerminal = true, extra: Array<Record<string, unknown>> =
   });
   await h.save({ name: "deploy", type: "command", run: "kubectl apply -f k8s", tags: ["k8s"] });
   for (const input of extra) await h.save(input);
-  store.globalSnippets.save({
+  store.snippets.global.save({
     name: "eco",
     type: "command",
     run: "echo {{msg}}",
@@ -135,7 +135,7 @@ describe("snippets-uso: the palette", () => {
     await click("Colar e rodar");
     await settle(() => (d.ptys.spawned[0]?.written ?? []).join("").includes("echo oi"));
     expect(d.ptys.spawned[0]?.written.join("")).toBe("echo oi\r");
-    expect(store.globalSnippets.list()[0]?.uses).toBe(1);
+    expect(store.snippets.global.list()[0]?.uses).toBe(1);
   });
 
   test("Rodar numa aba nova is disabled until a folder is given, and says why", async () => {
@@ -222,8 +222,8 @@ describe("snippets-uso: the palette", () => {
     const { store, copied } = await open(false);
     await palette("eco");
     await choose("Snippet: eco");
-    const eco = store.globalSnippets.list().find((x) => x.name === "eco");
-    store.globalSnippets.remove(eco?.id ?? "");
+    const eco = store.snippets.global.list().find((x) => x.name === "eco");
+    store.snippets.global.remove(eco?.id ?? "");
     await click("Copiar");
     expect(copied).toEqual([]);
   });
@@ -251,7 +251,7 @@ describe("snippets-uso: the palette", () => {
 
   test("a context field the person fills goes into the text", async () => {
     const { store, copied } = await open(false);
-    store.globalSnippets.save({ name: "listar", type: "command", run: "ls {{cwd}}" });
+    store.snippets.global.save({ name: "listar", type: "command", run: "ls {{cwd}}" });
     await palette("listar");
     await choose("Snippet: listar");
     await act(async () => {

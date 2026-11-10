@@ -88,7 +88,7 @@ describe("state-selectors: a screen that reads some parts of the state renders f
     expect(view.container.textContent).toBe("false/0");
     const mounted = commits;
     await act(async () => store.select("nowhere", null)); // `selected` is not read
-    await act(async () => store.chooseSnippet(null)); // neither is `snippetChoice`
+    await act(async () => store.snippets.choose(null)); // neither is `snippetChoice`
     expect(commits).toBe(mounted);
     await act(async () => store.history.openSearch()); // `searchOpen` is
     expect(view.container.textContent).toBe("true/0");
