@@ -79,7 +79,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
       clientScope: () => ({ includes: () => true }),
       subscribe: () => () => {},
       getState: () => state,
-      setBudget: save.call,
+      budgets: { set: save.call },
     } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>
