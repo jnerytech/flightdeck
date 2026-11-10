@@ -1,20 +1,7 @@
 import type { Database } from "bun:sqlite";
-import { createHash } from "node:crypto";
-import { Actions, type ActionsOptions } from "../actions/index.ts";
 import type { RuntimeKind } from "../config.ts";
-import { VaultRules } from "./rules-store.ts";
-import { Vault } from "./vault.ts";
-
-/**
- * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
- * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
- * to read a secret back out.
- */
-export function vaultActions(kind: RuntimeKind): Record<string, (value: string) => string> {
-  return kind === "fake"
-    ? { echo: (value) => createHash("sha256").update(value).digest("hex") }
-    : {};
-}
+import { Vault, VaultRules, vaultActions } from "../vault/index.ts";
+import { Actions, type ActionsOptions } from "./actions.ts";
 
 /** What the host's vault and its actions are built from. */
 export interface VaultDeps {
@@ -23,10 +10,7 @@ export interface VaultDeps {
   /** The runtime the daemon runs: only the fake one has an action of the vault's own. */
   runtimeKind: RuntimeKind;
   /** What an action reaches: the projects, the SSH destinations, the risk and the project keys. */
-  actions: Pick<
-    ActionsOptions,
-    "projects" | "ssh" | "sshTags" | "sshKey" | "hostName" | "risk" | "projectKey"
-  >;
+  actions: Omit<ActionsOptions, "db" | "vault" | "rules">;
 }
 
 /**

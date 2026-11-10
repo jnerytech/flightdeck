@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
-import { runCli, vaultActions } from "../src/main.ts";
+import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
+import { vaultActions } from "../src/vault/index.ts";
 import {
   isVaultTransport,
   requireVaultTransport,

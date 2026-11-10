@@ -3,5 +3,4 @@
  * domain imports from here, never a file inside.
  */
 
-export { Actions, type ActionsOptions } from "./actions.ts";
 export { runActionCli, runSnippetCli } from "./cli.ts";

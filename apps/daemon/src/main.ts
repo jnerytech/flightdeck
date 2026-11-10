@@ -7,6 +7,7 @@ import { DEFAULT_MODELS, type ServiceInstallResult } from "@flightdeck/protocol"
 import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
+import { createVault } from "./actions/wiring.ts";
 import { activitySince } from "./activity/since.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
@@ -128,7 +129,6 @@ import { ulid } from "./ulid.ts";
 import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
-import { createVault } from "./vault/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
@@ -143,7 +143,6 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
 export { type CliDeps, HOOK_CONNECT_TIMEOUT_MS } from "./cli/commands.ts";
-export { vaultActions } from "./vault/wiring.ts";
 
 export interface Daemon {
   url: string;
