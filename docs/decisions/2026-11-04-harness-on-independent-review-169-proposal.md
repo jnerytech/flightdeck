@@ -1,4 +1,4 @@
-# Harness: decisions on the independent review of the #169 proposal (issue #1711, moved from DECISIONS.md)
+# Harness: decisions on the independent review of the #169 proposal (issue #169)
 
 The review (OpenCode, 2026-11-04) ranked 20 findings. Each one is accepted, deferred to its
 delivery, or rejected:

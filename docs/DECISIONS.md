@@ -1,8 +1,9 @@
-# Decisões e divergências (até 2026-11-05)
+# Decisions recorded until 2026-11-05: the index
 
 > **An index (#1711).** Each decision is a file of its own under `docs/decisions/`, named
 > `<yyyy-mm-dd>-<topic>.md` (see `docs/decisions/README.md`). The entries that were here until
-> 2026-11-05 moved there too, dated by the commit that added them; new ones never go to this file.
+> 2026-11-05 moved there too, dated by the commit that added them (#1711); new ones never go to this
+> file. Three copies the old `merge=union` driver had left were dropped.
 
 - [Decisões e divergências da Fase 1](decisions/2026-10-28-fase-1.md)
 - [Decisões e divergências da Fase 2](decisions/2026-10-28-fase-2.md)
@@ -57,20 +58,17 @@
 - [Phase 38: board sync with external boards (GitHub Projects first)](decisions/2026-11-03-phase-38-board-sync-with-external-boards-github.md)
 - [Phase 36: ROI per project](decisions/2026-11-03-phase-36-roi-per-project.md)
 - [Lazy screens in tests](decisions/2026-11-03-lazy-screens-in-tests.md)
-- [Blocking-call audit](decisions/2026-11-03-blocking-call-audit-2.md)
 - [Fix: `flightdeckd setup` in WSL](decisions/2026-11-03-fix-flightdeckd-setup-in-wsl.md)
 - [Notification center](decisions/2026-11-03-notification-center.md)
 - [Fix: notification routes carry params](decisions/2026-11-03-fix-notification-routes-carry-params.md)
 - [Teams: models and members](decisions/2026-11-03-teams-models-members.md)
 - [Phase 32 part 2 — Projects (issue #9)](decisions/2026-11-03-phase-32-part-2-projects.md)
 - [Phase 32 part 2 — palette v2 and shortcuts (issue #9)](decisions/2026-11-03-phase-32-part-2-palette-v2-shortcuts.md)
-- [No blocking IO in runtime code](decisions/2026-11-03-no-blocking-io-in-runtime-code-2.md)
 - [Phase 34 — Claude account card](decisions/2026-11-03-phase-34-claude-account-card.md)
 - [BDD pilot (issue #20)](decisions/2026-11-03-bdd-pilot.md)
 - [Daemon update check on request (issue #37)](decisions/2026-11-03-daemon-update-check-on-request.md)
 - [Phase 33: simple mode](decisions/2026-11-03-phase-33-simple-mode.md)
 - [TDD audit waivers (rc/0330)](decisions/2026-11-03-tdd-audit-waivers-rc-0330.md)
-- [Phase 38: board sync with external boards (GitHub Projects first)](decisions/2026-11-03-phase-38-board-sync-with-external-boards-github-2.md)
 - [Team sessions get the flightdeck MCP (v0.36.1, issue #95)](decisions/2026-11-04-team-sessions-get-flightdeck-mcp-v0-36-1-issue.md)
 - [Edit and delete a board card (issue #104)](decisions/2026-11-04-edit-delete-board-card.md)
 - [Offline hosts and a daemon that does not start at boot (issue #106)](decisions/2026-11-04-offline-hosts-daemon-that-does-not-start-at-boot.md)

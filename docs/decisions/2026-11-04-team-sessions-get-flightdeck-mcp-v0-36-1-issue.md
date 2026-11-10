@@ -1,4 +1,4 @@
-# Team sessions get the flightdeck MCP (v0.36.1, issue #95) (issue #1711, moved from DECISIONS.md)
+# Team sessions get the flightdeck MCP (v0.36.1, issue #95) (issue #95)
 
 - **Where it is injected.** `ClaudeSdkRuntime.start` is the single place every managed session passes through (coordinator,
   workers, board cards, plain sessions), so the `mcpServers.flightdeck` entry is added there, not in the team code. The command

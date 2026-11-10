@@ -1,4 +1,4 @@
-# v0.36.3 review minors (#222): test infrastructure (issue #1711, moved from DECISIONS.md)
+# v0.36.3 review minors (#222): test infrastructure (issue #222)
 
 - **m4, temp-run.** The sweep never throws (the whole of it is guarded, and each pid file is read on its own), sweeps at most one dead folder per process start (the 3 s budget is spent once, and the next start takes the next folder), and clears the read-only attribute before it removes a file (git's objects on Windows). Not done: a CI step that counts the `fd-run-*` folders left after the Windows run (it needs a Windows runner to check), and the `pidAlive` fix for containers that share a TEMP across PID namespaces (the test runs here are not containerised with a shared TEMP; revisit if one appears).
 - **m8, slot.** The nested test starts `process.execPath -e` instead of `echo`, a child under the slot is told `FLIGHTDECK_SLOT_LOCK` (it would otherwise derive another lock from its own temp folder and queue behind its own parent), and the log line is cut to one line instead of carrying a `NOSONAR`.

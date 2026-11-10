@@ -743,7 +743,7 @@ jobs:
 
       - name: Prints (${{ matrix.theme }}, ${{ matrix.lang }}) e axe
         # record: the prints are the candidates for apps/desktop/visual-baseline. Once the
-        # baselines are committed this becomes compare (docs/DECISIONS.md, "Visual baselines").
+        # baselines are committed this becomes compare (docs/decisions/2026-10-30-phase-21-app.md, "Visual baselines").
         # DEMO_BUILD (#444): a production build served by vite preview, not the dev server, which
         # sends every module again on each of the run's page loads.
         env:

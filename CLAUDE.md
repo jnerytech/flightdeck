@@ -10,7 +10,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - `packages/protocol`: protocol types and envelope between the app and the daemon.
 - `scripts/`: smokes, demo, TDD audit, build and release. Testable logic lives in `scripts/lib/`.
 - `docs/`: `SPEC.md` and `SPEC-fase-N.md` (one per phase), `decisions/` (one file per decision or
-  divergence; `DECISIONS.md` is only their index up to 2026-11-05), `TDD.md` (the testing rules),
+  divergence; `DECISIONS.md` lists the ones recorded until 2026-11-05), `TDD.md` (the testing rules),
   `GLOSSARY.md`, `manual/` (en, pt-BR).
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec),
