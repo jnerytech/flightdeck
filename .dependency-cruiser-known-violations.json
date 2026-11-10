@@ -2060,17 +2060,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/workflows/findings.ts",
-    "unresolvedTo": "../workflows/findings.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
     "to": "apps/daemon/src/workflows/template-add.ts",
     "unresolvedTo": "../workflows/template-add.ts",
     "dependencyTypes": ["local", "import"],
@@ -2095,6 +2084,17 @@
     "from": "apps/daemon/src/board/card-pr-flow.ts",
     "to": "apps/daemon/src/issues/providers.ts",
     "unresolvedTo": "../issues/providers.ts",
+    "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/board/cards.ts",
+    "to": "apps/daemon/src/workflows/findings.ts",
+    "unresolvedTo": "../workflows/findings.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
