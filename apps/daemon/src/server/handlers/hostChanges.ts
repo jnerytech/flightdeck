@@ -21,15 +21,17 @@ export const hostChangesHandlers = {
     const { opts } = server;
     requireVaultTransport(ws.data.origin, "roots.add", opts.log);
     const { path, confirm } = payload;
-    return {
-      allowedRoots: await addAllowedRoot(
-        opts.allowedRoots as string[],
-        path,
-        confirm === true,
-        opts.persistRoots,
-        opts.rootsPlatform,
-      ),
-    };
+    const allowedRoots = await addAllowedRoot(
+      opts.allowedRoots as string[],
+      path,
+      confirm === true,
+      opts.persistRoots,
+      opts.rootsPlatform,
+    );
+    // The trust's view of the roots (which one is a project of its own) is a snapshot: read it
+    // again, so the gates that read it without asking do not use the old list (#1738).
+    await opts.projectTrust?.refresh();
+    return { allowedRoots };
   },
   "ui.set": async (payload, { server }) => {
     const ui = server.need("ui");
