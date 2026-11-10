@@ -189,6 +189,12 @@ describe("claude-aqui: no app", () => {
     await act(async () => {
       if (action) fireEvent.click(action);
     });
+    // The session is live in another terminal (#1736): the palette asks before a second `claude`.
+    const anyway = await screen.findByRole("button", { name: "Abrir outra cópia mesmo assim" });
+    expect(ptys.spawned).toHaveLength(0);
+    await act(async () => {
+      fireEvent.click(anyway);
+    });
     await waitFor(() => expect(ptys.spawned).toHaveLength(1));
     expect(ptys.spawned[0]?.argv).toContain("claude-9");
     expect(store.router.current.name).toBe("terminal");
