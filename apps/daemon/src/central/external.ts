@@ -131,9 +131,12 @@ export class ExternalSessions {
     const id = text(payload.session_id);
     if (!id) return null;
     const at = new Date(this.now()).toISOString();
-    // Any event means the session went on: what its transcript ended at is no longer known.
-    this.looks.delete(id);
-    this.events.set(id, (this.events.get(id) ?? 0) + 1);
+    // An event means the session went on: what its transcript ended at is no longer known. A
+    // notification (it is idle, a permission is asked) does not move the transcript.
+    if (event !== "Notification") {
+      this.looks.delete(id);
+      this.events.set(id, (this.events.get(id) ?? 0) + 1);
+    }
     const next = nextStatus(event, payload);
     // The hook's cwd is the session's current folder, which moves with it; the project is the
     // launch folder's, the one its transcript is filed under, so it is set once (#583).
@@ -302,6 +305,8 @@ export class ExternalSessions {
         : null;
       // An event came while the file was read: it already cleared the look, and this one is old.
       if ((this.events.get(id) ?? 0) !== events) return;
+      // A regular file that could not be read is not remembered: it is tried again at the next sweep.
+      if (info?.isFile() && !tail) return;
       const value = tail && info ? waitingIn(tail.text) : null;
       this.looks.set(id, { size: info?.size ?? 0, mtimeMs: info?.mtimeMs ?? 0, value });
       if (value !== (before?.value ?? null)) this.emit(id);
