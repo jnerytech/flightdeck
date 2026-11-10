@@ -30,11 +30,16 @@ function slice(
     applies?: () => Promise<unknown>;
     checks?: () => Promise<UpdateStatus>;
     daemon?: string;
+    connected?: boolean;
+    update?: boolean;
   } = {},
 ) {
   let host: HostUpdateView = {
     status: "online",
-    hostInfo: { daemonVersion: over.daemon ?? "0.0.1", update: STATUS } as never,
+    hostInfo: {
+      daemonVersion: over.daemon ?? "0.0.1",
+      ...(over.update === false ? {} : { update: STATUS }),
+    } as never,
     daemonUpdate: null,
     updateCheck: null,
   };
@@ -45,7 +50,7 @@ function slice(
     patch: (_id, patch: HostUpdatePatch) => {
       host = { ...host, ...patch };
     },
-    connected: () => true,
+    connected: () => over.connected ?? true,
     apply: over.applies ?? (async () => ({ started: true })),
     check: async () => {
       checks += 1;
@@ -59,6 +64,9 @@ function slice(
   return {
     updates: new HostUpdateSlice(core),
     host: () => host,
+    setTarget: (version: string) => {
+      host = { ...host, daemonUpdate: { target: version, failed: null } };
+    },
     checks: () => checks,
     tick: (ms: number) => {
       clock += ms;
@@ -112,5 +120,26 @@ describe("host update slice: a daemon's update", () => {
     const same = slice({ daemon: APP_VERSION });
     await same.updates.autoCheck("h1");
     expect(same.checks()).toBe(0);
+  });
+
+  test("a host with no connection, or no update on offer, is left alone", async () => {
+    const offline = slice({ connected: false });
+    await offline.updates.apply("h1");
+    await offline.updates.check("h1");
+    expect(offline.host().daemonUpdate).toBeNull();
+    expect(offline.host().updateCheck).toBeNull();
+    expect(offline.checks()).toBe(0);
+    const bare = slice({ update: false });
+    await bare.updates.apply("h1");
+    expect(bare.host().daemonUpdate).toBeNull();
+    expect(timers).toHaveLength(0);
+  });
+
+  test("a late mark of an older update never overwrites a newer one", async () => {
+    const s = slice();
+    await s.updates.apply("h1");
+    s.setTarget("10.0.0");
+    timers[0]?.();
+    expect(s.host().daemonUpdate).toEqual({ target: "10.0.0", failed: null });
   });
 });
