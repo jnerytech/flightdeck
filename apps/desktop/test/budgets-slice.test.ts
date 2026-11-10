@@ -4,9 +4,12 @@ import {
   type BudgetsCore,
   BudgetsSlice,
   budgetLabel,
+  budgetLimitText,
   initialBudgetsState,
+  share,
 } from "../src/features/budgets/index.ts";
 import { translator } from "../src/i18n/index.ts";
+import { usd } from "../src/lib/costs.ts";
 
 const budget = (id: string, createdAt: string, extra: Partial<Budget> = {}) =>
   ({
@@ -32,7 +35,7 @@ function slice(answer: Budget | null = null) {
     },
     set: async () => answer,
     setQuota: async () => answer,
-    remove: async () => (answer ? {} : null),
+    remove: async () => (answer ? undefined : null),
     hostName: (hostId) => (hostId === "h1" ? "Casa" : undefined),
     feed: (host, label, percent, limit) => fed.push(`${host.name}|${label}|${percent}|${limit}`),
     notify: (n, route) => notified.push({ ...n, host: route.host, projectKey: route.projectKey }),
@@ -72,12 +75,26 @@ describe("the budgets slice", () => {
     const s = slice();
     const crossed = budget("b1", "2026-01-01", { projectKey: "/srv/web" });
     s.slice.onUpdated("h1", { budget: crossed, removed: false, threshold: 0.8 } as never);
-    expect(s.fed).toEqual([
-      `Casa|${budgetLabel(crossed, translator("en"))}|80|${s.fed[0]?.split("|")[3]}`,
-    ]);
+    const t = translator("en");
+    expect(s.fed).toEqual([`Casa|${budgetLabel(crossed, t)}|80|${budgetLimitText(crossed, t)}`]);
     expect(s.notified).toHaveLength(1);
     expect(s.notified[0]?.body).toContain("Casa");
+    expect(s.notified[0]?.body).toContain(usd(10, "en"));
     expect(s.notified[0]).toMatchObject({ host: "h1", projectKey: "/srv/web" });
+  });
+
+  test("a plan quota budget names its share of the window, not a dollar limit", () => {
+    const s = slice();
+    const quota = budget("q1", "2026-01-01", {
+      period: "five_hour",
+      limitUsd: null,
+      limitPct: 0.5,
+    });
+    s.slice.onUpdated("h1", { budget: quota, removed: false, threshold: 0.9 } as never);
+    const t = translator("en");
+    expect(s.fed).toEqual([`Casa|${budgetLabel(quota, t)}|90|${budgetLimitText(quota, t)}`]);
+    expect(s.notified[0]?.body).toContain(share(0.5, "en"));
+    expect(s.notified[0]?.body).not.toContain("$");
   });
 
   test("an update without a threshold, or for an unknown host, only keeps the budget", () => {

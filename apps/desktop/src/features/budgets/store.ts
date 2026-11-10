@@ -1,4 +1,10 @@
-import type { Budget, BudgetInput, BudgetUpdated, QuotaBudgetInput } from "@flightdeck/protocol";
+import type {
+  Budget,
+  BudgetInput,
+  BudgetUpdated,
+  CommandResults,
+  QuotaBudgetInput,
+} from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
 import { usd } from "../../lib/costs.ts";
 import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
@@ -21,7 +27,7 @@ export interface BudgetsCore {
   /** The same for a budget in terms of a plan quota window. */
   setQuota(hostId: string, input: QuotaBudgetInput): Promise<Budget | null>;
   /** Removes a host's budget; null when it refuses. */
-  remove(hostId: string, id: string): Promise<unknown | null>;
+  remove(hostId: string, id: string): Promise<CommandResults["budget.remove"] | null>;
   /** The host's name, or undefined when the app does not list it. */
   hostName(hostId: string): string | undefined;
   /** The webhook feed's line for a crossed threshold. */
@@ -68,19 +74,15 @@ export class BudgetsSlice {
     if (update.threshold === null || name === undefined) return;
     const t = this.core.t();
     const percent = Math.round(update.threshold * 100);
-    this.core.feed(
-      { id: hostId, name },
-      budgetLabel(update.budget, t),
-      percent,
-      budgetLimitText(update.budget, t),
-    );
+    const label = budgetLabel(update.budget, t);
+    this.core.feed({ id: hostId, name }, label, percent, budgetLimitText(update.budget, t));
     const window = update.budget.limitPct !== null;
     this.core.notify(
       {
         title: t("messages.budgetTitle"),
         body: t(window ? "messages.budgetBodyQuota" : "messages.budgetBody", {
           host: name,
-          label: budgetLabel(update.budget, t),
+          label,
           percent,
           limit: window
             ? share(update.budget.limitPct ?? 0, t.lang)
