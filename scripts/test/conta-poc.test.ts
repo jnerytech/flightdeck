@@ -1,15 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
-/** The phase 34 record, a file of its own since DECISIONS.md became an index (#1711). */
+/** The phase 34 record, found by its `(phase 34)` title since DECISIONS.md became an index (#1711). */
 function phase34Section(): string {
-  return readFileSync(
-    resolve(ROOT, "docs/decisions/2026-11-03-phase-34-claude-account-card.md"),
-    "utf8",
-  );
+  const dir = resolve(ROOT, "docs/decisions");
+  const texts = readdirSync(dir).map((name) => readFileSync(join(dir, name), "utf8"));
+  return texts.find((text) => /^# Phase 34\b.*\(phase 34\)\n/.test(text)) ?? "";
 }
 
 describe("conta-poc: the proof of concept answers are recorded in the phase 34 decision record", () => {
