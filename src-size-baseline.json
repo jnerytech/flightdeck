@@ -1,6 +1,6 @@
 {
   "apps/daemon/src/actions/actions.ts": 986,
-  "apps/daemon/src/board/board.ts": 1042,
+  "apps/daemon/src/board/board.ts": 867,
   "apps/daemon/src/board/pr.ts": 840,
   "apps/daemon/src/history/indexer.ts": 841,
   "apps/daemon/src/main.ts": 2461,
