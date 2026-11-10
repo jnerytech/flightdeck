@@ -1,14 +1,9 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { PaletteScopeChips, PaletteSectionView } from "@/components/palette/palette-section";
 import { Input } from "@/components/ui/input";
+import type { GlobalHit } from "../features/history/index.ts";
 import type { T } from "../i18n/index.ts";
-import {
-  type AppState,
-  type AppStore,
-  type GlobalHit,
-  needsYou,
-  type PendingItem,
-} from "../lib/app-store.ts";
+import { type AppState, type AppStore, needsYou, type PendingItem } from "../lib/app-store.ts";
 import {
   type PaletteItem,
   type PaletteScope,

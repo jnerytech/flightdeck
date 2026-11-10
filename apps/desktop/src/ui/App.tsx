@@ -153,7 +153,7 @@ function tabAction(store: AppStore, key: string, shift: boolean): (() => void) |
   if (key === "t") {
     return () => {
       store.openNewTab();
-      store.openSearch();
+      store.history.openSearch();
     };
   }
   if (key === "w") return () => store.closeTab(tabs, tabs.activeId);
@@ -185,7 +185,7 @@ function windowShortcut(e: KeyboardEvent, store: AppStore): void {
   const key = e.key.toLowerCase();
   if (mod && key === "k") {
     e.preventDefault();
-    store.openSearch();
+    store.history.openSearch();
   } else if (mod && tabShortcut(store, e)) {
     e.preventDefault();
   } else if (e.altKey && e.shiftKey && key === "c") {
@@ -399,7 +399,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   /** Opening anything closes the layers above it: the palette (dialogs go with their screen). */
   const go = useCallback(
     (next: Route) => {
-      store.closeSearch();
+      store.history.closeSearch();
       router.push(next);
     },
     [store, router],
@@ -408,7 +408,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   /** A single click on a sidebar item: the preview tab shows it (a regular one with ctrl or middle). */
   const goPreview = useCallback(
     (next: Route) => {
-      store.closeSearch();
+      store.history.closeSearch();
       store.hostTabs.openPreview(next);
     },
     [store],
@@ -439,7 +439,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
           return;
         }
         const { url: wsUrl, name, token } = parsed.value;
-        store.closeSearch();
+        store.history.closeSearch();
         router.push({
           name: "add-host",
           draft: draftFromLink(wsUrl, name, token),
@@ -540,7 +540,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
 
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
-    store.closeSearch();
+    store.history.closeSearch();
     runPaletteTarget(store, target, {
       lang,
       go,
@@ -624,7 +624,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               theme={resolvedTheme}
               version={APP_VERSION}
               bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
-              onSearch={() => store.openSearch()}
+              onSearch={() => store.history.openSearch()}
               onToggleTheme={() => store.theme.toggle()}
             />
           }
@@ -655,7 +655,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             },
             onRemoveHost: (id) => void store.removeHost(id),
             onRenameHost: (id, name) => store.renameHost(id, name),
-            onOpenSearch: () => store.openSearch(),
+            onOpenSearch: () => store.history.openSearch(),
             onNewTab: () => store.hostTabs.openNextInNewTab(),
             onToggleTheme: () => store.theme.toggle(),
             onShortcuts: () => setHelp(true),
@@ -730,8 +730,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               store={store}
               costs={true}
               onGo={goTo}
-              onSearch={(query) => void store.searchHistory(query)}
-              onClose={() => store.closeSearch()}
+              onSearch={(query) => void store.history.search(query)}
+              onClose={() => store.history.closeSearch()}
               onOpenHit={(hit) =>
                 go({
                   name: "reader",

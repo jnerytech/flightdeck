@@ -318,7 +318,7 @@ export function TabBar(
       aria-label={t("tabs.newTab")}
       onClick={() => {
         store.openNewTab();
-        store.openSearch();
+        store.history.openSearch();
       }}
     >
       <Plus />

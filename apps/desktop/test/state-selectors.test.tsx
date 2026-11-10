@@ -90,7 +90,7 @@ describe("state-selectors: a screen that reads some parts of the state renders f
     await act(async () => store.select("nowhere", null)); // `selected` is not read
     await act(async () => store.chooseSnippet(null)); // neither is `snippetChoice`
     expect(commits).toBe(mounted);
-    await act(async () => store.openSearch()); // `searchOpen` is
+    await act(async () => store.history.openSearch()); // `searchOpen` is
     expect(view.container.textContent).toBe("true/0");
     expect(commits).toBe(mounted + 1);
     await act(async () => store.success("hello"));
@@ -174,8 +174,8 @@ describe("state-selectors: an unrelated change of the state does not render the 
     );
     const mounted = screens.map(([, { seen }]) => seen.renders);
     expect(mounted.every((n) => n > 0)).toBe(true);
-    await act(async () => store.openSearch());
-    await act(async () => store.closeSearch());
+    await act(async () => store.history.openSearch());
+    await act(async () => store.history.closeSearch());
     expect(screens.map(([, { seen }]) => seen.renders)).toEqual(mounted);
     // What `Notices` reads does render it.
     await act(async () => store.success("hello"));
@@ -277,8 +277,8 @@ describe("state-selectors: an unrelated change of the state does not render the 
       }
       const mounted = seen.calls;
       expect(mounted).toBeGreaterThan(0);
-      await act(async () => store.openSearch());
-      await act(async () => store.closeSearch());
+      await act(async () => store.history.openSearch());
+      await act(async () => store.history.closeSearch());
       expect([route.name, seen.calls]).toEqual([route.name, mounted]);
       view.unmount();
     }

@@ -137,7 +137,7 @@ describe("versoes-ui", () => {
     for (const name of ["Nova sessão em pc", "Histórico de pc", "Projetos de pc"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
-    await act(() => store.searchHistory("qualquer"));
+    await act(() => store.history.search("qualquer"));
     expect(store.getState().search?.silent).not.toContain(hostId);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Abrir Sessões" }));
