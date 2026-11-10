@@ -38,7 +38,7 @@ export class RadarFeed {
       try {
         do {
           read.again = false;
-          await this.read(id);
+          await this.read(id); // NOSONAR: the rereads are in order on purpose, one read of a card at a time (S9382)
         } while (read.again && !this.port.stopped());
       } finally {
         this.reads.delete(id);
