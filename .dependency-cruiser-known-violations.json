@@ -1706,27 +1706,6 @@
     ]
   },
   {
-    "type": "cycle",
-    "from": "packages/protocol/src/board-contracts.ts",
-    "to": "packages/protocol/src/index.ts",
-    "unresolvedTo": "./index.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "packages/protocol/src/index.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "packages/protocol/src/board-contracts.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "apps/daemon/src/account/account.ts",
     "to": "apps/daemon/src/quota/quota.ts",
@@ -4881,17 +4860,6 @@
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/protocol/src/board-contracts.ts",
-    "to": "packages/protocol/src/index.ts",
-    "unresolvedTo": "./index.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "protocol-context-not-from-entry"
     }
   }
 ]
