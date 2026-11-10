@@ -6,10 +6,9 @@ import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
-import { liveElsewhere } from "../lib/live-elsewhere.ts";
 import type { TerminalTarget } from "../lib/terminal.ts";
 import { hasFeature } from "../lib/version.ts";
-import { LiveElsewhereDialog } from "./LiveElsewhereDialog.tsx";
+import { useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
 
 /**
  * "Abrir no terminal" for a session, card or project: opens one on this machine, or copies the
@@ -31,8 +30,8 @@ export function TerminalButton(
   // The persona chosen, else the default of the client the folder belongs to (phase 29).
   const [picked, setPicked] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
-  // What waits while the person decides about a session live in another terminal (#502).
-  const [pending, setPending] = useState<(() => unknown) | null>(null);
+  // A second `claude` on a session live in another terminal only after asking (#502, #1705).
+  const { guarded, dialog } = useLiveElsewhereGuard(store, hostId, target.claudeSessionId);
   const persona = picked ?? store.clientScope().defaultPersona(hostId, target.cwd, true);
   const personas =
     embedded &&
@@ -49,12 +48,6 @@ export function TerminalButton(
   let here: string;
   if (resume) here = name ? t("claudeHere.resumeNamed", { name }) : t("claudeHere.resume");
   else here = name ? t("claudeHere.openNamed", { name }) : t("claudeHere.open");
-  /** A second `claude` on a session live elsewhere only after asking (issue #502). */
-  const guarded = (go: () => unknown) => {
-    const id = target.claudeSessionId;
-    if (id !== null && liveElsewhere(store.getState().externals, hostId, id)) setPending(() => go);
-    else return go();
-  };
   const open = () => guarded(() => store.openClaudeHere(hostId, target, persona || undefined));
   return (
     <>
@@ -106,23 +99,7 @@ export function TerminalButton(
           )}
         </IconActionButton>
       )}
-      {pending && target.claudeSessionId !== null && (
-        <LiveElsewhereDialog
-          onView={() => {
-            setPending(null);
-            store.router.push({
-              name: "external",
-              host: hostId,
-              claudeSessionId: target.claudeSessionId as string,
-            });
-          }}
-          onAnyway={() => {
-            setPending(null);
-            void pending();
-          }}
-          onCancel={() => setPending(null)}
-        />
-      )}
+      {dialog}
     </>
   );
 }
