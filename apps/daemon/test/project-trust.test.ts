@@ -414,3 +414,14 @@ describe("project-trust: two reads of the roots at once end with the later one (
     expect(trust.isTrusted(root)).toBe(false);
   });
 });
+
+describe("project-trust: the check-loop gates know the roots from boot, with no session to prepare (issue #1728)", () => {
+  test("a record on a root that is one project grants it to the gates once the daemon has booted with no sessions", async () => {
+    const root = tempDir("fd-trust-");
+    mkdirSync(join(root, ".git"));
+    const { trust } = fresh({ roots: () => [root] });
+    trust.trust(root);
+    await trust.prepareSessions([]);
+    expect(trust.isTrustedFolder(root)).toBe(true);
+  });
+});
