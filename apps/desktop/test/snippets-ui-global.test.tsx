@@ -23,7 +23,7 @@ async function open() {
   cleanups.push(() => store.dispose());
   const h = await snippetsHost(cleanups, store);
   await h.save({ name: "do-host", type: "command", run: "uptime" });
-  store.globalSnippets.save({ name: "global-um", type: "prompt", text: "Resuma {{file}}" });
+  store.snippets.global.save({ name: "global-um", type: "prompt", text: "Resuma {{file}}" });
   render(<App store={store} />);
   await settle(() => screen.queryByRole("button", { name: "Snippets" }) !== null);
   await act(async () => {
@@ -74,7 +74,7 @@ describe("snippets-ui: the global snippets", () => {
     await fill("Onde guardar", "global");
     await click("Salvar snippet");
     expect(
-      store.globalSnippets
+      store.snippets.global
         .list()
         .map((s) => s.name)
         .sort(),
@@ -89,12 +89,12 @@ describe("snippets-ui: the global snippets", () => {
     await click("Editar global-um");
     await fill("Texto", "Resuma {{file}} em tópicos");
     await click("Salvar snippet");
-    expect(store.globalSnippets.list()[0]?.text).toBe("Resuma {{file}} em tópicos");
+    expect(store.snippets.global.list()[0]?.text).toBe("Resuma {{file}} em tópicos");
     await click("Favoritar global-um");
-    expect(store.globalSnippets.list()[0]?.favorite).toBe(true);
+    expect(store.snippets.global.list()[0]?.favorite).toBe(true);
     await click("Remover global-um");
     await click("Remover");
-    expect(store.globalSnippets.list()).toEqual([]);
+    expect(store.snippets.global.list()).toEqual([]);
     expect(rowNames()).toEqual([]);
   });
 
@@ -116,6 +116,6 @@ describe("snippets-ui: the global snippets", () => {
     await fill("Onde guardar", "global");
     await click("Salvar snippet");
     expect(screen.queryByRole("alert")?.textContent).toContain("Nome de 1 a 64 caracteres");
-    expect(store.globalSnippets.list().map((s) => s.name)).toEqual(["global-um"]);
+    expect(store.snippets.global.list().map((s) => s.name)).toEqual(["global-um"]);
   });
 });

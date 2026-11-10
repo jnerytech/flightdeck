@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { GlobalSnippets } from "../src/lib/global-snippets.ts";
+import { GlobalSnippets } from "../src/features/snippets/index.ts";
 
 function setup() {
   const items = new Map<string, string>();

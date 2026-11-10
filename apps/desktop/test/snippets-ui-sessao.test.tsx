@@ -27,8 +27,8 @@ async function open() {
   await h.save({ name: "revisar", type: "prompt", text: "Revise o projeto em {{cwd}}." });
   await h.save({ name: "explicar", type: "prompt", text: "Explique {{assunto}}." });
   await h.save({ name: "status", type: "command", run: "git status" });
-  store.globalSnippets.save({ name: "resumir", type: "prompt", text: "Resuma o que mudou." });
-  store.globalSnippets.save({ name: "traduzir", type: "prompt", text: "Traduza {{texto}}." });
+  store.snippets.global.save({ name: "resumir", type: "prompt", text: "Resuma o que mudou." });
+  store.snippets.global.save({ name: "traduzir", type: "prompt", text: "Traduza {{texto}}." });
   const { sessionId } = await h.d.manager.create({
     cwd: h.d.project,
     prompt: "oi",

@@ -63,8 +63,8 @@ const rowNames = () => {
 describe("snippets-ui: use from the screen", () => {
   test("a used snippet moves up, after the favorites", async () => {
     const { store } = await open(async (s) => {
-      s.globalSnippets.save({ name: "a-um", type: "prompt", text: "Um." });
-      s.globalSnippets.save({ name: "b-dois", type: "prompt", text: "Dois." });
+      s.snippets.global.save({ name: "a-um", type: "prompt", text: "Um." });
+      s.snippets.global.save({ name: "b-dois", type: "prompt", text: "Dois." });
     });
     await click("Snippets");
     await fill("Projeto", "@global");
@@ -74,7 +74,7 @@ describe("snippets-ui: use from the screen", () => {
     await fill("Projeto", "");
     await fill("Projeto", "@global");
     expect(rowNames()).toEqual(["b-dois", "a-um"]);
-    expect(store.globalSnippets.list()[0]?.uses).toBe(1);
+    expect(store.snippets.global.list()[0]?.uses).toBe(1);
   });
 
   test("an untrusted file's command only pastes: running it is off, with the reason", async () => {
@@ -96,7 +96,7 @@ describe("snippets-ui: use from the screen", () => {
 
   test("a global command runs in a new tab on the host, at the folder given", async () => {
     const { store, hostId, d } = await open(async (s) => {
-      s.globalSnippets.save({ name: "eco", type: "command", run: "echo oi" });
+      s.snippets.global.save({ name: "eco", type: "command", run: "echo oi" });
     });
     await click("Snippets");
     await fill("Projeto", "@global");

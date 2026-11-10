@@ -393,7 +393,7 @@ export function TerminalPage(
           hostId={hostId}
           onPick={(choice) => {
             setPicking(false);
-            store.chooseSnippet(choice);
+            store.snippets.choose(choice);
           }}
           onClose={() => setPicking(false)}
         />

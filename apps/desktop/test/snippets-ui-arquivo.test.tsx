@@ -102,7 +102,7 @@ describe("snippets-ui: import from a file", () => {
     });
     await click("Importar do arquivo");
     expect(
-      store.globalSnippets
+      store.snippets.global
         .list()
         .map((s) => s.name)
         .sort(),
@@ -113,7 +113,7 @@ describe("snippets-ui: import from a file", () => {
   test("a name already taken is reported and the rest still imported, on the host and in the app", async () => {
     await open(async (store, h) => {
       await h.save({ name: "testes", type: "command", run: "ls" });
-      store.globalSnippets.save({ name: "revisar", type: "prompt", text: "Outro." });
+      store.snippets.global.save({ name: "revisar", type: "prompt", text: "Outro." });
     });
     await click("Importar do arquivo");
     expect(screen.queryByText("Importados: 1")).not.toBeNull();
@@ -122,7 +122,7 @@ describe("snippets-ui: import from a file", () => {
 
   test("in the app a taken name is reported too", async () => {
     const { store } = await open(async (s) => {
-      s.globalSnippets.save({ name: "revisar", type: "prompt", text: "Outro." });
+      s.snippets.global.save({ name: "revisar", type: "prompt", text: "Outro." });
     });
     await act(async () => {
       fireEvent.change(screen.queryByLabelText("Importar o arquivo para") as HTMLElement, {
@@ -133,7 +133,7 @@ describe("snippets-ui: import from a file", () => {
     expect(screen.queryByText("Importados: 1")).not.toBeNull();
     expect(screen.queryByText(/^revisar: /)).not.toBeNull();
     expect(
-      store.globalSnippets
+      store.snippets.global
         .list()
         .map((s) => s.name)
         .sort(),
