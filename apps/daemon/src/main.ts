@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
-import { freemem, tmpdir, totalmem, userInfo } from "node:os";
+import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { DEFAULT_MODELS, PROTOCOL_VERSION, type ServiceInstallResult } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -108,9 +108,8 @@ import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
-import { MemoryGate, type MemoryReading, osMemoryReading } from "./resources/memory-gate.ts";
 import type { ProcReader } from "./resources/resources.ts";
-import { createResources } from "./resources/wiring.ts";
+import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
 import { CardReviews, reviewHold } from "./review/card-review.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
@@ -272,7 +271,7 @@ export async function startDaemon(
     /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
     resourcesProc?: ProcReader;
     /** The host's memory for the hold on new cards (#1343); the OS's when absent (tests inject one). */
-    memoryReading?: () => MemoryReading | null;
+    memoryReading?: MemoryGateDeps["reading"];
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
     /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
@@ -335,13 +334,11 @@ export async function startDaemon(
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
-  const memoryGate = new MemoryGate({
-    pauseAt: config.resources.pauseAt,
-    read:
-      options.memoryReading ??
-      (process.env.FLIGHTDECK_SERVICE_GUARD
-        ? () => null
-        : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
+  const { memoryGate, memoryPause } = createMemoryGate({
+    config,
+    configFile,
+    reading:
+      options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
   });
   // Issue #1404: the person's pause of new card runs, kept in the config.
   const hostPause = new HostPause(config.pauseNewRuns);
@@ -1017,19 +1014,7 @@ export async function startDaemon(
         hostPause.set(paused);
       },
     },
-    memoryPause: {
-      pauseAt: () => memoryGate.pauseAt(),
-      holding: () => memoryGate.holds(),
-      set: async (pauseAt) => {
-        // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
-        await updateConfigFile(configFile, (raw) => ({
-          ...raw,
-          resources: { ...(raw.resources as object | undefined), pauseAt },
-        }));
-        config.resources.pauseAt = pauseAt;
-        memoryGate.setPauseAt(pauseAt);
-      },
-    },
+    memoryPause,
     quotaPause: {
       set: async (pauseAt) => {
         // The file first: when it cannot be written the guard stays as it was, for the client and the daemon.
