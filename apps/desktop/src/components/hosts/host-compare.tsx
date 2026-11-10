@@ -192,7 +192,7 @@ export const HostCompare = memo(function HostCompare(
   if (hosts.length < 2) return null;
   const refresh = async () => {
     await Promise.all(
-      hosts.filter((host) => host.status === "online").map((host) => store.checkHealth(host.id)),
+      hosts.filter((host) => host.status === "online").map((host) => store.health.check(host.id)),
     );
   };
   const rows = compareHosts(

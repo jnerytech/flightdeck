@@ -63,10 +63,10 @@ describe("deps-auto: the health of a host is read by itself", () => {
     const { store, hostId, asks, clock } = await connected();
     await pollFor(() => store.getState().healthAt[hostId] || undefined, "the time");
     clock.at += 4 * MIN;
-    await store.ensureHealth(hostId);
+    await store.health.ensure(hostId);
     expect(asks.deps).toBe(1);
     clock.at += 2 * MIN;
-    await store.ensureHealth(hostId);
+    await store.health.ensure(hostId);
     expect(asks.deps).toBe(2);
     expect(store.getState().healthAt[hostId]).toBe(clock.at);
   });

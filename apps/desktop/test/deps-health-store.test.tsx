@@ -39,7 +39,7 @@ describe("deps-health-store: the background health read is silent and independen
     const notices = store.getState().notices.length;
     (store as unknown as { hostRequest: Request }).hostRequest = async (_h, type) =>
       type === "deps.check" ? { ok: true, data: RESULT } : refusal("doctor is down");
-    await store.checkHealth(hostId);
+    await store.health.check(hostId);
     expect(store.getState().notices).toHaveLength(notices);
     expect(store.getState().deps[hostId]).toEqual(RESULT);
     expect(store.getState().healthError[hostId]).toContain("doctor is down");
@@ -49,10 +49,10 @@ describe("deps-health-store: the background health read is silent and independen
     const { store, hostId } = await connected();
     const request = (store as unknown as { hostRequest: Request }).hostRequest.bind(store);
     (store as unknown as { hostRequest: Request }).hostRequest = async () => refusal("host busy");
-    await store.checkHealth(hostId);
+    await store.health.check(hostId);
     expect(store.getState().healthError[hostId]).toContain("host busy");
     (store as unknown as { hostRequest: Request }).hostRequest = request;
-    await store.checkHealth(hostId);
+    await store.health.check(hostId);
     expect(store.getState().healthError[hostId]).toBeUndefined();
   });
 
@@ -65,9 +65,9 @@ describe("deps-health-store: the background health read is silent and independen
       await new Promise((r) => setTimeout(r, 30));
       return type === "deps.check" ? { ok: true, data: RESULT } : refusal("n/a");
     };
-    await Promise.all([store.checkHealth(hostId), store.checkHealth(hostId)]);
+    await Promise.all([store.health.check(hostId), store.health.check(hostId)]);
     expect(asked.sort()).toEqual(["deps.check", "doctor.run"]);
-    await store.checkHealth(hostId);
+    await store.health.check(hostId);
     expect(asked).toHaveLength(4);
   });
 });

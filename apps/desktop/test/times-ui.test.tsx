@@ -148,7 +148,7 @@ async function open(
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   // The teams are the subject: the dependency check the app starts on connect would run the real programs' versions.
-  store.checkHealth = async () => {};
+  store.health.check = async () => {};
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: d.url, token: d.token }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);

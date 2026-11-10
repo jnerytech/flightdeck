@@ -30,7 +30,7 @@ function mount(viewKey = "pc/a", composes = false) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   // The views' panels ask a host that is not there: they only need to not get in the way.
-  store.checkHealth = async () => {};
+  store.health.check = async () => {};
   const page = (key: string) => (
     <SessionTabs
       store={store}

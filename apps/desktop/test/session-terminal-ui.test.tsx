@@ -36,7 +36,7 @@ async function onSessionPage(terminals: true | "off" = true) {
     maxDelayMs: 20,
   });
   cleanups.push(() => store.dispose());
-  store.checkHealth = async () => {};
+  store.health.check = async () => {};
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -325,7 +325,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       maxDelayMs: 20,
     });
     cleanups.push(() => store.dispose());
-    store.checkHealth = async () => {};
+    store.health.check = async () => {};
     render(<App store={store} />);
     const hostId = await act(() =>
       store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }),
