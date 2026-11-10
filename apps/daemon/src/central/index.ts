@@ -3,6 +3,7 @@
  * domain imports from here, never a file inside.
  */
 
+export type { Central } from "./central.ts";
 export { startChannel } from "./channel.ts";
 export { sendSessionStart } from "./hook-command.ts";
 export {
@@ -12,4 +13,5 @@ export {
   installHooks,
   uninstallHooks,
 } from "./hooks-install.ts";
+export type { ProjectKeys } from "./project-key.ts";
 export { runClaude } from "./wrapper.ts";

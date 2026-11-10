@@ -3,3 +3,5 @@
  * domain imports from here, never a file inside.
  */
 export { runMessageCli } from "./cli.ts";
+export { LocalEndpoints, type LocalEndpointsOptions } from "./endpoints.ts";
+export { Messaging } from "./messages.ts";
