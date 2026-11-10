@@ -1,6 +1,41 @@
 // Phase 18: the snippet model, shared by the daemon (which keeps snippets) and the app (which keeps
 // the global ones), so both check a snippet the same way.
-import type { SnippetField, SnippetInput, SnippetVar } from "./index.ts";
+import { z } from "zod";
+
+// Issue #1626: the snippet schemas live here, so this file never imports index.ts (a load-time cycle).
+/** How a snippet variable is filled in: a default value and a short list of options. */
+export const SnippetVar = z
+  .object({
+    default: z.string().max(1000).optional(),
+    options: z.array(z.string().max(200)).optional(),
+  })
+  .strict();
+export type SnippetVar = z.infer<typeof SnippetVar>;
+
+/**
+ * What the form sends for a snippet (phase 18): a `command` (`run`, one line) or a `prompt`
+ * (`text`), with `{{name}}` variables. A snippet carries no secret.
+ */
+export const SnippetInput = z
+  .object({
+    name: z.string(),
+    type: z.enum(["command", "prompt"]),
+    run: z.string().optional(),
+    text: z.string().optional(),
+    vars: z.record(z.string(), SnippetVar).optional(),
+    tags: z.array(z.string()).optional(),
+  })
+  .strict();
+export type SnippetInput = z.infer<typeof SnippetInput>;
+
+/** A field to fill in when a snippet is used. The specials (`cwd`, `branch`, `file`, `selection`) come from the context. */
+export const SnippetField = z.object({
+  name: z.string(),
+  special: z.boolean(),
+  default: z.string().nullable(),
+  options: z.array(z.string()),
+});
+export type SnippetField = z.infer<typeof SnippetField>;
 
 /** A snippet as the daemon keeps it: the template and what the form needs, without the scope. */
 export interface SnippetDef {

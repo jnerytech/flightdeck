@@ -1729,81 +1729,6 @@
   {
     "type": "cycle",
     "from": "packages/protocol/src/index.ts",
-    "to": "packages/protocol/src/personas.ts",
-    "unresolvedTo": "./personas.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "packages/protocol/src/personas.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "packages/protocol/src/snippets.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "packages/protocol/src/index.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "packages/protocol/src/index.ts",
-    "to": "packages/protocol/src/sessions.ts",
-    "unresolvedTo": "./sessions.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "packages/protocol/src/sessions.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "packages/protocol/src/personas.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "packages/protocol/src/snippets.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "packages/protocol/src/index.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "packages/protocol/src/index.ts",
-    "to": "packages/protocol/src/snippets.ts",
-    "unresolvedTo": "./snippets.ts",
-    "dependencyTypes": ["local", "export"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "packages/protocol/src/snippets.ts",
-        "dependencyTypes": ["local", "export"]
-      },
-      {
-        "name": "packages/protocol/src/index.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "packages/protocol/src/index.ts",
     "to": "packages/protocol/src/teleport.ts",
     "unresolvedTo": "./teleport.ts",
     "dependencyTypes": ["local", "import"],
@@ -4982,17 +4907,6 @@
   {
     "type": "dependency",
     "from": "packages/protocol/src/board-contracts.ts",
-    "to": "packages/protocol/src/index.ts",
-    "unresolvedTo": "./index.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "protocol-context-not-from-entry"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/protocol/src/snippets.ts",
     "to": "packages/protocol/src/index.ts",
     "unresolvedTo": "./index.ts",
     "dependencyTypes": ["local", "import", "type-only"],
