@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -8,15 +9,22 @@ import { fileURLToPath } from "node:url";
  * showed up in an English app's log. This reads the files that word those refusals and fails on a
  * quoted string that reads as Portuguese.
  */
+/** Issue #1600: every file of the protocol, which is split by context, and its wordings. */
+const PROTOCOL = fileURLToPath(new URL("../../../packages/protocol/src/", import.meta.url));
+// Texts worded in the person's language on purpose (pt-BR included): the assistant's prompts, the
+// questions, the activity summary and the review message.
+const PROTOCOL_SKIP = new Set([
+  "activity.ts",
+  "assistant-prompts.ts",
+  "question.ts",
+  "review-message.ts",
+]);
+
 const FILES = [
-  "../../../packages/protocol/src/index.ts",
-  // Issue #1600: the contexts split out of index.ts.
-  "../../../packages/protocol/src/command.ts",
-  "../../../packages/protocol/src/permissions.ts",
-  "../../../packages/protocol/src/personas.ts",
-  "../../../packages/protocol/src/secrets.ts",
-  "../../../packages/protocol/src/sessions.ts",
-  "../../../packages/protocol/src/usage.ts",
+  ...readdirSync(PROTOCOL)
+    .filter((file) => file.endsWith(".ts") && !PROTOCOL_SKIP.has(file))
+    .sort()
+    .map((file) => `../../../packages/protocol/src/${file}`),
   "../src/server.ts",
   "../src/terminal/terminal-manager.ts",
 ];
