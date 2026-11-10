@@ -124,17 +124,18 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
     };
     hidden.state = { ...store.getState(), ...scaleState({ hosts: 4, perHost: 50 }) };
     render(<Page store={store} />);
-    const [first] = summaryBurst(0, 0, BURST);
+    const rows = document.querySelectorAll("li").length;
+    const [early, later] = summaryBurst(0, 0, BURST);
     renders = 0;
-    act(() => hidden.onEvent("host-0", first));
+    act(() => hidden.onEvent("host-0", early));
     const sameMinute = renders;
     clock += 60_000;
     renders = 0;
-    act(() => hidden.onEvent("host-0", first));
-    expect({ sameMinute: sameMinute <= 3, nextMinute: renders > 40 }).toEqual({
-      sameMinute: true,
-      nextMinute: true,
-    });
+    act(() => hidden.onEvent("host-0", later));
+    // The same minute redraws the session's own row at most; the next one, each row of the list.
+    expect(rows).toBeGreaterThan(40);
+    expect(sameMinute).toBeLessThanOrEqual(3);
+    expect(renders).toBeGreaterThanOrEqual(rows);
     store.dispose();
   });
 });
