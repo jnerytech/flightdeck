@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { acquireLock, LOCK_FILE, readLockPid } from "../src/lock.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
@@ -66,6 +66,17 @@ describe("instancia-unica", () => {
     const lock = await acquireLock(dataDir);
     expect(lock).not.toBeNull();
     await lock?.release();
+  });
+
+  test("releasing a lock whose file is already gone succeeds, so it never hides the error before it (#1676)", async () => {
+    const { dataDir } = config();
+    const lock = await acquireLock(dataDir);
+    rmSync(join(dataDir, LOCK_FILE));
+    const released = await lock?.release().then(
+      () => "released",
+      (error: unknown) => String(error),
+    );
+    expect(released).toBe("released");
   });
 
   test("taking, reading and releasing the lock never block: each returns a promise", async () => {

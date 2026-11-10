@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { acquireLock } from "../src/lock.ts";
 import { type CliDeps, parseArgs, runCli } from "../src/main.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { poll, tempDir } from "./helpers.ts";
@@ -106,6 +107,31 @@ describe("reindex", () => {
       .get() as { n: number };
     search.close();
     expect(hits.n).toBe(1);
+  });
+
+  test("a store that does not open leaves the daemon's lock free (#1676)", async () => {
+    const { file, db } = setup();
+    // A folder where the database file should be: the store cannot open it.
+    mkdirSync(db, { recursive: true });
+    const cli = deps();
+    await runCli(["history", "reindex", "--config", file], cli.cli);
+    expect(cli.exits).toEqual([1]);
+    const lock = await acquireLock(dirname(db));
+    await lock?.release();
+    expect(lock).not.toBeNull();
+  });
+
+  test("a corrupt database file leaves the daemon's lock free too (#1676)", async () => {
+    const { file, db } = setup();
+    // The file opens, then its first statement fails: not a database.
+    mkdirSync(dirname(db), { recursive: true });
+    writeFileSync(db, "not a sqlite database, only text".repeat(64));
+    const cli = deps();
+    await runCli(["history", "reindex", "--config", file], cli.cli);
+    expect(cli.exits).toEqual([1]);
+    const lock = await acquireLock(dirname(db));
+    await lock?.release();
+    expect(lock).not.toBeNull();
   });
 
   test("com o daemon rodando no mesmo dataDir o reindex recusa e sai com código 3", async () => {

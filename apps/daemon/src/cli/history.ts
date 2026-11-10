@@ -27,17 +27,21 @@ export async function runReindex(args: CliArgs, deps: HistoryCommandDeps): Promi
   if (!lock) {
     throw new AlreadyRunningError(config.dataDir, "stop the daemon before rebuilding the index");
   }
-  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
+  // The lock goes back even when the store does not open (#1676).
   try {
-    const history = new HistoryIndexer({
-      db: store.db,
-      roots: config.history.roots,
-      excludeCwds: historyExcludes(config),
-    });
-    const { sessions, messages } = await history.rebuild();
-    deps.log.log(`history rebuilt: ${sessions} sessions, ${messages} messages`);
+    const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
+    try {
+      const history = new HistoryIndexer({
+        db: store.db,
+        roots: config.history.roots,
+        excludeCwds: historyExcludes(config),
+      });
+      const { sessions, messages } = await history.rebuild();
+      deps.log.log(`history rebuilt: ${sessions} sessions, ${messages} messages`);
+    } finally {
+      store.close();
+    }
   } finally {
-    store.close();
     await lock.release();
   }
 }
