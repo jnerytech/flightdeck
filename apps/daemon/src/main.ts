@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
-import { stat } from "node:fs/promises";
 import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { DEFAULT_MODELS, PROTOCOL_VERSION, type ServiceInstallResult } from "@flightdeck/protocol";
@@ -159,10 +158,8 @@ import { TeleportInbox } from "./teleport/receive.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
-import { claudeSettingsEnv } from "./terminal/claude-settings-env.ts";
-import { terminalEnabled } from "./terminal/policy.ts";
-import { bunPty, type PtyFactory } from "./terminal/pty.ts";
-import { TerminalManager } from "./terminal/terminal-manager.ts";
+import type { PtyFactory } from "./terminal/pty.ts";
+import { createTerminals, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
@@ -226,20 +223,6 @@ async function createRuntime(
       exec: spawnExec,
       query: query as unknown as Parameters<typeof accountReaders>[0]["query"],
     }),
-  };
-}
-
-/** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-async function terminalInfo(env: Record<string, string | undefined>) {
-  const stable = stableBinPath(userHome(env), process.platform);
-  return {
-    flightdeckdPath: (await stat(stable).then(
-      () => true,
-      () => false,
-    ))
-      ? stable
-      : null,
-    wslDistro: env.WSL_DISTRO_NAME || null,
   };
 }
 
@@ -552,18 +535,12 @@ export async function startDaemon(
   void board.warmProjectKeys();
   // The diff of every session and card, for the review (phase 11).
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
-  const terminals = new TerminalManager({
+  const { terminals, onTerminalSettings } = createTerminals({
+    config,
+    configFile,
     folderLocks,
-    pty: options.pty ?? bunPty(),
-    enabled: terminalEnabled(config.bind, config.terminal.enabled),
-    allowedRoots: config.allowedRoots,
-    max: config.terminal.max,
-    idleMinutes: config.terminal.idleMinutes,
-    allowApiKey: config.allowApiKey,
-    // "Claude aqui" runs this very daemon's `claude`, with this config.
-    claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
-    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
-    log: (message) => logger.log(message),
+    pty: options.pty,
+    log: logger,
   });
   const changes = new Changes({
     db: store.db,
@@ -1264,12 +1241,7 @@ export async function startDaemon(
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
-    // Turned on or off from the app: kept in the config file, like the rest of the host settings.
-    onTerminalSettings: (enabled) =>
-      updateConfigFile(configFile, (raw) => ({
-        ...raw,
-        terminal: { ...(raw.terminal as object | undefined), enabled },
-      })),
+    onTerminalSettings,
     files: new ReviewFiles({
       changes,
       dataDir: config.dataDir,
