@@ -6,7 +6,6 @@ import { resolve } from "node:path";
 import { type Config, claudeSettingsPath, loadConfig, updateConfigFile } from "../config.ts";
 import { acquireLock, readLockPid } from "../lock.ts";
 import { daemonUrl } from "../mcp.ts";
-import { DAEMON_VERSION } from "../server.ts";
 import {
   installService,
   resolveServiceClaude,
@@ -27,6 +26,7 @@ import {
   waitHealthy,
 } from "../update.ts";
 import { binDir, removeFromUserPath } from "../user-path.ts";
+import { DAEMON_VERSION } from "../version.ts";
 import { type CliArgs, configPath } from "./args.ts";
 
 /** What the service and update commands need of the command line's deps (main.ts's `CliDeps`). */

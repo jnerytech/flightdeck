@@ -1,6 +1,6 @@
 import type { Config } from "../config.ts";
-import { DAEMON_VERSION } from "../server.ts";
 import { osServiceContext } from "../service-os.ts";
+import { DAEMON_VERSION } from "../version.ts";
 import { DaemonUpdater } from "./apply.ts";
 import { AutoUpdater } from "./auto.ts";
 import { UpdateChecker } from "./check.ts";
