@@ -5457,13 +5457,14 @@ export const en: Dictionary = {
   hostCompare: {
     title: "Compare hosts",
     intro:
-      "The system, versions, hooks, sign-in, tools and features of every host side by side. A cell that differs from what most hosts have is marked, and the features row names the ones a host lacks or adds.",
+      "The system, versions, hooks, sign-in, tools and features of every host side by side. A cell that differs from what most hosts have is marked; with no majority (two hosts, an even split) every differing cell is. The features row names the ones a host lacks or adds.",
     show: "Show comparison",
     hide: "Hide comparison",
     refresh: "Refresh",
     table: "Hosts compared",
     unknown: "Not known",
     differs: "Differs from most hosts, which have {value}",
+    differsTied: "Differs, with no majority among the hosts",
     featureMissing: "no {name}",
     featureExtra: "has {name}",
     featuresMore: "and {n} more",

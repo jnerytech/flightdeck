@@ -25,14 +25,16 @@ export interface HostFacts {
 export interface CompareCell {
   hostId: string;
   value: string | null;
-  /** Differs from what most hosts have. Never set on a missing value. */
+  /** Differs from what most hosts have, or from the other hosts when none is the majority. Never set on a missing value. */
   marked: boolean;
 }
 
 export interface CompareRow {
   field: CompareField;
-  /** What most hosts have, only when a cell is marked; `null` otherwise. */
+  /** What most hosts have, only when a cell is marked by it; `null` otherwise, and when tied. */
   majority: string | null;
+  /** No majority, and the known values still differ: every known cell is marked. */
+  tied: boolean;
   cells: CompareCell[];
 }
 
@@ -100,20 +102,24 @@ function majorityOf(values: ReadonlyArray<string | null>): string | null {
   return lead[0];
 }
 
-/** One row per field; a cell is marked when its value differs from the one most hosts share. */
+/**
+ * One row per field. A cell is marked when its value differs from the one most hosts share; with no
+ * such value (two hosts, an even split) and known values that still differ, every known cell is.
+ */
 export function compareHosts(hosts: readonly HostFacts[]): CompareRow[] {
   return COMPARE_FIELDS.map((field) => {
     const values = hosts.map((host) => host.values[field]);
     const majority = majorityOf(values);
+    const tied = majority === null && new Set(values.filter((v) => v !== null)).size > 1;
     const cells = hosts.map((host, index) => {
       const value = values[index] ?? null;
       return {
         hostId: host.hostId,
         value,
-        marked: majority !== null && value !== null && value !== majority,
+        marked: value !== null && (tied || (majority !== null && value !== majority)),
       };
     });
-    return { field, majority: cells.some((cell) => cell.marked) ? majority : null, cells };
+    return { field, majority: cells.some((cell) => cell.marked) ? majority : null, tied, cells };
   });
 }
 
@@ -150,13 +156,58 @@ const FIXED_WHEN_LACKING: ReadonlySet<CompareField> = new Set([
   "boot",
 ]);
 
+/** Splits a version into its numbers and whether it has a pre-release tag (`1.4.0-rc.1`). */
+function parseVersion(version: string): { nums: number[]; pre: boolean } {
+  const [core = "", pre] = version.split("-", 2);
+  return {
+    nums: core.split(".").map((part) => Number.parseInt(part, 10) || 0),
+    pre: pre !== undefined,
+  };
+}
+
+/** Whether `a` is an older version than `b`; a pre-release is older than its release. */
+function isOlder(a: string, b: string): boolean {
+  const left = parseVersion(a);
+  const right = parseVersion(b);
+  const length = Math.max(left.nums.length, right.nums.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (left.nums[i] ?? 0) - (right.nums[i] ?? 0);
+    if (diff !== 0) return diff < 0;
+  }
+  return left.pre && !right.pre;
+}
+
 /**
  * Whether a cell has a fix the app already offers on its host's page: what is missing or outdated
- * has its install, sign-in or turn-on there, and an older daemon has its update. The OS, the Claude
- * Code version and the features have none.
+ * has its install, sign-in or turn-on there, and a daemon older than the newest one in the row
+ * (`row`, every host's value) has its update. The newest daemon, the OS, the Claude Code version
+ * and the features have none.
  */
-export function hasFix(field: CompareField, value: string | null): boolean {
+export function hasFix(
+  field: CompareField,
+  value: string | null,
+  row: ReadonlyArray<string | null>,
+): boolean {
   if (value === null) return false;
-  if (field === "daemon") return true;
+  if (field === "daemon") return row.some((other) => other !== null && isOlder(value, other));
   return FIXED_WHEN_LACKING.has(field) && (value === "missing" || value === "outdated");
+}
+
+/**
+ * Which features a host lacks or adds when no set is the majority (two hosts, an even split): it
+ * lacks what any other host has and it does not, and adds what it has and any other host lacks.
+ */
+export function featureDiffTied(
+  value: string | null,
+  values: ReadonlyArray<string | null>,
+): FeatureDiff {
+  if (value === null) return { missing: [], extra: [] };
+  const own = new Set(featureList(value));
+  const others = values.flatMap((other) => (other === null ? [] : [new Set(featureList(other))]));
+  const union = new Set(others.flatMap((set) => [...set]));
+  const shared = [...union].filter((name) => others.every((set) => set.has(name)));
+  return {
+    missing: [...union].filter((name) => !own.has(name)).sort((a, b) => a.localeCompare(b)),
+    extra: [...own].filter((name) => !shared.includes(name)).sort((a, b) => a.localeCompare(b)),
+  };
 }
