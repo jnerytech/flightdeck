@@ -33,6 +33,7 @@ import { PermissionMode, SettableMode } from "./permissions.ts";
 import { PersonaFields, PersonaInput, PersonaRef, SessionPersona } from "./personas.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
+  AskpassRequest,
   type SecretsResults,
   secretsCommands,
   VaultAlertFrame,
@@ -1194,110 +1195,6 @@ export const TemplateStartResult = z.object({
   permissionMode: PermissionMode,
 });
 export type TemplateStartResult = z.infer<typeof TemplateStartResult>;
-
-/** How a ssh destino authenticates: the host's agent, a key file, a vault key or a password. */
-export const SshAuth = z.enum(["agent", "key-file", "vault-key", "password"]);
-export type SshAuth = z.infer<typeof SshAuth>;
-
-/** The short, fixed list of OpenSSH options a destino may set. */
-export const SshOptions = z
-  .object({
-    serverAliveInterval: z.number().int().optional(),
-    compression: z.boolean().optional(),
-    /** `[bind:]port:host:port`, kept as text. */
-    localForward: z.array(z.string()).optional(),
-    /** Off by default; turning it on asks for `confirm`. */
-    forwardAgent: z.boolean().optional(),
-  })
-  .strict();
-export type SshOptions = z.infer<typeof SshOptions>;
-
-/** A ssh destino: only a reference to its secret, never the secret. */
-export const SshTarget = z.object({
-  id: z.string(),
-  name: z.string(),
-  host: z.string(),
-  port: z.number().int(),
-  user: z.string(),
-  /** The Flightdeck host that opens the connection; `null` is the local one. */
-  viaHost: z.string().nullable(),
-  auth: SshAuth,
-  /** `key-file`: the path on the host; `vault-key` and `password`: the item of the vault. */
-  secretRef: z.string().nullable(),
-  /** The destino this one goes through (ProxyJump). */
-  jump: z.string().nullable(),
-  options: SshOptions,
-  tags: z.array(z.string()),
-  /** The fingerprint (SHA256) of the pinned server key; `null` before the first confirmation. */
-  hostKey: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-export type SshTarget = z.infer<typeof SshTarget>;
-
-/** One name of `~/.ssh/config` the import would turn into a destino. */
-export const SshImportEntry = z.object({
-  alias: z.string(),
-  host: z.string(),
-  port: z.number().int(),
-  user: z.string(),
-  identityFile: z.string().nullable(),
-  proxyJump: z.string().nullable(),
-  /** A destino with this name, or with the same host, port and user, is already registered. */
-  exists: z.boolean(),
-});
-export type SshImportEntry = z.infer<typeof SshImportEntry>;
-
-export const SshImportResult = z.object({
-  created: z.array(SshTarget),
-  skipped: z.array(
-    z.object({
-      alias: z.string(),
-      reason: z.string(),
-      /** Why, as a key the app translates, with the values its sentence fills in. */
-      why: z.string().optional(),
-      params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-    }),
-  ),
-});
-export type SshImportResult = z.infer<typeof SshImportResult>;
-
-/**
- * What `ssh.hostkey.check` found: `unknown` (first connection: confirm the fingerprint),
- * `pinned` (the key is the one kept) or `changed` (blocked: `pinned` is the old fingerprint).
- */
-export const SshHostKeyCheck = z.object({
-  status: z.enum(["unknown", "pinned", "changed"]),
-  /** The SHA256 fingerprint the server shows now. */
-  fingerprint: z.string(),
-  /** The fingerprint kept for this destino, `null` before the first confirmation. */
-  pinned: z.string().nullable(),
-});
-export type SshHostKeyCheck = z.infer<typeof SshHostKeyCheck>;
-
-/** The answer to `ssh.test`: reachable and logged in, or why not (in words, not the raw ssh error). */
-export const SshTestResult = z.object({
-  ok: z.boolean(),
-  error: z.string().nullable(),
-  /** Why the test failed, as a key the app translates, with the values its sentence fills in. */
-  reason: z.string().optional(),
-  params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-});
-export type SshTestResult = z.infer<typeof SshTestResult>;
-
-/** A password or key passphrase that ssh is asking for; the app answers with `askpass.answer`. */
-export const AskpassRequest = z.object({
-  type: z.literal("askpass.request"),
-  requestId: z.string(),
-  targetId: z.string(),
-  targetName: z.string(),
-  kind: z.enum(["password", "passphrase"]),
-  /** Where the vault keeps it, to be read without asking the person. */
-  secretRef: z.string().nullable(),
-  /** What ssh printed, such as "deploy@host's password:". */
-  prompt: z.string(),
-});
-export type AskpassRequest = z.infer<typeof AskpassRequest>;
 
 export const SnippetScope = z.enum(["host", "project"]);
 
@@ -3367,62 +3264,6 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
-  cmd("ssh.list", z.object({}).strict()),
-  /** Creates (no `id`) or edits a destino; turning ForwardAgent on asks for `confirm`. */
-  cmd(
-    "ssh.save",
-    z
-      .object({
-        id: z.string().optional(),
-        name: z.string(),
-        host: z.string(),
-        port: z.number().int().optional(),
-        user: z.string(),
-        viaHost: z.string().nullable().optional(),
-        auth: SshAuth.optional(),
-        secretRef: z.string().nullable().optional(),
-        jump: z.string().nullable().optional(),
-        options: SshOptions.optional(),
-        tags: z.array(z.string()).optional(),
-        confirm: z.boolean().optional(),
-      })
-      .strict(),
-  ),
-  cmd("ssh.remove", z.object({ id: z.string(), confirm: z.boolean() }).strict()),
-  /** Reads the server key with ssh-keyscan and compares it with the one kept. */
-  cmd("ssh.hostkey.check", z.object({ targetId: z.string() }).strict()),
-  /** Keeps the key whose fingerprint `check` just showed; replacing one asks to forget it first. */
-  cmd("ssh.hostkey.confirm", z.object({ targetId: z.string(), fingerprint: z.string() }).strict()),
-  cmd("ssh.hostkey.forget", z.object({ targetId: z.string() }).strict()),
-  /**
-   * Opens a terminal running ssh to the destino. `privateKey` is the key from the vault, for
-   * `vault-key` only; it is delivered for this connection and never stored or logged.
-   */
-  cmd(
-    "ssh.connect",
-    z
-      .object({
-        targetId: z.string(),
-        cols: TerminalCols,
-        rows: TerminalRows,
-        privateKey: z.string().max(65_536).optional(),
-      })
-      .strict(),
-  ),
-  /** `ssh -o BatchMode=yes ... exit 0`: no terminal, the error translated. */
-  cmd(
-    "ssh.test",
-    z.object({ targetId: z.string(), privateKey: z.string().max(65_536).optional() }).strict(),
-  ),
-  /** Follow `askpass.request` frames: the app that answers a ssh password prompt. */
-  cmd("askpass.watch", z.object({}).strict()),
-  /** What `flightdeckd askpass` calls with the ticket of its connection; returns the answer. */
-  cmd("askpass.ask", z.object({ ticket: z.string(), prompt: z.string().max(500) }).strict()),
-  /** The app answers a request; `null` refuses. */
-  cmd(
-    "askpass.answer",
-    z.object({ requestId: z.string(), secret: z.string().max(4096).nullable() }).strict(),
-  ),
   /** Snippets of the host and, with `projectPath`, of that project, favorites and recents first. */
   cmd(
     "snippets.list",
@@ -3611,10 +3452,6 @@ export const Command = z.discriminatedUnion("type", [
     "personas.trust",
     z.object({ projectPath: z.string(), id: z.string(), hash: z.string() }).strict(),
   ),
-  /** Reads this host's `~/.ssh/config` (never writes it) and says what would be created. */
-  cmd("ssh.import.preview", z.object({}).strict()),
-  /** Creates the chosen names; the ones it cannot create come back with the reason. */
-  cmd("ssh.import.apply", z.object({ aliases: z.array(z.string()).max(500) }).strict()),
   cmd("pr.comments", CardIdPayload),
   /** The sessions that wrote a file, by its absolute path. */
   cmd("files.sessions", z.object({ path: z.string().min(1) })),
@@ -4650,9 +4487,6 @@ export interface CommandResults
   "task.results": TaskResultsResult;
   "task.preview": TaskPreviewResult;
   "template.start": TemplateStartResult;
-  "ssh.list": { targets: SshTarget[] };
-  "ssh.save": SshTarget;
-  "ssh.remove": undefined;
   "snippets.list": { snippets: Snippet[]; file: SnippetFileInfo | null };
   "snippets.save": Snippet;
   "snippets.get": Snippet;
@@ -4673,16 +4507,6 @@ export interface CommandResults
   "personas.trust": Persona;
   "snippets.render": { text: string; fields: SnippetField[] };
   "snippets.use": { text: string; terminal: TerminalInfo | null };
-  "askpass.watch": undefined;
-  "askpass.ask": { secret: string };
-  "askpass.answer": undefined;
-  "ssh.connect": TerminalInfo;
-  "ssh.test": SshTestResult;
-  "ssh.hostkey.check": SshHostKeyCheck;
-  "ssh.hostkey.confirm": SshTarget;
-  "ssh.hostkey.forget": SshTarget;
-  "ssh.import.preview": { entries: SshImportEntry[] };
-  "ssh.import.apply": SshImportResult;
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
   "doctor.run": DoctorResult;
