@@ -1,7 +1,67 @@
 // Phase 20: the persona model, shared by the daemon (which keeps the host's and the projects'
 // personas) and the app (which keeps the global ones), so both check a persona the same way.
-import type { PermissionMode, PersonaFields } from "./index.ts";
+import { z } from "zod";
+import { PermissionMode } from "./permissions.ts";
 import { hasControl, type SecretScanner } from "./snippets.ts";
+
+const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
+
+/** What the form sends for a persona (phase 20): a role the Claude takes, with its suggestions. */
+export const PersonaInput = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    icon: z.string().optional(),
+    model: z.string().optional(),
+    effort: PersonaEffort.optional(),
+    /** Only restricts: the tools the persona may use; absent means the session's own. */
+    tools: z.array(z.string()).optional(),
+    /** A suggestion, never above the session's mode. */
+    permissionMode: PermissionMode.optional(),
+    /** The text added to the system prompt, at most 8 KB and with no secret. */
+    body: z.string(),
+  })
+  .strict();
+export type PersonaInput = z.infer<typeof PersonaInput>;
+
+/** A persona in its normal form: every optional field is `null` when absent. */
+export const PersonaFields = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  model: z.string().nullable(),
+  effort: PersonaEffort.nullable(),
+  tools: z.array(z.string()).nullable(),
+  permissionMode: PermissionMode.nullable(),
+  body: z.string(),
+});
+export type PersonaFields = z.infer<typeof PersonaFields>;
+
+/** The persona of a session, as the lists and the timeline show it. */
+export const SessionPersona = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string().nullable(),
+});
+export type SessionPersona = z.infer<typeof SessionPersona>;
+
+/**
+ * Which persona to use: an `id` (the project's, else the host's, else the pack's) or a whole
+ * `definition` (the app's global ones live in the app). `language` picks the pack's language.
+ */
+export const PersonaRef = z
+  .object({
+    id: z.string().optional(),
+    definition: PersonaInput.optional(),
+    language: z.enum(["pt-BR", "en"]).optional(),
+  })
+  .strict()
+  .refine((ref) => (ref.id === undefined) !== (ref.definition === undefined), {
+    message: "give id or definition, one of the two",
+  });
+export type PersonaRef = z.infer<typeof PersonaRef>;
 
 /** A persona as the daemon keeps it: every optional field is `null` when absent. */
 export type PersonaDef = PersonaFields;
