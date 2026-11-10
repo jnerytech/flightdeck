@@ -160,7 +160,7 @@ describe("host-saude-foco: the one-click fixes of the Health section (issue #206
       },
     });
     let updated = false;
-    store.updateDaemon = (async () => {
+    store.hostUpdate.apply = (async () => {
       updated = true;
     }) as never;
     await click(within(health()).getByRole("button", { name: /0\.37\.0/ }));

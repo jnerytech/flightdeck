@@ -74,7 +74,12 @@ import {
   type HistorySliceState,
   initialHistoryState,
 } from "../features/history/index.ts";
-import { HealthSlice, type HealthSliceState, initialHealthState } from "../features/hosts/index.ts";
+import {
+  HealthSlice,
+  type HealthSliceState,
+  HostUpdateSlice,
+  initialHealthState,
+} from "../features/hosts/index.ts";
 import {
   initialMessagingState,
   MessagingSlice,
@@ -266,7 +271,7 @@ import {
 } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
-import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
+import { APP_VERSION, hasFeature } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WhatsNew } from "./whats-new.ts";
@@ -864,9 +869,6 @@ const REAL_TIMERS = {
 const wakeTarget = (): Partial<Window> =>
   ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
 
-/** The least time between two checks the app starts by itself for one host. */
-const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
-
 const newHostView = (config: HostConfig): HostView => ({
   ...config,
   status: "offline",
@@ -985,6 +987,8 @@ export class AppStore {
   readonly ssh: SshSlice;
   /** What each host's dependencies and doctor say (#1596). */
   readonly health: HealthSlice;
+  /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
+  readonly hostUpdate: HostUpdateSlice;
   readonly settings: SettingsSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
@@ -1041,6 +1045,18 @@ export class AppStore {
       deps: (hostId) => this.hostRequest(hostId, "deps.check", {}),
       doctor: (hostId) => this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION }),
       now: () => this.now(),
+    });
+    this.hostUpdate = new HostUpdateSlice({
+      host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
+      patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
+      connected: (hostId) => this.connections.has(hostId),
+      apply: (hostId) =>
+        this.openConnection(hostId).request("daemon.update.apply", { confirm: true }),
+      check: (hostId) => this.openConnection(hostId).request("daemon.update.check", {}),
+      describeError,
+      t: () => this.i18n.t,
+      now: () => this.now(),
+      timeoutMs: options.daemonUpdateTimeoutMs,
     });
     this.snippets = new SnippetsSlice({
       state: () => this.state,
@@ -1305,9 +1321,6 @@ export class AppStore {
       ? this.hostTabs.shared
       : this.workspace.tabs;
   }
-
-  /** When the page last asked each host for an update check on its own. */
-  private readonly autoUpdateChecks = new Map<string, number>();
 
   getState = (): AppState => this.state;
 
@@ -3290,63 +3303,6 @@ export class AppStore {
     }
   }
 
-  /**
-   * Phase 9: asks the host's daemon to apply its update. The host shows "atualizando…" until it
-   * reconnects on the new version; past the time limit, or on a refusal, it shows why.
-   */
-  async updateDaemon(hostId: string): Promise<void> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    const target = host?.hostInfo?.update?.version;
-    const conn = this.connections.get(hostId);
-    if (!target || !conn) return;
-    this.updateHost(hostId, (h) => ({ ...h, daemonUpdate: { target, failed: null } }));
-    const fail = (failed: string) =>
-      this.updateHost(hostId, (h) =>
-        h.daemonUpdate?.target === target ? { ...h, daemonUpdate: { target, failed } } : h,
-      );
-    try {
-      await conn.request("daemon.update.apply", { confirm: true });
-    } catch (error) {
-      fail((error as Error).message);
-      return;
-    }
-    setTimeout(
-      () => fail(this.i18n.t("messages.daemonUpdateLate", { version: target })),
-      this.options.daemonUpdateTimeoutMs ?? 120_000,
-    );
-  }
-
-  /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
-  async checkDaemonUpdate(hostId: string): Promise<void> {
-    const conn = this.connections.get(hostId);
-    if (!conn) return;
-    this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: true, failed: null } }));
-    try {
-      const update = await conn.request("daemon.update.check", {});
-      this.updateHost(hostId, (h) => ({
-        ...h,
-        updateCheck: null,
-        hostInfo: h.hostInfo ? { ...h.hostInfo, update } : h.hostInfo,
-      }));
-    } catch (error) {
-      const failed = describeError(error);
-      this.updateHost(hostId, (h) => ({ ...h, updateCheck: { busy: false, failed } }));
-    }
-  }
-
-  /** The same check, once when the app is newer than the daemon, at most once per 10 minutes. */
-  async autoCheckDaemonUpdate(hostId: string): Promise<void> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    const info = host?.hostInfo;
-    if (host?.status !== "online" || !info?.update) return;
-    if (!isNewer(APP_VERSION, info.daemonVersion)) return;
-    const last = this.autoUpdateChecks.get(hostId);
-    const now = this.now();
-    if (last !== undefined && now - last < AUTO_UPDATE_CHECK_MS) return;
-    this.autoUpdateChecks.set(hostId, now);
-    await this.checkDaemonUpdate(hostId);
-  }
-
   private onEvent(hostId: string, envelope: EventEnvelope): void {
     if (envelope.event.type === "session.summary") {
       this.onSummary(hostId, envelope.event);
@@ -4830,6 +4786,13 @@ export class AppStore {
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });
+  }
+
+  /** A host's open connection; its callers have checked `connections.has` first. */
+  private openConnection(hostId: string): HostConnection {
+    const conn = this.connections.get(hostId);
+    if (!conn) throw new Error(`no connection for ${hostId}`);
+    return conn;
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {

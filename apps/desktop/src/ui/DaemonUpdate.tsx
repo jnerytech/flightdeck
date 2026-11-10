@@ -41,7 +41,7 @@ export function DaemonUpdate(props: Readonly<{ store: AppStore; host: HostView }
             variant="outline"
             size="sm"
             disabled={check?.busy === true}
-            onClick={() => void store.checkDaemonUpdate(host.id)}
+            onClick={() => void store.hostUpdate.check(host.id)}
           >
             {check?.busy ? t("daemonUpdate.checking") : t("daemonUpdate.check")}
           </Button>
@@ -74,7 +74,7 @@ export function DaemonUpdate(props: Readonly<{ store: AppStore; host: HostView }
           confirmLabel={t("daemonUpdate.confirm")}
           onConfirm={() => {
             setConfirming(false);
-            void store.updateDaemon(host.id);
+            void store.hostUpdate.apply(host.id);
           }}
           onCancel={() => setConfirming(false)}
         />

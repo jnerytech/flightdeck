@@ -80,7 +80,7 @@ function setup(
     if (type === "service.install") return options.service ?? null;
     return { status: "installed", settingsPath: "~/.claude/settings.json" };
   }) as never;
-  store.updateDaemon = (async () => {
+  store.hostUpdate.apply = (async () => {
     calls.push("updateDaemon");
   }) as never;
   const host = {
