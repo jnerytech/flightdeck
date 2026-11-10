@@ -39,13 +39,13 @@ import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
-import { ConflictRadar, radarGit } from "./conflict-radar.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import { type PrComment, prProvider } from "./pr.ts";
 import { PrPoll } from "./pr-poll.ts";
 import { Projects } from "./projects.ts";
-import { type Rev, refArg } from "./ref-arg.ts";
+import { RadarFeed } from "./radar-feed.ts";
+import { refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
 import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
@@ -63,7 +63,6 @@ import type {
   CardDiff,
   CardRow,
   CardRun,
-  MayConflict,
   NewProject,
   Project,
   ProjectPatch,
@@ -157,10 +156,8 @@ export class Board {
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
-  /** Issue #1405: which cards of a project edit the same files. */
-  private readonly radar = new ConflictRadar(radarGit());
-  /** The radar reads of the cards in flight, and the ones asked again meanwhile. */
-  private readonly radarReads = new Map<string, { again: boolean; done: Promise<void> }>();
+  /** Issue #1405: the conflict radar's reads and overlaps (issue #1523). */
+  private readonly radarFeed: RadarFeed;
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
@@ -169,6 +166,13 @@ export class Board {
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
+    this.radarFeed = new RadarFeed({
+      db: opts.db,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      stopped: () => this.stopped,
+    });
     this.projects = new Projects(opts.db, opts);
     this.queue = new RunQueue({
       db: opts.db,
@@ -297,7 +301,7 @@ export class Board {
     }
     this.pump();
     // The radar starts empty: read the cards that already have a worktree, one at a time.
-    void this.refreshAllConflicts().catch(() => {});
+    void this.radarFeed.refreshAll().catch(() => {});
   }
 
   listProjects(): Project[] {
@@ -432,7 +436,7 @@ export class Board {
       prMergeable: row.pr_mergeable,
       prReview: row.pr_review,
       prOpenedAt: row.pr_opened_at,
-      ...this.mayConflictOf(id),
+      ...this.radarFeed.mayConflictOf(id),
       queued: active !== undefined && active.started_at === null && active.ended_at === null,
       sessionId,
       sessionStatus: sessionId ? this.opts.manager.get(sessionId).status : null,
@@ -1668,90 +1672,12 @@ export class Board {
 
   /** Issue #1405: reads what the card changed and tells the cards that now share files with it. */
   refreshConflicts(id: string): Promise<void> {
-    // One read of a card at a time; a turn that ends meanwhile asks for one more, not for another.
-    const running = this.radarReads.get(id);
-    if (running) {
-      running.again = true;
-      return running.done;
-    }
-    const read = { again: false, done: Promise.resolve() };
-    read.done = (async () => {
-      try {
-        do {
-          read.again = false;
-          await this.readConflicts(id);
-        } while (read.again && !this.stopped);
-      } finally {
-        this.radarReads.delete(id);
-      }
-    })();
-    this.radarReads.set(id, read);
-    return read.done;
-  }
-
-  /** The base branch of a card the radar should watch, or `null`: no worktree, finished, or no base. */
-  private radarBase(id: string): Rev | null {
-    if (!this.cardExists(id)) return null;
-    const card = this.getCard(id);
-    if (card.worktreePath === null || card.column === "done") return null;
-    if (card.prState === "merged" || card.prState === "closed") return null;
-    try {
-      return refArg(this.getProject(card.projectId).baseBranch);
-    } catch {
-      return null;
-    }
-  }
-
-  private async readConflicts(id: string): Promise<void> {
-    if (this.stopped) return;
-    const base = this.radarBase(id);
-    if (base === null) return this.dropConflicts(id);
-    const card = this.getCard(id);
-    const affected = await this.radar.update(
-      {
-        id,
-        projectId: card.projectId,
-        worktree: card.worktreePath as string,
-        base,
-        group: card.arenaOf ?? id,
-      },
-      () => !this.stopped && this.radarBase(id) !== null,
-    );
-    for (const other of affected) if (this.cardExists(other)) this.changed(other);
-  }
-
-  private async refreshAllConflicts(): Promise<void> {
-    const ids = this.db
-      .query<{ id: string }, []>("SELECT id FROM cards WHERE worktree_path IS NOT NULL")
-      .all()
-      .map(({ id }) => id);
-    await inSequence(ids, (id) => this.refreshConflicts(id));
+    return this.radarFeed.refresh(id);
   }
 
   /** The card no longer takes part in the radar; the cards that were flagged with it hear of it. */
   private dropConflicts(id: string): void {
-    for (const other of this.radar.remove(id)) {
-      if (this.cardExists(other)) this.changed(other);
-    }
-  }
-
-  private cardExists(id: string): boolean {
-    return this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id) !== null;
-  }
-
-  /** The card's overlaps for its fields: nothing at all when it shares no file with another card. */
-  private mayConflictOf(id: string): { mayConflict?: MayConflict[] } {
-    const overlaps = this.radar.overlaps(id);
-    if (overlaps.length === 0) return {};
-    const titleOf = this.db.query<{ title: string }, [string]>(
-      "SELECT title FROM cards WHERE id = ?",
-    );
-    return {
-      mayConflict: overlaps.flatMap(({ cardId, files }) => {
-        const title = titleOf.get(cardId)?.title;
-        return title === undefined ? [] : [{ cardId, title, files }];
-      }),
-    };
+    this.radarFeed.drop(id);
   }
 
   /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
