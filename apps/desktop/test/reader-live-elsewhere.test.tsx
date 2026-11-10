@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { utimesSync } from "node:fs";
 import type { ExternalSession } from "@flightdeck/protocol";
 import { assistantLine, userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -39,10 +40,13 @@ const waitingElsewhere = (cwd: string): ExternalSession => ({
 /** A stored conversation whose `claude` is still alive in another terminal, waiting at a prompt. */
 async function openReader(external: boolean) {
   const d = makeDaemon(cleanups, { terminals: true });
-  writeTranscript(d.historyRoot, "-p", ID, [
+  const file = writeTranscript(d.historyRoot, "-p", ID, [
     userLine({ uuid: "u1", text: "falando da girafa", cwd: d.project }),
     assistantLine({ uuid: "a1", text: "a girafa é alta", cwd: d.project }),
   ]);
+  // An hour old: the transcript alone does not say it is in use, as one waiting at a prompt would not.
+  const old = new Date(Date.now() - 3_600_000);
+  utimesSync(file, old, old);
   await d.history.scan();
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
@@ -97,6 +101,14 @@ describe("reader-live-elsewhere: the stored conversation of a session alive in a
     await settle(() => ptys.spawned.length === 1);
     expect(ptys.spawned[0]?.argv).toContain("--resume");
     expect(ptys.spawned[0]?.argv).toContain(ID);
+  });
+
+  test("Continuar no Flightdeck asks before it resumes a conversation another terminal holds, though its file is old", async () => {
+    const { runtime } = await openReader(true);
+    expect(screen.queryByText("possivelmente em uso")).toBeNull();
+    await click("Continuar no Flightdeck");
+    expect(screen.queryByText(/pode estar em uso em outro lugar/)).not.toBeNull();
+    await stays(() => runtime.starts.length === 0, 100);
   });
 
   test("a conversation nobody runs elsewhere opens at once, with no question", async () => {
