@@ -274,9 +274,19 @@ describe("refusal-english: teams, service, names, messaging policy, board and wr
 
 /**
  * Issue #957 (english-msgs4): the usage text, the argument refusals and the log and error text of
- * the daemon's entry file (`main.ts`) is English.
+ * the daemon's entry file (`main.ts`) and of the commands moved out of it to `cli/` (#1593) is
+ * English.
  */
-const MSGS4_FILES = ["main.ts"];
+const MSGS4_FILES = [
+  "main.ts",
+  "cli/args.ts",
+  "cli/claude-settings.ts",
+  "cli/commands.ts",
+  "cli/history.ts",
+  "cli/host.ts",
+  "cli/maintenance.ts",
+  "cli/setup.ts",
+];
 
 /** The Portuguese words of the earlier detectors, plus the ones `main.ts` used. */
 const MSGS4_PORTUGUESE = new RegExp(
