@@ -119,6 +119,7 @@ describe("deps-gate: every way to start a card goes through the gate", () => {
     expect(startCallers()).toEqual([
       "automations/automations.ts",
       "board/arena.ts",
+      "board/blockers.ts",
       "board/board.ts",
       "board/session-follow.ts",
       "main.ts",
