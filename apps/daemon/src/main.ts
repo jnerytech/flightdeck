@@ -96,7 +96,8 @@ import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
-import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
+import type { PowerContext } from "./power/keep-awake.ts";
+import { createKeepAwake } from "./power/wiring.ts";
 import { present } from "./present.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { createQuota } from "./quota/wiring.ts";
@@ -383,8 +384,11 @@ export async function startDaemon(
     pinned?: (claudeSessionId: string | null) => boolean;
     cardSession?: (sessionId: string) => boolean;
   } = {};
-  // Holds the computer awake while a session runs or waits for a permission (issue #163).
-  const keepAwake = new KeepAwake(options.powerContext ?? osPowerContext(), config.keepAwake);
+  const { keepAwake, keepAwakeSwitch } = createKeepAwake({
+    powerContext: options.powerContext,
+    config,
+    configFile,
+  });
 
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
@@ -1006,15 +1010,7 @@ export async function startDaemon(
     },
     memoryPause,
     quotaPause,
-    keepAwake: {
-      status: () => keepAwake.status(),
-      set: async (enabled) => {
-        // The file first: when it cannot be written the switch stays as it was, for the client and the daemon.
-        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
-        config.keepAwake = enabled;
-        keepAwake.setEnabled(enabled);
-      },
-    },
+    keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
