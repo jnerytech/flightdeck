@@ -36,7 +36,6 @@ import { type CliDeps, COMMANDS } from "./cli/commands.ts";
 import {
   type Config,
   claudeSettingsPath,
-  expandHome,
   loadConfig,
   RELEASES_URL,
   type RuntimeKind,
@@ -52,11 +51,7 @@ import { GithubService } from "./github/service.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
-import { createKnowledgeDoc } from "./knowledge/create.ts";
-import { listKnowledge } from "./knowledge/list.ts";
-import { knowledgeFeedFor } from "./knowledge/serve.ts";
-import { setKnowledgeStatus } from "./knowledge/status.ts";
-import { knowledgeSwitchFor } from "./knowledge/switch.ts";
+import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import type { Logger } from "./logger.ts";
 import { FileLog } from "./logs/file-log.ts";
@@ -101,7 +96,7 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import { startServer } from "./server.ts";
+import { type ServerOptions, startServer } from "./server.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -378,6 +373,13 @@ export async function startDaemon(
     await projectTrust.prepare(path);
     return projectTrust.sessionTrust(path);
   };
+  // The server takes every handler by its key: a renamed one fails here, not silently in a spread.
+  const knowledge: Required<
+    Pick<
+      ServerOptions,
+      "knowledge" | "knowledgeStatus" | "knowledgeCreate" | "knowledgeFeed" | "knowledgeFeedSwitch"
+    >
+  > = createKnowledge({ config, configFile, trust: trustForKnowledge });
   const manager = new SessionManager({
     folderLocks,
     store,
@@ -884,28 +886,7 @@ export async function startDaemon(
     quotaPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
-    knowledge: listKnowledge,
-    knowledgeStatus: setKnowledgeStatus,
-    knowledgeCreate: createKnowledgeDoc,
-    knowledgeFeed: knowledgeFeedFor({
-      off: () => config.knowledge.feedOff,
-      trust: trustForKnowledge,
-    }),
-    knowledgeFeedSwitch: knowledgeSwitchFor({
-      off: () => config.knowledge.feedOff,
-      trust: trustForKnowledge,
-      change: async (update) => {
-        let next: string[] = [];
-        await updateConfigFile(configFile, (raw) => {
-          const section = (typeof raw.knowledge === "object" ? raw.knowledge : null) ?? {};
-          const listed = (section as { feedOff?: unknown }).feedOff;
-          const entries = Array.isArray(listed) ? listed.filter((e) => typeof e === "string") : [];
-          next = update(entries);
-          return { ...raw, knowledge: { ...section, feedOff: next } };
-        });
-        config.knowledge.feedOff = next.map((entry) => resolve(expandHome(entry)));
-      },
-    }),
+    ...knowledge,
     ...harness,
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
