@@ -164,6 +164,7 @@ test's baseline, with the issue that renames them.
 | `activity` | activity | What happened on the host since a time, read from what the daemon already keeps |
 | `agentcfg` | agent | A project's Claude Code configuration: MCP servers, CLAUDE.md, agents and skills |
 | `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
+| `background` | background session | Claude Code's own background sessions of a host (`claude --bg`): list, stop, respawn, message, attach and start |
 | `automations` | automation | Triggers (time, PR comment, failing checks, labeled issue) and the action each fires |
 | `board` | board | A project's cards, their columns, launches, PR flow, blockers and arenas |
 | `boardsync` | board sync | Two-way sync of a board with an external board (GitHub Projects, Azure Boards) |
