@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { LoopAlert } from "../src/lib/app-store.ts";
+import { type LoopAlert, loopPairKey } from "../src/features/messaging/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -8,7 +8,7 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, loopPairKey } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
@@ -86,7 +86,7 @@ describe("precisa-de-voce: a paused loop and a team the quota paused", () => {
     ]);
     const first = store.getState().loopAlerts[0] as LoopAlert;
     await act(async () => {
-      await store.releasePair(first.hostId, loopPairKey(first));
+      await store.messaging.releasePair(first.hostId, loopPairKey(first));
     });
     expect(store.getState().loopAlerts.map((a) => a.from)).toEqual(["h/s3"]);
   });

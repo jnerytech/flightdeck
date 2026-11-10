@@ -25,7 +25,6 @@ import type {
   HistorySessionSummary,
   HostInfoResult,
   MessageInfo,
-  MessagingAlertFrame,
   PendingPermission,
   PermissionUpdate,
   PersonaRef,
@@ -78,6 +77,11 @@ import {
   type HistorySliceState,
   initialHistoryState,
 } from "../features/history/index.ts";
+import {
+  initialMessagingState,
+  MessagingSlice,
+  type MessagingSliceState,
+} from "../features/messaging/index.ts";
 import {
   initialSessionsState,
   SessionsSlice,
@@ -309,7 +313,11 @@ export interface Selection {
 /** How often the app writes that it is still active (issue #1344). */
 const AWAY_MARK_MS = 60_000;
 
-export interface AppState extends HistorySliceState, ActivitySliceState, SessionsSliceState {
+export interface AppState
+  extends HistorySliceState,
+    ActivitySliceState,
+    SessionsSliceState,
+    MessagingSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
   sessions: Record<string, SessionState>;
@@ -376,8 +384,6 @@ export interface AppState extends HistorySliceState, ActivitySliceState, Session
   vaultApprovals: PendingItem[];
   /** Phase 21: the standard session names of each host that announces `names`, by host id. */
   names: Record<string, SessionNameInfo[]>;
-  /** Phase 21: the pairs a host paused for a loop, waiting in "Precisa de você" to be freed. */
-  loopAlerts: LoopAlert[];
   /** Issue #1478: quiet sessions the person snoozed, by `host/session`, until this time (ms). */
   quietSnooze: Record<string, number>;
   /** Phase 22: the PR watch of each card that has been looked at or changed, by `sessionKey(hostId, cardId)`. */
@@ -676,19 +682,6 @@ export interface Notice {
   /** A success toast's button: where the news leads (Open the card). */
   link?: { label: string; run: () => void };
 }
-
-/** Phase 21: a pair of sessions a host paused because they kept answering each other. */
-export interface LoopAlert {
-  hostId: string;
-  from: string;
-  to: string;
-  message: string;
-  at: string;
-}
-
-/** The daemon's key for a pair of sessions, the same in both directions. */
-export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
-  [alert.from, alert.to].sort(byCodeUnit).join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -1028,6 +1021,8 @@ export class AppStore {
   readonly activity: ActivitySlice;
   /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
   readonly sessions: SessionsSlice;
+  /** The messages between sessions: the loops a host paused (phase 21, #1596). */
+  readonly messaging: MessagingSlice;
 
   constructor(
     private readonly platform: Platform,
@@ -1053,6 +1048,14 @@ export class AppStore {
       connection: (hostId) => this.connections.get(hostId),
       t: () => this.i18n.t,
       success: (text) => this.success(text),
+    });
+    this.messaging = new MessagingSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
+      setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
+      notify: (notification) => this.notifyUser(notification),
+      t: () => this.i18n.t,
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -1169,7 +1172,7 @@ export class AppStore {
       snippetChoice: null,
       personas: {},
       background: {},
-      loopAlerts: [],
+      ...initialMessagingState(),
       quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
       watches: {},
       names: {},
@@ -3234,7 +3237,7 @@ export class AppStore {
       },
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
       onTeams: (frame) => this.onTeams(config.id, frame),
-      onMessagingAlert: (alert) => this.onLoopAlert(config.id, alert),
+      onMessagingAlert: (alert) => this.messaging.onLoopAlert(config.id, alert),
       onWatch: (frame) => this.keepWatch(config.id, frame.watch),
       onMessages: (frame) => {
         if (frame.type === "messages.updated") {
@@ -4733,22 +4736,6 @@ export class AppStore {
     return this.hostCommand(hostId, "watch.describe", { cardId });
   }
 
-  /** Phase 21: a paused loop waits in "Precisa de você" (once per pair) and the OS shows it. */
-  private onLoopAlert(hostId: string, frame: MessagingAlertFrame): void {
-    const alert: LoopAlert = {
-      hostId,
-      from: frame.from,
-      to: frame.to,
-      message: frame.message,
-      at: frame.at,
-    };
-    const others = this.state.loopAlerts.filter(
-      (a) => a.hostId !== hostId || loopPairKey(a) !== loopPairKey(alert),
-    );
-    this.update({ loopAlerts: [...others, alert] });
-    this.notifyUser({ title: this.i18n.t("needsYou.loopTitle"), body: frame.message });
-  }
-
   /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
   async detectPrProvider(
     hostId: string,
@@ -4811,29 +4798,6 @@ export class AppStore {
     } catch (error) {
       this.fail(error);
     }
-  }
-
-  /**
-   * Phase 21: frees a paused pair (its `loopPairKey`), keeping the host's messaging policy as it
-   * is; its entry in "Precisa de você" goes too. The host's rules after it, or null on failure.
-   */
-  async releasePair(
-    hostId: string,
-    key: string,
-  ): Promise<CommandResults["messaging.rules.set"] | null> {
-    const rules = await this.hostCommand(hostId, "messaging.rules.get", {});
-    if (!rules) return null;
-    const done = await this.hostCommand(hostId, "messaging.rules.set", {
-      policy: rules.policy,
-      unpause: [key],
-    });
-    if (!done) return null;
-    this.update({
-      loopAlerts: this.state.loopAlerts.filter(
-        (a) => a.hostId !== hostId || loopPairKey(a) !== key,
-      ),
-    });
-    return done;
   }
 
   /** Phase 21: told each time a team of a host changes. */
