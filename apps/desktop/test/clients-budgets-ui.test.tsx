@@ -126,7 +126,7 @@ describe("clients-budgets: the month limit on the Clients screen", () => {
 
   test("once looked at, the line says what was spent against the limit", async () => {
     const { store } = await setup({ acme: 4 });
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     await settle(() => line("Acme")?.includes("50%") === true);
     expect(line("Acme")).toBe("Este mês: US$ 2,00 de US$ 4,00 (50%)");
     expect(line("Beta")).toBeNull();

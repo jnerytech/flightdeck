@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { evaluateClientBudgets } from "../src/lib/client-budgets.ts";
+import { evaluateClientBudgets } from "../src/features/costs/index.ts";
 
 const MONTH = "2026-10";
 const run = (

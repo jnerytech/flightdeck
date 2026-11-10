@@ -53,7 +53,6 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import {
-  byCodeUnit,
   EPHEMERAL_EVENTS,
   FEATURE_RESUME_OFFER,
   inSequence,
@@ -67,7 +66,10 @@ import {
 import {
   BudgetsSlice,
   type BudgetsSliceState,
+  ClientBudgetsSlice,
+  type ClientBudgetsSliceState,
   initialBudgetsState,
+  initialClientBudgetsState,
 } from "../features/costs/index.ts";
 import {
   HistorySlice,
@@ -122,12 +124,6 @@ import { BACKUP_NAME } from "./backup-target.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
-import {
-  CLIENT_BUDGET_ALERTS_KEY,
-  type ClientBudgetState,
-  evaluateClientBudgets,
-} from "./client-budgets.ts";
-import { costByClient, loadCostsSummary } from "./client-costs.ts";
 import { knownProjects } from "./client-rules.ts";
 import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
 import {
@@ -138,7 +134,7 @@ import {
   stripGenerated,
 } from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
-import { localDay, usd } from "./costs.ts";
+import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
 import { DriveError } from "./drive-target.ts";
@@ -328,6 +324,7 @@ export interface AppState
     SessionsSliceState,
     MessagingSliceState,
     BudgetsSliceState,
+    ClientBudgetsSliceState,
     PersonasSliceState,
     SshSliceState,
     SettingsSliceState {
@@ -408,8 +405,6 @@ export interface AppState
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
   clientSelection: string;
-  /** Phase 29: each client's month limit against its spend, as of the last look. */
-  clientBudgets: ClientBudgetState[];
   /** The saved hosts are in `hosts` (init done with them); routes wait for it (phase 10). */
   hostsLoaded: boolean;
   /** Phase 9: the app's own update. */
@@ -442,9 +437,6 @@ const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
 /** How long the app waits for changes to settle before it sends scoped rules again. */
 const VAULT_SCOPE_DELAY_MS = 300;
-
-/** How often the app looks at the clients' month limits. */
-const CLIENT_BUDGET_INTERVAL_MS = 10 * 60_000;
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
 /** What a host's terminals say to the one following them. */
@@ -996,6 +988,8 @@ export class AppStore {
   readonly messaging: MessagingSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
+  /** What each client with a month limit spent against it (phase 9, #1596). */
+  readonly clientBudgets: ClientBudgetsSlice;
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
   /** The ssh destinos of the hosts, the prompts ssh raises and its terminals (phase 15, #1596). */
@@ -1118,10 +1112,30 @@ export class AppStore {
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
+    this.clientBudgets = new ClientBudgetsSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      storage: platform.storage,
+      limits: () => this.clients.budgets(),
+      hostsWithCosts: () =>
+        this.state.hosts
+          .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
+          .map((h) => h.id),
+      today: () => this.today(),
+      scope: () => this.clientScope(),
+      clients: () => this.state.clientList,
+      summary: (hostId, filter) => this.hostCommand(hostId, "costs.summary", filter),
+      feed: (name, clientId, percent, limit) =>
+        this.webhookFeed.clientBudget(name, clientId, percent, limit),
+      notify: (notification, clientId) =>
+        this.notifyUser(notification, { name: "costs", client: clientId }, undefined, {
+          event: "budget-quota",
+        }),
+      t: () => this.i18n.t,
+    });
     this.roi = new RoiSettings(platform, {
       onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
     });
-    this.clientBudgetsSeen = JSON.stringify(this.clients.budgets());
     this.webhooks = new Webhooks({
       platform,
       send: (request) => this.relayWebhook(request),
@@ -1196,6 +1210,7 @@ export class AppStore {
       background: {},
       ...initialMessagingState(),
       ...initialBudgetsState(),
+      ...initialClientBudgetsState(),
       ...initialPersonasState(),
       ...initialSshState(),
       quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
@@ -1217,7 +1232,6 @@ export class AppStore {
       worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
       clientSelection: loadSelection(platform.storage, this.clients.list()),
-      clientBudgets: [],
       notices: [],
       ...initialActivityState(),
       inbox: [],
@@ -1435,10 +1449,7 @@ export class AppStore {
     await this.settings.load();
     const { notifyUpdates, autoUpdate } = this.state.settings;
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
-    this.clientBudgetTimer = setInterval(
-      () => void this.checkClientBudgets(),
-      this.options.clientBudgetIntervalMs ?? CLIENT_BUDGET_INTERVAL_MS,
-    );
+    this.clientBudgets.start(this.options.clientBudgetIntervalMs);
     if (this.platform.updater.supported && (notifyUpdates || autoUpdate)) {
       void this.checkAppUpdate();
       this.updateTimer = setInterval(() => {
@@ -2997,8 +3008,7 @@ export class AppStore {
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
     this.backupScheduler.dispose();
-    if (this.clientBudgetTimer) clearInterval(this.clientBudgetTimer);
-    this.clientBudgetTimer = null;
+    this.clientBudgets.dispose();
     if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
     this.vaultScopeTimer = null;
     this.theme.stop();
@@ -3912,12 +3922,7 @@ export class AppStore {
       clientSelection: valid ? kept : ALL_CLIENTS,
     });
     this.scheduleVaultScope();
-    // A limit that was set, changed or cleared is looked at now, not at the next round.
-    const limits = JSON.stringify(this.clients.budgets());
-    if (limits !== this.clientBudgetsSeen) {
-      this.clientBudgetsSeen = limits;
-      void this.checkClientBudgets();
-    }
+    this.clientBudgets.onLimitsChanged();
   }
 
   /** What the work screens show: all clients, Unassigned or one client; a name nobody has is refused. */
@@ -3939,114 +3944,6 @@ export class AppStore {
     const order = [ALL_CLIENTS, ...clientList.map((c) => c.id), UNASSIGNED];
     const at = order.indexOf(clientSelection);
     this.setClientSelection(order[(at + 1) % order.length] ?? ALL_CLIENTS);
-  }
-
-  private clientBudgetCheck: Promise<void> | null = null;
-  private clientBudgetAgain = false;
-  private clientBudgetsSeen: string = "{}";
-  private clientBudgetTimer: ReturnType<typeof setInterval> | null = null;
-  /** The hosts with costs that were online at the last look at the clients' limits. */
-  private clientBudgetHosts = "";
-
-  /**
-   * Looks at what each client spent this month, across hosts, against its limit: the thresholds
-   * crossed for the first time notify, and the crossed budgets join "Needs you". Looks asked
-   * while one runs make it look once more when it ends, never twice at the same time.
-   */
-  async checkClientBudgets(): Promise<void> {
-    if (this.clientBudgetCheck) {
-      this.clientBudgetAgain = true;
-      return this.clientBudgetCheck;
-    }
-    const run = async () => {
-      do {
-        this.clientBudgetAgain = false;
-        await this.lookAtClientBudgets(); // NOSONAR: sequential by design: each pass needs the answer of the one before
-      } while (this.clientBudgetAgain);
-    };
-    this.clientBudgetCheck = run().finally(() => {
-      this.clientBudgetCheck = null;
-    });
-    return this.clientBudgetCheck;
-  }
-
-  private async lookAtClientBudgets(): Promise<void> {
-    const limits = this.clients.budgets();
-    if (Object.keys(limits).length === 0) {
-      if (this.state.clientBudgets.length > 0) this.update({ clientBudgets: [] });
-      return;
-    }
-    const hostIds = this.state.hosts
-      .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-      .map((h) => h.id);
-    if (hostIds.length === 0) return;
-    const today = this.today();
-    const month = today.slice(0, 7);
-    const scope = this.clientScope();
-    const loaded = await loadCostsSummary({
-      hostIds,
-      filter: { from: `${month}-01`, to: today },
-      selection: ALL_CLIENTS,
-      scope,
-      ask: (id, filter) => this.hostCommand(id, "costs.summary", filter),
-    });
-    const spent = Object.fromEntries(
-      costByClient(loaded.summary, scope, this.state.clientList, "").map((row) => [
-        row.clientId,
-        row.costUsd,
-      ]),
-    );
-    const evaluation = evaluateClientBudgets({
-      month,
-      limits,
-      spent,
-      announced: this.announcedThresholds(),
-    });
-    this.platform.storage.setItem(CLIENT_BUDGET_ALERTS_KEY, JSON.stringify(evaluation.announced));
-    this.update({ clientBudgets: evaluation.states });
-    for (const { clientId, threshold } of evaluation.news) {
-      const state = evaluation.states.find((s) => s.clientId === clientId);
-      this.webhookFeed.clientBudget(
-        this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
-        clientId,
-        Math.round(threshold * 100),
-        usd(state?.limitUsd ?? 0, this.i18n.t.lang),
-      );
-      this.notifyUser(
-        {
-          title: this.i18n.t("messages.budgetTitle"),
-          body: this.i18n.t("clients.budgetAlert", {
-            name: this.state.clientList.find((c) => c.id === clientId)?.name ?? clientId,
-            percent: Math.round(threshold * 100),
-            limit: usd(state?.limitUsd ?? 0, this.i18n.t.lang),
-          }),
-        },
-        { name: "costs", client: clientId },
-        undefined,
-        { event: "budget-quota" },
-      );
-    }
-  }
-
-  /** A host with costs that came online (or left) is a reason to look at the limits again. */
-  private watchClientBudgetHosts(): void {
-    const online = this.state.hosts
-      .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-      .map((h) => h.id)
-      .sort(byCodeUnit)
-      .join("|");
-    if (online === this.clientBudgetHosts) return;
-    this.clientBudgetHosts = online;
-    if (online) void this.checkClientBudgets();
-  }
-
-  private announcedThresholds(): Record<string, number[]> {
-    try {
-      const stored = JSON.parse(this.platform.storage.getItem(CLIENT_BUDGET_ALERTS_KEY) ?? "{}");
-      return stored && typeof stored === "object" ? stored : {};
-    } catch {
-      return {};
-    }
   }
 
   /** Which client each project belongs to, from the rows and projects the app has now. */
@@ -5014,7 +4911,7 @@ export class AppStore {
     ) {
       this.syncTitle();
     }
-    if (patch.hosts) this.watchClientBudgetHosts();
+    if (patch.hosts) this.clientBudgets.onHostsChanged();
     if (patch.hub || patch.projects) this.scheduleVaultScope();
     if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
       this.scheduleTrayMenu();
