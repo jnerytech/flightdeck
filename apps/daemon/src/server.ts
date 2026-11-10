@@ -120,8 +120,6 @@ import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
 import type { Worktrees } from "./worktrees/worktrees.ts";
 
-export { DAEMON_VERSION };
-
 /**
  * How often the daemon pings each authenticated client. A client is closed after
  * `MAX_MISSED_PINGS` unanswered pings AND that many intervals without any frame from it: a page
