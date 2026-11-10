@@ -2,6 +2,7 @@ import { access, chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, posix, resolve, win32 } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { loadConfig, updateConfigFile } from "./config.ts";
+import type { Logger } from "./logger.ts";
 import { compareVersions, swapBinary } from "./update.ts";
 import { WSL_PORT_OFFSET } from "./wsl-host.ts";
 
@@ -9,7 +10,7 @@ export interface SetupDeps {
   /** Free-text question; an empty answer means "nothing". */
   ask(question: string): Promise<string>;
   confirm(question: string, fallback: boolean): Promise<boolean>;
-  log: { log(message: string): void; error(message: string): void };
+  log: Logger;
   configFile: string;
   /** `~` in an answer means this home. */
   home: string;

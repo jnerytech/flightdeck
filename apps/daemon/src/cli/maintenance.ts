@@ -2,15 +2,17 @@
  * The maintenance commands of the command line (issue #1593): `flightdeckd backup`, `restore` and
  * `db prune`, over the maintenance domain and the store.
  */
+
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
+import type { Logger } from "../logger.ts";
 import { Maintenance, restoreBackup } from "../maintenance/index.ts";
 import { EventStore } from "../store/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 
 /** What the maintenance commands need of the command line's deps (main.ts's `CliDeps`). */
 export interface MaintenanceCommandDeps {
-  log: { log(message: string): void; error(message: string): void };
+  log: Logger;
   /** Clock of `db prune`, `backup` and `restore`; `Date.now` when absent. */
   now?: () => number;
 }

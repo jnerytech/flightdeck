@@ -11,13 +11,14 @@ import {
   uninstallHooks,
 } from "../central/index.ts";
 import { claudeSettingsPath, generateToken, loadConfig, updateConfigFile } from "../config.ts";
+import type { Logger } from "../logger.ts";
 import { daemonCommand } from "../service.ts";
 import { TelemetryOptIn, type TelemetryStatus } from "../telemetry/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 
 /** What the settings commands need of the command line's deps (main.ts's `CliDeps`). */
 export interface ClaudeSettingsCommandDeps {
-  log: { log(message: string): void; error(message: string): void };
+  log: Logger;
   /** This daemon's own command line, as hooks call it back; derived from the process if absent. */
   selfCommand?: string[];
 }
