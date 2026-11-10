@@ -23,6 +23,7 @@ export interface ResumeOffer {
 
 /** The sessions' part of the app's state (#1596): for now, the offers to resume interrupted ones. */
 export interface SessionsSliceState {
+  /** The sessions a daemon restart interrupted on each host, offered for resume (issue #150). */
   resumeOffers: Record<string, ResumeOffer>;
 }
 
@@ -56,7 +57,10 @@ export class SessionsSlice {
     this.core.update({});
   }
 
-  /** Looks for the sessions a restart interrupted: the dialog, or (auto) the resume itself. */
+  /**
+   * Looks for the sessions a restart interrupted: the dialog, or (auto) the resume itself. Only
+   * the store calls it, when a host with the feature connects; a screen never does.
+   */
   async offerResume(hostId: string, conn: Pick<HostConnection, "request">): Promise<void> {
     const found = await conn.request("session.interrupted", {}).catch(() => null);
     const pending = unanswered(found?.sessions ?? [], loadHandled(this.core.storage)[hostId]);

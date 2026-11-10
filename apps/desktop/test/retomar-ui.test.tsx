@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { loadAutoResume, saveAutoResume } = await import("../src/features/sessions/index.ts");
+const { loadAutoResume, saveAutoResume } = await import("../src/features/sessions/resume-offer.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

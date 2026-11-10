@@ -340,7 +340,6 @@ export interface AppState extends HistorySliceState, ActivitySliceState, Session
   meta: Record<string, SessionMeta>;
   /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
   uiChoices: Record<string, UiMode>;
-  /** The sessions a daemon restart interrupted on each host, offered for resume (issue #150). */
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
