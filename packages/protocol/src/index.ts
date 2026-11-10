@@ -73,7 +73,7 @@ import {
   type ReviewResults,
   reviewCommands,
 } from "./review.ts";
-import { type RunConfigInfo, RunState } from "./run.ts";
+import { RunEnvUpdated, type RunResults, runCommands } from "./run.ts";
 import {
   AskpassRequest,
   type SecretsResults,
@@ -1733,14 +1733,6 @@ export const Command = z.discriminatedUnion("type", [
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
   /** Issue #79: the open code-scanning and Dependabot alerts of the project's repository, read-only. */
   cmd("alert.list", z.object({ projectId: z.string() })),
-  // Phase 24: the run environment of a card (scripts, a block of ports, a preview).
-  cmd("runenv.config", z.object({ projectId: z.string() })),
-  /** `hash` is the run.yaml the user reviewed; one that changed since is refused. */
-  cmd("runenv.trust", z.object({ projectId: z.string(), hash: z.string().min(1) })),
-  cmd("runenv.start", z.object({ cardId: z.string() })),
-  cmd("runenv.stop", z.object({ cardId: z.string() })),
-  cmd("runenv.get", z.object({ cardId: z.string() })),
-  cmd("runenv.watch", z.object({}).strict()),
   // Phase 23: the timing of a terminal session, from Claude Code's OTLP telemetry.
   cmd("telemetry.session", z.object({ claudeSessionId: z.string() })),
   cmd("telemetry.summary", z.object({}).strict()),
@@ -1922,6 +1914,7 @@ export const Command = z.discriminatedUnion("type", [
   ...reviewCommands,
   ...automationsCommands,
   ...workflowsCommands,
+  ...runCommands,
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -2297,7 +2290,8 @@ export interface CommandResults
     TeleportResults,
     ReviewResults,
     AutomationsResults,
-    WorkflowsResults {
+    WorkflowsResults,
+    RunResults {
   hello: HelloResult;
   "session.list": SessionListResult;
   "session.create": SessionCreateResult;
@@ -2392,12 +2386,6 @@ export interface CommandResults
   "card.validationTemplate": ValidationTemplate;
   "card.templates": CardTemplates;
   "alert.list": { alerts: RepoAlert[]; unavailable: AlertsUnavailable[] };
-  "runenv.config": RunConfigInfo;
-  "runenv.trust": RunConfigInfo;
-  "runenv.start": RunState;
-  "runenv.stop": RunState;
-  "runenv.get": RunState;
-  "runenv.watch": undefined;
   "telemetry.session": TelemetrySession;
   "telemetry.summary": TelemetrySummary;
   "trace.get": SessionTrace;
@@ -2569,11 +2557,6 @@ export const ExternalPermissionFrame = z.object({
   createdAt: z.string(),
 });
 export type ExternalPermissionFrame = z.infer<typeof ExternalPermissionFrame>;
-
-/** Sent after `run.watch` with the whole workflow run after each change. Not a session event. */
-/** A card's run environment changed (after `runenv.watch`). */
-export const RunEnvUpdated = z.object({ type: z.literal("runenv.updated"), state: RunState });
-export type RunEnvUpdated = z.infer<typeof RunEnvUpdated>;
 
 export const ServerMessage = z.union([
   AckOk,
