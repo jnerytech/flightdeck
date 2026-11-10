@@ -191,9 +191,8 @@ import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
 import { ulid } from "./ulid.ts";
 import { binaryVersion, refusedAddress, stableBinPath, waitHealthy } from "./update.ts";
-import { DaemonUpdater } from "./updates/apply.ts";
-import { AutoUpdater, autoUpdateOf } from "./updates/auto.ts";
-import { UpdateChecker } from "./updates/check.ts";
+import { autoUpdateOf } from "./updates/auto.ts";
+import { createUpdates } from "./updates/wiring.ts";
 import { addToUserPath, binDir } from "./user-path.ts";
 import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
@@ -282,42 +281,6 @@ async function terminalInfo(env: Record<string, string | undefined>) {
       : null,
     wslDistro: env.WSL_DISTRO_NAME || null,
   };
-}
-
-/**
- * The release checker, the daemon's updater and, with both, the auto updater (#280): a newer
- * version is applied by itself, only while nothing runs on the host. The checker is made first and
- * tells the auto updater after each check; it is checked in the background, so a slow or
- * unreachable release server never delays the boot.
- */
-function createUpdates(config: Config, host: { idle: () => boolean; log: (line: string) => void }) {
-  let autoUpdater: AutoUpdater | undefined;
-  const updates = config.updates.manifestUrl
-    ? new UpdateChecker({
-        manifestUrl: config.updates.manifestUrl,
-        checkIntervalH: config.updates.checkIntervalH,
-        currentVersion: DAEMON_VERSION,
-        onChecked: () => autoUpdater?.checked(),
-      })
-    : undefined;
-  const updater = updates
-    ? new DaemonUpdater({
-        manifest: () => updates.latest(),
-        dataDir: config.dataDir,
-        ctx: osServiceContext(false),
-      })
-    : undefined;
-  if (updates && updater) {
-    autoUpdater = new AutoUpdater({
-      enabled: () => config.updates.auto,
-      currentVersion: DAEMON_VERSION,
-      latest: updates.latest.bind(updates),
-      idle: host.idle,
-      apply: (proceed) => updater.apply(true, { proceed }),
-      log: host.log,
-    });
-  }
-  return { updates, updater, autoUpdater };
 }
 
 /** The supervisor of the WSL distributions the config lists, if any. */
