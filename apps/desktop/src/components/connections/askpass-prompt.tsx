@@ -24,7 +24,7 @@ function Prompt(props: Readonly<{ store: AppStore; item: AppState["askpass"][num
   const answered = useRef(false);
   const answer = (value: string | null) => {
     answered.current = true;
-    void store.answerAskpass(item.hostId, request.requestId, value);
+    void store.ssh.answer(item.hostId, request.requestId, value);
   };
   const label = t(`connections.askpass.label.${request.kind}`);
   return (

@@ -44,11 +44,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
+import { isProd } from "../features/ssh/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { hostColorVar } from "../lib/host-color.ts";
 import { revealTab } from "../lib/reveal-tab.ts";
-import { isProd } from "../lib/ssh.ts";
 import {
   badgePulses,
   type TabBadge,
@@ -80,7 +80,7 @@ const MOVE_KEYS = "Control+Shift+ArrowLeft Control+Shift+ArrowRight";
 const sshOf = (tab: Tab, store: AppStore) => {
   const route = tab.router.current;
   return route.name === "terminal"
-    ? store.sshTerminals.get(`${route.host}/${route.terminalId}`)
+    ? store.ssh.terminals.get(`${route.host}/${route.terminalId}`)
     : undefined;
 };
 
