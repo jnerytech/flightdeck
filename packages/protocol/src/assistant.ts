@@ -3,7 +3,9 @@
  * runs (the daemon's `claude` or the app's Rust shell) and what it gives back, the daemon's commands,
  * and the reasons a refusal can carry.
  */
+
 import { z } from "zod";
+import { cmd } from "./command.ts";
 
 /** The host feature that announces the assistant (`host.info.features`). */
 export const ASSISTANT_FEATURE = "assistant";
@@ -182,3 +184,20 @@ export const ModelOption = z.object({
   supportsEffort: z.boolean().optional(),
 });
 export type ModelOption = z.infer<typeof ModelOption>;
+
+/** The assistant commands; index.ts spreads them into `Command`. */
+export const assistantCommands = [
+  /** Phase 40: the AI assistant (feature `assistant`). */
+  cmd("assistant.run", AssistantRunPayload),
+  cmd("assistant.cancel", AssistantCancelPayload),
+  cmd("assistant.context", AssistantContextPayload),
+  cmd("assistant.record", AssistantRecordPayload),
+] as const;
+
+/** The `data` of each assistant command's ack; `CommandResults` extends it. */
+export interface AssistantResults {
+  "assistant.run": AssistantResult;
+  "assistant.cancel": undefined;
+  "assistant.context": AssistantContextBundle;
+  "assistant.record": undefined;
+}
