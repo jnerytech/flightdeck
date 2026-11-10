@@ -411,10 +411,29 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
       if (found.has(test)) continue;
       const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
       if (name) found.set(test, `names ${name}`);
+      else {
+        const relative = relativeNames(test, source).find(({ resolved }) =>
+          names.includes(resolved),
+        );
+        if (relative) found.set(test, `names ${relative.literal} (${relative.resolved})`);
+      }
     }
   }
   // In the sources' order; planRelated sorts what it runs.
   return [...found].map(([path, why]) => ({ path, why }));
+}
+
+/**
+ * #1699: the paths a test names relative to its own folder (`join(import.meta.dir, "../src")`, the
+ * tree a scan reads), resolved from that folder. An ancestor of the folder (the app, the
+ * repository) is where the test lives, not something it reads, so it is left out.
+ */
+function relativeNames(test: string, source: string): Array<{ literal: string; resolved: string }> {
+  const dir = posix.dirname(test);
+  return Array.from(source.matchAll(/["'`](\.\.?(?:\/[^"'`$\s]*)?)["'`]/g), (m) => {
+    const literal = m[1] as string;
+    return { literal, resolved: posix.join(dir, literal).replace(/\/$/, "") };
+  }).filter(({ resolved }) => resolved !== "." && !`${dir}/`.startsWith(`${resolved}/`));
 }
 
 function escapeRegExp(text: string): string {
