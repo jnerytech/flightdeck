@@ -66,6 +66,9 @@ export class ProjectTrust {
   /** The ticket of the look whose answer each folder holds: an older one that finishes later stores nothing. */
   private readonly stored = new Map<string, number>();
   private scans = 0;
+  /** The ticket of the latest read of the roots, and of the one whose answer is held (#1728). */
+  private rootReads = 0;
+  private rootsStored = 0;
   /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
   private realRoots: string[] = [];
   /**
@@ -180,15 +183,21 @@ export class ProjectTrust {
 
   /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
   async refreshRoots(): Promise<void> {
-    this.realRoots = await rootNames(this.opts.roots?.() ?? []);
+    // Two reads can overlap (#1728, as `scan` in #415): the one that started last has read the later
+    // state, so it is the one kept. One that finishes first still stores, until a newer one replaces it.
+    const ticket = ++this.rootReads;
+    const real = await rootNames(this.opts.roots?.() ?? []);
     // The same rule `project.trust.set` applies when the record is made; a root with no `.git` of
     // its own costs one stat. Read for every root, not only recorded ones, because `set` answers
     // from this list right after it writes the record.
     const looked = await Promise.all(
-      this.realRoots.map(async (root) =>
-        (await trustsManyProjects(root, this.realRoots, this.opts.rootFs)) ? null : root,
+      real.map(async (root) =>
+        (await trustsManyProjects(root, real, this.opts.rootFs)) ? null : root,
       ),
     );
+    if (this.rootsStored > ticket) return;
+    this.rootsStored = ticket;
+    this.realRoots = real;
     this.projectRoots = looked.filter((root): root is string => root !== null);
   }
 
