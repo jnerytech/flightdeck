@@ -169,6 +169,7 @@ test's baseline, with the issue that renames them.
 | `boardsync` | board sync | Two-way sync of a board with an external board (GitHub Projects, Azure Boards) |
 | `central` | terminal session | Terminal sessions seen through Claude Code's hooks: the receptor, the hooks, the wrapper |
 | `checkpoints` | snapshot | The git snapshots of each turn, rewind files and fork |
+| `cli` | command line | The `flightdeckd` command line: its words, flags and usage, parsed with no effect |
 | `costs` | cost | Estimated costs from the transcripts, price table, budgets and the status line |
 | `deps` | dependency | The tools a host needs (git, gh, claude...), probed and reported |
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
