@@ -395,10 +395,14 @@ function pyramidTests(
 
 /**
  * The tests that name a changed file, or one of its folders, as a string literal: the data files,
- * configs and spawned entries a test reads without importing them.
+ * configs and spawned entries a test reads without importing them. A path a test writes relative
+ * to its own folder (`"../src"`, or join()'s separate segments `"..", "e2e"`) names the folder it
+ * resolves to (#1699), unless that is the test's own folder or an ancestor of it.
  */
 export function selectByPath(changed: string[], sources: Map<string, string>): Related[] {
   const tests = [...sources].filter(([path]) => TEST_FILE.test(path));
+  // Each test's relative names depend on the test alone: read once, not once per changed file.
+  const relatives = new Map(tests.map(([test, source]) => [test, relativeNames(test, source)]));
   const found = new Map<string, string>();
   for (const path of changed) {
     // The path itself, then its folders, most specific first. A name with no slash (a root file,
@@ -410,11 +414,40 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
     for (const [test, source] of tests) {
       if (found.has(test)) continue;
       const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
+      const relative = name
+        ? undefined
+        : relatives.get(test)?.find(({ resolved }) => names.includes(resolved));
       if (name) found.set(test, `names ${name}`);
+      else if (relative) found.set(test, `names ${relative.literal} (${relative.resolved})`);
     }
   }
   // In the sources' order; planRelated sorts what it runs.
   return [...found].map(([path, why]) => ({ path, why }));
+}
+
+/** A relative path in one string, opened and closed by the same quote. */
+const RELATIVE_LITERAL = /(["'`])(\.\.?(?:\/[^"'`$\s]*)?)\1/g;
+/** `join(import.meta.dir, "..", "e2e")` or `resolve(...)`: the literal segments after the folder. */
+const JOINED_SEGMENTS =
+  /\b(?:join|resolve)\(\s*import\.meta\.dir((?:\s*,\s*(["'`])[^"'`$\s]*\2)+)\s*\)/g;
+const SEGMENT = /(["'`])([^"'`$\s]*)\1/g;
+
+/**
+ * #1699: the paths a test names relative to its own folder (the tree a scan reads), resolved from
+ * that folder. The test's folder and its ancestors (the app, the repository) are where the test
+ * lives, not something it reads, so they are left out.
+ */
+function relativeNames(test: string, source: string): Array<{ literal: string; resolved: string }> {
+  const dir = posix.dirname(test);
+  const literals = [
+    ...Array.from(source.matchAll(RELATIVE_LITERAL), (m) => m[2] as string),
+    ...Array.from(source.matchAll(JOINED_SEGMENTS), (m) =>
+      posix.join(...Array.from((m[1] as string).matchAll(SEGMENT), (s) => s[2] as string)),
+    ).filter((joined) => joined.startsWith(".")),
+  ];
+  return literals
+    .map((literal) => ({ literal, resolved: posix.join(dir, literal).replace(/\/$/, "") }))
+    .filter(({ resolved }) => !`${dir}/`.startsWith(`${resolved}/`));
 }
 
 function escapeRegExp(text: string): string {
