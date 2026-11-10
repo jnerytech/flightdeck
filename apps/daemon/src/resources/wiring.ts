@@ -1,5 +1,7 @@
 import { statfs } from "node:fs/promises";
 import { cpus, freemem, loadavg, totalmem } from "node:os";
+import { type Config, updateConfigFile } from "../config.ts";
+import { MemoryGate, type MemoryReading, osMemoryReading } from "./memory-gate.ts";
 import { procfsReader } from "./procfs.ts";
 import { type ProcReader, Resources } from "./resources.ts";
 
@@ -131,4 +133,47 @@ export async function getconf(
   } catch {
     return null;
   }
+}
+
+/** What the memory hold on new cards is built from (issue #1343). */
+export interface MemoryGateDeps {
+  /** The daemon's config itself: the switch updates its `resources.pauseAt` in place. */
+  config: Pick<Config, "resources">;
+  configFile: string;
+  /** The host's memory for the hold on new cards; the OS's when absent (tests inject one). */
+  reading?: () => MemoryReading | null;
+}
+
+/**
+ * The hold on new cards while memory is at or above resources.pauseAt (issue #1343, #1593), and the
+ * app's switch for it, kept in the config file like the rest of the host settings.
+ */
+export function createMemoryGate({ config, configFile, reading }: MemoryGateDeps) {
+  // FLIGHTDECK_SERVICE_GUARD is set only by the test preload, never in production: under it nothing of
+  // the real machine is read (a busy runner would hold every board test), so the hold stays open
+  // unless a test injects one.
+  const memoryGate = new MemoryGate({
+    pauseAt: config.resources.pauseAt,
+    read:
+      reading ??
+      (process.env.FLIGHTDECK_SERVICE_GUARD
+        ? () => null
+        : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
+  });
+  return {
+    memoryGate,
+    memoryPause: {
+      pauseAt: () => memoryGate.pauseAt(),
+      holding: () => memoryGate.holds(),
+      set: async (pauseAt: number | null) => {
+        // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({
+          ...raw,
+          resources: { ...(raw.resources as object | undefined), pauseAt },
+        }));
+        config.resources.pauseAt = pauseAt;
+        memoryGate.setPauseAt(pauseAt);
+      },
+    },
+  };
 }
