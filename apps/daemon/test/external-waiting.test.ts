@@ -168,6 +168,44 @@ describe("external-waiting: the sessions started in a terminal say what they wai
     expect(registry.get("s1")?.waiting ?? null).toBeNull();
   });
 
+  test("a notification does not end the wait: the transcript did not move", async () => {
+    const { registry, transcript, hook } = setup();
+    hook("SessionStart");
+    appendFileSync(transcript, entry("assistant", [call("ExitPlanMode")]));
+    await registry.sweep();
+    registry.apply("Notification", {
+      session_id: "s1",
+      transcript_path: transcript,
+      notification_type: "idle_prompt",
+    });
+    expect(registry.get("s1")?.waiting).toBe("plan");
+  });
+
+  test("a read that failed is tried again at the next sweep, not remembered as waiting for nothing", async () => {
+    const store = new EventStore(":memory:");
+    const dir = tempDir();
+    const transcript = join(dir, "s1.jsonl");
+    writeFileSync(transcript, entry("assistant", [call("AskUserQuestion")]));
+    let failing = true;
+    const registry = new ExternalSessions({
+      db: store.db,
+      staleAfterS: 900,
+      now: () => T0,
+      readTail: async (path) => {
+        if (failing) return null;
+        const { readFileSync, statSync } = await import("node:fs");
+        const info = statSync(path);
+        return { text: readFileSync(path, "utf8"), size: info.size, mtimeMs: info.mtimeMs };
+      },
+    });
+    registry.apply("SessionStart", { session_id: "s1", transcript_path: transcript });
+    await registry.sweep();
+    expect(registry.get("s1")?.waiting ?? null).toBeNull();
+    failing = false;
+    await registry.sweep();
+    expect(registry.get("s1")?.waiting).toBe("question");
+  });
+
   test("an ended session, one with no readable transcript, or a read that throws says nothing", async () => {
     const { registry, transcript, hook } = setup();
     hook("SessionStart");
