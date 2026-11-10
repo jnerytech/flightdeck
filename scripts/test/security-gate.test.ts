@@ -504,6 +504,27 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     expect([found, performance.now() - started < 500]).toEqual([[], true]);
   });
 
+  test("from the second security review (#1588): every text shape reads a long run of spaces in linear time", () => {
+    // One line per alternative of the text shapes, each ending in a character that makes it fail
+    // after the spaces: a quadratic alternative takes seconds on 60,000 spaces, a linear one ms.
+    const spaces = " ".repeat(60_000);
+    const shapes = [
+      `a:${spaces}!`,
+      `a: {${spaces}!`,
+      `"x"${spaces}!`,
+      `a: "x"${spaces}!`,
+      `a: { b: "x"${spaces}!`,
+    ];
+    for (const line of shapes) {
+      const started = performance.now();
+      riskyFiles(new Map([[EN, [line]]]));
+      expect([line.slice(0, 8), performance.now() - started < 500]).toEqual([
+        line.slice(0, 8),
+        true,
+      ]);
+    }
+  });
+
   test("code beside that text is still read: a template with an expression, a call, a spawn", () => {
     const removed = new Map([[EN, ['      "Old text",']]]);
     const heads = [
