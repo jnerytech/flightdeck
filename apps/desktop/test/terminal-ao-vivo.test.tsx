@@ -69,14 +69,14 @@ const click = async (name: string | RegExp) => {
 };
 
 describe("terminal-ao-vivo: a session already live in another terminal (#502)", () => {
-  test("liveElsewhere finds a running, idle or waiting session of that host, never an ended or unknown one", () => {
+  test("liveElsewhere finds a running, idle, waiting or not-yet-heard-from session of that host, never an ended one (#1705)", () => {
     const of = (status: ExternalStatus) => ({ "h1/abc": external("abc", status) });
-    for (const status of ["running", "idle", "awaiting_permission"] as const) {
+    // `unknown` is what a daemon restart makes of every session that had not ended: a `claude` that
+    // waits at a plan approval sends no event, so it can stay `unknown` while it is alive.
+    for (const status of ["running", "idle", "awaiting_permission", "unknown"] as const) {
       expect(liveElsewhere(of(status), "h1", "abc")?.status, status).toBe(status);
     }
-    for (const status of ["ended", "unknown"] as const) {
-      expect(liveElsewhere(of(status), "h1", "abc"), status).toBeNull();
-    }
+    expect(liveElsewhere(of("ended"), "h1", "abc")).toBeNull();
     expect(liveElsewhere(of("running"), "h2", "abc")).toBeNull();
     expect(liveElsewhere(of("running"), "h1", "other")).toBeNull();
   });
@@ -92,6 +92,13 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
       host: hostId,
       claudeSessionId: "abc-123",
     });
+    expect(ptys.spawned).toHaveLength(0);
+  });
+
+  test("a session the daemon has not heard from since it restarted asks first too (#1705)", async () => {
+    const { ptys } = await setup("en", "unknown");
+    await click("Continue in the terminal");
+    expect(screen.queryByText("Already open in another terminal")).not.toBeNull();
     expect(ptys.spawned).toHaveLength(0);
   });
 
