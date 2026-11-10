@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { cruise } from "dependency-cruiser";
 import { grownRules, KNOWN, ruleCounts, runArchRatchet } from "../lib/arch-ratchet.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 // The real rules: a planted import is judged by what CI runs (`bun run arch`).
 const CONFIG = require("../../.dependency-cruiser.cjs") as {
@@ -13,7 +13,7 @@ const CONFIG = require("../../.dependency-cruiser.cjs") as {
 
 /** The violations the real rules find in a planted tree, as `<rule> <from> -> <to>`. */
 async function planted(files: Record<string, string>): Promise<string[]> {
-  const root = mkdtempSync(join(tmpdir(), "fd-arch-"));
+  const root = realTempDir("fd-arch-");
   try {
     for (const [path, text] of Object.entries(files)) {
       mkdirSync(dirname(join(root, path)), { recursive: true });
