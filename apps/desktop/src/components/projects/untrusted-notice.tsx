@@ -73,8 +73,12 @@ export function UntrustedNotice(
     );
   }
   if (trusted === null) return null;
-  if (trusted)
-    return <InlineNotice tone="info">{t("projectPage.trust.sessionTrusted")}</InlineNotice>;
+  // The mark is for a tall area: a short one keeps its room for the conversation (#422, #1704).
+  if (trusted) {
+    return short ? null : (
+      <InlineNotice tone="info">{t("projectPage.trust.sessionTrusted")}</InlineNotice>
+    );
+  }
   return (
     <InlineNotice>
       {t(short ? "projectPage.trust.sessionNoticeShort" : "projectPage.trust.sessionNotice")}{" "}
