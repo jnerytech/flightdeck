@@ -384,8 +384,11 @@ export async function startDaemon(
     pinned?: (claudeSessionId: string | null) => boolean;
     cardSession?: (sessionId: string) => boolean;
   } = {};
-  const power = createKeepAwake({ powerContext: options.powerContext, config, configFile });
-  const { keepAwake } = power;
+  const { keepAwake, keepAwakeSwitch } = createKeepAwake({
+    powerContext: options.powerContext,
+    config,
+    configFile,
+  });
 
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
@@ -1007,7 +1010,7 @@ export async function startDaemon(
     },
     memoryPause,
     quotaPause,
-    ...power.server,
+    keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,

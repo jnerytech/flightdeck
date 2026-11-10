@@ -14,19 +14,17 @@ export interface PowerDeps {
  * permission, and the switch the client turns, kept in the config.
  */
 export function createKeepAwake({ powerContext, config, configFile }: PowerDeps) {
-  // Holds the computer awake while a session runs or waits for a permission (issue #163).
   const keepAwake = new KeepAwake(powerContext ?? osPowerContext(), config.keepAwake);
   return {
     keepAwake,
-    server: {
-      keepAwake: {
-        status: () => keepAwake.status(),
-        set: async (enabled: boolean) => {
-          // The file first: when it cannot be written the switch stays as it was, for the client and the daemon.
-          await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
-          config.keepAwake = enabled;
-          keepAwake.setEnabled(enabled);
-        },
+    /** The client's switch: the status, and a change written to the config file first. */
+    keepAwakeSwitch: {
+      status: () => keepAwake.status(),
+      set: async (enabled: boolean) => {
+        // The file first: when it cannot be written the switch stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
+        config.keepAwake = enabled;
+        keepAwake.setEnabled(enabled);
       },
     },
   };
