@@ -1,5 +1,5 @@
 import type { DepsResult, DoctorResult } from "@flightdeck/protocol";
-import { APP_VERSION, hasFeature } from "../../lib/version.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 /** How long a host's health read stays fresh: the sidebar and the host page ask again after it. */
 export const HEALTH_MAX_AGE_MS = 5 * 60_000;
@@ -34,7 +34,8 @@ export interface HealthCore {
   /** The features a host announced; undefined before its info arrived. */
   features(hostId: string): readonly string[] | undefined;
   deps(hostId: string): Promise<HealthAnswer<DepsResult>>;
-  doctor(hostId: string, appVersion: string): Promise<HealthAnswer<DoctorResult>>;
+  /** The doctor of a host, run for this app's version. */
+  doctor(hostId: string): Promise<HealthAnswer<DoctorResult>>;
   now(): number;
 }
 
@@ -68,9 +69,7 @@ export class HealthSlice {
     const features = this.core.features(hostId);
     const [deps, doctor] = await Promise.all([
       hasFeature(features, "depsCheck", false) ? this.core.deps(hostId) : Promise.resolve(null),
-      hasFeature(features, "doctor.run", false)
-        ? this.core.doctor(hostId, APP_VERSION)
-        : Promise.resolve(null),
+      hasFeature(features, "doctor.run", false) ? this.core.doctor(hostId) : Promise.resolve(null),
     ]);
     const failed = [deps, doctor].find((half) => half !== null && !half.ok);
     const state = this.core.state();

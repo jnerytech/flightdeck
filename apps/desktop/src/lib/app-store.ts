@@ -1045,7 +1045,7 @@ export class AppStore {
       update: (patch) => this.update(patch),
       features: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
       deps: (hostId) => this.hostRequest(hostId, "deps.check", {}),
-      doctor: (hostId, appVersion) => this.hostRequest(hostId, "doctor.run", { appVersion }),
+      doctor: (hostId) => this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION }),
       now: () => this.now(),
     });
     this.snippets = new SnippetsSlice({
