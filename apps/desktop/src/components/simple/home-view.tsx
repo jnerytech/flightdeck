@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { Key, T } from "../../i18n/index.ts";
+import type { T } from "../../i18n/index.ts";
 import type { ConnectionStatus } from "../../lib/host-connection.ts";
 import type { TaskState } from "../../lib/simple-task.ts";
 
@@ -154,14 +154,35 @@ function askedFor(template: Template, lang: T["lang"]): string {
     .join(", ");
 }
 
-/** What each connection state is called on Home and, when tasks cannot start, what to do. */
-const STATE_TEXT: Record<ConnectionStatus, { label: Key; notice: Key | null }> = {
-  online: { label: "simple.home.connected", notice: null },
-  connecting: { label: "simple.home.connecting", notice: null },
-  offline: { label: "simple.home.notConnected", notice: "simple.home.offline" },
-  unauthorized: { label: "simple.home.notAccepted", notice: "simple.home.unauthorized" },
-  incompatible: { label: "simple.home.needsUpdate", notice: "simple.home.incompatible" },
-};
+/** What the connection is called on Home. */
+function stateLabel(status: ConnectionStatus, t: T): string {
+  switch (status) {
+    case "online":
+      return t("simple.home.connected");
+    case "connecting":
+      return t("simple.home.connecting");
+    case "unauthorized":
+      return t("simple.home.notAccepted");
+    case "incompatible":
+      return t("simple.home.needsUpdate");
+    default:
+      return t("simple.home.notConnected");
+  }
+}
+
+/** Why tasks cannot start and what to do, or null while the host is online or connecting. */
+function stateNotice(status: ConnectionStatus, t: T, host: string): string | null {
+  switch (status) {
+    case "offline":
+      return t("simple.home.offline", { host });
+    case "unauthorized":
+      return t("simple.home.unauthorized", { host });
+    case "incompatible":
+      return t("simple.home.incompatible", { host });
+    default:
+      return null;
+  }
+}
 
 /** The first place of simple mode: the templates, what waits for an answer, the recent tasks. */
 export function HomeView(props: Readonly<HomeViewProps>) {
@@ -169,8 +190,7 @@ export function HomeView(props: Readonly<HomeViewProps>) {
   const [chosen, setChosen] = useState<Template | null>(null);
   const waiting = props.tasks.filter((task) => task.state === "waiting");
   const { where } = props;
-  const stateText = STATE_TEXT[where.status];
-  const state = t(stateText.label);
+  const notice = stateNotice(where.status, t, where.hostName);
 
   const taskRow = (task: HomeTask) => (
     <li key={task.sessionId} className="home-task">
@@ -193,11 +213,9 @@ export function HomeView(props: Readonly<HomeViewProps>) {
       <h1 className="task-title">{t("simple.home.title")}</h1>
       <p className="question-card-note">{t("simple.home.intro")}</p>
       <p className="question-card-note">
-        {t("simple.home.runsOn", { host: where.hostName, state })}
+        {t("simple.home.runsOn", { host: where.hostName, state: stateLabel(where.status, t) })}
       </p>
-      {stateText.notice && (
-        <InlineNotice tone="error">{t(stateText.notice, { host: where.hostName })}</InlineNotice>
-      )}
+      {notice && <InlineNotice tone="error">{notice}</InlineNotice>}
       {where.status === "online" && where.folders?.length === 0 && (
         <Note>
           <span>{t("simple.home.noFolders")}</span>
