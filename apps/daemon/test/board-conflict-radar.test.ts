@@ -39,6 +39,7 @@ function reopen({
 }: Pick<ReturnType<typeof newBoard>, "store" | "manager" | "root">) {
   const board = new Board({ db: store.db, manager, allowedRoots: [root] });
   cleanups.push(() => board.stop());
+  void board.start();
   return board;
 }
 
