@@ -10,6 +10,13 @@ import { fileURLToPath } from "node:url";
  */
 const FILES = [
   "../../../packages/protocol/src/index.ts",
+  // Issue #1600: the contexts split out of index.ts.
+  "../../../packages/protocol/src/command.ts",
+  "../../../packages/protocol/src/permissions.ts",
+  "../../../packages/protocol/src/personas.ts",
+  "../../../packages/protocol/src/secrets.ts",
+  "../../../packages/protocol/src/sessions.ts",
+  "../../../packages/protocol/src/usage.ts",
   "../src/server.ts",
   "../src/terminal/terminal-manager.ts",
 ];
