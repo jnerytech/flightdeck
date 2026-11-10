@@ -22,7 +22,9 @@ import {
 } from "./assistant.ts";
 import { type AutomationsResults, automationsCommands } from "./automations.ts";
 import {
+  BoardColumn,
   type CardTemplates,
+  ChecksState,
   ColumnContract,
   PINNED_DOCS_MAX,
   pinnedDocProblem,
@@ -391,14 +393,8 @@ export const HistoryResumePayload = z.object({
 export const PrProviderKind = z.enum(["github", "azure-devops", "none"]);
 export type PrProviderKind = z.infer<typeof PrProviderKind>;
 
-export const BoardColumn = z.enum(["backlog", "in_progress", "waiting", "review", "done"]);
-export type BoardColumn = z.infer<typeof BoardColumn>;
-
 export const PrState = z.enum(["open", "merged", "closed"]);
 export type PrState = z.infer<typeof PrState>;
-
-export const ChecksState = z.enum(["pending", "passing", "failing"]);
-export type ChecksState = z.infer<typeof ChecksState>;
 
 /** Issue #1352: whether a PR can be merged as it is, as its host reports it. */
 export const PrMergeable = z.enum(["clean", "conflict", "blocked", "unknown"]);

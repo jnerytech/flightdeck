@@ -1,5 +1,12 @@
 import { z } from "zod";
-import type { BoardColumn, Card } from "./index.ts";
+
+// Issue #1600: the columns and the checks state are the contracts' own words, so this file never
+// imports index.ts or the card schema.
+export const BoardColumn = z.enum(["backlog", "in_progress", "waiting", "review", "done"]);
+export type BoardColumn = z.infer<typeof BoardColumn>;
+
+export const ChecksState = z.enum(["pending", "passing", "failing"]);
+export type ChecksState = z.infer<typeof ChecksState>;
 
 /** What a column can ask of a card before it gets there (issue #78). */
 export const ContractCheck = z.enum(["criteria", "pr", "checks", "validation", "spec"]);
@@ -124,10 +131,16 @@ export function hasChecklistItem(text: string): boolean {
   return false;
 }
 
-type Lookable = Pick<
-  Card,
-  "description" | "prUrl" | "checksState" | "validationNote" | "specState" | "specPath" | "slug"
->;
+/** The card fields the contracts read: their own narrow port, which a whole card satisfies. */
+interface Lookable {
+  description: string;
+  prUrl: string | null;
+  checksState: ChecksState | null;
+  validationNote: string | null;
+  specState: SpecState | null;
+  specPath: string | null;
+  slug: string | null;
+}
 
 /** A PR's checks only count once there is a PR; a repository with none reports no state at all. */
 function checksNeeds(card: Lookable): ContractNeed[] {
