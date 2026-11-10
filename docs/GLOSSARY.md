@@ -175,6 +175,7 @@ test's baseline, with the issue that renames them.
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
 | `harness` | harness | A project's Markdown harness shared as a host template |
 | `history` | history | The conversations Claude Code already recorded, indexed and read only |
+| `hosts` | host | The machines the app talks to: what each reports about its health (dependencies and doctor), then its saved list and connection |
 | `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
 | `knowledge` | library | A project's document library and what a session is given from it |
 | `logs` | log | The daemon's own log files: rotation, scan and serve |
