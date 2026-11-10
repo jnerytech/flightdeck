@@ -2,7 +2,9 @@ import type { Template, TemplateField } from "@flightdeck/protocol";
 import { FileText, FolderSearch, GitCompare, type LucideIcon, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
+import { Note } from "@/components/layout/note";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { T } from "../../i18n/index.ts";
+import type { ConnectionStatus } from "../../lib/host-connection.ts";
 import type { TaskState } from "../../lib/simple-task.ts";
 
 export interface HomeTask {
@@ -21,7 +24,17 @@ export interface HomeTask {
   state: TaskState;
 }
 
+/** Where the tasks run and what they may use: the host's name, link and allowed folders. */
+export interface HomeWhere {
+  hostName: string;
+  status: ConnectionStatus;
+  /** `null` until the host has told which folders tasks may use. */
+  folders: string[] | null;
+  onOpenSettings(): void;
+}
+
 export interface HomeViewProps {
+  where: HomeWhere;
   templates: Template[];
   tasks: HomeTask[];
   t: T;
@@ -47,6 +60,8 @@ function TemplateForm(
     t: T;
     canPickFolder: boolean;
     onPickFolder(): Promise<string | null>;
+    /** Why a task cannot start now (the computer is not connected), or null. */
+    blocked: string | null;
     onStart(values: Record<string, string>): Promise<void>;
     onClose(): void;
   }>,
@@ -111,8 +126,8 @@ function TemplateForm(
       ))}
       <FieldRow>
         <ActionButton
-          disabled={missing}
-          disabledReason={t("simple.home.needsAnswer")}
+          disabled={missing || props.blocked !== null}
+          disabledReason={props.blocked ?? t("simple.home.needsAnswer")}
           onClick={async () => {
             const filled = Object.fromEntries(
               Object.entries(values).filter(([, value]) => value.trim() !== ""),
@@ -131,11 +146,51 @@ function TemplateForm(
   );
 }
 
+/** The required fields' names, so a card says what it will ask before it is opened. */
+function askedFor(template: Template, lang: T["lang"]): string {
+  return template.fields
+    .filter((field) => !field.optional)
+    .map((field) => field.label[lang])
+    .join(", ");
+}
+
+/** What the connection is called on Home. */
+function stateLabel(status: ConnectionStatus, t: T): string {
+  switch (status) {
+    case "online":
+      return t("simple.home.connected");
+    case "connecting":
+      return t("simple.home.connecting");
+    case "unauthorized":
+      return t("simple.home.notAccepted");
+    case "incompatible":
+      return t("simple.home.needsUpdate");
+    default:
+      return t("simple.home.notConnected");
+  }
+}
+
+/** Why tasks cannot start and what to do, or null while the host is online or connecting. */
+function stateNotice(status: ConnectionStatus, t: T, host: string): string | null {
+  switch (status) {
+    case "offline":
+      return t("simple.home.offline", { host });
+    case "unauthorized":
+      return t("simple.home.unauthorized", { host });
+    case "incompatible":
+      return t("simple.home.incompatible", { host });
+    default:
+      return null;
+  }
+}
+
 /** The first place of simple mode: the templates, what waits for an answer, the recent tasks. */
 export function HomeView(props: Readonly<HomeViewProps>) {
   const { t } = props;
   const [chosen, setChosen] = useState<Template | null>(null);
   const waiting = props.tasks.filter((task) => task.state === "waiting");
+  const { where } = props;
+  const notice = stateNotice(where.status, t, where.hostName);
 
   const taskRow = (task: HomeTask) => (
     <li key={task.sessionId} className="home-task">
@@ -156,6 +211,16 @@ export function HomeView(props: Readonly<HomeViewProps>) {
   return (
     <div className="home-simple">
       <h1 className="task-title">{t("simple.home.title")}</h1>
+      <p className="question-card-note">{t("simple.home.intro")}</p>
+      {notice && <InlineNotice tone="error">{notice}</InlineNotice>}
+      {where.status === "online" && where.folders?.length === 0 && (
+        <Note>
+          <span>{t("simple.home.noFolders")}</span>
+          <Button type="button" variant="outline" onClick={where.onOpenSettings}>
+            {t("simple.home.openSettings")}
+          </Button>
+        </Note>
+      )}
 
       {waiting.length > 0 && (
         <section aria-label={t("simple.home.waiting")} className="home-waiting">
@@ -170,6 +235,7 @@ export function HomeView(props: Readonly<HomeViewProps>) {
           <ul className="template-cards">
             {props.templates.map((template) => {
               const Icon = ICONS[template.icon] ?? Sparkles;
+              const asks = askedFor(template, t.lang);
               return (
                 <li key={template.id}>
                   <button
@@ -180,6 +246,14 @@ export function HomeView(props: Readonly<HomeViewProps>) {
                     <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
                     <span className="template-card-title">{template.title[t.lang]}</span>
                     <span className="question-card-note">{template.description[t.lang]}</span>
+                    {asks !== "" && (
+                      <span className="question-card-note">
+                        {t("simple.home.asks", { fields: asks })}
+                      </span>
+                    )}
+                    <span className="question-card-note">
+                      {t(`simple.home.preset.${template.preset}`)}
+                    </span>
                   </button>
                 </li>
               );
@@ -188,16 +262,27 @@ export function HomeView(props: Readonly<HomeViewProps>) {
         )}
       </section>
 
-      <section aria-label={t("simple.home.recent")}>
-        <h2 className="home-heading">{t("simple.home.recent")}</h2>
-        {props.tasks.length === 0 ? (
-          <p className="question-card-note">{t("simple.home.empty")}</p>
-        ) : (
-          <ul aria-label={t("simple.home.recent")} className="task-files">
-            {props.tasks.map(taskRow)}
-          </ul>
-        )}
-      </section>
+      {/* Below the cards, so the first card stays inside a phone's window (#1716). */}
+      <p className="question-card-note">
+        {t("simple.home.runsOn", { host: where.hostName, state: stateLabel(where.status, t) })}
+      </p>
+
+      {(props.tasks.length > 0 || props.templates.length > 0) && (
+        <section aria-label={t("simple.home.recent")}>
+          <h2 className="home-heading">{t("simple.home.recent")}</h2>
+          {props.tasks.length === 0 ? (
+            <ol aria-label={t("simple.home.steps")} className="home-steps">
+              <li>{t("simple.home.step1")}</li>
+              <li>{t("simple.home.step2")}</li>
+              <li>{t("simple.home.step3")}</li>
+            </ol>
+          ) : (
+            <ul aria-label={t("simple.home.recent")} className="task-files">
+              {props.tasks.map(taskRow)}
+            </ul>
+          )}
+        </section>
+      )}
 
       <Dialog open={chosen !== null} onOpenChange={(open) => !open && setChosen(null)}>
         <DialogContent>
@@ -212,6 +297,11 @@ export function HomeView(props: Readonly<HomeViewProps>) {
                 t={t}
                 canPickFolder={props.canPickFolder}
                 onPickFolder={props.onPickFolder}
+                blocked={
+                  where.status === "online"
+                    ? null
+                    : t("simple.home.cannotStart", { host: where.hostName })
+                }
                 onStart={(values) => props.onStart(chosen.id, values)}
                 onClose={() => setChosen(null)}
               />

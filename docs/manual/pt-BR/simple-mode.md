@@ -7,10 +7,17 @@ de ver um host, não o que ele faz: as sessões, as permissões e os arquivos s�
 
 **O que você vê.** Um menu estreito com três lugares: *Início*, *Arquivos* e *Configurações*.
 
-- *Início* pergunta "O que você quer que seja feito?" e mostra tarefas prontas como cartões (resumir uma
-  pasta, redigir um relatório, revisar um documento, comparar arquivos). Um cartão pede de uma a
-  três coisas, como uma pasta, e começa a tarefa. As tarefas que esperam por você vêm primeiro,
-  depois as recentes.
+- *Início* pergunta "O que você quer que seja feito?". Abaixo, duas linhas dizem o que é uma tarefa
+  (o Claude trabalhando nos seus arquivos neste computador) e em qual computador as tarefas rodam,
+  com a conexão dele. Se esse computador não está conectado, não aceita o app ou precisa de uma
+  atualização, um aviso diz o que fazer e *Começar esta tarefa* fica parado; se nenhuma pasta foi
+  liberada ainda, uma nota com um botão abre as *Configurações* para adicionar uma. As tarefas
+  prontas são cartões (resumir uma pasta, redigir um relatório, revisar um documento, comparar
+  arquivos); cada cartão lista as perguntas e diz se só lê os seus arquivos, pergunta antes de mudar
+  qualquer coisa ou edita a pasta que você escolher. As tarefas que esperam por você vêm primeiro,
+  depois as recentes; antes da primeira, três passos mostram como uma tarefa acontece: escolher um
+  cartão, responder às perguntas, receber o que foi feito na pasta *Flightdeck results*, dentro da
+  pasta que você escolheu.
 - Uma *tarefa* mostra numa linha o que está fazendo, faz as perguntas em palavras simples com
   **Sim, pode continuar** e **Não** (e avisa quando algo não pode ser desfeito) e, ao terminar, mostra um resumo e
   os arquivos que fez. Abra um arquivo, mostre-o na pasta ou peça mudanças. *Mostrar detalhes* abre
