@@ -179,6 +179,11 @@ async function createRuntime(
   };
 }
 
+/** A wiring's handlers for the server's deps: a key the server lacks fails the typecheck (#1593). */
+const serverPart = <T extends object>(
+  h: T & Record<Exclude<keyof T, keyof ServerOptions>, never>,
+) => h as T;
+
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
 async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
@@ -373,13 +378,7 @@ export async function startDaemon(
     await projectTrust.prepare(path);
     return projectTrust.sessionTrust(path);
   };
-  // The server takes every handler by its key: a renamed one fails here, not silently in a spread.
-  const knowledge: Required<
-    Pick<
-      ServerOptions,
-      "knowledge" | "knowledgeStatus" | "knowledgeCreate" | "knowledgeFeed" | "knowledgeFeedSwitch"
-    >
-  > = createKnowledge({ config, configFile, trust: trustForKnowledge });
+  const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
   const manager = new SessionManager({
     folderLocks,
     store,
@@ -886,8 +885,8 @@ export async function startDaemon(
     quotaPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
-    ...knowledge,
-    ...harness,
+    ...serverPart(knowledge),
+    ...serverPart(harness),
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) => paths.map(trustState),
@@ -932,7 +931,7 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    ...hostChecks,
+    ...serverPart(hostChecks),
     sessionSettings: true,
     messaging,
     names,
@@ -991,7 +990,7 @@ export async function startDaemon(
     review: reviewComments,
     ...(cardReviews ? { cardReview: cardReviews } : {}),
     sessionFiles: new SessionFiles({ db: store.db }),
-    ...ssh.server,
+    ...serverPart(ssh.server),
     snippets,
     personas: personaStore,
     personaSessions,
