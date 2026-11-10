@@ -208,7 +208,7 @@ describe("daemon-idle: what a started daemon keeps running", () => {
     git(root, "init", "-q", "--bare", "remote.git");
     git(repo, "remote", "add", "origin", join(root, "remote.git"));
     await board.createPr(card.id);
-    expect(mine()).toEqual(["board/board.ts 30"]);
+    expect(mine()).toEqual(["board/pr-poll.ts 30"]);
     await Bun.sleep(100);
     expect(ticks.length).toBeGreaterThan(0);
     pr.state = "closed";
