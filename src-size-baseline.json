@@ -1,6 +1,6 @@
 {
   "apps/daemon/src/actions/actions.ts": 986,
-  "apps/daemon/src/board/board.ts": 2143,
+  "apps/daemon/src/board/board.ts": 1042,
   "apps/daemon/src/board/pr.ts": 840,
   "apps/daemon/src/history/indexer.ts": 841,
   "apps/daemon/src/main.ts": 2866,
@@ -15,6 +15,5 @@
   "apps/desktop/src/ui/SessionView.tsx": 1119,
   "apps/desktop/src/ui/SessionsHub.tsx": 906,
   "apps/desktop/src/ui/Sidebar.tsx": 981,
-  "apps/desktop/src/ui/TeamsPage.tsx": 902,
-  "packages/protocol/src/index.ts": 5120
+  "apps/desktop/src/ui/TeamsPage.tsx": 902
 }

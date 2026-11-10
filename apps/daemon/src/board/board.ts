@@ -315,8 +315,14 @@ export class Board {
       this.blockers.afterBlockerChange(id);
     }
     this.pump();
-    // The radar starts empty: read the cards that already have a worktree, one at a time.
-    void this.radarFeed.refreshAll().catch(() => {});
+  }
+
+  /**
+   * The work a board begins once it is built, kept out of the constructor (Sonar S7059): the radar
+   * starts empty, so it reads the cards that already have a worktree, one at a time.
+   */
+  start(): Promise<void> {
+    return this.radarFeed.refreshAll().catch(() => {});
   }
 
   listProjects(): Project[] {

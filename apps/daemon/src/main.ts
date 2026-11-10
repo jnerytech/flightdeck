@@ -1170,8 +1170,8 @@ export async function startDaemon(
     onSettingsChange: ({ maxParallelRuns }) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
   });
-  // The key of every project is looked up in the background, so the budget check and the vault
-  // find it cached when the first card starts.
+  // In the background: the radar reads the worktrees; the project keys get cached for the first card.
+  void board.start();
   void board.warmProjectKeys();
   // The diff of every session and card, for the review (phase 11).
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
