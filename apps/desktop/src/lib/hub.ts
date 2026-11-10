@@ -52,6 +52,8 @@ export interface HubRow {
   /** Issue #1478: the host marked this running session quiet, since when; and its last tool. */
   quietSince?: string;
   quietTool?: string | null;
+  /** Issue #1736: a terminal session waits at a plan approval or a question (read by the daemon). */
+  waiting?: "plan" | "question";
 }
 
 export interface HubFilter {
