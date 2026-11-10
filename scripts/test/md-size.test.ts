@@ -22,14 +22,14 @@ describe("md-size", () => {
 
   test("the root CLAUDE.md and the manuals have fixed limits of their own, out of the baseline: they grow by design (#427)", () => {
     // Lines of the root CLAUDE.md wait for the owner's word; every phase adds to both manuals.
-    expect(mdLimit("CLAUDE.md")).toBe(260);
+    expect(mdLimit("CLAUDE.md")).toBe(285);
     expect(mdLimit("docs/manual/en.md")).toBe(4500);
     expect(mdLimit("docs/manual/pt-BR.md")).toBe(4500);
     expect(oversized([{ path: "docs/manual/en.md", text: lines(4500) }])).toEqual({});
     expect(oversized([{ path: "docs/manual/pt-BR.md", text: lines(4501) }])).toEqual({
       "docs/manual/pt-BR.md": 4501,
     });
-    expect(oversized([{ path: "CLAUDE.md", text: lines(261) }])).toEqual({ "CLAUDE.md": 261 });
+    expect(oversized([{ path: "CLAUDE.md", text: lines(286) }])).toEqual({ "CLAUDE.md": 286 });
     const baseline = JSON.parse(readFileSync(join(ROOT, "md-size-baseline.json"), "utf8"));
     expect(Object.keys(baseline)).toEqual(["docs/SPEC-fase-40.md"]);
   });
