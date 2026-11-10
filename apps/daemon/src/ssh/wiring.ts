@@ -1,5 +1,4 @@
 import type { Database } from "bun:sqlite";
-import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 import type { Config } from "../config.ts";
 import { spawnExec } from "../exec.ts";
@@ -30,6 +29,10 @@ export interface SshDeps {
   exists: (path: string) => boolean | Promise<boolean>;
   /** The home the daemon runs with: its ~/.ssh/config is read for the import. */
   home: string;
+  /** The machine's platform, user name and temp folder: the askpass and key delivery depend on them. */
+  platform: NodeJS.Platform;
+  user: string;
+  sockDir: string;
 }
 
 /**
@@ -45,6 +48,9 @@ export async function createSsh({
   terminals,
   exists,
   home,
+  platform,
+  user,
+  sockDir,
 }: SshDeps) {
   const sshTargets = new SshTargets({ db });
   const sshHostKeys = new HostKeys({ targets: sshTargets });
@@ -53,7 +59,7 @@ export async function createSsh({
   const sshAskpass = await askpassHook({
     broker: askpass,
     dir: sshDir,
-    platform: process.platform,
+    platform,
     self,
     configFile,
   });
@@ -62,24 +68,23 @@ export async function createSsh({
     hostKeys: sshHostKeys,
     terminals,
     dir: sshDir,
-    sshPath:
-      config.ssh.path ??
-      (await resolveSshPath({ platform: process.platform, exists, which: whichOnPath })),
+    sshPath: config.ssh.path ?? (await resolveSshPath({ platform, exists, which: whichOnPath })),
     run: processRun(),
     exec: processExec(),
     ...present({ askpass: sshAskpass }),
     // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
     delivery: chooseDelivery({
-      platform: process.platform,
+      platform,
       keysDir: join(sshDir, "keys"),
-      sockDir: tmpdir(),
-      user: userInfo().username,
+      sockDir,
+      user,
       exec: spawnExec,
       ops: processOps(),
     }),
   });
   return {
-    sshConnect,
+    /** Runs an `ssh:` action's job on its destination. */
+    exec: (job: Parameters<SshConnector["exec"]>[0]) => sshConnect.exec(job),
     /** The tags of the one destination with that name; none when the name is not unique. */
     tagsOf: (name: string) => {
       const named = sshTargets.list().filter((t) => t.name === name);
@@ -100,7 +105,7 @@ export async function createSsh({
         targets: sshTargets,
         configPath: join(home, ".ssh", "config"),
         home,
-        defaultUser: userInfo().username,
+        defaultUser: user,
       }),
     },
   };

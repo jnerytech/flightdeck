@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
-import { freemem, totalmem } from "node:os";
+import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { DEFAULT_MODELS, PROTOCOL_VERSION, type ServiceInstallResult } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -669,6 +669,9 @@ export async function startDaemon(
     terminals,
     exists,
     home: userHome(env),
+    platform: process.platform,
+    user: userInfo().username,
+    sockDir: tmpdir(),
   });
   const snippets = new Snippets({
     db: store.db,
@@ -688,7 +691,7 @@ export async function startDaemon(
     vault,
     projects: (id) => board.getProject(id),
     // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
-    ssh: (job) => ssh.sshConnect.exec(job),
+    ssh: ssh.exec,
     sshTags: ssh.tagsOf,
     sshKey: ssh.vaultKeyOf,
     // Phase 19: who may use which secret, decided by the rules the app hands over.
