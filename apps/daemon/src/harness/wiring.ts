@@ -26,7 +26,6 @@ export interface HarnessDeps {
  * and templates the server offers.
  */
 export function createHarness({ runtime, quota, scanner, cwd, config }: HarnessDeps) {
-  // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   // Issue #75, slice G1: CLAUDE.md drafts on this host's claude, held by digest until applied.
   const harnessDrafts = new HarnessDrafts({
     complete: (opts) =>

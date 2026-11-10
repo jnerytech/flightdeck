@@ -874,6 +874,7 @@ export async function startDaemon(
     cwd: assistantDir(config.dataDir),
     config,
   });
+  // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   const assistant = assistantService({
     runtime,
     usage: usageIndex,
