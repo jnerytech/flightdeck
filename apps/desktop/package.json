@@ -1,6 +1,6 @@
 {
   "name": "@flightdeck/desktop",
-  "version": "0.37.21",
+  "version": "0.37.22",
   "private": true,
   "type": "module",
   "scripts": {
