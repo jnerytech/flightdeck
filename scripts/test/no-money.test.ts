@@ -4,7 +4,12 @@ import { join, resolve } from "node:path";
 import { COST_FIELDS, MONEY_WORDS, moneyFieldsIn } from "../lib/no-money.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
-const PROTOCOL = readFileSync(join(ROOT, "packages/protocol/src/index.ts"), "utf8");
+// Issue #1600: the protocol is split by context, so every file of packages/protocol/src is read.
+const PROTOCOL_DIR = join(ROOT, "packages/protocol/src");
+const PROTOCOL = readdirSync(PROTOCOL_DIR)
+  .filter((file) => file.endsWith(".ts"))
+  .map((file) => readFileSync(join(PROTOCOL_DIR, file), "utf8"))
+  .join("\n");
 const ROI_TYPES = ["RoiWeek", "RoiPeriod", "RoiProject", "RoiSummaryResult"] as const;
 
 describe("roi-sem-dinheiro: no money reaches the daemon", () => {
