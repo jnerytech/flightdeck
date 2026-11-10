@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type ActivityResults, activityCommands } from "./activity.ts";
 import { type AgentSetupResults, agentSetupCommands } from "./agent-setup.ts";
 import {
   AssistantCancelPayload,
@@ -20,6 +21,7 @@ import {
   TeamsUpdatedFrame,
 } from "./collaboration.ts";
 import { cmd } from "./command.ts";
+import { HistoryChanged, type HistoryResults, historyCommands } from "./history.ts";
 import { type HostResults, hostCommands } from "./host.ts";
 import {
   AutoApproval,
@@ -54,7 +56,7 @@ import {
 } from "./secrets.ts";
 import {
   EffortLevel,
-  ListExtras,
+  type SessionCreateResult,
   SessionLine,
   SessionMeta,
   type SessionNameInfo,
@@ -64,6 +66,7 @@ import {
   SessionSummary,
 } from "./sessions.ts";
 import { type SnippetsResults, snippetsCommands } from "./snippets.ts";
+import { type TelemetryResults, telemetryCommands } from "./telemetry.ts";
 import { type TeleportResults, teleportCommands } from "./teleport.ts";
 import {
   TerminalData,
@@ -305,57 +308,6 @@ export const SessionSubscribePayload = z.object({
 /** The host refuses a high-risk `permission.respond` allow that does not carry `held: true`. */
 export const FEATURE_HOLD_PROOF = "hold-proof";
 
-// Phase 3: transcripts indexed from ~/.claude/projects (read only).
-export const HistoryOrigin = z.enum(["flightdeck", "external"]);
-export type HistoryOrigin = z.infer<typeof HistoryOrigin>;
-
-/** Pages are addressed by an opaque cursor taken from the previous answer. */
-const Cursor = z.string().min(1);
-
-export const HistoryListPayload = z.object({
-  cwd: z.string().min(1).optional(),
-  /** Every folder and worktree of one project, as `projectKey` names it on the Costs screen. */
-  projectKey: z.string().min(1).optional(),
-  from: z.string().min(1).optional(),
-  to: z.string().min(1).optional(),
-  origin: HistoryOrigin.optional(),
-  /** Leaves out the runs nobody typed: print-mode (sdk) sessions and sessions in temp folders. */
-  hideAutomated: z.boolean().optional(),
-  limit: z.number().int().min(1).max(200).optional(),
-  cursor: Cursor.optional(),
-});
-
-export const HistoryGetPayload = z.object({
-  claudeSessionId: z.string().min(1),
-  cursor: Cursor.optional(),
-  /** Without a cursor: the last `limit` messages instead of the first (a transcript opens on its latest). */
-  tail: z.boolean().optional(),
-  limit: z.number().int().min(1).max(500).optional(),
-});
-
-/** Issue #606: the `index`-th tool call of the message `uuid`, read from the session's own transcript. */
-export const HistoryToolPayload = z.object({
-  claudeSessionId: z.string().min(1),
-  uuid: z.string().min(1),
-  index: z.number().int().min(0).max(1000),
-});
-
-export const HistorySearchPayload = z.object({
-  query: z.string().trim().min(1),
-  cwd: z.string().min(1).optional(),
-  from: z.string().min(1).optional(),
-  to: z.string().min(1).optional(),
-  limit: z.number().int().min(1).max(200).optional(),
-});
-
-export const HistoryResumePayload = z.object({
-  claudeSessionId: z.string().min(1),
-  name: z.string().min(1).optional(),
-  permissionMode: PermissionMode.optional(),
-  /** Required when the transcript is `maybeActive`: two writers corrupt the conversation. */
-  force: z.boolean().optional(),
-});
-
 /** A file a session wrote (Write, Edit, MultiEdit, NotebookEdit; Bash does not count). */
 export const SessionFile = z.object({
   path: z.string(),
@@ -364,110 +316,6 @@ export const SessionFile = z.object({
   lastAt: z.string(),
 });
 export type SessionFile = z.infer<typeof SessionFile>;
-
-/**
- * Issue #1344: what happened on a host since a time, for "While you were away" in Needs you. Each
- * list is the newest `limit` items and its true `total`, so a night of runs never grows the answer.
- */
-export interface ActivityList<T> {
-  items: T[];
-  total: number;
-}
-
-export interface ActivitySession {
-  id: string;
-  name: string | null;
-  cwd: string;
-  /** When the session ended. */
-  at: string;
-}
-
-export interface ActivityCard {
-  cardId: string;
-  projectId: string;
-  title: string;
-  /** When the card last changed. */
-  at: string;
-}
-
-export interface ActivityPr extends ActivityCard {
-  prUrl: string;
-  /** `merged`, or `checks-failed` when the PR is open and its checks fail. */
-  outcome: "merged" | "checks-failed";
-}
-
-export interface ActivityRun {
-  runId: string;
-  cardId: string;
-  /** The card's project (issue #1408), so the line opens a card the app has not loaded; an older host sends none. */
-  projectId?: string;
-  workflowName: string;
-  /** Why it failed, as a key and params the app translates. */
-  reasonKey: string | null;
-  reasonParams: Record<string, string | number> | null;
-  at: string;
-}
-
-export interface ActivitySinceResult {
-  since: string;
-  sessions: ActivityList<ActivitySession>;
-  reviewCards: ActivityList<ActivityCard>;
-  prs: ActivityList<ActivityPr>;
-  failedRuns: ActivityList<ActivityRun>;
-  /** The plan quota windows now, when this host reads them. */
-  quota: Array<{ window: string; utilization: number | null }>;
-}
-
-/** One step of a prompt in a session's timeline (phase 23). */
-export const TelemetryItem = z.object({
-  kind: z.enum(["tool", "permission", "api", "error"]),
-  /** Epoch ms. */
-  at: z.number(),
-  toolName: z.string().nullable(),
-  durationMs: z.number().nullable(),
-  costUsd: z.number().nullable(),
-  success: z.boolean().nullable(),
-  /** The tool's `error_type` or the HTTP status of an API error. */
-  error: z.string().nullable(),
-  /** `accept` or `reject`, for a permission. */
-  decision: z.string().nullable(),
-  /** Who decided: `config`, `hook`, `user_temporary`... */
-  source: z.string().nullable(),
-  /** For a permission a person answered: the time from the step before it to the answer. */
-  waitMs: z.number().nullable(),
-});
-export type TelemetryItem = z.infer<typeof TelemetryItem>;
-
-export const TelemetryPrompt = z.object({
-  /** `null` for events that carry no prompt id. */
-  promptId: z.string().nullable(),
-  startedAt: z.number(),
-  endedAt: z.number(),
-  costUsd: z.number(),
-  /** Sum of the permission waits of the prompt. */
-  waitMs: z.number(),
-  items: z.array(TelemetryItem),
-});
-export type TelemetryPrompt = z.infer<typeof TelemetryPrompt>;
-
-export const TelemetrySession = z.object({ prompts: z.array(TelemetryPrompt) });
-export type TelemetrySession = z.infer<typeof TelemetrySession>;
-
-export const SlowTool = z.object({
-  toolName: z.string(),
-  calls: z.number().int(),
-  avgMs: z.number(),
-  maxMs: z.number(),
-});
-export type SlowTool = z.infer<typeof SlowTool>;
-
-/** Per project: the time spent waiting for a person's permission and the slowest tools. */
-export const TelemetrySummary = z.object({
-  projects: z.array(
-    z.object({ projectKey: z.string(), waitMs: z.number(), slowest: z.array(SlowTool) }),
-  ),
-});
-export type TelemetrySummary = z.infer<typeof TelemetrySummary>;
 
 const BgId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/, "invalid background session id");
 
@@ -514,19 +362,6 @@ export const SessionRecap = z.object({
   source: z.literal("transcript"),
 });
 export type SessionRecap = z.infer<typeof SessionRecap>;
-
-/** Phase 23: whether Flightdeck's exporter keys are in the user's settings.json. */
-export const TelemetryOptInStatus = z.object({
-  /** `conflict`: settings.json already has an exporter of the user's, so install would refuse. */
-  status: z.enum(["installed", "absent", "outdated", "conflict"]),
-  /** The settings.json the keys go to. */
-  settingsPath: z.string(),
-  /** The receiver the keys point at; `null` when no fixed port is set. */
-  receiverUrl: z.string().nullable(),
-  /** The user's own keys that block an install. */
-  conflicts: z.array(z.string()),
-});
-export type TelemetryOptInStatus = z.infer<typeof TelemetryOptInStatus>;
 
 // Phase 5: sessions started outside Flightdeck (terminal), seen through Claude Code hooks.
 export const ExternalStatus = z.enum([
@@ -604,12 +439,6 @@ export const Command = z.discriminatedUnion("type", [
    * frame for them all, not one frame each.
    */
   cmd("sessions.watch", z.object({ snapshot: z.literal("ack").optional() }).strict()),
-  cmd("history.list", HistoryListPayload),
-  cmd("history.get", HistoryGetPayload),
-  cmd("history.tool", HistoryToolPayload),
-  cmd("history.search", HistorySearchPayload),
-  cmd("history.resume", HistoryResumePayload),
-  cmd("history.watch", z.object({}).strict()),
   /** Phase 40: the AI assistant (feature `assistant`). */
   cmd("assistant.run", AssistantRunPayload),
   cmd("assistant.cancel", AssistantCancelPayload),
@@ -663,9 +492,6 @@ export const Command = z.discriminatedUnion("type", [
   cmd("hooks.install", z.object({ confirm: z.boolean().optional() })),
   cmd("hooks.uninstall", z.object({ confirm: z.boolean().optional() })),
   cmd("external.message", z.object({ claudeSessionId: z.string(), text: z.string().min(1) })),
-  // Phase 23: the timing of a terminal session, from Claude Code's OTLP telemetry.
-  cmd("telemetry.session", z.object({ claudeSessionId: z.string() })),
-  cmd("telemetry.summary", z.object({}).strict()),
   // The opt-in for a plain `claude`: Flightdeck's keys in the user's ~/.claude/settings.json.
   // Phase 27: Claude Code's background sessions.
   cmd("bg.list", z.object({}).strict()),
@@ -690,7 +516,6 @@ export const Command = z.discriminatedUnion("type", [
         message: "bg.start needs cwd and prompt, or a card",
       }),
   ),
-  cmd("telemetry.status", z.object({}).strict()),
   /** Phase 30: `question` and `state` are what the caller knows (the pending request, the session state). */
   cmd(
     "session.summary",
@@ -702,8 +527,6 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
-  cmd("telemetry.install", z.object({ confirm: z.boolean().optional() })),
-  cmd("telemetry.uninstall", z.object({ confirm: z.boolean().optional() })),
   /** Applies a persona to an open session, managed (`sessionId`) or from a terminal (`claudeSessionId`). */
   cmd(
     "session.applyPersona",
@@ -733,16 +556,6 @@ export const Command = z.discriminatedUnion("type", [
       }),
   ),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
-  /** Issue #1344: what finished, reached review, merged or failed on this host since a time; read-only and capped. */
-  cmd(
-    "activity.since",
-    z
-      .object({
-        since: z.string().datetime(),
-        limit: z.number().int().min(1).max(50).optional(),
-      })
-      .strict(),
-  ),
   /** Phase 39: the models a runtime offers (OpenCode's `models`); refused when it is not there. */
   cmd("runtime.models", z.object({ runtime: z.literal("opencode") }).strict()),
   ...secretsCommands,
@@ -764,6 +577,9 @@ export const Command = z.discriminatedUnion("type", [
   ...boardCommands,
   ...projectsCommands,
   ...trackersCommands,
+  ...historyCommands,
+  ...telemetryCommands,
+  ...activityCommands,
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -844,90 +660,11 @@ export type SessionInterruptedResult = z.infer<typeof SessionInterruptedResult>;
 export const SessionListResult = z.object({ sessions: z.array(SessionSummary) });
 export type SessionListResult = z.infer<typeof SessionListResult>;
 
-export const SessionCreateResult = z.object({ sessionId: z.string() });
-export type SessionCreateResult = z.infer<typeof SessionCreateResult>;
-
 export const SessionSubscribeResult = z.object({
   session: SessionSummary,
   replayed: z.number().int().nonnegative(),
 });
 export type SessionSubscribeResult = z.infer<typeof SessionSubscribeResult>;
-
-export const HistorySessionSummary = z.object({
-  claudeSessionId: z.string(),
-  cwd: z.string(),
-  title: z.string().nullable(),
-  firstTs: z.string().nullable(),
-  lastTs: z.string().nullable(),
-  messageCount: z.number().int().nonnegative(),
-  origin: HistoryOrigin,
-  /** The file changed in the last 2 minutes: another process may still be writing it. */
-  maybeActive: z.boolean(),
-  /** A print-mode (`claude -p`, sdk) run, or one in a temp folder: nobody typed it. */
-  automated: z.boolean().optional(),
-  ...ListExtras,
-});
-export type HistorySessionSummary = z.infer<typeof HistorySessionSummary>;
-
-export const HistoryMessage = z.object({
-  uuid: z.string(),
-  ts: z.string().nullable(),
-  role: z.enum(["user", "assistant", "system", "summary"]).nullable(),
-  kind: z.enum(["message", "summary", "system"]),
-  text: z.string(),
-});
-export type HistoryMessage = z.infer<typeof HistoryMessage>;
-
-export const HistoryListResult = z.object({
-  sessions: z.array(HistorySessionSummary),
-  nextCursor: z.string().nullable(),
-  /** How many automated runs match the other filters (the ones left out, when `hideAutomated`). */
-  automatedCount: z.number().int().nonnegative().optional(),
-});
-export type HistoryListResult = z.infer<typeof HistoryListResult>;
-
-export const HistoryGetResult = z.object({
-  session: HistorySessionSummary,
-  /** The session's folder is still on the host (said only for a folder the history already shows). */
-  cwdExists: z.boolean().optional(),
-  messages: z.array(HistoryMessage),
-  /** The cursor this page starts at (a tail page's own, so what is appended later can be read from it). */
-  cursor: z.string().optional(),
-  nextCursor: z.string().nullable(),
-  prevCursor: z.string().nullable(),
-});
-export type HistoryGetResult = z.infer<typeof HistoryGetResult>;
-
-/** A stored tool call with its whole input and its result, each cut to 64 KiB (#606). */
-export const HistoryToolDetail = z.object({
-  name: z.string(),
-  /** The input as the call had it, or its JSON text cut to the cap. */
-  input: z.unknown(),
-  /** `null` while the transcript has no result (still running, or cut short). */
-  result: z.object({ content: z.string(), isError: z.boolean() }).nullable(),
-  truncated: z.boolean(),
-});
-export type HistoryToolDetail = z.infer<typeof HistoryToolDetail>;
-
-export const HistoryToolResult = z.object({ tool: HistoryToolDetail.nullable() });
-export type HistoryToolResult = z.infer<typeof HistoryToolResult>;
-
-export const HistorySearchHit = z.object({
-  claudeSessionId: z.string(),
-  uuid: z.string(),
-  ts: z.string().nullable(),
-  cwd: z.string(),
-  title: z.string().nullable(),
-  role: z.string(),
-  /** Excerpt with every match wrapped in `«` and `»`. */
-  snippet: z.string(),
-  /** `history.get` cursor whose page starts at this message. */
-  cursor: z.string(),
-});
-export type HistorySearchHit = z.infer<typeof HistorySearchHit>;
-
-export const HistorySearchResult = z.object({ hits: z.array(HistorySearchHit) });
-export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 
 /** #75: what a hook command is for, when its command says so. */
 export type HookKind = "format" | "gitAdd" | "secrets";
@@ -994,7 +731,10 @@ export interface CommandResults
     WatchResults,
     BoardResults,
     ProjectsResults,
-    TrackersResults {
+    TrackersResults,
+    HistoryResults,
+    TelemetryResults,
+    ActivityResults {
   hello: HelloResult;
   "session.list": SessionListResult;
   "session.create": SessionCreateResult;
@@ -1011,12 +751,6 @@ export interface CommandResults
   "session.unsubscribe": undefined;
   /** With `snapshot: "ack"`: every session's current summary; otherwise nothing. */
   "sessions.watch": { summaries: SessionEventOf<"session.summary">[] } | undefined;
-  "history.list": HistoryListResult;
-  "history.get": HistoryGetResult;
-  "history.tool": HistoryToolResult;
-  "history.search": HistorySearchResult;
-  "history.resume": SessionCreateResult;
-  "history.watch": undefined;
   "assistant.run": AssistantResult;
   "assistant.cancel": undefined;
   "assistant.context": AssistantContextBundle;
@@ -1035,20 +769,14 @@ export interface CommandResults
   "hooks.status": HooksStatusResult;
   "hooks.install": HooksStatusResult;
   "hooks.uninstall": HooksStatusResult;
-  "telemetry.session": TelemetrySession;
-  "telemetry.summary": TelemetrySummary;
   "session.summary": SessionRecap;
   "bg.list": BgList;
   "bg.stop": BgList;
   "bg.respawn": BgList;
   "bg.message": BgList;
   "bg.start": { id: string };
-  "telemetry.status": TelemetryOptInStatus;
-  "telemetry.install": TelemetryOptInStatus;
-  "telemetry.uninstall": TelemetryOptInStatus;
   "session.applyPersona": PersonaSwitchResult;
   "session.clearPersona": PersonaSwitchResult;
-  "activity.since": ActivitySinceResult;
   "runtime.models": { models: Array<{ id: string; name: string }> };
   "session.files": { files: SessionFile[] };
 }
@@ -1140,16 +868,6 @@ export type Ping = z.infer<typeof Ping>;
 export const Pong = z.object({ type: z.literal("pong"), id: z.string() });
 export type Pong = z.infer<typeof Pong>;
 
-/** Sent after `history.watch` whenever a transcript gains lines. Not a session event. */
-export const HistoryChanged = z.object({
-  type: z.literal("history.changed"),
-  claudeSessionId: z.string(),
-  cwd: z.string(),
-  lastTs: z.string().nullable(),
-  maybeActive: z.boolean(),
-});
-export type HistoryChanged = z.infer<typeof HistoryChanged>;
-
 /** Sent after `external.watch` with the whole external session after each change. */
 export const ExternalUpdated = z.object({
   type: z.literal("external.updated"),
@@ -1227,6 +945,7 @@ export * from "./collaboration.ts";
 export * from "./compare.ts";
 export * from "./fix-safe.ts";
 export * from "./git-ref.ts";
+export * from "./history.ts";
 export * from "./host.ts";
 export * from "./localized-text.ts";
 export * from "./pairing.ts";
@@ -1241,6 +960,7 @@ export * from "./run.ts";
 export * from "./secrets.ts";
 export * from "./sequence.ts";
 export * from "./snippets.ts";
+export * from "./telemetry.ts";
 export * from "./teleport.ts";
 export * from "./terminal.ts";
 export * from "./trace.ts";
@@ -1268,6 +988,7 @@ export {
   EffortLevel,
   NAME_GENERAL,
   NAME_NO_PROJECT,
+  SessionCreateResult,
   SessionLine,
   SessionMeta,
   SessionNameInfo,

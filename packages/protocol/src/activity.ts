@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { cmd } from "./command.ts";
 import type { QuestionLanguage } from "./question.ts";
 
 /** One tool call of a task, as the session recorded it. */
@@ -85,4 +87,76 @@ export function taskActivity(
   const name = paths.length === 1 ? (parts(paths[0] as string).at(-1) ?? "") : "";
   const say = kind === "reading" ? words.reading : words.writing;
   return { kind, count, text: say(count, name, folder) };
+}
+
+/**
+ * Issue #1344: what happened on a host since a time, for "While you were away" in Needs you. Each
+ * list is the newest `limit` items and its true `total`, so a night of runs never grows the answer.
+ */
+export interface ActivityList<T> {
+  items: T[];
+  total: number;
+}
+
+export interface ActivitySession {
+  id: string;
+  name: string | null;
+  cwd: string;
+  /** When the session ended. */
+  at: string;
+}
+
+export interface ActivityCard {
+  cardId: string;
+  projectId: string;
+  title: string;
+  /** When the card last changed. */
+  at: string;
+}
+
+export interface ActivityPr extends ActivityCard {
+  prUrl: string;
+  /** `merged`, or `checks-failed` when the PR is open and its checks fail. */
+  outcome: "merged" | "checks-failed";
+}
+
+export interface ActivityRun {
+  runId: string;
+  cardId: string;
+  /** The card's project (issue #1408), so the line opens a card the app has not loaded; an older host sends none. */
+  projectId?: string;
+  workflowName: string;
+  /** Why it failed, as a key and params the app translates. */
+  reasonKey: string | null;
+  reasonParams: Record<string, string | number> | null;
+  at: string;
+}
+
+export interface ActivitySinceResult {
+  since: string;
+  sessions: ActivityList<ActivitySession>;
+  reviewCards: ActivityList<ActivityCard>;
+  prs: ActivityList<ActivityPr>;
+  failedRuns: ActivityList<ActivityRun>;
+  /** The plan quota windows now, when this host reads them. */
+  quota: Array<{ window: string; utilization: number | null }>;
+}
+
+/** The activity commands; index.ts spreads them into `Command`. */
+export const activityCommands = [
+  /** Issue #1344: what finished, reached review, merged or failed on this host since a time; read-only and capped. */
+  cmd(
+    "activity.since",
+    z
+      .object({
+        since: z.string().datetime(),
+        limit: z.number().int().min(1).max(50).optional(),
+      })
+      .strict(),
+  ),
+] as const;
+
+/** The `data` of each activity command's ack; `CommandResults` extends it. */
+export interface ActivityResults {
+  "activity.since": ActivitySinceResult;
 }
