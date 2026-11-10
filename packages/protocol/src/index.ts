@@ -1,14 +1,7 @@
 import { z } from "zod";
 import { type ActivityResults, activityCommands } from "./activity.ts";
 import { type AgentSetupResults, agentSetupCommands } from "./agent-setup.ts";
-import {
-  AssistantCancelPayload,
-  type AssistantContextBundle,
-  AssistantContextPayload,
-  AssistantRecordPayload,
-  type AssistantResult,
-  AssistantRunPayload,
-} from "./assistant.ts";
+import { type AssistantResults, assistantCommands } from "./assistant.ts";
 import { type AutomationsResults, automationsCommands } from "./automations.ts";
 import { type BoardResults, boardCommands, CardUpdated } from "./board.ts";
 import {
@@ -439,11 +432,6 @@ export const Command = z.discriminatedUnion("type", [
    * frame for them all, not one frame each.
    */
   cmd("sessions.watch", z.object({ snapshot: z.literal("ack").optional() }).strict()),
-  /** Phase 40: the AI assistant (feature `assistant`). */
-  cmd("assistant.run", AssistantRunPayload),
-  cmd("assistant.cancel", AssistantCancelPayload),
-  cmd("assistant.context", AssistantContextPayload),
-  cmd("assistant.record", AssistantRecordPayload),
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
   /** Only for sessions opened with `flightdeckd claude` (`controllable`). */
@@ -580,6 +568,7 @@ export const Command = z.discriminatedUnion("type", [
   ...historyCommands,
   ...telemetryCommands,
   ...activityCommands,
+  ...assistantCommands,
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -734,7 +723,8 @@ export interface CommandResults
     TrackersResults,
     HistoryResults,
     TelemetryResults,
-    ActivityResults {
+    ActivityResults,
+    AssistantResults {
   hello: HelloResult;
   "session.list": SessionListResult;
   "session.create": SessionCreateResult;
@@ -751,10 +741,6 @@ export interface CommandResults
   "session.unsubscribe": undefined;
   /** With `snapshot: "ack"`: every session's current summary; otherwise nothing. */
   "sessions.watch": { summaries: SessionEventOf<"session.summary">[] } | undefined;
-  "assistant.run": AssistantResult;
-  "assistant.cancel": undefined;
-  "assistant.context": AssistantContextBundle;
-  "assistant.record": undefined;
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;
   "external.message": undefined;
