@@ -147,10 +147,11 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   branch, opens its PR (`bun run pr -- open <branch>`, with `--refs <n>` for a slice of an issue so
   it does not close it, #839, titled after the first commit, #909) and turns on auto-merge
   (`bun run pr -- auto <n>`; the review before a PR is the session's own `/code-review` and
-  `/security-review`, #1670; OpenCode was retired on 2026-11-10, #1697): GitHub merges it with a merge commit
-  once its required checks are green on its HEAD, even behind `main` (#305: the ruleset is not
-  strict; `main`'s push CI checks the result). Only a PR that conflicts with `main` waits: merge
-  `main` into it. A stacked PR gets auto-merge once its parent is in `main` (`pr auto` retargets it).
+  `/security-review`, #1670; OpenCode was retired on 2026-11-10, #1697): GitHub merges it with a
+  merge commit once its required checks are green on its HEAD, even behind `main` (#305: the
+  ruleset is not strict; `main`'s push CI checks the result). Only a PR that conflicts with `main`
+  waits: merge `main` into it. A stacked PR gets auto-merge once its parent is in `main` (`pr auto`
+  retargets it).
 - Before opening a PR, run Claude Code's built-in `/code-review` and `/security-review` skills on the
   branch and fix what they find (user, 2026-11-10, #1670). `/code-review` runs at its default level,
   never `max` or `ultra` unless asked. The `security-reviewer` agent and its trailer still apply.
