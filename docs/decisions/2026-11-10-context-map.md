@@ -60,7 +60,7 @@ are in the glossary test's baseline until #1594 and #1601 move their parts into 
 - **Shared kernel.** `packages/protocol` between the desktop and the daemon: a change there is a
   change on both sides, so it moves with the version test. Inside the daemon, the loose files every
   context uses (`errors`, `ulid`, `paths`, `which`, `exec`, `atomic-write`, `json-text`, `trim`,
-  `settled`, `read-regular`, `env`, `ntfs-name`, `lines`, `async-queue`) are a kernel, grouped by
+  `settled`, `read-regular`, `env`, `ntfs-name`, `lines`, `async-queue`, `logger`, `version`) are a kernel, grouped by
   #1594. The rest of the loose files belong to a context: `pairing`, `token`, `networks`,
   `roots`, `project-find`, `fs-dirs`, `present`, `ws-send`, `delta-coalescer`, `server` to the
   transport; `service*`, `setup`, `update`, `user-path`, `linger`, `wsl*`, `doctor`, `lock`,
