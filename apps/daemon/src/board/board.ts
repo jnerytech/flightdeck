@@ -1,21 +1,18 @@
 import type { Database } from "bun:sqlite";
-import { resolve } from "node:path";
-import {
-  type Arena,
-  BoardColumn as BoardColumnSchema,
-  type BoardResult,
-  type CardTemplates,
-  type EffortLevel,
-  type PersonaRef,
-  type RunResumeCheck,
-  type SessionEvent,
-  type WorkflowInfo,
-  type WorkflowTemplate,
-  type WorkflowTemplateAdded,
+import type {
+  Arena,
+  BoardResult,
+  CardTemplates,
+  EffortLevel,
+  PersonaRef,
+  RunResumeCheck,
+  SessionEvent,
+  WorkflowInfo,
+  WorkflowTemplate,
+  WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
-import { isInside } from "../paths.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
@@ -241,6 +238,8 @@ export class Board {
     });
     this.view = new CardView({
       db: opts.db,
+      project: (id) => this.getProject(id),
+      projects: () => this.listProjects(),
       sessionStatus: (sessionId) => opts.manager.get(sessionId).status,
       mayConflictOf: (id) => this.radarFeed.mayConflictOf(id),
       isWorkflowRun: (runId) => this.workflows.has(runId),
@@ -309,18 +308,7 @@ export class Board {
    * card when it is one; null outside every project.
    */
   projectForCwd(cwd: string): { project: Project; card: Card | null } | null {
-    const card = this.db
-      .query<{ id: string; worktree_path: string }, []>(
-        "SELECT id, worktree_path FROM cards WHERE worktree_path IS NOT NULL",
-      )
-      .all()
-      .find((row) => isInside(resolve(row.worktree_path), resolve(cwd)));
-    if (card) {
-      const found = this.getCard(card.id);
-      return { project: this.getProject(found.projectId), card: found };
-    }
-    const project = this.listProjects().find((p) => isInside(resolve(p.path), resolve(cwd)));
-    return project ? { project, card: null } : null;
+    return this.view.forCwd(cwd);
   }
 
   /**
@@ -417,18 +405,7 @@ export class Board {
 
   /** The project with its five columns, each with its cards by position. */
   getBoard(projectId: string): BoardResult {
-    const project = this.getProject(projectId);
-    const cards = this.db
-      .query<{ id: string }, [string]>(
-        "SELECT id FROM cards WHERE project_id = ? AND arena_of IS NULL ORDER BY position, created_at",
-      )
-      .all(projectId)
-      .map(({ id }) => this.getCard(id));
-    const columns = BoardColumnSchema.options.map((column) => ({
-      column,
-      cards: cards.filter((card) => card.column === column),
-    }));
-    return { project, columns };
+    return this.view.board(projectId);
   }
 
   /**
@@ -794,21 +771,12 @@ export class Board {
 
   /** Whether a card's run uses this session: the board follows it, so the host never puts it to sleep. */
   hasRunSession(sessionId: string): boolean {
-    return (
-      this.db
-        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM card_runs WHERE session_id = ?")
-        .get(sessionId)?.n !== 0
-    );
+    return this.view.hasRunSession(sessionId);
   }
 
   /** Every card of the project that has a worktree, arena variants included. */
   worktreeCards(projectId: string): Card[] {
-    return this.db
-      .query<{ id: string }, [string]>(
-        "SELECT id FROM cards WHERE project_id = ? AND worktree_path IS NOT NULL",
-      )
-      .all(projectId)
-      .map(({ id }) => this.getCard(id));
+    return this.view.withWorktree(projectId);
   }
 
   /** Whether a card's run is going or waiting: its folder is in use. */
