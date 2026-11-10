@@ -18,7 +18,19 @@ import {
   type ValidationTemplate,
 } from "./board-contracts.ts";
 import { isBranchName } from "./git-ref.ts";
+import { PermissionMode, SettableMode } from "./permissions.ts";
+import { PersonaFields, PersonaInput, PersonaRef, SessionPersona } from "./personas.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
+import {
+  ListExtras,
+  SessionLine,
+  SessionMeta,
+  type SessionNameInfo,
+  SessionRuntime,
+  SessionStatus,
+  SessionSummary,
+  ToolInput,
+} from "./sessions.ts";
 import {
   TeleportAbortPayload,
   TeleportCancelPayload,
@@ -41,187 +53,6 @@ export const CLOSE_UNAUTHORIZED = 4401;
 
 /** Close code used when a client misses two heartbeats in a row. */
 export const CLOSE_HEARTBEAT = 4408;
-
-// ---------------------------------------------------------------------------
-// Shared primitives
-// ---------------------------------------------------------------------------
-
-export const SessionStatus = z.enum([
-  "starting",
-  "running",
-  "awaiting_permission",
-  "idle",
-  "ended",
-  "error",
-]);
-export type SessionStatus = z.infer<typeof SessionStatus>;
-
-export const PermissionMode = z.enum([
-  "default",
-  "acceptEdits",
-  "bypassPermissions",
-  "plan",
-  "dontAsk",
-  "auto",
-]);
-export type PermissionMode = z.infer<typeof PermissionMode>;
-/** The modes a live session can be switched to (never one that skips the questions). */
-/** `bypassPermissions` is refused by the daemon unless the host's switch is on. */
-export const SettableMode = z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]);
-export type SettableMode = z.infer<typeof SettableMode>;
-
-const PersonaEffort = z.enum(["low", "medium", "high", "xhigh", "max"]);
-
-/** What the form sends for a persona (phase 20): a role the Claude takes, with its suggestions. */
-export const PersonaInput = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    description: z.string(),
-    icon: z.string().optional(),
-    model: z.string().optional(),
-    effort: PersonaEffort.optional(),
-    /** Only restricts: the tools the persona may use; absent means the session's own. */
-    tools: z.array(z.string()).optional(),
-    /** A suggestion, never above the session's mode. */
-    permissionMode: PermissionMode.optional(),
-    /** The text added to the system prompt, at most 8 KB and with no secret. */
-    body: z.string(),
-  })
-  .strict();
-export type PersonaInput = z.infer<typeof PersonaInput>;
-
-/** A persona in its normal form: every optional field is `null` when absent. */
-export const PersonaFields = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  icon: z.string().nullable(),
-  model: z.string().nullable(),
-  effort: PersonaEffort.nullable(),
-  tools: z.array(z.string()).nullable(),
-  permissionMode: PermissionMode.nullable(),
-  body: z.string(),
-});
-export type PersonaFields = z.infer<typeof PersonaFields>;
-
-/** The persona of a session, as the lists and the timeline show it. */
-export const SessionPersona = z.object({
-  id: z.string(),
-  name: z.string(),
-  icon: z.string().nullable(),
-});
-export type SessionPersona = z.infer<typeof SessionPersona>;
-
-/**
- * Which persona to use: an `id` (the project's, else the host's, else the pack's) or a whole
- * `definition` (the app's global ones live in the app). `language` picks the pack's language.
- */
-export const PersonaRef = z
-  .object({
-    id: z.string().optional(),
-    definition: PersonaInput.optional(),
-    language: z.enum(["pt-BR", "en"]).optional(),
-  })
-  .strict()
-  .refine((ref) => (ref.id === undefined) !== (ref.definition === undefined), {
-    message: "give id or definition, one of the two",
-  });
-export type PersonaRef = z.infer<typeof PersonaRef>;
-
-export const ToolInput = z.record(z.string(), z.unknown());
-export type ToolInput = z.infer<typeof ToolInput>;
-
-/** The team a session works in, its role there and, for a worker, its number (issue #101). */
-export const SessionTeam = z.object({
-  name: z.string(),
-  role: z.enum(["coordinator", "worker"]),
-  number: z.number().int().nullable(),
-});
-export type SessionTeam = z.infer<typeof SessionTeam>;
-
-/** The persona of a standard name for a session that has none (phase 21); the app translates it (#668). */
-export const NAME_GENERAL = "geral";
-/** The project of a standard name for a session with no folder to name it; the app translates it (#668). */
-export const NAME_NO_PROJECT = "sem-projeto";
-
-/** The standard name of a session of the host (phase 21): `project · persona · number`. */
-export const SessionNameInfo = z.object({
-  /** The managed id, or the Claude session id of a terminal. */
-  sessionId: z.string(),
-  display: z.string(),
-  /** The alias that came with the session; `aliases` has it first. */
-  alias: z.string(),
-  aliases: z.array(z.string()),
-  project: z.string(),
-  persona: z.string(),
-  number: z.number().int(),
-  cardNumber: z.number().int().nullable(),
-  /** Issue #101: `display` is still the standard name (no rename, no Claude Code title). Absent from an older host. */
-  standard: z.boolean().optional(),
-  /** Issue #101: the team the session works in; the app names it by its persona. Absent from an older host. */
-  team: SessionTeam.nullable().optional(),
-});
-export type SessionNameInfo = z.infer<typeof SessionNameInfo>;
-
-/** Name, pinned and archived of a session (phase 5), set with `session.meta.set`. */
-export const SessionMeta = z.object({
-  name: z.string().nullable(),
-  pinned: z.boolean(),
-  archived: z.boolean(),
-});
-export type SessionMeta = z.infer<typeof SessionMeta>;
-
-/**
- * Phase 8 (track B): one line about a session for the lists, derived from its transcript and its
- * live state, without AI. The app formats it ("Pedido: … · rodando Bash").
- */
-export const SessionLine = z.object({
-  /** First line of the user's last prompt, up to 80 characters. */
-  request: z.string().nullable(),
-  state: z.enum(["running", "waiting", "idle", "ended"]),
-  /** Running: the last tool called; waiting: the tool asking for approval. */
-  tool: z.string().nullable(),
-  /** Last activity: an idle session is idle since then. */
-  since: z.string().nullable(),
-});
-export type SessionLine = z.infer<typeof SessionLine>;
-
-/** Phase 5 additions to every session list: the project group and the meta (and phase 8's line). */
-const ListExtras = {
-  projectKey: z.string().nullable().optional(),
-  meta: SessionMeta.optional(),
-  summary: SessionLine.optional(),
-  /** Issue #157: idle with no process: the daemon put it to sleep (or restarted); a message wakes it. */
-  asleep: z.boolean().optional(),
-};
-
-/** Phase 39: the agent a session runs on. */
-export const SessionRuntime = z.enum(["claude", "opencode"]);
-export type SessionRuntime = z.infer<typeof SessionRuntime>;
-
-export const SessionSummary = z.object({
-  id: z.string(),
-  name: z.string().nullable(),
-  cwd: z.string(),
-  status: SessionStatus,
-  permissionMode: PermissionMode,
-  model: z.string().nullable(),
-  claudeSessionId: z.string().nullable(),
-  lastSeq: z.number().int().nonnegative(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  /** The persona the session was opened with (phase 20). */
-  persona: SessionPersona.nullable().optional(),
-  /** Phase 39: `claude` when absent. */
-  runtime: SessionRuntime.optional(),
-  /** Issue #1478 (host `stall`): a running session that went quiet, since when; absent otherwise. */
-  quietSince: z.string().optional(),
-  /** Issue #1478: the last tool it called; `null` when it called none. */
-  quietTool: z.string().nullable().optional(),
-  ...ListExtras,
-});
-export type SessionSummary = z.infer<typeof SessionSummary>;
 
 // ---------------------------------------------------------------------------
 // Session events (daemon → client, inside the `event` envelope)
@@ -6510,6 +6341,7 @@ export * from "./compare.ts";
 export * from "./fix-safe.ts";
 export * from "./git-ref.ts";
 export * from "./pairing.ts";
+export * from "./permissions.ts";
 export * from "./personas.ts";
 export * from "./question.ts";
 export * from "./refusals.ts";
@@ -6533,3 +6365,16 @@ export function isProdTag(tag: string): boolean {
 export function isProd(tags: readonly string[] | undefined): boolean {
   return (tags ?? []).some(isProdTag);
 }
+// Issue #1600: the session schemas moved to sessions.ts; ListExtras stays inside the package.
+export {
+  NAME_GENERAL,
+  NAME_NO_PROJECT,
+  SessionLine,
+  SessionMeta,
+  SessionNameInfo,
+  SessionRuntime,
+  SessionStatus,
+  SessionSummary,
+  SessionTeam,
+  ToolInput,
+} from "./sessions.ts";
