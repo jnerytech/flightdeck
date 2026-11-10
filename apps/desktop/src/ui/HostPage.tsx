@@ -115,7 +115,7 @@ export function HostPage(
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
   // Opening the page reads the health again when the last read is older than a few minutes.
   useEffect(() => {
-    if (host.status === "online") void store.ensureHealth(host.id);
+    if (host.status === "online") void store.health.ensure(host.id);
   }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
   const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
@@ -261,7 +261,7 @@ export function HostPage(
                       doctor={overviewState.doctor[host.id] ?? null}
                       checkedAt={overviewState.healthAt[host.id] ?? null}
                       error={overviewState.healthError[host.id] ?? null}
-                      onCheck={() => store.checkHealth(host.id)}
+                      onCheck={() => store.health.check(host.id)}
                       onAddFolder={() => {
                         setTab("settings");
                         setFolderAsk((n) => n + 1);

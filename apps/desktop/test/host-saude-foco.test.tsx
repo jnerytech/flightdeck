@@ -64,7 +64,7 @@ function setup(
   });
   store.loadPalette = async () => {};
   store.refreshHub = (async () => {}) as never;
-  store.checkHealth = (async () => {}) as never;
+  store.health.check = (async () => {}) as never;
   const asked: string[] = [];
   let installed = false;
   store.hostCommand = (async (_host: string, type: string) => {
