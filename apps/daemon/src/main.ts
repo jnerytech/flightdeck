@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
+import { stat } from "node:fs/promises";
 import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { DEFAULT_MODELS, PROTOCOL_VERSION, type ServiceInstallResult } from "@flightdeck/protocol";
@@ -158,8 +159,7 @@ import { TeleportInbox } from "./teleport/receive.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
-import type { PtyFactory } from "./terminal/pty.ts";
-import { createTerminals, terminalInfo } from "./terminal/wiring.ts";
+import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
@@ -226,6 +226,20 @@ async function createRuntime(
   };
 }
 
+/** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
+async function terminalInfo(env: Record<string, string | undefined>) {
+  const stable = stableBinPath(userHome(env), process.platform);
+  return {
+    flightdeckdPath: (await stat(stable).then(
+      () => true,
+      () => false,
+    ))
+      ? stable
+      : null,
+    wslDistro: env.WSL_DISTRO_NAME || null,
+  };
+}
+
 /** The supervisor of the WSL distributions the config lists, if any. */
 function createWsl(config: Config, options: { wslCommand?: (item: WslItem) => string[] }) {
   if (config.wsl.length === 0) return null;
@@ -258,7 +272,7 @@ export async function startDaemon(
     /** What `daemon.shutdown` triggers; the command is refused without it. */
     onShutdown?: () => void;
     /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
-    pty?: PtyFactory;
+    pty?: TerminalsDeps["pty"];
     /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
     resourcesProc?: ProcReader;
     /** The host's memory for the hold on new cards (#1343); the OS's when absent (tests inject one). */
@@ -304,7 +318,9 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
-  const mcpServer = flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile);
+  // This daemon's own command line, as the sessions' MCP server, the hooks and the terminals call it back.
+  const selfCommand = daemonCommand(process.execPath, Bun.main);
+  const mcpServer = flightdeckMcpServer(selfCommand, configFile);
   const {
     runtime,
     claude,
@@ -533,15 +549,16 @@ export async function startDaemon(
   // In the background: the radar reads the worktrees; the project keys get cached for the first card.
   void board.start();
   void board.warmProjectKeys();
-  // The diff of every session and card, for the review (phase 11).
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const { terminals, onTerminalSettings } = createTerminals({
     config,
     configFile,
     folderLocks,
     pty: options.pty,
-    log: logger,
+    self: selfCommand,
+    log: (message) => logger.log(message),
   });
+  // The diff of every session and card, for the review (phase 11).
   const changes = new Changes({
     db: store.db,
     board,
@@ -644,7 +661,7 @@ export async function startDaemon(
     dataDir: config.dataDir,
     hostName: config.hostName,
     configFile,
-    selfCommand: daemonCommand(process.execPath, Bun.main),
+    selfCommand,
     settingsPath: claudeSettingsPath,
   });
   const sshTargets = new SshTargets({ db: store.db });
@@ -660,7 +677,7 @@ export async function startDaemon(
     broker: askpass,
     dir: sshDir,
     platform: process.platform,
-    self: daemonCommand(process.execPath, Bun.main),
+    self: selfCommand,
     configFile,
   });
   const sshConnect = new SshConnector({
@@ -1140,7 +1157,7 @@ export async function startDaemon(
       args.config ?? null,
       configFile,
       options.serviceContext ?? osServiceContext,
-      options.serviceSelf ?? daemonCommand(process.execPath, Bun.main),
+      options.serviceSelf ?? selfCommand,
     ),
     ...hostChecks,
     sessionSettings: true,
@@ -1184,7 +1201,7 @@ export async function startDaemon(
         return { cwd: board.getProject(card.projectId).path, prompt, name: card.title };
       },
       start: {
-        self: daemonCommand(process.execPath, Bun.main),
+        self: selfCommand,
         configFile,
         allowedRoots: config.allowedRoots,
       },
