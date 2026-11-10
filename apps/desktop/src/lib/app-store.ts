@@ -1417,9 +1417,9 @@ export class AppStore {
     this.offQuit?.();
     this.offQuit = this.platform.onQuitRequested(() => void this.quitWithUpdate());
     await inSequence(loadHosts(this.platform.storage), async (config) => {
-      this.update({
-        hosts: [...this.state.hosts, newHostView(config)],
-      });
+      // A host added while init ran (#1718) is already listed and connecting.
+      if (this.state.hosts.some((host) => host.id === config.id)) return;
+      this.update({ hosts: [...this.state.hosts, newHostView(config)] });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
     });
