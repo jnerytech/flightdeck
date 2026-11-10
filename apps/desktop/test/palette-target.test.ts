@@ -17,6 +17,8 @@ function recorder(
     persona?: string;
     ref?: unknown;
     prefs?: { mode: string; model: string };
+    /** The conversation another terminal holds: the guard asks and runs nothing. */
+    held?: boolean;
   } = {},
 ) {
   const calls: string[] = [];
@@ -56,6 +58,10 @@ function recorder(
     go: (route: Route) => void calls.push(`go ${JSON.stringify(route)}`),
     showHelp: () => void calls.push("help"),
     askStart: (_card: unknown, _contracts: unknown, go: () => void) => go(),
+    guardLive: (host: string, id: string | null, go: () => void) => {
+      if (opts.held) calls.push(`asked ${host} ${id}`);
+      else go();
+    },
   });
   return { calls, store, ui };
 }
@@ -79,6 +85,18 @@ describe("palette-target: what a palette entry does in place", () => {
     );
     expect(here.calls).toEqual(["claude-here h"]);
     expect(away.calls).toEqual(["terminal h"]);
+  });
+
+  test("a terminal on a conversation another terminal holds asks first and opens nothing (#1736)", () => {
+    for (const embedded of [true, false]) {
+      const r = recorder({ embedded, held: true });
+      run(
+        r.store,
+        { kind: "terminal", hostId: "h", target: { cwd: "/p", claudeSessionId: "c1" } },
+        r.ui(),
+      );
+      expect(r.calls).toEqual(["asked h c1"]);
+    }
   });
 
   test("a new terminal, the theme, the simple mode and the client switch go to the store", () => {

@@ -241,6 +241,8 @@ export function runPaletteTarget(
     go(route: Route): void;
     showHelp(): void;
     askStart(card: Card, contracts: ContractOverrides, go: () => void): void;
+    /** Runs `go` at once, or after asking when another terminal holds the conversation (#1705). */
+    guardLive(hostId: string, claudeSessionId: string | null, go: () => void): void;
   },
 ): void {
   switch (target.kind) {
@@ -546,6 +548,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
       go,
       showHelp: () => setHelp(true),
       askStart: startAsk.ask,
+      guardLive: (_hostId, _claudeSessionId, go) => go(),
     });
   };
 
