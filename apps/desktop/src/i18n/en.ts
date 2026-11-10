@@ -4852,8 +4852,7 @@ export const en: Dictionary = {
       templates: "Start something",
       recent: "Your recent tasks",
       waiting: "Waiting for your answer",
-      intro:
-        "Claude works on your files on this computer. Each card says what it asks and whether it may change files.",
+      intro: "Each card says what it asks and edits.",
       runsOn: "Tasks run on {host} ({state}).",
       connected: "connected",
       connecting: "connecting",

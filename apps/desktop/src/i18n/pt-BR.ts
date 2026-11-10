@@ -4858,8 +4858,7 @@ export const ptBR = {
       templates: "Comece por aqui",
       recent: "Suas tarefas recentes",
       waiting: "Esperando a sua resposta",
-      intro:
-        "O Claude trabalha nos seus arquivos neste computador. Cada cartão diz o que pergunta e se pode mudar arquivos.",
+      intro: "Cada cartão diz o que pergunta e edita.",
       runsOn: "As tarefas rodam em {host} ({state}).",
       connected: "conectado",
       connecting: "conectando",
