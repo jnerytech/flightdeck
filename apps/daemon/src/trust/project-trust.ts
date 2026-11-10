@@ -3,7 +3,7 @@ import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { isInside, rootNames, samePath } from "../paths.ts";
-import { trustsManyProjects } from "./trust-root.ts";
+import { type TrustRootFs, trustsManyProjects } from "./trust-root.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -31,6 +31,8 @@ export interface ProjectTrustOptions {
   readText?: (path: string) => Promise<string>;
   /** Whether two folders are the same one (case blind where the file system is): a test seam, `samePath` by default. */
   sameFolder?: (a: string, b: string) => boolean;
+  /** What `refreshRoots` looks at on disk (a test seam): the disk by default. */
+  rootFs?: TrustRootFs;
 }
 
 interface Row {
@@ -64,6 +66,9 @@ export class ProjectTrust {
   /** The ticket of the look whose answer each folder holds: an older one that finishes later stores nothing. */
   private readonly stored = new Map<string, number>();
   private scans = 0;
+  /** The ticket of the latest read of the roots, and of the one whose answer is held (#1728). */
+  private rootReads = 0;
+  private rootsStored = 0;
   /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
   private realRoots: string[] = [];
   /**
@@ -157,6 +162,8 @@ export class ProjectTrust {
 
   /** Looks at the folders of the sessions that exist (once each), as the daemon boots. */
   async prepareSessions(sessions: ReadonlyArray<{ cwd: string }>): Promise<void> {
+    // The roots are read even with no session to look at: the check-loop gates read them (#1728).
+    await this.refreshRoots();
     const folders = new Set(sessions.map((session) => session.cwd));
     await Promise.all([...folders].map((cwd) => this.prepare(cwd)));
   }
@@ -178,15 +185,24 @@ export class ProjectTrust {
 
   /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
   async refreshRoots(): Promise<void> {
-    this.realRoots = await rootNames(this.opts.roots?.() ?? []);
+    // Two reads can overlap (#1728, as `scan` in #415): the one that started last has read the later
+    // state, so it is the one kept. One that finishes first still stores, until a newer one replaces it.
+    const ticket = ++this.rootReads;
+    const real = await rootNames(this.opts.roots?.() ?? []);
     // The same rule `project.trust.set` applies when the record is made; a root with no `.git` of
     // its own costs one stat. Read for every root, not only recorded ones, because `set` answers
     // from this list right after it writes the record.
     const looked = await Promise.all(
-      this.realRoots.map(async (root) =>
-        (await trustsManyProjects(root, this.realRoots)) ? null : root,
-      ),
+      real.map(async (root) => {
+        // A root that cannot be read is not known to be one project: it grants nothing, and the
+        // daemon still boots.
+        const many = await trustsManyProjects(root, real, this.opts.rootFs).catch(() => true);
+        return many ? null : root;
+      }),
     );
+    if (this.rootsStored > ticket) return;
+    this.rootsStored = ticket;
+    this.realRoots = real;
     this.projectRoots = looked.filter((root): root is string => root !== null);
   }
 
