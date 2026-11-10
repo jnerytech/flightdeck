@@ -26,7 +26,6 @@ import {
 } from "@flightdeck/protocol";
 import { FlightdeckError, refusalOf } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
-import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside } from "../paths.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { ulid } from "../ulid.ts";
@@ -34,6 +33,7 @@ import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
+import { CardPrFlow } from "./card-pr-flow.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
@@ -41,19 +41,11 @@ import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { ConflictRadar, radarGit } from "./conflict-radar.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
-import { cardDiff } from "./diff.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
-import {
-  aheadBehind,
-  assertLocalBranch,
-  mergeIntoBase,
-  pendingFiles,
-  rebaseOnto,
-} from "./merge.ts";
-import { type PrComment, prMessage, prProvider } from "./pr.ts";
+import { type PrComment, prProvider } from "./pr.ts";
+import { PrPoll } from "./pr-poll.ts";
 import { Projects } from "./projects.ts";
-import { assertNoSecretInPr, publishPr } from "./publish-pr.ts";
-import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
+import { type Rev, refArg } from "./ref-arg.ts";
 import { RuleWrites } from "./rule-writes.ts";
 import { RunQueue } from "./run-queue.ts";
 import { type FixResult, FREES_SLOT, SessionFollow } from "./session-follow.ts";
@@ -80,12 +72,10 @@ import type {
 } from "./types.ts";
 import { must } from "./worktree.ts";
 
+export { DEFAULT_PR_POLL_MS } from "./pr-poll.ts";
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
 export type { BoardOptions } from "./types.ts";
-
-/** How often cards with an open PR ask the provider for its state and checks. */
-export const DEFAULT_PR_POLL_MS = 60_000;
 
 /** Issue #79: a card done this recently still covers the key of the finding it was raised from. */
 const DONE_COVERS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -139,9 +129,6 @@ const toRun = (row: RunRow): CardRun => ({
   endedAt: row.ended_at,
 });
 
-/** A card's session in one of these is still working: no rebase or merge under it. */
-const BUSY: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission"]);
-
 /**
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
@@ -163,14 +150,10 @@ export class Board {
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   /** Card id → the number of the last look at its spec file, so an older look writes nothing. */
   private readonly specLooks = new Map<string, number>();
-  /** Review comments of each card's open PR, from the last poll (phase 11). */
-  private readonly prCommentCache = new Map<string, PrComment[]>();
-  /** Runs while a PR is open or a merge waits to be finished; see `armPoll`. */
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly prRoundListeners = new Set<() => void>();
-  private polling = false;
-  /** The last PR poll round, finished or not (a failed one counts as finished): see `idle`. */
-  private lastRound: Promise<void> = Promise.resolve();
+  /** The PR polling: timer, rounds and reads of the open PRs (issue #1523). */
+  private readonly prPoll: PrPoll;
+  /** A card's diff, PR, PR comments, rebase and local merge (issue #1523). */
+  private readonly prFlow: CardPrFlow;
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
   private readonly watchers = new Set<(card: Card) => void>();
@@ -178,8 +161,6 @@ export class Board {
   private readonly radar = new ConflictRadar(radarGit());
   /** The radar reads of the cards in flight, and the ones asked again meanwhile. */
   private readonly radarReads = new Map<string, { again: boolean; done: Promise<void> }>();
-  /** Phase 22: the fix runs waiting for their first turn to end, by card. */
-  private readonly checkWatchers = new Set<(cardId: string, failed: string[]) => void>();
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
@@ -261,9 +242,39 @@ export class Board {
       loop: () => this.loop,
       settle: () => this.settle(),
     });
+    this.prFlow = new CardPrFlow({
+      db: opts.db,
+      opts,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      place: (id, event) => this.place(id, event),
+      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
+      stopped: () => this.stopped,
+      message: (id, text) => this.message(id, text),
+      settle: () => this.settle(),
+      closeRuns: (id) => this.closeRuns(id),
+      loop: () => this.loop,
+      armPoll: () => this.prPoll.arm(),
+      readInFlight: (id) => this.prPoll.inFlight(id),
+      pollPr: (id) => this.prPoll.pollPr(id),
+    });
+    this.prPoll = new PrPoll({
+      db: opts.db,
+      opts,
+      card: (id) => this.getCard(id),
+      project: (id) => this.getProject(id),
+      changed: (id) => this.changed(id),
+      place: (id, event) => this.place(id, event),
+      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
+      finish: (id) => this.finish(id),
+      stopped: () => this.stopped,
+      fetchComments: (id) => this.prFlow.fetchComments(id),
+      pendingNotice: PENDING_NOTICE,
+    });
     opts.manager.onPermissionUpdates((sessionId, updates) => this.rules.queue(sessionId, updates));
     this.queue.watchLimits();
-    this.armPoll();
+    this.prPoll.arm();
     // Issue #1361: a round a restart left open is closed; the loop never resumes by itself.
     this.loopHost.sweep();
     // Back from a restart: keep moving cards whose run still has a session.
@@ -1066,8 +1077,7 @@ export class Board {
    * failing), with the names that failed; returns the function that stops it.
    */
   onChecksFailing(listener: (cardId: string, failed: string[]) => void): () => void {
-    this.checkWatchers.add(listener);
-    return () => this.checkWatchers.delete(listener);
+    return this.prPoll.onChecksFailing(listener);
   }
 
   /**
@@ -1452,275 +1462,50 @@ export class Board {
   }
 
   /** Commits since the base plus uncommitted changes, per file. */
-  async diff(id: string): Promise<CardDiff> {
-    const card = this.getCard(id);
-    if (!card.worktreePath)
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card has no worktree yet",
-        "card_no_worktree",
-      );
-    return cardDiff(card.worktreePath, refArg(this.getProject(card.projectId).baseBranch));
+  diff(id: string): Promise<CardDiff> {
+    return this.prFlow.diff(id);
   }
 
   /**
    * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
    * `description` (phase 22) is the text the person confirmed, instead of the card's own.
    */
-  async createPr(
-    id: string,
-    options: { description?: string; title?: string } = {},
-  ): Promise<Card> {
-    const card = this.getCard(id);
-    // What goes public (into the PR) is what the provider gets: the confirmed text, else the card's
-    // own. Each is refused by its own field, naming the pattern and never the secret.
-    const body =
-      options.description ??
-      [card.description, card.issueRef ? closingLine(card.issueRef) : null]
-        .filter((part) => part?.trim())
-        .join("\n\n");
-    const title = options.title ?? card.title;
-    assertNoSecretInPr(this.opts.scanner, title, body);
-    const project = this.getProject(card.projectId);
-    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
-    if (!provider)
-      throw new FlightdeckError(
-        "invalid_state",
-        "the project has no PR provider",
-        "project_no_pr_provider",
-      );
-    const { worktreePath: cwd, branch } = card;
-    if (!cwd || !branch)
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card has no worktree yet",
-        "card_no_worktree",
-      );
-    // The provider's CLI takes the base as a plain argument (`az` reads `@file` as a file): a base an
-    // older daemon stored without checking is refused here (issue #369), before anything is pushed.
-    const base = assertBranchName(project.baseBranch);
-    // Phase 40: the title the person confirmed, else the card's. The provider links the PR to the
-    // issue and closes it on merge (`Fixes #n`, `AB#id`).
-    const scanner = this.opts.scanner;
-    const url = await publishPr({ cwd, branch, base, title, body, provider, scanner });
-    this.db
-      .query(
-        `UPDATE cards SET pr_url = ?, pr_state = 'open', checks_state = NULL, pr_mergeable = NULL,
-           pr_review = NULL, pr_opened_at = NULL, notice = NULL WHERE id = ?`,
-      )
-      .run(url, id);
-    this.place(id, { type: "pr", state: "open" });
-    this.armPoll();
-    if (project.issues?.commentOnPr && card.issueRef) {
-      await this.commentOnIssue(id, project.path, card.issueRef, url);
-    }
-    return this.getCard(id);
+  createPr(id: string, options: { description?: string; title?: string } = {}): Promise<Card> {
+    return this.prFlow.createPr(id, options);
   }
 
   /** #1196: merges the card's open PR on its provider, then reads it again so the card moves to Done. */
-  async mergePr(id: string, method: "merge" | "squash", confirm: boolean): Promise<Card> {
-    if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
-    const card = this.getCard(id);
-    if (!card.prUrl) throw new FlightdeckError("invalid_state", "the card has no PR", "card_no_pr");
-    if (card.prState !== "open") {
-      throw new FlightdeckError("invalid_state", "the card's PR is not open", "card_pr_not_open", {
-        url: card.prUrl,
-      });
-    }
-    const project = this.getProject(card.projectId);
-    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
-    if (!provider)
-      throw new FlightdeckError(
-        "invalid_state",
-        "the project has no PR provider",
-        "project_no_pr_provider",
-      );
-    if (!provider.merge) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "this PR provider cannot merge from Flightdeck",
-        "card_pr_merge_unsupported",
-        { url: card.prUrl },
-      );
-    }
-    // From the main repository, as the poll: a cwd inside the worktree would lock it when it goes.
-    await provider.merge({ cwd: project.path, url: card.prUrl, method });
-    // Read again at once: the card moves to Done and its worktree goes, as for any merged PR.
-    // A read that began before the merge landed may answer "open": let it end, then read again.
-    await this.prReads.get(id)?.catch(() => {});
-    // The PR is merged by now: a failed read is a notice, and the next round reads it again.
-    await this.pollPr(id).catch((error: unknown) => {
-      if (!this.stopped)
-        this.setNotice(id, error instanceof Error ? error.message : String(error), error);
-    });
-    return this.getCard(id);
+  mergePr(id: string, method: "merge" | "squash", confirm: boolean): Promise<Card> {
+    return this.prFlow.mergePr(id, method, confirm);
   }
 
   /** The review comments of the card's PR, as last fetched (fetched now when there are none). */
-  async prComments(id: string): Promise<PrComment[]> {
-    if (!this.getCard(id).prUrl)
-      throw new FlightdeckError("invalid_state", "the card has no PR", "card_no_pr");
-    return this.prCommentCache.get(id) ?? this.fetchPrComments(id);
-  }
-
-  /** Asks the provider; read only, nothing is posted back. */
-  private async fetchPrComments(id: string): Promise<PrComment[]> {
-    const card = this.getCard(id);
-    const project = this.getProject(card.projectId);
-    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
-    if (!provider)
-      throw new FlightdeckError(
-        "invalid_state",
-        "the project has no PR provider",
-        "project_no_pr_provider",
-      );
-    const comments = await provider.comments({ cwd: project.path, url: card.prUrl as string });
-    this.prCommentCache.set(id, comments);
-    return comments;
+  prComments(id: string): Promise<PrComment[]> {
+    return this.prFlow.prComments(id);
   }
 
   /** Sends the chosen PR comments to the card's session, in the review's format. */
-  async sendPrComments(id: string, ids: readonly string[]): Promise<{ sent: number }> {
-    const chosen = (await this.prComments(id)).filter((c) => ids.includes(c.id));
-    if (chosen.length === 0)
-      throw new FlightdeckError("bad_request", "no comment was chosen", "pr_no_comment");
-    this.message(id, prMessage(chosen));
-    return { sent: chosen.length };
-  }
-
-  /** The card's worktree and branch, while no turn of its agent is going on. */
-  private idleWorktree(id: string): { card: Card; worktree: string; branch: string } {
-    const card = this.getCard(id);
-    if (!card.worktreePath || !card.branch) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card has no worktree yet",
-        "card_no_worktree",
-      );
-    }
-    if (card.queued || (card.sessionStatus !== null && BUSY.has(card.sessionStatus))) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card is running: wait for the agent to finish",
-        "card_running",
-      );
-    }
-    return { card, worktree: card.worktreePath, branch: card.branch };
+  sendPrComments(id: string, ids: readonly string[]): Promise<{ sent: number }> {
+    return this.prFlow.sendPrComments(id, ids);
   }
 
   /** Rebases the card's branch on its base; a conflict aborts and leaves the worktree as it was. */
-  async updateFromBase(id: string): Promise<Card> {
-    const { card, worktree } = this.idleWorktree(id);
-    await rebaseOnto(worktree, refArg(this.getProject(card.projectId).baseBranch));
-    return this.changed(id);
+  updateFromBase(id: string): Promise<Card> {
+    return this.prFlow.updateFromBase(id);
   }
 
   /**
    * "Merge e arquivar" for a card without a PR: into the base where it is checked out (clean), or
    * through a temporary worktree; then the card's worktree and branch go and it is Concluído.
    */
-  async mergeLocal(
+  mergeLocal(
     id: string,
     mode: "merge" | "squash",
     confirm: boolean,
     /** Phase 40: the message the person confirmed, else the default of the mode. */
     message?: string,
   ): Promise<Card> {
-    if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
-    // The message goes into the base branch, public history: a secret in it is refused up front,
-    // whether the person typed it or it is the default built from the card.
-    const named = this.getCard(id);
-    const found =
-      this.opts.scanner?.scan(
-        message ??
-          (mode === "squash" ? named.title : `Merge ${named.branch ?? ""}: ${named.title}`),
-      ) ?? [];
-    if (found.length > 0) {
-      throw new FlightdeckError(
-        "bad_request",
-        `the merge message looks like it has a secret (${found.join(", ")}): take it out before merging`,
-        "merge_message_secret",
-        { found: found.join(", ") },
-      );
-    }
-    const { card, worktree, branch } = this.idleWorktree(id);
-    if (card.prUrl) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card has a PR: the PR completes it",
-        "card_has_pr",
-      );
-    }
-    const pending = await pendingFiles(worktree);
-    if (pending.length > 0) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `the card's worktree has uncommitted changes: ${pending.join(", ")}`,
-        "worktree_dirty",
-        { files: pending.join(", ") },
-      );
-    }
-    const project = this.getProject(card.projectId);
-    const base = refArg(project.baseBranch);
-    await assertLocalBranch(project.path, base);
-    const { ahead } = await aheadBehind(worktree, base);
-    if (ahead === 0)
-      throw new FlightdeckError("invalid_state", `nothing ahead of ${base}`, "nothing_ahead", {
-        base,
-      });
-    const text = message ?? (mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`);
-    await mergeIntoBase(project.path, base, refArg(branch), mode, text);
-    // The merge is in the base now and cannot be undone: nothing below may leave the card out of
-    // Concluído. What could not be cleaned up stays on the card as a notice.
-    // Issue #1361: the worktree goes only once a check killed in it has exited.
-    await this.loop?.onStop(id);
-    await this.closeRuns(id);
-    const left = await this.removeMerged(project.path, worktree, branch);
-    this.db
-      .query("UPDATE cards SET worktree_path = ?, branch = ?, notice = ? WHERE id = ?")
-      .run(left.worktree ? worktree : null, left.branch ? branch : null, left.notice, id);
-    this.place(id, { type: "moved", column: "done" });
-    return this.changed(id);
-  }
-
-  /**
-   * Removes a merged card's worktree, then its branch (git does not delete a branch checked out
-   * somewhere). A failure of either is reported, not thrown: on Windows a process may hold the
-   * folder, and the merge is already in the base.
-   */
-  private async removeMerged(
-    repo: string,
-    worktree: string,
-    branch: string,
-  ): Promise<{ worktree: boolean; branch: boolean; notice: string | null }> {
-    await this.settle();
-    const removed = await git(repo, "worktree", "remove", worktree);
-    if (removed.code !== 0) {
-      const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
-      return { worktree: true, branch: true, notice };
-    }
-    const deleted = await git(repo, "branch", "-D", refArg(branch));
-    if (deleted.code !== 0) {
-      const notice = `a branch ${branch} ficou (${deleted.stderr.trim()}); apague depois`;
-      return { worktree: false, branch: true, notice };
-    }
-    return { worktree: false, branch: false, notice: null };
-  }
-
-  /** A comment with the PR's link on the card's issue; a failure only notices the card. */
-  private async commentOnIssue(id: string, cwd: string, ref: string, url: string): Promise<void> {
-    try {
-      const parsed = parseIssueRef(ref) as NonNullable<ReturnType<typeof parseIssueRef>>;
-      await (providerOfRef(ref) as NonNullable<ReturnType<typeof providerOfRef>>).comment(
-        cwd,
-        parsed.id,
-        `PR aberto: ${url}`,
-      );
-    } catch (error) {
-      const notice = `PR aberto, mas não comentou na issue: ${(error as Error).message}`;
-      this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
-      this.changed(id);
-    }
+    return this.prFlow.mergeLocal(id, mode, confirm, message);
   }
 
   /** Manual completion: Concluído (locked) and the same cleanup as a merged PR. */
@@ -1806,124 +1591,16 @@ export class Board {
 
   /** Calls `listener` after every round of the PR polling. */
   onPrRound(listener: () => void): () => void {
-    this.prRoundListeners.add(listener);
-    return () => this.prRoundListeners.delete(listener);
-  }
-
-  /**
-   * The PR polling runs while some card has an open PR, or a merged card waits for its worktree
-   * to be removed; with none it owns no timer, and a PR that is opened starts it.
-   */
-  private armPoll(): void {
-    const wanted =
-      !this.stopped &&
-      this.db
-        .query(
-          `SELECT 1 FROM cards WHERE pr_state = 'open'
-           OR (pr_state = 'merged' AND board_column = 'done' AND worktree_path IS NOT NULL
-               AND notice IS NOT NULL AND notice <> ?) LIMIT 1`,
-        )
-        .get(PENDING_NOTICE) !== null;
-    if (wanted && this.pollTimer === null) {
-      this.pollTimer = setInterval(() => void this.pollPrs(), this.prPollIntervalMs);
-    } else if (!wanted && this.pollTimer !== null) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
+    return this.prPoll.onPrRound(listener);
   }
 
   get prPollIntervalMs(): number {
-    return this.opts.prPollIntervalMs ?? DEFAULT_PR_POLL_MS;
+    return this.prPoll.intervalMs;
   }
 
   /** Asks the provider about every card with an open PR; one round at a time. */
-  async pollPrs(): Promise<void> {
-    if (this.polling) return;
-    const round = this.pollRound();
-    this.lastRound = round.catch(() => {});
-    await round;
-  }
-
-  private async pollRound(): Promise<void> {
-    this.polling = true;
-    try {
-      const open = this.db
-        .query<{ id: string }, []>("SELECT id FROM cards WHERE pr_state = 'open'")
-        .all();
-      const failed = (id: string) => (error: unknown) => {
-        // After stop() the failure is the shutdown's (a closed database): nothing to record.
-        if (this.stopped) return;
-        this.setNotice(id, error instanceof Error ? error.message : String(error), error);
-        // The card may have been discarded while the provider was answering.
-        if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
-      };
-      // An empty list is not awaited: a round with nothing to ask ends in the tick it starts.
-      if (open.length > 0) {
-        await inSequence(open, async ({ id }) => {
-          await this.pollPr(id).catch(failed(id));
-        });
-      }
-      if (this.stopped) return;
-      // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
-      // notice): finish again, without asking the provider. Pending changes wait for the user,
-      // as in completeCard, and a card started again (notice cleared) is left alone.
-      const unfinished = this.db
-        .query<{ id: string }, [string]>(
-          `SELECT id FROM cards WHERE pr_state = 'merged' AND board_column = 'done'
-           AND worktree_path IS NOT NULL AND notice IS NOT NULL AND notice <> ?`,
-        )
-        .all(PENDING_NOTICE);
-      if (unfinished.length > 0) {
-        await inSequence(unfinished, async ({ id }) => {
-          await this.finish(id).catch(failed(id));
-        });
-      }
-      for (const listener of this.prRoundListeners) listener();
-    } finally {
-      this.polling = false;
-      this.armPoll();
-    }
-  }
-
-  /** The reads in flight, by card: a poll and a merge asking at once share one answer (and one `place`). */
-  private readonly prReads = new Map<string, Promise<void>>();
-
-  private pollPr(id: string): Promise<void> {
-    const running = this.prReads.get(id);
-    if (running) return running;
-    const read = this.readPr(id).finally(() => this.prReads.delete(id));
-    this.prReads.set(id, read);
-    return read;
-  }
-
-  private async readPr(id: string): Promise<void> {
-    const card = this.getCard(id);
-    const project = this.getProject(card.projectId);
-    const provider = (this.opts.prProvider ?? prProvider)(project.prProvider);
-    if (!provider || !card.prUrl) return;
-    // From the main repository: a cwd inside the worktree would lock it while it is removed.
-    const cwd = project.path;
-    const { state, checks, failed, mergeable, review, openedAt } = await provider.status({
-      cwd,
-      url: card.prUrl,
-    });
-    if (this.stopped) return;
-    // A provider that says nothing of the details leaves what the card has.
-    this.db
-      .query(
-        `UPDATE cards SET pr_state = ?, checks_state = ?, notice = NULL,
-           pr_mergeable = COALESCE(?, pr_mergeable), pr_review = COALESCE(?, pr_review),
-           pr_opened_at = COALESCE(?, pr_opened_at) WHERE id = ?`,
-      )
-      .run(state, checks, mergeable ?? null, review ?? null, openedAt ?? null, id);
-    this.changed(id);
-    if (checks === "failing" && card.checksState !== "failing") {
-      for (const listener of this.checkWatchers) listener(id, failed ?? []);
-    }
-    if (state !== card.prState) this.place(id, { type: "pr", state });
-    // The comments come in the same round; a failure keeps the last ones, quietly.
-    if (state === "open") await this.fetchPrComments(id).catch(() => {});
-    if (state === "merged") await this.finish(id);
+  pollPrs(): Promise<void> {
+    return this.prPoll.pollPrs();
   }
 
   get maxParallelRuns(): number {
@@ -1938,14 +1615,13 @@ export class Board {
 
   /** Resolves when no PR poll round is running (stop() lets the one in flight finish). */
   idle(): Promise<void> {
-    return this.lastRound;
+    return this.prPoll.idle();
   }
 
   stop(): void {
     this.stopped = true;
     this.loop?.dispose();
-    if (this.pollTimer !== null) clearInterval(this.pollTimer);
-    this.pollTimer = null;
+    this.prPoll.dispose();
     this.queue.dispose();
     this.sessions.unfollowAll();
   }

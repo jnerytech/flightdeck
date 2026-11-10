@@ -175,6 +175,7 @@ const MSGS3_FILES = [
   "board/projects.ts",
   "board/rule-writes.ts",
   "board/launch.ts",
+  "board/card-pr-flow.ts",
   "central/wrapper.ts",
 ];
 
@@ -206,15 +207,11 @@ const MSGS3_SHOWN: Record<string, string[]> = {
     "O objetivo do time mudou",
     "Os comandos de verificação do time",
   ],
-  "board/board.ts": [
-    "card parado antes de começar",
-    "a pasta da worktree ficou em",
-    "ficou (",
-    "PR aberto",
-  ],
+  "board/board.ts": ["card parado antes de começar"],
   // Issue #1523: the board split moved these with their code.
   "board/projects.ts": ["Trabalhe somente nesta worktree", "com mensagens descritivas"],
   "board/rule-writes.ts": ["regra não gravada no "],
+  "board/card-pr-flow.ts": ["a pasta da worktree ficou em", "ficou (", "PR aberto"],
   "board/launch.ts": [
     "worktree com alterações pendentes",
     "arquivo do .worktreeinclude",

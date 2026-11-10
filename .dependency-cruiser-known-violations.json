@@ -2027,17 +2027,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/board/board.ts",
-    "to": "apps/daemon/src/issues/providers.ts",
-    "unresolvedTo": "../issues/providers.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/board/board.ts",
     "to": "apps/daemon/src/roi/done-log.ts",
     "unresolvedTo": "../roi/done-log.ts",
     "dependencyTypes": ["local", "import"],
@@ -2095,6 +2084,17 @@
     "from": "apps/daemon/src/board/branch-commit.ts",
     "to": "apps/daemon/src/teleport/git.ts",
     "unresolvedTo": "../teleport/git.ts",
+    "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/board/card-pr-flow.ts",
+    "to": "apps/daemon/src/issues/providers.ts",
+    "unresolvedTo": "../issues/providers.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
