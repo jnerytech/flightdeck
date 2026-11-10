@@ -7,7 +7,7 @@ import {
   PermissionMode,
   SessionPersona,
 } from "@flightdeck/protocol";
-import type { Tail } from "./waiting.ts";
+import { type Tail, tailOfFile, type Waiting, waitingIn } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -66,7 +66,7 @@ function nextStatus(event: string, payload: HookPayload): ExternalStatus | null 
   return payload.notification_type === "permission_prompt" ? "awaiting_permission" : null;
 }
 
-const toSession = (row: Row): ExternalSession => ({
+const toSession = (row: Row, waiting: Waiting | null): ExternalSession => ({
   claudeSessionId: row.claude_session_id,
   cwd: row.cwd,
   transcriptPath: row.transcript_path,
@@ -84,6 +84,8 @@ const toSession = (row: Row): ExternalSession => ({
     ? { persona: JSON.parse((row.persona_applied ?? row.persona_open) as string) as SessionPersona }
     : {}),
   ...(row.permission_mode ? { permissionMode: row.permission_mode } : {}),
+  // A session that has ended or asks for a permission is not told apart by its transcript's end (#1736).
+  ...(waiting && row.status !== "ended" && row.status !== "awaiting_permission" ? { waiting } : {}),
 });
 
 /** Last modification of a transcript, or 0 when it is unreadable. */
@@ -105,6 +107,13 @@ export class ExternalSessions {
   private readonly listeners = new Set<(session: ExternalSession) => void>();
   /** Launch ids with a channel connected right now. */
   private readonly channels = new Set<string>();
+  /** What each session's transcript ended at when it was last read, with the file's size and time. */
+  private readonly looks = new Map<
+    string,
+    { size: number; mtimeMs: number; value: Waiting | null }
+  >();
+  /** Counts the events of each session: a look that began before one must not store its answer. */
+  private readonly events = new Map<string, number>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private timers: Timers = globalThis;
 
@@ -122,6 +131,9 @@ export class ExternalSessions {
     const id = text(payload.session_id);
     if (!id) return null;
     const at = new Date(this.now()).toISOString();
+    // Any event means the session went on: what its transcript ended at is no longer known.
+    this.looks.delete(id);
+    this.events.set(id, (this.events.get(id) ?? 0) + 1);
     const next = nextStatus(event, payload);
     // The hook's cwd is the session's current folder, which moves with it; the project is the
     // launch folder's, the one its transcript is filed under, so it is set once (#583).
@@ -189,7 +201,7 @@ export class ExternalSessions {
     const row = this.db
       .query<Row, [string]>("SELECT * FROM external_sessions WHERE claude_session_id = ?")
       .get(id);
-    return row ? toSession(row) : null;
+    return row ? this.view(row) : null;
   }
 
   /** Most recent activity first. */
@@ -197,7 +209,11 @@ export class ExternalSessions {
     return this.db
       .query<Row, []>("SELECT * FROM external_sessions ORDER BY last_event_at DESC, rowid DESC")
       .all()
-      .map(toSession);
+      .map((row) => this.view(row));
+  }
+
+  private view(row: Row): ExternalSession {
+    return toSession(row, this.looks.get(row.claude_session_id)?.value ?? null);
   }
 
   /** Current session of a launch: the latest one started with that launch id. */
@@ -260,6 +276,35 @@ export class ExternalSessions {
         )
         .run(new Date(now).toISOString(), row.claude_session_id);
       this.emit(row.claude_session_id);
+    });
+    await this.lookAtTranscripts();
+  }
+
+  /**
+   * Reads the end of the transcript of each session that is not over (a file whose size and time did
+   * not change since the last look is not read again) and tells a change of what it waits for (#1736).
+   */
+  private async lookAtTranscripts(): Promise<void> {
+    const open = this.db
+      .query<Row, []>(
+        "SELECT * FROM external_sessions WHERE status NOT IN ('ended', 'awaiting_permission') AND transcript_path IS NOT NULL",
+      )
+      .all();
+    await inSequence(open, async (row) => {
+      const id = row.claude_session_id;
+      const events = this.events.get(id) ?? 0;
+      const info = await stat(row.transcript_path ?? "").catch(() => null);
+      const before = this.looks.get(id);
+      if (before && info && before.size === info.size && before.mtimeMs === info.mtimeMs) return;
+      // Only a regular file is read: a pipe given as a transcript path would block the read.
+      const tail = info?.isFile()
+        ? await (this.opts.readTail ?? tailOfFile)(row.transcript_path ?? "").catch(() => null)
+        : null;
+      // An event came while the file was read: it already cleared the look, and this one is old.
+      if ((this.events.get(id) ?? 0) !== events) return;
+      const value = tail && info ? waitingIn(tail.text) : null;
+      this.looks.set(id, { size: info?.size ?? 0, mtimeMs: info?.mtimeMs ?? 0, value });
+      if (value !== (before?.value ?? null)) this.emit(id);
     });
   }
 

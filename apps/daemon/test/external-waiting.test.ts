@@ -80,8 +80,14 @@ describe.skipIf(process.platform === "win32")(
       return path;
     };
     const hung = Symbol("hung");
+    // A deadline for work that must not hang, not a wait for something to happen.
     const within = <T>(work: Promise<T>, ms = 1500) =>
-      Promise.race([work, new Promise<typeof hung>((done) => setTimeout(done, ms, hung))]);
+      Promise.race([
+        work,
+        new Promise<typeof hung>((done) =>
+          AbortSignal.timeout(ms).addEventListener("abort", () => done(hung)),
+        ),
+      ]);
     // Opening the pipe for writing frees a reader that is stuck, so the test leaves nothing behind.
     const release = (path: string) => closeSync(openSync(path, "r+"));
 
