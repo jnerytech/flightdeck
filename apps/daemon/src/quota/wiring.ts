@@ -15,7 +15,6 @@ export interface QuotaDeps {
  * history, and the pause the client sets.
  */
 export function createQuota({ db, config, configFile }: QuotaDeps) {
-  // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db });
   return {
