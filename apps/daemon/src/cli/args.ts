@@ -2,7 +2,8 @@
  * The `flightdeckd` command line (issue #1593): its words, flags and usage, parsed into `CliArgs`
  * with no effect; `main.ts` runs what they ask for.
  */
-import { RuntimeKind } from "../config.ts";
+import { resolve } from "node:path";
+import { defaultConfigPath, expandHome, RuntimeKind } from "../config.ts";
 
 export type ServiceAction = "install" | "uninstall" | "status" | "stop" | "start";
 
@@ -410,4 +411,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       `--json, --description and --workflow: this flag only applies to flightdeckd card\n${USAGE}`,
     );
   return args;
+}
+
+/** The config file the command line names (`--config`), else the default one, as an absolute path. */
+export function configPath(args: CliArgs): string {
+  return resolve(expandHome(args.config ?? defaultConfigPath()));
 }
