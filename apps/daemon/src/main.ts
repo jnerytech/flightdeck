@@ -64,15 +64,12 @@ import { createLogScanner } from "./logs/scanner.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
-import { LocalEndpoints } from "./messaging/endpoints.ts";
 import { Idle } from "./messaging/idle.ts";
-import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
-import { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./names/track.ts";
+import { adoptTitles } from "./names/track.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
-import { OpenSessionPersonas } from "./personas/open-session.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
@@ -118,7 +115,7 @@ import { SnippetUse } from "./snippets/use.ts";
 import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
-import { Teams } from "./teams/teams.ts";
+import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { teleportImportDeps } from "./teleport/import.ts";
 import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
@@ -652,102 +649,19 @@ export async function startDaemon(
     risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
     projectKey: (id) => keys.known(board.getProject(id).path),
   });
-  // Phase 21: messages between sessions, delivered here and carried between hosts by the app.
-  const endpoints = new LocalEndpoints({
+  const { endpoints, messaging, teams, personaSessions, stopNames } = await createTeams({
+    db: store.db,
+    config,
     manager,
-    external: central.external,
-    nameOf: (claudeSessionId) => central.meta.get(claudeSessionId).name,
-    projectKey: (cwd) => keys.known(cwd),
-    cardOf: (sessionId) => board.projectForCwd(manager.get(sessionId).cwd)?.card?.id ?? null,
-    sendToLaunch: central.sendToLaunch.bind(central),
-    autoApprove,
-  });
-  // The messaging service asks the teams who is on one, and the teams need the messaging service.
-  let teams: Teams | undefined;
-  const messaging = new Messaging({
-    db: store.db,
-    host: config.hostName,
-    endpoints,
-    names,
-    teamOf: (sessionId) => teams?.teamOf(sessionId) ?? null,
-  });
-  // Phase 20's personas reach the team: the coordinator and each worker open in theirs.
-  const personaSessions = new OpenSessionPersonas({ personas: personaStore, manager, central });
-  teams = new Teams({
-    db: store.db,
     board,
-    manager,
-    messaging,
-    host: config.hostName,
+    central,
+    keys,
+    autoApprove,
+    names,
+    personaStore,
+    prepare,
     quota,
-    names,
-    personas: {
-      resolve: async (id) => {
-        try {
-          return { id, name: (await personaStore.resolve({ id }, {})).persona.name };
-        } catch {
-          return null;
-        }
-      },
-    },
-    bypassAllowed: () => config.allowBypassPermissions,
-    startCoordinator: async ({ cwd, prompt, name, persona, model, permissionMode }) => {
-      const ref = persona ? { id: persona } : undefined;
-      return manager.create(
-        {
-          cwd,
-          prompt,
-          name,
-          ...(ref ? { persona: ref } : {}),
-          ...(model ? { model } : {}),
-          ...(permissionMode ? { permissionMode } : {}),
-        },
-        { prepared: await prepare(ref, cwd) },
-      );
-    },
-    // The worker's model travels on its card (see `Teams.startWorker`).
-    startWorker: (cardId, persona) =>
-      board.startCard(cardId, persona ? { persona: { id: persona } } : {}),
-    warm: (cwd) => warmKeys(cwd),
-    applyPersona: (sessionId, persona) => {
-      const done = persona
-        ? personaSessions.apply({ sessionId, persona: { id: persona } })
-        : personaSessions.clear({ sessionId });
-      // A session that ended keeps the persona it had; the team still records the new one.
-      void done.catch(() => {});
-    },
   });
-  // Of a managed session only: the id of a terminal session is not one the manager knows.
-  const cardOf = (sessionId: string) => {
-    const cwd = manager.list().find((s) => s.id === sessionId)?.cwd;
-    return cwd ? (board.projectForCwd(cwd)?.card?.id ?? null) : null;
-  };
-  // A session is named after its project, or after the card's project when it runs in a worktree.
-  const keyedPath = (cwd: string) => board.projectForCwd(cwd)?.project.path ?? cwd;
-  // Both folders, without blocking: naming, lists and messages read their keys right after. Nothing
-  // back when both are known, so whoever starts a session can read its name at once.
-  const warmKeys = (cwd: string) => {
-    const looked = [cwd, keyedPath(cwd)].map((folder) => keys.lookup(folder));
-    return looked.every((key) => typeof key === "string")
-      ? undefined
-      : Promise.all(looked.map((key) => Promise.resolve(key)));
-  };
-  const nameOptions: TrackOptions = {
-    names,
-    manager,
-    external: central.external,
-    projectOf: (cwd) => keys.known(keyedPath(cwd)),
-    warm: warmKeys,
-    cardOf,
-    personaOf: (sessionId) => {
-      const card = cardOf(sessionId);
-      return card ? (teams?.personaOfCard(card) ?? null) : null;
-    },
-    // Issue #101: a worker's session is named with its team, role and number from the start.
-    ...present({ teamOfCard: teams?.teamOfCard.bind(teams) }),
-  };
-  await warmKnown(nameOptions);
-  const stopNames = trackNames(nameOptions);
   const traces = new Traces({
     scanner: snippetScanner,
     db: store.db,
