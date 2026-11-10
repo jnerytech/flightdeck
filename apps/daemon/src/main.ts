@@ -141,12 +141,8 @@ import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { Snippets } from "./snippets/store.ts";
 import { SnippetUse } from "./snippets/use.ts";
-import { AskpassBroker, askpassHook, runAskpass } from "./ssh/askpass.ts";
-import { processExec, processRun, resolveSshPath, SshConnector } from "./ssh/connect.ts";
-import { HostKeys } from "./ssh/hostkey.ts";
-import { SshImporter } from "./ssh/import.ts";
-import { chooseDelivery, processOps } from "./ssh/key-delivery.ts";
-import { SshTargets } from "./ssh/targets.ts";
+import { runAskpass } from "./ssh/askpass.ts";
+import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
 import { Teams } from "./teams/teams.ts";
@@ -664,42 +660,23 @@ export async function startDaemon(
     selfCommand,
     settingsPath: claudeSettingsPath,
   });
-  const sshTargets = new SshTargets({ db: store.db });
-  const sshHostKeys = new HostKeys({ targets: sshTargets });
-  const sshDir = join(config.dataDir, "ssh");
+  // Phase 15: the SSH destinations, their server keys, the connector and askpass.
+  const ssh = await createSsh({
+    db: store.db,
+    config,
+    configFile,
+    self: selfCommand,
+    terminals,
+    exists,
+    home: userHome(env),
+    platform: process.platform,
+    user: userInfo().username,
+    sockDir: tmpdir(),
+  });
   const snippets = new Snippets({
     db: store.db,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
-  });
-  const askpass = new AskpassBroker({});
-  const sshAskpass = await askpassHook({
-    broker: askpass,
-    dir: sshDir,
-    platform: process.platform,
-    self: selfCommand,
-    configFile,
-  });
-  const sshConnect = new SshConnector({
-    targets: sshTargets,
-    hostKeys: sshHostKeys,
-    terminals,
-    dir: sshDir,
-    sshPath:
-      config.ssh.path ??
-      (await resolveSshPath({ platform: process.platform, exists, which: whichOnPath })),
-    run: processRun(),
-    exec: processExec(),
-    ...present({ askpass: sshAskpass }),
-    // The Windows agent runs only as a service with a fixed pipe: there the key is a temp file.
-    delivery: chooseDelivery({
-      platform: process.platform,
-      keysDir: join(sshDir, "keys"),
-      sockDir: tmpdir(),
-      user: userInfo().username,
-      exec: spawnExec,
-      ops: processOps(),
-    }),
   });
 
   // Phase 16: secrets the app hands over for one use; in memory only, gone with the daemon.
@@ -714,15 +691,9 @@ export async function startDaemon(
     vault,
     projects: (id) => board.getProject(id),
     // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
-    ssh: (job) => sshConnect.exec(job),
-    sshTags: (name) => {
-      const named = sshTargets.list().filter((t) => t.name === name);
-      return named.length === 1 ? (named[0]?.tags ?? []) : [];
-    },
-    sshKey: (name) => {
-      const named = sshTargets.list().filter((t) => t.name === name);
-      return named.length === 1 && named[0]?.auth === "vault-key" ? named[0].secretRef : null;
-    },
+    ssh: ssh.exec,
+    sshTags: ssh.tagsOf,
+    sshKey: ssh.vaultKeyOf,
     // Phase 19: who may use which secret, decided by the rules the app hands over.
     rules: new VaultRules(),
     hostName: config.hostName,
@@ -1218,11 +1189,7 @@ export async function startDaemon(
     review: reviewComments,
     ...(cardReviews ? { cardReview: cardReviews } : {}),
     sessionFiles: new SessionFiles({ db: store.db }),
-    ssh: sshTargets,
-    // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
-    sshHostKeys,
-    sshConnect,
-    askpass,
+    ...ssh.server,
     snippets,
     personas: personaStore,
     personaSessions,
@@ -1243,12 +1210,6 @@ export async function startDaemon(
       }),
       scanner: snippetScanner,
       snippets,
-    }),
-    sshImport: new SshImporter({
-      targets: sshTargets,
-      configPath: join(userHome(env), ".ssh", "config"),
-      home: userHome(env),
-      defaultUser: userInfo().username,
     }),
     terminals,
     tasks: new TaskTracker({ dir: join(config.dataDir, "tasks") }),
