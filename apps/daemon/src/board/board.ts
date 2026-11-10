@@ -2,7 +2,6 @@ import type { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import {
   type Arena,
-  type ArenaVariant,
   BoardColumn as BoardColumnSchema,
   type BoardResult,
   type CardTemplates,
@@ -33,6 +32,7 @@ import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
+import { Arenas } from "./arena.ts";
 import { CardPrFlow } from "./card-pr-flow.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import type { CheckLoopEngine } from "./check-loop-engine.ts";
@@ -158,6 +158,8 @@ export class Board {
   private readonly watchers = new Set<(card: Card) => void>();
   /** Issue #1405: the conflict radar's reads and overlaps (issue #1523). */
   private readonly radarFeed: RadarFeed;
+  /** Arenas: a card's variants, their comparison and the choice (issue #1523). */
+  private readonly arenas: Arenas;
   /** Workflows of the projects and their runs (phase 6). */
   readonly workflows: WorkflowEngine;
 
@@ -217,6 +219,23 @@ export class Board {
       },
       checks: opts.checks ?? shellCheckRunner(),
       clock: opts.clock ?? Date.now,
+    });
+    this.arenas = new Arenas({
+      db: opts.db,
+      opts,
+      workflows: this.workflows,
+      card: (id) => this.getCard(id),
+      changed: (id) => this.changed(id),
+      place: (id, event) => this.place(id, event),
+      refuseIfBlocked: (card) => this.refuseIfBlocked(card),
+      queued: (id) => this.queue.has(id),
+      createVariant: (projectId, input) => this.createCard(projectId, input),
+      startCard: (id, options) => this.startCard(id, options),
+      discardCard: (id, confirm) => this.discardCard(id, confirm),
+      diff: (id) => this.diff(id),
+      freesSlot: (status) => FREES_SLOT.has(status),
+      unfollow: (id) => this.sessions.unfollow(id),
+      follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
     });
     this.loopHost = new CheckLoopHost({
       db: opts.db,
@@ -619,7 +638,7 @@ export class Board {
    * slot, so the arena takes one slot per variant and a variant without one waits its turn.
    * Model and effort apply to plain requests; a workflow defines its own.
    */
-  async startArena(
+  startArena(
     cardId: string,
     input: {
       variants: Array<{
@@ -631,180 +650,20 @@ export class Board {
       inputs?: Record<string, string>;
     },
   ): Promise<Arena> {
-    const card = this.getCard(cardId);
-    this.refuseIfBlocked(card);
-    if (input.variants.length < 2 || input.variants.length > 4) {
-      throw new FlightdeckError("bad_request", "an arena has 2 to 4 variants", "arena_variants");
-    }
-    if (card.arenaOf || card.arenaVariants > 0) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card is already in an arena",
-        "arena_in_arena",
-      );
-    }
-    if (card.queued || card.worktreePath || this.queue.has(cardId)) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the card was already started: an arena starts from a new card",
-        "card_started",
-      );
-    }
-    const made: string[] = [];
-    try {
-      await inSequence(input.variants.entries(), async ([i, wanted]) => {
-        const label = "abcd"[i] as string;
-        const variant = this.createCard(card.projectId, {
-          title: `${card.title} (${label})`,
-          description: card.description,
-          // Third-party or agent text stays marked, and approval stays off, on every variant.
-          issueExternal: card.issueExternal,
-          arenaOf: cardId,
-          variant: {
-            label,
-            model: wanted.model ?? null,
-            effort: wanted.effort ?? null,
-            persona: wanted.persona?.id ?? wanted.persona?.definition?.id ?? null,
-          },
-        });
-        made.push(variant.id);
-        if (card.issueExternal) {
-          this.opts.suspendApproval?.(variant.id, "arena variant of a card with outside content");
-        }
-        await this.startCard(variant.id, {
-          workflow: input.workflow,
-          inputs: input.inputs,
-          persona: wanted.persona,
-        });
-      });
-    } catch (error) {
-      // Half an arena is nothing: the variants already made go, and the card stays as it was.
-      await inSequence(made, async (id) => {
-        await this.discardCard(id, true);
-      });
-      throw error;
-    }
-    this.place(cardId, { type: "started" });
-    this.changed(cardId);
-    return this.arena(cardId);
+    return this.arenas.startArena(cardId, input);
   }
 
   /** The comparison: each variant's diff, workflow checks, cost, duration and state. */
-  async arena(cardId: string): Promise<Arena> {
-    this.getCard(cardId);
-    const ids = this.variantIds(cardId);
-    return { cardId, variants: await Promise.all(ids.map((id) => this.variantView(id))) };
-  }
-
-  private variantIds(cardId: string): string[] {
-    return this.db
-      .query<{ id: string }, [string]>(
-        "SELECT id FROM cards WHERE arena_of = ? ORDER BY created_at, rowid",
-      )
-      .all(cardId)
-      .map((row) => row.id);
-  }
-
-  private async variantView(id: string): Promise<ArenaVariant> {
-    const card = this.getCard(id);
-    const startedAt = card.runs[0]?.startedAt ?? null;
-    const finished = card.sessionStatus !== null && FREES_SLOT.has(card.sessionStatus);
-    const endedAt = card.runs.at(-1)?.endedAt ?? (finished ? card.updatedAt : null);
-    const files = card.worktreePath
-      ? (await this.diff(id)).files.map(({ path, additions, deletions }) => ({
-          path,
-          additions,
-          deletions,
-        }))
-      : [];
-    const steps = card.workflowRunId ? this.workflows.getRun(card.workflowRunId).steps : [];
-    return {
-      id,
-      label: card.variant?.label ?? "?",
-      model: card.variant?.model ?? null,
-      effort: card.variant?.effort ?? null,
-      persona: card.variant?.persona ?? null,
-      branch: card.branch,
-      worktreePath: card.worktreePath,
-      queued: card.queued,
-      sessionStatus: card.sessionStatus,
-      column: card.column,
-      startedAt,
-      endedAt,
-      durationMs: startedAt
-        ? Math.max(0, Date.parse(endedAt ?? new Date().toISOString()) - Date.parse(startedAt))
-        : null,
-      costUsd: this.opts.cardCost?.(id) ?? null,
-      files,
-      checks: steps
-        .filter((step) => step.type === "check")
-        .map((step) => ({ stepId: step.stepId, status: step.status })),
-      notice: card.notice,
-    };
+  arena(cardId: string): Promise<Arena> {
+    return this.arenas.arena(cardId);
   }
 
   /**
    * "Escolher": the variant becomes the card's worktree, branch and runs, and carries on as a
    * normal card; the other variants are stopped and removed. Only a variant that has stopped.
    */
-  async chooseVariant(cardId: string, variantId: string, confirm: boolean): Promise<Card> {
-    if (!confirm) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "choosing a variant removes the others: confirm first",
-        "arena_choose_confirm",
-      );
-    }
-    this.getCard(cardId);
-    const ids = this.variantIds(cardId);
-    if (!ids.includes(variantId)) {
-      throw new FlightdeckError(
-        "not_found",
-        `variant ${variantId} is not in this arena`,
-        "arena_variant_unknown",
-        { variant: variantId },
-      );
-    }
-    const chosen = this.getCard(variantId);
-    const working =
-      chosen.queued ||
-      this.queue.has(variantId) ||
-      (chosen.workflowRunId !== null && this.workflows.active(chosen.workflowRunId));
-    if (working) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "the variant is still running: wait for it to finish",
-        "arena_variant_running",
-      );
-    }
-    await inSequence(ids, async (id) => {
-      if (id !== variantId) await this.discardCard(id, true);
-    });
-    this.sessions.unfollow(variantId);
-    this.db.transaction(() => {
-      for (const table of ["card_runs", "workflow_runs"]) {
-        this.db.query(`UPDATE ${table} SET card_id = ? WHERE card_id = ?`).run(cardId, variantId);
-      }
-      this.db
-        .query(
-          `UPDATE cards SET slug = ?, branch = ?, worktree_path = ?, board_column = ?,
-           column_locked = ?, notice = ?, updated_at = ? WHERE id = ?`,
-        )
-        .run(
-          chosen.slug,
-          chosen.branch,
-          chosen.worktreePath,
-          chosen.column,
-          chosen.columnLocked ? 1 : 0,
-          chosen.notice,
-          now(),
-          cardId,
-        );
-      this.db.query("DELETE FROM cards WHERE id = ?").run(variantId);
-    })();
-    const moved = this.getCard(cardId);
-    if (moved.sessionId) this.follow(cardId, moved.sessionId, 0);
-    return this.changed(cardId);
+  chooseVariant(cardId: string, variantId: string, confirm: boolean): Promise<Card> {
+    return this.arenas.chooseVariant(cardId, variantId, confirm);
   }
 
   /** The card already made from an issue of the project, if any. */
@@ -1532,7 +1391,7 @@ export class Board {
     // Issue #1361: the worktree goes only once a check killed in it has exited.
     await this.loop?.onStop(id);
     // The variants of an arena go with its card.
-    await inSequence(this.variantIds(id), async (variant) => {
+    await inSequence(this.arenas.variantIds(id), async (variant) => {
       await this.discardCard(variant, true);
     });
     await this.closeRuns(id);

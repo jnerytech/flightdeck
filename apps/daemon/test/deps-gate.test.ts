@@ -118,6 +118,7 @@ describe("deps-gate: every way to start a card goes through the gate", () => {
     // the board's own arena and fix runs. A new caller fails here until it is added on purpose.
     expect(startCallers()).toEqual([
       "automations/automations.ts",
+      "board/arena.ts",
       "board/board.ts",
       "board/session-follow.ts",
       "main.ts",
