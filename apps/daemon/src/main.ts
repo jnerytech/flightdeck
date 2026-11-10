@@ -60,7 +60,7 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
-import { createHostChecks } from "./deps/wiring.ts";
+import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
 import { featureOff } from "./errors.ts";
 import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
@@ -289,19 +289,13 @@ export async function startDaemon(
     memoryReading?: () => MemoryReading | null;
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
-    /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
-    serviceInstalled?: () => Promise<boolean>;
-    /** Whether linger is on, for `doctor.run`; `loginctl` when absent. */
-    linger?: () => Promise<"on" | "off" | null>;
-    /** The machine's service manager, for the probes above when they are not given; the real one when absent. */
-    serviceContext?: (dryRun: boolean) => ServiceContext;
     /** The command line of this daemon, for `service.install` (#1200); its own when absent. */
     serviceSelf?: string[];
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
     /** What keeps the computer awake (issue #163); the machine's own when absent. */
     powerContext?: PowerContext;
-  } = {},
+  } & HostCheckOptions = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
   const config = await loadConfig(configFile);
@@ -1178,8 +1172,6 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? daemonCommand(process.execPath, Bun.main),
     ),
-    // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
-    // folders checked without blocking, and the app's version to compare with its own.
     ...hostChecks,
     sessionSettings: true,
     messaging,

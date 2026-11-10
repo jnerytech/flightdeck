@@ -30,11 +30,17 @@ export interface HostChecksDeps {
   /** Who the host's own `claude` is signed in as, as the account card reads it. */
   account: DepsEnv["account"];
   /** The service and linger probes; tests give theirs, the real ones ask the OS. */
-  options: {
-    serviceInstalled?: () => Promise<boolean>;
-    linger?: () => Promise<"on" | "off" | null>;
-    serviceContext?: (dryRun: boolean) => ServiceContext;
-  };
+  options: HostCheckOptions;
+}
+
+/** The probes of the host's checks that `startDaemon`'s options may replace (tests give theirs). */
+export interface HostCheckOptions {
+  /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
+  serviceInstalled?: () => Promise<boolean>;
+  /** Whether linger is on, for `doctor.run`; `loginctl` when absent. */
+  linger?: () => Promise<"on" | "off" | null>;
+  /** The machine's service manager, for the probes above when they are not given; the real one when absent. */
+  serviceContext?: (dryRun: boolean) => ServiceContext;
 }
 
 /**
@@ -53,28 +59,28 @@ export function createHostChecks({
   doctor: (appVersion?: string) => Promise<DoctorResult>;
   deps: () => Promise<DepsResult>;
 } {
+  // What both read: this executable, the service, linger and the hooks it would install.
+  const self = daemonCommand(process.execPath, Bun.main);
+  const serviceContext = () => (options.serviceContext ?? osServiceContext)(false);
+  const serviceInstalled =
+    options.serviceInstalled ?? (async () => (await serviceCommand(serviceContext())) !== null);
+  const linger = options.linger ?? (() => lingerState(serviceContext()));
+  const hooks = () => hooksStatus(claudeSettingsPath(), hookTarget(config, self));
   return {
+    // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
+    // folders checked without blocking, and the app's version to compare with its own.
     doctor: (appVersion) =>
       runDoctor({
         config: () => ({ bind: config.bind, port: config.port, allowedRoots: config.allowedRoots }),
         isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
-        serviceInstalled:
-          options.serviceInstalled ??
-          (async () =>
-            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
+        serviceInstalled,
         healthy: () => Promise.resolve(true),
-        mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
+        mcp: () => mcpReachable(self),
         opencode: () => openCodeState(config, env, opencode.info),
 
-        linger:
-          options.linger ??
-          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
+        linger,
         tailscaleIp: () => tailscaleIp(spawnExec),
-        hooks: () =>
-          hooksStatus(
-            claudeSettingsPath(),
-            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
-          ),
+        hooks,
         claudePath: () => claude?.path ?? whichOnPath("claude"),
         templateProblems: async () =>
           (
@@ -97,19 +103,10 @@ export function createHostChecks({
         },
         version: (path) => probeVersion([path, "--version"]),
         allowedRoots: config.allowedRoots,
-        serviceInstalled:
-          options.serviceInstalled ??
-          (async () =>
-            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
-        linger:
-          options.linger ??
-          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
+        serviceInstalled,
+        linger,
         account,
-        hooks: () =>
-          hooksStatus(
-            claudeSettingsPath(),
-            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
-          ),
+        hooks,
       }),
   };
 }
