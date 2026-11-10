@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import {
   type Ack,
   type ActionInfo,
@@ -391,4 +392,10 @@ export async function startMcp(opts: McpOptions): Promise<McpHandle> {
   };
   await server.connect(opts.transport);
   return { closed };
+}
+
+/** The command managed sessions run for the Flightdeck MCP server, and whether its program is still there. */
+export async function mcpReachable(self: string[]): Promise<{ command: string; exists: boolean }> {
+  const command = self[0] ?? "";
+  return { command, exists: (await stat(command).catch(() => null))?.isFile() === true };
 }

@@ -3,12 +3,7 @@ import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { freemem, tmpdir, totalmem, userInfo } from "node:os";
 import { join, resolve } from "node:path";
-import {
-  DEFAULT_MODELS,
-  formatPairingLink,
-  PROTOCOL_VERSION,
-  type ServiceInstallResult,
-} from "@flightdeck/protocol";
+import { DEFAULT_MODELS, PROTOCOL_VERSION, type ServiceInstallResult } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Account } from "./account/account.ts";
@@ -45,15 +40,10 @@ import { Rewinder } from "./checkpoints/rewind.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
-import { type ClaudeSettingsCommandDeps, runHooks, runTelemetry } from "./cli/claude-settings.ts";
-import {
-  type HostCommandDeps,
-  healthUrl,
-  runService,
-  runUpdateCommand,
-  stopInstalledDaemon,
-} from "./cli/host.ts";
+import { runHooks, runTelemetry } from "./cli/claude-settings.ts";
+import { runService, runUpdateCommand } from "./cli/host.ts";
 import { type MaintenanceCommandDeps, runBackup, runPrune, runRestore } from "./cli/maintenance.ts";
+import { runDoctorCommand, runPair, runSetupCommand, type SetupCommandDeps } from "./cli/setup.ts";
 import {
   type Config,
   claudeSettingsPath,
@@ -70,12 +60,11 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
-import { checkDeps, type DepsEnv } from "./deps/deps.ts";
-import { doctorExitCode, formatDeps } from "./deps/format.ts";
+import { checkDeps } from "./deps/deps.ts";
 import { probeVersion } from "./deps/probe.ts";
 import { runDoctor } from "./doctor.ts";
 import { featureOff } from "./errors.ts";
-import { type Exec, spawnExec } from "./exec.ts";
+import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
@@ -92,13 +81,12 @@ import { listKnowledge } from "./knowledge/list.ts";
 import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
 import { knowledgeSwitchFor } from "./knowledge/switch.ts";
-import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock } from "./lock.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
-import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
+import { daemonUrl, identityOf, mcpReachable, startMcp } from "./mcp.ts";
 import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { runMessageCli } from "./messaging/cli.ts";
@@ -107,7 +95,7 @@ import { Idle } from "./messaging/idle.ts";
 import { Messaging } from "./messaging/messages.ts";
 import { Names } from "./names/names.ts";
 import { adoptTitles, type TrackOptions, trackNames, warmKnown } from "./names/track.ts";
-import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "./pairing.ts";
+import { tailscaleIp } from "./pairing.ts";
 import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
 import { RiskClassifier } from "./permissions/risk.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
@@ -152,7 +140,6 @@ import { SessionManager } from "./sessions/session-manager.ts";
 import { IdleSleeper } from "./sessions/sleeper.ts";
 import { StallWatcher } from "./sessions/stall.ts";
 import { settled } from "./settled.ts";
-import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { Snippets } from "./snippets/store.ts";
@@ -183,10 +170,9 @@ import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
 import { ulid } from "./ulid.ts";
-import { binaryVersion, refusedAddress, stableBinPath, waitHealthy } from "./update.ts";
+import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
-import { addToUserPath, binDir } from "./user-path.ts";
 import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
 import { PrFixer } from "./watch/fix.ts";
@@ -199,7 +185,6 @@ import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
-import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
 export { claudeSettingsPath } from "./config.ts";
@@ -1496,184 +1481,6 @@ async function readToken(file: string): Promise<string | null> {
   }
 }
 
-/** `flightdeckd pair`: prints the pairing link and its QR code. */
-async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
-  const file = configPath(args);
-  if (args.rotate) await rotateToken(file);
-  const config = await loadConfig(file);
-  const tailscale = await tailscaleIp(deps.exec ?? spawnExec);
-  const address = pairingAddress(config.bind, tailscale);
-  const link = formatPairingLink({
-    address,
-    port: config.port,
-    name: config.hostName,
-    token: config.token,
-  });
-  deps.log.log(link);
-  deps.log.log(await renderQr(link));
-  if (tailscale && loopbackOnly(config.bind)) {
-    deps.log.error(
-      `the daemon listens only on ${config.bind}: another machine cannot use the link above. To pair over Tailscale (${tailscale}), run "flightdeckd setup" and accept the Tailscale question.`,
-    );
-  }
-}
-
-/** The command managed sessions run for the Flightdeck MCP server, and whether its program is still there. */
-async function mcpReachable(self: string[]): Promise<{ command: string; exists: boolean }> {
-  const command = self[0] ?? "";
-  return { command, exists: (await stat(command).catch(() => null))?.isFile() === true };
-}
-
-/** The text of a file, or null when it is not there. */
-const readTextOrNull = (path: string) =>
-  Bun.file(path)
-    .text()
-    .catch(() => null);
-
-/** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
-async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
-  const file = configPath(args);
-  const ctx = (deps.serviceContext ?? osServiceContext)(false);
-  const settings = claudeSettingsPath();
-  const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
-  let config: Config | null = null;
-  const load = async () => {
-    config ??= await loadConfig(file);
-    return config;
-  };
-  const report = await runDoctor({
-    config: load,
-    isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
-    serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
-    healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
-    refused: async () => refusedAddress(healthUrl(await load()), 1_000),
-    tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
-    hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
-    claudePath: () => whichOnPath("claude"),
-    mcp: () => mcpReachable(self),
-    opencode: async () => openCodeState(await load(), process.env),
-
-    linger: () => lingerState(ctx),
-    templateProblems: async () =>
-      (
-        await loadTemplates({
-          dir: join((await load()).dataDir, "templates"),
-          builtins: BUILTIN_TEMPLATES,
-        })
-      ).problems,
-  });
-  for (const item of report.checks) {
-    deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);
-    if (item.fix) deps.log.log(`     -> ${item.fix}`);
-  }
-  // What the host needs and does without, grouped like the app's Dependencies section.
-  const found = await checkDeps(
-    deps.depsEnv ?? {
-      platform: process.platform,
-      // Like the running daemon: the claude that `flightdeckd setup` wrote into the config wins.
-      which: async (name) => {
-        const cfg = await load();
-        const configured =
-          name === "claude" ? (cfg.claude?.executablePath ?? cfg.claudePath) : undefined;
-        if (!configured) return whichOnPath(name);
-        return (await Bun.file(configured).exists()) ? configured : null;
-      },
-      version: (path) => probeVersion([path, "--version"]),
-      allowedRoots: (await load()).allowedRoots,
-      serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
-      linger: () => lingerState(ctx),
-      // The terminal does not ask the Claude account: the card in the app does.
-      account: async () => null,
-      hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
-    },
-  );
-  for (const line of formatDeps(found, process.platform)) deps.log.log(line);
-  return doctorExitCode(report.ok, found);
-}
-
-/** `flightdeckd setup`: the guided first run (folders, service started now, pair link). */
-async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
-  const file = configPath(args);
-  const ctxOf = deps.serviceContext ?? osServiceContext;
-  const base = ctxOf(false);
-  const stable = stableBinPath(base.home, base.platform);
-  let command = base.command;
-  const prompt = createPrompt(
-    linesOf(deps.stdin ?? Bun.stdin.stream()),
-    deps.stdout ?? process.stdout.write.bind(process.stdout),
-  );
-  const install = (): CliArgs => ({ command: "service", action: "install", config: file });
-  await runSetup(
-    {
-      ...prompt,
-      log: deps.log,
-      configFile: file,
-      home: base.home,
-      wsl: detectWsl({ env: deps.env, procVersion: () => readProcVersion() }),
-      // The folders it checks are this host's, whatever the service context says it manages.
-      platform: process.platform,
-      isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
-      tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
-      installBinary: async () => {
-        const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
-        const placed = await installStableBinary(self, stable, base.platform);
-        if (placed === "source") return false;
-        command = [stable];
-        let running = DAEMON_VERSION;
-        if (placed === "kept") {
-          const probe = deps.binaryVersion ?? ((bin: string) => binaryVersion(bin, 10_000));
-          const result = await reconcileStableBinary({
-            self: self[0] as string,
-            stable,
-            selfVersion: DAEMON_VERSION,
-            stableVersion: () => probe(stable),
-            stopService: async () => {
-              if ((await stopInstalledDaemon(install(), ctxOf(false), deps)) === false) {
-                throw new Error(
-                  `the daemon of the service still runs ${stable}: stop it and run setup again`,
-                );
-              }
-            },
-          });
-          const was = result.stableVersion ?? "unknown version";
-          if (result.outcome === "replaced") {
-            deps.log.log(
-              `replaced ${stable} (${was}) with ${DAEMON_VERSION}; the old one is at ${stable}.old`,
-            );
-          } else if (result.outcome === "same") {
-            deps.log.log(`${stable} is already version ${DAEMON_VERSION} and stays`);
-          } else {
-            running = result.stableVersion as string;
-            deps.log.log(
-              `${stable} is version ${running}, newer than this download (${DAEMON_VERSION}), and stays`,
-            );
-          }
-        } else if (placed === "copied") {
-          deps.log.log(`flightdeckd ${DAEMON_VERSION} copied to ${stable}`);
-        }
-        deps.log.log(`The service will run ${stable} (flightdeckd ${running})`);
-        return true;
-      },
-      addToPath: async () => {
-        const env = { ...base, readFile: readTextOrNull };
-        for (const line of await addToUserPath(env, binDir(base))) deps.log.log(line);
-      },
-      linger: () => lingerState(base),
-      installService: async () => {
-        const ctx = ctxOf(false);
-        if ((await serviceCommand(ctx)) !== null) await stopInstalledDaemon(install(), ctx, deps);
-        await runService(install(), {
-          ...deps,
-          serviceContext: (dryRun) => ({ ...ctxOf(dryRun), command }),
-        });
-      },
-      installHooks: () => runHooks({ command: "hooks", action: "install", config: file }, deps),
-      pair: () => runPair({ command: "pair", config: file }, deps),
-    },
-    { ...(args.yes ? { yes: true } : {}), ...(args.folders ? { folders: args.folders } : {}) },
-  );
-}
-
 /**
  * #1200: `service.install` for a daemon run as its stable binary (the file a service starts);
  * undefined for any other, so a daemon run from source (the demo, the journeys) never offers it.
@@ -1741,24 +1548,10 @@ export function vaultActions(kind: RuntimeKind): Record<string, (value: string) 
     : {};
 }
 
-export interface CliDeps
-  extends HostCommandDeps,
-    MaintenanceCommandDeps,
-    ClaudeSettingsCommandDeps {
-  env: Record<string, string | undefined>;
-  /** The machine the dependency check probes, in `doctor`; the real one when absent (tests give theirs). */
-  depsEnv?: DepsEnv;
+export interface CliDeps extends SetupCommandDeps, MaintenanceCommandDeps {
   log: Logger;
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
-  /** Runs external commands (`tailscale ip -4`); injected in tests. */
-  exec?: Exec;
-  /** What `<bin> --version` says; the real one runs the binary. Injected in tests. */
-  binaryVersion?: (bin: string) => Promise<string | null>;
-  /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
-  stdin?: ReadableStream<Uint8Array>;
-  /** Where `setup` writes its questions; the process's stdout if absent. */
-  stdout?: (text: string) => void;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
