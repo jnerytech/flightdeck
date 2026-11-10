@@ -49,3 +49,11 @@ export async function readLockPid(dataDir: string): Promise<number | null> {
     return null;
   }
 }
+
+/** Another daemon already owns the same `dataDir` (its lock is held). */
+export class AlreadyRunningError extends Error {
+  constructor(dataDir: string, hint?: string) {
+    const more = hint ? `; ${hint}` : "";
+    super(`already running (dataDir ${dataDir})${more}`);
+  }
+}
