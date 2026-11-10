@@ -62,6 +62,17 @@ import {
   TeleportWritePayload,
 } from "./teleport.ts";
 import {
+  TerminalCols,
+  TerminalData,
+  TerminalExited,
+  type TerminalInfo,
+  type TerminalResults,
+  TerminalResync,
+  TerminalRows,
+  TerminalSettings,
+  terminalCommands,
+} from "./terminal.ts";
+import {
   AccountUpdated,
   BudgetSource,
   BudgetUpdated,
@@ -1076,36 +1087,6 @@ export type ChangesCommitted = z.infer<typeof ChangesCommitted>;
 export const ChangesPrOpened = z.object({ url: z.string(), branch: z.string(), base: z.string() });
 export type ChangesPrOpened = z.infer<typeof ChangesPrOpened>;
 
-// Phase 14: terminals embedded in the host (a real shell behind a PTY).
-export const TerminalInfo = z.object({
-  terminalId: z.string(),
-  cwd: z.string(),
-  /** The program only, never its arguments. */
-  command: z.string(),
-  startedAt: z.string(),
-  /** Connections following it now. */
-  attached: z.number().int().nonnegative(),
-  cols: z.number().int(),
-  rows: z.number().int(),
-  /** `null` while the process runs. */
-  exitCode: z.number().int().nullable(),
-  /** The launch of a "Claude aqui" terminal, which the session in the central also carries. */
-  launchId: z.string().nullable(),
-});
-export type TerminalInfo = z.infer<typeof TerminalInfo>;
-
-export const TerminalAttachResult = z.object({
-  terminalId: z.string(),
-  /** base64 of the output the terminal kept (at most 2 MB): where to continue from. */
-  scrollback: z.string(),
-  cols: z.number().int(),
-  rows: z.number().int(),
-  exitCode: z.number().int().nullable(),
-  /** The host holds output back until it is acknowledged (`terminal.ack`); absent on older hosts. */
-  flow: z.boolean().optional(),
-});
-export type TerminalAttachResult = z.infer<typeof TerminalAttachResult>;
-
 /** How the host presents itself to people: its default mode, and whether the switch is offered (phase 33). */
 export const UiSettings = z.object({
   mode: z.enum(["full", "simple"]),
@@ -1213,15 +1194,6 @@ export const TemplateStartResult = z.object({
   permissionMode: PermissionMode,
 });
 export type TemplateStartResult = z.infer<typeof TemplateStartResult>;
-
-/** Whether the host's terminals are on, how many at most and which shell they open. */
-export const TerminalSettings = z.object({
-  enabled: z.boolean(),
-  max: z.number().int(),
-  /** The program of the default shell. */
-  shell: z.string(),
-});
-export type TerminalSettings = z.infer<typeof TerminalSettings>;
 
 /** How a ssh destino authenticates: the host's agent, a key file, a vault key or a password. */
 export const SshAuth = z.enum(["agent", "key-file", "vault-key", "password"]);
@@ -1444,10 +1416,6 @@ export type ResolvedPersonaResult = z.infer<typeof ResolvedPersonaResult>;
 /** The project's `.flightdeck/personas` folder and the files in it that were left out. */
 export const PersonaProjectInfo = z.object({ path: z.string(), errors: z.array(z.string()) });
 export type PersonaProjectInfo = z.infer<typeof PersonaProjectInfo>;
-
-const TerminalId = z.string().min(1);
-const TerminalCols = z.number().int().min(1).max(500);
-const TerminalRows = z.number().int().min(1).max(300);
 
 const ReviewSide = z.enum(["new", "old"]);
 
@@ -3373,62 +3341,6 @@ export const Command = z.discriminatedUnion("type", [
   cmd("telemetry.install", z.object({ confirm: z.boolean().optional() })),
   cmd("telemetry.uninstall", z.object({ confirm: z.boolean().optional() })),
   cmd("changes.get", z.object({ target: ReviewTarget })),
-  cmd(
-    "terminal.open",
-    z
-      .object({
-        cwd: z.string().min(1),
-        /** An argv, never run through a shell; the host's default shell when absent. */
-        command: z.array(z.string().min(1)).min(1).max(64).optional(),
-        /** "Claude aqui": `flightdeckd claude` in the cwd, with `--resume <id>` when given. */
-        claude: z
-          .object({
-            resume: z
-              .string()
-              .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/, "invalid session id")
-              .optional(),
-            /** Phase 20: `--persona <id>` (a persona of the host, the project or the pack). */
-            persona: z
-              .string()
-              .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, "invalid persona id")
-              .optional(),
-          })
-          .optional(),
-        cols: TerminalCols,
-        rows: TerminalRows,
-      })
-      .refine((payload) => !(payload.command && payload.claude), {
-        message: "command and claude cannot go together",
-      }),
-  ),
-  /**
-   * Issue #107: a shell in the folder the host holds for a managed session (its worktree), never in
-   * a path the app sends. The host's default shell; `terminal.open` stays for the rest.
-   */
-  cmd(
-    "terminal.openSession",
-    z.object({ session: z.string().min(1), cols: TerminalCols, rows: TerminalRows }).strict(),
-  ),
-  /** Keyboard input, UTF-8. */
-  cmd("terminal.write", z.object({ terminalId: TerminalId, data: z.string().max(262_144) })),
-  cmd(
-    "terminal.resize",
-    z.object({ terminalId: TerminalId, cols: TerminalCols, rows: TerminalRows }),
-  ),
-  /**
-   * Returns the scrollback and starts `terminal.data` frames for this connection. With `flow` the
-   * host stops sending once too much output is unacknowledged (see `terminal.ack`); the result's
-   * `flow` says whether it did.
-   */
-  cmd("terminal.attach", z.object({ terminalId: TerminalId, flow: z.boolean().optional() })),
-  /** Flow control: `bytes` of output the app has drawn since its last ack. */
-  cmd("terminal.ack", z.object({ terminalId: TerminalId, bytes: z.number().int().positive() })),
-  cmd("terminal.detach", z.object({ terminalId: TerminalId })),
-  /** `kill` ends the process; without it the terminal is only detached (and a dead one removed). */
-  cmd("terminal.close", z.object({ terminalId: TerminalId, kill: z.boolean() })),
-  cmd("terminal.list", z.object({}).strict()),
-  /** Turns the host's terminals on (asks for `confirm`) or off (ends the live ones). */
-  cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
   cmd("template.list", z.object({}).strict()),
   cmd("task.results", z.object({ sessionId: z.string().min(1) }).strict()),
   cmd("task.preview", z.object({ sessionId: z.string().min(1), path: z.string().min(1) }).strict()),
@@ -3931,6 +3843,7 @@ export const Command = z.discriminatedUnion("type", [
   ...secretsCommands,
   ...usageCommands,
   ...collaborationCommands,
+  ...terminalCommands,
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -4540,7 +4453,11 @@ export const MaintenanceStatus = z.object({
 });
 export type MaintenanceStatus = z.infer<typeof MaintenanceStatus>;
 
-export interface CommandResults extends SecretsResults, UsageResults, CollaborationResults {
+export interface CommandResults
+  extends SecretsResults,
+    UsageResults,
+    CollaborationResults,
+    TerminalResults {
   hello: HelloResult;
   "session.list": SessionListResult;
   "session.create": SessionCreateResult;
@@ -4728,16 +4645,6 @@ export interface CommandResults extends SecretsResults, UsageResults, Collaborat
   "telemetry.uninstall": TelemetryOptInStatus;
   "changes.get": ChangesResult;
   "pr.comments": { comments: PrComment[] };
-  "terminal.open": TerminalInfo;
-  "terminal.openSession": TerminalInfo;
-  "terminal.write": undefined;
-  "terminal.resize": undefined;
-  "terminal.attach": TerminalAttachResult;
-  "terminal.ack": undefined;
-  "terminal.detach": undefined;
-  "terminal.close": undefined;
-  "terminal.list": { terminals: TerminalInfo[] };
-  "terminal.settings": TerminalSettings;
   "ui.set": UiSettings;
   "template.list": TemplateListResult;
   "task.results": TaskResultsResult;
@@ -4975,32 +4882,6 @@ export const ChangesUpdated = z.object({
 });
 export type ChangesUpdated = z.infer<typeof ChangesUpdated>;
 
-/** Output of an attached terminal: base64, in frames of at most 16 KB every 16 ms. */
-export const TerminalData = z.object({
-  type: z.literal("terminal.data"),
-  terminalId: z.string(),
-  data: z.string(),
-});
-export type TerminalData = z.infer<typeof TerminalData>;
-
-/** The process of a terminal ended (after the last of its output). */
-export const TerminalExited = z.object({
-  type: z.literal("terminal.exited"),
-  terminalId: z.string(),
-  exitCode: z.number().int(),
-});
-export type TerminalExited = z.infer<typeof TerminalExited>;
-
-/**
- * This connection could not follow the terminal's output and lost it: attach again, which
- * returns the scrollback to continue from. Nothing more arrives until it does.
- */
-export const TerminalResync = z.object({
-  type: z.literal("terminal.resync"),
-  terminalId: z.string(),
-});
-export type TerminalResync = z.infer<typeof TerminalResync>;
-
 export const ServerMessage = z.union([
   AckOk,
   AckError,
@@ -5056,6 +4937,7 @@ export * from "./secrets.ts";
 export * from "./sequence.ts";
 export * from "./snippets.ts";
 export * from "./teleport.ts";
+export * from "./terminal.ts";
 export * from "./usage.ts";
 
 /**
