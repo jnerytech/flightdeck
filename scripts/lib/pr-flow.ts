@@ -31,8 +31,6 @@ export interface PrFlowDeps {
   now?: () => number;
   /** #1246: the one-line warning while main is red (null when green); absent, nothing is said. */
   mainRed?: () => Promise<string | null>;
-  /** #1526: the PR's OpenCode review (pr-reviews/pr-<n>.md), null when none yet; absent, nothing is said. */
-  review?: (n: number) => Promise<string | null>;
 }
 
 export interface Pr {
@@ -47,7 +45,7 @@ export interface Pr {
 const REPO = "repos/{owner}/{repo}";
 const MAIN = "main";
 const USAGE =
-  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] [--title <text>] | next | update <n> | auto <n> [--now] | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] [--title <text>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
 /** A required check passes as GitHub counts it: a success, or a run it skipped or left neutral. */
 const PASSED = new Set(["success", "skipped", "neutral"]);
 
@@ -320,10 +318,6 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
 }
 
 /**
- * Runs FLIGHTDECK_PR_OPENED (#273), when set, with the new PR's number, branch and base: the
- * coordinator's tooling queues an OpenCode review there. It fails open: the PR is open anyway.
- */
-/**
  * The hook's command: a JSON array of strings (a path with spaces, Windows), or words split on
  * spaces. Empty when unset; null when it starts like JSON but is not an array of strings.
  */
@@ -339,6 +333,10 @@ function hookCommand(value: string): string[] | null {
   }
 }
 
+/**
+ * Runs FLIGHTDECK_PR_OPENED (#273), when set, with the new PR's number, branch and base, for the
+ * coordinator's tooling. It fails open: the PR is open anyway.
+ */
 async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlowDeps) {
   const hook = hookCommand(deps.env.FLIGHTDECK_PR_OPENED?.trim() ?? "");
   if (hook === null) {
@@ -469,25 +467,8 @@ async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
   return (await autoPr(n, deps)) === 1 ? 1 : 0;
 }
 
-/**
- * Where the PR's OpenCode review stands (#1526): its line, and why a clean PR waits for `--now`
- * (none yet, or a "changes" verdict), or null when it need not.
- */
-export function reviewState(n: number, text: string | null): { line: string; wait: string | null } {
-  if (text === null) return { line: "OpenCode review: none yet", wait: "is none yet" };
-  const count = (re: RegExp) => text.split("\n").filter((l) => re.test(l)).length;
-  // The last VERDICT line, as a whole word: a quoted one earlier, or approve-with-changes, is not approve.
-  const verdicts = [...text.matchAll(/^VERDICT: *([\w-]+)\s*$/gm)];
-  const verdict = verdicts.at(-1)?.[1]?.toLowerCase() ?? "unknown";
-  const line = `OpenCode review: VERDICT ${verdict}, ${count(/^\[(blocker|high)\]/)} blocker/high, ${count(/^\[medium\]/)} medium (pr-reviews/pr-${n}.md)`;
-  return { line, wait: verdict === "approve" ? null : `says ${verdict}` };
-}
-
 /** Turns on GitHub's auto-merge for a PR onto main: it merges by itself once its checks are green. */
-async function autoPr(n: number, deps: PrFlowDeps, now = false): Promise<number> {
-  // #1526: the review's state first; a clean PR merges at once, so it waits for --now without one.
-  const review = deps.review ? reviewState(n, await deps.review(n)) : null;
-  if (review) deps.log(review.line);
+async function autoPr(n: number, deps: PrFlowDeps): Promise<number> {
   const read = await deps.gh(["api", `${REPO}/pulls/${n}`]);
   if (read.code !== 0) {
     deps.log(`#${n} cannot be read`);
@@ -532,24 +513,12 @@ async function autoPr(n: number, deps: PrFlowDeps, now = false): Promise<number>
     // GitHub turns auto-merge on only for a PR that has to wait (#374): one already clean merges
     // now, as auto-merge would, under the same checks; any other refusal stays a failure.
     if (/clean status/i.test(error)) {
-      if (review?.wait && !now) {
-        const after = review.wait === "is none yet" ? "wait for the review" : "fix it first";
-        deps.log(
-          `#${n} is already mergeable, but its OpenCode review ${review.wait}: merge it now with bun run pr -- auto ${n} --now, or ${after}`,
-        );
-        return 2;
-      }
       deps.log(`#${n} is already mergeable: merging it as auto-merge would`);
       return mergeChecked(n, deps, true);
     }
     return 1;
   }
   deps.log(`#${n} merges by itself, with a merge commit, once its required checks are green`);
-  if (review?.wait) {
-    deps.log(
-      `#${n} may merge while its OpenCode review ${review.wait}: fix what it finds in a follow-up, or turn auto-merge off`,
-    );
-  }
   return 0;
 }
 
@@ -834,7 +803,11 @@ export async function prFlow(argv: string[], deps: PrFlowDeps): Promise<number> 
   if (command === "update" && Number.isInteger(n) && n > 0) return await updatePr(n, deps);
   if (command === "merge" && Number.isInteger(n) && n > 0) return await mergePr(n, deps);
   if (command === "auto" && Number.isInteger(n) && n > 0) {
-    return await autoPr(n, deps, args.includes("--now"));
+    // #1697: OpenCode was retired, so there is no review to wait for; a leftover --now means nothing.
+    if (args.includes("--now")) {
+      deps.log("--now is no longer needed: pr auto does not wait for a review (#1697)");
+    }
+    return await autoPr(n, deps);
   }
   if (command === "tag") return await tagRelease(args, deps);
   return usage(deps);

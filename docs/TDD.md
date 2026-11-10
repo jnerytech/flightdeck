@@ -331,9 +331,10 @@ em vez de depender de cuidado.
   then titles it after the branch's first commit, without its `type(scope): ` (#909).
   `--title <text>` names it by hand. A branch stacked on another opens with `--base <parent>`. When
   `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
-  spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
-  queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the
-  PR open; only its exit code is printed, never its output.
+  spaces), `open` runs it with the new PR's number, branch and base, for the coordinator's
+  tooling (#273; it queued an OpenCode review until OpenCode was retired, #1697). A hook that
+  fails, or runs past two minutes, leaves the PR open; only its exit code is printed, never its
+  output.
 - A change in a risk area (a spawn or kill, a delete, a secret, a permission, the vault or pairing,
   read from the added lines of the changed code) needs a security review before the hand-off
   (#273). Run the `security-reviewer` agent, fix what it finds, and commit its verdict after the
