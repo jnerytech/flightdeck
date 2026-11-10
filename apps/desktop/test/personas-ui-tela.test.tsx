@@ -91,7 +91,7 @@ describe("personas-ui: the library", () => {
 
   test("Globais shows the app's own personas", async () => {
     await open((store) => {
-      store.globalPersonas.save({
+      store.personas.global.save({
         id: "meu",
         name: "Minha persona",
         description: "Do app",

@@ -41,11 +41,11 @@ export function PersonaPicker(
   const { store, hostId } = props;
   const state = useStoreState(store);
   useEffect(() => {
-    void store.loadPersonas(hostId);
+    void store.personas.load(hostId);
   }, [store, hostId]);
   // The app's wait for the host's, so the list does not change under a choice.
   const hosts = state.personas[hostId];
-  const apps = props.idsOnly || !hosts ? [] : store.globalPersonas.list();
+  const apps = props.idsOnly || !hosts ? [] : store.personas.global.list();
   return (
     <div className="flex flex-col gap-1 text-sm">
       <label htmlFor={`${id}-persona`}>{props.label}</label>

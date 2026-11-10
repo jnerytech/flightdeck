@@ -153,7 +153,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
 
   test("Salvar persona goes busy and saves once, and a refusal brings the form back", async () => {
     const save = slow();
-    const store = { hostRequest: save.call, personaRef: () => null } as unknown as AppStore;
+    const store = { hostRequest: save.call, personas: { ref: () => null } } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>
         <PersonaEditor

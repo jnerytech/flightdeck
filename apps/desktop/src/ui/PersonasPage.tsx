@@ -7,8 +7,8 @@ import { PersonaEditor } from "@/components/personas/persona-editor";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import type { AppPersona } from "../features/personas/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
-import type { AppPersona } from "../lib/global-personas.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -71,7 +71,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
   }, [store, hostId]);
 
   const reload = useCallback(async () => {
-    if (project === APP) return setPersonas(store.globalPersonas.list());
+    if (project === APP) return setPersonas(store.personas.global.list());
     if (!hostId) return;
     const listed = await store.hostCommand(hostId, "personas.list", {
       ...(project ? { scope: "all", projectPath: project } : { scope: "host" }),
@@ -95,7 +95,7 @@ export const PersonasPage = memo(function PersonasPage(props: {
 
   const remove = async (p: AppPersona) => {
     setRemoving(null);
-    if (p.scope === "app") store.globalPersonas.remove(p.id);
+    if (p.scope === "app") store.personas.global.remove(p.id);
     else if (hostId && (p.scope === "host" || p.scope === "project")) {
       await store.hostCommand(hostId, "personas.remove", {
         scope: p.scope,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { GlobalPersonas } from "../src/lib/global-personas.ts";
+import { GlobalPersonas } from "../src/features/personas/index.ts";
 
 function setup() {
   const items = new Map<string, string>();

@@ -293,7 +293,7 @@ export function runPaletteTarget(
       // Issue #1135: the typed text is the task; the mode and model are the form's last ones, and
       // the persona the client defaults to for that folder, as on the form.
       const { mode, model } = store.newSessionPrefs.value;
-      const persona = store.personaRef(
+      const persona = store.personas.ref(
         store.clientScope().defaultPersona(target.hostId, target.cwd),
       );
       void store.createSession(target.hostId, {

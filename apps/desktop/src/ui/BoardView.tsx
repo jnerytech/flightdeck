@@ -807,7 +807,7 @@ export const BoardView = memo(function BoardView(props: {
     const personaIds = (state.personas[hostId] ?? []).map((p) => p.id);
     const refused = await runMany(cards, async (card) => {
       const workflow = workflowOf(card);
-      const persona = store.personaRef(startPersonaOf(card, personaIds) ?? suggestedPersona);
+      const persona = store.personas.ref(startPersonaOf(card, personaIds) ?? suggestedPersona);
       const answer =
         kind === "start"
           ? await store.hostRequest(hostId, "card.start", {
