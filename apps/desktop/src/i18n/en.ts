@@ -4859,7 +4859,7 @@ export const en: Dictionary = {
       connecting: "connecting",
       notConnected: "not connected",
       offline:
-        "{host} is not connected, so a task cannot start right now. Check that the computer is on, then try again.",
+        "{host} is not connected, so a task cannot start right now. Check that the computer is on and up to date, then try again.",
       noFolders:
         "No folder is set up yet, so a task has nowhere to work. Add one in Settings before you pick a card.",
       openSettings: "Open Settings to add a folder",

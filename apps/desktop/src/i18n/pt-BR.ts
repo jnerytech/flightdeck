@@ -4865,7 +4865,7 @@ export const ptBR = {
       connecting: "conectando",
       notConnected: "não conectado",
       offline:
-        "{host} não está conectado, então uma tarefa não pode começar agora. Veja se o computador está ligado e tente de novo.",
+        "{host} não está conectado, então uma tarefa não pode começar agora. Veja se o computador está ligado e atualizado, e tente de novo.",
       noFolders:
         "Nenhuma pasta foi liberada ainda, então uma tarefa não tem onde trabalhar. Adicione uma em Configurações antes de escolher um cartão.",
       openSettings: "Abrir Configurações para adicionar uma pasta",
