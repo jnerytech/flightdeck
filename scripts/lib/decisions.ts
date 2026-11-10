@@ -9,7 +9,7 @@
  * file under docs/decisions/ since #1711); a change to it means an entry went to the old file.
  */
 export const FROZEN_DECISIONS_SHA256 =
-  "31c4582c4e3569daf895cac784be507914ca1dfb6eab131131a15ef3e63588f0";
+  "0bc9f99856e3486ee9851631eee382522824b0d53cc434a85418c691620f5892";
 
 /** Why a file under docs/decisions/ is not a decision record as named and titled, or null. */
 export function decisionFileProblem(name: string, firstLine: string): string | null {
