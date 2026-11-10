@@ -3,7 +3,7 @@ import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { isInside, rootNames, samePath } from "../paths.ts";
-import { trustsManyProjects } from "./trust-root.ts";
+import { type TrustRootFs, trustsManyProjects } from "./trust-root.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -31,6 +31,8 @@ export interface ProjectTrustOptions {
   readText?: (path: string) => Promise<string>;
   /** Whether two folders are the same one (case blind where the file system is): a test seam, `samePath` by default. */
   sameFolder?: (a: string, b: string) => boolean;
+  /** What `refreshRoots` looks at on disk (a test seam): the disk by default. */
+  rootFs?: TrustRootFs;
 }
 
 interface Row {
@@ -184,7 +186,7 @@ export class ProjectTrust {
     // from this list right after it writes the record.
     const looked = await Promise.all(
       this.realRoots.map(async (root) =>
-        (await trustsManyProjects(root, this.realRoots)) ? null : root,
+        (await trustsManyProjects(root, this.realRoots, this.opts.rootFs)) ? null : root,
       ),
     );
     this.projectRoots = looked.filter((root): root is string => root !== null);

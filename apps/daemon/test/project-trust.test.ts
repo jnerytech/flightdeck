@@ -386,3 +386,31 @@ describe("project-trust: a look that is overtaken still answers for its own call
     expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "two"));
   });
 });
+
+describe("project-trust: two reads of the roots at once end with the later one (issue #1728)", () => {
+  test("a read of the roots that finishes last does not overwrite what a read started after it found", async () => {
+    const root = tempDir("fd-trust-");
+    const held: Array<(hasGit: boolean) => void> = [];
+    let calls = 0;
+    const { trust } = fresh({
+      roots: () => [root],
+      rootFs: {
+        // The first read looks while the root is one project; it answers only after the second.
+        hasGit: () =>
+          ++calls === 1
+            ? new Promise<boolean>((resolveGit) => held.push(resolveGit))
+            : Promise.resolve(false),
+        childDirs: async () => [],
+      },
+    });
+    trust.trust(root);
+    const first = trust.refreshRoots();
+    await waitFor(() => held.length === 1, { label: "first read looks at the root" });
+    // Later the root holds clones (no `.git` of its own): it is no longer one project.
+    await trust.refreshRoots();
+    held[0]?.(true);
+    await first;
+    // A record on a root that is not one project grants nothing.
+    expect(trust.isTrusted(root)).toBe(false);
+  });
+});
