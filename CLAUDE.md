@@ -150,11 +150,11 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   merges it with a merge commit once its required checks are green on its HEAD, even behind `main`
   (#305: the ruleset is not strict; `main`'s push CI checks the result). Only a PR that conflicts
   with `main` waits: merge `main` into it. A stacked PR gets auto-merge once its parent is in `main`
-  (`pr auto` retargets it).
+  (`pr auto` retargets it). A session keeps at most 2 branches open (pushed, not merged). A release
+  is a tag on a green `main`.
 - Before opening a PR, run Claude Code's built-in `/code-review` and `/security-review` skills on the
   branch and fix what they find (user, 2026-11-10, #1670). `/code-review` runs at its default level,
   never `max` or `ultra` unless asked. The `security-reviewer` agent and its trailer still apply.
-  A session keeps at most 2 branches open (pushed, not merged). A release is a tag on a green `main`.
 - Only the coordinator pushes `main`, `rc/*` and tags, merges by hand (`bun run pr -- merge <n>`)
   and publishes releases. The guard hook refuses the rest: pushes of main, `rc/*`, tags,
   `--tags`/`--all`/`--mirror`, a bare `--force`, a `--force-with-lease` to any branch but the one
@@ -184,7 +184,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Each phase runs in a sibling worktree (`../flightdeck-faseN`, branch `fase-N`, from `main`).
   Start its session there (`cd ../flightdeck-faseN && claude`, or `/cd` into it): the worktree's
   own rules and hooks load only for a session whose folder is that worktree.
-  Each phase also updates both manuals (`docs/manual/en.md` and `pt-BR.md`).
+  Each phase also updates both manuals: the chapter in `docs/manual/en/` and its twin in
+  `docs/manual/pt-BR/`.
 - Divergences from the spec and decisions go to a file of their own under `docs/decisions/`, named
   `<yyyy-mm-dd>-<topic>.md` with a first line `# <title> (issue #N)` or `(phase N)` (#304). Never
   append to `docs/DECISIONS.md`: it is frozen, and a test fails when it changes.
