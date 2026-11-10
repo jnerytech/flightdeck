@@ -40,9 +40,11 @@ describe("md-size", () => {
     expect(Object.keys(baseline)).toEqual(["docs/SPEC-fase-40.md"]);
   });
 
-  test("the frozen DECISIONS.md has no cap: decisions.ts pins its content, and new decisions go to docs/decisions/ (#304)", () => {
-    expect(mdLimit("docs/DECISIONS.md")).toBe(Number.POSITIVE_INFINITY);
-    expect(oversized([{ path: "docs/DECISIONS.md", text: lines(5000) }])).toEqual({});
+  test("DECISIONS.md, an index of links since its entries became files (#1711), gets the 400 of any doc", () => {
+    expect(mdLimit("docs/DECISIONS.md")).toBe(400);
+    expect(oversized([{ path: "docs/DECISIONS.md", text: lines(401) }])).toEqual({
+      "docs/DECISIONS.md": 401,
+    });
   });
 
   test("only the files over their limit are counted", () => {
