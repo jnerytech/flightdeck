@@ -10,10 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { byProject, CONTINUATION } from "@/features/sessions";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { basename } from "@/lib/paths";
-import { byProject, CONTINUATION } from "@/lib/resume-offer";
 
 type Outcome = { ok: true } | { ok: false; reason: string };
 
@@ -39,11 +39,11 @@ export function ResumeOfferDialog(
     (s) => !off.has(s.sessionId) && !props.resumed.includes(s.sessionId),
   );
   const run = async (list: InterruptedSession[]) => {
-    const done = await store.resumeInterrupted(hostId, list);
+    const done = await store.sessions.resumeInterrupted(hostId, list);
     setOutcome((before) => ({ ...before, ...done }));
   };
   return (
-    <Dialog open onOpenChange={(open) => !open && store.snoozeResumeOffer(hostId)}>
+    <Dialog open onOpenChange={(open) => !open && store.sessions.snoozeResumeOffer(hostId)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("resumeOffer.title")}</DialogTitle>
@@ -111,10 +111,10 @@ export function ResumeOfferDialog(
           ))}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => store.dismissResumeOffer(hostId)}>
+          <Button variant="ghost" onClick={() => store.sessions.dismissResumeOffer(hostId)}>
             {t("resumeOffer.dismissAll")}
           </Button>
-          <Button variant="outline" onClick={() => store.snoozeResumeOffer(hostId)}>
+          <Button variant="outline" onClick={() => store.sessions.snoozeResumeOffer(hostId)}>
             {t("resumeOffer.notNow")}
           </Button>
           <ActionButton disabled={chosen.length === 0} onClick={() => run(chosen)}>

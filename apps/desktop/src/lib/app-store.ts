@@ -24,7 +24,6 @@ import type {
   HistoryListResult,
   HistorySessionSummary,
   HostInfoResult,
-  InterruptedSession,
   MessageInfo,
   MessagingAlertFrame,
   PendingPermission,
@@ -79,6 +78,11 @@ import {
   type HistorySliceState,
   initialHistoryState,
 } from "../features/history/index.ts";
+import {
+  initialSessionsState,
+  SessionsSlice,
+  type SessionsSliceState,
+} from "../features/sessions/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -188,15 +192,6 @@ import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { QuotaNotices } from "./quota-notices.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
-import {
-  CONTINUATION,
-  loadAutoResume,
-  loadHandled,
-  markHandled,
-  offerKey,
-  saveAutoResume,
-  unanswered,
-} from "./resume-offer.ts";
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
@@ -314,7 +309,7 @@ export interface Selection {
 /** How often the app writes that it is still active (issue #1344). */
 const AWAY_MARK_MS = 60_000;
 
-export interface AppState extends HistorySliceState, ActivitySliceState {
+export interface AppState extends HistorySliceState, ActivitySliceState, SessionsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
   sessions: Record<string, SessionState>;
@@ -346,7 +341,6 @@ export interface AppState extends HistorySliceState, ActivitySliceState {
   /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
   uiChoices: Record<string, UiMode>;
   /** The sessions a daemon restart interrupted on each host, offered for resume (issue #150). */
-  resumeOffers: Record<string, ResumeOffer>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
@@ -460,14 +454,6 @@ export interface TerminalListener {
 export interface TerminalCommands extends TerminalHost {
   open(cwd: string, cols: number, rows: number): Promise<{ terminalId: string }>;
   list(): Promise<TerminalInfo[]>;
-}
-
-/** The offer to resume a host's interrupted sessions: shown (open) or put off for the host page. */
-export interface ResumeOffer {
-  sessions: InterruptedSession[];
-  open: boolean;
-  /** The ones already resumed from this offer: they stay listed, as "Resumed", while it is open. */
-  resumed: string[];
 }
 
 export type HostCommandType = Extract<
@@ -1041,6 +1027,8 @@ export class AppStore {
   readonly history: HistorySlice;
   /** What happened on the hosts while the app was away (issue #1344, #1596). */
   readonly activity: ActivitySlice;
+  /** The sessions a restart interrupted, and the offer to resume them (issue #150, #1596). */
+  readonly sessions: SessionsSlice;
 
   constructor(
     private readonly platform: Platform,
@@ -1058,6 +1046,14 @@ export class AppStore {
       update: (patch) => this.update(patch),
       since: () => this.awayClock.since(),
       request: (hostId, since) => this.hostRequest(hostId, "activity.since", { since }),
+    });
+    this.sessions = new SessionsSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      storage: platform.storage,
+      connection: (hostId) => this.connections.get(hostId),
+      t: () => this.i18n.t,
+      success: (text) => this.success(text),
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -1186,7 +1182,7 @@ export class AppStore {
       externalRequests: {},
       meta: {},
       uiChoices: loadChoices(platform.storage),
-      resumeOffers: {},
+      ...initialSessionsState(),
       hub: {},
       terminalEnv: null,
       projects: {},
@@ -2152,119 +2148,6 @@ export class AppStore {
     if (!ui) return false;
     this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
     return true;
-  }
-
-  /** Whether this app resumes the sessions a restart interrupted on this host by itself (issue #150). */
-  autoResume(hostId: string): boolean {
-    return loadAutoResume(this.platform.storage, hostId);
-  }
-
-  setAutoResume(hostId: string, on: boolean): void {
-    saveAutoResume(this.platform.storage, hostId, on);
-    this.update({});
-  }
-
-  /** Looks for the sessions a restart interrupted: the dialog, or (auto) the resume itself. */
-  private async offerResume(hostId: string, conn: HostConnection): Promise<void> {
-    const found = await conn.request("session.interrupted", {}).catch(() => null);
-    const pending = unanswered(found?.sessions ?? [], loadHandled(this.platform.storage)[hostId]);
-    if (pending.length === 0) {
-      // Everything is answered: a put-off offer stays reachable, until the daemon has nothing to offer.
-      if ((found?.sessions ?? []).length === 0) this.dropOffer(hostId);
-      return;
-    }
-    if (this.autoResume(hostId)) {
-      const done = await this.resumeInterrupted(hostId, pending);
-      const names = pending
-        .filter((s) => done[s.sessionId]?.ok)
-        .map((s) => s.name ?? basename(s.cwd));
-      if (names.length > 0) {
-        const t = this.i18n.t;
-        this.success(
-          t(names.length === 1 ? "resumeOffer.autoOne" : "resumeOffer.autoMany", {
-            n: names.length,
-            names: names.join(", "),
-          }),
-        );
-      }
-      return;
-    }
-    this.update({
-      resumeOffers: {
-        ...this.state.resumeOffers,
-        [hostId]: { sessions: pending, open: true, resumed: [] },
-      },
-    });
-  }
-
-  private dropOffer(hostId: string): void {
-    if (!(hostId in this.state.resumeOffers)) return;
-    const { [hostId]: _gone, ...rest } = this.state.resumeOffers;
-    this.update({ resumeOffers: rest });
-  }
-
-  /**
-   * Resumes these sessions one by one (each goes through the normal resume, so the daemon's own
-   * rules apply) and tells each one to continue; never the original request again.
-   */
-  async resumeInterrupted(
-    hostId: string,
-    sessions: InterruptedSession[],
-  ): Promise<Record<string, { ok: true } | { ok: false; reason: string }>> {
-    const conn = this.connections.get(hostId);
-    const result: Record<string, { ok: true } | { ok: false; reason: string }> = {};
-    for (const session of sessions) {
-      try {
-        if (!conn) throw new Error("offline");
-        await conn.request("session.resume", { sessionId: session.sessionId }); // NOSONAR: sequential by design: a session is resumed before it is sent to, one session at a time
-        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION }); // NOSONAR: sequential by design: the continuation goes only after the resume answered
-        result[session.sessionId] = { ok: true };
-        markHandled(this.platform.storage, hostId, [offerKey(session)]);
-      } catch (error) {
-        result[session.sessionId] = {
-          ok: false,
-          reason: error instanceof Error ? error.message : String(error),
-        };
-      }
-    }
-    const offer = this.state.resumeOffers[hostId];
-    if (offer) {
-      const resumed = [
-        ...new Set([
-          ...offer.resumed,
-          ...sessions.filter((s) => result[s.sessionId]?.ok).map((s) => s.sessionId),
-        ]),
-      ];
-      this.update({
-        resumeOffers: { ...this.state.resumeOffers, [hostId]: { ...offer, resumed } },
-      });
-    }
-    return result;
-  }
-
-  /** "Not now": the dialog goes, the offer stays reachable from the host page, and it does not come back by itself. */
-  snoozeResumeOffer(hostId: string): void {
-    const offer = this.state.resumeOffers[hostId];
-    if (!offer) return;
-    markHandled(this.platform.storage, hostId, offer.sessions.map(offerKey));
-    this.update({
-      resumeOffers: { ...this.state.resumeOffers, [hostId]: { ...offer, open: false } },
-    });
-  }
-
-  openResumeOffer(hostId: string): void {
-    const offer = this.state.resumeOffers[hostId];
-    if (offer)
-      this.update({
-        resumeOffers: { ...this.state.resumeOffers, [hostId]: { ...offer, open: true } },
-      });
-  }
-
-  /** "Dismiss all": the offer is gone for good. */
-  dismissResumeOffer(hostId: string): void {
-    const offer = this.state.resumeOffers[hostId];
-    if (offer) markHandled(this.platform.storage, hostId, offer.sessions.map(offerKey));
-    this.dropOffer(hostId);
   }
 
   /** The layout of the tiles on the project page; kept across starts (issue #94). */
@@ -3516,7 +3399,7 @@ export class AppStore {
     void this.checkHealth(hostId);
     // Not awaited, as the health check: a reload of the host's info never waits on the offer.
     if (hasFeature(hostInfo?.features, FEATURE_RESUME_OFFER, false))
-      void this.offerResume(hostId, conn);
+      void this.sessions.offerResume(hostId, conn);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });

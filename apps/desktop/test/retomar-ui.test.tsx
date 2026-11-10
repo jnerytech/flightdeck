@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { loadAutoResume, saveAutoResume } = await import("../src/lib/resume-offer.ts");
+const { loadAutoResume, saveAutoResume } = await import("../src/features/sessions/index.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -213,7 +213,7 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
     await act(async () => {
       fireEvent.click(auto);
     });
-    expect(store.autoResume(hostId)).toBe(true);
+    expect(store.sessions.autoResume(hostId)).toBe(true);
     // The daemon restarts and the app reconnects: nothing to click.
     interrupt(d, ids);
     await act(async () => {

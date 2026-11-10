@@ -20,13 +20,13 @@ export function ResumePanel(props: Readonly<{ store: AppStore; host: HostView }>
       <span className="inline-flex items-center gap-2 text-sm">
         <Switch
           aria-label={t("resumeOffer.auto")}
-          checked={store.autoResume(host.id)}
-          onCheckedChange={(on) => store.setAutoResume(host.id, on)}
+          checked={store.sessions.autoResume(host.id)}
+          onCheckedChange={(on) => store.sessions.setAutoResume(host.id, on)}
         />
         {t("resumeOffer.auto")}
       </span>
       {offer && !offer.open && (
-        <Button variant="outline" onClick={() => store.openResumeOffer(host.id)}>
+        <Button variant="outline" onClick={() => store.sessions.openResumeOffer(host.id)}>
           {t("resumeOffer.reopen", { n: offer.sessions.length - offer.resumed.length })}
         </Button>
       )}
