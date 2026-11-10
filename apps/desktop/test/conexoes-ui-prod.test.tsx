@@ -22,7 +22,7 @@ async function setup(ssh?: { name: string; tags: string[] }) {
     { id: "ha", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
   ]);
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
-  if (ssh) store.sshTerminals.set("h1/term-1", ssh);
+  if (ssh) store.ssh.terminals.set("h1/term-1", ssh);
   render(<App store={store} />);
   await act(async () => {
     store.tabs.open({ name: "terminal", host: "h1", terminalId: "term-1" });
