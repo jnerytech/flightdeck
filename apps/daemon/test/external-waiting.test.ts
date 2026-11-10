@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { appendFileSync, utimesSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, openSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ExternalSession } from "@flightdeck/protocol";
 import { ExternalSessions, type ExternalSession as Session } from "../src/central/external.ts";
-import { type Tail, waitingIn } from "../src/central/waiting.ts";
+import { type Tail, tailOfFile, waitingIn } from "../src/central/waiting.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -62,7 +62,52 @@ describe("external-waiting: what a transcript's end waits for (#1736)", () => {
     expect(ExternalSession.parse({ ...base, waiting: null }).waiting).toBeNull();
     expect(ExternalSession.parse(base).waiting).toBeUndefined();
   });
+
+  test("a tool named like an inherited object member is no wait", () => {
+    for (const name of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      expect(waitingIn(entry("assistant", [call(name)]))).toBeNull();
+    }
+  });
 });
+
+describe.skipIf(process.platform === "win32")(
+  "external-waiting: a transcript path that is not a regular file is never opened (#1736)",
+  () => {
+    // A named pipe blocks `open` until a writer shows up; a hook's path must not stall the sweep.
+    const pipe = () => {
+      const path = join(tempDir(), "pipe.jsonl");
+      Bun.spawnSync(["mkfifo", path]);
+      return path;
+    };
+    const hung = Symbol("hung");
+    const within = <T>(work: Promise<T>, ms = 1500) =>
+      Promise.race([work, new Promise<typeof hung>((done) => setTimeout(done, ms, hung))]);
+    // Opening the pipe for writing frees a reader that is stuck, so the test leaves nothing behind.
+    const release = (path: string) => closeSync(openSync(path, "r+"));
+
+    test("reading the tail of a pipe gives nothing and does not wait for a writer", async () => {
+      const path = pipe();
+      const got = await within(tailOfFile(path));
+      release(path);
+      expect(got).toBeNull();
+    });
+
+    test("a sweep goes past a session whose transcript is a pipe and still reads the next one", async () => {
+      const store = new EventStore(":memory:");
+      const registry = new ExternalSessions({ db: store.db, staleAfterS: 900, now: () => T0 });
+      const path = pipe();
+      const real = join(tempDir(), "real.jsonl");
+      writeFileSync(real, entry("assistant", [call("ExitPlanMode")]));
+      registry.apply("SessionStart", { session_id: "p1", transcript_path: path });
+      registry.apply("SessionStart", { session_id: "p2", transcript_path: real });
+      const swept = await within(registry.sweep());
+      release(path);
+      expect(swept).not.toBe(hung);
+      expect(registry.get("p2")?.waiting).toBe("plan");
+      expect(registry.get("p1")?.waiting ?? null).toBeNull();
+    });
+  },
+);
 
 function setup() {
   const store = new EventStore(":memory:");
