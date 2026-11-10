@@ -193,9 +193,12 @@ export class ProjectTrust {
     // its own costs one stat. Read for every root, not only recorded ones, because `set` answers
     // from this list right after it writes the record.
     const looked = await Promise.all(
-      real.map(async (root) =>
-        (await trustsManyProjects(root, real, this.opts.rootFs)) ? null : root,
-      ),
+      real.map(async (root) => {
+        // A root that cannot be read is not known to be one project: it grants nothing, and the
+        // daemon still boots.
+        const many = await trustsManyProjects(root, real, this.opts.rootFs).catch(() => true);
+        return many ? null : root;
+      }),
     );
     if (this.rootsStored > ticket) return;
     this.rootsStored = ticket;
