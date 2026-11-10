@@ -20,17 +20,15 @@ export interface KnowledgeDeps {
  * folder, kept in the config.
  */
 export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
+  // The feed and its switch read the same list of folders that are off, under the same trust.
+  const gate = { off: () => config.knowledge.feedOff, trust };
   return {
     knowledge: listKnowledge,
     knowledgeStatus: setKnowledgeStatus,
     knowledgeCreate: createKnowledgeDoc,
-    knowledgeFeed: knowledgeFeedFor({
-      off: () => config.knowledge.feedOff,
-      trust,
-    }),
+    knowledgeFeed: knowledgeFeedFor(gate),
     knowledgeFeedSwitch: knowledgeSwitchFor({
-      off: () => config.knowledge.feedOff,
-      trust,
+      ...gate,
       change: async (update) => {
         let next: string[] = [];
         await updateConfigFile(configFile, (raw) => {
