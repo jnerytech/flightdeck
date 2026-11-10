@@ -35,7 +35,10 @@ export async function acquireLock(dataDir: string): Promise<Lock | null> {
     async release() {
       if (!held) return;
       held = false;
-      await unlink(path);
+      // A lock file already gone is released: never hide the error that led here (#1676).
+      await unlink(path).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      });
     },
   };
 }
