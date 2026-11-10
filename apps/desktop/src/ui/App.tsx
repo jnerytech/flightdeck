@@ -44,6 +44,7 @@ import { SimpleApp } from "./simple/SimpleApp.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 import { UpdateCard } from "./UpdateCard.tsx";
+import { useLiveElsewhereAsk } from "./use-live-elsewhere-guard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
 type InPlace =
@@ -241,13 +242,17 @@ export function runPaletteTarget(
     go(route: Route): void;
     showHelp(): void;
     askStart(card: Card, contracts: ContractOverrides, go: () => void): void;
+    /** Runs `go` at once, or after asking when another terminal holds the conversation (#1705). */
+    guardLive(hostId: string, claudeSessionId: string | null, go: () => void): void;
   },
 ): void {
   switch (target.kind) {
     case "terminal":
-      if (store.embeddedTerminal(target.hostId)) {
-        void store.openClaudeHere(target.hostId, target.target);
-      } else void store.openInTerminal(target.hostId, target.target);
+      ui.guardLive(target.hostId, target.target.claudeSessionId, () => {
+        if (store.embeddedTerminal(target.hostId)) {
+          void store.openClaudeHere(target.hostId, target.target);
+        } else void store.openInTerminal(target.hostId, target.target);
+      });
       return;
     case "new-terminal":
       void store.openTerminal(target.hostId);
@@ -355,6 +360,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const { t } = store.i18n;
   /** The palette's Start card asks the same question as the card's own Start (issue #78). */
   const startAsk = useStartAsk({ t });
+  /** The palette's terminal asks before a second `claude` on a conversation another terminal holds (#1736). */
+  const liveAsk = useLiveElsewhereAsk(store);
   // The `?` sheet, and the first key of a go-to chord waiting for its second.
   const [help, setHelp] = useState(false);
   const [whatsNew, setWhatsNew] = useState(false);
@@ -546,6 +553,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
       go,
       showHelp: () => setHelp(true),
       askStart: startAsk.ask,
+      guardLive: liveAsk.ask,
     });
   };
 
@@ -709,6 +717,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
           )}
           <AskpassPrompt store={store} />
           {startAsk.dialog}
+          {liveAsk.dialog}
           {state.snippetChoice && (
             <SnippetUse
               store={store}

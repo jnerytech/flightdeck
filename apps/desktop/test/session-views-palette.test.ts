@@ -62,6 +62,7 @@ describe("session-views-palette: the palette switches the view of the page on sc
         go: () => {},
         showHelp: () => {},
         askStart: (_card: unknown, _contracts: unknown, go: () => void) => go(),
+        guardLive: (_host: string, _id: string | null, go: () => void) => go(),
       },
     );
     expect(shown).toEqual(["trace"]);
