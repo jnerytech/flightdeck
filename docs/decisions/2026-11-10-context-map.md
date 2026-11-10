@@ -79,7 +79,8 @@ are in the glossary test's baseline until #1594 and #1601 move their parts into 
 ## Cycles today
 
 Folder-level cycles on 2026-11-10, each to be broken by a domain event or an inverted dependency
-(#1611; #1591's ratchet keeps the count from growing):
+(#1611). `bun run arch` (#1591, `.dependency-cruiser.cjs`) fails on a new cycle or deep import
+across domains, and its baseline of today's violations only goes down:
 
 - `board` with `issues`, `watch`, `workflows`, `worktrees` and `teleport`: the suppliers read the
   board's card types and the board calls them back. Target: they depend on a port the board owns.
