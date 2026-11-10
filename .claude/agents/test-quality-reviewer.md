@@ -1,6 +1,6 @@
 ---
 name: test-quality-reviewer
-description: "Reviews the tests of a Flightdeck branch for tests that cannot fail: a weak or removed assertion, a red by error instead of assertion, a test that passes on the stub, a mock-only check, a hidden wait. Read-only. Use before a hand-off or when accepting a branch; give the worktree and, if not main, the base."
+description: "Reviews the tests of a Flightdeck branch for tests that cannot fail: a weak or removed assertion, a red by error instead of assertion, a test that passes on the stub, a mock-only check, a hidden wait, an implementation-detail test, a mock of a managed dependency, leaked domain knowledge. Read-only. Use before a hand-off or when accepting a branch; give the worktree and, if not main, the base."
 tools: Read, Bash
 model: sonnet
 ---
@@ -35,6 +35,18 @@ The worktree and the base (default: `git merge-base HEAD main`). Work inside the
    - **Snapshots and markers:** a new `toMatchSnapshot`, `.only`, `.skip`, `test.todo`.
    - **Vacuous checks:** a loop or `every` over a list that may be empty; `toContain` on a value
      that may be `undefined` without `?? ""`.
+   - **Implementation details (#1604):** the test asserts how, not what: a private function
+     exported only for it, internal state or call order read back, a spy on our own module, an
+     exact SQL string, a CSS class or DOM depth instead of the role and text. A pure move or rename
+     would turn it red. Severity `medium`.
+   - **Mock of a managed dependency (#1604):** a fake of our own SQLite, our own files or one of
+     our own modules (`mock.module` of a project file), or a mock of a type we do not own (a zod,
+     Bun or node API) instead of a fake of our adapter. Fakes on the test PATH for `gh`, `claude`,
+     `az`, `ssh` and webhooks are the allowed mocks. Severity `medium`.
+   - **Leaked domain knowledge (#1604):** the expected value is computed with the same logic as
+     the code (a copied formula, a loop that rebuilds the result, the function itself called in the
+     assertion), so a wrong rule passes on both sides. The expected value is a literal. Severity
+     `high`.
 4. When a red is in doubt, read the test against the stub in the test commit's tree
    (`git show <test>:<path>`); do not check it out.
 

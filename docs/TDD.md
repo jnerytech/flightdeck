@@ -176,6 +176,33 @@ deterministically: the test file's place, test before feat, a red by assertion b
 commit, `tdd:audit`, `test:related`. It costs real quota and is opt-in: never in the suite, CI or
 the slot. Run it after a change to the harness (CLAUDE.md, rules, hooks, skills).
 
+## What a test checks (Khorikov, #1604)
+
+The strategy of Vladimir Khorikov's *Unit Testing* (2020); the reasons are in
+`docs/decisions/2026-11-10-testing-strategy.md`. It is what lets the structure moves (#1589) leave
+the tests alone.
+
+- **Four pillars:** protection against regressions, resistance to refactoring, fast feedback,
+  maintainability. Resistance to refactoring is not traded away: a test that goes red when code
+  only moves or is renamed is a false positive. A move changes a test's import path, nothing else.
+- **Observable behavior, never implementation details.** A unit is a unit of behavior, not a class
+  or a file. Assert what a caller or a person sees: the return value, the stored state read back
+  through the public API, the message sent, the text on the screen.
+- **The code quadrant.** Domain rules and algorithms get many unit tests. Controllers and wiring
+  (`main.ts`, handlers, hooks that only connect) get few integration tests: the longest happy path
+  and the edges a unit test cannot reach. Code that is both complex and full of I/O is split first
+  (Humble Object, #1605) and then tested. Trivial code is not tested on its own.
+- **Mocks only for unmanaged dependencies:** out-of-process systems others see (`gh`, `claude`,
+  `az`, `ssh`, a webhook): the fakes on the test PATH. Managed ones (our SQLite, our files, our
+  own modules) run for real. Never mock a type we do not own: fake our adapter for it (#1612).
+- **Prefer output-based tests,** then state-based, then communication-based (a fake was called):
+  the last only for a call to an unmanaged dependency, and it checks the message, not just the call.
+- **Anti-patterns:** testing a private function, exporting or widening state only for a test,
+  re-implementing the algorithm in the assertion (write the expected literal), code that exists
+  only for tests in production paths, and ambient time or randomness (inject the clock).
+- **Coverage is a negative indicator.** Low coverage shows untested code; high coverage proves
+  nothing. The 80% gate (#1002) is on business flows, never reached with line-only tests.
+
 ## Test anchors
 
 How a UI test finds what it checks, in this order (issue #168, owner decision). The design rules
