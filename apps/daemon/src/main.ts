@@ -108,10 +108,8 @@ import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { IdleSleeper } from "./sessions/sleeper.ts";
 import { StallWatcher } from "./sessions/stall.ts";
-import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
-import { Snippets } from "./snippets/store.ts";
-import { SnippetUse } from "./snippets/use.ts";
+import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
@@ -622,10 +620,18 @@ export async function startDaemon(
     user: userInfo().username,
     sockDir: tmpdir(),
   });
-  const snippets = new Snippets({
+  const { snippets, snippetUse, snippetHistory } = createSnippets({
     db: store.db,
-    allowedRoots: config.allowedRoots,
+    config,
     scanner: snippetScanner,
+    use: {
+      terminals,
+      manager,
+      onPersonInput: (sessionId) => board.personTurnOfSession(sessionId),
+      central,
+      exec: spawnExec,
+    },
+    history: { home: userHome(env), appData: process.env.APPDATA, platform: process.platform },
   });
 
   // Phase 16: secrets the app hands over for one use; in memory only, gone with the daemon.
@@ -1015,24 +1021,8 @@ export async function startDaemon(
     snippets,
     personas: personaStore,
     personaSessions,
-    snippetUse: new SnippetUse({
-      snippets,
-      terminals,
-      manager,
-      onPersonInput: (sessionId) => board.personTurnOfSession(sessionId),
-      central,
-      exec: spawnExec,
-      allowedRoots: config.allowedRoots,
-    }),
-    snippetHistory: new HistoryImporter({
-      sources: defaultHistorySources({
-        home: userHome(env),
-        appData: process.env.APPDATA,
-        platform: process.platform,
-      }),
-      scanner: snippetScanner,
-      snippets,
-    }),
+    snippetUse,
+    snippetHistory,
     terminals,
     tasks: new TaskTracker({ dir: join(config.dataDir, "tasks") }),
     // The built-in templates and the files of `<dataDir>/templates` (phase 33).
