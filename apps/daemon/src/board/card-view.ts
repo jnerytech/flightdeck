@@ -1,6 +1,9 @@
 import type { Database } from "bun:sqlite";
+import { resolve } from "node:path";
+import { BoardColumn as BoardColumnSchema, type BoardResult } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import type { Card, CardRow, CardRun, RunRow } from "./types.ts";
+import { isInside } from "../paths.ts";
+import type { Card, CardRow, CardRun, Project, RunRow } from "./types.ts";
 
 /** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
 function pinnedDocsOf(stored: string | null): string[] {
@@ -22,6 +25,9 @@ const toRun = (row: RunRow): CardRun => ({
 /** What reading a card needs of the board (issue #1523); late-bound, so it never imports `board.ts`. */
 export interface CardViewPort {
   db: Database;
+  project: (id: string) => Project;
+  /** Every project of the host. */
+  projects: () => Project[];
   /** The status of a run's session, as the session manager has it. */
   sessionStatus: (sessionId: string) => Card["sessionStatus"];
   /** Issue #1405: the cards the conflict radar flagged with this one. */
@@ -41,8 +47,9 @@ export interface CardViewPort {
 }
 
 /**
- * A card as the app sees it (issue #1523): its row and its runs, with what the radar, the
- * workflows, the check loop, the blockers and the queue say of it.
+ * The board's cards as the app sees them (issue #1523): a card's row and its runs, with what the
+ * radar, the workflows, the check loop, the blockers and the queue say of it, and the reads that
+ * find cards (a project's board, the card of a folder, the cards with a worktree).
  */
 export class CardView {
   constructor(private readonly port: CardViewPort) {}
@@ -125,5 +132,59 @@ export class CardView {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  /** The project with its five columns, each with its cards by position. */
+  board(projectId: string): BoardResult {
+    const project = this.port.project(projectId);
+    const cards = this.port.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND arena_of IS NULL ORDER BY position, created_at",
+      )
+      .all(projectId)
+      .map(({ id }) => this.read(id));
+    const columns = BoardColumnSchema.options.map((column) => ({
+      column,
+      cards: cards.filter((card) => card.column === column),
+    }));
+    return { project, columns };
+  }
+
+  /**
+   * Phase 13: the project a folder belongs to (its repository or a card's worktree), with the
+   * card when it is one; null outside every project.
+   */
+  forCwd(cwd: string): { project: Project; card: Card | null } | null {
+    const card = this.port.db
+      .query<{ id: string; worktree_path: string }, []>(
+        "SELECT id, worktree_path FROM cards WHERE worktree_path IS NOT NULL",
+      )
+      .all()
+      .find((row) => isInside(resolve(row.worktree_path), resolve(cwd)));
+    if (card) {
+      const found = this.read(card.id);
+      return { project: this.port.project(found.projectId), card: found };
+    }
+    const project = this.port.projects().find((p) => isInside(resolve(p.path), resolve(cwd)));
+    return project ? { project, card: null } : null;
+  }
+
+  /** Every card of the project that has a worktree, arena variants included. */
+  withWorktree(projectId: string): Card[] {
+    return this.port.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND worktree_path IS NOT NULL",
+      )
+      .all(projectId)
+      .map(({ id }) => this.read(id));
+  }
+
+  /** Whether a card's run uses this session: the board follows it, so the host never puts it to sleep. */
+  hasRunSession(sessionId: string): boolean {
+    return (
+      this.port.db
+        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM card_runs WHERE session_id = ?")
+        .get(sessionId)?.n !== 0
+    );
   }
 }
