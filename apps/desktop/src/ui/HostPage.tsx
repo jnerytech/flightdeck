@@ -176,7 +176,7 @@ export function HostPage(
   const daemonVersion = info?.daemonVersion;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the daemon's version is what makes it worth asking again
   useEffect(() => {
-    if (checkable) void store.autoCheckDaemonUpdate(host.id);
+    if (checkable) void store.hostUpdate.autoCheck(host.id);
   }, [store, host.id, checkable, daemonVersion]);
   const settingsPath = hooks?.settingsPath ?? "~/.claude/settings.json";
   // Hooks came with the central (phase 5): shown for older daemons, hidden when not announced.

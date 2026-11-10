@@ -80,8 +80,8 @@ function setup(
     if (type === "service.install") return options.service ?? null;
     return { status: "installed", settingsPath: "~/.claude/settings.json" };
   }) as never;
-  store.updateDaemon = (async () => {
-    calls.push("updateDaemon");
+  store.hostUpdate.apply = (async () => {
+    calls.push("hostUpdate.apply");
   }) as never;
   const host = {
     id: "h1",
@@ -193,7 +193,7 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
           within(screen.getByRole("alertdialog")).getByRole("button", { name: "Update daemon" }),
         ),
     );
-    expect(calls).toContain("updateDaemon");
+    expect(calls).toContain("hostUpdate.apply");
     await act(
       async () =>
         void fireEvent.click(

@@ -171,12 +171,12 @@ describe("atualizacao-checar-ui: the host page checks for a daemon update", () =
     const id = store.getState().hosts[0]?.id ?? "";
     clock.at += 9 * 60_000;
     await act(async () => {
-      await store.autoCheckDaemonUpdate(id);
+      await store.hostUpdate.autoCheck(id);
     });
     expect(daemon.state.checks).toBe(1);
     clock.at += 2 * 60_000;
     await act(async () => {
-      await store.autoCheckDaemonUpdate(id);
+      await store.hostUpdate.autoCheck(id);
     });
     expect(daemon.state.checks).toBe(2);
   });

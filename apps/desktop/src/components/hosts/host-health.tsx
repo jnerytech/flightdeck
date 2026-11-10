@@ -466,7 +466,7 @@ export function HostHealth(
           onCancel={() => setConfirming(null)}
           onConfirm={() => {
             setConfirming(null);
-            void store.updateDaemon(host.id);
+            void store.hostUpdate.apply(host.id);
           }}
         />
       )}
