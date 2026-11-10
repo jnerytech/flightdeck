@@ -257,6 +257,9 @@ export function expandHome(path: string): string {
   return path;
 }
 
+/** Where Claude Code reads the user's hooks; resolved at call time (tests swap HOME). */
+export const claudeSettingsPath = () => expandHome("~/.claude/settings.json");
+
 /**
  * Loads and validates the config file, creating it with defaults (and a fresh token) when it
  * does not exist. Paths are returned with `~` expanded.

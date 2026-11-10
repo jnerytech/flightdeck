@@ -50,9 +50,17 @@ import { Forker } from "./checkpoints/fork.ts";
 import { Rewinder } from "./checkpoints/rewind.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
-import { type CliArgs, parseArgs } from "./cli/args.ts";
+import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
+import {
+  type HostCommandDeps,
+  healthUrl,
+  runService,
+  runUpdateCommand,
+  stopInstalledDaemon,
+} from "./cli/host.ts";
 import {
   type Config,
+  claudeSettingsPath,
   defaultConfigPath,
   expandHome,
   generateToken,
@@ -92,7 +100,7 @@ import { setKnowledgeStatus } from "./knowledge/status.ts";
 import { knowledgeSwitchFor } from "./knowledge/switch.ts";
 import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
-import { acquireLock, readLockPid } from "./lock.ts";
+import { acquireLock } from "./lock.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
@@ -156,19 +164,9 @@ import { startPrivateServer } from "./runtime/opencode-serve.ts";
 import { OPENCODE_LEDGER_FILE, ProcessLedger, procSource } from "./runtime/process-ledger.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
-import {
-  daemonCommand,
-  installService,
-  resolveServiceClaude,
-  type ServiceCommand,
-  type ServiceContext,
-  serviceCommand,
-  serviceStatus,
-  startService,
-  uninstallService,
-} from "./service.ts";
+import { daemonCommand, type ServiceContext, serviceCommand } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
-import { killProcess, osServiceContext, processPath } from "./service-os.ts";
+import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { IdleSleeper } from "./sessions/sleeper.ts";
 import { StallWatcher } from "./sessions/stall.ts";
@@ -205,20 +203,11 @@ import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
 import { ulid } from "./ulid.ts";
-import {
-  binaryVersion,
-  refusedAddress,
-  requestShutdown,
-  runUpdate,
-  type StopDeps,
-  stableBinPath,
-  stopServiceDaemon,
-  waitHealthy,
-} from "./update.ts";
+import { binaryVersion, refusedAddress, stableBinPath, waitHealthy } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
 import { AutoUpdater, autoUpdateOf } from "./updates/auto.ts";
 import { UpdateChecker } from "./updates/check.ts";
-import { addToUserPath, binDir, removeFromUserPath } from "./user-path.ts";
+import { addToUserPath, binDir } from "./user-path.ts";
 import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
 import { PrFixer } from "./watch/fix.ts";
@@ -234,6 +223,7 @@ import { type WslItem, WslSupervisor } from "./wsl.ts";
 import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
+export { claudeSettingsPath } from "./config.ts";
 
 /** `hook session-start` gives up on the receptor after this long (the hook's own limit is 5 s). */
 export const HOOK_CONNECT_TIMEOUT_MS = 1_000;
@@ -1666,10 +1656,6 @@ export async function startDaemon(
   };
 }
 
-function configPath(args: CliArgs): string {
-  return resolve(expandHome(args.config ?? defaultConfigPath()));
-}
-
 /** Current token in the config file, or `null` while it is unreadable or invalid. */
 async function readToken(file: string): Promise<string | null> {
   try {
@@ -1858,83 +1844,6 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
 }
 
 /**
- * `flightdeckd service install|uninstall|status`. With `--dry-run` nothing is written, not even
- * the config, so `loadConfig` (which creates a missing file) is never called in that mode.
- */
-/** The config of the installed service: `--config` on the CLI, else the service's own one. */
-const serviceConfig = (args: CliArgs, installed: ServiceCommand) =>
-  loadConfig(args.config ? configPath(args) : (installed.config ?? configPath(args)));
-
-/** Where a daemon of `config` answers `GET /health`. */
-const healthUrl = (config: Config) =>
-  new URL("/health", daemonUrl(config).replace(/^ws:/, "http:")).href;
-
-/**
- * Stops the daemon of the installed service (`daemon.shutdown`, the task or unit, the lock).
- * Null without a service; false when the daemon is still there.
- */
-async function stopInstalledDaemon(
-  args: CliArgs,
-  ctx: ServiceContext,
-  deps: CliDeps,
-): Promise<boolean | null> {
-  const installed = await serviceCommand(ctx);
-  if (!installed) return null;
-  const stop = {
-    ...serviceStopDeps(ctx, deps.log),
-    ...(deps.serviceStopTimeoutMs ? { stopTimeoutMs: deps.serviceStopTimeoutMs } : {}),
-  };
-  return stopServiceDaemon(
-    stop,
-    await serviceConfig(args, installed),
-    installed.command[0] as string,
-  );
-}
-
-/** `service stop`: the daemon goes, the task or unit stays installed. */
-async function stopService(args: CliArgs, ctx: ServiceContext, deps: CliDeps): Promise<void> {
-  const stopped = await stopInstalledDaemon(args, ctx, deps);
-  if (stopped === null) throw new Error("no service installed");
-  if (!stopped) throw new Error("the service's daemon did not stop: stop it by hand");
-  deps.log.log("the service's daemon stopped (the service stays installed)");
-}
-
-/** `service start`: runs the task or unit and waits for `/health` of the service's config. */
-async function startInstalledService(
-  args: CliArgs,
-  ctx: ServiceContext,
-  deps: CliDeps,
-): Promise<void> {
-  const installed = await serviceCommand(ctx);
-  if (!installed) throw new Error("no service installed");
-  const url = healthUrl(await serviceConfig(args, installed));
-  await startService(ctx);
-  if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
-    throw new Error(`the service's daemon did not answer on /health (${url})`);
-  }
-  deps.log.log(`the service's daemon is answering on ${url}`);
-}
-
-type ServiceContextOf = ReturnType<NonNullable<CliDeps["serviceContext"]>>;
-
-async function uninstallInstalledService(
-  args: CliArgs,
-  ctx: ServiceContextOf,
-  deps: CliDeps,
-): Promise<void> {
-  // Removing the task or unit alone would leave the daemon running: it goes first.
-  if (!ctx.dryRun && (await stopInstalledDaemon(args, ctx, deps)) === false) {
-    deps.log.error("warning: the service's daemon is still running; stop it by hand");
-  }
-  printResult(deps, await uninstallService(ctx));
-  if (ctx.dryRun) {
-    if (ctx.platform === "win32") deps.log.log(`# ${binDir(ctx)} would leave the user Path`);
-    return;
-  }
-  for (const line of await removeFromUserPath(ctx, binDir(ctx))) deps.log.log(line);
-}
-
-/**
  * #1200: `service.install` for a daemon run as its stable binary (the file a service starts);
  * undefined for any other, so a daemon run from source (the demo, the journeys) never offers it.
  * The service gets `--config` only when this daemon was started with one, as an absolute path.
@@ -1963,51 +1872,6 @@ function appServiceInstall(
       },
       confirm,
     );
-}
-
-/** Writes the `claude` the service found into the config (or says it would, in a dry run). */
-async function recordServiceClaude(
-  file: string,
-  claude: ReturnType<typeof resolveServiceClaude>,
-  ctx: ServiceContextOf,
-  deps: CliDeps,
-): Promise<void> {
-  if (ctx.dryRun) {
-    if (claude.path) {
-      deps.log.log(`claude.executablePath = "${claude.path}" (would be written to ${file})`);
-    }
-    return;
-  }
-  await loadConfig(file);
-  const executablePath = claude.path;
-  if (executablePath) {
-    await updateConfigFile(file, (raw) => ({
-      ...raw,
-      claude: { ...(raw.claude as object), executablePath },
-    }));
-  }
-}
-
-async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
-  const ctx = (deps.serviceContext ?? osServiceContext)(args.dryRun === true);
-  if (args.action === "status") return printResult(deps, await serviceStatus(ctx));
-  if (args.action === "stop") return stopService(args, ctx, deps);
-  if (args.action === "start") return startInstalledService(args, ctx, deps);
-  if (args.action === "uninstall") return uninstallInstalledService(args, ctx, deps);
-  const file = configPath(args);
-  const claude = resolveServiceClaude(ctx);
-  if (claude.warning) deps.log.error(claude.warning);
-  await recordServiceClaude(file, claude, ctx, deps);
-  // The service only gets --config when the user gave one, always as an absolute path.
-  printResult(deps, await installService(ctx, args.config ? resolve(args.config) : null));
-  if (ctx.dryRun) return;
-  // The Windows task only has a logon trigger and systemd may be slow: start it now and check.
-  if (ctx.platform === "win32") await startService(ctx);
-  const url = healthUrl(await loadConfig(file));
-  if (!(await waitHealthy(url, deps.serviceHealthTimeoutMs ?? 30_000, 250))) {
-    throw new Error(`the service's daemon did not answer on /health (${url})`);
-  }
-  deps.log.log(`the service's daemon is answering on ${url}`);
 }
 
 /**
@@ -2040,9 +1904,6 @@ const HOOKS_LABELS: Record<HooksStatus, string> = {
   absent: "absent",
   outdated: "outdated (run hooks install again)",
 };
-
-/** Where Claude Code reads the user's hooks; resolved at call time (tests swap HOME). */
-export const claudeSettingsPath = () => expandHome("~/.claude/settings.json");
 
 /** What `hooks install` writes for this config: this executable, the receptor and its token. */
 export function hookTarget(
@@ -2151,43 +2012,6 @@ export function vaultActions(kind: RuntimeKind): Record<string, (value: string) 
     : {};
 }
 
-/** The real pieces that stop the daemon of a service: shutdown request, lock and process. */
-function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
-  return {
-    ctx,
-    log,
-    daemonRunning: async (config) => {
-      const lock = await acquireLock(config.dataDir);
-      await lock?.release();
-      return lock === null;
-    },
-    shutdown: (config) => requestShutdown(daemonUrl(config), config.token, 3_000),
-    lockPid: readLockPid,
-    processPath,
-    kill: killProcess,
-  };
-}
-
-async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
-  if (!args.from) throw new Error("update needs --from <new binary>");
-  const ctx = (deps.serviceContext ?? osServiceContext)(false);
-  return runUpdate(
-    { from: args.from, allowDowngrade: args.allowDowngrade === true },
-    {
-      ...serviceStopDeps(ctx, deps.log),
-      // Read only when used: a service with its own --config never loads the default one.
-      get config() {
-        return loadConfig(configPath(args));
-      },
-      ...(args.config ? {} : { configFromService: (path: string) => loadConfig(path) }),
-      currentVersion: DAEMON_VERSION,
-      settingsPath: claudeSettingsPath(),
-      stableBin: stableBinPath(ctx.home, ctx.platform),
-      healthy: (_port, config) => waitHealthy(healthUrl(config), 30_000, 250),
-    },
-  );
-}
-
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
 async function runRestore(args: CliArgs, deps: CliDeps): Promise<void> {
   if (!args.file) throw new Error("restore needs the file: flightdeckd restore <file>");
@@ -2215,19 +2039,13 @@ async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
   }
 }
 
-function printResult(deps: CliDeps, result: { output: string[]; instructions: string[] }): void {
-  for (const line of result.output) deps.log.log(line);
-  for (const line of result.instructions) deps.log.error(line);
-}
-
-export interface CliDeps {
+export interface CliDeps extends HostCommandDeps {
   env: Record<string, string | undefined>;
   /** The machine the dependency check probes, in `doctor`; the real one when absent (tests give theirs). */
   depsEnv?: DepsEnv;
   log: Logger;
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
-  serviceContext?: (dryRun: boolean) => ServiceContext;
   /** Runs external commands (`tailscale ip -4`); injected in tests. */
   exec?: Exec;
   /** This daemon's own command line, as hooks call it back; derived from the process if absent. */
@@ -2240,10 +2058,6 @@ export interface CliDeps {
   stdout?: (text: string) => void;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
-  /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */
-  serviceStopTimeoutMs?: number;
-  /** How long `service start` waits for `/health` (30 s when absent). */
-  serviceHealthTimeoutMs?: number;
   /** Clock of `db prune`, `backup` and `restore`; `Date.now` when absent. */
   now?: () => number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
