@@ -190,6 +190,7 @@ function serviceStopDeps(ctx: ServiceContext, log: HostCommandDeps["log"]): Stop
   };
 }
 
+/** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
 export async function runUpdateCommand(args: CliArgs, deps: HostCommandDeps): Promise<number> {
   if (!args.from) throw new Error("update needs --from <new binary>");
   const ctx = (deps.serviceContext ?? osServiceContext)(false);

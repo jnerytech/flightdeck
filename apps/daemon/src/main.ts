@@ -58,6 +58,7 @@ import {
   runUpdateCommand,
   stopInstalledDaemon,
 } from "./cli/host.ts";
+import { type MaintenanceCommandDeps, runBackup, runPrune, runRestore } from "./cli/maintenance.ts";
 import {
   type Config,
   claudeSettingsPath,
@@ -102,7 +103,6 @@ import { lingerState } from "./linger.ts";
 import { acquireLock } from "./lock.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
-import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
 import { exists } from "./memory/exists.ts";
@@ -1820,25 +1820,6 @@ async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
   );
 }
 
-/** `flightdeckd backup [--out <file>]`: a backup now, with the daemon running or not. */
-async function runBackup(args: CliArgs, deps: CliDeps): Promise<void> {
-  const config = await loadConfig(configPath(args));
-  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
-  try {
-    const info = await new Maintenance({
-      db: store.db,
-      dataDir: config.dataDir,
-      retention: config.retention,
-      backup: config.backup,
-      ...(deps.now ? { now: deps.now } : {}),
-    }).backupNow(args.out);
-    deps.log.log(`backup created: ${info.path} (${info.bytes} bytes)`);
-  } finally {
-    store.close();
-  }
-}
-
-/** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
 /**
  * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
  * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
@@ -1850,34 +1831,7 @@ export function vaultActions(kind: RuntimeKind): Record<string, (value: string) 
     : {};
 }
 
-/** `flightdeckd restore <file>`: only with the daemon stopped. */
-async function runRestore(args: CliArgs, deps: CliDeps): Promise<void> {
-  if (!args.file) throw new Error("restore needs the file: flightdeckd restore <file>");
-  const config = await loadConfig(configPath(args));
-  const { beforeRestore } = await restoreBackup({ file: args.file, dataDir: config.dataDir });
-  deps.log.log(`database restored from ${args.file}; the previous one stayed at ${beforeRestore}`);
-}
-
-/** `flightdeckd db prune [--dry-run]`: the retention policy now, with the count per table. */
-async function runPrune(args: CliArgs, deps: CliDeps): Promise<void> {
-  const config = await loadConfig(configPath(args));
-  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
-  try {
-    const maintenance = new Maintenance({
-      db: store.db,
-      dataDir: config.dataDir,
-      retention: config.retention,
-      ...(deps.now ? { now: deps.now } : {}),
-    });
-    const counts = await maintenance.prune(args.dryRun === true);
-    deps.log.log(args.dryRun ? "dry run of the cleanup (nothing was deleted):" : "cleanup done:");
-    for (const [table, n] of Object.entries(counts)) deps.log.log(`  ${table}: ${n}`);
-  } finally {
-    store.close();
-  }
-}
-
-export interface CliDeps extends HostCommandDeps {
+export interface CliDeps extends HostCommandDeps, MaintenanceCommandDeps {
   env: Record<string, string | undefined>;
   /** The machine the dependency check probes, in `doctor`; the real one when absent (tests give theirs). */
   depsEnv?: DepsEnv;
@@ -1896,8 +1850,6 @@ export interface CliDeps extends HostCommandDeps {
   stdout?: (text: string) => void;
   /** How long `hook session-start` tries to reach the receptor. */
   hookConnectTimeoutMs?: number;
-  /** Clock of `db prune`, `backup` and `restore`; `Date.now` when absent. */
-  now?: () => number;
   /** Where `flightdeckd channel` speaks MCP; stdio when absent. */
   channelTransport?: Transport;
   /** Where `flightdeckd mcp` speaks MCP; stdio when absent. */
