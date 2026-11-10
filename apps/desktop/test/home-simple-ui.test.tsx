@@ -206,13 +206,13 @@ describe("home-simple-ui: where simple mode begins", () => {
 
   test("Given the first screen, Then it says what a task is, that it asks before changing anything and where results go, in both languages", () => {
     view();
-    expect(screen.queryByText(/Claude works on your files on this computer/)).not.toBeNull();
+    // One short line: with a few tasks waiting above it, a longer intro pushed the first card
+    // past a phone's window on CI (#1716).
+    expect(screen.queryByText("Each card says what it asks and edits.")).not.toBeNull();
     expect(screen.queryByText(/Flightdeck results/)).not.toBeNull();
     cleanup();
     view({ lang: "pt-BR" });
-    expect(
-      screen.queryByText(/O Claude trabalha nos seus arquivos neste computador/),
-    ).not.toBeNull();
+    expect(screen.queryByText("Cada cartão diz o que pergunta e edita.")).not.toBeNull();
     expect(screen.queryByRole("list", { name: "Como uma tarefa acontece" })).not.toBeNull();
   });
 
