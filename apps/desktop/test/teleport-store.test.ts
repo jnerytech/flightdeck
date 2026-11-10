@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { AppStore, TELEPORT_PREVIEW_KEY } from "../src/lib/app-store.ts";
+import { TELEPORT_PREVIEW_KEY } from "../src/features/settings/index.ts";
+import { AppStore } from "../src/lib/app-store.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 /**
@@ -12,7 +13,7 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
     const store = new AppStore(mem.platform);
     await store.init();
     const before = store.getState().settings.teleportPreview;
-    store.setTeleportPreview(true);
+    store.settings.setTeleportPreview(true);
     const after = store.getState().settings.teleportPreview;
     const next = new AppStore(mem.platform);
     await next.init();

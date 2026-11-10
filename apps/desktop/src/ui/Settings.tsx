@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WatchSettingsSection } from "@/components/watch/watch-settings-section";
 import { useStoreSlice } from "@/lib/use-store";
+import type { Settings as SettingsState } from "../features/settings/index.ts";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
-import type { AppStore, AppUpdateState, Settings as SettingsState } from "../lib/app-store.ts";
+import type { AppStore, AppUpdateState } from "../lib/app-store.ts";
 import type { CacheTtl } from "../lib/cache-timer.ts";
 import type { Density } from "../lib/density.ts";
 import type { TabOrder } from "../lib/tab-switcher.ts";
@@ -283,7 +284,7 @@ export const Settings = memo(function Settings(props: {
             <input
               type="checkbox"
               checked={settings.teleportPreview}
-              onChange={(e) => props.store.setTeleportPreview(e.target.checked)}
+              onChange={(e) => props.store.settings.setTeleportPreview(e.target.checked)}
             />
             {t("teleportUi.preview")}
           </label>
