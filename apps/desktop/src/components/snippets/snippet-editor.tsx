@@ -5,11 +5,11 @@ import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { AppSnippet } from "@/features/snippets";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
-import type { AppSnippet } from "@/features/snippets";
 import { placeholders, SPECIAL_VARS } from "@/lib/snippets";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";

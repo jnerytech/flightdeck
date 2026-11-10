@@ -4,10 +4,10 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { AppSnippet } from "@/features/snippets";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppState, AppStore } from "@/lib/app-store";
-import type { AppSnippet } from "@/features/snippets";
 import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent } from "../feedback/dialog-content.tsx";
 

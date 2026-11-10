@@ -50,7 +50,6 @@ import type {
   SessionSubscribeResult,
   SessionSummary,
   SettableMode,
-  Snippet,
   SshTarget,
   TeamInfo,
   TeamsUpdatedFrame,
@@ -79,11 +78,6 @@ import {
   initialHistoryState,
 } from "../features/history/index.ts";
 import {
-  initialSnippetsState,
-  SnippetsSlice,
-  type SnippetsSliceState,
-} from "../features/snippets/index.ts";
-import {
   initialSessionsState,
   SessionsSlice,
   type SessionsSliceState,
@@ -93,6 +87,11 @@ import {
   SettingsSlice,
   type SettingsSliceState,
 } from "../features/settings/index.ts";
+import {
+  initialSnippetsState,
+  SnippetsSlice,
+  type SnippetsSliceState,
+} from "../features/snippets/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -1042,7 +1041,8 @@ export class AppStore {
       storage: platform.storage,
       list: (hostId, type) => this.hostCommand(hostId, "snippets.list", { type }),
       get: (hostId, id) => this.hostCommand(hostId, "snippets.get", { id }),
-      render: (hostId, id, cwd) => this.hostRequest(hostId, "snippets.render", { id, context: { cwd } }),
+      render: (hostId, id, cwd) =>
+        this.hostRequest(hostId, "snippets.render", { id, context: { cwd } }),
     });
     this.settings = new SettingsSlice({
       state: () => this.state,
