@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { type Config, loadConfig } from "../config.ts";
+import type { Config } from "../config.ts";
 import { Budgets, type BudgetsOptions } from "./budgets.ts";
 import { Costs } from "./costs.ts";
 import { resolvePricing } from "./pricing.ts";
@@ -9,7 +9,8 @@ import { UsageIndexer, type UsageIndexerOptions } from "./usage-indexer.ts";
 export interface CostsDeps {
   db: Database;
   config: Pick<Config, "pricing" | "history">;
-  configFile: string;
+  /** The pricing as the config file holds it now, read again for a reprice. */
+  readPricing: () => Promise<Config["pricing"]>;
   /** The history folders the usage index leaves out (phase 13's, the daemon's own). */
   excludeCwds: UsageIndexerOptions["excludeCwds"];
   projectKey: UsageIndexerOptions["projectKey"];
@@ -26,13 +27,13 @@ export interface CostsDeps {
  * started in that order.
  */
 export function createCosts(deps: CostsDeps) {
-  const { db, config, configFile, quota } = deps;
+  const { db, config, quota } = deps;
   // Usage of every session of the host, from the transcripts (phase 8): first the ones that
   // already exist, in the background, then whatever the history index sees changing.
   const costs = new Costs({
     db,
     pricing: resolvePricing(config.pricing),
-    loadPricing: async () => resolvePricing((await loadConfig(configFile)).pricing),
+    loadPricing: async () => resolvePricing(await deps.readPricing()),
     initialLoad: () => usageIndex.status(),
   });
   const usageIndex = new UsageIndexer({
@@ -42,7 +43,7 @@ export function createCosts(deps: CostsDeps) {
     projectKey: deps.projectKey,
     warmKeys: deps.warmKeys,
     cost: (tokens) => costs.cost(tokens),
-    log: (m) => deps.log(m),
+    log: deps.log,
     onPass: () => budgets.evaluate(),
   });
   const budgets = new Budgets({ db, quota });

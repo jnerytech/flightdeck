@@ -476,7 +476,7 @@ export async function startDaemon(
   const { costs, usageIndex, budgets } = createCosts({
     db: store.db,
     config,
-    configFile,
+    readPricing: async () => (await loadConfig(configFile)).pricing,
     excludeCwds: historyExcludes(config),
     projectKey: (cwd) => keys.known(cwd),
     warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
