@@ -425,3 +425,25 @@ describe("project-trust: the check-loop gates know the roots from boot, with no 
     expect(trust.isTrustedFolder(root)).toBe(true);
   });
 });
+
+describe("project-trust: a root that cannot be read is not one project (issue #1728, security review)", () => {
+  test("the read of the roots answers, and a record on that root grants nothing", async () => {
+    const root = tempDir("fd-trust-");
+    const { trust } = fresh({
+      roots: () => [root],
+      rootFs: {
+        hasGit: async () => true,
+        childDirs: async () => {
+          throw new Error("EACCES");
+        },
+      },
+    });
+    trust.trust(root);
+    const read = await trust.prepareSessions([]).then(
+      () => "answered",
+      () => "rejected",
+    );
+    expect(read).toBe("answered");
+    expect(trust.isTrustedFolder(root)).toBe(false);
+  });
+});
