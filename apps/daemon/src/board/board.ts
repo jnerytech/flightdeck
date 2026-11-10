@@ -102,46 +102,41 @@ export class Board {
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
-    this.radarFeed = new RadarFeed({
+    // What most collaborators' ports share; late-bound, as each arrow reads `this` only when called.
+    const core = {
       db: opts.db,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
+      opts,
+      card: (id: string) => this.getCard(id),
+      project: (id: string) => this.getProject(id),
+      changed: (id: string) => this.changed(id),
+      place: (id: string, event: BoardEvent, via?: DoneVia) => this.place(id, event, via),
+      setNotice: (id: string, notice: string, why?: unknown) => this.setNotice(id, notice, why),
       stopped: () => this.stopped,
+    };
+    this.radarFeed = new RadarFeed({
+      ...core,
     });
     this.blockers = new Blockers({
-      db: opts.db,
-      card: (id) => this.getCard(id),
-      changed: (id) => this.changed(id),
+      ...core,
       startCard: (id, options) => this.startCard(id, options),
-      stopped: () => this.stopped,
       setNoticeReason: (id, why) => this.setNoticeReason(id, why),
     });
     this.projects = new Projects(opts.db, opts);
     this.queue = new RunQueue({
-      db: opts.db,
-      opts,
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
+      ...core,
       launch: (cardId, runId) => this.launch(cardId, runId),
       failRun: (cardId, runId, notice, why) => this.failRun(cardId, runId, notice, why),
-      stopped: () => this.stopped,
     });
     this.sessions = new SessionFollow({
-      db: opts.db,
+      ...core,
       manager: opts.manager,
       loop: () => this.loop,
-      place: (cardId, event) => this.place(cardId, event),
       release: (cardId) => this.release(cardId),
       refreshConflicts: (cardId) => this.refreshConflicts(cardId),
       startCard: (id, options) => this.startCard(id, options),
-      card: (id) => this.getCard(id),
     });
     this.rules = new RuleWrites({
-      db: opts.db,
-      project: (id) => this.getProject(id),
-      card: (id) => this.getCard(id),
-      changed: (id) => this.changed(id),
+      ...core,
     });
     this.workflows = new WorkflowEngine({
       db: opts.db,
@@ -163,12 +158,8 @@ export class Board {
       clock: opts.clock ?? Date.now,
     });
     this.arenas = new Arenas({
-      db: opts.db,
-      opts,
+      ...core,
       workflows: this.workflows,
-      card: (id) => this.getCard(id),
-      changed: (id) => this.changed(id),
-      place: (id, event) => this.place(id, event),
       refuseIfBlocked: (card) => this.blockers.refuseIfBlocked(card),
       queued: (id) => this.queue.has(id),
       createVariant: (projectId, input) => this.createCard(projectId, input),
@@ -180,26 +171,15 @@ export class Board {
       follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
     });
     this.loopHost = new CheckLoopHost({
-      db: opts.db,
-      opts,
+      ...core,
       workflows: this.workflows,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
       budgetBlocked: (projectId) => this.budgetBlocked(projectId),
       release: (id) => this.release(id),
-      place: (id, event) => this.place(id, event),
-      changed: (id) => this.changed(id),
     });
     this.launcher = new Launcher({
-      db: opts.db,
-      opts,
+      ...core,
       workflows: this.workflows,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
-      place: (id, event) => this.place(id, event),
       release: (id) => this.release(id),
-      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
       settleFix: (id, result) => this.settleFix(id, result),
       follow: (id, sessionId, sinceSeq) => this.follow(id, sessionId, sinceSeq),
       templateFor: (cwd, name) => this.templateFor(cwd, name),
@@ -208,14 +188,7 @@ export class Board {
       settle: () => this.settle(),
     });
     this.prFlow = new CardPrFlow({
-      db: opts.db,
-      opts,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
-      place: (id, event) => this.place(id, event),
-      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
-      stopped: () => this.stopped,
+      ...core,
       message: (id, text) => this.message(id, text),
       settle: () => this.settle(),
       closeRuns: (id) => this.closeRuns(id),
@@ -225,26 +198,14 @@ export class Board {
       pollPr: (id) => this.prPoll.pollPr(id),
     });
     this.prPoll = new PrPoll({
-      db: opts.db,
-      opts,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
-      place: (id, event) => this.place(id, event),
-      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
+      ...core,
       finish: (id) => this.finish(id),
-      stopped: () => this.stopped,
       fetchComments: (id) => this.prFlow.fetchComments(id),
       pendingNotice: PENDING_NOTICE,
     });
     this.cards = new Cards({
-      db: opts.db,
-      opts,
+      ...core,
       workflows: this.workflows,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
-      place: (id, event) => this.place(id, event),
       queued: (id) => this.queue.has(id),
       pump: () => this.pump(),
       templateFor: (cwd, name, own) => this.templateFor(cwd, name, own),
@@ -253,15 +214,9 @@ export class Board {
       blockers: this.blockers,
     });
     this.lifecycle = new CardLifecycle({
-      db: opts.db,
-      opts,
+      ...core,
       workflows: this.workflows,
-      card: (id) => this.getCard(id),
-      project: (id) => this.getProject(id),
-      changed: (id) => this.changed(id),
-      place: (id, event, via) => this.place(id, event, via),
       emit: (card) => this.emit(card),
-      setNotice: (id, notice, why) => this.setNotice(id, notice, why),
       settleFix: (id, result) => this.settleFix(id, result),
       loop: () => this.loop,
       closeRuns: (id) => this.closeRuns(id),
@@ -272,7 +227,6 @@ export class Board {
       variantIds: (id) => this.arenas.variantIds(id),
       dropConflicts: (id) => this.dropConflicts(id),
       blockers: this.blockers,
-      stopped: () => this.stopped,
       forgetDone: (id) => forgetDone(this.db, id),
     });
     this.view = new CardView({
