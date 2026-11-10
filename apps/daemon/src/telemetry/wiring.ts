@@ -30,7 +30,7 @@ export async function createTelemetry({
   const telemetry = await startTelemetry({
     config,
     configFile,
-    log: { error: (message) => log.error(message) },
+    log,
     onEvents: (events) => {
       telemetryStore.add(events);
     },
