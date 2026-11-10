@@ -763,16 +763,8 @@ export async function startDaemon(
   });
   /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
   const trustState = (path: string) => {
-    const stale = manager.staleSessions(path);
-    // What a session in the folder would run with: a nested clone, or a worktree read from its main checkout, counts.
-    const judged = projectTrust.sessionTrust(path);
-    const covering = judged.trusted ? projectTrust.via(judged.configRoot ?? path) : null;
-    return {
-      path,
-      trusted: judged.trusted,
-      via: covering,
-      ...(stale > 0 ? { staleSessions: stale } : {}),
-    };
+    const staleSessions = manager.staleSessions(path);
+    return { path, ...projectTrust.judged(path), ...(staleSessions > 0 ? { staleSessions } : {}) };
   };
   // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
   const reviewComments = new ReviewComments({ db: store.db, changes, manager, board, central });
@@ -895,10 +887,7 @@ export async function startDaemon(
     ...serverPart(knowledge),
     ...serverPart(harness),
     projectTrust: {
-      refresh: async (paths = []) => {
-        await projectTrust.refreshRoots();
-        await Promise.all(paths.map((path) => projectTrust.prepare(path)));
-      },
+      refresh: (paths) => projectTrust.refresh(paths),
       state: (paths) => paths.map(trustState),
       inspect: (path) => inspectProject(path),
       set: (path, trusted) => {

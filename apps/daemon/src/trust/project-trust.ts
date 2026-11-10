@@ -161,6 +161,21 @@ export class ProjectTrust {
     await Promise.all([...folders].map((cwd) => this.prepare(cwd)));
   }
 
+  /** What a session in `cwd` would run with, for the clients: its git boundary counts, and the record that grants. */
+  judged(cwd: string): { trusted: boolean; via: string | null } {
+    const judged = this.sessionTrust(cwd);
+    return {
+      trusted: judged.trusted,
+      via: judged.trusted ? this.via(judged.configRoot ?? cwd) : null,
+    };
+  }
+
+  /** Reads the roots, and the git boundaries of `paths`, so `judged` (synchronous) answers from them. */
+  async refresh(paths: readonly string[] = []): Promise<void> {
+    await this.refreshRoots();
+    await Promise.all(paths.map((path) => this.prepare(path)));
+  }
+
   /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
   async refreshRoots(): Promise<void> {
     this.realRoots = await rootNames(this.opts.roots?.() ?? []);
