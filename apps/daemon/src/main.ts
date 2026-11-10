@@ -37,13 +37,7 @@ import { runCardCli } from "./card-cli.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
-import {
-  type HooksStatus,
-  type HookTarget,
-  hooksStatus,
-  installHooks,
-  uninstallHooks,
-} from "./central/hooks-install.ts";
+import { hooksStatus, hookTarget } from "./central/hooks-install.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { runClaude } from "./central/wrapper.ts";
 import { Forker } from "./checkpoints/fork.ts";
@@ -51,6 +45,7 @@ import { Rewinder } from "./checkpoints/rewind.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
+import { type ClaudeSettingsCommandDeps, runHooks, runTelemetry } from "./cli/claude-settings.ts";
 import {
   type HostCommandDeps,
   healthUrl,
@@ -64,7 +59,6 @@ import {
   claudeSettingsPath,
   defaultConfigPath,
   expandHome,
-  generateToken,
   loadConfig,
   RELEASES_URL,
   type RuntimeKind,
@@ -173,7 +167,6 @@ import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
 import { Teams } from "./teams/teams.ts";
 import { TelemetryOptIn } from "./telemetry/optin.ts";
-import type { TelemetryStatus } from "./telemetry/otlp-env.ts";
 import { startTelemetry } from "./telemetry/service.ts";
 import { TelemetryStore } from "./telemetry/store.ts";
 import { teleportImportDeps } from "./teleport/import.ts";
@@ -1737,89 +1730,6 @@ async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
   }
 }
 
-const HOOKS_LABELS: Record<HooksStatus, string> = {
-  installed: "installed",
-  absent: "absent",
-  outdated: "outdated (run hooks install again)",
-};
-
-/** What `hooks install` writes for this config: this executable, the receptor and its token. */
-export function hookTarget(
-  config: Config,
-  selfCommand: string[],
-  port = config.hooks.port,
-): HookTarget {
-  return {
-    command: selfCommand,
-    url: `http://127.0.0.1:${port}`,
-    token: config.hooks.token ?? "",
-    permissionTimeoutS: config.hooks.permissionTimeoutS,
-  };
-}
-
-/**
- * `flightdeckd hooks install|uninstall|status`: the only write of Flightdeck in ~/.claude, always
- * by an explicit command. Install generates `hooks.token` once and keeps it afterwards.
- */
-async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
-  const file = configPath(args);
-  let config = await loadConfig(file);
-  const settings = claudeSettingsPath();
-  const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
-  if (args.action === "status") {
-    deps.log.log(`hooks: ${HOOKS_LABELS[await hooksStatus(settings, hookTarget(config, self))]}`);
-    return;
-  }
-  if (args.action === "uninstall") {
-    const removed = await uninstallHooks(settings);
-    deps.log.log(removed ? `hooks removed from ${settings}` : "no Flightdeck hook installed");
-    return;
-  }
-  if (config.hooks.port === 0) {
-    throw new Error(
-      "hooks.port 0 does not work for installed hooks: set a fixed port in the config",
-    );
-  }
-  if (!config.hooks.token) {
-    const token = generateToken();
-    await updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
-    config = await loadConfig(file);
-  }
-  await installHooks(settings, hookTarget(config, self));
-  deps.log.log(`hooks installed in ${settings} (previous copy in settings.json.flightdeck-backup)`);
-}
-
-const TELEMETRY_LABELS: Record<TelemetryStatus, string> = {
-  installed: "installed",
-  absent: "absent",
-  outdated: "outdated (run telemetry install again)",
-  conflict: "not installed: settings.json has an exporter of your own",
-};
-
-/** `flightdeckd telemetry install|uninstall|status`: Claude Code's exporters into this daemon (phase 23). */
-async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
-  const optIn = new TelemetryOptIn({
-    configFile: configPath(args),
-    settingsPath: claudeSettingsPath,
-  });
-  if (args.action === "status") {
-    deps.log.log(`telemetry: ${TELEMETRY_LABELS[(await optIn.status()).status]}`);
-    return;
-  }
-  const had = (await optIn.status()).status;
-  const result =
-    args.action === "uninstall" ? await optIn.uninstall(true) : await optIn.install(true);
-  const removed =
-    had === "installed" || had === "outdated"
-      ? `telemetry removed from ${result.settingsPath}`
-      : "no Flightdeck telemetry installed";
-  deps.log.log(
-    args.action === "uninstall"
-      ? `${removed}; the receiver has a new token`
-      : `telemetry installed in ${result.settingsPath} (previous copy in settings.json.flightdeck-telemetry-backup)`,
-  );
-}
-
 /**
  * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
  * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
@@ -1831,7 +1741,10 @@ export function vaultActions(kind: RuntimeKind): Record<string, (value: string) 
     : {};
 }
 
-export interface CliDeps extends HostCommandDeps, MaintenanceCommandDeps {
+export interface CliDeps
+  extends HostCommandDeps,
+    MaintenanceCommandDeps,
+    ClaudeSettingsCommandDeps {
   env: Record<string, string | undefined>;
   /** The machine the dependency check probes, in `doctor`; the real one when absent (tests give theirs). */
   depsEnv?: DepsEnv;
@@ -1840,8 +1753,6 @@ export interface CliDeps extends HostCommandDeps, MaintenanceCommandDeps {
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
   /** Runs external commands (`tailscale ip -4`); injected in tests. */
   exec?: Exec;
-  /** This daemon's own command line, as hooks call it back; derived from the process if absent. */
-  selfCommand?: string[];
   /** What `<bin> --version` says; the real one runs the binary. Injected in tests. */
   binaryVersion?: (bin: string) => Promise<string | null>;
   /** Standard input (`hook session-start` reads the hook's JSON); the process's if absent. */
