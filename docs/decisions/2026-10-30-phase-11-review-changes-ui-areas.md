@@ -1,0 +1,26 @@
+# Phase 11 decisions (review of changes), UI areas (phase 11)
+
+## Mudanças tab (`mudancas-ui`)
+
+- **One panel, three places.** `ChangesPanel` serves the managed session, the terminal session and the card. A session's tab is shown when the host announces `review` and Claude Code has named the session (the review target is `session:<claudeSessionId>`, not the Flightdeck id). The conversation stays mounted under the other tab, so a half-typed message is not lost.
+- **The tab is not hidden outside git.** Whether a folder is a repository is only known by asking, so the tab is always there and explains the refusal ("... is not in a git repository") instead of guessing.
+- **The card's old Diff tab is gone.** Its tab is now Mudanças (the same panel, with the "Unificada" and "Lado a lado" toggles and the same accessible names). A host before this phase has no `changes.*`, so the tab shows that the review is off; `card.diff` is still used to warn before discarding a card.
+- **Errors the screen explains do not go to the toast.** `AppStore.hostRequest` returns `{ ok, data }` or `{ ok: false, code, message }` instead of showing the banner; the editor needs `file_conflict`, and "Atualizar com a base" and "Merge e arquivar" show the host's own message (with the conflicting files) on the card. The host's messages stay in Portuguese in the English UI, like every other daemon message; the title above them is translated by the error code.
+- **The watcher follows the panel.** `changes.watch` is sent when the panel opens and `changes.unwatch` when it closes; the connection asks for the watched targets again after a reconnect, like it does for the sessions.
+- **Line numbers come from the hunk headers.** The protocol's `DiffLine` has no numbers, so the app derives them from `@@ -a,b +c,d @@`: removed lines are the `old` side, the others the `new` side; a range stays on one side.
+- **Undo for 30 s by the store's timers.** The offer ends at `undoUntil` through `AppStore.later`, which tests drive with the same fake timers as the tray's debounce.
+- **Editor.** CodeMirror 6 (`@codemirror/state`, `view` and `commands`, versions pinned), with history and the default keymap, no language modes. It works under the test DOM (happy-dom) for state and dispatch, so the tests drive it through `EditorView.findFromDOM`. On a conflict the dialog offers "Recarregar do disco" and "Sobrescrever com a minha versão" (which reads the file again to take the new hash before writing).
+- **Comments in the English UI.** The access names of the comment buttons carry the line range, so two drafts in one file stay distinguishable.
+- **Test notes.** The test daemon of the desktop suite has the review on by default (the real daemon always has it). The Esc check on the editor's dialog does not discriminate: with the close handler disabled the dialog still disappears (Radix closes it on its own), so it only covers the handler's code. Reverting a tracked file on Windows may write it back with CRLF; the test normalizes the line ends.
+
+## Card review (`card-revisao-ui`)
+
+- **Position and actions** come from `changes.get` (`position`) and show in the Mudanças tab: "N à frente, M atrás de <base>", "Atualizar com a base" (enabled when behind) and, for a card without a PR, "Merge e arquivar" (enabled when ahead) with the mode chosen in the confirmation (`--no-ff` by default). A refusal stays on screen.
+- **PR comments** are above the changes, because a card whose PR was merged has no worktree and so no changes to show. The open comments come selected, the resolved ones do not; sending hands the chosen ids to `pr.comments.send`. Nothing is posted.
+- **"Autor externo" badge.** The rule is the one the issue import of the automations uses: on GitHub, an author whose `author_association` is not OWNER, MEMBER or COLLABORATOR (including a missing one) is external. Azure DevOps has no such field (its `authorIdentity` is set), so no badge is shown there; the identity is shown next to the name instead.
+- **Prints.** There is no print of the PR comments: they need a remote and a fake `gh` inside the demo. The screens are covered by `card-revisao-ui` against the fake CLIs. The prints are the card's and a session's Mudanças tab; the e2e has a sixth journey (comment a line of the card's diff and send the review).
+- **`.worktreeinclude` notice.** The project form warns when the project has none and shows an example (`.env`, `.env.local`, `config/*.secret.json`).
+- **Manual.** The phase's text moved to `docs/manual/en.md` and `docs/manual/pt-BR.md`; the README only keeps its feature line.
+- **Files a session wrote.** The Mudanças tab of a session also lists them (`session.files`, with the number of tool calls and the last date), says when there are none, and states that changes made through Bash do not count; the same note is in the "sessions that touched this file" popover, which now shows the first and the last date.
+- **Statusline and `cwd`.** `flightdeckd statusline` reads the `cwd` Claude Code sends on stdin but does not use it: the line depends only on the session id (the session's cost) and the host (the quota and today's cost). `statusline.get` has no `cwd` field.
+- **README.** It keeps only a feature line; the manual has the phase's text, including the statusline example that adds the command to an existing statusline.
