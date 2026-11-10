@@ -329,12 +329,14 @@ online de novo, rodando as mesmas verificações de **Saúde e dependências**; 
 hosts. Os hooks aparecem como Instalados, Desatualizados ou Ausentes, como nessa seção. A célula que
 difere do que a maioria dos hosts tem fica marcada e diz o motivo em palavras ("Difere da maioria
 dos hosts, que têm 1.4.0"). Quando o que está marcado falta (hooks, login, `gh`, `az` ou Iniciar no
-boot ausente ou desatualizado) ou é um daemon mais antigo, a célula tem um botão **Corrigir em** com o nome do host, que
-abre a página desse host, onde Saúde e dependências tem a instalação, o ligar ou a atualização; na
-página do próprio host, ele rola até lá. Sem maioria (dois hosts diferentes, ou metade para cada
-lado) nada é marcado. Um host que não está online diz isso uma vez ("Não comparado: offline."), em
-vez de um traço em cada linha, e um valor que um host online não informa aparece como um traço e
-nunca é marcado. A linha de recursos mostra
+boot ausente ou desatualizado) ou é um daemon mais antigo que o mais novo da linha, a célula tem um
+botão **Corrigir em** com o nome do host, que abre a página desse host, onde Saúde e dependências
+tem a instalação, o ligar ou a atualização; na página do próprio host, ele rola até lá. Sem maioria
+(dois hosts diferentes, ou metade para cada lado) toda célula que difere é marcada e diz isso
+("Difere, sem maioria entre os hosts"); a linha de recursos nomeia então, em cada host, o que ele
+não tem e o que tem que outro host não tem. Um host que não está online diz isso uma vez ("Não
+comparado: offline."), em vez de um traço em cada linha, e um valor que um host online não informa
+aparece como um traço e nunca é marcado. A linha de recursos mostra
 quantos recursos o host tem e, quando difere, os nomeia em palavras: os que ele não tem e os que
 tem a mais em relação à maioria dos hosts ("sem stall, sem checkLoop"). Uma lista longa mostra os 3
 primeiros e "e mais N", que abre a lista inteira no lugar.

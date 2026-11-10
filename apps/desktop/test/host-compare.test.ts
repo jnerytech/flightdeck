@@ -4,6 +4,7 @@ import {
   type CompareValues,
   compareHosts,
   featureDiff,
+  featureDiffTied,
   type HostFacts,
   hasFix,
   hostFacts,
@@ -41,7 +42,7 @@ const facts = (hostId: string, values: Partial<CompareValues>): HostFacts => ({
 const rowOf = (hosts: HostFacts[], field: (typeof COMPARE_FIELDS)[number]) => {
   const row = compareHosts(hosts).find((r) => r.field === field);
   expect(row?.field).toBe(field);
-  return row ?? { field, majority: null, cells: [] };
+  return row ?? { field, majority: null, tied: false, cells: [] };
 };
 
 const markedIds = (hosts: HostFacts[], field: (typeof COMPARE_FIELDS)[number]) =>
@@ -98,17 +99,50 @@ describe("host-compare: the majority rule", () => {
     expect(rowOf(hosts, "hooks").majority).toBeNull();
   });
 
-  test("a tie marks no cell, since there is no majority to differ from", () => {
+  test("two hosts that differ have no majority, so both cells are marked and the row says it is tied", () => {
     const two = [facts("a", { daemon: "1.4.0" }), facts("b", { daemon: "1.3.0" })];
-    expect(markedIds(two, "daemon")).toEqual([]);
+    expect(markedIds(two, "daemon")).toEqual(["a", "b"]);
     expect(rowOf(two, "daemon").majority).toBeNull();
+    expect(rowOf(two, "daemon").tied).toBe(true);
+  });
+
+  test("two hosts that match mark nothing and are not tied", () => {
+    const two = [facts("a", { daemon: "1.4.0" }), facts("b", { daemon: "1.4.0" })];
+    expect(markedIds(two, "daemon")).toEqual([]);
+    expect(rowOf(two, "daemon").tied).toBe(false);
+  });
+
+  test("an even split of 4 has no majority, so all 4 are marked", () => {
     const four = [
       facts("a", { signin: "ok" }),
       facts("b", { signin: "ok" }),
       facts("c", { signin: "missing" }),
       facts("d", { signin: "missing" }),
     ];
-    expect(markedIds(four, "signin")).toEqual([]);
+    expect(markedIds(four, "signin")).toEqual(["a", "b", "c", "d"]);
+    expect(rowOf(four, "signin").majority).toBeNull();
+    expect(rowOf(four, "signin").tied).toBe(true);
+  });
+
+  test("a tie at the top marks the hosts that trail it too, and a missing value stays unmarked", () => {
+    const hosts = [
+      facts("a", { claude: "2.1.0" }),
+      facts("b", { claude: "2.1.0" }),
+      facts("c", { claude: "2.0.0" }),
+      facts("d", { claude: "2.0.0" }),
+      facts("e", { claude: "1.9.0" }),
+      facts("f", { claude: null }),
+    ];
+    expect(markedIds(hosts, "claude")).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  test("when there is a majority the row is not tied", () => {
+    const hosts = [
+      facts("a", { daemon: "1.4.0" }),
+      facts("b", { daemon: "1.4.0" }),
+      facts("c", { daemon: "1.3.0" }),
+    ];
+    expect(rowOf(hosts, "daemon").tied).toBe(false);
   });
 
   test("a missing value shows as a dash, is never marked and does not vote", () => {
@@ -278,23 +312,37 @@ describe("host-compare: what a host reports for each field", () => {
 describe("host-compare: which marked cells have a fix to link to", () => {
   test("a lacking hook, sign-in, tool or boot service links to the fix the host's page already has", () => {
     for (const field of ["hooks", "signin", "gh", "az", "boot"] as const) {
-      expect(hasFix(field, "missing")).toBe(true);
-      expect(hasFix(field, "outdated")).toBe(true);
-      expect(hasFix(field, "ok")).toBe(false);
-      expect(hasFix(field, "na")).toBe(false);
+      expect(hasFix(field, "missing", ["missing", "ok"])).toBe(true);
+      expect(hasFix(field, "outdated", ["outdated", "ok"])).toBe(true);
+      expect(hasFix(field, "ok", ["ok", "missing"])).toBe(false);
+      expect(hasFix(field, "na", ["na", "ok"])).toBe(false);
     }
   });
 
   test("an older daemon links to its update, and what the app has no fix for does not link", () => {
-    expect(hasFix("daemon", "1.3.0")).toBe(true);
+    expect(hasFix("daemon", "1.3.0", ["1.4.0", "1.3.0"])).toBe(true);
     for (const field of ["os", "claude", "features"] as const) {
-      expect(hasFix(field, "missing")).toBe(false);
+      expect(hasFix(field, "missing", ["missing", "ok"])).toBe(false);
     }
   });
 
+  test("the newest daemon has nothing to update, whether the row is tied or has a majority", () => {
+    expect(hasFix("daemon", "1.4.0", ["1.4.0", "1.3.0"])).toBe(false);
+    expect(hasFix("daemon", "1.4.0", ["1.4.0", "1.3.0", "1.3.0"])).toBe(false);
+    expect(hasFix("daemon", "1.3.0", ["1.4.0", "1.3.0", "1.3.0"])).toBe(true);
+    expect(hasFix("daemon", "1.10.0", ["1.10.0", "1.9.0"])).toBe(false);
+    expect(hasFix("daemon", "1.9.0", ["1.10.0", "1.9.0"])).toBe(true);
+  });
+
+  test("a daemon before a release of the same number is older, and an unreported one does not count", () => {
+    expect(hasFix("daemon", "1.4.0-rc.1", ["1.4.0", "1.4.0-rc.1"])).toBe(true);
+    expect(hasFix("daemon", "1.4.0", ["1.4.0", "1.4.0-rc.1"])).toBe(false);
+    expect(hasFix("daemon", "1.3.0", ["1.3.0", null])).toBe(false);
+  });
+
   test("a value the host does not report has nothing to fix", () => {
-    expect(hasFix("hooks", null)).toBe(false);
-    expect(hasFix("daemon", null)).toBe(false);
+    expect(hasFix("hooks", null, [null, "ok"])).toBe(false);
+    expect(hasFix("daemon", null, ["1.4.0", null])).toBe(false);
   });
 });
 
@@ -348,12 +396,49 @@ describe("host-compare: which features differ", () => {
     expect(diffOf(hosts, "c")).toEqual({ missing: ["stall"], extra: [] });
   });
 
-  test("a tie has no majority, so no host is marked and none lacks or adds anything", () => {
-    const hosts = [facts("a", { features: FULL }), facts("b", { features: set("doctor.run") })];
-    expect(markedIds(hosts, "features")).toEqual([]);
+  test("with two hosts, each is named by what only it has and what only the other has", () => {
+    const hosts = [
+      facts("a", { features: set("doctor.run", "stall") }),
+      facts("b", { features: set("doctor.run", "quota") }),
+    ];
+    expect(markedIds(hosts, "features")).toEqual(["a", "b"]);
     expect(row(hosts).majority).toBeNull();
-    expect(diffOf(hosts, "a")).toEqual({ missing: [], extra: [] });
-    expect(diffOf(hosts, "b")).toEqual({ missing: [], extra: [] });
+    const values = row(hosts).cells.map((c) => c.value);
+    expect(featureDiffTied(values[0] ?? null, values)).toEqual({
+      missing: ["quota"],
+      extra: ["stall"],
+    });
+    expect(featureDiffTied(values[1] ?? null, values)).toEqual({
+      missing: ["stall"],
+      extra: ["quota"],
+    });
+  });
+
+  test("in an even split of 4, the hosts with the smaller set lack what the others have", () => {
+    const big = set("doctor.run", "stall");
+    const small = set("doctor.run");
+    const values = [big, big, small, small];
+    const hosts = values.map((v, i) => facts(`h${i}`, { features: v }));
+    expect(markedIds(hosts, "features")).toEqual(["h0", "h1", "h2", "h3"]);
+    expect(featureDiffTied(big, values)).toEqual({ missing: [], extra: ["stall"] });
+    expect(featureDiffTied(small, values)).toEqual({ missing: ["stall"], extra: [] });
+  });
+
+  test("in a 3-way tie of distinct sets, a host lacks what any other has and adds what none shares", () => {
+    const a = set("doctor.run", "stall");
+    const b = set("doctor.run", "quota");
+    const c = set("doctor.run");
+    const values = [a, b, c];
+    const hosts = values.map((v, i) => facts(`h${i}`, { features: v }));
+    expect(markedIds(hosts, "features")).toEqual(["h0", "h1", "h2"]);
+    expect(featureDiffTied(a, values)).toEqual({ missing: ["quota"], extra: ["stall"] });
+    expect(featureDiffTied(b, values)).toEqual({ missing: ["stall"], extra: ["quota"] });
+    expect(featureDiffTied(c, values)).toEqual({ missing: ["quota", "stall"], extra: [] });
+  });
+
+  test("a host that does not report is not named, and does not count as lacking anything", () => {
+    expect(featureDiffTied(null, [FULL, null])).toEqual({ missing: [], extra: [] });
+    expect(featureDiffTied(FULL, [FULL, null])).toEqual({ missing: [], extra: [] });
   });
 
   test("hosts that do not report their features are not named, and do not vote", () => {

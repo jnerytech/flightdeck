@@ -186,6 +186,30 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   `<yyyy-mm-dd>-<topic>.md` with a first line `# <title> (issue #N)` or `(phase N)` (#304). Never
   append to `docs/DECISIONS.md`: it is frozen, and a test fails when it changes.
 
+## Structure: domain modules, single responsibility (#1589)
+
+A priority (user, 2026-11-09). Sources and reasons: `docs/decisions/2026-11-09-domain-modules.md`.
+New code and every move follow these rules; older code moves toward them one structural PR at a time.
+
+- Folders by domain, not by layer: the tree names the product (`board/`, `sessions/`, `hosts/`,
+  `review/`), not the framework (`server/`, `lib/`, `utils/`). Names come from `docs/GLOSSARY.md`.
+- One public entry per domain (`index.ts`). Another domain imports only that entry, never a deep
+  file. No import cycles between domains; dependencies point toward the more stable, more abstract code.
+- Cut by reason to change (Parnas, SRP): a module answers to one actor and hides one decision that
+  may change. Things that change together live together; nothing depends on what it does not use.
+- Deep modules (Ousterhout): a small interface over real work. No pass-through files, no module
+  split so fine that a change touches five of them.
+- Ports and adapters: domain rules are pure (no SQLite, socket, spawn, filesystem, Tauri or clock
+  calls); I/O lives in the domain's adapters, and `main.ts` only wires domains together.
+- Desktop by feature: `features/<domain>/` holds its components, store slice and hooks; shared
+  primitives stay in `shared/`. The app store is one slice per domain, not one file.
+- Dictionaries per domain as they are split: `i18n/<lang>/<domain>.ts`, both languages in the same PR.
+- Size is a signal: a source file past about 800 lines likely holds two responsibilities; one under
+  about 50 lines that only forwards calls is likely a shallow module. Split or merge accordingly.
+- Moves are strangler-fig steps (Fowler, Feathers), like the board.ts split (#1523): one move per
+  PR, structure only, behavior unchanged, tests green before and after. Never mix a move with a
+  behavior change in one commit (Beck: make the change easy, then make the easy change).
+
 ## Gotchas
 
 - With `CLAUDECODE` set, bun test hides the `(pass)` lines. To see the list, use

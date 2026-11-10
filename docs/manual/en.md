@@ -339,9 +339,11 @@ host again, which runs the same checks as **Health & dependencies**; nothing els
 Hooks read Installed, Outdated or Absent, as in that section. A cell that differs from what most
 hosts have is marked, and it says why in words ("Differs from most hosts, which have 1.4.0"). When
 what is marked is lacking (hooks, sign-in, `gh`, `az` or Start at boot missing or outdated) or is an
-older daemon, the cell has a **Fix on** button with the host's name, which opens that host's page, where Health &
-dependencies has the install, the turn-on or the update; on the host's own page it scrolls there.
-With no majority (two hosts that differ, or an even split) nothing is marked. A host that is not
+daemon older than the newest one in the row, the cell has a **Fix on** button with the host's name,
+which opens that host's page, where Health & dependencies has the install, the turn-on or the update; on the host's own page it scrolls there.
+With no majority (two hosts that differ, or an even split) every cell that differs is marked and
+says so ("Differs, with no majority among the hosts"); the features row then names, on each host,
+what it lacks and what it has that another host does not. A host that is not
 online says so once ("Not compared: offline."), in place of a dash in every row, and a value an
 online host does not report shows as a dash and is never marked. The features row shows how
 many features a host has and, when it differs, names them in words: the ones it lacks and the ones
