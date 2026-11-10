@@ -13,7 +13,9 @@ const ROOT = resolve(import.meta.dir, "..");
 const result = runStructureGuard({
   labels: (process.env.PR_LABELS ?? "").split(",").map((label) => label.trim()),
   git: (args) => {
-    const proc = spawnSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28 }); // NOSONAR: git from the PATH of the developer or the CI runner
+    // Unquoted paths, so a test with a non-ASCII name is read and compared (#1602 security review).
+    const all = ["-c", "core.quotePath=false", ...args];
+    const proc = spawnSync("git", all, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28 }); // NOSONAR: git from the PATH of the developer or the CI runner
     return proc.status === 0 ? proc.stdout : null;
   },
 });
