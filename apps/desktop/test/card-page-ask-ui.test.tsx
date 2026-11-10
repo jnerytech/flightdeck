@@ -54,7 +54,7 @@ function setup(options: { projects?: never[] } = {}) {
     requests.push([hostId, type, payload]);
     return { ok: true, data: {} };
   }) as never;
-  store.startBackground = (async (_hostId: string, payload: unknown) => {
+  store.background.start = (async (_hostId: string, payload: unknown) => {
     background.push(payload);
     return true;
   }) as never;

@@ -35,7 +35,7 @@ export const BgPanel = memo(function BgPanel(props: {
   const terminal = hasFeature(host?.hostInfo?.features, "terminal", false);
   const send = async () => {
     if (!text.trim()) return;
-    if (await store.bgMessage(hostId, session.id, text.trim())) setText("");
+    if (await store.background.message(hostId, session.id, text.trim())) setText("");
   };
   return (
     <section aria-label={t("bg.region")}>
@@ -56,14 +56,14 @@ export const BgPanel = memo(function BgPanel(props: {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void store.bgAction(hostId, "stop", session.id)}
+              onClick={() => void store.background.act(hostId, "stop", session.id)}
             >
               {t("bg.stop")}
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void store.bgAction(hostId, "respawn", session.id)}
+              onClick={() => void store.background.act(hostId, "respawn", session.id)}
             >
               {t("bg.respawn")}
             </Button>
@@ -71,7 +71,7 @@ export const BgPanel = memo(function BgPanel(props: {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void store.bgAttach(hostId, session)}
+                onClick={() => void store.background.attach(hostId, session)}
               >
                 {t("bg.attach")}
               </Button>

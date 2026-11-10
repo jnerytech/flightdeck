@@ -1,7 +1,5 @@
 import type {
   AccountState,
-  BgList,
-  BgSession,
   Card,
   ChangesUpdated,
   CommandPayload,
@@ -61,6 +59,11 @@ import {
   type ActivitySliceState,
   initialActivityState,
 } from "../features/activity/index.ts";
+import {
+  BackgroundSlice,
+  type BackgroundSliceState,
+  initialBackgroundState,
+} from "../features/background/index.ts";
 import {
   BudgetsSlice,
   type BudgetsSliceState,
@@ -332,6 +335,7 @@ export interface AppState
     PersonasSliceState,
     SshSliceState,
     HealthSliceState,
+    BackgroundSliceState,
     SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -368,8 +372,6 @@ export interface AppState
   account: Record<string, AccountState>;
   /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
   setupProbes: Record<string, SetupProbe>;
-  /** Phase 27: each host's Claude Code background sessions, as `bg.list` gave them. */
-  background: Record<string, BgList>;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
   secrets: SecretMeta[];
   /** Phase 16: the vault's usage log, newest first; never holds a value. */
@@ -987,6 +989,8 @@ export class AppStore {
   readonly ssh: SshSlice;
   /** What each host's dependencies and doctor say (#1596). */
   readonly health: HealthSlice;
+  /** Claude Code's background sessions of each host (phase 27, #1596). */
+  readonly background: BackgroundSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
   readonly hostUpdate: HostUpdateSlice;
   readonly settings: SettingsSlice;
@@ -1057,6 +1061,24 @@ export class AppStore {
       t: () => this.i18n.t,
       now: () => this.now(),
       timeoutMs: options.daemonUpdateTimeoutMs,
+    });
+    this.background = new BackgroundSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      list: (hostId) => this.hostCommand(hostId, "bg.list", {}),
+      stop: (hostId, id) => this.hostCommand(hostId, "bg.stop", { id }),
+      respawn: (hostId, id) => this.hostCommand(hostId, "bg.respawn", { id }),
+      message: (hostId, id, text) => this.hostCommand(hostId, "bg.message", { id, text }),
+      start: (hostId, payload) => this.hostCommand(hostId, "bg.start", payload),
+      openTerminal: (hostId, session) =>
+        this.hostCommand(hostId, "terminal.open", {
+          cwd: session.cwd,
+          command: ["claude", "attach", session.id],
+          cols: 80,
+          rows: 24,
+        }),
+      showTerminal: (hostId, terminalId) =>
+        this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
     });
     this.snippets = new SnippetsSlice({
       state: () => this.state,
@@ -1219,7 +1241,7 @@ export class AppStore {
       ...initialHealthState(),
       setupProbes: {},
       ...initialSnippetsState(),
-      background: {},
+      ...initialBackgroundState(),
       ...initialMessagingState(),
       ...initialBudgetsState(),
       ...initialClientBudgetsState(),
@@ -3709,53 +3731,6 @@ export class AppStore {
     });
     this.keepUsage();
     return check.ok ? { ok: true, value: check.value } : { ok: false, code: check.code };
-  }
-
-  /** Reads a host's background sessions (`claude agents`), for the hub and their screen. */
-  async loadBackground(hostId: string): Promise<void> {
-    const list = await this.hostCommand(hostId, "bg.list", {});
-    if (list) this.update({ background: { ...this.state.background, [hostId]: list } });
-  }
-
-  private async withBackground(hostId: string, run: Promise<BgList | null>): Promise<boolean> {
-    const list = await run;
-    if (!list) return false;
-    this.update({ background: { ...this.state.background, [hostId]: list } });
-    return true;
-  }
-
-  /** Stops or restarts a background session; the list comes back with the answer. */
-  bgAction(hostId: string, kind: "stop" | "respawn", id: string): Promise<boolean> {
-    return this.withBackground(hostId, this.hostCommand(hostId, `bg.${kind}`, { id }));
-  }
-
-  /** Sends a message to a background session; false when the host refuses. */
-  bgMessage(hostId: string, id: string, text: string): Promise<boolean> {
-    return this.withBackground(hostId, this.hostCommand(hostId, "bg.message", { id, text }));
-  }
-
-  /** "Trazer para o terminal": `claude attach <id>` in a terminal tab of the host. */
-  async bgAttach(hostId: string, session: BgSession): Promise<string | null> {
-    const opened = await this.hostCommand(hostId, "terminal.open", {
-      cwd: session.cwd,
-      command: ["claude", "attach", session.id],
-      cols: 80,
-      rows: 24,
-    });
-    if (!opened) return null;
-    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
-    return opened.terminalId;
-  }
-
-  /** Starts a session in the background (`flightdeckd claude --bg`) and reads the list again. */
-  async startBackground(
-    hostId: string,
-    payload: CommandPayload<"bg.start">,
-  ): Promise<string | null> {
-    const started = await this.hostCommand(hostId, "bg.start", payload);
-    if (!started) return null;
-    await this.loadBackground(hostId);
-    return started.id;
   }
 
   /** Phase 16: the vault, whose values live in the system keyring. */
