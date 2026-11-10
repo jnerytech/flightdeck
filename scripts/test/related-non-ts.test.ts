@@ -37,10 +37,21 @@ describe("related-non-ts", () => {
       ],
       ["apps/daemon/test/repo-root.test.ts", 'const root = join(import.meta.dir, "../..");'],
       ["apps/daemon/test/fixture.test.ts", 'const dir = join(import.meta.dir, "./fixtures");'],
+      ["apps/daemon/test/whole-repo.test.ts", 'const root = join(import.meta.dir, "../../..");'],
+      ["apps/daemon/test/english.test.ts", 'const SRC = new URL("../src/", import.meta.url);'],
+      ["scripts/test/e2e-config.test.ts", 'readdirSync(join(import.meta.dir, "..", "e2e"))'],
+      ["scripts/test/quotes.test.ts", `// a "./tmp' here, then "x"`],
     ]);
     expect(selectByPath(["apps/daemon/src/teams/wiring.ts"], scanners)).toEqual([
       { path: "apps/daemon/test/deps-gate.test.ts", why: "names ../src (apps/daemon/src)" },
+      { path: "apps/daemon/test/english.test.ts", why: "names ../src/ (apps/daemon/src)" },
     ]);
+    // A folder given as join()'s separate segments is the same folder.
+    expect(selectByPath(["scripts/e2e/journeys.ts"], scanners)).toEqual([
+      { path: "scripts/test/e2e-config.test.ts", why: "names ../e2e (scripts/e2e)" },
+    ]);
+    // Two different quotes are two strings, never one path.
+    expect(selectByPath(["scripts/test/tmp/x.ts"], scanners)).toEqual([]);
     // An ancestor of the test's own folder (the app, the repository) is where it lives, not a scan.
     expect(selectByPath(["apps/daemon/package.json"], scanners)).toEqual([]);
     expect(selectByPath(["apps/desktop/src/app.tsx"], scanners)).toEqual([]);
