@@ -87,7 +87,7 @@ describe("the budgets slice", () => {
     const s = slice();
     const quota = budget("q1", "2026-01-01", {
       period: "five_hour",
-      limitUsd: null,
+      limitUsd: 0,
       limitPct: 0.5,
     });
     s.slice.onUpdated("h1", { budget: quota, removed: false, threshold: 0.9 } as never);
