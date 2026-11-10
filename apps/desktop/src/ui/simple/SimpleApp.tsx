@@ -288,6 +288,12 @@ export function SimpleApp(
               if (started) setScreen({ name: "task", sessionId: started.sessionId });
             }}
             onOpenTask={(sessionId) => setScreen({ name: "task", sessionId })}
+            where={{
+              hostName: host?.name ?? hostId,
+              status: host?.status ?? "offline",
+              folders: host?.info?.allowedRoots ?? [],
+              onOpenSettings: () => setScreen({ name: "settings" }),
+            }}
           />
         )}
         {screen.name === "task" && (

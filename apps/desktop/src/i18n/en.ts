@@ -4852,7 +4852,27 @@ export const en: Dictionary = {
       templates: "Start something",
       recent: "Your recent tasks",
       waiting: "Waiting for your answer",
-      empty: "Nothing here yet. Pick one of the cards above to start your first task.",
+      intro:
+        "Claude works on your files on this computer, one task at a time. It asks before it changes anything, and shows you what it made.",
+      runsOn: "Tasks run on {host} ({state}).",
+      connected: "connected",
+      connecting: "connecting",
+      notConnected: "not connected",
+      offline:
+        "{host} is not connected, so a task cannot start right now. Check that the computer is on, then try again.",
+      noFolders:
+        "No folder is set up yet, so a task has nowhere to work. Add one in Settings before you pick a card.",
+      openSettings: "Open Settings to add a folder",
+      asks: "Asks for: {fields}",
+      preset: {
+        read_only: "Only reads: nothing changes.",
+        ask_before_changes: "Asks before it changes anything.",
+        edit_folder: "Edits files in the folder you pick, asking first.",
+      },
+      steps: "How a task goes",
+      step1: "Pick a card above.",
+      step2: "Answer the few questions it asks.",
+      step3: "Get the files in the Flightdeck results folder.",
       noTemplates: "This computer has no ready-made tasks yet.",
       open: "Open {title}",
       start: "Start this task",

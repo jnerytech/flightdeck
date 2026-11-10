@@ -4858,7 +4858,27 @@ export const ptBR = {
       templates: "Comece por aqui",
       recent: "Suas tarefas recentes",
       waiting: "Esperando a sua resposta",
-      empty: "Nada aqui ainda. Escolha um dos cartões acima para começar a sua primeira tarefa.",
+      intro:
+        "O Claude trabalha nos seus arquivos neste computador, uma tarefa por vez. Ele pergunta antes de mudar qualquer coisa e mostra o que fez.",
+      runsOn: "As tarefas rodam em {host} ({state}).",
+      connected: "conectado",
+      connecting: "conectando",
+      notConnected: "não conectado",
+      offline:
+        "{host} não está conectado, então uma tarefa não pode começar agora. Veja se o computador está ligado e tente de novo.",
+      noFolders:
+        "Nenhuma pasta foi liberada ainda, então uma tarefa não tem onde trabalhar. Adicione uma em Configurações antes de escolher um cartão.",
+      openSettings: "Abrir Configurações para adicionar uma pasta",
+      asks: "Pede: {fields}",
+      preset: {
+        read_only: "Só lê: nada muda.",
+        ask_before_changes: "Pergunta antes de mudar qualquer coisa.",
+        edit_folder: "Edita arquivos da pasta que você escolher, perguntando antes.",
+      },
+      steps: "Como uma tarefa acontece",
+      step1: "Escolha um cartão acima.",
+      step2: "Responda às poucas perguntas que ele faz.",
+      step3: "Receba os arquivos na pasta Flightdeck results.",
       noTemplates: "Este computador ainda não tem tarefas prontas.",
       open: "Abrir {title}",
       start: "Começar esta tarefa",

@@ -2,7 +2,9 @@ import type { Template, TemplateField } from "@flightdeck/protocol";
 import { FileText, FolderSearch, GitCompare, type LucideIcon, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
+import { Note } from "@/components/layout/note";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -141,11 +143,28 @@ function TemplateForm(
   );
 }
 
+/** The required fields' names, so a card says what it will ask before it is opened. */
+function askedFor(template: Template, lang: T["lang"]): string {
+  return template.fields
+    .filter((field) => !field.optional)
+    .map((field) => field.label[lang])
+    .join(", ");
+}
+
 /** The first place of simple mode: the templates, what waits for an answer, the recent tasks. */
 export function HomeView(props: Readonly<HomeViewProps>) {
   const { t } = props;
   const [chosen, setChosen] = useState<Template | null>(null);
   const waiting = props.tasks.filter((task) => task.state === "waiting");
+  const { where } = props;
+  const reachable = where.status === "online" || where.status === "connecting";
+  const state = t(
+    where.status === "online"
+      ? "simple.home.connected"
+      : where.status === "connecting"
+        ? "simple.home.connecting"
+        : "simple.home.notConnected",
+  );
 
   const taskRow = (task: HomeTask) => (
     <li key={task.sessionId} className="home-task">
@@ -166,6 +185,23 @@ export function HomeView(props: Readonly<HomeViewProps>) {
   return (
     <div className="home-simple">
       <h1 className="task-title">{t("simple.home.title")}</h1>
+      <p className="question-card-note">{t("simple.home.intro")}</p>
+      <p className="question-card-note">
+        {t("simple.home.runsOn", { host: where.hostName, state })}
+      </p>
+      {!reachable && (
+        <InlineNotice tone="error">
+          {t("simple.home.offline", { host: where.hostName })}
+        </InlineNotice>
+      )}
+      {where.status === "online" && where.folders.length === 0 && (
+        <Note>
+          <span>{t("simple.home.noFolders")}</span>
+          <Button type="button" variant="outline" onClick={where.onOpenSettings}>
+            {t("simple.home.openSettings")}
+          </Button>
+        </Note>
+      )}
 
       {waiting.length > 0 && (
         <section aria-label={t("simple.home.waiting")} className="home-waiting">
@@ -190,6 +226,14 @@ export function HomeView(props: Readonly<HomeViewProps>) {
                     <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
                     <span className="template-card-title">{template.title[t.lang]}</span>
                     <span className="question-card-note">{template.description[t.lang]}</span>
+                    {askedFor(template, t.lang) !== "" && (
+                      <span className="question-card-note">
+                        {t("simple.home.asks", { fields: askedFor(template, t.lang) })}
+                      </span>
+                    )}
+                    <span className="question-card-note">
+                      {t(`simple.home.preset.${template.preset}`)}
+                    </span>
                   </button>
                 </li>
               );
@@ -201,7 +245,11 @@ export function HomeView(props: Readonly<HomeViewProps>) {
       <section aria-label={t("simple.home.recent")}>
         <h2 className="home-heading">{t("simple.home.recent")}</h2>
         {props.tasks.length === 0 ? (
-          <p className="question-card-note">{t("simple.home.empty")}</p>
+          <ol aria-label={t("simple.home.steps")} className="home-steps">
+            <li>{t("simple.home.step1")}</li>
+            <li>{t("simple.home.step2")}</li>
+            <li>{t("simple.home.step3")}</li>
+          </ol>
         ) : (
           <ul aria-label={t("simple.home.recent")} className="task-files">
             {props.tasks.map(taskRow)}

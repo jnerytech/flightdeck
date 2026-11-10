@@ -60,7 +60,11 @@ describe("home-simple-ui: where simple mode begins", () => {
   test("Given no task yet, Then the three steps of a task show, and no waiting strip", () => {
     view();
     const steps = screen.getByRole("list", { name: "How a task goes" });
-    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+    expect(
+      within(steps)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual([
       "Pick a card above.",
       "Answer the few questions it asks.",
       "Get the files in the Flightdeck results folder.",
@@ -206,7 +210,9 @@ describe("home-simple-ui: where simple mode begins", () => {
     expect(screen.queryByText(/Flightdeck results/)).not.toBeNull();
     cleanup();
     view({ lang: "pt-BR" });
-    expect(screen.queryByText(/O Claude trabalha nos seus arquivos neste computador/)).not.toBeNull();
+    expect(
+      screen.queryByText(/O Claude trabalha nos seus arquivos neste computador/),
+    ).not.toBeNull();
     expect(screen.queryByRole("list", { name: "Como uma tarefa acontece" })).not.toBeNull();
   });
 
@@ -216,13 +222,15 @@ describe("home-simple-ui: where simple mode begins", () => {
     expect(summarise.textContent).toContain("Asks for: Which folder?");
     expect(summarise.textContent).toContain("Only reads: nothing changes.");
     const draft = screen.getByRole("button", { name: /Draft a report/ });
-    expect(draft.textContent).toContain("Asks for: Folder with the files, What is the report about?");
+    expect(draft.textContent).toContain(
+      "Asks for: Folder with the files, What is the report about?",
+    );
     expect(draft.textContent).toContain("Asks before it changes anything.");
     cleanup();
     view({ lang: "pt-BR" });
-    expect(
-      screen.getByRole("button", { name: /Resumir uma pasta/ }).textContent,
-    ).toContain("Pede: Qual pasta?");
+    expect(screen.getByRole("button", { name: /Resumir uma pasta/ }).textContent).toContain(
+      "Pede: Qual pasta?",
+    );
   });
 
   test("Given the host, Then Home says which computer the tasks run on and that it is connected", () => {
