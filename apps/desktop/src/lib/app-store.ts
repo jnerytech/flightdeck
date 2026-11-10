@@ -1411,7 +1411,7 @@ export class AppStore {
     this.awayTimer = setInterval(() => this.awayClock.mark(), AWAY_MARK_MS);
     // A schedule that cannot start (storage full) must not stop the app from starting.
     this.backupScheduler.start().catch(() => {});
-    if (this.platform.globalShortcut.supported) await this.settings.registerSaved();
+    await this.settings.registerSaved();
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
     this.offQuit?.();

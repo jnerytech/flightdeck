@@ -98,8 +98,9 @@ export class SettingsSlice {
     });
   }
 
-  /** Registers the saved shortcut with the OS (the caller checks that the OS can). */
+  /** Registers the saved shortcut with the OS, when the OS can. */
   async registerSaved(): Promise<void> {
+    if (!this.core.platform.globalShortcut.supported) return;
     await this.register(this.core.state().settings.globalShortcut);
   }
 
