@@ -3,7 +3,7 @@
   "apps/daemon/src/board/board.ts": 835,
   "apps/daemon/src/board/pr.ts": 840,
   "apps/daemon/src/history/indexer.ts": 841,
-  "apps/daemon/src/main.ts": 2113,
+  "apps/daemon/src/main.ts": 2065,
   "apps/daemon/src/messaging/messages.ts": 971,
   "apps/daemon/src/sessions/session-manager.ts": 1115,
   "apps/daemon/src/store/migrations.ts": 1045,
