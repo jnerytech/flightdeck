@@ -12,8 +12,8 @@ base commit, so no tag is needed while the phase runs.
 
 ## Open
 
-1. **Context.** Read the previous phase's spec and the latest records in `docs/decisions/` (and,
-   for older phases, `docs/DECISIONS.md`), so as not to repeat what was already done and to
+1. **Context.** Read the previous phase's spec and the latest records in `docs/decisions/` (the
+   older phases' records included), so as not to repeat what was already done and to
    respect the decisions.
 2. **Spec.** Copy `docs/templates/SPEC.md` to `docs/SPEC-fase-N.md` and fill it in English (see
    CLAUDE.md). Every `##` heading stays ("None." where a section does not apply); the template

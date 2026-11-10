@@ -10,7 +10,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - `packages/protocol`: protocol types and envelope between the app and the daemon.
 - `scripts/`: smokes, demo, TDD audit, build and release. Testable logic lives in `scripts/lib/`.
 - `docs/`: `SPEC.md` and `SPEC-fase-N.md` (one per phase), `decisions/` (one file per decision or
-  divergence; `DECISIONS.md` holds the older ones, frozen), `TDD.md` (the testing rules),
+  divergence; `DECISIONS.md` is only their index up to 2026-11-05), `TDD.md` (the testing rules),
   `GLOSSARY.md`, `manual/` (en, pt-BR).
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec),
@@ -188,7 +188,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   `docs/manual/pt-BR/`.
 - Divergences from the spec and decisions go to a file of their own under `docs/decisions/`, named
   `<yyyy-mm-dd>-<topic>.md` with a first line `# <title> (issue #N)` or `(phase N)` (#304). Never
-  append to `docs/DECISIONS.md`: it is frozen, and a test fails when it changes.
+  add to `docs/DECISIONS.md`: a frozen index of the older records, a test fails when it changes.
 
 ## Structure: domain modules, single responsibility (#1589)
 
