@@ -8,10 +8,9 @@
 export function mdLimit(path: string): number {
   // Frozen (#304): decisions.ts pins its content, and new decisions go to docs/decisions/.
   if (path === "docs/DECISIONS.md") return Number.POSITIVE_INFINITY;
-  // Fixed limits for files that grow by design (#427): the root CLAUDE.md (290 since the PR review rule, #1670) has lines waiting for
-  // the owner's word, and every phase adds to both manuals. A down-only baseline would block them.
+  // A fixed limit for a file that grows by design (#427): the root CLAUDE.md (290 since the PR review rule, #1670) has lines
+  // waiting for the owner's word. A down-only baseline would block them. The manuals are one file per chapter (#1711).
   if (path === "CLAUDE.md") return 290;
-  if (/^docs\/manual\/[^/]+\.md$/.test(path)) return 4500;
   if (/(^|\/)CLAUDE\.md$/.test(path) || /^\.claude\/(rules|agents)\//.test(path)) return 150;
   if (/(^|\/)SKILL\.md$/.test(path)) return 300;
   return 400;
