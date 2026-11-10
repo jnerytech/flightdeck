@@ -80,6 +80,7 @@ import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
 import { knowledgeSwitchFor } from "./knowledge/switch.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
+import type { Logger } from "./logger.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
@@ -187,11 +188,6 @@ export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
 
 /** `hook session-start` gives up on the receptor after this long (the hook's own limit is 5 s). */
 export const HOOK_CONNECT_TIMEOUT_MS = 1_000;
-
-export interface Logger {
-  log(message: string): void;
-  error(message: string): void;
-}
 
 export interface Daemon {
   url: string;

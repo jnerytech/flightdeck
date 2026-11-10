@@ -2,9 +2,11 @@
  * The host operation commands of the command line (issue #1593): `flightdeckd service` and
  * `flightdeckd update`, over the service and update modules of the host.
  */
+
 import { resolve } from "node:path";
 import { type Config, claudeSettingsPath, loadConfig, updateConfigFile } from "../config.ts";
 import { acquireLock, readLockPid } from "../lock.ts";
+import type { Logger } from "../logger.ts";
 import { daemonUrl } from "../mcp.ts";
 import {
   installService,
@@ -31,7 +33,7 @@ import { type CliArgs, configPath } from "./args.ts";
 
 /** What the service and update commands need of the command line's deps (main.ts's `CliDeps`). */
 export interface HostCommandDeps {
-  log: { log(message: string): void; error(message: string): void };
+  log: Logger;
   serviceContext?: (dryRun: boolean) => ServiceContext;
   /** How long `service uninstall` waits for the daemon to free its lock (10 s when absent). */
   serviceStopTimeoutMs?: number;
@@ -174,7 +176,7 @@ export async function runService(args: CliArgs, deps: HostCommandDeps): Promise<
 }
 
 /** The real pieces that stop the daemon of a service: shutdown request, lock and process. */
-function serviceStopDeps(ctx: ServiceContext, log: HostCommandDeps["log"]): StopDeps {
+function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
   return {
     ctx,
     log,

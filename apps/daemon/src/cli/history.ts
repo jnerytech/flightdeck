@@ -2,17 +2,19 @@
  * The history command of the command line (issue #1593): `flightdeckd history reindex`, over the
  * history domain's index of the transcripts.
  */
+
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { HistoryIndexer } from "../history/index.ts";
 import { AlreadyRunningError, acquireLock } from "../lock.ts";
+import type { Logger } from "../logger.ts";
 import { historyExcludes } from "../permissions/index.ts";
 import { EventStore } from "../store/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 
 /** What the history command needs of the command line's deps (main.ts's `CliDeps`). */
 export interface HistoryCommandDeps {
-  log: { log(message: string): void; error(message: string): void };
+  log: Logger;
 }
 
 /**

@@ -5,6 +5,7 @@ import { inSequence } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
 import type { Exec } from "../exec.ts";
 import { spawnExec } from "../exec.ts";
+import type { Logger } from "../logger.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
 import { ulid } from "../ulid.ts";
@@ -140,7 +141,7 @@ export interface RunClaudeOptions {
   env: Record<string, string | undefined>;
   /** This daemon's command line, which `claude` runs as the channel's MCP server. */
   self: string[];
-  log: { error(message: string): void };
+  log: Pick<Logger, "error">;
   timeoutMs: number;
   /** The platform claude runs on; the process's when absent. Injected in tests. */
   platform?: NodeJS.Platform;

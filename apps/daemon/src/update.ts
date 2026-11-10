@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { type HookTarget, hooksStatus, installHooks } from "./central/hooks-install.ts";
 import type { Config } from "./config.ts";
+import type { Logger } from "./logger.ts";
 import {
   installService,
   type ServiceContext,
@@ -25,7 +26,7 @@ export interface StopDeps {
   kill?(pid: number): void;
   /** How long the daemon may take to free the lock (10 s by default). */
   stopTimeoutMs?: number;
-  log: { log(message: string): void; error(message: string): void };
+  log: Logger;
 }
 
 export interface UpdateDeps extends StopDeps {
