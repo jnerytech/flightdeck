@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import { liveElsewhere } from "../lib/live-elsewhere.ts";
 import { LiveElsewhereDialog } from "./LiveElsewhereDialog.tsx";
@@ -14,12 +13,14 @@ export function useLiveElsewhereGuard(
   hostId: string,
   claudeSessionId: string | null,
 ) {
-  // Read through the store's subscription, so `held` follows an external session that comes or goes.
-  const { externals } = useStoreState(store);
   // What waits while the person decides.
   const [pending, setPending] = useState<(() => unknown) | null>(null);
   const guarded = (go: () => unknown) => {
-    if (claudeSessionId !== null && liveElsewhere(externals, hostId, claudeSessionId))
+    // Read at the click, so it is never stale.
+    if (
+      claudeSessionId !== null &&
+      liveElsewhere(store.getState().externals, hostId, claudeSessionId)
+    )
       setPending(() => go);
     else return go();
   };
@@ -37,8 +38,12 @@ export function useLiveElsewhereGuard(
         onCancel={() => setPending(null)}
       />
     ) : null;
-  /** Whether another terminal holds the conversation right now (the transcript's age does not say). */
+  /**
+   * Whether another terminal holds the conversation (the transcript's age does not say). Read when the
+   * caller renders: a caller that shows it must re-render with the store, as the reader does.
+   */
   const held =
-    claudeSessionId !== null && liveElsewhere(externals, hostId, claudeSessionId) !== null;
+    claudeSessionId !== null &&
+    liveElsewhere(store.getState().externals, hostId, claudeSessionId) !== null;
   return { guarded, dialog, held };
 }

@@ -21,9 +21,9 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
+import { savePayload } from "../features/ssh/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
-import { savePayload } from "../lib/ssh.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -85,7 +85,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
       if (!got.ok) return setError(t(`vault.refused.${got.code}`));
       privateKey = got.value;
     }
-    const terminalId = await store.sshConnect(runner, target, privateKey);
+    const terminalId = await store.ssh.connect(runner, target, privateKey);
     if (terminalId) props.go({ name: "terminal", host: runner, terminalId });
   };
 
@@ -104,7 +104,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
         return setError(t("connections.viaNoSsh", { host: via.name }));
       }
       // The via host builds the ssh command from its own destinos: it gets a copy.
-      const copy = await store.sshCopyTo(runner, target, targets);
+      const copy = await store.ssh.copyTo(runner, target, targets);
       if (!copy) return;
       kept = copy;
     }
