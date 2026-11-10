@@ -220,7 +220,7 @@ export function MessagingRulesSection(
                     size="sm"
                     aria-label={t("messagingRulesUi.release", { pair })}
                     onClick={() =>
-                      void store.releasePair(hostId, key).then((got) => got && show(got))
+                      void store.messaging.releasePair(hostId, key).then((got) => got && show(got))
                     }
                   >
                     {t("messagingRulesUi.releaseShort")}

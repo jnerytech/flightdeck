@@ -1,9 +1,10 @@
 import { memo, type ReactNode } from "react";
 import { ClientChip } from "@/components/clients/client-chip";
 import { StatusDot } from "@/components/status/status-dot";
+import type { LoopAlert } from "@/features/messaging";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
-import type { AppStore, LoopAlert, PendingItem } from "@/lib/app-store";
+import type { AppStore, PendingItem } from "@/lib/app-store";
 import type { ClientColor } from "@/lib/clients";
 import type { Finish } from "@/lib/finished";
 import { pendingText, pendingWhere } from "@/lib/pending-text";

@@ -18,17 +18,11 @@ import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "@/components/needs-yo
 import { WhileAway } from "@/components/needs-you/while-away";
 import { Button } from "@/components/ui/button";
 import { awayView } from "../features/activity/index.ts";
+import { type LoopAlert, loopPairKey } from "../features/messaging/index.ts";
 import { CONTINUATION } from "../features/sessions/index.ts";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
-import {
-  type AppState,
-  type AppStore,
-  type LoopAlert,
-  loopPairKey,
-  needsYou,
-  type PendingItem,
-} from "../lib/app-store.ts";
+import { type AppState, type AppStore, needsYou, type PendingItem } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";
@@ -180,7 +174,7 @@ function LoopDetail(props: Readonly<{ alert: LoopAlert; store: AppStore }>) {
       <h2 className="font-semibold text-base">{t("needsYou.loopTitle")}</h2>
       <p className="text-sm">{alert.message}</p>
       <div>
-        <Button onClick={() => void store.releasePair(alert.hostId, loopPairKey(alert))}>
+        <Button onClick={() => void store.messaging.releasePair(alert.hostId, loopPairKey(alert))}>
           {t("needsYou.release")}
         </Button>
       </div>
