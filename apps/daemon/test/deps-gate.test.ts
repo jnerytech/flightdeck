@@ -114,9 +114,10 @@ function startCallers(): string[] {
 
 describe("deps-gate: every way to start a card goes through the gate", () => {
   test("the callers of startCard are the known ones; a new one must be checked against the gate", () => {
-    // `startCard` is the only door: the app (the card.start handler), automations, teams (a worker's start, in
-    // teams.ts and in the wiring that builds them, teams/wiring.ts, #1593) and the board's own arena and fix
-    // runs. A new caller fails here until it is added on purpose.
+    // `startCard` is the only door: the app (the card.start handler), automations, teams (a worker's start:
+    // the daemon's in teams/wiring.ts, #1593; teams.ts's own when none is given) and the board's own arena,
+    // fix runs, the start once a card's blockers are done and the follow of a card's session. A new caller
+    // fails here until it is added on purpose.
     expect(startCallers()).toEqual([
       "automations/automations.ts",
       "board/arena.ts",
