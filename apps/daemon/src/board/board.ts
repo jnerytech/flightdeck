@@ -33,13 +33,13 @@ import { WorkflowEngine } from "../workflows/engine.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding } from "../workflows/findings.ts";
 import { addWorkflowTemplate } from "../workflows/template-add.ts";
 import { Arenas } from "./arena.ts";
+import { Blockers } from "./blockers.ts";
 import { CardPrFlow } from "./card-pr-flow.ts";
 import { parseCardTemplates } from "./card-templates.ts";
 import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
-import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import { type PrComment, prProvider } from "./pr.ts";
 import { PrPoll } from "./pr-poll.ts";
@@ -66,7 +66,6 @@ import type {
   NewProject,
   Project,
   ProjectPatch,
-  PrState,
   RunRow,
 } from "./types.ts";
 import { must } from "./worktree.ts";
@@ -158,6 +157,8 @@ export class Board {
   private readonly watchers = new Set<(card: Card) => void>();
   /** Issue #1405: the conflict radar's reads and overlaps (issue #1523). */
   private readonly radarFeed: RadarFeed;
+  /** The cards a card waits for (phase 31) and the gate before a start (issue #1523). */
+  private readonly blockers: Blockers;
   /** Arenas: a card's variants, their comparison and the choice (issue #1523). */
   private readonly arenas: Arenas;
   /** Workflows of the projects and their runs (phase 6). */
@@ -174,6 +175,14 @@ export class Board {
       project: (id) => this.getProject(id),
       changed: (id) => this.changed(id),
       stopped: () => this.stopped,
+    });
+    this.blockers = new Blockers({
+      db: opts.db,
+      card: (id) => this.getCard(id),
+      changed: (id) => this.changed(id),
+      startCard: (id, options) => this.startCard(id, options),
+      stopped: () => this.stopped,
+      setNoticeReason: (id, why) => this.setNoticeReason(id, why),
     });
     this.projects = new Projects(opts.db, opts);
     this.queue = new RunQueue({
@@ -227,7 +236,7 @@ export class Board {
       card: (id) => this.getCard(id),
       changed: (id) => this.changed(id),
       place: (id, event) => this.place(id, event),
-      refuseIfBlocked: (card) => this.refuseIfBlocked(card),
+      refuseIfBlocked: (card) => this.blockers.refuseIfBlocked(card),
       queued: (id) => this.queue.has(id),
       createVariant: (projectId, input) => this.createCard(projectId, input),
       startCard: (id, options) => this.startCard(id, options),
@@ -316,7 +325,7 @@ export class Board {
     for (const { id } of this.db
       .query<{ id: string }, []>("SELECT id FROM cards WHERE waiting = 1")
       .all()) {
-      this.afterBlockerChange(id);
+      this.blockers.afterBlockerChange(id);
     }
     this.pump();
     // The radar starts empty: read the cards that already have a worktree, one at a time.
@@ -490,9 +499,9 @@ export class Board {
               heading: row.spec_heading,
               ...(row.spec_draft === 1 ? { draft: true } : {}),
             },
-      blockedBy: this.blockersOf(id),
-      blocking: this.blockingOf(id),
-      waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
+      blockedBy: this.blockers.blockersOf(id),
+      blocking: this.blockers.blockingOf(id),
+      waitingOn: rows.length === 0 ? this.blockers.unsatisfied(id, row.unblock_when) : [],
       unblockWhen: row.unblock_when,
       autoStart: row.auto_start ? JSON.parse(row.auto_start) : null,
       unblockedAt: row.unblocked_at,
@@ -589,7 +598,7 @@ export class Board {
     const pins = [...new Set(input.pinnedDocs ?? [])];
     judgePins(pins);
     const blockedBy = input.blockedBy ?? [];
-    this.checkBlockers(null, projectId, blockedBy);
+    this.blockers.checkBlockers(null, projectId, blockedBy);
     const column = input.column ?? "backlog";
     const { last } = this.db
       .query<{ last: number | null }, [string, string]>(
@@ -626,8 +635,8 @@ export class Board {
         input.startWorkflow ?? null,
         input.startPersona ?? null,
       );
-    this.storeBlockers(id, blockedBy);
-    this.noteWaiting(id);
+    this.blockers.storeBlockers(id, blockedBy);
+    this.blockers.noteWaiting(id);
     for (const blocker of blockedBy) this.changed(blocker);
     return this.changed(id);
   }
@@ -696,7 +705,7 @@ export class Board {
     },
   ): Card {
     const card = this.getCard(id);
-    if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
+    if (patch.blockedBy) this.blockers.checkBlockers(id, card.projectId, patch.blockedBy);
     const specPath = patch.specPath === undefined ? card.specPath : patch.specPath;
     // Only a path that comes in the patch is judged: one stored earlier does not block an edit.
     judgeSpecPath(patch.specPath);
@@ -733,156 +742,16 @@ export class Board {
     }
     if (patch.blockedBy) {
       const changed = new Set([...card.blockedBy, ...patch.blockedBy]);
-      this.storeBlockers(id, patch.blockedBy);
-      this.noteWaiting(id);
+      this.blockers.storeBlockers(id, patch.blockedBy);
+      this.blockers.noteWaiting(id);
       for (const blocker of changed) this.changed(blocker);
     }
     return this.changed(id);
   }
 
-  /** The cards that must be done before `id`, in the order the person set them. */
-  private blockersOf(id: string): string[] {
-    return this.db
-      .query<{ blocker_id: string }, [string]>(
-        "SELECT blocker_id FROM card_blockers WHERE card_id = ? ORDER BY position",
-      )
-      .all(id)
-      .map((row) => row.blocker_id);
-  }
-
-  /** The blockers of `id` that are not satisfied: not in Done, or, with merged, not merged. */
-  private unsatisfied(id: string, when: UnblockWhen): string[] {
-    return this.blockersOf(id).filter((blocker) => {
-      const row = this.db
-        .query<{ board_column: BoardColumn; pr_state: PrState | null }, [string]>(
-          "SELECT board_column, pr_state FROM cards WHERE id = ?",
-        )
-        .get(blocker);
-      if (row?.board_column !== "done") return true;
-      return when === "merged" && row?.pr_state !== "merged";
-    });
-  }
-
-  /** The one gate of phase 31: a card with blockers not satisfied does not start. */
-  private refuseIfBlocked(card: Card): void {
-    if (card.waitingOn.length === 0) return;
-    const blockers = card.waitingOn.map((id) => this.getCard(id).title).join(", ");
-    throw new FlightdeckError(
-      "invalid_state",
-      `card ${card.id} is blocked by: ${blockers}`,
-      "card_blocked",
-      { blockers },
-    );
-  }
-
   /** Phase 31: the person dismisses the "unblocked" mark. */
   dismissUnblocked(id: string): Card {
-    this.getCard(id);
-    this.db.query("UPDATE cards SET unblocked_at = NULL WHERE id = ?").run(id);
-    return this.changed(id);
-  }
-
-  /**
-   * What the end of a card's wait does, once: the last blocker was satisfied (or went away). With
-   * auto-start the card starts like any other start, through the queue; without it the card gets
-   * the mark. `waiting` is what tells the end of a wait from a card that was never blocked.
-   */
-  private afterBlockerChange(id: string): void {
-    const row = this.db.query<CardRow, [string]>("SELECT * FROM cards WHERE id = ?").get(id);
-    if (!row) return;
-    const hasRun = this.db.query("SELECT 1 FROM card_runs WHERE card_id = ?").get(id) !== null;
-    const waiting = !hasRun && this.unsatisfied(id, row.unblock_when).length > 0;
-    if (waiting) {
-      if (row.waiting === 0) this.db.query("UPDATE cards SET waiting = 1 WHERE id = ?").run(id);
-      return;
-    }
-    if (row.waiting === 0) return;
-    this.db.query("UPDATE cards SET waiting = 0 WHERE id = ?").run(id);
-    if (hasRun) return;
-    const auto = row.auto_start
-      ? (JSON.parse(row.auto_start) as { workflow: string | null })
-      : null;
-    if (!auto) {
-      this.db.query("UPDATE cards SET unblocked_at = ? WHERE id = ?").run(now(), id);
-      return;
-    }
-    void this.startCard(id, auto.workflow ? { workflow: auto.workflow } : {}).catch(
-      (error: unknown) => {
-        if (this.stopped) return;
-        const why = error instanceof Error ? error.message : String(error);
-        this.db
-          .query("UPDATE cards SET notice = ?, unblocked_at = ? WHERE id = ?")
-          .run(`Auto-start failed: ${why}`, now(), id);
-        this.setNoticeReason(id, error);
-        this.changed(id);
-      },
-    );
-  }
-
-  /** A change the person made to the links: the wait is noted, and nothing starts or is marked. */
-  private noteWaiting(id: string): void {
-    const row = this.getCard(id);
-    this.db
-      .query("UPDATE cards SET waiting = ? WHERE id = ?")
-      .run(row.waitingOn.length > 0 ? 1 : 0, id);
-  }
-
-  /** The cards `id` holds up. */
-  private blockingOf(id: string): string[] {
-    return this.db
-      .query<{ card_id: string }, [string]>(
-        "SELECT card_id FROM card_blockers WHERE blocker_id = ? ORDER BY rowid",
-      )
-      .all(id)
-      .map((row) => row.card_id);
-  }
-
-  /**
-   * Refuses a set of blockers before anything is written: a card that is not there, one of
-   * another project, too many, or a cycle (`id` is `null` for a card not made yet, which cannot
-   * be in one).
-   */
-  private checkBlockers(id: string | null, projectId: string, blockers: readonly string[]): void {
-    if (blockers.length > MAX_BLOCKERS) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `a card has at most ${MAX_BLOCKERS} blockers`,
-        "blocker_limit",
-        { max: MAX_BLOCKERS },
-      );
-    }
-    for (const blocker of blockers) {
-      if (this.getCard(blocker).projectId !== projectId) {
-        throw new FlightdeckError(
-          "invalid_state",
-          `card ${blocker} is in another project`,
-          "blocker_other_project",
-        );
-      }
-    }
-    if (id === null) return;
-    // The stored links, except the ones this card is about to replace.
-    const stored = (of: string) => (of === id ? [] : this.blockersOf(of));
-    for (const blocker of blockers) {
-      const path = cyclePath(id, blocker, stored);
-      if (path) {
-        const cycle = path.map((card) => this.getCard(card).title).join(" → ");
-        throw new FlightdeckError("invalid_state", `a cycle: ${cycle}`, "blocker_cycle", {
-          cycle,
-        });
-      }
-    }
-  }
-
-  /** Replaces the blockers of `id` with `blockers`, in that order. */
-  private storeBlockers(id: string, blockers: readonly string[]): void {
-    this.db.transaction(() => {
-      this.db.query("DELETE FROM card_blockers WHERE card_id = ?").run(id);
-      const insert = this.db.query(
-        "INSERT INTO card_blockers (card_id, blocker_id, position) VALUES (?, ?, ?)",
-      );
-      for (const [position, blocker] of blockers.entries()) insert.run(id, blocker, position);
-    })();
+    return this.blockers.dismissUnblocked(id);
   }
 
   /** The project with its five columns, each with its cards by position. */
@@ -999,7 +868,7 @@ export class Board {
   ): Promise<Card> {
     const card = this.getCard(id);
     // A fix run answers a PR that exists already: it is never held back by the card's blockers.
-    if (!options.fix) this.refuseIfBlocked(card);
+    if (!options.fix) this.blockers.refuseIfBlocked(card);
     if (card.queued || this.queue.has(id)) {
       throw new FlightdeckError(
         "invalid_state",
@@ -1433,8 +1302,8 @@ export class Board {
   private removeFromBoard(id: string, verb: "discarded" | "deleted"): Card {
     const last = this.getCard(id);
     this.workflows.forget(id);
-    const holdingUp = this.blockingOf(id);
-    const heldBy = this.blockersOf(id);
+    const holdingUp = this.blockers.blockingOf(id);
+    const heldBy = this.blockers.blockersOf(id);
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
     forgetDone(this.db, id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
@@ -1445,7 +1314,7 @@ export class Board {
     const notice = `Blocker "${last.title}" was ${verb} and no longer blocks this card.`;
     for (const dependent of holdingUp) {
       this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, dependent);
-      this.afterBlockerChange(dependent);
+      this.blockers.afterBlockerChange(dependent);
       this.changed(dependent);
     }
     for (const blocker of heldBy) this.changed(blocker);
@@ -1564,8 +1433,8 @@ export class Board {
     const card = this.getCard(id);
     this.emit(card);
     // What a card waits for follows its blockers' columns: the cards it holds up are news too.
-    for (const dependent of this.blockingOf(id)) {
-      this.afterBlockerChange(dependent);
+    for (const dependent of this.blockers.blockingOf(id)) {
+      this.blockers.afterBlockerChange(dependent);
       this.emit(this.getCard(dependent));
     }
     return card;
