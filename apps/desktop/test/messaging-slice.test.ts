@@ -10,6 +10,7 @@ import { translator } from "../src/i18n/index.ts";
 
 const frame = (from: string, to: string, message = "paused") => ({
   type: "messaging.alert" as const,
+  kind: "loop" as const,
   from,
   to,
   message,
