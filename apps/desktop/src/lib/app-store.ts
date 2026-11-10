@@ -1,6 +1,5 @@
 import type {
   AccountState,
-  ActivitySinceResult,
   AskpassRequest,
   BgList,
   BgSession,
@@ -70,6 +69,11 @@ import {
   inSequence,
   parsePairingLink,
 } from "@flightdeck/protocol";
+import {
+  ActivitySlice,
+  type ActivitySliceState,
+  initialActivityState,
+} from "../features/activity/index.ts";
 import {
   HistorySlice,
   type HistorySliceState,
@@ -310,23 +314,7 @@ export interface Selection {
 /** How often the app writes that it is still active (issue #1344). */
 const AWAY_MARK_MS = 60_000;
 
-/** What one host said happened since the app was last active (issue #1344). */
-export interface AwayHost {
-  hostId: string;
-  result: ActivitySinceResult;
-}
-
-export interface AwayState {
-  /** When the app was last active, when it was away long enough to summarise; else null. */
-  since: string | null;
-  hosts: AwayHost[];
-  /** Hosts that can say what happened but did not answer, by id, so the summary can name them. */
-  unreached: string[];
-  /** The person closed the summary; it stays closed until the next start. */
-  dismissed: boolean;
-}
-
-export interface AppState extends HistorySliceState {
+export interface AppState extends HistorySliceState, ActivitySliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
   sessions: Record<string, SessionState>;
@@ -409,8 +397,6 @@ export interface AppState extends HistorySliceState {
   terminalEnv: TerminalEnv | null;
   /** Toasts still to show or still open (phase 10). */
   notices: Notice[];
-  /** Issue #1344: what happened on the hosts while the app was closed. */
-  away: AwayState;
   /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
   projects: Record<string, Project[]>;
   /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
@@ -1053,6 +1039,8 @@ export class AppStore {
   private stopWake: (() => void) | null = null;
   /** The history read from every host (#1596): its global search. */
   readonly history: HistorySlice;
+  /** What happened on the hosts while the app was away (issue #1344, #1596). */
+  readonly activity: ActivitySlice;
 
   constructor(
     private readonly platform: Platform,
@@ -1064,6 +1052,12 @@ export class AppStore {
       request: (hostId, query) =>
         this.connections.get(hostId)?.request("history.search", { query }),
       timeoutMs: () => options.searchTimeoutMs ?? 5000,
+    });
+    this.activity = new ActivitySlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      since: () => this.awayClock.since(),
+      request: (hostId, since) => this.hostRequest(hostId, "activity.since", { since }),
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -1203,7 +1197,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
-      away: { since: null, hosts: [], unreached: [], dismissed: false },
+      ...initialActivityState,
       inbox: [],
       composerFill: {},
       finished: [],
@@ -1273,7 +1267,6 @@ export class AppStore {
   private readonly awayClock: AwayClock;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
   /** The hosts already asked this start, so a reconnect does not list them twice. */
-  private readonly awayAsked = new Set<string>();
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
   readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
@@ -3496,7 +3489,7 @@ export class AppStore {
     // The setup checklist reads what this host has: its hooks, GitHub, projects.
     void this.refreshSetup(hostId, { connect });
     // Issue #1344: a host that can say what happened while the app was closed is asked once.
-    if (hasFeature(hostInfo?.features, "activity", false)) void this.loadAway();
+    if (hasFeature(hostInfo?.features, "activity", false)) void this.activity.loadAway();
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
@@ -4213,45 +4206,6 @@ export class AppStore {
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
   readonly globalPersonas: GlobalPersonas;
-  /** Issue #1344: asks each online host with the feature what happened since the app was last active. */
-  async loadAway(): Promise<void> {
-    const since = this.awayClock.since();
-    if (this.state.away.since !== since) this.update({ away: { ...this.state.away, since } });
-    if (since === null) return;
-    const hosts = this.state.hosts.filter(
-      (h) =>
-        h.status === "online" &&
-        !this.awayAsked.has(h.id) &&
-        hasFeature(h.hostInfo?.features, "activity", false),
-    );
-    for (const host of hosts) this.awayAsked.add(host.id);
-    const answers = await Promise.all(
-      hosts.map(async (host) => ({
-        hostId: host.id,
-        asked: await this.hostRequest(host.id, "activity.since", { since }),
-      })),
-    );
-    // A host that did not answer is named, and asked again the next time it connects.
-    for (const { hostId, asked: answer } of answers) if (!answer.ok) this.awayAsked.delete(hostId);
-    const found = answers.flatMap(({ hostId, asked: answer }) =>
-      answer.ok ? [{ hostId, result: answer.data }] : [],
-    );
-    const failed = answers.flatMap(({ hostId, asked: answer }) => (answer.ok ? [] : [hostId]));
-    const answered = new Set(found.map((h) => h.hostId));
-    const unreached = [
-      ...this.state.away.unreached.filter((id) => !answered.has(id) && !failed.includes(id)),
-      ...failed,
-    ];
-    this.update({
-      away: { ...this.state.away, hosts: [...this.state.away.hosts, ...found], unreached },
-    });
-  }
-
-  /** Issue #1344: closes the summary until the next start. */
-  dismissAway(): void {
-    this.update({ away: { ...this.state.away, dismissed: true } });
-  }
-
   /**
    * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
    * that cannot be reached, is left out; the card says how many answered.

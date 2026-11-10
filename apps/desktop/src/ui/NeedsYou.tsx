@@ -414,7 +414,7 @@ export function NeedsYou(
   const dismissedHere = useRef(false);
   const dismissAway = () => {
     dismissedHere.current = true;
-    store.dismissAway();
+    store.activity.dismissAway();
   };
   useEffect(() => {
     if (away || !dismissedHere.current) return;

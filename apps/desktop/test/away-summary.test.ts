@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ActivitySinceResult } from "@flightdeck/protocol";
-import type { AwayState } from "../src/lib/app-store.ts";
+import type { AwayState } from "../src/features/activity/index.ts";
 import { awayView } from "../src/lib/away-summary.ts";
 
 const SINCE = "2026-11-09T00:00:00.000Z";
