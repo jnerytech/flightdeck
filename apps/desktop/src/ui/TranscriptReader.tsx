@@ -15,6 +15,7 @@ import { basename, isInside } from "../lib/paths.ts";
 import { messageParts } from "../lib/tool-line.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
 
 /** Which transcript to read, and where to open it (a search hit). */
 export interface ReaderTarget {
@@ -63,6 +64,8 @@ export function TranscriptReader(
   const lastHeight = useRef(0);
   const lastFirst = useRef<string | undefined>(undefined);
   const [confirming, setConfirming] = useState(false);
+  // A second `claude` on a conversation another terminal holds only after asking (#1705).
+  const live = useLiveElsewhereGuard(store, target.hostId, target.claudeSessionId);
   /** The session's folder is on the host; `null` until it answers. */
   const [cwdExists, setCwdExists] = useState<boolean | null>(null);
   const [allowing, setAllowing] = useState(false);
@@ -206,7 +209,9 @@ export function TranscriptReader(
                     size="sm"
                     disabled={blocked}
                     // Two processes writing the same conversation corrupt it: ask first.
-                    onClick={() => (session.maybeActive ? setConfirming(true) : void resume(false))}
+                    onClick={() =>
+                      session.maybeActive || live.held ? setConfirming(true) : void resume(false)
+                    }
                   >
                     {t("reader.continue")}
                   </Button>
@@ -229,10 +234,12 @@ export function TranscriptReader(
                       size="sm"
                       disabled={blocked}
                       onClick={() =>
-                        void store.openClaudeHere(target.hostId, {
-                          cwd: session.cwd,
-                          claudeSessionId: target.claudeSessionId,
-                        })
+                        live.guarded(() =>
+                          store.openClaudeHere(target.hostId, {
+                            cwd: session.cwd,
+                            claudeSessionId: target.claudeSessionId,
+                          }),
+                        )
                       }
                     >
                       {t("claudeHere.resume")}
@@ -264,6 +271,7 @@ export function TranscriptReader(
           }}
         />
       )}
+      {live.dialog}
       {confirming && (
         <div className="m-3 flex flex-col gap-3 rounded-lg border border-status-needs-you/40 p-4 text-sm">
           <p>{t("reader.confirm")}</p>
