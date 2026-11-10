@@ -5,8 +5,8 @@
 ```sh
 bun run typecheck      # tsc in every workspace and in the scripts
 bun run lint           # Biome
-bun test               # all tests, with a 100% coverage threshold (lines and functions)
-bun run test           # bun test + makes sure no source file was left out of the measurement
+bun run test:related   # the tests of what you changed, 80% coverage on the changed files
+bun run test           # the whole suite, 80% of lines and functions per file (#1002)
 bun run smoke          # end to end with the real daemon and --runtime fake; prints SMOKE OK
 bun run smoke:multi    # two daemons, one client, permission via session.summary; SMOKE MULTI OK
 bun run smoke:history  # indexes, searches, resumes and sees history.changed; SMOKE HISTORY OK

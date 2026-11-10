@@ -177,7 +177,7 @@ Para compilar a partir do código-fonte, veja o [manual](docs/manual/pt-BR/insta
    as sessões podem rodar (com a lista vazia nenhuma sessão pode ser criada) e reinicie:
    `flightdeckd service stop && flightdeckd service start`. Para um host que não seja esta
    máquina, defina também `bind` e `allowedNetworks`
-   ([acesso remoto](docs/manual/pt-BR/remote-access-over-tailscale.md#acesso-remoto-pela-tailscale)).
+   ([acesso remoto](docs/manual/pt-BR/remote-access-over-tailscale.md)).
 
 2. **Pareie.** Imprima um link e um QR para o app:
 
@@ -293,7 +293,7 @@ bun run demo           # dois hosts de mentira e a entrada web do app, em http:/
 
 O desenvolvimento é test-first: o teste de cada área é commitado vermelho antes da implementação.
 As regras estão em [`docs/TDD.md`](docs/TDD.md). Os outros smokes, o build e o fluxo de release
-estão no [manual](docs/manual/pt-BR/development.md#desenvolvimento).
+estão no [manual](docs/manual/pt-BR/development.md).
 
 ## Roadmap
 
