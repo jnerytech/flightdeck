@@ -1727,27 +1727,6 @@
     ]
   },
   {
-    "type": "cycle",
-    "from": "packages/protocol/src/index.ts",
-    "to": "packages/protocol/src/teleport.ts",
-    "unresolvedTo": "./teleport.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "packages/protocol/src/teleport.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "packages/protocol/src/index.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "apps/daemon/src/account/account.ts",
     "to": "apps/daemon/src/quota/quota.ts",
@@ -4910,17 +4889,6 @@
     "to": "packages/protocol/src/index.ts",
     "unresolvedTo": "./index.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "protocol-context-not-from-entry"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/protocol/src/teleport.ts",
-    "to": "packages/protocol/src/index.ts",
-    "unresolvedTo": "./index.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "protocol-context-not-from-entry"

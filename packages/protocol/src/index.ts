@@ -85,17 +85,7 @@ import {
   SessionSummary,
 } from "./sessions.ts";
 import { type SnippetsResults, snippetsCommands } from "./snippets.ts";
-import {
-  TeleportAbortPayload,
-  TeleportCancelPayload,
-  type TeleportChunk,
-  TeleportFinishPayload,
-  type TeleportManifest,
-  TeleportPreparePayload,
-  TeleportReadPayload,
-  TeleportReceivePayload,
-  TeleportWritePayload,
-} from "./teleport.ts";
+import { type TeleportResults, teleportCommands } from "./teleport.ts";
 import {
   TerminalData,
   TerminalExited,
@@ -1969,16 +1959,6 @@ export const Command = z.discriminatedUnion("type", [
     "card.review",
     z.object({ cardId: z.string(), language: z.enum(["en", "pt-BR"]).optional() }).strict(),
   ),
-  /** Issue #100: teleport, the source side (feature `teleport`). */
-  cmd("teleport.prepare", TeleportPreparePayload),
-  cmd("teleport.read", TeleportReadPayload),
-  cmd("teleport.cancel", TeleportCancelPayload),
-  /** The target side (slice 2a). */
-  cmd("teleport.receive", TeleportReceivePayload),
-  cmd("teleport.write", TeleportWritePayload),
-  cmd("teleport.abort", TeleportAbortPayload),
-  /** The import (slice 2b). */
-  cmd("teleport.finish", TeleportFinishPayload),
   /** Phase 40: the AI assistant (feature `assistant`). */
   cmd("assistant.run", AssistantRunPayload),
   cmd("assistant.cancel", AssistantCancelPayload),
@@ -2489,6 +2469,7 @@ export const Command = z.discriminatedUnion("type", [
   ...agentSetupCommands,
   ...permissionsCommands,
   ...hostCommands,
+  ...teleportCommands,
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -2860,7 +2841,8 @@ export interface CommandResults
     SnippetsResults,
     AgentSetupResults,
     PermissionsResults,
-    HostResults {
+    HostResults,
+    TeleportResults {
   hello: HelloResult;
   "session.list": SessionListResult;
   "session.create": SessionCreateResult;
@@ -2910,13 +2892,6 @@ export interface CommandResults
   "assistant.run": AssistantResult;
   "assistant.cancel": undefined;
   "assistant.context": AssistantContextBundle;
-  "teleport.prepare": TeleportManifest;
-  "teleport.read": TeleportChunk;
-  "teleport.cancel": undefined;
-  "teleport.receive": { id: string };
-  "teleport.write": { written: number };
-  "teleport.abort": undefined;
-  "teleport.finish": { sessionId: string; worktree: string; branch: string };
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;

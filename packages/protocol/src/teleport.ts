@@ -2,9 +2,11 @@
  * Issue #100, teleport: an idle Claude Code session moves to another host. Slice 1 is the source
  * side: a package of the session's transcript, described by a manifest and read in chunks.
  */
+
 import { z } from "zod";
-// A value import: the manifest schema reads it lazily, once index.ts has run (the two import each other).
-import { PermissionMode } from "./index.ts";
+import { cmd } from "./command.ts";
+// From its context file, never from index.ts (#1600); the manifest schema still reads it lazily.
+import { PermissionMode } from "./permissions.ts";
 
 /** `teleport.prepare`: package an idle session of this host. */
 export const TeleportPreparePayload = z.object({ sessionId: z.string().min(1) });
@@ -103,4 +105,29 @@ export interface TeleportChunk {
   data: string;
   next: number;
   eof: boolean;
+}
+
+/** The teleport commands; index.ts spreads them into `Command`. */
+export const teleportCommands = [
+  /** Issue #100: teleport, the source side (feature `teleport`). */
+  cmd("teleport.prepare", TeleportPreparePayload),
+  cmd("teleport.read", TeleportReadPayload),
+  cmd("teleport.cancel", TeleportCancelPayload),
+  /** The target side (slice 2a). */
+  cmd("teleport.receive", TeleportReceivePayload),
+  cmd("teleport.write", TeleportWritePayload),
+  cmd("teleport.abort", TeleportAbortPayload),
+  /** The import (slice 2b). */
+  cmd("teleport.finish", TeleportFinishPayload),
+] as const;
+
+/** The `data` of each teleport command's ack; `CommandResults` extends it. */
+export interface TeleportResults {
+  "teleport.prepare": TeleportManifest;
+  "teleport.read": TeleportChunk;
+  "teleport.cancel": undefined;
+  "teleport.receive": { id: string };
+  "teleport.write": { written: number };
+  "teleport.abort": undefined;
+  "teleport.finish": { sessionId: string; worktree: string; branch: string };
 }
