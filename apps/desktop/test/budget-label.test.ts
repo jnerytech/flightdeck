@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { budgetLabel } from "../src/features/costs/index.ts";
 import { translator } from "../src/i18n/index.ts";
-import { budgetLabel } from "../src/lib/budgets.ts";
 
 /**
  * Issue #1216: the en list read "of app budget (month)" for a project budget, because the "of"

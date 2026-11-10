@@ -9,7 +9,7 @@
   "apps/daemon/src/store/migrations.ts": 1045,
   "apps/daemon/src/teams/teams.ts": 830,
   "apps/daemon/src/workflows/engine.ts": 1320,
-  "apps/desktop/src/lib/app-store.ts": 5223,
+  "apps/desktop/src/lib/app-store.ts": 5176,
   "apps/desktop/src/ui/BoardView.tsx": 1537,
   "apps/desktop/src/ui/Screens.tsx": 1238,
   "apps/desktop/src/ui/SessionView.tsx": 1119,
