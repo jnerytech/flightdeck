@@ -12,10 +12,8 @@ import { tightened } from "./lib/layout-ratchet.ts";
 import { crowdedDomains, isMeasured, oversizedSources, shallowModules } from "./lib/src-size.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
-const listed = spawnSync("git", ["ls-files", "apps/*/src/**", "packages/*/src/**"], {
-  cwd: ROOT,
-  encoding: "utf8",
-}); // NOSONAR: git from the PATH of the developer running the script
+const LIST = ["ls-files", "apps/*/src/**", "packages/*/src/**"];
+const listed = spawnSync("git", LIST, { cwd: ROOT, encoding: "utf8" }); // NOSONAR: git from the PATH of the developer running the script
 const files = listed.stdout
   .split("\n")
   .filter(isMeasured)
