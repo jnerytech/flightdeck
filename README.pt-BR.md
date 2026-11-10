@@ -159,7 +159,7 @@ Baixe na página de [Releases](https://github.com/jnerytech/flightdeck/releases)
 3. **Instale o daemon em cada host**, com o Claude Code instalado e logado. Veja o Início rápido
    abaixo.
 
-Para compilar a partir do código-fonte, veja o [manual](docs/manual/pt-BR.md#a-partir-do-código-fonte).
+Para compilar a partir do código-fonte, veja o [manual](docs/manual/pt-BR/installation.md#a-partir-do-código-fonte).
 
 ## Início rápido
 
@@ -177,7 +177,7 @@ Para compilar a partir do código-fonte, veja o [manual](docs/manual/pt-BR.md#a-
    as sessões podem rodar (com a lista vazia nenhuma sessão pode ser criada) e reinicie:
    `flightdeckd service stop && flightdeckd service start`. Para um host que não seja esta
    máquina, defina também `bind` e `allowedNetworks`
-   ([acesso remoto](docs/manual/pt-BR.md#acesso-remoto-pela-tailscale)).
+   ([acesso remoto](docs/manual/pt-BR/remote-access-over-tailscale.md#acesso-remoto-pela-tailscale)).
 
 2. **Pareie.** Imprima um link e um QR para o app:
 
@@ -293,7 +293,7 @@ bun run demo           # dois hosts de mentira e a entrada web do app, em http:/
 
 O desenvolvimento é test-first: o teste de cada área é commitado vermelho antes da implementação.
 As regras estão em [`docs/TDD.md`](docs/TDD.md). Os outros smokes, o build e o fluxo de release
-estão no [manual](docs/manual/pt-BR.md#desenvolvimento).
+estão no [manual](docs/manual/pt-BR/development.md#desenvolvimento).
 
 ## Roadmap
 
