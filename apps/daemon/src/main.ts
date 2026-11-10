@@ -136,9 +136,7 @@ import { createSsh } from "./ssh/wiring.ts";
 import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
 import { Teams } from "./teams/teams.ts";
-import { TelemetryOptIn } from "./telemetry/optin.ts";
-import { startTelemetry } from "./telemetry/service.ts";
-import { TelemetryStore } from "./telemetry/store.ts";
+import { createTelemetry } from "./telemetry/wiring.ts";
 import { teleportImportDeps } from "./teleport/import.ts";
 import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
 import { TeleportInbox } from "./teleport/receive.ts";
@@ -612,18 +610,12 @@ export async function startDaemon(
     log: logger.log.bind(logger),
   });
   void updates?.start();
-  // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.
-  const telemetryStore = new TelemetryStore(store.db);
-  const telemetry = await startTelemetry({
+  const { telemetryStore, telemetry, telemetryOptIn } = await createTelemetry({
+    db: store.db,
     config,
     configFile,
-    log: { error: (message) => logger.error(message) },
-    onEvents: (events) => {
-      telemetryStore.add(events);
-    },
-    purge: () => {
-      telemetryStore.prune(config.telemetry.retentionDays, Date.now());
-    },
+    settingsPath: claudeSettingsPath,
+    log: logger,
   });
   const central = new Central({
     risk,
@@ -1115,7 +1107,7 @@ export async function startDaemon(
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
     webhook: new WebhookSender({ log: logger.log.bind(logger) }),
-    telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath: claudeSettingsPath }),
+    telemetryOptIn,
     budgets,
     quotaHistory,
     changes,
