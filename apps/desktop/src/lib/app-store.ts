@@ -23,7 +23,6 @@ import type {
   HistoryChanged,
   HistoryGetResult,
   HistoryListResult,
-  HistorySearchHit,
   HistorySessionSummary,
   HostInfoResult,
   InterruptedSession,
@@ -71,6 +70,11 @@ import {
   inSequence,
   parsePairingLink,
 } from "@flightdeck/protocol";
+import {
+  initialSearchState,
+  SearchSlice,
+  type SearchSliceState,
+} from "../features/search/store.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -322,7 +326,7 @@ export interface AwayState {
   dismissed: boolean;
 }
 
-export interface AppState {
+export interface AppState extends SearchSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
   sessions: Record<string, SessionState>;
@@ -337,9 +341,6 @@ export interface AppState {
   finished: Finish[];
   /** When the person last looked at Needs you (ISO), `null` before the first look. */
   finishedLook: string | null;
-  /** Last global history search, `null` before the first one. */
-  search: SearchState | null;
-  searchOpen: boolean;
   /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
   closingTerminal: { areaId: string; tabId: string } | null;
   /** The run environment of each card (phase 24), by `host/card`. */
@@ -624,21 +625,6 @@ export type ReleaseNotesResult =
   | { kind: "ready"; releases: ReleaseNote[] }
   | { kind: "none" }
   | { kind: "error"; message: string };
-
-export interface GlobalHit extends HistorySearchHit {
-  hostId: string;
-  hostName: string;
-}
-
-export interface SearchState {
-  query: string;
-  /** Every host's hits so far, newest first. */
-  hits: GlobalHit[];
-  /** Hosts still being asked. */
-  waiting: string[];
-  /** Hosts that were offline or did not answer in time. */
-  silent: string[];
-}
 
 export interface Settings {
   closeToTray: boolean;
@@ -976,17 +962,6 @@ const newHostView = (config: HostConfig): HostView => ({
   sessions: [],
 });
 
-/** Rejects when `promise` (absent when the host has no connection) takes longer than `ms`. */
-function withTimeout<T>(promise: Promise<T> | undefined, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("no answer")), ms);
-  });
-  return Promise.race([promise ?? Promise.reject(new Error("no connection")), timeout]).finally(
-    () => clearTimeout(timer),
-  );
-}
-
 /** A request whose failure only means less to show (an older daemon, a host without a board). */
 const quiet = <T>(promise: Promise<T>) => promise.catch(() => null);
 
@@ -1048,7 +1023,6 @@ export class AppStore {
   private readonly watched = new Map<string, number>();
   private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
-  private searchSeq = 0;
   private noticeSeq = 0;
   /** Quota windows already notified, by host, window and reset. */
   private readonly quotaNotices = new QuotaNotices();
@@ -1077,11 +1051,20 @@ export class AppStore {
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   private stopWake: (() => void) | null = null;
+  /** The global history search over every host (#1596). */
+  readonly search: SearchSlice;
 
   constructor(
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
+    this.search = new SearchSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      request: (hostId, query) =>
+        this.connections.get(hostId)?.request("history.search", { query }),
+      timeoutMs: options.searchTimeoutMs ?? 5000,
+    });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
       undefined,
@@ -1178,8 +1161,7 @@ export class AppStore {
       sessions: {},
       selected: null,
       error: null,
-      search: null,
-      searchOpen: false,
+      ...initialSearchState,
       closingTerminal: null,
       runEnvs: {},
       unread: {},
@@ -2346,7 +2328,7 @@ export class AppStore {
     try {
       await this.platform.globalShortcut.register(accelerator, () => {
         void this.platform.showMainWindow();
-        this.openSearch();
+        this.search.open();
       });
       this.shortcut = accelerator;
       this.updateSettings({
@@ -2444,10 +2426,6 @@ export class AppStore {
     await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets, ...personas]);
   }
 
-  openSearch(): void {
-    this.update({ searchOpen: true });
-  }
-
   /** The run.yaml of a project on its base branch, with its validation and trust. */
   runEnvConfig(hostId: string, projectId: string): Promise<RunConfigInfo | null> {
     return this.hostCommand(hostId, "runenv.config", { projectId });
@@ -2507,45 +2485,6 @@ export class AppStore {
     if (!area || route?.name !== "terminal") return;
     await this.hostCommand(route.host, "terminal.close", { terminalId: route.terminalId, kill });
     area.close(pending.tabId);
-  }
-
-  closeSearch(): void {
-    this.update({ searchOpen: false });
-  }
-
-  /**
-   * Asks every online host at once and merges the hits by date as they arrive. Offline hosts are
-   * reported right away; a host that does not answer within `searchTimeoutMs` is reported too.
-   */
-  async searchHistory(query: string): Promise<void> {
-    if (!query.trim()) return;
-    const token = ++this.searchSeq;
-    const online = this.state.hosts.filter((h) => h.status === "online");
-    // An incompatible host is out of every list, so it is not reported as silent either.
-    const offline = this.state.hosts
-      .filter((h) => h.status !== "online" && h.status !== "incompatible")
-      .map((h) => h.id);
-    this.update({ search: { query, hits: [], waiting: online.map((h) => h.id), silent: offline } });
-    const timeoutMs = this.options.searchTimeoutMs ?? 5000;
-    await Promise.all(
-      online.map(async (host) => {
-        const request = this.connections.get(host.id)?.request("history.search", { query });
-        const result = await withTimeout(request, timeoutMs).catch(() => null);
-        // A newer search replaced this one.
-        if (token !== this.searchSeq) return;
-        const search = this.state.search as SearchState;
-        const waiting = search.waiting.filter((id) => id !== host.id);
-        if (!result) {
-          this.update({ search: { ...search, waiting, silent: [...search.silent, host.id] } });
-          return;
-        }
-        const hits = [
-          ...search.hits,
-          ...result.hits.map((hit) => ({ ...hit, hostId: host.id, hostName: host.name })),
-        ].sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""));
-        this.update({ search: { ...search, waiting, hits } });
-      }),
-    );
   }
 
   /** A host's indexed sessions; errors go to the banner and give `null`. */
@@ -3075,7 +3014,7 @@ export class AppStore {
       const { sessionId } = await conn.request("session.create", payload);
       this.select(hostId, sessionId);
       // A new session opens, wherever it was created from (phase 10).
-      this.closeSearch();
+      this.search.close();
       this.router.push({ name: "session", host: hostId, id: sessionId });
       return sessionId;
     } catch (error) {

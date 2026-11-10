@@ -150,13 +150,13 @@ describe("terminal-ui: abrir um terminal", () => {
     const { store } = await setup(false);
     await waitFor(() => expect(screen.queryByRole("heading", { name: "pc" })).not.toBeNull());
     expect(screen.queryByRole("region", { name: "Terminal" })).toBeNull();
-    await act(async () => store.openSearch());
+    await act(async () => store.search.open());
     expect(screen.queryByRole("option", { name: "Novo terminal em pc" })).toBeNull();
   });
 
   test("the palette has Novo terminal em <host>, which opens one in a new tab", async () => {
     const { store } = await setup();
-    await act(async () => store.openSearch());
+    await act(async () => store.search.open());
     const option = screen.queryByRole("option", { name: "Novo terminal em pc" });
     expect(option).not.toBeNull();
     await act(async () => {
