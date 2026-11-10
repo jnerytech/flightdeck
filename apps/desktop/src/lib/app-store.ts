@@ -22,7 +22,6 @@ import type {
   PlainInfo,
   Project,
   ProjectDetectResult,
-  QuotaState,
   ReleaseNote,
   RiskLevel,
   RoiSummaryResult,
@@ -93,6 +92,7 @@ import {
   PersonasSlice,
   type PersonasSliceState,
 } from "../features/personas/index.ts";
+import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
 import {
   initialSessionsState,
   SessionsSlice,
@@ -206,7 +206,6 @@ import { probeHost } from "./probe-host.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
-import { QuotaNotices } from "./quota-notices.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
 import type { RoiMoney } from "./roi.ts";
@@ -336,6 +335,7 @@ export interface AppState
     SshSliceState,
     HealthSliceState,
     BackgroundSliceState,
+    QuotaSliceState,
     SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -366,8 +366,6 @@ export interface AppState
   meta: Record<string, SessionMeta>;
   /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
   uiChoices: Record<string, UiMode>;
-  /** Plan quota of each host, by host id; kept by `quota.updated`. */
-  quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
   account: Record<string, AccountState>;
   /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
@@ -946,8 +944,6 @@ export class AppStore {
   private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private noticeSeq = 0;
-  /** Quota windows already notified, by host, window and reset. */
-  private readonly quotaNotices = new QuotaNotices();
   /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
   private readonly teamOf = new Map<
     string,
@@ -991,6 +987,8 @@ export class AppStore {
   readonly health: HealthSlice;
   /** Claude Code's background sessions of each host (phase 27, #1596). */
   readonly background: BackgroundSlice;
+  /** The plan quota of each host, its pause guard and the notices it raises (#1596). */
+  readonly quota: QuotaSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
   readonly hostUpdate: HostUpdateSlice;
   readonly settings: SettingsSlice;
@@ -1079,6 +1077,21 @@ export class AppStore {
         }),
       showTerminal: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
+    });
+    this.quota = new QuotaSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
+      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
+      read: (hostId) => this.hostCommand(hostId, "quota.get", {}),
+      setPauseAt: (hostId, pauseAt) => this.hostCommand(hostId, "quota.setPauseAt", { pauseAt }),
+      notify: (notice, hostId) =>
+        this.notifyUser(notice, { name: "host", host: hostId }, undefined, {
+          event: "budget-quota",
+          hostId,
+        }),
+      t: () => this.i18n.t,
+      now: () => this.now(),
     });
     this.snippets = new SnippetsSlice({
       state: () => this.state,
@@ -1236,7 +1249,7 @@ export class AppStore {
       unread: {},
       cards: {},
       runs: {},
-      quota: {},
+      ...initialQuotaState(),
       account: {},
       ...initialHealthState(),
       setupProbes: {},
@@ -1470,7 +1483,7 @@ export class AppStore {
       selected: null,
       cards: {},
       runs: {},
-      quota: {},
+      ...initialQuotaState(),
       account: {},
       ...initialHealthState(),
     });
@@ -3177,7 +3190,7 @@ export class AppStore {
       },
       onRunUpdated: (run) => this.onRun(config.id, run),
       onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
-      onQuotaUpdated: (state) => this.onQuota(config.id, state),
+      onQuotaUpdated: (state) => this.quota.updated(config.id, state),
       onAccountUpdated: (state) =>
         this.update({ account: { ...this.state.account, [config.id]: state } }),
       onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
@@ -3233,7 +3246,7 @@ export class AppStore {
       void this.loadHostInfo(hostId, conn, true);
       // Daemons before phase 7 have no quota: quietly nothing.
       void conn.request("quota.get", {}).then(
-        (state) => this.onQuota(hostId, state),
+        (state) => this.quota.updated(hostId, state),
         () => {},
       );
     }
@@ -3635,53 +3648,6 @@ export class AppStore {
       this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
       (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
     );
-  }
-
-  /** Asks every online host for its plan quota again (the status bar's refresh); a host that does not answer keeps what it had. */
-  async refreshQuota(): Promise<void> {
-    const online = this.state.hosts.filter((h) => h.status === "online");
-    await Promise.all(
-      online.map((h) =>
-        this.hostCommand(h.id, "quota.get", {}).then(
-          (state) => {
-            if (state) this.onQuota(h.id, state);
-          },
-          () => {},
-        ),
-      ),
-    );
-  }
-
-  /**
-   * Sets the guard "new cards wait from N%" on a host (`null` turns it off); the host's answer is its
-   * new quota state. A refusal goes to the banner and leaves the guard as it was.
-   */
-  async setQuotaPause(hostId: string, pauseAt: number | null): Promise<void> {
-    const state = await this.hostCommand(hostId, "quota.setPauseAt", { pauseAt });
-    if (state) this.onQuota(hostId, state);
-  }
-
-  /** A discarded card leaves; any other replaces what the app had. */
-  /** Crossing `pauseAt` (and 95%, and the plan's refusal) notifies once per account, window and reset. */
-  private onQuota(hostId: string, state: QuotaState): void {
-    this.update({ quota: { ...this.state.quota, [hostId]: state } });
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    for (const window of state.windows) {
-      if (!host || !this.quotaNotices.check(window, state.pauseAt, this.now())) continue;
-      const { t } = this.i18n;
-      const known = window.window === "five_hour" || window.window === "seven_day";
-      const label = known ? t(`quota.windows.${window.window}` as Key) : window.window;
-      const percent = Math.round((window.utilization ?? 0) * 100);
-      this.notifyUser(
-        {
-          title: t("notify.quotaTitle"),
-          body: t("notify.quotaBody", { host: host.name, window: label, percent }),
-        },
-        { name: "host", host: hostId },
-        undefined,
-        { event: "budget-quota", hostId },
-      );
-    }
   }
 
   /** Starts the host's account stream while its card is on screen; returns the function that ends it. */

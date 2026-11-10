@@ -33,7 +33,7 @@ describe("status-bar-store: the quota is asked again (issue #491)", () => {
       if (hostId === "b") throw new Error("no answer");
       return quota(0.7);
     }) as never;
-    await store.refreshQuota();
+    await store.quota.refresh();
     expect(asked.sort()).toEqual(["a:quota.get", "b:quota.get"]);
     expect(store.getState().quota.a?.windows[0]?.utilization).toBe(0.7);
     expect(store.getState().quota.b?.windows[0]?.utilization).toBe(0.2);
