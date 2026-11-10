@@ -149,7 +149,7 @@ import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
-export type { CliDeps } from "./cli/commands.ts";
+export { type CliDeps, HOOK_CONNECT_TIMEOUT_MS } from "./cli/commands.ts";
 
 export interface Daemon {
   url: string;
