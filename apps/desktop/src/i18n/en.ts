@@ -1272,6 +1272,11 @@ export const en: Dictionary = {
     },
     rowDetail: {
       waitingTool: "wants to run {tool}",
+      /** Issue #1736: a terminal session at a prompt of Claude Code, under its title. */
+      waiting: {
+        plan: "plan waiting for your approval",
+        question: "has a question for you",
+      },
       runningTool: "running {tool}",
     },
     asleep: "Asleep",

@@ -366,7 +366,9 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
           request: s.summary?.request ?? null,
           cwd: cwd || s.claudeSessionId,
         }),
-        state: EXTERNAL[s.status],
+        // At a plan or a question the session needs the person, whatever its hooks last said (#1736).
+        state: s.waiting ? "needs_you" : EXTERNAL[s.status],
+        ...(s.waiting ? { waiting: s.waiting } : {}),
         controllable: s.controllable,
         lastActivity: s.lastEventAt,
         summary: s.summary ?? null,
@@ -546,6 +548,7 @@ export function rowStatus(row: HubRow, nowMs: number, t: T = PT): { word: string
   const word = row.asleep ? t("hub.asleep") : t(`hub.rowWord.${row.state}` as Key);
   const tool = row.summary?.tool ?? null;
   if (row.state === "needs_you") {
+    if (row.waiting) return { word, detail: t(`hub.rowDetail.waiting.${row.waiting}` as Key) };
     return { word, detail: tool ? t("hub.rowDetail.waitingTool", { tool }) : "" };
   }
   if (row.state === "running") {
