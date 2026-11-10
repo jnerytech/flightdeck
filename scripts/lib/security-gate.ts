@@ -304,9 +304,22 @@ export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
  * on any line, and every other line (code) is read in every area as everywhere.
  */
 const DICTIONARY = /^apps\/desktop\/src\/i18n\/(?:en|pt-BR)\.ts$/;
-/** `key: "text",` with one quoted literal and nothing else; a template with `${` is code. */
-// A backslash only starts an escape pair: `\\"` cannot pass for an escaped quote, and nothing backtracks.
-const PLAIN_ENTRY = /^\s*["']?[\w.-]+["']?\s*:\s*(["'`])(?:\\.|(?!\1)[^\\])*\1,?\s*$/;
+// The text shapes of a dictionary line (#1541, #1587). A string literal: a backslash only starts
+// an escape pair (so `\\"` cannot pass for an escaped quote, and nothing backtracks), and a
+// template has no `$` at all (an expression in it is code).
+const STR = String.raw`(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|` + "`(?:\\\\.|[^`\\\\$])*`)";
+const KEY = String.raw`["']?[\w.-]+["']?`;
+const TEXT_LINE = new RegExp(
+  [
+    // `key: "text",` or a long value on a line of its own: `"text",`
+    String.raw`^\s*(?:${KEY}\s*:\s*)?${STR}(?:\s*,)?\s*$`,
+    // a key whose value comes on the next line, or opens a group: `share:`, `tokens: {`. The spaces
+    // before the brace sit inside its optional group, so no two `\s*` meet (#1588: that was quadratic).
+    String.raw`^\s*${KEY}\s*:(?:\s*\{)?\s*$`,
+    // a group of entries on one line: `title: { password: "Password", passphrase: "Passphrase" },`
+    String.raw`^\s*${KEY}\s*:\s*\{\s*(?:${KEY}\s*:\s*${STR}(?:\s*,)?\s*)+\}(?:\s*,)?\s*$`,
+  ].join("|"),
+);
 /** What a secret value looks like (a word saying "token" is not one). */
 const SECRET_VALUES = [
   /(?:gh[pousr]_|github_pat_)\w{20,}/,
@@ -322,7 +335,7 @@ const SECRET_VALUES = [
 /** The risk areas these lines of code touch, comments left out. */
 function areasOf(lines: string[], path: string): string[] {
   const text = DICTIONARY.test(path);
-  const plain = (line: string) => text && PLAIN_ENTRY.test(line) && !line.includes("${");
+  const plain = (line: string) => text && TEXT_LINE.test(line);
   const code = lines.filter((line) => !commentOnly(line, path) && !plain(line));
   const areas = AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
     ([name]) => name,
