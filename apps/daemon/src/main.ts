@@ -1820,7 +1820,6 @@ async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
   );
 }
 
-/** `flightdeckd update --from <binary>`: the binary in the stable path, service and hooks on it. */
 /**
  * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
  * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
