@@ -265,6 +265,12 @@ export const ExternalSession = z.object({
   summary: SessionLine.optional(),
   /** #935: the mode its hooks last reported (Shift+Tab in the terminal included); absent until one does. */
   permissionMode: PermissionMode.optional(),
+  /**
+   * #1736: a plan approval or a question it waits on in its terminal (read from its transcript's
+   * end by the daemon); absent or null when it waits for nothing. Not a status: an older app's
+   * enum would refuse a new one.
+   */
+  waiting: z.enum(["plan", "question"]).nullable().optional(),
 });
 export type ExternalSession = z.infer<typeof ExternalSession>;
 

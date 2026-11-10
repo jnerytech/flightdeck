@@ -76,6 +76,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.roi, "roi"),
     ...when(opts.activity, "activity"),
     ...when(opts.central, "central"),
+    // Issue #1736: an external session says what it waits for (`waiting`), read from its transcript.
+    ...when(opts.central, "external.waiting"),
     ...when(opts.board, "workflows"),
     // Issue #1221: a template committed on a new branch and opened as a PR.
     ...when(opts.board, "workflowTemplateAdd"),
