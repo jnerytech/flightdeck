@@ -82,6 +82,15 @@ export class ProjectTrust {
     return this.via(cwd) !== null;
   }
 
+  /**
+   * Whether a gate that reads the answer without looking at git boundaries (the check loop) may
+   * count `cwd` as trusted: a record on an allowed root that is one project counts only at the
+   * root itself, never for a folder inside it (a nested clone is not seen here).
+   */
+  isTrustedFolder(_cwd: string): boolean {
+    return false;
+  }
+
   /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
   via(cwd: string): string | null {
     const here = resolve(cwd);

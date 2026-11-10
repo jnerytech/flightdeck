@@ -221,6 +221,21 @@ describe("trust-commands: the person sees what a project would load and decides 
     ]);
   });
 
+  test("trusting a clone's own folder right after reading its state answers trusted (#1704)", async () => {
+    const { client, root } = await daemon();
+    mkdirSync(join(root, ".git"));
+    const clone = join(root, "vendor", "lib");
+    mkdirSync(join(clone, ".git"), { recursive: true });
+    await client.data<ProjectTrustState>("project.trust.set", { path: root, trusted: true });
+    const before = await client.data<ProjectTrustStates>("project.trust.state", { paths: [clone] });
+    expect(before?.items.map((i) => i.trusted)).toEqual([false]);
+    const set = await client.data<ProjectTrustState>("project.trust.set", {
+      path: clone,
+      trusted: true,
+    });
+    expect(set).toEqual({ path: clone, trusted: true, via: clone });
+  });
+
   test("a session opens in a project nobody trusted: untrusted only keeps its own setup from loading (#592)", async () => {
     const { project, refusal } = await daemon();
     expect(await refusal("session.create", { cwd: project, prompt: "go" })).toBe("ok");
