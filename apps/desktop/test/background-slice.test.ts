@@ -81,4 +81,33 @@ describe("background slice: a host's background sessions", () => {
     expect(await refused.background.start("h1", { cardId: "c1" } as never)).toBeNull();
     expect(refused.calls).toEqual([]);
   });
+
+  test("changed gives the patch for a list that differs, nothing for the same one", async () => {
+    const s = slice();
+    expect(s.background.changed("h1", LIST)).toEqual({ background: { h1: LIST } });
+    await s.background.load("h1");
+    expect(s.background.changed("h1", structuredClone(LIST))).toBeNull();
+  });
+
+  test("two lists that arrive out of order for different hosts are both kept", async () => {
+    const lists = { h1: { sessions: [{ id: "a" }] }, h2: { sessions: [{ id: "b" }] } };
+    const waiting: Array<() => void> = [];
+    let state = initialBackgroundState();
+    const core = {
+      state: () => state,
+      update: (patch: Partial<typeof state>) => {
+        state = { ...state, ...patch };
+      },
+      list: (host: "h1" | "h2") =>
+        new Promise((resolve) => waiting.push(() => resolve(lists[host]))),
+    } as unknown as BackgroundCore;
+    const slice = new BackgroundSlice(core);
+    const first = slice.load("h1");
+    const second = slice.load("h2");
+    waiting[1]?.();
+    await second;
+    waiting[0]?.();
+    await first;
+    expect(Object.keys(state.background)).toEqual(["h2", "h1"]);
+  });
 });
