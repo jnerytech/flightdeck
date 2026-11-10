@@ -1,6 +1,5 @@
 import type { Database } from "bun:sqlite";
 import { stat } from "node:fs/promises";
-
 import {
   type ExternalSession,
   type ExternalStatus,
@@ -8,6 +7,7 @@ import {
   PermissionMode,
   SessionPersona,
 } from "@flightdeck/protocol";
+import type { Tail } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -25,6 +25,8 @@ export interface ExternalSessionsOptions {
   staleAfterS: number;
   now?: () => number;
   projectKey?: (cwd: string) => string;
+  /** Reads the end of a transcript (a test seam): the file's own by default. */
+  readTail?: (path: string) => Promise<Tail | null>;
 }
 
 interface Row {
