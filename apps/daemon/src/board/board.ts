@@ -1057,6 +1057,7 @@ export class Board {
     return this.lifecycle.stopCard(id);
   }
 
+  /** Resolves when every rule accepted so far is in its file. */
   rulesWritten(): Promise<void> {
     return this.rules.written();
   }
