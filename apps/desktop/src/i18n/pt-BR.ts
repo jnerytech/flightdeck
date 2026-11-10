@@ -4859,7 +4859,7 @@ export const ptBR = {
       recent: "Suas tarefas recentes",
       waiting: "Esperando a sua resposta",
       intro:
-        "O Claude trabalha nos seus arquivos neste computador, uma tarefa por vez. Cada cartão diz se só lê ou pode mudar arquivos, e você vê o que foi feito.",
+        "O Claude trabalha nos seus arquivos neste computador. Cada cartão diz o que pergunta e se pode mudar arquivos.",
       runsOn: "As tarefas rodam em {host} ({state}).",
       connected: "conectado",
       connecting: "conectando",

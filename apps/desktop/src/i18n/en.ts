@@ -4853,7 +4853,7 @@ export const en: Dictionary = {
       recent: "Your recent tasks",
       waiting: "Waiting for your answer",
       intro:
-        "Claude works on your files on this computer, one task at a time. Each card says whether it only reads or may change files, and you see what it made.",
+        "Claude works on your files on this computer. Each card says what it asks and whether it may change files.",
       runsOn: "Tasks run on {host} ({state}).",
       connected: "connected",
       connecting: "connecting",

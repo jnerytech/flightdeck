@@ -211,10 +211,12 @@ export function HomeView(props: Readonly<HomeViewProps>) {
   return (
     <div className="home-simple">
       <h1 className="task-title">{t("simple.home.title")}</h1>
-      <p className="question-card-note">{t("simple.home.intro")}</p>
-      <p className="question-card-note">
-        {t("simple.home.runsOn", { host: where.hostName, state: stateLabel(where.status, t) })}
-      </p>
+      <div>
+        <p className="question-card-note">{t("simple.home.intro")}</p>
+        <p className="question-card-note">
+          {t("simple.home.runsOn", { host: where.hostName, state: stateLabel(where.status, t) })}
+        </p>
+      </div>
       {notice && <InlineNotice tone="error">{notice}</InlineNotice>}
       {where.status === "online" && where.folders?.length === 0 && (
         <Note>
