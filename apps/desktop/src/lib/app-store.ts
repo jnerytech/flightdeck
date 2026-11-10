@@ -1,6 +1,5 @@
 import type {
   AccountState,
-  AskpassRequest,
   BgList,
   BgSession,
   Card,
@@ -44,7 +43,6 @@ import type {
   SessionSubscribeResult,
   SessionSummary,
   SettableMode,
-  SshTarget,
   TeamInfo,
   TeamsUpdatedFrame,
   TerminalInfo,
@@ -103,6 +101,7 @@ import {
   SnippetsSlice,
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
+import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -226,7 +225,6 @@ import {
   saveChoice,
   type UiMode,
 } from "./simple-mode.ts";
-import { savePayload } from "./ssh.ts";
 import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
@@ -328,6 +326,7 @@ export interface AppState
     BudgetsSliceState,
     ClientBudgetsSliceState,
     PersonasSliceState,
+    SshSliceState,
     SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -372,10 +371,6 @@ export interface AppState
   healthAt: Record<string, number>;
   /** Why the last health read of a host failed (the screen says it; no banner). Absent when it went well. */
   healthError: Record<string, string>;
-  /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
-  askpass: Array<{ hostId: string; request: AskpassRequest }>;
-  /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
-  ssh: Record<string, SshTarget[]>;
   /** Phase 27: each host's Claude Code background sessions, as `bg.list` gave them. */
   background: Record<string, BgList>;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
@@ -997,6 +992,8 @@ export class AppStore {
   readonly clientBudgets: ClientBudgetsSlice;
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
+  /** The ssh destinos of the hosts, the prompts ssh raises and its terminals (phase 15, #1596). */
+  readonly ssh: SshSlice;
   readonly settings: SettingsSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
@@ -1033,6 +1030,18 @@ export class AppStore {
       list: (hostId, language) =>
         this.hostCommand(hostId, "personas.list", { scope: "host", language }),
       language: () => this.i18n.lang,
+    });
+    this.ssh = new SshSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      list: (hostId) => this.hostCommand(hostId, "ssh.list", {}),
+      peek: (hostId) => quiet(this.dispatch(hostId, "ssh.list", {})),
+      save: (hostId, payload) => this.hostCommand(hostId, "ssh.save", payload),
+      connect: (hostId, payload) => this.hostCommand(hostId, "ssh.connect", payload),
+      answer: (hostId, requestId, secret) =>
+        this.hostCommand(hostId, "askpass.answer", { requestId, secret }),
+      hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
+      secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
     this.snippets = new SnippetsSlice({
       state: () => this.state,
@@ -1197,17 +1206,16 @@ export class AppStore {
       healthAt: {},
       healthError: {},
       setupProbes: {},
-      ssh: {},
       ...initialSnippetsState(),
       background: {},
       ...initialMessagingState(),
       ...initialBudgetsState(),
       ...initialClientBudgetsState(),
       ...initialPersonasState(),
+      ...initialSshState(),
       quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
       watches: {},
       names: {},
-      askpass: [],
       secrets: new Vault(platform).list(),
       vaultUsage: this.usage.list(),
       vaultApprovals: [],
@@ -2226,8 +2234,7 @@ export class AppStore {
         (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "ssh", false),
       )
       .map(async (host) => {
-        const listed = await quiet(this.dispatch(host.id, "ssh.list", {}));
-        if (listed) this.update({ ssh: { ...this.state.ssh, [host.id]: listed.targets } });
+        await this.ssh.loadTargets(host.id);
       });
     const personas = this.state.hosts
       .filter(
@@ -3210,7 +3217,7 @@ export class AppStore {
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
-      onAskpass: (request) => void this.onAskpass(config.id, request),
+      onAskpass: (request) => void this.ssh.onAskpass(config.id, request),
     });
     this.connections.set(config.id, conn);
     // A session selected before its host had a connection (a route opened at start-up).
@@ -3773,52 +3780,6 @@ export class AppStore {
     return state !== null;
   }
 
-  /** Terminals opened from a ssh destino, by `hostId/terminalId`, for the badge of their screen. */
-  readonly sshTerminals = new Map<string, { name: string; tags: string[] }>();
-
-  /**
-   * Keeps a copy of `target` (and of the destinos it jumps through) on `runner`, which builds the
-   * ssh command from its own destinos: the copy it already has by name is updated, never doubled.
-   * `null` when the host refuses.
-   */
-  async sshCopyTo(
-    runner: string,
-    target: SshTarget,
-    all: SshTarget[],
-    seen: Set<string> = new Set([target.id]),
-  ): Promise<SshTarget | null> {
-    const listed = await this.hostCommand(runner, "ssh.list", {});
-    if (!listed) return null;
-    let jump: string | null = null;
-    const through = all.find((other) => other.id === target.jump);
-    if (through && !seen.has(through.id)) {
-      seen.add(through.id);
-      const copy = await this.sshCopyTo(runner, through, all, seen);
-      if (!copy) return null;
-      jump = copy.id;
-    }
-    const existing = listed.targets.find((other) => other.name === target.name);
-    return this.hostCommand(runner, "ssh.save", {
-      ...(existing ? { id: existing.id } : {}),
-      ...savePayload(target, target.name),
-      viaHost: null,
-      jump,
-    });
-  }
-
-  /**
-   * Answers a ssh prompt (`null` refuses, and ssh fails at once). The secret is sent and not
-   * kept: the request leaves the list, and nothing else holds the answer.
-   */
-  async answerAskpass(hostId: string, requestId: string, secret: string | null): Promise<void> {
-    this.update({
-      askpass: this.state.askpass.filter(
-        (item) => !(item.hostId === hostId && item.request.requestId === requestId),
-      ),
-    });
-    await this.hostCommand(hostId, "askpass.answer", { requestId, secret });
-  }
-
   /**
    * A secret of the vault for a use the app itself starts (ssh): the delivery rules are checked
    * for the host that will use it and the use is logged, as "you". The value is handed to the
@@ -3845,24 +3806,6 @@ export class AppStore {
     });
     this.keepUsage();
     return check.ok ? { ok: true, value: check.value } : { ok: false, code: check.code };
-  }
-
-  /**
-   * ssh asks for a password: when its destino points at a secret of the vault that can be
-   * delivered to the host, that answers; otherwise the person is asked.
-   */
-  private async onAskpass(hostId: string, request: AskpassRequest): Promise<void> {
-    if (request.secretRef && this.vault.list().some((s) => s.id === request.secretRef)) {
-      const got = await this.vaultSecretFor(hostId, request.secretRef, "ssh");
-      if (got.ok) {
-        await this.hostCommand(hostId, "askpass.answer", {
-          requestId: request.requestId,
-          secret: got.value,
-        });
-        return;
-      }
-    }
-    this.update({ askpass: [...this.state.askpass, { hostId, request }] });
   }
 
   /** Reads a host's background sessions (`claude agents`), for the hub and their screen. */
@@ -3910,22 +3853,6 @@ export class AppStore {
     if (!started) return null;
     await this.loadBackground(hostId);
     return started.id;
-  }
-
-  /**
-   * Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused.
-   * `privateKey` is the vault key of a `vault-key` destino, for this connection only.
-   */
-  async sshConnect(hostId: string, target: SshTarget, privateKey?: string): Promise<string | null> {
-    const info = await this.hostCommand(hostId, "ssh.connect", {
-      targetId: target.id,
-      cols: 80,
-      rows: 24,
-      ...(privateKey ? { privateKey } : {}),
-    });
-    if (!info) return null;
-    this.sshTerminals.set(`${hostId}/${info.terminalId}`, { name: target.name, tags: target.tags });
-    return info.terminalId;
   }
 
   /** Phase 16: the vault, whose values live in the system keyring. */
