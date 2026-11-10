@@ -25,7 +25,7 @@ async function open(app = true) {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await personasHost(cleanups, store);
-  store.globalPersonas.save({
+  store.personas.global.save({
     id: "minha",
     name: "Minha persona",
     description: "Do app",
@@ -332,9 +332,9 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     const region = () => screen.queryByRole("region", { name: "Variante a" });
     await settle(() => region()?.textContent?.includes("Minha persona") === true);
     expect(region()?.textContent).toContain("Minha persona");
-    const minha = store.globalPersonas.list().find((p) => p.id === "minha");
+    const minha = store.personas.global.list().find((p) => p.id === "minha");
     await act(async () => {
-      store.globalPersonas.remove(minha?.id ?? "");
+      store.personas.global.remove(minha?.id ?? "");
       store.router.push({ name: "home" });
     });
     await act(async () => {

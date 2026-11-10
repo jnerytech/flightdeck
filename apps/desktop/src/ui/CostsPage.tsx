@@ -354,7 +354,7 @@ export const CostsPage = memo(function CostsPage(props: {
   const personaKey = personaHosts.map((h) => h.id).join("|");
   // The names of the personas the breakdown shows (phase 20).
   useEffect(() => {
-    for (const id of personaKey.split("|")) if (id) void store.loadPersonas(id);
+    for (const id of personaKey.split("|")) if (id) void store.personas.load(id);
   }, [store, personaKey]);
   const personaName = (id: string | null) => {
     const found = personaHosts.flatMap((h) => state.personas[h.id] ?? []).find((p) => p.id === id);

@@ -50,7 +50,7 @@ export function CardArena(
   const start = async (list: ArenaVariantInput[]) => {
     setForm(false);
     const chosen = list.map(({ persona, ...rest }) => {
-      const ref = persona ? store.personaRef(persona) : null;
+      const ref = persona ? store.personas.ref(persona) : null;
       return { ...rest, ...(ref ? { persona: ref } : {}) };
     });
     setArena(await store.hostCommand(hostId, "card.startArena", { cardId, variants: chosen }));

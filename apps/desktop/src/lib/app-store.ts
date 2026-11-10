@@ -27,7 +27,6 @@ import type {
   MessageInfo,
   PendingPermission,
   PermissionUpdate,
-  PersonaRef,
   PlainInfo,
   Project,
   ProjectDetectResult,
@@ -81,6 +80,11 @@ import {
   MessagingSlice,
   type MessagingSliceState,
 } from "../features/messaging/index.ts";
+import {
+  initialPersonasState,
+  PersonasSlice,
+  type PersonasSliceState,
+} from "../features/personas/index.ts";
 import {
   initialSessionsState,
   SessionsSlice,
@@ -147,7 +151,6 @@ import {
   saveFinished,
   withFiles,
 } from "./finished.ts";
-import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { googleConfig } from "./google-config.ts";
 import type { GoogleConfig } from "./google-oauth.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
@@ -326,6 +329,7 @@ export interface AppState
     ActivitySliceState,
     SessionsSliceState,
     MessagingSliceState,
+    PersonasSliceState,
     SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -376,8 +380,6 @@ export interface AppState
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
   ssh: Record<string, SshTarget[]>;
-  /** The personas of each host that keeps them (the pack's, the host's), by host id (phase 20). */
-  personas: Record<string, AppPersona[]>;
   /** Phase 27: each host's Claude Code background sessions, as `bg.list` gave them. */
   background: Record<string, BgList>;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
@@ -998,6 +1000,8 @@ export class AppStore {
   readonly sessions: SessionsSlice;
   /** The messages between sessions: the loops a host paused (phase 21, #1596). */
   readonly messaging: MessagingSlice;
+  /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
+  readonly personas: PersonasSlice;
   readonly settings: SettingsSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
@@ -1026,6 +1030,14 @@ export class AppStore {
       connection: (hostId) => this.connections.get(hostId),
       t: () => this.i18n.t,
       success: (text) => this.success(text),
+    });
+    this.personas = new PersonasSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      storage: platform.storage,
+      list: (hostId, language) =>
+        this.hostCommand(hostId, "personas.list", { scope: "host", language }),
+      language: () => this.i18n.lang,
     });
     this.snippets = new SnippetsSlice({
       state: () => this.state,
@@ -1083,7 +1095,6 @@ export class AppStore {
     this.rules = new VaultRules(platform.storage);
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
-    this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
     this.roi = new RoiSettings(platform, {
       onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
@@ -1162,9 +1173,9 @@ export class AppStore {
       setupProbes: {},
       ssh: {},
       ...initialSnippetsState(),
-      personas: {},
       background: {},
       ...initialMessagingState(),
+      ...initialPersonasState(),
       quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
       watches: {},
       names: {},
@@ -2199,7 +2210,7 @@ export class AppStore {
         (host) =>
           host.status === "online" && hasFeature(host.hostInfo?.features, "personas", false),
       )
-      .map((host) => this.loadPersonas(host.id));
+      .map((host) => this.personas.load(host.id));
     const snippets = this.state.hosts
       .filter(
         (host) =>
@@ -3843,15 +3854,6 @@ export class AppStore {
     this.update({ askpass: [...this.state.askpass, { hostId, request }] });
   }
 
-  /** Reads a host's personas (the pack's in the app's language, and the host's) for the pickers. */
-  async loadPersonas(hostId: string): Promise<void> {
-    const listed = await this.hostCommand(hostId, "personas.list", {
-      scope: "host",
-      language: this.i18n.lang,
-    });
-    if (listed) this.update({ personas: { ...this.state.personas, [hostId]: listed.personas } });
-  }
-
   /** Reads a host's background sessions (`claude agents`), for the hub and their screen. */
   async loadBackground(hostId: string): Promise<void> {
     const list = await this.hostCommand(hostId, "bg.list", {});
@@ -3899,13 +3901,6 @@ export class AppStore {
     return started.id;
   }
 
-  /** What a picker's value asks a session for: a persona by id, or an app persona whole. */
-  personaRef(value: string): PersonaRef | null {
-    if (value.startsWith("host:")) return { id: value.slice(5), language: this.i18n.lang };
-    if (value.startsWith("app:")) return this.globalPersonas.ref(value.slice(4), this.i18n.lang);
-    return null;
-  }
-
   /**
    * Opens a terminal running ssh to `target`; the id of the terminal, or `null` when refused.
    * `privateKey` is the vault key of a `vault-key` destino, for this connection only.
@@ -3931,8 +3926,6 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /** Phase 20: the global personas, kept by the app. */
-  readonly globalPersonas: GlobalPersonas;
   /**
    * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
    * that cannot be reached, is left out; the card says how many answered.

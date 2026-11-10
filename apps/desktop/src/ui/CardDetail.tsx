@@ -228,7 +228,7 @@ export const CardDetail = memo(function CardDetail(props: {
             moment={cardMoment}
             personaName={(id) =>
               state.personas[hostId]?.find((p) => p.id === id)?.name ??
-              store.globalPersonas.list().find((p) => p.id === id)?.name ??
+              store.personas.global.list().find((p) => p.id === id)?.name ??
               id
             }
           >

@@ -1230,7 +1230,7 @@ function NewSession(
       onCreate={(payload) => {
         if (payload.runtime === "opencode") return props.store.createSession(host.id, payload);
         if (background) return startInBackground(props.store, host.id, payload, persona);
-        const ref = props.store.personaRef(persona);
+        const ref = props.store.personas.ref(persona);
         return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });
       }}
     />

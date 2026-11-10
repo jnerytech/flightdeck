@@ -31,7 +31,7 @@ export function PersonaSwitch(
   } | null>(null);
   const current = answered ? answered.persona : props.current;
   const apply = async () => {
-    const persona = store.personaRef(value);
+    const persona = store.personas.ref(value);
     if (!persona) return;
     const done = await store.hostCommand(hostId, "session.applyPersona", { ...target, persona });
     if (done) setAnswered({ persona: done.persona, delivery: done.delivery });
