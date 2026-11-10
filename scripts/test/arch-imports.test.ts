@@ -116,6 +116,14 @@ describe("arch-imports: the domain borders (#1591)", () => {
     const grew = runArchRatchet({ git, readFile: () => known(["no-cycle", "no-cycle"]) });
     expect(grew.code).toBe(1);
     expect(grew.output).toContain("no-cycle: 1 -> 2");
+    const first = runArchRatchet({
+      git: (args) => (args[0] === "merge-base" ? "base1\n" : null),
+      readFile: () => known(["no-cycle", "no-cycle"]),
+    });
+    expect(first).toEqual({
+      code: 0,
+      output: `arch-ratchet: no ${KNOWN} on main yet; this one is the first baseline (no-cycle 2)`,
+    });
     const same = runArchRatchet({ git, readFile: () => known(["no-cycle"]) });
     expect(same).toEqual({
       code: 0,
