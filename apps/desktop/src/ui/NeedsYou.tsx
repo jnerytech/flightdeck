@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/layout/states";
 import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "@/components/needs-you/entry-row";
 import { WhileAway } from "@/components/needs-you/while-away";
 import { Button } from "@/components/ui/button";
+import { awayView } from "../features/activity/index.ts";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
 import {
@@ -27,7 +28,6 @@ import {
   needsYou,
   type PendingItem,
 } from "../lib/app-store.ts";
-import { awayView } from "../lib/away-summary.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
 import { type Finish, sinceLastLook } from "../lib/finished.ts";

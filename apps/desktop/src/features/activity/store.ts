@@ -23,9 +23,10 @@ export interface ActivitySliceState {
   away: AwayState;
 }
 
-export const initialActivityState: ActivitySliceState = {
+/** A fresh initial state for each store: its arrays are never shared between stores. */
+export const initialActivityState = (): ActivitySliceState => ({
   away: { since: null, hosts: [], unreached: [], dismissed: false },
-};
+});
 
 /** What the activity reads and asks through the app's store. */
 export interface ActivityCore {

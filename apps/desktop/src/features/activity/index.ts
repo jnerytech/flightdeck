@@ -10,3 +10,4 @@ export {
   type AwayState,
   initialActivityState,
 } from "./store.ts";
+export { type AwayNews, type AwayView, awayView } from "./summary.ts";

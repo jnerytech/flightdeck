@@ -1197,7 +1197,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
-      ...initialActivityState,
+      ...initialActivityState(),
       inbox: [],
       composerFill: {},
       finished: [],
@@ -1266,7 +1266,6 @@ export class AppStore {
   /** Issue #1344: when the app was last active, read before this start writes its own. */
   private readonly awayClock: AwayClock;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
-  /** The hosts already asked this start, so a reconnect does not list them twice. */
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
   readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */

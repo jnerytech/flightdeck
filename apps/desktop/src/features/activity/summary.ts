@@ -1,5 +1,5 @@
 import type { ActivitySinceResult } from "@flightdeck/protocol";
-import type { AwayState } from "../features/activity/index.ts";
+import type { AwayState } from "./store.ts";
 
 /** What one host has to say about the time the app was closed. */
 export interface AwayNews {
