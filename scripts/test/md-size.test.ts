@@ -20,15 +20,18 @@ describe("md-size", () => {
     expect(mdLimit("README.md")).toBe(400);
   });
 
-  test("the root CLAUDE.md and the manuals have fixed limits of their own, out of the baseline: they grow by design (#427)", () => {
-    // Lines of the root CLAUDE.md wait for the owner's word; every phase adds to both manuals.
-    expect(mdLimit("CLAUDE.md")).toBe(290);
-    expect(mdLimit("docs/manual/en.md")).toBe(4500);
-    expect(mdLimit("docs/manual/pt-BR.md")).toBe(4500);
-    expect(oversized([{ path: "docs/manual/en.md", text: lines(4500) }])).toEqual({});
-    expect(oversized([{ path: "docs/manual/pt-BR.md", text: lines(4501) }])).toEqual({
-      "docs/manual/pt-BR.md": 4501,
+  test("a manual's index and each of its chapters get the 400 of any doc: a phase adds to a chapter, not to one big file (#1711)", () => {
+    expect(mdLimit("docs/manual/en.md")).toBe(400);
+    expect(mdLimit("docs/manual/pt-BR/board.md")).toBe(400);
+    expect(oversized([{ path: "docs/manual/en/board.md", text: lines(400) }])).toEqual({});
+    expect(oversized([{ path: "docs/manual/pt-BR.md", text: lines(401) }])).toEqual({
+      "docs/manual/pt-BR.md": 401,
     });
+  });
+
+  test("the root CLAUDE.md has a fixed limit of its own, out of the baseline: it grows by design (#427)", () => {
+    // Lines of the root CLAUDE.md wait for the owner's word.
+    expect(mdLimit("CLAUDE.md")).toBe(290);
     expect(oversized([{ path: "CLAUDE.md", text: lines(291) }])).toEqual({ "CLAUDE.md": 291 });
     const baseline = JSON.parse(readFileSync(join(ROOT, "md-size-baseline.json"), "utf8"));
     expect(Object.keys(baseline)).toEqual(["docs/SPEC-fase-40.md"]);
