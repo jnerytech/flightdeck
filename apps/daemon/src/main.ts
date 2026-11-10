@@ -129,7 +129,7 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import { DAEMON_VERSION, startServer } from "./server.ts";
+import { startServer } from "./server.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -169,6 +169,7 @@ import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { VaultRules } from "./vault/rules-store.ts";
 import { Vault } from "./vault/vault.ts";
+import { DAEMON_VERSION } from "./version.ts";
 import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
 import { Traces } from "./watch/trace.ts";
@@ -181,7 +182,6 @@ import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
-export { claudeSettingsPath } from "./config.ts";
 
 /** `hook session-start` gives up on the receptor after this long (the hook's own limit is 5 s). */
 export const HOOK_CONNECT_TIMEOUT_MS = 1_000;

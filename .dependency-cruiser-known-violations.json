@@ -575,27 +575,6 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/server.ts",
-    "to": "apps/daemon/src/server/host-info.ts",
-    "unresolvedTo": "./server/host-info.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/server/host-info.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/server.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "apps/daemon/src/server/context.ts",
     "to": "apps/daemon/src/server/gates.ts",
     "unresolvedTo": "./gates.ts",
@@ -1606,6 +1585,31 @@
       },
       {
         "name": "apps/daemon/src/server/handlers/session.ts",
+        "dependencyTypes": ["local", "import"]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "apps/daemon/src/server/host-info.ts",
+    "to": "apps/daemon/src/server.ts",
+    "unresolvedTo": "../server.ts",
+    "dependencyTypes": ["local", "import", "type-only"],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle"
+    },
+    "cycle": [
+      {
+        "name": "apps/daemon/src/server.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
+      },
+      {
+        "name": "apps/daemon/src/server/context.ts",
+        "dependencyTypes": ["local", "import"]
+      },
+      {
+        "name": "apps/daemon/src/server/host-info.ts",
         "dependencyTypes": ["local", "import"]
       }
     ]

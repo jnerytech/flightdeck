@@ -5,7 +5,6 @@ import { join } from "node:path";
 import { loadConfig } from "../src/config.ts";
 import { acquireLock } from "../src/lock.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
-import { DAEMON_VERSION } from "../src/server.ts";
 import {
   createPrompt,
   installStableBinary,
@@ -14,6 +13,7 @@ import {
   type SetupDeps,
 } from "../src/setup.ts";
 import { stableBinPath } from "../src/update.ts";
+import { DAEMON_VERSION } from "../src/version.ts";
 import {
   defaultHostName,
   detectWsl,
