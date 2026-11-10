@@ -162,6 +162,8 @@ export class ProjectTrust {
 
   /** Looks at the folders of the sessions that exist (once each), as the daemon boots. */
   async prepareSessions(sessions: ReadonlyArray<{ cwd: string }>): Promise<void> {
+    // The roots are read even with no session to look at: the check-loop gates read them (#1728).
+    await this.refreshRoots();
     const folders = new Set(sessions.map((session) => session.cwd));
     await Promise.all([...folders].map((cwd) => this.prepare(cwd)));
   }
