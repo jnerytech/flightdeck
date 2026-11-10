@@ -988,18 +988,14 @@ describe("pr-flow: update and merge", () => {
     expect(refused.out()).toContain("GitHub refused to merge #12");
   });
 
-  test("auto merges a clean, green PR without --now, and names no review (#1697: OpenCode retired)", async () => {
-    const f = fake({
-      prs: [pr(12, "a")],
-      graphqlError: CLEAN,
-      runs: { sha12: green() },
-    });
-    const code = await prFlow(["auto", "12"], f.deps);
-    expect([
-      code,
-      f.writes.filter((w) => w.includes("/merge")).length,
-      f.lines.filter((l) => /opencode|review/i.test(l)),
-    ]).toEqual([0, 1, []]);
+  test("a --now left on auto is said to be no longer needed, and auto runs as without it (#1697)", async () => {
+    const f = fake({ prs: [pr(12, "a")], graphqlError: CLEAN, runs: { sha12: green() } });
+    const code = await prFlow(["auto", "12", "--now"], f.deps);
+    expect([code, f.writes.filter((w) => w.includes("/merge")).length, f.lines[0]]).toEqual([
+      0,
+      1,
+      "--now is no longer needed: pr auto does not wait for a review (#1697)",
+    ]);
   });
 
   test("an unknown command or a missing argument is the usage, exit 2", async () => {
