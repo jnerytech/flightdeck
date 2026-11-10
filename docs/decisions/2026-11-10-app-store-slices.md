@@ -14,7 +14,8 @@ as one slice per domain under `features/<domain>/`.
 - A domain's slice lives in `apps/desktop/src/features/<domain>/store.ts`, named after the domain in
   `docs/GLOSSARY.md` (the daemon's folder name), behind the domain's `index.ts`. It holds:
   - its part of the state, as a type (`HistorySliceState`) and its initial values
-    (`initialHistoryState`);
+    (`initialHistoryState`; a function returning a fresh object when the state holds arrays or
+    objects, `initialActivityState()`, so no two stores share them);
   - a narrow port of what it reads and writes through the store (`HistoryCore`: `state()`,
     `update(patch)`, and only the host calls and options it needs, an option as a getter so it is
     read when used, as before);
@@ -40,7 +41,9 @@ as one slice per domain under `features/<domain>/`.
 
 - A slice reads another domain's state only through its core's `state()`, never through another
   slice's internals; a cross-domain need shows up in the port's type.
-- A slice's state keys share `AppState` with every other slice's: a new slice names its keys after
-  its domain, and its PR checks that no key is declared twice (a clash would merge silently).
+- A slice's state keys share `AppState` with every other slice's: a key a slice adds is named after
+  its domain, a key that moves keeps its name (its readers do not change), and every slice's PR
+  checks that no key is declared twice (a clash would merge silently).
+- A domain's pure view logic moves into its feature with its slice (`awayView`, `features/activity`).
 - The history's global search is the first slice. `app-store.ts` reaches its goal (it only composes the
   slices and owns the shared side effects, under 300 lines) once every domain has moved.

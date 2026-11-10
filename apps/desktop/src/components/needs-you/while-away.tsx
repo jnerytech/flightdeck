@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
+import type { AwayNews, AwayView } from "../../features/activity/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import type { AwayNews, AwayView } from "../../lib/away-summary.ts";
 import { reasonText } from "../../lib/notice-text.ts";
 import { basename } from "../../lib/paths.ts";
 import type { Route } from "../../lib/router.ts";

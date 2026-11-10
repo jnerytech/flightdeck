@@ -82,7 +82,7 @@ function open(setup: Setup = {}) {
   store.i18n.start();
   const went: object[] = [];
   let dismissed = 0;
-  store.dismissAway = () => {
+  store.activity.dismissAway = () => {
     dismissed += 1;
     if (setup.realDismiss) {
       const away = store.getState().away;

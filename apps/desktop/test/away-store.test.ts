@@ -64,7 +64,7 @@ describe("away-store (#1344)", () => {
 
   test("a host that does not announce the feature is left out", async () => {
     const { store } = await start({ features: [] });
-    await store.loadAway();
+    await store.activity.loadAway();
     const away = store.getState().away;
     expect([away.since, away.hosts, away.unreached]).toEqual([iso(NOW - 8 * HOUR), [], []]);
   });
@@ -73,16 +73,16 @@ describe("away-store (#1344)", () => {
     // It announces `activity` but has nothing wired, so the ask is refused.
     const { store, hostId } = await start({ features: ["activity"], withActivity: false });
     await settle(() => store.getState().away.unreached.length === 1);
-    await store.loadAway();
+    await store.activity.loadAway();
     const away = store.getState().away;
     expect([away.hosts, away.unreached]).toEqual([[], [hostId]]);
   });
 
   test("a short absence, or the first start, asks nothing and shows nothing", async () => {
     const short = await start({ away: 10 * 60_000 });
-    await short.store.loadAway();
+    await short.store.activity.loadAway();
     const first = await start({ away: null });
-    await first.store.loadAway();
+    await first.store.activity.loadAway();
     expect([short.store.getState().away, first.store.getState().away]).toEqual([
       { since: null, hosts: [], unreached: [], dismissed: false },
       { since: null, hosts: [], unreached: [], dismissed: false },
@@ -91,9 +91,9 @@ describe("away-store (#1344)", () => {
 
   test("closing the summary keeps it closed when it is asked again", async () => {
     const { store } = await start();
-    await store.loadAway();
-    store.dismissAway();
-    await store.loadAway();
+    await store.activity.loadAway();
+    store.activity.dismissAway();
+    await store.activity.loadAway();
     expect(store.getState().away.dismissed).toBe(true);
   });
 
