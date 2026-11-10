@@ -410,7 +410,6 @@ export interface AppState
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
   clientSelection: string;
-  /** Phase 29: each client's month limit against its spend, as of the last look. */
   /** The saved hosts are in `hosts` (init done with them); routes wait for it (phase 10). */
   hostsLoaded: boolean;
   /** Phase 9: the app's own update. */
@@ -443,8 +442,6 @@ const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
 /** How long the app waits for changes to settle before it sends scoped rules again. */
 const VAULT_SCOPE_DELAY_MS = 300;
-
-/** How often the app looks at the clients' month limits. */
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
 /** What a host's terminals say to the one following them. */

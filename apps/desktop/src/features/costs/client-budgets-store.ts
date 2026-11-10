@@ -59,6 +59,7 @@ export class ClientBudgetsSlice {
 
   /** The limits are looked at every few minutes while the app runs. */
   start(intervalMs: number = CLIENT_BUDGET_INTERVAL_MS): void {
+    if (this.timer) clearInterval(this.timer);
     this.timer = setInterval(() => void this.check(), intervalMs);
   }
 
