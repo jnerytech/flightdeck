@@ -147,3 +147,65 @@ As palavras que o modo simples põe no lugar das do modo completo (`apps/desktop
 Nome de ferramenta, JSON, id de sessão, nomes de worktree e de branch, hooks, MCP, plugins, cofre,
 nomes de modo de permissão, terminal, "Continuar no terminal" e "Copiar comando". A lista que o
 teste `simple-vocabulary` varre está em `apps/desktop/src/lib/simple-words.ts` (as duas línguas).
+
+## Domains
+
+The domain folders of the code (#1600), one word each: `apps/daemon/src/<folder>`, later
+`apps/desktop/src/features/<folder>` and `packages/protocol/src/<folder>`. The same domain keeps
+the same folder name in every app. The context map that groups them and draws their borders is
+`docs/decisions/2026-11-10-context-map.md`; `scripts/test/domain-glossary.test.ts` fails on a
+folder with no row here. Folders still named after a layer (`server`, `store`, `bg`) are in that
+test's baseline, with the issue that renames them.
+
+| Folder | Domain | What it owns |
+| --- | --- | --- |
+| `account` | account | The Claude account the host's `claude` is signed in to, shown and never asked for |
+| `actions` | action | Declared commands with places for vault secrets, their trust and their runs |
+| `activity` | activity | What happened on the host since a time, read from what the daemon already keeps |
+| `agentcfg` | agent | A project's Claude Code configuration: MCP servers, CLAUDE.md, agents and skills |
+| `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
+| `automations` | automation | Triggers (time, PR comment, failing checks, labeled issue) and the action each fires |
+| `board` | board | A project's cards, their columns, launches, PR flow, blockers and arenas |
+| `boardsync` | board sync | Two-way sync of a board with an external board (GitHub Projects, Azure Boards) |
+| `central` | terminal session | Terminal sessions seen through Claude Code's hooks: the receptor, the hooks, the wrapper |
+| `checkpoints` | snapshot | The git snapshots of each turn, rewind files and fork |
+| `costs` | cost | Estimated costs from the transcripts, price table, budgets and the status line |
+| `deps` | dependency | The tools a host needs (git, gh, claude...), probed and reported |
+| `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
+| `harness` | harness | A project's Markdown harness shared as a host template |
+| `history` | history | The conversations Claude Code already recorded, indexed and read only |
+| `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
+| `knowledge` | library | A project's document library and what a session is given from it |
+| `logs` | log | The daemon's own log files: rotation, scan and serve |
+| `maintenance` | maintenance | Backup and retention of the daemon's data |
+| `memory` | memory | Claude Code's auto memory of a project, edited only by an explicit action |
+| `messaging` | message | Messages between sessions, their policy, loops and exceptions |
+| `names` | standard name | The display name and alias of every session |
+| `permissions` | permission | Permission requests, risk, auto-approval and the rules behind them |
+| `personas` | persona | Engineering roles a session takes, the pack and their storage |
+| `plugins` | plugin | Claude Code plugins of the host, through the `claude plugin` CLI |
+| `power` | keep awake | Keeps the computer awake while sessions run |
+| `quota` | quota | The plan's 5-hour and 7-day windows and the queue they hold |
+| `releases` | release | The product's GitHub releases, read and cached |
+| `resources` | resources | The host's CPU and memory, per process, and the memory gate |
+| `review` | review | The changes of a session or card: files, diff, comments, commit and PR |
+| `roi` | return on cost | Delivered work, its estimated value and the return on cost |
+| `runenv` | run environment | A card's `run.yaml`: setup, processes, port block and Preview |
+| `runtime` | runtime | The engines that run a session: the Claude Code SDK and OpenCode over ACP |
+| `sessions` | session | The Flightdeck sessions of a host: start, state, stall and sleep |
+| `snippets` | snippet | Saved commands and prompts with `{{name}}` places, and their use |
+| `ssh` | SSH destination | SSH destinations, server keys, key delivery and the ssh runs of actions |
+| `summary` | summary | A short summary of a session built from its transcript, with no model call |
+| `teams` | team | A coordinator session and its workers, started together |
+| `telemetry` | telemetry | Claude Code's OTLP export, received locally: timings, never text |
+| `teleport` | teleport | Moves a session with its work to another host |
+| `templates` | template | The task templates of simple mode and the presets they start with |
+| `terminal` | embedded terminal | Real shells on the host behind a PTY, attached by the app |
+| `trace` | trace | The tree of a session's turns, tool calls and subagents, with time and cost |
+| `trust` | trusted | What a project's own files would load, read without running, and its trust |
+| `updates` | update | Checks, verifies and applies the daemon's signed updates |
+| `vault` | vault | Secrets in the OS store, their usage rules, windows and requests |
+| `watch` | watch and fix | The rounds that watch a PR and fix what got worse |
+| `webhook` | webhook | Posts the app's events to a webhook URL, kept as a secret |
+| `workflows` | workflow | A card's steps (agent, check, gate), their engine and findings |
+| `worktrees` | worktree | A card's git worktree and branch, locks and cleanup |
