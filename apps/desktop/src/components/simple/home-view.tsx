@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { T } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import type { ConnectionStatus } from "../../lib/host-connection.ts";
 import type { TaskState } from "../../lib/simple-task.ts";
 
@@ -60,6 +60,8 @@ function TemplateForm(
     t: T;
     canPickFolder: boolean;
     onPickFolder(): Promise<string | null>;
+    /** Why a task cannot start now (the computer is not connected), or null. */
+    blocked: string | null;
     onStart(values: Record<string, string>): Promise<void>;
     onClose(): void;
   }>,
@@ -124,8 +126,8 @@ function TemplateForm(
       ))}
       <FieldRow>
         <ActionButton
-          disabled={missing}
-          disabledReason={t("simple.home.needsAnswer")}
+          disabled={missing || props.blocked !== null}
+          disabledReason={props.blocked ?? t("simple.home.needsAnswer")}
           onClick={async () => {
             const filled = Object.fromEntries(
               Object.entries(values).filter(([, value]) => value.trim() !== ""),
@@ -152,20 +154,23 @@ function askedFor(template: Template, lang: T["lang"]): string {
     .join(", ");
 }
 
+/** What each connection state is called on Home and, when tasks cannot start, what to do. */
+const STATE_TEXT: Record<ConnectionStatus, { label: Key; notice: Key | null }> = {
+  online: { label: "simple.home.connected", notice: null },
+  connecting: { label: "simple.home.connecting", notice: null },
+  offline: { label: "simple.home.notConnected", notice: "simple.home.offline" },
+  unauthorized: { label: "simple.home.notAccepted", notice: "simple.home.unauthorized" },
+  incompatible: { label: "simple.home.needsUpdate", notice: "simple.home.incompatible" },
+};
+
 /** The first place of simple mode: the templates, what waits for an answer, the recent tasks. */
 export function HomeView(props: Readonly<HomeViewProps>) {
   const { t } = props;
   const [chosen, setChosen] = useState<Template | null>(null);
   const waiting = props.tasks.filter((task) => task.state === "waiting");
   const { where } = props;
-  const reachable = where.status === "online" || where.status === "connecting";
-  const state = t(
-    where.status === "online"
-      ? "simple.home.connected"
-      : where.status === "connecting"
-        ? "simple.home.connecting"
-        : "simple.home.notConnected",
-  );
+  const stateText = STATE_TEXT[where.status];
+  const state = t(stateText.label);
 
   const taskRow = (task: HomeTask) => (
     <li key={task.sessionId} className="home-task">
@@ -190,12 +195,10 @@ export function HomeView(props: Readonly<HomeViewProps>) {
       <p className="question-card-note">
         {t("simple.home.runsOn", { host: where.hostName, state })}
       </p>
-      {!reachable && (
-        <InlineNotice tone="error">
-          {t("simple.home.offline", { host: where.hostName })}
-        </InlineNotice>
+      {stateText.notice && (
+        <InlineNotice tone="error">{t(stateText.notice, { host: where.hostName })}</InlineNotice>
       )}
-      {where.status === "online" && (where.folders ?? []).length === 0 && (
+      {where.status === "online" && where.folders?.length === 0 && (
         <Note>
           <span>{t("simple.home.noFolders")}</span>
           <Button type="button" variant="outline" onClick={where.onOpenSettings}>
@@ -217,6 +220,7 @@ export function HomeView(props: Readonly<HomeViewProps>) {
           <ul className="template-cards">
             {props.templates.map((template) => {
               const Icon = ICONS[template.icon] ?? Sparkles;
+              const asks = askedFor(template, t.lang);
               return (
                 <li key={template.id}>
                   <button
@@ -227,9 +231,9 @@ export function HomeView(props: Readonly<HomeViewProps>) {
                     <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
                     <span className="template-card-title">{template.title[t.lang]}</span>
                     <span className="question-card-note">{template.description[t.lang]}</span>
-                    {askedFor(template, t.lang) !== "" && (
+                    {asks !== "" && (
                       <span className="question-card-note">
-                        {t("simple.home.asks", { fields: askedFor(template, t.lang) })}
+                        {t("simple.home.asks", { fields: asks })}
                       </span>
                     )}
                     <span className="question-card-note">
@@ -243,20 +247,22 @@ export function HomeView(props: Readonly<HomeViewProps>) {
         )}
       </section>
 
-      <section aria-label={t("simple.home.recent")}>
-        <h2 className="home-heading">{t("simple.home.recent")}</h2>
-        {props.tasks.length === 0 ? (
-          <ol aria-label={t("simple.home.steps")} className="home-steps">
-            <li>{t("simple.home.step1")}</li>
-            <li>{t("simple.home.step2")}</li>
-            <li>{t("simple.home.step3")}</li>
-          </ol>
-        ) : (
-          <ul aria-label={t("simple.home.recent")} className="task-files">
-            {props.tasks.map(taskRow)}
-          </ul>
-        )}
-      </section>
+      {(props.tasks.length > 0 || props.templates.length > 0) && (
+        <section aria-label={t("simple.home.recent")}>
+          <h2 className="home-heading">{t("simple.home.recent")}</h2>
+          {props.tasks.length === 0 ? (
+            <ol aria-label={t("simple.home.steps")} className="home-steps">
+              <li>{t("simple.home.step1")}</li>
+              <li>{t("simple.home.step2")}</li>
+              <li>{t("simple.home.step3")}</li>
+            </ol>
+          ) : (
+            <ul aria-label={t("simple.home.recent")} className="task-files">
+              {props.tasks.map(taskRow)}
+            </ul>
+          )}
+        </section>
+      )}
 
       <Dialog open={chosen !== null} onOpenChange={(open) => !open && setChosen(null)}>
         <DialogContent>
@@ -271,6 +277,11 @@ export function HomeView(props: Readonly<HomeViewProps>) {
                 t={t}
                 canPickFolder={props.canPickFolder}
                 onPickFolder={props.onPickFolder}
+                blocked={
+                  where.status === "online"
+                    ? null
+                    : t("simple.home.cannotStart", { host: where.hostName })
+                }
                 onStart={(values) => props.onStart(chosen.id, values)}
                 onClose={() => setChosen(null)}
               />

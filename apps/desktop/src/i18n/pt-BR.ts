@@ -4859,26 +4859,33 @@ export const ptBR = {
       recent: "Suas tarefas recentes",
       waiting: "Esperando a sua resposta",
       intro:
-        "O Claude trabalha nos seus arquivos neste computador, uma tarefa por vez. Ele pergunta antes de mudar qualquer coisa e mostra o que fez.",
+        "O Claude trabalha nos seus arquivos neste computador, uma tarefa por vez. Cada cartão diz se só lê ou pode mudar arquivos, e você vê o que foi feito.",
       runsOn: "As tarefas rodam em {host} ({state}).",
       connected: "conectado",
       connecting: "conectando",
       notConnected: "não conectado",
+      notAccepted: "não aceito",
+      needsUpdate: "precisa de uma atualização",
+      unauthorized:
+        "{host} não aceitou este app, então uma tarefa não pode começar. Pareie de novo pelo app completo.",
+      incompatible: "{host} precisa de uma atualização antes de rodar tarefas.",
+      cannotStart: "{host} não está conectado.",
       offline:
         "{host} não está conectado, então uma tarefa não pode começar agora. Veja se o computador está ligado e atualizado, e tente de novo.",
       noFolders:
         "Nenhuma pasta foi liberada ainda, então uma tarefa não tem onde trabalhar. Adicione uma em Configurações antes de escolher um cartão.",
       openSettings: "Abrir Configurações para adicionar uma pasta",
-      asks: "Pede: {fields}",
+      asks: "Perguntas: {fields}",
       preset: {
-        read_only: "Só lê: nada muda.",
+        read_only: "Só lê os seus arquivos.",
         ask_before_changes: "Pergunta antes de mudar qualquer coisa.",
-        edit_folder: "Edita arquivos da pasta que você escolher, perguntando antes.",
+        edit_folder: "Edita arquivos da pasta que você escolher.",
       },
       steps: "Como uma tarefa acontece",
       step1: "Escolha um cartão acima.",
       step2: "Responda às poucas perguntas que ele faz.",
-      step3: "Receba os arquivos na pasta Flightdeck results.",
+      step3:
+        "Receba o que foi feito na pasta Flightdeck results, dentro da pasta que você escolheu.",
       noTemplates: "Este computador ainda não tem tarefas prontas.",
       open: "Abrir {title}",
       start: "Começar esta tarefa",

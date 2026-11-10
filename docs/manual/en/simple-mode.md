@@ -8,14 +8,15 @@ how a host looks, not what it can do: the sessions, the permissions and the file
 **What you see.** A narrow menu with three places: *Home*, *Files* and *Settings*.
 
 - *Home* asks "What do you want done?". Under it, two lines say what a task is (Claude working on
-  your files on this computer, asking before it changes anything) and which computer the tasks run
-  on, with its connection. If that computer is not connected, a notice says a task cannot start; if
-  no folder is allowed yet, a note with a button opens *Settings* to add one. Ready-made tasks are
-  cards (summarise a folder, draft a report, review a document, compare files); each card names what
-  it asks for and whether it only reads or may change files, and starts the task once you answer.
+  your files on this computer) and which computer the tasks run on, with its connection. If that
+  computer is not connected, does not accept the app or needs an update, a notice says what to do
+  and *Start this task* stays held; if no
+  folder is allowed yet, a note with a button opens *Settings* to add one. Ready-made tasks are
+  cards (summarise a folder, draft a report, review a document, compare files); each card lists its questions and
+  whether it only reads your files, asks before it changes anything or edits the folder you pick, and starts the task once you answer.
   Tasks that wait for you come first, then your recent tasks; before your first one, three steps
-  show how a task goes: pick a card, answer its questions, get the files in the *Flightdeck results*
-  folder.
+  show how a task goes: pick a card, answer its questions, get what it made in the *Flightdeck results*
+  folder, inside the folder you picked.
 - A *task* shows what it is doing in a line, asks its questions in plain words with **Yes, go ahead** and
   **No, don't** (and says when something cannot be undone), and when it is done shows a summary and the
   files it made. Open a file, show it in its folder, or ask for changes. *Show details* opens the

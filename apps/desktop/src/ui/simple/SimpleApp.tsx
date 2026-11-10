@@ -291,7 +291,7 @@ export function SimpleApp(
             where={{
               hostName: host?.name ?? hostId,
               status: host?.status ?? "offline",
-              folders: host?.info?.allowedRoots ?? [],
+              folders: host?.info ? host.info.allowedRoots : null,
               onOpenSettings: () => setScreen({ name: "settings" }),
             }}
           />
