@@ -613,12 +613,12 @@ function sessionsSplit(props: ScreenProps, route: Route, detail: ReactNode): Rea
 const SETTINGS_ACTIONS = new WeakMap<AppStore, ReturnType<typeof makeSettingsActions>>();
 function makeSettingsActions(store: AppStore) {
   return {
-    onCloseToTray: (enabled: boolean) => void store.setCloseToTray(enabled),
-    onAutostart: (enabled: boolean) => void store.setAutostart(enabled),
-    onGlobalShortcut: (text: string) => void store.setGlobalShortcut(text),
+    onCloseToTray: (enabled: boolean) => void store.settings.setCloseToTray(enabled),
+    onAutostart: (enabled: boolean) => void store.settings.setAutostart(enabled),
+    onGlobalShortcut: (text: string) => void store.settings.setGlobalShortcut(text),
     onCheckUpdate: () => void store.checkAppUpdate(),
-    onNotifyUpdates: (enabled: boolean) => store.setNotifyUpdates(enabled),
-    onAutoUpdate: (enabled: boolean) => store.setAutoUpdate(enabled),
+    onNotifyUpdates: (enabled: boolean) => store.settings.setNotifyUpdates(enabled),
+    onAutoUpdate: (enabled: boolean) => store.settings.setAutoUpdate(enabled),
     onTheme: (mode: ThemeMode) => store.theme.setMode(mode),
     onDensity: (density: Density) => store.density.set(density),
     onLang: (next: Lang) => store.i18n.setLang(next),

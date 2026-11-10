@@ -15,7 +15,8 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, AUTO_UPDATE_KEY, NOTIFY_UPDATES_KEY } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { AUTO_UPDATE_KEY, NOTIFY_UPDATES_KEY } = await import("../src/features/settings/index.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
@@ -151,7 +152,7 @@ describe("app-updater", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await waitFor(() => expect(mem.calls.length).toBeGreaterThanOrEqual(3));
-    act(() => store.setNotifyUpdates(false));
+    act(() => store.settings.setNotifyUpdates(false));
     const count = mem.calls.length;
     await Bun.sleep(80);
     expect(mem.calls).toHaveLength(count);

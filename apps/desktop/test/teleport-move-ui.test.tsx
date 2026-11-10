@@ -78,7 +78,7 @@ describe("teleport-move-ui: the entry that moves a session, behind the preview (
     const { store } = await setup();
     const before = await menu("Moving");
     await act(async () => {
-      store.setTeleportPreview(true);
+      store.settings.setTeleportPreview(true);
     });
     const after = await menu("Moving");
     const trigger = screen.queryByRole("button", { name: "Actions of Moving" });
