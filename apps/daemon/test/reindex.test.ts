@@ -121,6 +121,19 @@ describe("reindex", () => {
     expect(lock).not.toBeNull();
   });
 
+  test("a corrupt database file leaves the daemon's lock free too (#1676)", async () => {
+    const { file, db } = setup();
+    // The file opens, then its first statement fails: not a database.
+    mkdirSync(dirname(db), { recursive: true });
+    writeFileSync(db, "not a sqlite database, only text".repeat(64));
+    const cli = deps();
+    await runCli(["history", "reindex", "--config", file], cli.cli);
+    expect(cli.exits).toEqual([1]);
+    const lock = await acquireLock(dirname(db));
+    await lock?.release();
+    expect(lock).not.toBeNull();
+  });
+
   test("com o daemon rodando no mesmo dataDir o reindex recusa e sai com código 3", async () => {
     const { file } = setup();
     const running = deps();
