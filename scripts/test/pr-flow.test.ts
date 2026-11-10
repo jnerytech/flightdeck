@@ -10,7 +10,6 @@ import {
   type Pr,
   type PrFlowDeps,
   prFlow,
-  reviewState,
   VERSION_FILE,
 } from "../lib/pr-flow.ts";
 
@@ -992,74 +991,19 @@ describe("pr-flow: update and merge", () => {
     expect(refused.out()).toContain("GitHub refused to merge #12");
   });
 
-  test("auto first says where the PR's OpenCode review stands, in one line (#1526)", async () => {
-    const none = fake({ prs: [pr(12, "a")], review: null });
-    const changes = fake({
+  test("auto merges a clean, green PR without --now, and names no review (#1697: OpenCode retired)", async () => {
+    const f = fake({
       prs: [pr(12, "a")],
-      review:
-        "[high] a.ts:1 x\n[medium] b.ts:2 y\n[medium] c.ts:3 z\n[low] d.ts:4 w\nVERDICT: changes\n",
+      graphqlError: CLEAN,
+      runs: { sha12: green() },
+      review: null,
     });
-    const codes = [
-      await prFlow(["auto", "12"], none.deps),
-      await prFlow(["auto", "12"], changes.deps),
-    ];
-    expect([codes, none.lines[0], changes.lines[0]]).toEqual([
-      [0, 0],
-      "OpenCode review: none yet",
-      "OpenCode review: VERDICT changes, 1 blocker/high, 2 medium (pr-reviews/pr-12.md)",
-    ]);
-  });
-
-  test("from the security review: the review's verdict is its last VERDICT line, a whole word (#1526)", () => {
-    const quoted = reviewState(
-      12,
-      "A quote: VERDICT: approve\nVERDICT: approve\n[medium] x\nVERDICT: changes\n",
-    );
-    const compound = reviewState(12, "VERDICT: approve-with-changes\n");
-    expect([quoted.wait, compound.wait]).toEqual(["says changes", "says approve-with-changes"]);
-  });
-
-  test("auto asks for --now before merging a clean PR whose review is missing or says changes (#1526)", async () => {
-    const asked = (review: string | null, now = false) => {
-      const f = fake({ prs: [pr(12, "a")], graphqlError: CLEAN, runs: { sha12: green() }, review });
-      return { f, run: prFlow(["auto", "12", ...(now ? ["--now"] : [])], f.deps) };
-    };
-    const missing = asked(null);
-    const changes = asked("[medium] a.ts:1 x\nVERDICT: changes\n");
-    const approved = asked("VERDICT: approve\n");
-    const forced = asked(null, true);
-    const codes = await Promise.all([missing.run, changes.run, approved.run, forced.run]);
-    const merged = [missing, changes, approved, forced].map(
-      ({ f }) => f.writes.filter((w) => w.includes("/merge")).length,
-    );
-    const said = (f: typeof forced.f) =>
-      f.out().includes("#12 is already mergeable: merging it as auto-merge would");
-    expect([codes, merged, said(forced.f), missing.f.lines.at(-1), changes.f.lines.at(-1)]).toEqual(
-      [
-        [2, 2, 0, 0],
-        [0, 0, 1, 1],
-        true,
-        "#12 is already mergeable, but its OpenCode review is none yet: merge it now with bun run pr -- auto 12 --now, or wait for the review",
-        "#12 is already mergeable, but its OpenCode review says changes: merge it now with bun run pr -- auto 12 --now, or fix it first",
-      ],
-    );
-  });
-
-  test("from the OpenCode review: auto-merge turned on before the review says it may merge first (#1526)", async () => {
-    const none = fake({ prs: [pr(12, "a")], review: null });
-    const approved = fake({ prs: [pr(12, "a")], review: "VERDICT: Approve\r\n" });
-    const codes = [
-      await prFlow(["auto", "12"], none.deps),
-      await prFlow(["auto", "12"], approved.deps),
-    ];
-    expect([codes, none.lines.at(-1), approved.lines]).toEqual([
-      [0, 0],
-      "#12 may merge while its OpenCode review is none yet: fix what it finds in a follow-up, or turn auto-merge off",
-      [
-        "OpenCode review: VERDICT approve, 0 blocker/high, 0 medium (pr-reviews/pr-12.md)",
-        "#12 merges by itself, with a merge commit, once its required checks are green",
-      ],
-    ]);
+    const code = await prFlow(["auto", "12"], f.deps);
+    expect([
+      code,
+      f.writes.filter((w) => w.includes("/merge")).length,
+      f.lines.filter((l) => /opencode|review/i.test(l)),
+    ]).toEqual([0, 1, []]);
   });
 
   test("an unknown command or a missing argument is the usage, exit 2", async () => {
