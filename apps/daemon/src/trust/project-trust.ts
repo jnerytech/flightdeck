@@ -87,12 +87,12 @@ export class ProjectTrust {
    * count `cwd` as trusted: a record on an allowed root that is one project counts only at the
    * root itself, never for a folder inside it (a nested clone is not seen here).
    */
-  isTrustedFolder(_cwd: string): boolean {
-    return false;
+  isTrustedFolder(cwd: string): boolean {
+    return this.via(cwd, false) !== null;
   }
 
   /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
-  via(cwd: string): string | null {
+  via(cwd: string, deep = true): string | null {
     const here = resolve(cwd);
     const roots = [...(this.opts.roots?.() ?? []).map((root) => resolve(root)), ...this.realRoots];
     const granting = this.rows()
@@ -100,7 +100,10 @@ export class ProjectTrust {
         if (row.scope === "exact") return (this.opts.sameFolder ?? samePath)(row.path, here);
         // A root, or a folder that holds one, would trust every clone made inside it, unless the
         // root is itself one project: then its own record is the person's trust of that project.
-        const oneProject = this.projectRoots.some((root) => samePath(root, row.path));
+        // `deep` off: only at the root itself, since nothing here looks at git boundaries below it.
+        const oneProject =
+          this.projectRoots.some((root) => samePath(root, row.path)) &&
+          (deep || samePath(row.path, here));
         if (!oneProject && roots.some((root) => isInside(row.path, root))) return false;
         return isInside(row.path, here);
       })

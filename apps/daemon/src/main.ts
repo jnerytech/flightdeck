@@ -475,7 +475,7 @@ export async function startDaemon(
     checkLoop: {
       // From the database alone: the board reads them while it starts, before the watcher exists.
       settings: (projectId) => readWatchSettings(store.db, projectId),
-      isTrusted: (path) => projectTrust.isTrusted(path),
+      isTrusted: (path) => projectTrust.isTrustedFolder(path),
       runner: boundedCheckRunner(),
     },
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
@@ -952,7 +952,7 @@ export async function startDaemon(
     checkLoop: new CheckLoopSwitch({
       board,
       settings: (projectId) => prWatcher.settings(projectId),
-      isTrusted: (path) => projectTrust.isTrusted(path),
+      isTrusted: (path) => projectTrust.isTrustedFolder(path),
       modeOf: (card) => cardMode(card, manager),
     }),
     vault,

@@ -93,7 +93,11 @@ export const projectHandlers = {
       );
     }
     await trust.refresh();
-    return trust.set(path, payload.trusted);
+    const done = trust.set(path, payload.trusted);
+    // The boundary read before the record existed (a `state` call on a nested clone) would make the
+    // answer say untrusted: read it again, now that the record is there (#1704).
+    await trust.refresh([path]);
+    return trust.state([path])[0] ?? done;
   },
   "project.harness.stack": async (payload, { server }) => {
     const stack = server.opts.harnessStack;
