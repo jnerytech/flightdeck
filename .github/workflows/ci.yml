@@ -99,6 +99,15 @@ jobs:
       - name: Ratchets
         run: bun run scripts/ci-quick.ts
 
+      # A structure-only PR (#1602): every commit a refactor, or the `structure` label (read at the
+      # run's start). It may move code and change import paths, never a test's body, a test file or
+      # a dictionary text.
+      - name: Structure-only guard
+        if: github.event_name == 'pull_request'
+        env:
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: bun run scripts/structure-guard.ts
+
   # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
   # suite and the checks in parallel. The required check `test (ubuntu-latest)` is the aggregate
   # below.

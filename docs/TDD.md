@@ -203,6 +203,19 @@ the tests alone.
 - **Coverage is a negative indicator.** Low coverage shows untested code; high coverage proves
   nothing. The 80% gate (#1002) is on business flows, never reached with line-only tests.
 
+## Moves and characterization tests (#1602)
+
+A move (#1589) is a PR whose commits are all `refactor(<scope>)`, or that has the `structure` label.
+The commit hook gates only `feat` and `fix`, so a `refactor` needs no earlier `test` commit. CI's
+structure-only guard (`scripts/structure-guard.ts`) fails a move that changes a test beyond its
+import paths, adds or deletes a test file, or changes a dictionary text. Such a test is coupled to
+an implementation detail: the change goes in a PR of its own, with an issue to make it test behavior.
+
+Before a file is split, check its coverage (`bun run coverage:funcs <file>`, `test:related`). Under
+80% of its lines or functions, the split's first PR adds characterization tests and nothing else:
+they pin what the code does today, right or wrong, red by assertion when that behavior changes
+(Feathers). The moves come after, in their own PRs.
+
 ## Test anchors
 
 How a UI test finds what it checks, in this order (issue #168, owner decision). The design rules
