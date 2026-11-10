@@ -242,6 +242,16 @@ describe("home-simple-ui: where simple mode begins", () => {
     expect(screen.queryByText("As tarefas rodam em Office PC (conectado).")).not.toBeNull();
   });
 
+  test("Given the host, Then the first card comes before the line about where tasks run, so it stays in a phone's window", () => {
+    view();
+    const card = screen
+      .getByRole("region", { name: "Start something" })
+      .querySelector("button") as HTMLElement;
+    const line = screen.getByText("Tasks run on Office PC (connected).");
+    // 4 = DOCUMENT_POSITION_FOLLOWING: the line follows the card.
+    expect((card.compareDocumentPosition(line) & 4) === 4).toBe(true);
+  });
+
   test("Given the host is offline, Then a notice says tasks cannot start until it is back", () => {
     view({ status: "offline" });
     const notice = screen.queryByRole("alert");
