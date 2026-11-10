@@ -41,6 +41,7 @@ import { Snapshots } from "./checkpoints/snapshots.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import { runHooks, runTelemetry } from "./cli/claude-settings.ts";
+import { runReindex } from "./cli/history.ts";
 import { runService, runUpdateCommand } from "./cli/host.ts";
 import { type MaintenanceCommandDeps, runBackup, runPrune, runRestore } from "./cli/maintenance.ts";
 import { runDoctorCommand, runPair, runSetupCommand, type SetupCommandDeps } from "./cli/setup.ts";
@@ -82,7 +83,7 @@ import { knowledgeFeedFor } from "./knowledge/serve.ts";
 import { setKnowledgeStatus } from "./knowledge/status.ts";
 import { knowledgeSwitchFor } from "./knowledge/switch.ts";
 import { lingerState } from "./linger.ts";
-import { acquireLock } from "./lock.ts";
+import { AlreadyRunningError, acquireLock } from "./lock.ts";
 import { FileLog } from "./logs/file-log.ts";
 import { createLogScanner } from "./logs/scanner.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
@@ -194,13 +195,6 @@ export const HOOK_CONNECT_TIMEOUT_MS = 1_000;
 
 /** Exit code when another daemon already owns the same `dataDir`. */
 export const EXIT_ALREADY_RUNNING = 3;
-
-export class AlreadyRunningError extends Error {
-  constructor(dataDir: string, hint?: string) {
-    const more = hint ? `; ${hint}` : "";
-    super(`already running (dataDir ${dataDir})${more}`);
-  }
-}
 
 export interface Logger {
   log(message: string): void;
@@ -1510,31 +1504,6 @@ function appServiceInstall(
       },
       confirm,
     );
-}
-
-/**
- * `flightdeckd history reindex`: drops the transcript index and builds it again. Takes the
- * daemon's lock, so it refuses (exit 3) while a daemon uses the same `dataDir`.
- */
-async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
-  const config = await loadConfig(configPath(args));
-  const lock = await acquireLock(config.dataDir);
-  if (!lock) {
-    throw new AlreadyRunningError(config.dataDir, "stop the daemon before rebuilding the index");
-  }
-  const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
-  try {
-    const history = new HistoryIndexer({
-      db: store.db,
-      roots: config.history.roots,
-      excludeCwds: historyExcludes(config),
-    });
-    const { sessions, messages } = await history.rebuild();
-    deps.log.log(`history rebuilt: ${sessions} sessions, ${messages} messages`);
-  } finally {
-    store.close();
-    await lock.release();
-  }
 }
 
 /**
