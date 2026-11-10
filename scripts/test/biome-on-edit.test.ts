@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { checkEditedFile } from "../lib/claude-hooks.ts";
@@ -43,6 +43,13 @@ describe.skipIf(process.platform === "win32")("biome-on-edit: what the hook find
       rmSync(dir, { recursive: true, force: true });
     }
   }
+
+  // CI ran the first test of this file at 7 to 8 s, past the 5 s limit, while the next took a
+  // quarter second: Biome's binary starting cold under the suite's load. One run here pays that
+  // start outside any test's time (the slow-test check reads each test's own time).
+  beforeAll(() => {
+    check("export const warm = 1;\n");
+  });
 
   test("formatting and the import order are written into the file, and nothing is left to report", () => {
     const { ok, output, after } = check(
