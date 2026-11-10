@@ -61,7 +61,7 @@ export const projectHandlers = {
     const paths = await Promise.all(
       payload.paths.map((p) => resolveAllowedCwd(p, server.opts.allowedRoots)),
     );
-    await trust.refresh();
+    await trust.refresh(paths);
     return { items: trust.state(paths) };
   },
   "project.trust.inspect": async (payload, { ws, server }) => {
