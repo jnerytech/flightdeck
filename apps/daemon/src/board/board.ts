@@ -13,7 +13,7 @@ import {
   type WorkflowTemplate,
   type WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
-import { FlightdeckError, refusalOf } from "../errors.ts";
+import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
 import { isInside } from "../paths.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
@@ -24,11 +24,12 @@ import { Arenas } from "./arena.ts";
 import { Blockers } from "./blockers.ts";
 import { CardLifecycle } from "./card-lifecycle.ts";
 import { CardPrFlow } from "./card-pr-flow.ts";
+import { CardState } from "./card-state.ts";
 import { CardView } from "./card-view.ts";
 import { Cards } from "./cards.ts";
 import type { CheckLoopEngine } from "./check-loop-engine.ts";
 import { CheckLoopHost } from "./check-loop-host.ts";
-import { type BoardEvent, nextColumn } from "./columns.ts";
+import type { BoardEvent } from "./columns.ts";
 import { Launcher, PENDING_NOTICE } from "./launch.ts";
 import { type PrComment, prProvider } from "./pr.ts";
 import { PrPoll } from "./pr-poll.ts";
@@ -53,8 +54,6 @@ export { DEFAULT_PR_POLL_MS } from "./pr-poll.ts";
 export { DEFAULT_PROMPT_TEMPLATE } from "./projects.ts";
 export type { FixResult } from "./session-follow.ts";
 export type { BoardOptions } from "./types.ts";
-
-const now = () => new Date().toISOString();
 
 /**
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
@@ -87,7 +86,8 @@ export class Board {
   private readonly prFlow: CardPrFlow;
   /** Set by stop(): the database may be closed, so a start still in flight writes nothing. */
   private stopped = false;
-  private readonly watchers = new Set<(card: Card) => void>();
+  /** A card's column and notice as they change, and its watchers (issue #1523). */
+  private readonly state: CardState;
   /** Issue #1405: the conflict radar's reads and overlaps (issue #1523). */
   private readonly radarFeed: RadarFeed;
   /** The cards a card waits for (phase 31) and the gate before a start (issue #1523). */
@@ -102,15 +102,25 @@ export class Board {
 
   constructor(private readonly opts: BoardOptions) {
     this.db = opts.db;
+    this.state = new CardState({
+      db: opts.db,
+      card: (id) => this.getCard(id),
+      recordDone: (id, via, at) => recordDone(opts.db, id, via, at),
+      blockers: {
+        blockingOf: (id) => this.blockers.blockingOf(id),
+        afterBlockerChange: (id) => this.blockers.afterBlockerChange(id),
+      },
+    });
     // What most collaborators' ports share; late-bound, as each arrow reads `this` only when called.
     const core = {
       db: opts.db,
       opts,
       card: (id: string) => this.getCard(id),
       project: (id: string) => this.getProject(id),
-      changed: (id: string) => this.changed(id),
-      place: (id: string, event: BoardEvent, via?: DoneVia) => this.place(id, event, via),
-      setNotice: (id: string, notice: string, why?: unknown) => this.setNotice(id, notice, why),
+      changed: (id: string) => this.state.changed(id),
+      place: (id: string, event: BoardEvent, via?: DoneVia) => this.state.place(id, event, via),
+      setNotice: (id: string, notice: string, why?: unknown) =>
+        this.state.setNotice(id, notice, why),
       stopped: () => this.stopped,
     };
     this.radarFeed = new RadarFeed({
@@ -119,7 +129,7 @@ export class Board {
     this.blockers = new Blockers({
       ...core,
       startCard: (id, options) => this.startCard(id, options),
-      setNoticeReason: (id, why) => this.setNoticeReason(id, why),
+      setNoticeReason: (id, why) => this.state.setNoticeReason(id, why),
     });
     this.projects = new Projects(opts.db, opts);
     this.queue = new RunQueue({
@@ -143,7 +153,7 @@ export class Board {
       manager: opts.manager,
       ...(opts.preparePersonas ? { preparePersonas: opts.preparePersonas } : {}),
       host: {
-        place: (cardId, event) => this.place(cardId, event),
+        place: (cardId, event) => this.state.place(cardId, event),
         release: (cardId) => this.release(cardId),
         hold: (cardId) => this.queue.hold(cardId),
         acquire: (cardId) => this.queue.acquire(cardId),
@@ -216,7 +226,7 @@ export class Board {
     this.lifecycle = new CardLifecycle({
       ...core,
       workflows: this.workflows,
-      emit: (card) => this.emit(card),
+      emit: (card) => this.state.emit(card),
       settleFix: (id, result) => this.settleFix(id, result),
       loop: () => this.loop,
       closeRuns: (id) => this.closeRuns(id),
@@ -477,12 +487,11 @@ export class Board {
 
   /** Gets every card after each change; returns the function that stops it. */
   watch(listener: (card: Card) => void): () => void {
-    this.watchers.add(listener);
-    return () => this.watchers.delete(listener);
+    return this.state.watch(listener);
   }
 
   get watcherCount(): number {
-    return this.watchers.size;
+    return this.state.watcherCount;
   }
 
   /** #1266: whether a failed run can resume from its failed step; with `confirm`, resumes it. */
@@ -553,20 +562,6 @@ export class Board {
   /** The card's run stopped holding a slot: the next one in the queue goes. */
   private release(cardId: string): void {
     this.queue.release(cardId);
-  }
-
-  /** A card's notice; one that came from a refusal keeps its reason, which the app translates. */
-  private setNotice(id: string, notice: string, why?: unknown): void {
-    this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, id);
-    this.setNoticeReason(id, why);
-  }
-
-  private setNoticeReason(id: string, why: unknown): void {
-    const refusal = refusalOf(why);
-    if (!refusal) return;
-    this.db
-      .query("UPDATE cards SET notice_reason = ?, notice_params = ? WHERE id = ?")
-      .run(refusal.reason, JSON.stringify(refusal.params ?? {}), id);
   }
 
   /** Nothing reached the agent: the run ends and the card waits for the user with the error. */
@@ -797,20 +792,6 @@ export class Board {
 
   // -- internals ------------------------------------------------------------
 
-  private place(id: string, event: BoardEvent, via?: DoneVia): void {
-    const card = this.getCard(id);
-    const next = nextColumn({ column: card.column, locked: card.columnLocked }, event);
-    this.db
-      .query("UPDATE cards SET board_column = ?, column_locked = ?, updated_at = ? WHERE id = ?")
-      .run(next.column, next.locked ? 1 : 0, now(), id);
-    // The first time a card is done is the fact the ROI view counts delivered work by.
-    if (next.column === "done" && card.column !== "done") {
-      const how = via ?? (event.type === "pr" && event.state === "merged" ? "merged" : "moved");
-      recordDone(this.db, id, how, now());
-    }
-    this.changed(id);
-  }
-
   /** Whether a card's run uses this session: the board follows it, so the host never puts it to sleep. */
   hasRunSession(sessionId: string): boolean {
     return (
@@ -857,36 +838,12 @@ export class Board {
       .run(new Date().toISOString(), id, path);
     if (done.changes === 0) return;
     this.dropConflicts(id);
-    this.changed(id);
+    this.state.changed(id);
   }
 
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
   announce(id: string): void {
-    this.changed(id);
-  }
-
-  /** Sends the card as it is now to every watcher, and returns it. */
-  private changed(id: string): Card {
-    const card = this.getCard(id);
-    this.emit(card);
-    // What a card waits for follows its blockers' columns: the cards it holds up are news too.
-    for (const dependent of this.blockers.blockingOf(id)) {
-      this.blockers.afterBlockerChange(dependent);
-      this.emit(this.getCard(dependent));
-    }
-    return card;
-  }
-
-  private emit(card: Card): void {
-    // A variant is not on the board: what changed in it is news of the arena's card.
-    const shown = card.arenaOf ? this.getCard(card.arenaOf) : card;
-    for (const watcher of this.watchers) {
-      try {
-        watcher(shown);
-      } catch {
-        // A broken watcher must not break the board.
-      }
-    }
+    this.state.changed(id);
   }
 
   /** Session events of the card's active run move the card (replay first, then live). */
