@@ -30,7 +30,14 @@ import {
 import { cmd } from "./command.ts";
 import { isBranchName } from "./git-ref.ts";
 import { PermissionMode, SettableMode } from "./permissions.ts";
-import { PersonaFields, PersonaInput, PersonaRef, SessionPersona } from "./personas.ts";
+import {
+  PersonaRef,
+  PersonaSubagentsMode,
+  type PersonaSwitchResult,
+  type PersonasResults,
+  personasCommands,
+  SessionPersona,
+} from "./personas.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 import {
   AskpassRequest,
@@ -50,7 +57,7 @@ import {
   SessionSummary,
   ToolInput,
 } from "./sessions.ts";
-import { SnippetField, SnippetInput, SnippetVar } from "./snippets.ts";
+import { type SnippetsResults, snippetsCommands } from "./snippets.ts";
 import {
   TeleportAbortPayload,
   TeleportCancelPayload,
@@ -63,13 +70,10 @@ import {
   TeleportWritePayload,
 } from "./teleport.ts";
 import {
-  TerminalCols,
   TerminalData,
   TerminalExited,
-  type TerminalInfo,
   type TerminalResults,
   TerminalResync,
-  TerminalRows,
   TerminalSettings,
   terminalCommands,
 } from "./terminal.ts";
@@ -611,10 +615,6 @@ export const Issue = z.object({
   createdAt: z.string(),
 });
 export type Issue = z.infer<typeof Issue>;
-/** Which personas become subagents in a project: the pack and the project's, only the project's, or none. */
-export const PersonaSubagentsMode = z.enum(["all", "project", "none"]);
-export type PersonaSubagentsMode = z.infer<typeof PersonaSubagentsMode>;
-
 export const Project = z.object({
   id: z.string(),
   path: z.string(),
@@ -1195,124 +1195,6 @@ export const TemplateStartResult = z.object({
   permissionMode: PermissionMode,
 });
 export type TemplateStartResult = z.infer<typeof TemplateStartResult>;
-
-export const SnippetScope = z.enum(["host", "project"]);
-
-/** A snippet of this host, from the daemon or from a project's versioned file. */
-export const Snippet = z.object({
-  /** A ULID for the ones in the daemon; `file:<project>:<name>` for the ones in the file. */
-  id: z.string(),
-  scope: SnippetScope,
-  source: z.enum(["daemon", "file"]),
-  projectPath: z.string().nullable(),
-  name: z.string(),
-  type: z.enum(["command", "prompt"]),
-  run: z.string().nullable(),
-  text: z.string().nullable(),
-  vars: z.record(z.string(), SnippetVar),
-  tags: z.array(z.string()),
-  fields: z.array(SnippetField),
-  favorite: z.boolean(),
-  uses: z.number().int(),
-  lastUsedAt: z.string().nullable(),
-  /** A command from the versioned file runs only when the file is trusted; pasting never needs it. */
-  runnable: z.boolean(),
-});
-export type Snippet = z.infer<typeof Snippet>;
-
-/** The project's versioned `.flightdeck/snippets.yaml`: its hash, whether it is trusted and what was left out. */
-export const SnippetFileInfo = z.object({
-  path: z.string(),
-  hash: z.string(),
-  trusted: z.boolean(),
-  errors: z.array(z.string()),
-});
-export type SnippetFileInfo = z.infer<typeof SnippetFileInfo>;
-
-/** A line of the shell history that could become a snippet; a flagged one has no `command` until revealed and is never `selectable`. */
-export const SnippetHistoryCandidate = z.object({
-  /** Stable for the same command, so the app can say which ones to import. */
-  id: z.string(),
-  command: z.string().nullable(),
-  count: z.number().int(),
-  shells: z.array(z.string()),
-  /** What the secret scan found (the kinds, never the values). */
-  flagged: z.array(z.string()),
-  hidden: z.boolean(),
-  selectable: z.boolean(),
-});
-export type SnippetHistoryCandidate = z.infer<typeof SnippetHistoryCandidate>;
-
-export const SnippetHistoryResult = z.object({
-  candidates: z.array(SnippetHistoryCandidate),
-  sources: z.array(z.object({ shell: z.string(), found: z.boolean() })),
-  created: z.array(Snippet),
-  skipped: z.array(z.object({ id: z.string(), reason: z.string() })),
-});
-export type SnippetHistoryResult = z.infer<typeof SnippetHistoryResult>;
-
-const SnippetValues = z.record(z.string().max(100), z.string().max(4000));
-const SnippetUseContext = z
-  .object({
-    cwd: z.string().optional(),
-    file: z.string().max(4000).optional(),
-    selection: z.string().max(20_000).optional(),
-  })
-  .strict();
-
-/** A persona of this host: where it lives, the hash of a versioned file and whether it is trusted. */
-export const Persona = PersonaFields.extend({
-  scope: z.enum(["pack", "host", "project"]),
-  /** The SHA-256 of the project's file; `null` for the others. */
-  hash: z.string().nullable(),
-  /** A project persona is trusted once its hash is; the others always are. */
-  trusted: z.boolean(),
-  /** A pack persona the host has edited. */
-  modified: z.boolean(),
-});
-export type Persona = z.infer<typeof Persona>;
-
-/** A persona as a subagent: what the SDK's `agents` and claude's `--agents` take. */
-export const PersonaAgent = z.object({
-  description: z.string(),
-  prompt: z.string(),
-  tools: z.array(z.string()).optional(),
-  model: z.string().optional(),
-});
-export type PersonaAgent = z.infer<typeof PersonaAgent>;
-
-/** The agents `persona-<id>` of a project, and the versioned personas left out for lack of trust. */
-export const PersonaSubagents = z.object({
-  agents: z.record(z.string(), PersonaAgent),
-  untrusted: z.array(z.string()),
-});
-export type PersonaSubagents = z.infer<typeof PersonaSubagents>;
-
-/** What applying or leaving a persona answers: the persona and the message that was sent. */
-export const PersonaSwitchResult = z.object({
-  persona: SessionPersona,
-  text: z.string(),
-  /**
-   * How the message went: `sent` to an idle managed session, `queued` behind a turn or a pending
-   * request, `terminal` to a terminal session's channel (it shows when Claude takes it). Absent
-   * from an older host.
-   */
-  delivery: z.enum(["sent", "queued", "terminal"]).optional(),
-});
-export type PersonaSwitchResult = z.infer<typeof PersonaSwitchResult>;
-
-/** A persona ready to use, with where it came from. */
-export const ResolvedPersonaResult = z.object({
-  persona: PersonaFields,
-  source: z.enum(["project", "host", "pack", "inline"]),
-  /** The hash of the versioned file, for the ones from a project. */
-  hash: z.string().nullable(),
-});
-export type ResolvedPersonaResult = z.infer<typeof ResolvedPersonaResult>;
-
-/** The project's `.flightdeck/personas` folder and the files in it that were left out. */
-export const PersonaProjectInfo = z.object({ path: z.string(), errors: z.array(z.string()) });
-export type PersonaProjectInfo = z.infer<typeof PersonaProjectInfo>;
 
 const ReviewSide = z.enum(["new", "old"]);
 
@@ -3264,129 +3146,6 @@ export const Command = z.discriminatedUnion("type", [
       })
       .strict(),
   ),
-  /** Snippets of the host and, with `projectPath`, of that project, favorites and recents first. */
-  cmd(
-    "snippets.list",
-    z
-      .object({
-        scope: z.enum(["host", "project", "all"]).optional(),
-        projectPath: z.string().optional(),
-        query: z.string().optional(),
-        tag: z.string().optional(),
-        type: z.enum(["command", "prompt"]).optional(),
-      })
-      .strict(),
-  ),
-  /** Creates (no `id`) or edits a snippet; a secret in it is refused with `snippet_secret`. */
-  cmd(
-    "snippets.save",
-    z
-      .object({
-        ...SnippetInput.shape,
-        id: z.string().optional(),
-        scope: SnippetScope,
-        target: z.enum(["daemon", "file"]).optional(),
-        projectPath: z.string().optional(),
-      })
-      .strict(),
-  ),
-  /** By `id`, or by `name` (the host's, then the `projectPath`'s). */
-  cmd(
-    "snippets.get",
-    z
-      .object({
-        id: z.string().optional(),
-        name: z.string().optional(),
-        projectPath: z.string().optional(),
-      })
-      .strict()
-      .refine((p) => p.id !== undefined || p.name !== undefined, { message: "give id or name" }),
-  ),
-  cmd("snippets.remove", z.object({ id: z.string() }).strict()),
-  /** Trusts the content of the project's versioned file, by the hash `snippets.list` showed. */
-  cmd("snippets.trust", z.object({ projectPath: z.string(), hash: z.string() }).strict()),
-  cmd("snippets.favorite", z.object({ id: z.string(), favorite: z.boolean() }).strict()),
-  /** Reads a YAML or JSON list of snippets (an import from a file); saves nothing. */
-  cmd("snippets.parse", z.object({ text: z.string().max(1_000_000) }).strict()),
-  /**
-   * The most used commands of this host's shell histories (read only, secrets hidden). With
-   * `select` (ids of the candidates) it also makes them snippets of the host.
-   */
-  cmd(
-    "snippets.importHistory",
-    z
-      .object({
-        limit: z.number().int().min(1).max(200).optional(),
-        reveal: z.boolean().optional(),
-        select: z.array(z.string()).max(200).optional(),
-      })
-      .strict(),
-  ),
-  /** The text a snippet would produce with these values and context, and the fields it asks for. */
-  cmd(
-    "snippets.render",
-    z
-      .object({
-        id: z.string(),
-        values: SnippetValues.optional(),
-        context: SnippetUseContext.optional(),
-      })
-      .strict(),
-  ),
-  /**
-   * Uses a snippet: `paste` types a command into a terminal (`enter` also runs it), `run` opens a
-   * new tab at `context.cwd`, `send` sends a prompt to a session (`sessionId` or `claudeSessionId`).
-   */
-  cmd(
-    "snippets.use",
-    z
-      .object({
-        id: z.string(),
-        action: z.enum(["paste", "run", "send"]),
-        values: SnippetValues.optional(),
-        context: SnippetUseContext.optional(),
-        terminalId: z.string().optional(),
-        enter: z.boolean().optional(),
-        cols: TerminalCols.optional(),
-        rows: TerminalRows.optional(),
-        sessionId: z.string().optional(),
-        claudeSessionId: z.string().optional(),
-      })
-      .strict(),
-  ),
-  /** The personas of the host and, with `projectPath`, of that project. */
-  cmd(
-    "personas.list",
-    z
-      .object({
-        scope: z.enum(["host", "project", "all"]).optional(),
-        projectPath: z.string().optional(),
-        /** The language of the pack personas that are shown (`pt-BR` when absent). */
-        language: z.enum(["pt-BR", "en"]).optional(),
-      })
-      .strict(),
-  ),
-  /** Creates or edits a persona; a secret in it is refused with `persona_secret`. */
-  cmd(
-    "personas.save",
-    z
-      .object({
-        scope: z.enum(["host", "project"]),
-        projectPath: z.string().optional(),
-        persona: PersonaInput,
-      })
-      .strict(),
-  ),
-  cmd(
-    "personas.remove",
-    z
-      .object({
-        scope: z.enum(["host", "project"]),
-        id: z.string(),
-        projectPath: z.string().optional(),
-      })
-      .strict(),
-  ),
   /** Applies a persona to an open session, managed (`sessionId`) or from a terminal (`claudeSessionId`). */
   cmd(
     "session.applyPersona",
@@ -3414,43 +3173,6 @@ export const Command = z.discriminatedUnion("type", [
       .refine((p) => (p.sessionId === undefined) !== (p.claudeSessionId === undefined), {
         message: "give sessionId or claudeSessionId, one of the two",
       }),
-  ),
-  /** The personas that hold in the project, as the agents `persona-<id>` a session can call. */
-  cmd(
-    "personas.subagents",
-    z
-      .object({
-        projectPath: z.string().optional(),
-        language: z.enum(["pt-BR", "en"]).optional(),
-      })
-      .strict(),
-  ),
-  /** Writes a persona as the project agent `.claude/agents/persona-<id>.md`; asks for `confirm`. */
-  cmd(
-    "personas.publishAgent",
-    z
-      .object({
-        id: z.string(),
-        projectPath: z.string(),
-        language: z.enum(["pt-BR", "en"]).optional(),
-        confirm: z.boolean(),
-      })
-      .strict(),
-  ),
-  /** The persona to use, as `session.create` and `flightdeckd claude --persona` would resolve it. */
-  cmd(
-    "personas.resolve",
-    z.object({ ref: PersonaRef, projectPath: z.string().optional() }).strict(),
-  ),
-  /** Puts a pack persona back as it came (the host's edit goes away). */
-  cmd(
-    "personas.reset",
-    z.object({ id: z.string(), language: z.enum(["pt-BR", "en"]).optional() }).strict(),
-  ),
-  /** Trusts a project's versioned persona, by the hash `personas.list` showed. */
-  cmd(
-    "personas.trust",
-    z.object({ projectPath: z.string(), id: z.string(), hash: z.string() }).strict(),
   ),
   cmd("pr.comments", CardIdPayload),
   /** The sessions that wrote a file, by its absolute path. */
@@ -3681,6 +3403,8 @@ export const Command = z.discriminatedUnion("type", [
   ...usageCommands,
   ...collaborationCommands,
   ...terminalCommands,
+  ...personasCommands,
+  ...snippetsCommands,
 ]);
 export type Command = z.infer<typeof Command>;
 export type CommandType = Command["type"];
@@ -4294,7 +4018,9 @@ export interface CommandResults
   extends SecretsResults,
     UsageResults,
     CollaborationResults,
-    TerminalResults {
+    TerminalResults,
+    PersonasResults,
+    SnippetsResults {
   hello: HelloResult;
   "session.list": SessionListResult;
   "session.create": SessionCreateResult;
@@ -4487,26 +4213,8 @@ export interface CommandResults
   "task.results": TaskResultsResult;
   "task.preview": TaskPreviewResult;
   "template.start": TemplateStartResult;
-  "snippets.list": { snippets: Snippet[]; file: SnippetFileInfo | null };
-  "snippets.save": Snippet;
-  "snippets.get": Snippet;
-  "snippets.remove": undefined;
-  "snippets.trust": SnippetFileInfo;
-  "snippets.favorite": Snippet;
-  "snippets.parse": { snippets: SnippetInput[]; errors: string[] };
-  "snippets.importHistory": SnippetHistoryResult;
-  "personas.list": { personas: Persona[]; project: PersonaProjectInfo | null };
-  "personas.save": Persona;
-  "personas.remove": undefined;
-  "personas.reset": Persona;
-  "personas.resolve": ResolvedPersonaResult;
-  "personas.subagents": PersonaSubagents;
-  "personas.publishAgent": { path: string };
   "session.applyPersona": PersonaSwitchResult;
   "session.clearPersona": PersonaSwitchResult;
-  "personas.trust": Persona;
-  "snippets.render": { text: string; fields: SnippetField[] };
-  "snippets.use": { text: string; terminal: TerminalInfo | null };
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
   "doctor.run": DoctorResult;
