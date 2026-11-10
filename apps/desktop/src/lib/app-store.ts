@@ -71,10 +71,10 @@ import {
   parsePairingLink,
 } from "@flightdeck/protocol";
 import {
-  initialSearchState,
-  SearchSlice,
-  type SearchSliceState,
-} from "../features/search/store.ts";
+  HistorySlice,
+  type HistorySliceState,
+  initialHistoryState,
+} from "../features/history/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -326,7 +326,7 @@ export interface AwayState {
   dismissed: boolean;
 }
 
-export interface AppState extends SearchSliceState {
+export interface AppState extends HistorySliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
   sessions: Record<string, SessionState>;
@@ -1051,19 +1051,19 @@ export class AppStore {
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   private stopWake: (() => void) | null = null;
-  /** The global history search over every host (#1596). */
-  readonly search: SearchSlice;
+  /** The history read from every host (#1596): its global search. */
+  readonly history: HistorySlice;
 
   constructor(
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.search = new SearchSlice({
+    this.history = new HistorySlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
       request: (hostId, query) =>
         this.connections.get(hostId)?.request("history.search", { query }),
-      timeoutMs: options.searchTimeoutMs ?? 5000,
+      timeoutMs: () => options.searchTimeoutMs ?? 5000,
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -1161,7 +1161,7 @@ export class AppStore {
       sessions: {},
       selected: null,
       error: null,
-      ...initialSearchState,
+      ...initialHistoryState,
       closingTerminal: null,
       runEnvs: {},
       unread: {},
@@ -2328,7 +2328,7 @@ export class AppStore {
     try {
       await this.platform.globalShortcut.register(accelerator, () => {
         void this.platform.showMainWindow();
-        this.search.open();
+        this.history.openSearch();
       });
       this.shortcut = accelerator;
       this.updateSettings({
@@ -3014,7 +3014,7 @@ export class AppStore {
       const { sessionId } = await conn.request("session.create", payload);
       this.select(hostId, sessionId);
       // A new session opens, wherever it was created from (phase 10).
-      this.search.close();
+      this.history.closeSearch();
       this.router.push({ name: "session", host: hostId, id: sessionId });
       return sessionId;
     } catch (error) {

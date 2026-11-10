@@ -499,7 +499,7 @@ describe("custos-ui", () => {
 
   test("a paleta leva para a tela Custos", async () => {
     const { store } = await online();
-    await act(async () => store.search.open());
+    await act(async () => store.history.openSearch());
     const dialog = () => screen.queryByRole("dialog", { name: "Busca global" });
     const option = dialog()?.querySelector('[aria-label="Ir para Custos"]') ?? null;
     expect(option).not.toBeNull();

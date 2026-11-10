@@ -156,8 +156,8 @@ describe("busca-global", () => {
   test("uma busca nova descarta respostas atrasadas da anterior", async () => {
     const store = await fleet(300);
     await act(async () => {
-      const first = store.search.history("flamingo");
-      const second = store.search.history("azul");
+      const first = store.history.search("flamingo");
+      const second = store.history.search("azul");
       await Promise.all([first, second]);
     });
     expect(store.getState().search?.query).toBe("azul");

@@ -160,7 +160,7 @@ describe("claude-aqui: no app", () => {
     render(<App store={store} />);
     // The palette loads the hosts' sessions when it opens: the terminal session comes after.
     await act(async () => {
-      store.search.open();
+      store.history.openSearch();
       // Its own load of the hosts' data, awaited: the palette asks for the same when it opens.
       await store.loadPalette();
     });
