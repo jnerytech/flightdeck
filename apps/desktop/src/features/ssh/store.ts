@@ -17,11 +17,8 @@ export interface SshSliceState {
 /** A fresh initial state for each store: its collections are never shared between stores. */
 export const initialSshState = (): SshSliceState => ({ askpass: [], ssh: {} });
 
-/** What a secret of the vault answers for a use the app starts: the value, or why it is refused. */
-export type SecretAnswer<Refusal> = { ok: true; value: string } | { ok: false; code: Refusal };
-
 /** What the ssh reads and asks through the app's store. */
-export interface SshCore<Refusal = string> {
+export interface SshCore {
   state(): SshSliceState;
   update(patch: Partial<SshSliceState>): void;
   /** The host's destinos; null when it refuses (the toast says why). */
@@ -37,15 +34,15 @@ export interface SshCore<Refusal = string> {
   /** Whether the vault keeps this secret. */
   hasSecret(secretId: string): boolean;
   /** The secret's value for ssh on that host, after the vault's delivery rules; logged as "you". */
-  secretFor(hostId: string, secretId: string): Promise<SecretAnswer<Refusal>>;
+  secretFor(hostId: string, secretId: string): Promise<{ ok: true; value: string } | { ok: false }>;
 }
 
 /** The ssh destinos of the hosts and the prompts ssh raises (phase 15; #1596: a slice of the store). */
-export class SshSlice<Refusal = string> {
+export class SshSlice {
   /** Terminals opened from a ssh destino, by `hostId/terminalId`, for the badge of their screen. */
   readonly terminals = new Map<string, { name: string; tags: string[] }>();
 
-  constructor(private readonly core: SshCore<Refusal>) {}
+  constructor(private readonly core: SshCore) {}
 
   /** Reads a host's destinos for the palette; they stay as they were when the host cannot say. */
   async loadTargets(hostId: string): Promise<void> {

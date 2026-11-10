@@ -999,7 +999,7 @@ export class AppStore {
   /** The personas a session can take on, the hosts' and the app's (phase 20, #1596). */
   readonly personas: PersonasSlice;
   /** The ssh destinos of the hosts, the prompts ssh raises and its terminals (phase 15, #1596). */
-  readonly ssh: SshSlice<DeliveryRefusal>;
+  readonly ssh: SshSlice;
   readonly settings: SettingsSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
@@ -1037,7 +1037,7 @@ export class AppStore {
         this.hostCommand(hostId, "personas.list", { scope: "host", language }),
       language: () => this.i18n.lang,
     });
-    this.ssh = new SshSlice<DeliveryRefusal>({
+    this.ssh = new SshSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
       list: (hostId) => this.hostCommand(hostId, "ssh.list", {}),
