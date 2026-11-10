@@ -2,6 +2,7 @@ import { mkdir, open } from "node:fs/promises";
 import { connect } from "node:net";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
+import { EXIT_ALREADY_RUNNING } from "./lock.ts";
 
 /** One WSL distro whose daemon the Windows daemon keeps running (config section `wsl`). */
 export interface WslItem {
@@ -9,9 +10,6 @@ export interface WslItem {
   command: string;
   port: number;
 }
-
-/** Exit code of a daemon that found another one already running on its dataDir. */
-const EXIT_ALREADY_RUNNING = 3;
 
 export interface WslSupervisorOptions {
   logDir: string;

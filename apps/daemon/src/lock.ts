@@ -50,6 +50,9 @@ export async function readLockPid(dataDir: string): Promise<number | null> {
   }
 }
 
+/** Exit code when another daemon already owns the same `dataDir`. */
+export const EXIT_ALREADY_RUNNING = 3;
+
 /** Another daemon already owns the same `dataDir` (its lock is held). */
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
