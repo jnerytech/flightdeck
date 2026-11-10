@@ -331,11 +331,14 @@ export async function startDaemon(
   );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
-  // Issue #1343: new cards wait while memory is at or above resources.pauseAt.
+  // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
+  // is set only by the test preload, never in production: under it nothing of the real machine is
+  // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
   const { memoryGate, memoryPause } = createMemoryGate({
     config,
     configFile,
-    reading: options.memoryReading,
+    reading:
+      options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
   });
   // Issue #1404: the person's pause of new card runs, kept in the config.
   const hostPause = new HostPause(config.pauseNewRuns);

@@ -149,16 +149,9 @@ export interface MemoryGateDeps {
  * app's switch for it, kept in the config file like the rest of the host settings.
  */
 export function createMemoryGate({ config, configFile, reading }: MemoryGateDeps) {
-  // FLIGHTDECK_SERVICE_GUARD is set only by the test preload, never in production: under it nothing of
-  // the real machine is read (a busy runner would hold every board test), so the hold stays open
-  // unless a test injects one.
   const memoryGate = new MemoryGate({
     pauseAt: config.resources.pauseAt,
-    read:
-      reading ??
-      (process.env.FLIGHTDECK_SERVICE_GUARD
-        ? () => null
-        : () => osMemoryReading({ platform: process.platform, totalmem, freemem })),
+    read: reading ?? (() => osMemoryReading({ platform: process.platform, totalmem, freemem })),
   });
   return {
     memoryGate,
