@@ -2470,9 +2470,7 @@ export class AppStore {
     if (!sameJson(this.state.names[host.id], standardNames)) {
       patch.names = { ...this.state.names, [host.id]: standardNames };
     }
-    if (background && !sameJson(this.state.background[host.id], background)) {
-      patch.background = { ...this.state.background, [host.id]: background };
-    }
+    Object.assign(patch, background && this.background.changed(host.id, background));
     if (Object.keys(patch).length > 0) this.update(patch);
   }
 

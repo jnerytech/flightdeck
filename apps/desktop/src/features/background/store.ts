@@ -63,6 +63,16 @@ export class BackgroundSlice {
     return started.id;
   }
 
+  /**
+   * What the state needs to hold a list the hub's poll read: nothing (null) when the host's list is
+   * already the same, else the patch that replaces it. The caller sends it with its own changes.
+   */
+  changed(hostId: string, list: BgList): Partial<BackgroundSliceState> | null {
+    const held = this.core.state().background;
+    if (JSON.stringify(held[hostId]) === JSON.stringify(list)) return null;
+    return { background: { ...held, [hostId]: list } };
+  }
+
   /** Keeps the list an answer brought; false when the host refused. */
   private async keep(hostId: string, answer: Promise<BgList | null>): Promise<boolean> {
     const list = await answer;
