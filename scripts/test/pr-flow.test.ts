@@ -70,8 +70,6 @@ function fake(
     graphqlError?: string;
     /** GitHub ignores the head filter and lists every open PR (#1115, seen 2026-11-08). */
     ignoreHead?: boolean;
-    /** #1526: the PR's OpenCode review text; null when it has none yet; absent, the dep is not wired. */
-    review?: string | null;
   } = {},
 ) {
   const prs = opts.prs ?? [];
@@ -238,7 +236,6 @@ function fake(
     env: opts.env ?? {},
     log: (line) => lines.push(line),
     ...(opts.now === undefined ? {} : { now: () => opts.now ?? 0 }),
-    ...(opts.review === undefined ? {} : { review: async () => opts.review ?? null }),
   };
   return { deps, writes, gitWrites, lines, asked, out: () => lines.join("\n") };
 }
@@ -996,7 +993,6 @@ describe("pr-flow: update and merge", () => {
       prs: [pr(12, "a")],
       graphqlError: CLEAN,
       runs: { sha12: green() },
-      review: null,
     });
     const code = await prFlow(["auto", "12"], f.deps);
     expect([
