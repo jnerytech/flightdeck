@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { runCli } from "../src/main.ts";
-import { DAEMON_VERSION } from "../src/server.ts";
+import { DAEMON_VERSION } from "../src/version.ts";
 
 const ROOT = join(import.meta.dir, "..", "..", "..");
 const json = (path: string) => JSON.parse(readFileSync(join(ROOT, path), "utf8"));
