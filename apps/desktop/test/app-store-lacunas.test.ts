@@ -117,7 +117,7 @@ describe("app-store-lacunas: the global shortcut", () => {
 
   test("a malformed shortcut is refused with the reason and nothing is registered", async () => {
     const { store, calls, items } = withShortcut();
-    await store.setGlobalShortcut("nonsense");
+    await store.settings.setGlobalShortcut("nonsense");
     expect(store.getState().settings.shortcutError).not.toBeNull();
     expect(calls).toEqual([]);
     expect(items.has(SHORTCUT_KEY)).toBe(false);
@@ -127,7 +127,7 @@ describe("app-store-lacunas: the global shortcut", () => {
     const { store, calls, items } = withShortcut();
     await store.init();
     calls.length = 0;
-    await store.setGlobalShortcut("Ctrl+Shift+J");
+    await store.settings.setGlobalShortcut("Ctrl+Shift+J");
     expect(calls.at(-1)).toBe("register Ctrl+Shift+J");
     expect(calls.some((c) => c.startsWith("unregister "))).toBe(true);
     expect(items.get(SHORTCUT_KEY)).toBe("Ctrl+Shift+J");
@@ -137,7 +137,7 @@ describe("app-store-lacunas: the global shortcut", () => {
   test("one the OS refuses is not saved and the problem is shown", async () => {
     const { store, items } = withShortcut(["Ctrl+Shift+J"]);
     await store.init();
-    await store.setGlobalShortcut("Ctrl+Shift+J");
+    await store.settings.setGlobalShortcut("Ctrl+Shift+J");
     expect(items.has(SHORTCUT_KEY)).toBe(false);
     expect(store.getState().settings.shortcutProblem).not.toBeNull();
   });

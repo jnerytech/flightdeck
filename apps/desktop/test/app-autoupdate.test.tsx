@@ -9,7 +9,8 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, AUTO_UPDATE_KEY } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { AUTO_UPDATE_KEY } = await import("../src/features/settings/index.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];

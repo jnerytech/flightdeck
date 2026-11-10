@@ -87,6 +87,11 @@ import {
   SessionsSlice,
   type SessionsSliceState,
 } from "../features/sessions/index.ts";
+import {
+  initialSettingsState,
+  SettingsSlice,
+  type SettingsSliceState,
+} from "../features/settings/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -210,7 +215,6 @@ import {
 import { SessionViews } from "./session-views.ts";
 import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
-import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
@@ -317,13 +321,13 @@ export interface AppState
   extends HistorySliceState,
     ActivitySliceState,
     SessionsSliceState,
-    MessagingSliceState {
+    MessagingSliceState,
+    SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
   sessions: Record<string, SessionState>;
   selected: Selection | null;
   error: string | null;
-  settings: Settings;
   /** The notifications the app sent, newest first, kept for the notification center. */
   inbox: InboxEntry[];
   /** Text handed to a session's message box that the box has not taken yet, by session key. */
@@ -603,26 +607,6 @@ export type ReleaseNotesResult =
   | { kind: "none" }
   | { kind: "error"; message: string };
 
-export interface Settings {
-  closeToTray: boolean;
-  autostart: boolean;
-  autostartSupported: boolean;
-  /** Accelerator in use (or tried last, when `shortcutProblem` is set). */
-  globalShortcut: string;
-  globalShortcutSupported: boolean;
-  /** The OS refused the shortcut, typically because another program already uses it. */
-  shortcutProblem: string | null;
-  /** The last shortcut typed in the settings was not valid. */
-  shortcutError: string | null;
-  /** Phase 9: look for app updates at startup and every 6 h. */
-  notifyUpdates: boolean;
-  /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
-  autoUpdate: boolean;
-  updaterSupported: boolean;
-  /** Issue #100: the preview of moving a session to another host (off by default). */
-  teleportPreview: boolean;
-}
-
 export interface AppStoreOptions {
   /** The screen of a fresh window; a window saved before keeps its tabs. Sessions when absent. */
   startRoute?: Route;
@@ -880,18 +864,11 @@ export const HISTORY_LIST_LIMIT = 200;
 /** Messages per `history.get` page in the transcript reader. */
 export const HISTORY_PAGE = 50;
 
-/** Preference stored in plain settings; anything but "false" means on. */
-export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
 /** Where the return on cost card's open or folded state is kept. */
 const ROI_OPEN_KEY = "flightdeck.roiOpen";
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
-export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
-/** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
-export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
-/** Issue #100: "true" turns on the preview of moving a session to another host. */
-export const TELEPORT_PREVIEW_KEY = "flightdeck.teleportPreview";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -1004,8 +981,6 @@ export class AppStore {
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
   private readonly terminalListeners = new Map<string, Set<TerminalListener>>();
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
-  /** Accelerator currently registered with the OS. */
-  private shortcut: string | null = null;
   /** The tray submenu last sent, and the debounce that will send the next one (phase 8). */
   private trayMenuSent = JSON.stringify(trayMenu([]));
   private trayMenuTimer: unknown = null;
@@ -1023,6 +998,7 @@ export class AppStore {
   readonly sessions: SessionsSlice;
   /** The messages between sessions: the loops a host paused (phase 21, #1596). */
   readonly messaging: MessagingSlice;
+  readonly settings: SettingsSlice;
 
   constructor(
     private readonly platform: Platform,
@@ -1056,6 +1032,13 @@ export class AppStore {
       setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
       notify: (notification) => this.notifyUser(notification),
       t: () => this.i18n.t,
+    });
+    this.settings = new SettingsSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      platform,
+      t: () => this.i18n.t,
+      onShortcut: () => this.history.openSearch(),
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -1202,20 +1185,7 @@ export class AppStore {
       finishedLook: null,
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null, ready: null },
-      // Defaults: close to tray on, start with Windows off.
-      settings: {
-        closeToTray: true,
-        autostart: false,
-        autostartSupported: platform.autostart.supported,
-        globalShortcut: DEFAULT_SHORTCUT,
-        globalShortcutSupported: platform.globalShortcut.supported,
-        shortcutProblem: null,
-        shortcutError: null,
-        notifyUpdates: true,
-        autoUpdate: true,
-        updaterSupported: platform.updater.supported,
-        teleportPreview: false,
-      },
+      ...initialSettingsState(platform),
     };
   }
 
@@ -1421,26 +1391,8 @@ export class AppStore {
       healthAt: {},
       healthError: {},
     });
-    const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
-    await this.platform.setCloseToTray(closeToTray);
-    const autostart =
-      this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
-    const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
-    const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
-    const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
-    // A preview: on only when the person turned it on.
-    const teleportPreview = this.platform.storage.getItem(TELEPORT_PREVIEW_KEY) === "true";
-    this.update({
-      settings: {
-        ...this.state.settings,
-        closeToTray,
-        autostart,
-        globalShortcut,
-        notifyUpdates,
-        autoUpdate,
-        teleportPreview,
-      },
-    });
+    await this.settings.load();
+    const { notifyUpdates, autoUpdate } = this.state.settings;
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
     this.clientBudgetTimer = setInterval(
       () => void this.checkClientBudgets(),
@@ -1459,7 +1411,7 @@ export class AppStore {
     this.awayTimer = setInterval(() => this.awayClock.mark(), AWAY_MARK_MS);
     // A schedule that cannot start (storage full) must not stop the app from starting.
     this.backupScheduler.start().catch(() => {});
-    if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
+    await this.settings.registerSaved();
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
     this.offQuit?.();
@@ -2179,57 +2131,6 @@ export class AppStore {
     } catch (error) {
       this.fail(error);
     }
-  }
-
-  async setCloseToTray(enabled: boolean): Promise<void> {
-    this.platform.storage.setItem(CLOSE_TO_TRAY_KEY, String(enabled));
-    await this.platform.setCloseToTray(enabled);
-    this.update({ settings: { ...this.state.settings, closeToTray: enabled } });
-  }
-
-  /** Validates, swaps the registration and saves the new shortcut only if the OS took it. */
-  async setGlobalShortcut(text: string): Promise<void> {
-    const check = validateShortcut(text, this.i18n.t);
-    if (!check.ok) {
-      this.updateSettings({ shortcutError: check.error });
-      return;
-    }
-    if (this.shortcut) await this.platform.globalShortcut.unregister(this.shortcut);
-    this.shortcut = null;
-    if (await this.registerShortcut(check.value)) {
-      this.platform.storage.setItem(SHORTCUT_KEY, check.value);
-    }
-  }
-
-  private async registerShortcut(accelerator: string): Promise<boolean> {
-    try {
-      await this.platform.globalShortcut.register(accelerator, () => {
-        void this.platform.showMainWindow();
-        this.history.openSearch();
-      });
-      this.shortcut = accelerator;
-      this.updateSettings({
-        globalShortcut: accelerator,
-        shortcutProblem: null,
-        shortcutError: null,
-      });
-      return true;
-    } catch {
-      this.updateSettings({
-        shortcutProblem: this.i18n.t("messages.shortcutTaken", { accelerator }),
-        shortcutError: null,
-      });
-      return false;
-    }
-  }
-
-  private updateSettings(patch: Partial<Settings>): void {
-    this.update({ settings: { ...this.state.settings, ...patch } });
-  }
-
-  async setAutostart(enabled: boolean): Promise<void> {
-    await this.platform.autostart.setEnabled(enabled);
-    this.update({ settings: { ...this.state.settings, autostart: enabled } });
   }
 
   /** A host's projects into the state (quiet: a host without a board, or offline, lists none). */
@@ -3143,16 +3044,6 @@ export class AppStore {
     this.setAppUpdate({ offer: null });
   }
 
-  setAutoUpdate(enabled: boolean): void {
-    this.platform.storage.setItem(AUTO_UPDATE_KEY, String(enabled));
-    this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
-  }
-
-  setTeleportPreview(enabled: boolean): void {
-    this.platform.storage.setItem(TELEPORT_PREVIEW_KEY, String(enabled));
-    this.update({ settings: { ...this.state.settings, teleportPreview: enabled } });
-  }
-
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
   teleportRequest(hostId: string): TeleportRequest {
     // Straight to the connection: a host's teleport answer is checked by the relay, and never
@@ -3186,11 +3077,6 @@ export class AppStore {
     this.select(hostId, sessionId);
     this.router.push({ name: "session", host: hostId, id: sessionId });
   };
-
-  setNotifyUpdates(enabled: boolean): void {
-    this.platform.storage.setItem(NOTIFY_UPDATES_KEY, String(enabled));
-    this.update({ settings: { ...this.state.settings, notifyUpdates: enabled } });
-  }
 
   private setAppUpdate(patch: Partial<AppUpdateState>): void {
     this.update({ appUpdate: { ...this.state.appUpdate, ...patch } });
