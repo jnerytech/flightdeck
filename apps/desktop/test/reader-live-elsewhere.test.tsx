@@ -4,7 +4,7 @@ import type { ExternalSession } from "@flightdeck/protocol";
 import { assistantLine, userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { stays, waiter } from "./wait.ts";
+import { settleMaybe, stays, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -22,6 +22,22 @@ const settle = waiter(4000);
 
 const ID = "77777777-7777-4777-8777-777777777777";
 
+/** An assistant turn that ends in the plan approval prompt, as Claude Code writes it. */
+const planLine = (cwd: string) =>
+  JSON.stringify({
+    cwd,
+    type: "assistant",
+    message: {
+      role: "assistant",
+      content: [
+        { type: "text", text: "Segue o plano." },
+        { type: "tool_use", id: "toolu_plan", name: "ExitPlanMode", input: { plan: "1. girafa" } },
+      ],
+    },
+    uuid: "a2",
+    timestamp: "2026-09-01T10:00:02.000Z",
+  });
+
 const waitingElsewhere = (cwd: string): ExternalSession => ({
   claudeSessionId: ID,
   cwd,
@@ -38,11 +54,15 @@ const waitingElsewhere = (cwd: string): ExternalSession => ({
 });
 
 /** A stored conversation whose `claude` is still alive in another terminal, waiting at a prompt. */
-async function openReader(external: boolean) {
+async function openReader(external: boolean, tail: "plan" | "answered" | null = null) {
   const d = makeDaemon(cleanups, { terminals: true });
   const file = writeTranscript(d.historyRoot, "-p", ID, [
     userLine({ uuid: "u1", text: "falando da girafa", cwd: d.project }),
     assistantLine({ uuid: "a1", text: "a girafa é alta", cwd: d.project }),
+    ...(tail ? [planLine(d.project)] : []),
+    ...(tail === "answered"
+      ? [userLine({ uuid: "u3", text: "troque a girafa", cwd: d.project })]
+      : []),
   ]);
   // An hour old: the transcript alone does not say it is in use, as one waiting at a prompt would not.
   const old = new Date(Date.now() - 3_600_000);
@@ -109,6 +129,22 @@ describe("reader-live-elsewhere: the stored conversation of a session alive in a
     await click("Continuar no Flightdeck");
     expect(screen.queryByText(/pode estar em uso em outro lugar/)).not.toBeNull();
     await stays(() => runtime.starts.length === 0, 100);
+  });
+
+  test("a plan approval waiting in the other terminal says so, with the plan one click away", async () => {
+    await openReader(true, "plan");
+    const waiting = () => screen.queryByText(/Esperando você no outro terminal: aprove o plano/);
+    await settleMaybe(() => waiting() !== null);
+    expect(waiting()).not.toBeNull();
+    expect(screen.queryByText("ExitPlanMode")).not.toBeNull();
+  });
+
+  test("no one holds the conversation, or the plan was answered: nothing is said to wait", async () => {
+    await openReader(false, "plan");
+    await stays(() => screen.queryByText(/Esperando você no outro terminal/) === null, 200);
+    cleanup();
+    await openReader(true, "answered");
+    await stays(() => screen.queryByText(/Esperando você no outro terminal/) === null, 200);
   });
 
   test("a conversation nobody runs elsewhere opens at once, with no question", async () => {

@@ -2746,6 +2746,9 @@ export const en: Dictionary = {
     tool: "Tool {name}",
     toolLoading: "Reading the call from the transcript…",
     toolNoResult: "No result in the transcript: still running, or cut short.",
+    awaitingPlan:
+      "Waiting for you in the other terminal: approve the plan, or tell Claude what to change.",
+    awaitingQuestion: "Waiting for you in the other terminal: Claude asked a question.",
     toolTruncated: "Cut at 64 KB.",
     toolMissing: "This call could not be read from the transcript.",
     loading: "Opening the session…",

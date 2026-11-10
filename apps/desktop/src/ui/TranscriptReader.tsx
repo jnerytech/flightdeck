@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
+import { awaitingApproval } from "../lib/awaiting-approval.ts";
 import { toolLoader } from "../lib/history-tool.ts";
 import { basename, isInside } from "../lib/paths.ts";
 import { messageParts } from "../lib/tool-line.ts";
@@ -191,6 +192,9 @@ export function TranscriptReader(
   const gone = session !== null && cwdExists === false;
   const outside = session !== null && !roots.some((root) => isInside(session.cwd, root));
   const blocked = gone || outside;
+  // A call the person has not answered, in a conversation another terminal holds: nothing else says
+  // it needs them (#1705). The end of the transcript only, and only while that `claude` is alive.
+  const awaiting = live.held && next === null ? awaitingApproval(messages) : null;
   const whyKey = gone ? "reader.gone" : "reader.outside";
   const why = session ? t(whyKey, { folder: session.cwd }) : null;
   return (
@@ -250,6 +254,13 @@ export function TranscriptReader(
             }
           : {})}
       />
+      {awaiting && (
+        <Note>
+          <p role="status" className="text-status-needs-you">
+            {t(awaiting === "plan" ? "reader.awaitingPlan" : "reader.awaitingQuestion")}
+          </p>
+        </Note>
+      )}
       {session && blocked && (
         <Note>
           <p className="text-status-needs-you">{why}</p>
