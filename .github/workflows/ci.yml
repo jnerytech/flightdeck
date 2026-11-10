@@ -99,6 +99,11 @@ jobs:
       - name: Ratchets
         run: bun run scripts/ci-quick.ts
 
+      # The domain borders (#1591): no new deep import across daemon domains, no new cycle, and a
+      # known-violations baseline that only goes down.
+      - name: Domain borders
+        run: bun run arch
+
       # A structure-only PR (#1602): every commit a refactor, or the `structure` label (read at the
       # run's start). It may move code and change import paths, never a test's body, a test file or
       # a dictionary text.

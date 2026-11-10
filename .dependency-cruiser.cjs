@@ -1,0 +1,56 @@
+/**
+ * The domain borders of the code (issue #1591, part of #1589), checked by dependency-cruiser:
+ * `bun run arch`. Today's violations are in .dependency-cruiser-known-violations.json, a baseline
+ * that only goes down (scripts/arch-ratchet.ts compares its counts with main). The domains are the
+ * folders of the context map (docs/decisions/2026-11-10-context-map.md). The swc parser: the repo
+ * is on TypeScript 7, which dependency-cruiser's own TypeScript parser does not support.
+ */
+const DAEMON = "^apps/daemon/src/";
+const PROTOCOL = "^packages/protocol/src/";
+
+module.exports = {
+  forbidden: [
+    {
+      name: "no-cycle",
+      comment: "No import cycle: a cycle makes two modules change together (ADP).",
+      severity: "error",
+      from: { path: `${DAEMON}|${PROTOCOL}` },
+      to: { circular: true },
+    },
+    {
+      name: "no-deep-cross-domain",
+      comment: "Another domain is reached through its public entry (index.ts) only.",
+      severity: "error",
+      from: { path: `${DAEMON}([^/]+)/` },
+      to: { path: `${DAEMON}([^/]+)/(?!index\\.ts$)`, pathNot: `${DAEMON}$1/` },
+    },
+    {
+      name: "protocol-context-not-from-entry",
+      comment:
+        "A protocol context file never imports index.ts, which re-exports it: a load-time cycle breaks zod schemas (#1600).",
+      severity: "error",
+      from: { path: `${PROTOCOL}(?!index\\.ts$)` },
+      to: { path: `${PROTOCOL}index\\.ts$` },
+    },
+    {
+      name: "shared-depends-on-no-domain",
+      comment: "shared/ is the most stable code: it imports no domain (SDP).",
+      severity: "error",
+      from: { path: "^apps/[^/]+/src/shared/" },
+      to: { path: "^apps/[^/]+/src/", pathNot: "^apps/[^/]+/src/shared/" },
+    },
+    {
+      name: "domain-depends-on-no-adapter",
+      comment: "A domain's rules (domain/) never import its I/O (adapters/): ports and adapters.",
+      severity: "error",
+      from: { path: "/domain/" },
+      to: { path: "/adapters/" },
+    },
+  ],
+  options: {
+    parser: "swc",
+    doNotFollow: { path: "node_modules" },
+    exclude: { path: "(^|/)node_modules/" },
+    enhancedResolveOptions: { extensions: [".ts", ".tsx", ".js"] },
+  },
+};
