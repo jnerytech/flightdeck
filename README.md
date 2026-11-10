@@ -166,7 +166,7 @@ Building from source is covered in the [manual](docs/manual/en/installation.md#f
    where sessions may run (with an empty list no session can be created), then restart:
    `flightdeckd service stop && flightdeckd service start`. For a host other than this machine,
    also set `bind` and `allowedNetworks`
-   ([remote access](docs/manual/en/remote-access-over-tailscale.md#remote-access-over-tailscale)).
+   ([remote access](docs/manual/en/remote-access-over-tailscale.md)).
 
 2. **Pair.** Print a link and QR code for the app:
 
@@ -282,7 +282,7 @@ bun run demo           # two fake hosts and the app's web entry, at http://local
 
 Development is test-first: every area's test is committed red before its implementation. The
 rules are in [`docs/TDD.md`](docs/TDD.md). The other smokes, the build and the release flow are in
-the [manual](docs/manual/en/development.md#development).
+the [manual](docs/manual/en/development.md).
 
 ## Roadmap
 
