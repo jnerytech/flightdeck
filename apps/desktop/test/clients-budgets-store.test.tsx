@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Budgets } from "../../daemon/src/costs/budgets.ts";
-import { CLIENT_BUDGET_ALERTS_KEY } from "../src/lib/client-budgets.ts";
+import { CLIENT_BUDGET_ALERTS_KEY } from "../src/features/costs/index.ts";
 import { CLIENTS_KEY } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -95,7 +95,7 @@ const bodies = (platform: ReturnType<typeof memoryPlatform>) =>
 describe("clients-budgets: the app watches a client's month limit", () => {
   test("it judges each client's spend across hosts against its limit", async () => {
     const { store } = await setup();
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     const states = store.getState().clientBudgets;
     expect(states.map((s) => [s.clientId, s.spentUsd, s.limitUsd])).toEqual([
       ["acme", 2, 4],
@@ -106,20 +106,20 @@ describe("clients-budgets: the app watches a client's month limit", () => {
 
   test("each threshold notifies once, and a second look says nothing new", async () => {
     const { store, platform } = await setup();
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(bodies(platform)).toEqual([
       "Orçamento do cliente Acme: 50% de US$ 4,00 no mês",
       "Orçamento do cliente Beta: 50% de US$ 3,00 no mês",
       "Orçamento do cliente Beta: 80% de US$ 3,00 no mês",
       "Orçamento do cliente Beta: 100% de US$ 3,00 no mês",
     ]);
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(platform.notifications).toHaveLength(4);
   });
 
   test("a client's alert opens Costs filtered by that client", async () => {
     const { store } = await setup();
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     const routes = store
       .getState()
       .inbox.map((e) => e.route)
@@ -137,14 +137,14 @@ describe("clients-budgets: the app watches a client's month limit", () => {
         "beta|2026-10": [0.5, 0.8, 1],
       },
     );
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(platform.notifications).toEqual([]);
     expect(store.getState().clientBudgets.map((s) => s.crossed)).toEqual([[0.5], [0.5, 0.8, 1]]);
   });
 
   test("the crossed budgets are in Needs you, which counts them", async () => {
     const { store } = await setup();
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     await act(async () => store.router.push({ name: "needs-you" }));
     await settle(() => screen.queryByText(/Orçamento do cliente Beta: 100%/) !== null);
     expect(screen.queryByText("Orçamento do cliente Acme: 50% de US$ 4,00 no mês")).not.toBeNull();
@@ -153,23 +153,23 @@ describe("clients-budgets: the app watches a client's month limit", () => {
 
   test("nothing is held on the hosts: no budget is created there", async () => {
     const { store, hostBudgets } = await setup();
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(hostBudgets.list()).toEqual([]);
   });
 
   test("with no limit set there is nothing to judge, and a removed limit takes its alert away", async () => {
     const { store } = await setup({});
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(store.getState().clientBudgets).toEqual([]);
     await act(async () => {
       store.clients.setBudget("beta", 3);
     });
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(store.getState().clientBudgets).toHaveLength(1);
     await act(async () => {
       store.clients.clearBudget("beta");
     });
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     expect(store.getState().clientBudgets).toEqual([]);
   });
 
@@ -187,7 +187,7 @@ describe("clients-budgets: the app watches a client's month limit", () => {
   test("two looks asked together make one announcement of each threshold", async () => {
     const { store, platform } = await setup();
     await act(async () => {
-      await Promise.all([store.checkClientBudgets(), store.checkClientBudgets()]);
+      await Promise.all([store.clientBudgets.check(), store.clientBudgets.check()]);
     });
     expect(platform.notifications).toHaveLength(4);
   });
@@ -208,7 +208,7 @@ describe("clients-budgets: the app watches a client's month limit", () => {
     const { store, platform } = await setup();
     for (const garbage of ["not json", "5", "null"]) {
       platform.items.set(CLIENT_BUDGET_ALERTS_KEY, garbage);
-      await act(() => store.checkClientBudgets());
+      await act(() => store.clientBudgets.check());
       expect(store.getState().clientBudgets).toHaveLength(2);
       expect(Object.keys(JSON.parse(platform.items.get(CLIENT_BUDGET_ALERTS_KEY) ?? "{}"))).toEqual(
         ["acme|2026-10", "beta|2026-10"],
@@ -218,15 +218,15 @@ describe("clients-budgets: the app watches a client's month limit", () => {
 
   test("a look costs one request per host, however many projects a client has", async () => {
     const { store } = await setup();
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
     const asked: string[] = [];
     const ask = store.hostCommand.bind(store);
     store.hostCommand = ((hostId: string, type: string, payload: unknown) => {
       asked.push(type);
       return ask(hostId, type as never, payload as never);
     }) as typeof store.hostCommand;
-    await act(() => store.checkClientBudgets());
-    await act(() => store.checkClientBudgets());
+    await act(() => store.clientBudgets.check());
+    await act(() => store.clientBudgets.check());
     expect(asked.filter((type) => type === "costs.summary")).toHaveLength(4);
     expect(asked.every((type) => type === "costs.summary")).toBe(true);
   });

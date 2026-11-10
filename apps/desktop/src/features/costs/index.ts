@@ -14,6 +14,17 @@ export {
   share,
 } from "./budgets.ts";
 export {
+  CLIENT_BUDGET_ALERTS_KEY,
+  type ClientBudgetState,
+  evaluateClientBudgets,
+} from "./client-budgets.ts";
+export {
+  type ClientBudgetsCore,
+  ClientBudgetsSlice,
+  type ClientBudgetsSliceState,
+  initialClientBudgetsState,
+} from "./client-budgets-store.ts";
+export {
   type BudgetsCore,
   BudgetsSlice,
   type BudgetsSliceState,
