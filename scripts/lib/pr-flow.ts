@@ -318,10 +318,6 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
 }
 
 /**
- * Runs FLIGHTDECK_PR_OPENED (#273), when set, with the new PR's number, branch and base, for the
- * coordinator's tooling. It fails open: the PR is open anyway.
- */
-/**
  * The hook's command: a JSON array of strings (a path with spaces, Windows), or words split on
  * spaces. Empty when unset; null when it starts like JSON but is not an array of strings.
  */
@@ -337,6 +333,10 @@ function hookCommand(value: string): string[] | null {
   }
 }
 
+/**
+ * Runs FLIGHTDECK_PR_OPENED (#273), when set, with the new PR's number, branch and base, for the
+ * coordinator's tooling. It fails open: the PR is open anyway.
+ */
 async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlowDeps) {
   const hook = hookCommand(deps.env.FLIGHTDECK_PR_OPENED?.trim() ?? "");
   if (hook === null) {
@@ -803,6 +803,10 @@ export async function prFlow(argv: string[], deps: PrFlowDeps): Promise<number> 
   if (command === "update" && Number.isInteger(n) && n > 0) return await updatePr(n, deps);
   if (command === "merge" && Number.isInteger(n) && n > 0) return await mergePr(n, deps);
   if (command === "auto" && Number.isInteger(n) && n > 0) {
+    // #1697: OpenCode was retired, so there is no review to wait for; a leftover --now means nothing.
+    if (args.includes("--now")) {
+      deps.log("--now is no longer needed: pr auto does not wait for a review (#1697)");
+    }
     return await autoPr(n, deps);
   }
   if (command === "tag") return await tagRelease(args, deps);
