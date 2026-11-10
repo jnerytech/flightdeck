@@ -1160,7 +1160,7 @@ async function startInBackground(
   payload: CommandPayload<"session.create">,
   persona: string,
 ): Promise<void> {
-  const id = await store.startBackground(hostId, {
+  const id = await store.background.start(hostId, {
     cwd: payload.cwd,
     prompt: payload.prompt,
     ...(payload.name ? { name: payload.name } : {}),
