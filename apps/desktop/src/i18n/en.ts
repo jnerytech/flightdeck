@@ -5105,6 +5105,7 @@ export const en: Dictionary = {
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
       sessionNoticeShort: "This folder is not trusted.",
+      sessionTrusted: "Trusted folder: its own configuration loads.",
       revokedNotice:
         "Trust removed. This session still runs with the hooks and MCP servers it loaded. Restart it to apply.",
       restart: "Restart session",

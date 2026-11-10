@@ -7,7 +7,8 @@ import { useTight } from "../session/parts.tsx";
 /**
  * A session in a folder the person has not trusted says what did not load: the folder's own hooks,
  * MCP servers, settings, CLAUDE.md, agents and skills, and also the person's own MCP servers and
- * plugins (issue #196). Nothing when the folder is trusted or the host does not announce it.
+ * plugins (issue #196). A trusted folder gets a one-line mark saying so (#1704); nothing when the
+ * host does not announce trust.
  */
 export function UntrustedNotice(
   props: Readonly<{
@@ -26,7 +27,8 @@ export function UntrustedNotice(
 ) {
   const { store, hostId, announced, cwd, stale, sessionId } = props;
   const { t } = store.i18n;
-  const [untrusted, setUntrusted] = useState(false);
+  // What the host said about the folder; null until it answered (or when it did not).
+  const [trusted, setTrusted] = useState<boolean | null>(null);
   const [restarting, setRestarting] = useState(false);
   // Issue #422: in a short session area the notice is one line; the project page lists the rest. So
   // while a request waits for the person (#488).
@@ -36,7 +38,7 @@ export function UntrustedNotice(
     if (!announced || stale || !cwd) return;
     let current = true;
     void store.hostCommand(hostId, "project.trust.state", { paths: [cwd] }).then((answer) => {
-      if (current) setUntrusted(answer?.items[0]?.trusted === false);
+      if (current) setTrusted(answer?.items[0]?.trusted ?? null);
     });
     return () => {
       current = false;
@@ -70,7 +72,9 @@ export function UntrustedNotice(
       </InlineNotice>
     );
   }
-  if (!untrusted) return null;
+  if (trusted === null) return null;
+  if (trusted)
+    return <InlineNotice tone="info">{t("projectPage.trust.sessionTrusted")}</InlineNotice>;
   return (
     <InlineNotice>
       {t(short ? "projectPage.trust.sessionNoticeShort" : "projectPage.trust.sessionNotice")}{" "}
