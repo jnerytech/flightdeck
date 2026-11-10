@@ -42,6 +42,9 @@ afterEach(cleanup);
 
 const BURST = 10;
 
+/** A fixed clock, a few seconds into a minute: the rows' "time ago" moves on with the minute. */
+const CLOCK = Date.parse("2026-11-08T10:30:05.000Z");
+
 /** The page as the app shows it: it follows the state and, as `App` does, the language. */
 function Page(props: Readonly<{ store: InstanceType<typeof AppStore> }>) {
   const state = useStoreState(props.store);
@@ -51,7 +54,10 @@ function Page(props: Readonly<{ store: InstanceType<typeof AppStore> }>) {
 
 describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#1191)", () => {
   test("redraws only the rows whose entry changed, not every waiting request", () => {
-    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+    const store = new AppStore(memoryPlatform().platform, {
+      baseDelayMs: 600_000,
+      now: () => CLOCK,
+    });
     const hidden = store as unknown as {
       state: Record<string, unknown>;
       onEvent(hostId: string, envelope: unknown): void;
@@ -74,7 +80,10 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
   });
 
   test("a row still redraws when what it shows changes: a session that finishes, the language, a host's name", () => {
-    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+    const store = new AppStore(memoryPlatform().platform, {
+      baseDelayMs: 600_000,
+      now: () => CLOCK,
+    });
     const hidden = store as unknown as {
       state: Record<string, unknown>;
       onEvent(hostId: string, envelope: unknown): void;
@@ -100,6 +109,33 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
       ["machine 0 · task 0: Finished"],
       ["alfa · task 0: Finished"],
     ]);
+    store.dispose();
+  });
+
+  test("a new minute of the clock redraws every row, since each row's time ago moves on", () => {
+    let clock = CLOCK;
+    const store = new AppStore(memoryPlatform().platform, {
+      baseDelayMs: 600_000,
+      now: () => clock,
+    });
+    const hidden = store as unknown as {
+      state: Record<string, unknown>;
+      onEvent(hostId: string, envelope: unknown): void;
+    };
+    hidden.state = { ...store.getState(), ...scaleState({ hosts: 4, perHost: 50 }) };
+    render(<Page store={store} />);
+    const rows = document.querySelectorAll("li").length;
+    const [early, later] = summaryBurst(0, 0, BURST);
+    renders = 0;
+    act(() => hidden.onEvent("host-0", early));
+    const sameMinute = renders;
+    clock += 60_000;
+    renders = 0;
+    act(() => hidden.onEvent("host-0", later));
+    // The same minute redraws the session's own row at most; the next one, each row of the list.
+    expect(rows).toBeGreaterThan(40);
+    expect(sameMinute).toBeLessThanOrEqual(3);
+    expect(renders).toBeGreaterThanOrEqual(rows);
     store.dispose();
   });
 });
