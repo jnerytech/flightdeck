@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
+import type { Config } from "../config.ts";
 import { layoutLike, parseJsonText } from "../json-text.ts";
 
 /** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
@@ -169,3 +170,17 @@ export async function hooksStatus(file: string, target: HookTarget): Promise<Hoo
 
 const sortKeys = (value: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
+
+/** What `hooks install` writes for this config: this executable, the receptor and its token. */
+export function hookTarget(
+  config: Config,
+  selfCommand: string[],
+  port = config.hooks.port,
+): HookTarget {
+  return {
+    command: selfCommand,
+    url: `http://127.0.0.1:${port}`,
+    token: config.hooks.token ?? "",
+    permissionTimeoutS: config.hooks.permissionTimeoutS,
+  };
+}
