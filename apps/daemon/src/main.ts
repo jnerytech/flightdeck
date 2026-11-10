@@ -624,14 +624,14 @@ export async function startDaemon(
     db: store.db,
     config,
     scanner: snippetScanner,
-    terminals,
-    manager,
-    onPersonInput: (sessionId) => board.personTurnOfSession(sessionId),
-    central,
-    exec: spawnExec,
-    home: userHome(env),
-    appData: process.env.APPDATA,
-    platform: process.platform,
+    use: {
+      terminals,
+      manager,
+      onPersonInput: (sessionId) => board.personTurnOfSession(sessionId),
+      central,
+      exec: spawnExec,
+    },
+    history: { home: userHome(env), appData: process.env.APPDATA, platform: process.platform },
   });
 
   // Phase 16: secrets the app hands over for one use; in memory only, gone with the daemon.
