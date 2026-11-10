@@ -55,11 +55,8 @@ import {
   updateConfigFile,
   userHome,
 } from "./config.ts";
-import { Budgets } from "./costs/budgets.ts";
-import { Costs } from "./costs/costs.ts";
-import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
-import { UsageIndexer } from "./costs/usage-indexer.ts";
+import { createCosts } from "./costs/wiring.ts";
 import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
 import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
@@ -476,28 +473,17 @@ export async function startDaemon(
     timers: globalThis,
   });
   await teleportInbox.start();
-  // Usage of every session of the host, from the transcripts (phase 8): first the ones that
-  // already exist, in the background, then whatever the history index sees changing.
-  const costs = new Costs({
+  const { costs, usageIndex, budgets } = createCosts({
     db: store.db,
-    pricing: resolvePricing(config.pricing),
-    loadPricing: async () => resolvePricing((await loadConfig(configFile)).pricing),
-    initialLoad: () => usageIndex.status(),
-  });
-  const usageIndex = new UsageIndexer({
-    db: store.db,
-    roots: config.history.roots,
+    config,
+    readPricing: async () => (await loadConfig(configFile)).pricing,
     excludeCwds: historyExcludes(config),
     projectKey: (cwd) => keys.known(cwd),
     warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
-    cost: (tokens) => costs.cost(tokens),
+    quota,
     log: (m) => logger.log(m),
-    onPass: () => budgets.evaluate(),
+    history,
   });
-  const budgets = new Budgets({ db: store.db, quota });
-  budgets.start();
-  history.onChange(() => usageIndex.request());
-  usageIndex.start();
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
     folderLocks,
