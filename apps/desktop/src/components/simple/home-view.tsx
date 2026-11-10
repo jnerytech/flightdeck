@@ -211,12 +211,7 @@ export function HomeView(props: Readonly<HomeViewProps>) {
   return (
     <div className="home-simple">
       <h1 className="task-title">{t("simple.home.title")}</h1>
-      <div>
-        <p className="question-card-note">{t("simple.home.intro")}</p>
-        <p className="question-card-note">
-          {t("simple.home.runsOn", { host: where.hostName, state: stateLabel(where.status, t) })}
-        </p>
-      </div>
+      <p className="question-card-note">{t("simple.home.intro")}</p>
       {notice && <InlineNotice tone="error">{notice}</InlineNotice>}
       {where.status === "online" && where.folders?.length === 0 && (
         <Note>
@@ -266,6 +261,11 @@ export function HomeView(props: Readonly<HomeViewProps>) {
           </ul>
         )}
       </section>
+
+      {/* Below the cards, so the first card stays inside a phone's window (#1716). */}
+      <p className="question-card-note">
+        {t("simple.home.runsOn", { host: where.hostName, state: stateLabel(where.status, t) })}
+      </p>
 
       {(props.tasks.length > 0 || props.templates.length > 0) && (
         <section aria-label={t("simple.home.recent")}>
