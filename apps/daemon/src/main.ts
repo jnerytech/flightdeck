@@ -98,9 +98,8 @@ import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
 import { present } from "./present.ts";
-import { QuotaHistory } from "./quota/history.ts";
-import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
+import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
@@ -323,8 +322,11 @@ export async function startDaemon(
     mcpServer,
     logger.log.bind(logger),
   );
-  // The plan quota is the host's: every managed session feeds it (phase 7).
-  const quota = new Quota({ pauseAt: config.quota.pauseAt });
+  const { quota, quotaHistory, onQuota, quotaPause } = createQuota({
+    db: store.db,
+    config,
+    configFile,
+  });
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
@@ -336,7 +338,6 @@ export async function startDaemon(
   });
   // Issue #1404: the person's pause of new card runs, kept in the config.
   const hostPause = new HostPause(config.pauseNewRuns);
-  const quotaHistory = new QuotaHistory({ db: store.db });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
@@ -422,10 +423,7 @@ export async function startDaemon(
       awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
     baseEnv: env,
     ...present({ opencode: opencode.runtime }),
-    onQuota: (readings) => {
-      quota.record(readings);
-      quotaHistory.sample(readings);
-    },
+    onQuota,
     onTurn: (sessionId, cwd, turn, runtime) => {
       usage.record(sessionId, cwd, turn);
       // The account card reads the Claude plan; an OpenCode turn spends none of it.
@@ -1007,17 +1005,7 @@ export async function startDaemon(
       },
     },
     memoryPause,
-    quotaPause: {
-      set: async (pauseAt) => {
-        // The file first: when it cannot be written the guard stays as it was, for the client and the daemon.
-        await updateConfigFile(configFile, (raw) => ({
-          ...raw,
-          quota: { ...(raw.quota as object | undefined), pauseAt },
-        }));
-        config.quota.pauseAt = pauseAt;
-        quota.setPauseAt(pauseAt);
-      },
-    },
+    quotaPause,
     keepAwake: {
       status: () => keepAwake.status(),
       set: async (enabled) => {
