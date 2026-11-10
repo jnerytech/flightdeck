@@ -4,7 +4,9 @@
  * or after at most 60 s, never logs it and never writes it anywhere, and only takes it from a
  * connection that comes by loopback or Tailscale (both encrypted or local).
  */
+import { createHash } from "node:crypto";
 import type { VaultRequester } from "@flightdeck/protocol";
+import type { RuntimeKind } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { ipInNetworks } from "../networks.ts";
 
@@ -273,4 +275,15 @@ export class Vault {
     clearTimeout(held.timer);
     this.values.delete(secretId);
   }
+}
+
+/**
+ * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
+ * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
+ * to read a secret back out.
+ */
+export function vaultActions(kind: RuntimeKind): Record<string, (value: string) => string> {
+  return kind === "fake"
+    ? { echo: (value) => createHash("sha256").update(value).digest("hex") }
+    : {};
 }

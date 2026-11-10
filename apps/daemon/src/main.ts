@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
@@ -7,7 +7,7 @@ import { DEFAULT_MODELS, type ServiceInstallResult } from "@flightdeck/protocol"
 import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
-import { Actions } from "./actions/actions.ts";
+import { createVault } from "./actions/wiring.ts";
 import { activitySince } from "./activity/since.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
@@ -129,8 +129,6 @@ import { ulid } from "./ulid.ts";
 import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
-import { VaultRules } from "./vault/rules-store.ts";
-import { Vault } from "./vault/vault.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { PrFixer } from "./watch/fix.ts";
 import { PrWatch } from "./watch/service.ts";
@@ -634,27 +632,22 @@ export async function startDaemon(
     history: { home: userHome(env), appData: process.env.APPDATA, platform: process.platform },
   });
 
-  // Phase 16: secrets the app hands over for one use; in memory only, gone with the daemon.
-  const vault = new Vault({
+  const { vault, actions } = createVault({
+    db: store.db,
     log: logger.log.bind(logger),
-    actions: vaultActions(runtimeKind),
+    runtimeKind,
+    actions: {
+      projects: (id) => board.getProject(id),
+      // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
+      ssh: ssh.exec,
+      sshTags: ssh.tagsOf,
+      sshKey: ssh.vaultKeyOf,
+      hostName: config.hostName,
+      risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
+      projectKey: (id) => keys.known(board.getProject(id).path),
+    },
   });
   heldValues = () => vault.heldValues();
-  // Phase 17: the actions that use a secret from the vault without Claude seeing it.
-  const actions = new Actions({
-    db: store.db,
-    vault,
-    projects: (id) => board.getProject(id),
-    // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
-    ssh: ssh.exec,
-    sshTags: ssh.tagsOf,
-    sshKey: ssh.vaultKeyOf,
-    // Phase 19: who may use which secret, decided by the rules the app hands over.
-    rules: new VaultRules(),
-    hostName: config.hostName,
-    risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
-    projectKey: (id) => keys.known(board.getProject(id).path),
-  });
   const { endpoints, messaging, teams, personaSessions, stopNames } = await createTeams({
     db: store.db,
     config,
@@ -1199,17 +1192,6 @@ function appServiceInstall(
       },
       confirm,
     );
-}
-
-/**
- * What a delivered secret can be used for. In this phase only the fake runtime has an action, the
- * smoke's `echo`, which answers the value's SHA-256 and never the value: no real daemon has a way
- * to read a secret back out.
- */
-export function vaultActions(kind: RuntimeKind): Record<string, (value: string) => string> {
-  return kind === "fake"
-    ? { echo: (value) => createHash("sha256").update(value).digest("hex") }
-    : {};
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */
