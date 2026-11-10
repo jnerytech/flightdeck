@@ -273,7 +273,7 @@ só. Os hosts são independentes: nada é copiado entre eles.
 - Manual: [English](docs/manual/en.md) | [Português (Brasil)](docs/manual/pt-BR.md)
 - Roadmap e specs: [`docs/SPEC.md`](docs/SPEC.md)
 - Decisões e divergências em relação às specs: um arquivo cada em [`docs/decisions/`](docs/decisions/),
-  as mais antigas em [`docs/DECISIONS.md`](docs/DECISIONS.md)
+  as mais antigas listadas em [`docs/DECISIONS.md`](docs/DECISIONS.md)
 
 ## Desenvolvimento
 

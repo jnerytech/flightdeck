@@ -5,7 +5,7 @@ How the desktop app's screens are built, for people and for AI sessions that cha
 - **The tokens** are in `apps/desktop/src/styles.css`.
 - **The components** are in `apps/desktop/src/components/`. Before you add a component, look for
   one that fits. One component per pattern.
-- **The decisions** behind these rules are in `docs/DECISIONS.md`.
+- **The decisions** behind these rules are in `docs/decisions/` (the older ones listed in `docs/DECISIONS.md`).
 - **The audit** that started this page is issue #168.
 
 ## Tokens
@@ -90,8 +90,8 @@ control, and 8 px between buttons.
 | A list beside its detail | `SplitView` | Below 560 px of area it shows one pane, with a way back. |
 | A host that does not answer | `HostOfflineBanner` | Why, the last try, and Reconnect now. A host screen shows it instead of a spinner that never ends (#227, from v0.36.5). |
 
-The audit of keycaps, tooltips, loading and back-out buttons is in `docs/DECISIONS.md`, in the
-section "Keycaps, tooltips, loading and back-out buttons: the one-pass audit" (#165).
+The audit of keycaps, tooltips, loading and back-out buttons is in
+`docs/decisions/2026-11-05-keycaps-tooltips-audit.md` (#165).
 
 ## Rules
 

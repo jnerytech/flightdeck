@@ -1,19 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
+/** The phase 34 record, found by its `(phase 34)` title since DECISIONS.md became an index (#1711). */
 function phase34Section(): string {
-  const text = readFileSync(resolve(ROOT, "docs/DECISIONS.md"), "utf8");
-  const start = text.search(/^## Phase 34\b/m);
-  if (start < 0) return "";
-  const rest = text.slice(start + 1);
-  const next = rest.search(/^## /m);
-  return next < 0 ? rest : rest.slice(0, next);
+  const dir = resolve(ROOT, "docs/decisions");
+  const texts = readdirSync(dir).map((name) => readFileSync(join(dir, name), "utf8"));
+  return texts.find((text) => /^# Phase 34\b.*\(phase 34\)\n/.test(text)) ?? "";
 }
 
-describe("conta-poc: the proof of concept answers are recorded in DECISIONS.md", () => {
+describe("conta-poc: the proof of concept answers are recorded in the phase 34 decision record", () => {
   test("phase 34 has one numbered answer for each of the six questions", () => {
     const section = phase34Section();
     for (const n of [1, 2, 3, 4, 5, 6]) {

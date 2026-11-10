@@ -4,9 +4,12 @@
  * files of their own under `docs/decisions/`, named `<yyyy-mm-dd>-<topic>.md`.
  */
 
-/** The sha256 of docs/DECISIONS.md as frozen; a change to it means an entry went to the old file. */
+/**
+ * The sha256 of docs/DECISIONS.md, frozen as the index of the entries it held until 2026-11-05 (each a
+ * file under docs/decisions/ since #1711); a change to it means an entry went to the old file.
+ */
 export const FROZEN_DECISIONS_SHA256 =
-  "e72747a345621196f8d9a4d5b0e31f6a99b55b22d274b5522502e633969fe835";
+  "0bc9f99856e3486ee9851631eee382522824b0d53cc434a85418c691620f5892";
 
 /** Why a file under docs/decisions/ is not a decision record as named and titled, or null. */
 export function decisionFileProblem(name: string, firstLine: string): string | null {

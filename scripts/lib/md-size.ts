@@ -6,8 +6,6 @@
 
 /** The line limit of a tracked Markdown file. */
 export function mdLimit(path: string): number {
-  // Frozen (#304): decisions.ts pins its content, and new decisions go to docs/decisions/.
-  if (path === "docs/DECISIONS.md") return Number.POSITIVE_INFINITY;
   // A fixed limit for a file that grows by design (#427): the root CLAUDE.md (290 since the PR review rule, #1670) has lines
   // waiting for the owner's word. A down-only baseline would block them. The manuals are one file per chapter (#1711).
   if (path === "CLAUDE.md") return 290;

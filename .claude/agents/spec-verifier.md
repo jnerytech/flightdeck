@@ -15,10 +15,10 @@ checkout). Run everything inside the worktree.
 ## What to check
 
 1. **The spec.** Read `docs/SPEC-fase-N.md` and the phase's records: the files in `docs/decisions/`
-   titled `(phase N)` or naming its issues, or its section in `docs/DECISIONS.md` for a phase before
-   #304. List
+   titled `(phase N)` or naming its issues; for a phase before 2026-11-05, also the records
+   `docs/DECISIONS.md` lists between its phase heading and the next (#1711). List
    every requirement: the areas in the table, the items of the design, the smoke and the
-   acceptance criteria. A divergence recorded in DECISIONS counts as a decision, not as a gap.
+   acceptance criteria. A divergence recorded there counts as a decision, not as a gap.
    Cite the entry.
 2. **Each area:**
    - does the test file exist (`apps/*/test/<area>.test.ts(x)`, `packages/*/test/...` or
