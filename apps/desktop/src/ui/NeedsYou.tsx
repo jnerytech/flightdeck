@@ -18,6 +18,7 @@ import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "@/components/needs-yo
 import { WhileAway } from "@/components/needs-you/while-away";
 import { Button } from "@/components/ui/button";
 import { awayView } from "../features/activity/index.ts";
+import { CONTINUATION } from "../features/sessions/index.ts";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
 import {
@@ -35,7 +36,6 @@ import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import { pendingWhere } from "../lib/pending-text.ts";
 import { type QuietAlert, quietAlerts, quietText } from "../lib/quiet.ts";
-import { CONTINUATION } from "../lib/resume-offer.ts";
 import type { Route } from "../lib/router.ts";
 import { type WatchAlert, watchAlerts } from "../lib/watch-alerts.ts";
 
