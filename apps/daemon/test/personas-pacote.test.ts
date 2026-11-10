@@ -135,6 +135,36 @@ describe("personas-pacote: as onze", () => {
     }
   });
 
+  test("o arquiteto desenha por domínio e responsabilidade única: módulos profundos, núcleo puro, sem ciclos, testes de comportamento (#1589)", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const body = packPersonas(language).find((p) => p.id === "arquiteto")?.body ?? "";
+      const must =
+        language === "en"
+          ? [
+              /reason to change/i,
+              /by domain, not by layer/i,
+              /one public entry/i,
+              /deep modules/i,
+              /ports and adapters/i,
+              /no dependency cycles/i,
+              /observable behavior/i,
+              /separate from behavior changes/i,
+            ]
+          : [
+              /razão de mudar/i,
+              /por domínio, não por camada/i,
+              /uma única entrada pública/i,
+              /módulos profundos/i,
+              /portas e adaptadores/i,
+              /sem ciclos de dependência/i,
+              /comportamento observável/i,
+              /separad[ao]s? das mudanças de comportamento/i,
+            ];
+      for (const rule of must)
+        expect([language, String(rule), rule.test(body)]).toEqual([language, String(rule), true]);
+    }
+  });
+
   test("a coordenadora só lê e coordena: confere com o Bash, fala com as executoras pelo MCP do Flightdeck e não implementa", () => {
     for (const language of ["pt-BR", "en"] as const) {
       const coordinator = packPersonas(language).find((p) => p.id === "coordenador");
