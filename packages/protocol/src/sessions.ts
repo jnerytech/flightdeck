@@ -103,3 +103,10 @@ export const SessionSummary = z.object({
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
+
+/** How hard the model works (the SDK's effort levels). */
+export const EffortLevel = z.enum(["low", "medium", "high", "xhigh", "max"]);
+export type EffortLevel = z.infer<typeof EffortLevel>;
+
+export const SessionSendResult = z.object({ queued: z.boolean() });
+export type SessionSendResult = z.infer<typeof SessionSendResult>;
