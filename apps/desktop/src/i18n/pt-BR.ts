@@ -2745,6 +2745,8 @@ export const ptBR = {
     tool: "Ferramenta {name}",
     toolLoading: "Lendo a chamada do transcript…",
     toolNoResult: "Sem resultado no transcript: ainda rodando, ou interrompida.",
+    awaitingPlan: "Esperando você no outro terminal: aprove o plano ou diga ao Claude o que mudar.",
+    awaitingQuestion: "Esperando você no outro terminal: o Claude fez uma pergunta.",
     toolTruncated: "Cortado em 64 KB.",
     toolMissing: "Não deu para ler esta chamada do transcript.",
     loading: "Abrindo a sessão…",
