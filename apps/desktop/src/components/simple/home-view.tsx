@@ -28,7 +28,8 @@ export interface HomeTask {
 export interface HomeWhere {
   hostName: string;
   status: ConnectionStatus;
-  folders: string[];
+  /** `null` until the host has told which folders tasks may use. */
+  folders: string[] | null;
   onOpenSettings(): void;
 }
 
@@ -194,7 +195,7 @@ export function HomeView(props: Readonly<HomeViewProps>) {
           {t("simple.home.offline", { host: where.hostName })}
         </InlineNotice>
       )}
-      {where.status === "online" && where.folders.length === 0 && (
+      {where.status === "online" && (where.folders ?? []).length === 0 && (
         <Note>
           <span>{t("simple.home.noFolders")}</span>
           <Button type="button" variant="outline" onClick={where.onOpenSettings}>
