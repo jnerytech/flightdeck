@@ -13,9 +13,6 @@ export const SessionStatus = z.enum([
 ]);
 export type SessionStatus = z.infer<typeof SessionStatus>;
 
-export const ToolInput = z.record(z.string(), z.unknown());
-export type ToolInput = z.infer<typeof ToolInput>;
-
 /** The team a session works in, its role there and, for a worker, its number (issue #101). */
 export const SessionTeam = z.object({
   name: z.string(),
