@@ -8,6 +8,8 @@
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarnessStack } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 import { isInside } from "../paths.ts";
 
 type Stack = HarnessStack["stacks"][number];
@@ -41,19 +43,19 @@ async function runner(root: string): Promise<string> {
   return "npm";
 }
 
+/** What a package.json is read for; the scripts are checked one by one where they are used. */
+const PACKAGE_JSON = z.object({ scripts: z.unknown().optional() });
+
 /** The commands of a node project: a fixed `<runner> run <name>` for each script it has. */
 async function node(root: string): Promise<Partial<Commands> | null> {
   const text = await readInside(root, "package.json");
   if (text === null) return null;
-  let scripts: Record<string, unknown> = {};
-  try {
-    const parsed = JSON.parse(text) as { scripts?: unknown };
-    if (parsed.scripts && typeof parsed.scripts === "object") {
-      scripts = parsed.scripts as Record<string, unknown>;
-    }
-  } catch {
-    return null;
-  }
+  const parsed = parseJsonOr(PACKAGE_JSON, text, null);
+  if (parsed === null) return null;
+  const scripts: Record<string, unknown> =
+    parsed.scripts && typeof parsed.scripts === "object"
+      ? (parsed.scripts as Record<string, unknown>)
+      : {};
   const run = await runner(root);
   const named = (...names: string[]) => {
     const found = names.find((name) => typeof scripts[name] === "string");

@@ -8,6 +8,7 @@ import { changes } from "./en/changes.ts";
 import { chrome } from "./en/chrome.ts";
 import { clients } from "./en/clients.ts";
 import { costs } from "./en/costs.ts";
+import { doctor } from "./en/doctor.ts";
 import { firstrun } from "./en/firstrun.ts";
 import { github } from "./en/github.ts";
 import { hosts } from "./en/hosts.ts";
@@ -20,6 +21,7 @@ import { refusals } from "./en/refusals.ts";
 import { sessions } from "./en/sessions.ts";
 import { snippets } from "./en/snippets.ts";
 import { telemetry } from "./en/telemetry.ts";
+import { terminal } from "./en/terminal.ts";
 import { vault } from "./en/vault.ts";
 import { watch } from "./en/watch.ts";
 import type { Dictionary } from "./index.ts";
@@ -45,42 +47,7 @@ export const en: Dictionary = {
   ...sessions,
   ...hosts,
   ...projects,
-  doctor: {
-    fix: "How to fix: {step}",
-    check: {
-      config: "Configuration",
-      folders: "Allowed folders",
-      service: "Service",
-      daemon: "Daemon",
-      claude: "Claude Code",
-      hooks: "Hooks",
-      tailscale: "Tailscale",
-      version: "Version",
-      templates: "Templates",
-      mcp: "Team tools",
-
-      linger: "Start at boot",
-      opencode: "OpenCode",
-    },
-    steps: {
-      config: "Run flightdeckd setup on the host to redo the configuration.",
-      folders: "Allow a project folder in Allowed folders, above.",
-      service: "Run flightdeckd setup on the host to install the service.",
-      daemon: "Run flightdeckd service start on the host.",
-      claude: "Install Claude Code on the host and restart the daemon.",
-      hooks: "Press Install in the hooks section of this page.",
-      tailscale: "Run flightdeckd setup on the host and choose to listen on the Tailscale network.",
-      version: "Update the daemon with the update button on this page.",
-      templates:
-        "Fix or remove the template files named above, in the templates folder of the host.",
-      mcp: "Run flightdeckd setup on the host to put the daemon back where sessions expect it.",
-
-      linger:
-        "On the host, run sudo loginctl enable-linger $USER (on WSL also turn on systemd in /etc/wsl.conf).",
-      opencode:
-        'OpenCode is optional. To use it, set "opencode": { "enabled": true } in the host config and restart the daemon; the manual\'s OpenCode section explains each reason.',
-    },
-  },
+  ...doctor,
   ...github,
   ...board,
   ...costs,
@@ -339,103 +306,7 @@ export const en: Dictionary = {
     ended: "ended",
     error: "error",
   },
-  liveElsewhere: {
-    title: "Already open in another terminal",
-    message:
-      "This session is open in another terminal. Opening it here starts a second copy that the other one will not see: each shows only its own turns, and both write to the same history.",
-    view: "View it live here",
-    anyway: "Open a second copy anyway",
-  },
-  terminalUi: {
-    sshBadge: "SSH · {name}",
-    title: "Terminal",
-    readerHint:
-      "For a screen reader to read the output, turn on Screen reader support in the terminal in Settings.",
-    copy: "Copy",
-    paste: "Paste",
-    state: {
-      attaching: "Connecting…",
-      live: "Live",
-      detached: "Detached",
-      ended: "Ended (code {code})",
-    },
-    reopen: "Reopen",
-    close: "Close terminal",
-    closeMessage: "Detach keeps the process running on the host. End process stops it.",
-    pasteTitle: "Paste {n} lines?",
-    pasteMessage:
-      "The program in this terminal has not asked for pasted text to be marked, so each line may run as a command as soon as it lands.",
-    pasteConfirm: "Paste",
-    detach: "Detach",
-    end: "End process",
-    searchLabel: "Search in the terminal",
-    searchHint: "Enter: next · Shift+Enter: previous · Esc: close",
-    matches: "{index} of {count}",
-    noMatches: "No matches",
-    matchCase: "Match case",
-    wholeWord: "Match whole word",
-    useRegex: "Use regular expression",
-    badPattern: "Not a valid regular expression",
-    emptyPattern: "This expression matches empty text",
-    findPrevious: "Previous match",
-    findNext: "Next match",
-    findClose: "Close search",
-    selectAll: "Select all",
-  },
-  terminal: {
-    open: "Open in terminal",
-    openNamed: "Open {name} in terminal",
-    copy: "Copy command",
-    copyNamed: "Copy the command of {name}",
-  },
-  away: {
-    title: "While you were away",
-    lastActive: "Last active {ago}",
-    dismiss: "Dismiss",
-    group: "{title} ({n})",
-    sessions: "Sessions finished",
-    review: "Cards in review",
-    prs: "Pull requests",
-    runs: "Failed runs",
-    more: "and {n} more",
-    merged: "{title}: merged",
-    checksFailed: "{title}: checks failing",
-    run: "{workflow}: {reason}",
-    quota: "Quota used: {windows}",
-    quotaLine: "{window} {pct}%",
-    unreached: "{host} did not answer",
-  },
-  teleportUi: {
-    menu: "Move to another host…",
-    title: "Move to another host",
-    host: "Host",
-    pickHost: "Pick a host",
-    repo: "Repository on that host",
-    next: "Continue",
-    preparing: "Getting the session ready…",
-    cancel: "Cancel",
-    branch: "Branch:",
-    noBranch: "none (a detached HEAD)",
-    ahead: "Commits not on origin yet: {n}",
-    changed: "Files changed: {n}",
-    size: "Size: {size}",
-    secrets:
-      "Lines that look like secrets: {n}. They move as they are, and the scan can miss some.",
-    move: "Move",
-    back: "Back",
-    moving: "Moving… {percent}%",
-    finishing: "Finishing on {host}… You can close this window: the move goes on.",
-    done: "The session is on {host} now. The one here stays as it was.",
-    open: "Open it there",
-    close: "Close",
-    plainWs: {
-      one: "{hosts} connects without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
-      other:
-        "{hosts} connect without TLS (plain ws://). The transcript and the code of the session travel through this app unencrypted: move only over a network you trust.",
-    },
-    movedToast: "The session moved to {host}.",
-    preview: "Preview: move a session to another host",
-  },
+  ...terminal,
   ...telemetry,
   bg: {
     region: "Background session",
@@ -651,65 +522,7 @@ export const en: Dictionary = {
     browse: "Browse…",
     outside: "That folder is outside the folders the host allows. Choose one inside: {roots}",
   },
-  diagnostics: {
-    title: "Diagnostics",
-    hint: "If something breaks, send the log. Lines are redacted: no token, key, link or vault value is ever written.",
-    openLogs: "Open logs folder",
-    copy: "Copy diagnostics",
-    copied: "Diagnostics copied: paste them in your message.",
-    words: "log logs diagnostics support folder",
-    hostCopy: "Copy the host's last log lines",
-    hostCopied: "{n} log lines copied.",
-    hostEmpty: "The host has no log lines yet.",
-    hostHint: "The host keeps its own log in {path}.",
-  },
-  sleep: {
-    title: "Sleep idle sessions",
-    label: "Sleep idle sessions after",
-    hint: "An idle session gives back its memory after this long. A message wakes it from where it was. Pinned sessions, a card's sessions and ones you have open stay awake.",
-    off: "Off",
-    minutes: "{n} minutes",
-    hour: "1 hour",
-    hours: "{n} hours",
-    result: {
-      slept: "The session is asleep. A message wakes it.",
-      already: "The session was already asleep.",
-      not_idle: "The session is working or waiting for you, so it stays awake.",
-      queued: "A message is waiting, so the session stays awake.",
-      subscribed: "Someone has the session open, so it stays awake.",
-      kept_awake: "The session is pinned or belongs to a card, so it stays awake.",
-    },
-  },
   ...plugins,
-  maintenance: {
-    title: "Maintenance",
-    fields: {
-      db: "Database",
-      sessions: "Sessions",
-      events: "Events",
-      external: "External sessions",
-      lastBackup: "Last backup",
-      lastCleanup: "Last cleanup",
-    },
-    backupValue: "{when} ({size})",
-    noBackup: "none yet",
-    dryRun: " (dry run)",
-    noCleanup: "none yet",
-    asking: "checking…",
-    backup: "Back up now",
-    dry: "Simulate",
-    clean: "Clean",
-    message:
-      "Delete the old data of this host according to the configured retention? Events of ended conversations and old external sessions do not come back (unless from a backup).",
-    backupDone: "backup created: {path}",
-    wouldDelete: "would be deleted: {counts}",
-    deleted: "deleted: {counts}",
-    tables: {
-      events: "events",
-      permission_requests: "permission requests",
-      external_sessions: "external sessions",
-    },
-  },
   quotaCharts: {
     window: "{label} window",
     utilization: "Utilization of the {label} window",
