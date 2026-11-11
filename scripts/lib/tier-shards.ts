@@ -6,7 +6,7 @@
 import { splitShards, type Timings } from "./test-shards.ts";
 import type { Tier } from "./test-tiers.ts";
 
-export interface TierGroup {
+interface TierGroup {
   label: string;
   tiers: readonly Tier[];
   /** How many shard jobs share this group's test files. */

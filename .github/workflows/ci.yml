@@ -180,6 +180,9 @@ jobs:
     if: "!cancelled() && needs.quick.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The fast-coverage ratchet's verdict from the merge (#1854), read by the fast coverage job.
+    outputs:
+      fast: ${{ steps.merge.outputs.fast }}
     # bash everywhere: stops at the first failing command of a step.
     defaults:
       run:
@@ -463,34 +466,20 @@ jobs:
 
   # The base of the test pyramid holds (#309): every source fast-coverage-baseline.json lists stays
   # at the 80% gate from the unit and component tiers alone. On PRs too (#358): a drop fails the PR through
-  # the required test (ubuntu-latest) check, instead of turning main red after the merge.
+  # the required test (ubuntu-latest) check, instead of turning main red after the merge. The unit +
+  # component shards already ran those tests with coverage: the suite's merge judges the ratchet from
+  # them (#1854) and this job reads its verdict, so the base of the pyramid does not run a third time.
   fast-coverage:
     name: fast coverage (ubuntu-latest)
-    needs: [quick]
-    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    needs: [quick, test-suite]
+    if: "!cancelled() && needs.quick.result == 'success' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.4.4
-
-      - name: Instalar dependências
-        run: bun install --frozen-lockfile
-
-      # Tests create repositories and commit in them.
-      - name: Identidade do git
+      - name: The unit + component shards keep every listed source at the gate
         run: |
-          git config --global user.name "flightdeck-ci"
-          git config --global user.email "ci@flightdeck.invalid"
-
-      - name: Cobertura das camadas rápidas
-        run: bun run fast-coverage
+          echo "fast tiers: ${{ needs.test-suite.outputs.fast }}"
+          test "${{ needs.test-suite.outputs.fast }}" = pass
 
   # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
   # with no coverage: the coverage gate is Linux's. Since #534 it runs only in the schedule's and a

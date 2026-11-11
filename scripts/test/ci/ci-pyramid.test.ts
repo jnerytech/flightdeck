@@ -166,7 +166,9 @@ describe("ci-pyramid (#309)", () => {
     expect(run).toContain('test "${{ needs.test-suite.outputs.fast }}" = pass');
     expect(run).not.toContain("bun run fast-coverage");
     expect((job?.steps ?? []).some((s) => (s as { uses?: string }).uses)).toBe(false);
-    const merge = (ci.jobs["test-suite"]?.steps ?? []).find((s) => s.id === "merge");
+    const merge = (ci.jobs["test-suite"]?.steps ?? []).find(
+      (s) => (s as { id?: string }).id === "merge",
+    );
     expect(merge).toBeDefined();
     expect(
       (ci.jobs["test-suite"] as { outputs?: Record<string, string> } | undefined)?.outputs?.fast,
