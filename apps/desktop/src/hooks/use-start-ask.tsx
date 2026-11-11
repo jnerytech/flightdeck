@@ -1,6 +1,6 @@
 import type { Card, ContractOverrides } from "@flightdeck/protocol";
 import { type ReactNode, useState } from "react";
-import { ContractDialog } from "@/components/board/contract-dialog";
+import { ContractDialog } from "@/features/board/contract-dialog";
 import { useT } from "@/i18n/context";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
