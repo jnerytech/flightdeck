@@ -6,8 +6,9 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
 
 ## Ciclo de cada área
 
-1. **Um arquivo de teste por área**, com o nome da área: `apps/<app>/test/<área>.test.ts(x)` ou
-   `scripts/test/<área>.test.ts`. "O teste da área" é sempre esse arquivo.
+1. **Um arquivo de teste por área**, in the domain's folder:
+   `apps/<app>/test/<domain>/<name>.test.ts(x)` or `scripts/test/<domain>/<name>.test.ts`, and the
+   area is `<domain>-<name>` (#1603). "O teste da área" é sempre esse arquivo.
 2. **Stub antes do vermelho.** Crie o módulo com as assinaturas reais devolvendo valores errados
    (`""`, `[]`, `false`, `null`). Nunca `throw`: exceção é erro, não asserção. O stub fica fora
    do commit de teste.

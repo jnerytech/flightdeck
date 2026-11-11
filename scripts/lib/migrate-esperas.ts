@@ -24,3 +24,14 @@ export function migrate(source: string, waitPath = "./wait.ts"): string | null {
   const line = `\nimport { ${imported} } from "${waitPath}";`;
   return without.slice(0, at) + line + without.slice(at);
 }
+
+/** The path to the shared wait module, from a test file named relative to the test folder. */
+export function waitPathFor(relFile: string): string {
+  const depth = relFile.split("/").length - 1;
+  return depth === 0 ? "./wait.ts" : `${"../".repeat(depth)}wait.ts`;
+}
+
+/** Whether the codemod reads this file (relative to the test folder): TypeScript, not the shared module itself. */
+export function isTarget(relFile: string): boolean {
+  return /\.tsx?$/.test(relFile) && relFile !== "wait.ts";
+}
