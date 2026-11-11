@@ -33,7 +33,10 @@ const LAZY_SCREENS = [
 ];
 
 /** A lazy screen that moved into its feature folder (#1597): where Screens.tsx loads it from. */
-const MOVED: Record<string, string> = { SnippetsPage: "../features/snippets/page.tsx" };
+const MOVED: Record<string, string> = {
+  PersonasPage: "../features/personas/page.tsx",
+  SnippetsPage: "../features/snippets/page.tsx",
+};
 const specifierOf = (name: string) => MOVED[name] ?? `./${name}.tsx`;
 
 describe("screens-lazy: the secondary screens are not in the entry chunk", () => {

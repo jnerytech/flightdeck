@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
-import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Input } from "@/components/ui/input";
+import { PersonaPicker } from "@/features/personas";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { generatedScopeRules, vaultFindings } from "../lib/client-vault.ts";
 import type { Client } from "../lib/clients.ts";

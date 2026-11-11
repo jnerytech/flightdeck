@@ -1,7 +1,7 @@
 import type { Arena, ArenaVariant, Card } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useState } from "react";
-import { PersonaPicker } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
+import { PersonaPicker } from "@/features/personas";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ArenaStartForm, type ArenaVariantInput } from "../../ui/ArenaStartForm.tsx";

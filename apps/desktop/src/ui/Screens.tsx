@@ -6,11 +6,10 @@ import { CacheTimer } from "@/components/hub/cache-timer";
 import { Page } from "@/components/layout/page";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { PersonaPicker } from "@/components/personas/persona-picker";
-import { PersonaSwitch } from "@/components/personas/persona-switch";
 import { UntrustedNotice } from "@/components/projects/untrusted-notice";
 import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
+import { PersonaPicker, PersonaSwitch } from "@/features/personas";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import {
@@ -70,7 +69,7 @@ const PullRequestsPage = lazyScreen(() => import("./PullRequestsPage.tsx"), "Pul
 const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
 const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
-const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPage");
+const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
 const PreviewPage = lazyScreen(() => import("./PreviewPage.tsx"), "PreviewPage");
 const ProjectsPage = lazyScreen(() => import("./ProjectsPage.tsx"), "ProjectsPage");

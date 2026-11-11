@@ -7,7 +7,6 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
-import { useSuggestedPersona } from "@/components/personas/persona-picker";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
+import { useSuggestedPersona } from "@/features/personas";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";

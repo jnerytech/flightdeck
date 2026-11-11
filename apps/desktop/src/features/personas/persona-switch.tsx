@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { PersonaPicker } from "./persona-picker";
+import { PersonaPicker } from "./persona-picker.tsx";
 
 /**
  * Phase 20: "Aplicar persona" and "Voltar ao normal" on a session that is already open. The

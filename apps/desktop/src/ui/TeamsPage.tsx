@@ -7,9 +7,6 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
-import { ModelSelect } from "@/components/personas/model-select";
-import { type PermissionChoice, PermissionSelect } from "@/components/personas/permission-select";
-import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
 import { TeamOutcome } from "@/components/teams/team-outcome";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +20,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  ModelSelect,
+  type PermissionChoice,
+  PermissionSelect,
+  PersonaPicker,
+  useSuggestedPersona,
+} from "@/features/personas";
 import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";

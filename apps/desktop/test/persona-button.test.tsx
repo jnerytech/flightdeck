@@ -4,7 +4,7 @@ import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
 const { cleanup, render, screen } = await import("@testing-library/react");
-const { PersonaSwitch } = await import("../src/components/personas/persona-switch.tsx");
+const { PersonaSwitch } = await import("../src/features/personas/persona-switch.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 
