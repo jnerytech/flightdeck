@@ -11,11 +11,11 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
-import { budgetLabel, budgetLine, projectName } from "../features/costs/index.ts";
-import type { T } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { periodRange } from "../lib/costs.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { periodRange } from "../../lib/costs.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { budgetLabel, budgetLine, projectName } from "./budgets.ts";
 
 /** What the client filter reads: the selection, the clients and where each project belongs. */
 const BUDGETS_KEYS = [

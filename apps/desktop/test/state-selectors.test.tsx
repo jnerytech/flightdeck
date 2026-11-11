@@ -202,7 +202,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { VaultReport } = await import("../src/features/vault/vault-report.tsx");
     const { VaultPage } = await import("../src/features/vault/page.tsx");
     const { BoardView } = await import("../src/ui/BoardView.tsx");
-    const { CardDetail } = await import("../src/ui/CardDetail.tsx");
+    const { CardDetail } = await import("../src/features/board/card-detail.tsx");
     const { BgPanel } = await import("../src/features/background/bg-panel.tsx");
     const memo = Symbol.for("react.memo");
     for (const screen of [
