@@ -1723,8 +1723,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
 
   // Issue #802: layout claims the unit tests could only pin by class name are measured in the
   // browser: the card's Run row (its one button and its menu fit and do not overlap, #1197), the
-  // untrusted notice stays small with its link on the text line, and the status bar's items never
-  // overlap or run past it at a compact, a medium and a wide window.
+  // untrusted notice stays small with its link on the text line, the status bar's items never
+  // overlap or run past it at a compact, a medium and a wide window, and Settings lays out its
+  // list and rows as wide and as narrow windows need (#1850).
   "layout-medido": async (c) => {
     // 1. The Run row of a card that has not started: its one button and the menu fit the window
     // and do not overlap, at a phone's, a tablet's and a desktop's width (#1197).
@@ -1812,6 +1813,47 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         return null;
       });
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
+    }
+
+    // 4. Settings (#641, #1850): beside its content the section list is sticky and a label sits
+    // left of its control in a wide window; narrow, the list goes above the content, its links
+    // wrap in a row, and the label goes above its control. Measured, not read from the stylesheet.
+    // The Theme row is the one measured: its label is the first child, its control the second.
+    for (const wide of [true, false]) {
+      const width = wide ? 1280 : 390;
+      await c.page.setViewportSize({ width, height: wide ? 800 : 844 });
+      await open(c, { name: "settings" });
+      const found = await c.page.evaluate((themeLabel) => {
+        const side = document.querySelector(".settings-side");
+        const rail = document.querySelector(".settings-rail");
+        const body = document.querySelector(".settings-sections");
+        const row = [...document.querySelectorAll(".setting-row")].find(
+          (one) => one.children[0]?.textContent === themeLabel,
+        );
+        const label = row?.children[0];
+        const control = row?.children[1];
+        if (!side || !rail || !body || !label || !control) return null;
+        const list = side.getBoundingClientRect();
+        const content = body.getBoundingClientRect();
+        const text = label.getBoundingClientRect();
+        const field = control.getBoundingClientRect();
+        return {
+          list: list.right <= content.left + 1 ? "beside" : "above",
+          label: text.right <= field.left + 1 ? "beside" : "above",
+          sticky: getComputedStyle(side).position === "sticky",
+          rail: getComputedStyle(rail).flexDirection,
+        };
+      }, c.t("settings.theme"));
+      if (!found)
+        throw new Error(
+          `Settings at ${width}px: the list, the content or the Theme row is missing`,
+        );
+      const want = wide
+        ? { list: "beside", label: "beside", sticky: true, rail: "column" }
+        : { list: "above", label: "above", sticky: false, rail: "row" };
+      expect(found, `Settings at ${width}px`).toEqual(want);
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) throw new Error(`Settings scrolls sideways at ${width}px: ${sideways}`);
     }
   },
 

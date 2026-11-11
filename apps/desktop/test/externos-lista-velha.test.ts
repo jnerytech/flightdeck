@@ -31,7 +31,6 @@ describe("externos-lista-velha: a list answered late does not undo a newer frame
     const internals = store as unknown as {
       state: { hosts: unknown[] };
       connections: Map<string, unknown>;
-      onExternal(hostId: string, frame: unknown): void;
     };
     internals.state.hosts = [
       {
@@ -56,7 +55,7 @@ describe("externos-lista-velha: a list answered late does not undo a newer frame
     });
     const refreshing = store.refreshHub();
     // Meanwhile the hook happened and its frame arrived.
-    internals.onExternal("h", { type: "external.updated", session: waiting });
+    store.external.onExternal("h", { type: "external.updated", session: waiting } as never);
     answerList();
     await refreshing;
     expect(store.getState().externals["h/ext-2"]?.summary?.state).toBe("waiting");
