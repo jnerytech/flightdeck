@@ -92,6 +92,7 @@ import {
   MessagingSlice,
   type MessagingSliceState,
 } from "../features/messaging/index.ts";
+import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
   PersonasSlice,
@@ -810,19 +811,6 @@ function setupWants(
   };
 }
 
-/** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
-function permissionResponse(requestId: string, decision: "allow" | "deny", answer: Answer) {
-  const { updatedPermissions, message, updatedInput, held } = answer;
-  return {
-    requestId,
-    decision,
-    ...(updatedPermissions ? { updatedPermissions } : {}),
-    ...(message ? { message } : {}),
-    ...(updatedInput ? { updatedInput } : {}),
-    ...(decision === "allow" && held ? { held: true } : {}),
-  };
-}
-
 /** The list with this project in the place of the one of its id, or at the end when it was not there. */
 function replaceOrAdd(projects: Project[], project: Project): Project[] {
   return projects.some((one) => one.id === project.id)
@@ -838,6 +826,8 @@ export class AppStore {
   private readonly watched = new Map<string, number>();
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
+  /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
+  private readonly permissions: PermissionsSlice;
   private noticeSeq = 0;
   /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
   private readonly teamOf = new Map<
@@ -1313,6 +1303,18 @@ export class AppStore {
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });
+    this.permissions = new PermissionsSlice({
+      needsYou: () => needsYou(this.state, this.i18n.t),
+      sessions: () => this.state.sessions,
+      selectedHostId: () => this.state.selected?.hostId,
+      settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
+      sendOn: (hostId, response) =>
+        this.connections.get(hostId)?.request("permission.respond", response),
+      sendSelected: (response) =>
+        this.onSelected((conn) => conn.request("permission.respond", response)),
+      fail: (error, text) => this.fail(error, text),
+      t: () => this.i18n.t,
+    });
     this.tray = new TraySlice(platform, {
       state: () => this.state,
       needsYou: () => needsYou(this.state, this.i18n.t),
@@ -2538,54 +2540,14 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
   }
 
-  /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
-  private riskOf(hostId: string, requestId: string): RiskLevel | undefined {
-    const queued = needsYou(this.state, this.i18n.t).find(
-      (item) => item.hostId === hostId && item.requestId === requestId,
-    );
-    if (queued?.risk) return queued.risk;
-    for (const [key, session] of Object.entries(this.state.sessions)) {
-      if (!key.startsWith(`${hostId}/`)) continue;
-      const item = session.items.find((i) => i.kind === "permission" && i.requestId === requestId);
-      if (item?.kind === "permission" && item.risk) return item.risk;
-    }
-    return undefined;
-  }
-
-  /**
-   * An allow of a high-risk request that was not held is refused here, below every screen, and
-   * the person is told why (#245). Deny never needs a hold.
-   */
-  private unheld(hostId: string, requestId: string, decision: "allow" | "deny", answer: Answer) {
-    if (decision !== "allow" || answer.held || this.riskOf(hostId, requestId) !== "high") {
-      return false;
-    }
-    const text = this.i18n.t("approval.holdRequired");
-    this.fail(new Error(text), text);
-    return true;
-  }
-
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
-  async respondTo(
+  respondTo(
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
     answer: Answer = {},
   ): Promise<void> {
-    if (this.unheld(hostId, requestId, decision, answer)) return;
-    if (decision === "allow") startMeasure("approve");
-    // A request of the vault is answered in its own queue; any other goes to the host.
-    const vaultAnswer = decision === "allow" ? ({ scope: "once", via: "app" } as const) : null;
-    if (!this.vaultApprovals.settle(requestId, vaultAnswer)) {
-      try {
-        await this.connections
-          .get(hostId)
-          ?.request("permission.respond", permissionResponse(requestId, decision, answer));
-      } catch (error) {
-        this.fail(error);
-      }
-    }
-    if (decision === "allow") endMeasure("approve");
+    return this.permissions.respondTo(hostId, requestId, decision, answer);
   }
 
   /** Answers an open gate, from the card or from the "Precisa de você" queue. */
@@ -2606,11 +2568,7 @@ export class AppStore {
   }
 
   respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
-    const hostId = this.state.selected?.hostId;
-    if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
-    return this.onSelected((conn) =>
-      conn.request("permission.respond", permissionResponse(requestId, decision, answer)),
-    );
+    return this.permissions.respond(requestId, decision, answer);
   }
 
   /** The window coming back or the network returning is the moment to try the offline hosts. */
