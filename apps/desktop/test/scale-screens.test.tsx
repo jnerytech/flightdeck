@@ -72,13 +72,12 @@ describe("scale-screens: Sessions and the sidebar under a burst at 200 sessions 
     };
     const hidden = store as unknown as {
       state: Record<string, unknown>;
-      onEvent(hostId: string, envelope: unknown): void;
     };
     hidden.state = { ...store.getState(), ...scaleState({ hosts: 4, perHost: 50 }) };
     render(<Screens store={store} />);
     const before = { ...counts, asked };
     for (const envelope of summaryBurst(0, 0, BURST)) {
-      act(() => hidden.onEvent("host-0", envelope));
+      act(() => store.stream.onEvent("host-0", envelope as never));
     }
     expect({
       sidebar: counts.sidebar - before.sidebar <= BURST,

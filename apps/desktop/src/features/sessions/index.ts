@@ -1,8 +1,8 @@
 /**
  * The sessions' public entry in the app (#1589, #1596): the offers to resume the sessions a
  * restart interrupted, the session summaries a host sends, the Claude sessions started in a
- * terminal, and the commands a person asks of a session. Another domain imports from here,
- * never a file inside.
+ * terminal, what its events do to the conversations, and the commands a person asks of a
+ * session. Another domain imports from here, never a file inside.
  */
 
 export { SessionCommandsSlice } from "./commands.ts";
@@ -16,4 +16,5 @@ export {
   SessionsSlice,
   type SessionsSliceState,
 } from "./store.ts";
+export { SessionStreamSlice } from "./stream.ts";
 export { SummariesSlice } from "./summaries.ts";

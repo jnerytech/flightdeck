@@ -14,8 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
+import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";

@@ -33,7 +33,6 @@ const SOURCES = [
   "src/ui",
   "src/components/approval",
   "src/components/feedback",
-  "src/components/hosts",
   "src/components/layout",
   "src/components/session",
   "src/components/status",

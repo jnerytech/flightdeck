@@ -5,7 +5,6 @@ import type {
   CommandResults,
   CommandType,
   EffortLevel,
-  EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
   HelloResult,
@@ -32,14 +31,13 @@ import type {
   SessionRecap,
   SessionRuntime,
   SessionStatus,
-  SessionSubscribeResult,
   SessionSummary,
   SettableMode,
   TeamsUpdatedFrame,
   WatchInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS, FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import {
   AccountSlice,
   type AccountSliceState,
@@ -100,6 +98,7 @@ import {
   ExternalSessionsSlice,
   initialSessionsState,
   SessionCommandsSlice,
+  SessionStreamSlice,
   SessionsSlice,
   type SessionsSliceState,
   SummariesSlice,
@@ -177,13 +176,7 @@ import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
 import { sessionKey } from "./session-key.ts";
 import { sessionLabel } from "./session-label.ts";
-import {
-  applyEnvelope,
-  emptySession,
-  endStreaming,
-  markGap,
-  type SessionState,
-} from "./session-state.ts";
+import type { SessionState } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
 import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
@@ -828,6 +821,8 @@ export class AppStore {
   readonly summaries: SummariesSlice;
   /** What a host tells about the Claude sessions started in a terminal (#1596). */
   readonly external: ExternalSessionsSlice;
+  /** What a host's session events do to the conversations the app holds (#1596). */
+  readonly stream: SessionStreamSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -1326,6 +1321,12 @@ export class AppStore {
       notify: (...args) => this.inbox.notify(...args),
       feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
       feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
+    });
+    this.stream = new SessionStreamSlice({
+      sessions: () => this.state.sessions,
+      setSessions: (sessions) => this.update({ sessions }),
+      summary: (hostId, event) => this.summaries.apply(hostId, [event]),
+      resync: (hostId, sessionId) => this.connections.get(hostId)?.resync(sessionId),
     });
     this.summaries = new SummariesSlice({
       hosts: () => this.state.hosts,
@@ -2648,9 +2649,9 @@ export class AppStore {
       lastSeqFor: (sessionId) =>
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
-      onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
+      onSubscribed: (sessionId, result) => this.stream.onSubscribed(config.id, sessionId, result),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
-      onEvent: (envelope) => this.onEvent(config.id, envelope),
+      onEvent: (envelope) => this.stream.onEvent(config.id, envelope),
       onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.external.onExternal(config.id, frame),
@@ -2739,36 +2740,7 @@ export class AppStore {
       );
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") this.dropPartialText(hostId);
-  }
-
-  /** Partial text from before the drop will never be completed by a delta; drop it. */
-  private dropPartialText(hostId: string): void {
-    const sessions = { ...this.state.sessions };
-    for (const key of Object.keys(sessions)) {
-      if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);
-    }
-    this.update({ sessions });
-  }
-
-  /**
-   * A session asked from the start that had events (`lastSeq` > 0) but replays none lost them
-   * to the host's retention: the view says so instead of showing an empty conversation.
-   */
-  private onSubscribed(hostId: string, sessionId: string, result: SessionSubscribeResult): void {
-    const key = sessionKey(hostId, sessionId);
-    // What the host has after our last seq is on its way (it follows the answer): a hole that is
-    // still there when it arrives is one the host cannot fill.
-    if (this.resyncing.get(key) === "asked") this.resyncing.set(key, "answered");
-    const current = this.state.sessions[key] ?? emptySession();
-    if (result.replayed > 0 || result.session.lastSeq === 0 || current.lastSeq > 0) return;
-    const pruned = {
-      ...current,
-      pruned: true,
-      status: result.session.status,
-      cwd: result.session.cwd,
-    };
-    this.update({ sessions: { ...this.state.sessions, [key]: pruned } });
+    if (status === "connecting") this.stream.dropPartialText(hostId);
   }
 
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
@@ -2816,47 +2788,6 @@ export class AppStore {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.budgets.replace(hostId, list.budgets);
     }
-  }
-
-  private onEvent(hostId: string, envelope: EventEnvelope): void {
-    if (envelope.event.type === "session.summary") {
-      this.summaries.apply(hostId, [envelope.event]);
-      return;
-    }
-    const key = sessionKey(hostId, envelope.sessionId);
-    const known = this.state.sessions[key] ?? emptySession();
-    const current = this.afterLostFrames(hostId, key, envelope, known);
-    if (!current) return;
-    const session = applyEnvelope(current, envelope);
-    this.update({ sessions: { ...this.state.sessions, [key]: session } });
-  }
-
-  /**
-   * The state an event applies on: `known`, or `known` marked with a gap when the host could not
-   * replay what was lost; null when the frame must wait for that replay.
-   */
-  private afterLostFrames(
-    hostId: string,
-    key: string,
-    envelope: EventEnvelope,
-    known: SessionState,
-  ): SessionState | null {
-    if (EPHEMERAL_EVENTS.has(envelope.event.type) || known.lastSeq <= 0) return known;
-    if (envelope.seq === known.lastSeq + 1) this.resyncing.delete(key);
-    if (envelope.seq <= known.lastSeq + 1) return known;
-    // A frame was lost on the way: this one is not applied (it would leave a hole). The
-    // daemon replays from the last seq we have, once per hole.
-    const asked = this.resyncing.get(key);
-    if (asked === undefined) {
-      this.resyncing.set(key, "asked");
-      this.connections.get(hostId)?.resync(envelope.sessionId);
-      return null;
-    }
-    if (asked === "asked") return null;
-    // The host answered and the hole is still there (its retention cut it): go on from
-    // here and say so in the conversation.
-    this.resyncing.delete(key);
-    return markGap(known);
   }
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
@@ -2996,8 +2927,6 @@ export class AppStore {
   }
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
-  /** Sessions whose lost frame was asked for again (cleared when the next frame fits). */
-  private readonly resyncing = new Map<string, "asked" | "answered">();
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
 
