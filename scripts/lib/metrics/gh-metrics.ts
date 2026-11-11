@@ -25,7 +25,7 @@ export interface MergedPr {
   mergedAt: string;
 }
 
-export interface Spread {
+interface Spread {
   p50: number | null;
   p90: number | null;
 }
