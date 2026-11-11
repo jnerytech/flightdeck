@@ -852,11 +852,11 @@ describe("times-ui: the host follows the switcher", () => {
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     const [alfa, beta] = store.getState().hosts.map((h) => h.id);
     // A pick in the switcher shows that host's tabs; Times then opens on that host.
-    await act(async () => store.pickHost(beta as string));
+    await act(async () => store.hostTabs.switchHost(beta as string));
     await click("Times");
     await settleMaybe(() => hostField()?.value === beta);
     const first = hostField()?.value;
-    await act(async () => store.pickHost(alfa as string));
+    await act(async () => store.hostTabs.switchHost(alfa as string));
     await click("Times");
     await settleMaybe(() => hostField()?.value === alfa);
     expect({
@@ -874,7 +874,7 @@ describe("times-ui: the host follows the switcher", () => {
     await act(() => store.addHost({ name: "beta", url: other.url, token: other.token }));
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     const [alfa, beta] = store.getState().hosts.map((h) => h.id);
-    await act(async () => store.pickHost(alfa as string));
+    await act(async () => store.hostTabs.switchHost(alfa as string));
     await act(async () => store.router.push({ name: "teams", host: beta as string }));
     await settleMaybe(() => hostField()?.value === beta);
     expect({
@@ -890,7 +890,7 @@ describe("times-ui: the host follows the switcher", () => {
     await act(() => store.addHost({ name: "gama", url: legacy.url, token: TOKEN }));
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     const gama = store.getState().hosts.find((h) => h.name === "gama")?.id as string;
-    await act(async () => store.pickHost(gama));
+    await act(async () => store.hostTabs.switchHost(gama));
     await click("Times");
     const said = () => screen.queryByText("gama não tem times. Mostrando alfa.") !== null;
     await settleMaybe(said);

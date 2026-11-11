@@ -10,7 +10,7 @@
   "apps/daemon/src/teams/teams.ts": 818,
   "apps/daemon/src/workflows/engine.ts": 1317,
   "apps/desktop/src/features/teams/page.tsx": 906,
-  "apps/desktop/src/lib/app-store.ts": 2432,
+  "apps/desktop/src/lib/app-store.ts": 2416,
   "apps/desktop/src/ui/BoardView.tsx": 1537,
   "apps/desktop/src/ui/Screens.tsx": 1238,
   "apps/desktop/src/ui/SessionView.tsx": 1119,
