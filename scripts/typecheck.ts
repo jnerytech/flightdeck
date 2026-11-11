@@ -41,10 +41,8 @@ const regular = (path: string) => {
 /** Seeds the missing build info from the other worktrees; an optimisation, so it never stops the run. */
 function seed(): void {
   try {
-    const listed = spawnSync("git", ["worktree", "list", "--porcelain"], {
-      cwd: ROOT,
-      encoding: "utf8",
-    }); // NOSONAR: git from the PATH of the developer
+    const args = ["worktree", "list", "--porcelain"];
+    const listed = spawnSync("git", args, { cwd: ROOT, encoding: "utf8" }); // NOSONAR: git from the PATH of the developer
     if (listed.status !== 0) return;
     const own = realpathSync(ROOT);
     const siblings = listed.stdout
