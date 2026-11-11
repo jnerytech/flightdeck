@@ -5,7 +5,7 @@ import { waiter } from "../wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { HistoryList } = await import("../../src/ui/HistoryList.tsx");
+const { HistoryList } = await import("../../src/features/history/history-list.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
 import type { AppStore } from "../../src/lib/app-store.ts";
