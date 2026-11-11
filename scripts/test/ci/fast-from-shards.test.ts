@@ -9,6 +9,7 @@ import type { Tier } from "../../lib/test-tiers.ts";
 const TIERS: Record<string, Tier> = {
   "u.test.ts": "unit",
   "c.test.tsx": "component",
+  "u2.test.ts": "unit",
   "i1.test.ts": "integration",
   "i2.test.ts": "integration",
 };
@@ -28,14 +29,22 @@ interface Cover {
 const SHARDS: Array<{ files: string[]; covers: Cover }> = [
   { files: ["u.test.ts"], covers: { "src/a.ts": true, "src/b.ts": false } },
   { files: ["c.test.tsx"], covers: { "src/a.ts": true, "src/b.ts": false } },
-  { files: ["i1.test.ts"], covers: { "src/a.ts": false, "src/b.ts": true } },
-  { files: ["i2.test.ts"], covers: { "src/a.ts": false, "src/b.ts": true } },
+  { files: ["u2.test.ts"], covers: { "src/a.ts": true, "src/b.ts": false } },
+  { files: ["i1.test.ts", "i2.test.ts"], covers: { "src/a.ts": false, "src/b.ts": true } },
 ];
 
-function run(baseline: string[], drop?: { shard: number; kind: "bun" | "istanbul" }) {
+/** A UI test that also starts a daemon: integration for the pyramid, run on the component shards. */
+const DOM_DAEMON = "d.test.tsx";
+
+function run(
+  baseline: string[],
+  drop?: { shard: number; kind: "bun" | "istanbul" },
+  domDaemon?: { ran: boolean },
+) {
   const files = new Map<string, string>();
   const folders: string[] = [];
   SHARDS.forEach((shard, k) => {
+    const mine = domDaemon?.ran && k === 2 ? [...shard.files, DOM_DAEMON] : shard.files;
     for (const kind of ["bun", "istanbul"] as const) {
       if (drop?.shard === k + 1 && drop.kind === kind) continue;
       const name = `${kind}-${k + 1}`;
@@ -44,7 +53,7 @@ function run(baseline: string[], drop?: { shard: number; kind: "bun" | "istanbul
         shard: k + 1,
         of: 4,
         kind,
-        files: shard.files,
+        files: mine,
         exit: 0,
         fail: 0,
       };
@@ -69,11 +78,12 @@ function run(baseline: string[], drop?: { shard: number; kind: "bun" | "istanbul
     folders: () => folders,
     read: (path) => files.get(path) ?? null,
     write: () => {},
-    tracked: TESTS,
+    tracked: domDaemon ? [...TESTS, DOM_DAEMON] : TESTS,
     sources: SOURCES,
     print: () => {},
     error: () => {},
-    tiers: TIERS,
+    tiers: domDaemon ? { ...TIERS, [DOM_DAEMON]: "integration" } : TIERS,
+    ...(domDaemon ? { shardTiers: { ...TIERS, [DOM_DAEMON]: "component" as Tier } } : {}),
     fastBaseline: baseline,
     fastResult: (result) => results.push(result),
   });
@@ -100,6 +110,16 @@ describe("shard-gate merge: the fast-coverage ratchet reads the unit + component
     const { results } = run(["src/a.ts"], { shard: 2, kind: "bun" });
     expect(results[0]?.ok).toBe(false);
     expect(results[0]?.lines.join("\n")).toContain("no verdict");
+  });
+
+  test("a UI test that starts a daemon is expected on the component shards: when it did not run, the ratchet has no verdict", () => {
+    const { results } = run(["src/a.ts"], undefined, { ran: false });
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.lines.join("\n")).toContain("no verdict");
+  });
+
+  test("a UI test that starts a daemon and ran on the component shards leaves the ratchet holding", () => {
+    expect(run(["src/a.ts"], undefined, { ran: true }).results[0]?.ok).toBe(true);
   });
 
   test("the ratchet is reported while the merged gate keeps its own verdict", () => {

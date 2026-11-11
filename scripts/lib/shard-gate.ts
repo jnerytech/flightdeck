@@ -458,6 +458,8 @@ export interface MergeShardsDeps {
   selection?: Selection;
   /** The tier of every test file (#261): given with `pyramid`, the run's pyramid table is built. */
   tiers?: Record<string, Tier>;
+  /** Where each file ran on the shards, when it differs from `tiers` (a UI test with a daemon). */
+  shardTiers?: Record<string, Tier>;
   /** Gets the pyramid table as markdown and as JSON (#1854). */
   pyramid?: (markdown: string, json: string) => void;
   /** The sources the fast tiers covered at the gate before (fast-coverage-baseline.json). */
@@ -554,7 +556,9 @@ export function mergeShards(
   });
   if (result.lcov) deps.write(lcovOut, result.lcov);
   if (deps.tiers && deps.fastBaseline && deps.fastResult) {
-    deps.fastResult(fastCoverageOf(count, jobs, deps, deps.tiers, deps.fastBaseline));
+    deps.fastResult(
+      fastCoverageOf(count, jobs, deps, deps.shardTiers ?? deps.tiers, deps.fastBaseline),
+    );
   }
   if (result.problems.length === 0) {
     deps.print(

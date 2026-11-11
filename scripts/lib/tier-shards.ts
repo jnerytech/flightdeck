@@ -13,10 +13,10 @@ interface TierGroup {
   shards: number;
 }
 
-/** In pyramid order: the base first. The e2e tier runs in its own jobs (the journeys, the smokes). */
+/** In pyramid order: the base first. A PR selects few integration tests (0.5 s and 1.4 s measured), so the base gets the runners. The e2e tier runs in its own jobs (the journeys, the smokes). */
 export const TIER_GROUPS: readonly TierGroup[] = [
-  { label: "unit + component", tiers: ["unit", "component"], shards: 2 },
-  { label: "integration", tiers: ["integration"], shards: 2 },
+  { label: "unit + component", tiers: ["unit", "component"], shards: 3 },
+  { label: "integration", tiers: ["integration"], shards: 1 },
 ];
 
 /** The shard count of the whole plan: the shards `shard-gate` numbers 1 to this. */

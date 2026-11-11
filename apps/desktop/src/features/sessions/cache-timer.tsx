@@ -34,6 +34,7 @@ export function CacheTimer(
   const view = known ? cacheTimer(props.since, now * 1000, ttl) : null;
   if (!view) return null;
   const cold = view.phase === "cold";
+  const nearEnd = view.phase === "warning";
   const { minutes, seconds } = spokenParts(view.remainingMs);
   const unit = (n: number, one: Key, many: Key) => {
     if (n > 0) return t(n === 1 ? one : many, { n });
@@ -54,7 +55,7 @@ export function CacheTimer(
             aria-label={cold ? t("cacheTimer.cold") : t("cacheTimer.expires", { time: spoken })}
             className={cn(
               "inline-flex shrink-0 items-center gap-0.5 font-mono text-[10px] tabular-nums",
-              view.phase === "warning" ? "text-status-needs-you" : "text-muted-foreground",
+              nearEnd ? "text-status-needs-you" : "text-muted-foreground",
             )}
           >
             <Timer aria-hidden="true" className={props.compact ? "size-2" : "size-2.5"} />

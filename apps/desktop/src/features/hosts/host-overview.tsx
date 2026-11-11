@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { CardGrid } from "@/components/hub/card-grid";
-import { SessionCard, STATE_TONES } from "@/components/hub/session-card";
+import { CardGrid } from "@/components/layout/card-grid";
 import { Panel } from "@/components/layout/panel";
 import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import {
   sessionLineText,
 } from "../../lib/hub.ts";
 import type { ProjectCard } from "../../lib/project-cards.ts";
+import { SessionCard, STATE_TONES } from "../sessions/session-card.tsx";
 
 /**
  * What a host page leads with: that host's own sessions (the rows and cards of the Sessions list)

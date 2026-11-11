@@ -1,3 +1,4 @@
+import { account } from "./en/account.ts";
 import { agent } from "./en/agent.ts";
 import { assistant } from "./en/assistant.ts";
 import { automations } from "./en/automations.ts";
@@ -353,81 +354,7 @@ export const en: Dictionary = {
     },
   },
   ...notifications,
-  account: {
-    region: "Claude account of {host}",
-    title: "Claude account",
-    loading: "Reading the account…",
-    offline: "{host} is offline: the account shows again when it is back.",
-    plans: {
-      free: "Free",
-      pro: "Pro",
-      max: "Max",
-      ultra: "Ultra",
-      team: "Team",
-      enterprise: "Enterprise",
-    },
-    planHint:
-      "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
-    windows: {
-      five_hour: "5 hours",
-      seven_day: "7 days",
-      seven_day_opus: "7 days · Opus",
-      seven_day_sonnet: "7 days · Sonnet",
-    },
-    meter: "{window} of {host}",
-    meterText: "{percent}%, {reset}",
-    meterTextNoReset: "{percent}%",
-    resetsIn: "resets in {d}",
-    lastRead: "Last read {ago}",
-    noWindows: "The host reported no plan windows.",
-    stale: "Could not refresh: this is the last reading.",
-    refresh: "Refresh",
-    refreshing: "Reading…",
-    refreshLabel: "Refresh the account of {host}",
-    signedOut: {
-      title: "This host is not signed in to Claude.",
-      steps:
-        "Open this host's terminal, run this command and follow the steps there, then come back:",
-    },
-    copy: "Copy command",
-    copied: "Command copied",
-    terminal: "Open terminal",
-    apiKey: "This host uses an API key. Plan limits do not apply.",
-    provider: "This host uses {provider}. Plan limits do not apply.",
-    unknownSignIn: "This host's sign-in is not one the app knows.",
-    unavailable: "The account could not be read.",
-    retry: "Try again",
-  },
-  quota: {
-    windows: { five_hour: "5 hours", seven_day: "7 days" },
-    shortWindows: { five_hour: "5 h", seven_day: "7 days" },
-    region: "Quota of {host}",
-    meter: "{window} of {host}",
-    noReading: "no reading yet",
-    resets: "resets at {time}",
-    read: "read {ago}",
-    hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
-    guard: {
-      label: "New cards wait from",
-      labelFor: "New cards wait from, on {host}",
-      off: "Never",
-      hint: "Sessions already running are never stopped.",
-      readOnly:
-        "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
-      readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
-    },
-    popover: {
-      label: "Plan quota of the hosts",
-      showRunning: "Show what is running",
-      openHost: "Open the host page",
-      openHostOf: "Open the page of {host}",
-    },
-    projection: {
-      few: "too few readings to project",
-      exhausts: "at the current pace, the {window} window runs out at {time}",
-      holds: "won't run out before {time}",
-    },
-  },
+  ...account,
   errors: {
     bad_request: "The host refused the request.",
     unauthorized:

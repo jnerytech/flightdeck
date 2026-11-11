@@ -381,9 +381,10 @@ em vez de depender de cuidado.
 - A release is a tag on a green `main`; there is no rc branch to assemble. `bun run pr -- tag vX`
   (the coordinator) tags main's HEAD only after a full run of that commit passed (the schedule's,
   or one by hand), and pushes the tag alone as `refs/tags/vX`.
-- The full run's Linux suite runs in 4 shards named by tier (`unit + component 1/2`, `2/2`, `integration 1/2`, `2/2`), each
+- The full run's Linux suite runs in 4 shards named by tier (`unit + component 1/3`, `2/3`, `3/3`, `integration 1/1`), each
   twice: Bun's coverage gives the lines (and SonarCloud's lcov), istanbul the functions (#296, #1854). `scripts/shard-gate.ts` merges
   the eight into the 80% gate (fail closed: a missing or failed shard is red), writes the pyramid table, and judges fast coverage.
+  A local full run and `test:related` end with the same per-tier table, from their own run.
   A test can pass under Bun and fail under istanbul: a function whose source runs on its own
   (`new Function`, a page's init script) carries an istanbul counter that is undefined there
   (#1492). So a PR, and a push to `main`, also runs its changed test files under istanbul

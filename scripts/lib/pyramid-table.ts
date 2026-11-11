@@ -94,3 +94,11 @@ export function renderPyramid(pyramid: Pyramid): string {
   }
   return `${lines.join("\n")}\n`;
 }
+
+/** The table a local run prints at its end (#1854): the markdown, or "" when no test file of a known tier ran. */
+export function localPyramid(tiers: Record<string, Tier>, junit: string | null): string {
+  const run = pyramidOf(tiers, [
+    { marker: { shard: 1, of: 1, kind: "bun", files: [], exit: 0, fail: 0 }, junit },
+  ]);
+  return run.rows.some((row) => row.tests !== null) ? renderPyramid(run) : "";
+}
