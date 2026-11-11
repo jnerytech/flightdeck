@@ -179,6 +179,7 @@ test's baseline, with the issue that renames them.
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
 | `harness` | harness | A project's Markdown harness shared as a host template |
 | `history` | history | The conversations Claude Code already recorded, indexed and read only |
+| `home` | home | The landing screen: KPIs, sparklines and leaderboards over the chosen scope and period |
 | `hosts` | host | The machines the app talks to: what each reports about its health (dependencies and doctor), then its saved list and connection |
 | `inbox` | notification | The notification center: what the app sent, kept for the bell, read and unread, the taskbar badge, the system toast and the sound |
 | `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
