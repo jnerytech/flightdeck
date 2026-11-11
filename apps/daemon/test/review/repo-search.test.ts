@@ -326,6 +326,29 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     expect([await leaks("name"), await leaks("content")]).toEqual([false, false]);
   });
 
+  test("an rg line of the wrong shape is skipped, and the valid ones are kept (#1609)", async () => {
+    const { repo } = await setup();
+    const odd = JSON.stringify({
+      type: "match",
+      data: { path: { text: 5 }, lines: { text: "x" }, line_number: 1 },
+    });
+    const found = await searchRepository(
+      repo,
+      { mode: "content", query: "panel" },
+      {
+        rg: () => "rg",
+        run: async () => ({
+          code: 0,
+          stdout: `${odd}\n${event({ text: "./src/panel.ts" }, 1, { text: "panel\n" })}\n`,
+          stderr: "",
+          truncated: false,
+          timedOut: false,
+        }),
+      },
+    );
+    expect(found.matches.map((m) => m.path)).toEqual(["src/panel.ts"]);
+  });
+
   test("an rg cut by its time limit keeps what it found and says it was cut", async () => {
     const { repo } = await setup();
     const found = await searchRepository(

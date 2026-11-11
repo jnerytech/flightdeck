@@ -2,6 +2,7 @@ import { account } from "./pt-BR/account.ts";
 import { agent } from "./pt-BR/agent.ts";
 import { assistant } from "./pt-BR/assistant.ts";
 import { automations } from "./pt-BR/automations.ts";
+import { backup } from "./pt-BR/backup.ts";
 import { board } from "./pt-BR/board.ts";
 import { changes } from "./pt-BR/changes.ts";
 import { chrome } from "./pt-BR/chrome.ts";
@@ -145,116 +146,7 @@ export const ptBR = {
   ...personas,
   ...snippets,
   ...vault,
-  backupAll: {
-    title: "Backup de tudo",
-    intro:
-      "Um arquivo cifrado com as configurações, personas, snippets, hosts (com os tokens) e o cofre. Só a frase-senha que você escolher abre o arquivo.",
-    exportTitle: "Fazer backup",
-    passphrase: "Frase-senha",
-    confirm: "Confirmar frase-senha",
-    passphraseHelp: "Pelo menos 12 caracteres. Sem ela o backup não abre.",
-    export: "Fazer backup agora",
-    exportNeeds: "Digite a frase-senha e repita-a.",
-    saved: "Backup salvo, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
-    importTitle: "Restaurar um backup",
-    sourceLegend: "Restaurar de",
-    source: { file: "Um arquivo", drive: "Google Drive" },
-    driveLook: "Procurar no Google Drive",
-    driveNone: "Ainda não há backups no Google Drive.",
-    driveChoiceLegend: "Backups no Google Drive",
-    driveNeedsSignIn: "Entre no Google primeiro, em Backups agendados.",
-    driveReadNeeds: "Escolha um backup e digite a frase-senha dele.",
-    filePassphrase: "Frase-senha do arquivo",
-    read: "Ler backup",
-    needsDesktop: "Restaurar um backup precisa do app para desktop: o navegador não abre arquivos.",
-    readNeeds: "Digite a frase-senha do arquivo.",
-    kinds: {
-      settings: "Configurações",
-      personas: "Personas",
-      snippets: "Snippets",
-      hosts: "Hosts",
-      vault: "Cofre",
-    },
-    line: "{kind}: {added} novos, {same} iguais, {conflicting} diferentes",
-    conflictList: "Diferentes aqui",
-    newHosts: "Hosts novos",
-    choiceLegend: "Quando for diferente",
-    nothingToRestore: "Nada aqui é novo. Escolha substituir uma diferença para restaurar.",
-    keep: "Manter o que está aqui",
-    replace: "Substituir pelo backup",
-    restore: "Restaurar",
-    replaceMessage: "Substituir {names} pelo que está no backup? O que está aqui se perde.",
-    replaceConfirm: "Substituir",
-    result:
-      "Restaurado: {added} novos, {overwritten} substituídos, {skipped} mantidos. Feche e abra o Flightdeck de novo para usar.",
-    error: {
-      "short-passphrase": "A frase-senha precisa ter pelo menos 12 caracteres.",
-      mismatch: "As frases-senha não são iguais.",
-      unreadable:
-        "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
-      failed: "A restauração falhou e nada foi alterado.",
-      "drive-auth": "O Google Drive não aceita a entrada. Entre de novo em Backups agendados.",
-      "drive-failed": "Não foi possível ler o Google Drive. Tente de novo.",
-      unexpected: "Algo deu errado. Nada foi alterado.",
-      "too-big":
-        "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",
-    },
-  },
-  backupSchedule: {
-    title: "Backups agendados",
-    intro:
-      "O backup é feito sozinho numa pasta que você escolhe, e só os últimos arquivos ficam. A frase-senha é pedida uma vez a cada abertura do app e fica só na memória.",
-    cadenceLegend: "Com que frequência",
-    cadence: { off: "Desligado", daily: "Todo dia", weekly: "Toda semana" },
-    folder: "Pasta",
-    noFolder: "Nenhuma pasta escolhida",
-    chooseFolder: "Escolher pasta",
-    targetLegend: "Onde salvar",
-    target: { folder: "Uma pasta", drive: "Google Drive" },
-    driveHelp:
-      "Os backups vão para a pasta oculta do Flightdeck no seu Google Drive. Só este app a enxerga, e cada arquivo continua criptografado com a sua frase-senha.",
-    driveSignedIn: "Conectado ao Google",
-    driveSignedOut: "Não conectado ao Google",
-    driveSignIn: "Entrar com o Google",
-    driveSignOut: "Sair",
-    driveRefused: "O Google não aceitou a entrada. Tente de novo.",
-    keep: "Arquivos a manter",
-    keepInvalid:
-      "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
-    passphrase: "Frase-senha desta sessão",
-    passphraseHelp:
-      "Pelo menos 12 caracteres. Fica na memória até você fechar o Flightdeck e nunca é salva.",
-    usePassphrase: "Usar",
-    passphraseNeeds: "Digite uma frase-senha de pelo menos 12 caracteres.",
-    passphraseSet: "Frase-senha definida até você fechar o Flightdeck.",
-    lastRun: "Último backup: {when}",
-    neverRun: "Ainda não houve backup agendado.",
-    pruneFailed: "O backup foi salvo, mas não deu para apagar os arquivos antigos.",
-    attention: {
-      passphrase: {
-        title: "Os backups agendados precisam da sua frase-senha",
-        body: "Digite-a em Configurações, seção Backup. Até lá, nenhum backup é feito.",
-      },
-      "no-folder": {
-        title: "Os backups agendados estão sem pasta",
-        body: "Escolha uma pasta em Configurações, seção Backup. Até lá, nenhum backup é feito.",
-      },
-      failed: {
-        title: "Um backup agendado falhou",
-        body: "Veja se a pasta ainda existe e tem espaço, em Configurações, seção Backup.",
-      },
-      "drive-auth": {
-        title: "Os backups agendados no Google Drive precisam que você entre",
-        body: "Entre de novo em Configurações, seção Backup. Até lá, nenhum backup é feito.",
-      },
-    },
-    skipped: {
-      "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
-      "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
-      failed: "O último backup não pôde ser salvo. Veja se a pasta ainda existe e tem espaço.",
-      "drive-auth": "Há um backup a fazer, mas o Google Drive não está conectado. Entre de novo.",
-    },
-  },
+  ...backup,
   states: {
     connecting: "Conectando a {host}…",
     loading: "Carregando…",

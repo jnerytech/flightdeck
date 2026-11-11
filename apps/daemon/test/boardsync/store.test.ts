@@ -12,7 +12,7 @@ async function setup() {
   cleanups.push(() => ctx.board.stop());
   const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
   const card = ctx.board.createCard(project.id, { title: "A card", description: "" });
-  return { ...ctx, project, card, store: new BoardSyncStore(ctx.store.db) };
+  return { ...ctx, project, card, db: ctx.store.db, store: new BoardSyncStore(ctx.store.db) };
 }
 
 const LINK = {
@@ -60,6 +60,22 @@ describe("board-sync-store: links, the cards' external fields and the log", () =
     expect(reasonOf(() => s.store.link({ projectId: s.project.id, ...LINK }))).toBe(
       "board_sync_already_linked",
     );
+  });
+
+  test("a link whose stored map is damaged reads with an empty map, and drops entries that name no column (#1609)", async () => {
+    const s = await setup();
+    s.store.link({ projectId: s.project.id, ...LINK });
+    const read = (stored: string) => {
+      s.db.query("UPDATE board_links SET column_map = ?").run(stored);
+      try {
+        return s.store.get(s.project.id)?.columnMap;
+      } catch {
+        return "threw";
+      }
+    };
+    expect(read("not json")).toEqual({});
+    expect(read("[1]")).toEqual({});
+    expect(read('{"Todo":"nonsense"}')).toEqual({});
   });
 
   test("update changes push, the map and the sync status", async () => {
