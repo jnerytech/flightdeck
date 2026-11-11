@@ -64,7 +64,7 @@ const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
 const ClientsPage = lazyScreen(() => import("../features/clients/page.tsx"), "ClientsPage");
 const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "ConnectionsPage");
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");
-const PullRequestsPage = lazyScreen(() => import("./PullRequestsPage.tsx"), "PullRequestsPage");
+const PrsPage = lazyScreen(() => import("../features/board/pull-requests.tsx"), "PullRequestsPage");
 const CostsPage = lazyScreen(() => import("../features/costs/page.tsx"), "CostsPage");
 const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("../features/hosts/page.tsx"), "HostPage");
@@ -940,7 +940,7 @@ function routeScreen(props: ScreenProps): ReactNode {
         />
       );
     case "pull-requests":
-      return <PullRequestsPage store={store} go={go} />;
+      return <PrsPage store={store} go={go} />;
     case "conversations":
       return <Messaging store={store} go={go} />;
     case "personas":
