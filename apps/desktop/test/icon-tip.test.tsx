@@ -118,7 +118,7 @@ describe("icon-tip: the narrow sidebar uses it (issue #165)", () => {
 describe("icon-tip: the client switcher keeps its title only as a tooltip in the rail (issue #165)", () => {
   test("its source has no native title", () => {
     const source = readFileSync(
-      join(import.meta.dir, "../src/components/clients/client-switcher.tsx"),
+      join(import.meta.dir, "../src/features/clients/client-switcher.tsx"),
       "utf8",
     );
     expect(source).not.toMatch(/\btitle=\{/);

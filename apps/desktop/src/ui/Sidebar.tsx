@@ -15,7 +15,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
-import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { ProjectTree } from "@/components/projects/project-tree";
@@ -32,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
 import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";

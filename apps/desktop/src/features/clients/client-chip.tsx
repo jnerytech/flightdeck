@@ -1,6 +1,6 @@
-import { ClientDot } from "@/components/clients/client-dot";
 import { Inline } from "@/components/layout/stack";
 import type { ClientColor } from "../../lib/clients.ts";
+import { ClientDot } from "./client-dot";
 
 /** The client of a project or a request, small enough to sit in a header or a row. */
 export function ClientChip(props: Readonly<{ name: string; color: ClientColor }>) {
