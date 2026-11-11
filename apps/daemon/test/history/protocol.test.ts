@@ -6,7 +6,7 @@ import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startDaemon } from "../../src/main.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
 import {
   appendRaw,
   assistantLine,
@@ -15,7 +15,7 @@ import {
   summaryLine,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const TOKEN = "historico-token-0123456789";
 const cleanups: Array<() => unknown> = [];

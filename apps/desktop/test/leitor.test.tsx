@@ -4,7 +4,7 @@ import {
   summaryLine,
   userLine,
   writeTranscript,
-} from "../../daemon/test/history-helpers.ts";
+} from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";

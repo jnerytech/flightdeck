@@ -7,8 +7,8 @@ import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { gitRepo, newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { gitRepo, newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #1439: card.review over the protocol, the feature that offers it, and its cost on the card. */
 

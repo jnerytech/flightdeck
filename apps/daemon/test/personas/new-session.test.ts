@@ -14,9 +14,9 @@ import { startServer } from "../../src/server.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, poll, record, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, poll, record, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real processes (flightdeckd, the fake claude): more than the default 5 s.
 setDefaultTimeout(40_000);

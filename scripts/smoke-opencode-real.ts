@@ -18,7 +18,7 @@ import type { HostInfoResult } from "@flightdeck/protocol";
 import { AcpClient, spawnAcp } from "../apps/daemon/src/runtime/acp/client.ts";
 import { opencodeConfig, opencodeEnv } from "../apps/daemon/src/runtime/opencode-config.ts";
 import { fileExists, resolveOpenCodePath } from "../apps/daemon/src/runtime/opencode-discovery.ts";
-import { FrameClient } from "../apps/daemon/test/history-helpers.ts";
+import { FrameClient } from "../apps/daemon/test/support/history-helpers.ts";
 import {
   alwaysOptionId,
   hostileFiles,

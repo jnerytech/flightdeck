@@ -5,8 +5,8 @@ import type { QuotaState } from "@flightdeck/protocol";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
 import { Quota } from "../../src/quota/quota.ts";
-import { poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "quota-pause-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

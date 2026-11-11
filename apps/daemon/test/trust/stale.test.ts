@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { EventEnvelope } from "@flightdeck/protocol";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
-import { newManager, waitFor } from "../helpers.ts";
+import { newManager, waitFor } from "../support/helpers.ts";
 
 /** A manager whose trust answer the test turns on and off, and the summaries it announces. */
 function setup(initial: boolean) {

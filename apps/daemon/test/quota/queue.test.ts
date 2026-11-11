@@ -3,11 +3,11 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startDaemon } from "../../src/main.ts";
 import { Quota } from "../../src/quota/quota.ts";
-import { cardWhen, gitRepo, newBoard } from "../board-helpers.ts";
-import { poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
 setDefaultTimeout(20_000);

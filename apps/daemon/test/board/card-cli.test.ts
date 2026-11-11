@@ -6,7 +6,7 @@ import {
   isLoopbackHost,
   runCardCli,
 } from "../../src/card-cli.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import {
   CLOSE,
   card,

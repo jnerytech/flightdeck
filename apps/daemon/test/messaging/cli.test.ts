@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { parseArgs, runCli } from "../../src/main.ts";
 import { Idle } from "../../src/messaging/idle.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { setup } from "../mensagens-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { setup } from "../support/messaging-helpers.ts";
 
 setDefaultTimeout(20_000);
 

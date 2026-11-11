@@ -5,8 +5,8 @@ import { Config } from "../../src/config.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { UpdateChecker } from "../../src/updates/check.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "auto-update-token-0123456789abcdef";
 

@@ -8,10 +8,10 @@ import { SecretScanner } from "@flightdeck/protocol";
 import { Changes } from "../../src/review/changes.ts";
 import { SessionCommits } from "../../src/review/session-commit.ts";
 import { startServer } from "../../src/server.ts";
-import { git } from "../board-helpers.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 /**
  * Issue #1133, slice D1: a plain session's chosen files are committed on a new branch in the

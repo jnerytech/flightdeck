@@ -3,8 +3,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Budget } from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "budget-quota-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

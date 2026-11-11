@@ -16,11 +16,11 @@ import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { parseWorkflow } from "../../src/workflows/schema.ts";
-import { cardWhen, gitRepo } from "../board-helpers.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { commitWorkflow, sha256 } from "../workflow-helpers.ts";
+import { cardWhen, gitRepo } from "../support/board-helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { commitWorkflow, sha256 } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
 setDefaultTimeout(30_000);

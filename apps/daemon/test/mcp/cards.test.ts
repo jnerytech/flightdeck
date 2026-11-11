@@ -6,9 +6,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
-import { git, newBoard } from "../board-helpers.ts";
-import { poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "mcp-cards-token-0123456789abcdef";

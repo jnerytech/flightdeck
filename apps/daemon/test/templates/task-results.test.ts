@@ -5,8 +5,8 @@ import type { TaskResultsResult, TemplateStartResult } from "@flightdeck/protoco
 import { startServer } from "../../src/server.ts";
 import { BUILTIN_TEMPLATES } from "../../src/templates/builtin.ts";
 import { TaskTracker } from "../../src/templates/tasks.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "t".repeat(32);
 const cleanups: Array<() => unknown> = [];

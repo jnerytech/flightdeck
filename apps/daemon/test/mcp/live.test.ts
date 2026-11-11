@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "mcp-live-token-0123456789abcdef";
 

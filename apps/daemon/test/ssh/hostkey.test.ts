@@ -4,8 +4,8 @@ import { startServer } from "../../src/server.ts";
 import { HostKeys, knownHostsLines } from "../../src/ssh/hostkey.ts";
 import { SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "ssh-hostkey-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

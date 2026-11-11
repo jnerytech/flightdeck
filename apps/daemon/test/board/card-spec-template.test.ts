@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { missingFor } from "@flightdeck/protocol";
 import { readSpec } from "../../src/board/spec.ts";
 import { toSlashes } from "../../src/board/spec-template.ts";
-import { newBoard } from "../board-helpers.ts";
-import { tempDir, waitFor } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { tempDir, waitFor } from "../support/helpers.ts";
 
 /**
  * Issue #78, slice S-T1: a card whose project asks for a spec starts with one written from the

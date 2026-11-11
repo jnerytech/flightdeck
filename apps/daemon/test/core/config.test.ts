@@ -1,0 +1,202 @@
+import { describe, expect, test } from "bun:test";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { testHome } from "../../../../scripts/test/temp-dir.ts";
+import { loadConfig, updateConfigFile } from "../../src/config.ts";
+import { parseArgs, runCli, startDaemon } from "../../src/main.ts";
+import { ClaudeSdkRuntime } from "../../src/runtime/claude-sdk-runtime.ts";
+import { tempDir } from "../support/helpers.ts";
+
+describe("config", () => {
+  test("primeira execução cria o arquivo com padrões e token aleatório", async () => {
+    const file = join(tempDir(), "sub", "config.json");
+    const config = await loadConfig(file);
+    expect(existsSync(file)).toBe(true);
+    expect(config.bind).toBe("127.0.0.1");
+    expect(config.port).toBe(7420);
+    expect(config.runtime).toBe("claude");
+    expect(config.allowApiKey).toBe(false);
+    expect(config.allowedRoots).toEqual([]);
+    expect(config.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(JSON.parse(readFileSync(file, "utf8")).token).toBe(config.token);
+    if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600);
+    // Second load reuses the same token.
+    expect((await loadConfig(file)).token).toBe(config.token);
+  });
+
+  test("sessions: the delay to sleep an idle session is 0 (off) unless the file gives a whole number of minutes up to 1440 (#157)", async () => {
+    const read = async (sessions: unknown) => {
+      const file = join(tempDir(), "config.json");
+      writeFileSync(file, JSON.stringify({ token: "x".repeat(32), sessions }));
+      return (await loadConfig(file)).sessions.sleepAfterMinutes;
+    };
+    expect(await read({ sleepAfterMinutes: 45 })).toBe(45);
+    expect(await read({ sleepAfterMinutes: 5000 })).toBe(0);
+    expect(await read({ sleepAfterMinutes: 1.5 })).toBe(0);
+    expect(await read({})).toBe(0);
+    // Not even an object: the whole section falls back to off.
+    expect(await read("often")).toBe(0);
+  });
+
+  test("stall: a running session is quiet after 15 minutes unless the file gives 0 (off) or another whole number up to 1440 (#1478)", async () => {
+    const read = async (stall: unknown) => {
+      const file = join(tempDir(), "config.json");
+      writeFileSync(file, JSON.stringify({ token: "x".repeat(32), stall }));
+      return (await loadConfig(file)).stall.afterMinutes;
+    };
+    expect(await read(undefined)).toBe(15);
+    expect(await read({ afterMinutes: 30 })).toBe(30);
+    expect(await read({ afterMinutes: 0 })).toBe(0);
+    expect(await read({ afterMinutes: 1440 })).toBe(1440);
+    expect(await read({ afterMinutes: 1441 })).toBe(15);
+    expect(await read({ afterMinutes: -1 })).toBe(15);
+    expect(await read({ afterMinutes: 5000 })).toBe(15);
+    expect(await read({ afterMinutes: 1.5 })).toBe(15);
+    expect(await read({})).toBe(15);
+    expect(await read("often")).toBe(15);
+  });
+
+  test("valida o arquivo existente e expande ~", async () => {
+    const file = join(tempDir(), "config.json");
+    writeFileSync(file, JSON.stringify({ token: "x".repeat(32), dataDir: "~/fd", port: 9000 }));
+    const config = await loadConfig(file);
+    expect(config.port).toBe(9000);
+    expect(config.dataDir).toBe(join(testHome(), "fd"));
+    writeFileSync(file, JSON.stringify({ token: "x".repeat(32), port: "nope" }));
+    await expect(loadConfig(file)).rejects.toThrow();
+  });
+
+  test("knowledge.feedOff folders expand ~ and are made absolute, as the allowed roots are (#76)", async () => {
+    const file = join(tempDir(), "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: "x".repeat(32), knowledge: { feedOff: ["~/private", "/abs/x"] } }),
+    );
+    expect((await loadConfig(file)).knowledge.feedOff).toEqual([
+      join(testHome(), "private"),
+      resolve("/abs/x"),
+    ]);
+  });
+
+  test("two rewrites of the config file at once both land: each reads what the other wrote", async () => {
+    const file = join(tempDir(), "config.json");
+    await loadConfig(file);
+    const keys = ["alpha", "beta", "gamma", "delta"];
+    await Promise.allSettled(
+      keys.map((key) => updateConfigFile(file, (raw) => ({ ...raw, [key]: key }))),
+    );
+    const written = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    expect(keys.map((key) => written[key])).toEqual(keys);
+  });
+
+  test("loading and rewriting the config file return promises, so nothing blocks on the disk", async () => {
+    const file = join(tempDir(), "async", "config.json");
+    const loading = loadConfig(file);
+    expect(loading).toBeInstanceOf(Promise);
+    const config = await loading;
+    const updating = updateConfigFile(file, (raw) => ({ ...raw, port: 9123 }));
+    expect(updating).toBeInstanceOf(Promise);
+    await updating;
+    const again = await loadConfig(file);
+    expect(again.port).toBe(9123);
+    expect(again.token).toBe(config.token);
+  });
+});
+
+describe("cli", () => {
+  test("start é o comando padrão e aceita --config e --runtime", () => {
+    expect(parseArgs([])).toEqual({ command: "start" });
+    expect(parseArgs(["start", "--config", "c.json", "--runtime", "fake"])).toEqual({
+      command: "start",
+      config: "c.json",
+      runtime: "fake",
+    });
+    expect(parseArgs(["--runtime=claude"])).toEqual({ command: "start", runtime: "claude" });
+  });
+
+  test("argumentos inválidos são recusados", () => {
+    expect(() => parseArgs(["--runtime", "gpt"])).toThrow();
+    expect(() => parseArgs(["deploy"])).toThrow();
+    expect(() => parseArgs(["--config"])).toThrow();
+  });
+});
+
+describe("daemon", () => {
+  const writeConfig = (extra: Record<string, unknown> = {}) => {
+    const dir = tempDir();
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ port: 0, token: "t".repeat(32), dataDir: join(dir, "data"), ...extra }),
+    );
+    return { dir, file };
+  };
+  const silent = () => {
+    const lines: string[] = [];
+    return {
+      lines,
+      log: (msg: string) => lines.push(msg),
+      error: (msg: string) => lines.push(msg),
+    };
+  };
+
+  test("startDaemon sobe com runtime fake, avisa allowedRoots vazio e para", async () => {
+    const { file } = writeConfig();
+    const out = silent();
+    const daemon = await startDaemon({ command: "start", config: file, runtime: "fake" }, {}, out);
+    expect(daemon.url).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/v1\/ws$/);
+    expect(out.lines.some((l) => l.includes("listening on"))).toBe(true);
+    // How long the process took to get here, so a slow start shows in a CI log (#347).
+    expect(out.lines.some((l) => /listening on \S+ \(runtime=fake, boot \d+ ms\)/.test(l))).toBe(
+      true,
+    );
+    expect(out.lines.some((l) => l.includes("allowedRoots is empty"))).toBe(true);
+    expect(out.lines.some((l) => l.includes('run "flightdeckd setup"'))).toBe(true);
+    expect(out.lines.join("\n")).not.toContain("t".repeat(32));
+    const health = await fetch(daemon.url.replace("ws://", "http://").replace("/v1/ws", "/health"));
+    expect(await health.json()).toEqual({ ok: true });
+    await daemon.stop();
+    await daemon.stop();
+  });
+
+  test("runtime claude é criado sem iniciar nenhuma sessão", async () => {
+    const { file, dir } = writeConfig({ allowedRoots: ["."], claudePath: "claude-inexistente" });
+    const out = silent();
+    const daemon = await startDaemon({ command: "start", config: file }, {}, out);
+    expect(daemon.runtime).toBeInstanceOf(ClaudeSdkRuntime);
+    expect(out.lines.some((l) => l.includes("runtime=claude"))).toBe(true);
+    expect(out.lines.some((l) => l.includes("allowedRoots is empty"))).toBe(false);
+    await daemon.stop();
+    expect(dir).toBeTruthy();
+  });
+
+  test("runCli registra sinais que param o daemon e saem com 0", async () => {
+    const { file } = writeConfig();
+    const handlers = new Map<string, () => Promise<void>>();
+    const exits: number[] = [];
+    const daemon = await runCli(["--config", file, "--runtime", "fake"], {
+      env: {},
+      log: silent(),
+      exit: (code) => exits.push(code),
+      onSignal: (signal, handler) => handlers.set(signal, handler),
+    });
+    expect(daemon).not.toBeNull();
+    expect([...handlers.keys()]).toEqual(["SIGINT", "SIGTERM"]);
+    await handlers.get("SIGTERM")?.();
+    expect(exits).toEqual([0]);
+  });
+
+  test("runCli com argumento inválido loga o erro e sai com 1", async () => {
+    const out = silent();
+    const exits: number[] = [];
+    const daemon = await runCli(["--bogus"], {
+      env: {},
+      log: out,
+      exit: (code) => exits.push(code),
+      onSignal: () => {},
+    });
+    expect(daemon).toBeNull();
+    expect(exits).toEqual([1]);
+    expect(out.lines[0]).toContain("unknown argument");
+  });
+});

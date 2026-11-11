@@ -9,7 +9,7 @@ import {
 } from "../lib/release-cmd.ts";
 
 const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"];
-const VERSAO = "apps/daemon/test/versao.test.ts";
+const VERSAO = "apps/daemon/test/core/version.test.ts";
 const BASELINE = "packages/protocol/surface-baseline.txt";
 const PR_OPEN = "api repos/{owner}/{repo}/pulls?head={owner}:release-v0.37.0&state=open";
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
-import { commitWorkflow, EXAMPLE, sha256 } from "../workflow-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
+import { commitWorkflow, EXAMPLE, sha256 } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

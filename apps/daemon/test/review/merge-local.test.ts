@@ -3,9 +3,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git in temp repositories, several worktrees per test: more than the default 5 s.
 setDefaultTimeout(30_000);

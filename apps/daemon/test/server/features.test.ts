@@ -5,7 +5,7 @@ import { DAEMON_FEATURES } from "@flightdeck/protocol";
 import { GATES } from "../../src/server/gates.ts";
 
 // #747: this check reads the sources and starts no server, so it stays in the unit tier, which a
-// worker's `test:related -- --fast --tier unit,component` runs. Inside recusas-recurso.test.ts
+// worker's `test:related -- --fast --tier unit,component` runs. Inside core/refusals-resource.test.ts
 // (integration, it starts a daemon) it ran only in CI, and 5 branches pushed a feature they used
 // before listing it.
 describe("daemon features: the list in the protocol matches the server", () => {

@@ -25,9 +25,9 @@ import {
   pluginDecisionLog,
 } from "../../src/plugins/plugins.ts";
 import { startServer } from "../../src/server.ts";
-import { gitRepo, newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { gitRepo, newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const codeOf = async (fn: () => unknown): Promise<string> => {
   try {

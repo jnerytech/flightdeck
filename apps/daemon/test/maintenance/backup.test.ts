@@ -10,8 +10,8 @@ import { Maintenance } from "../../src/maintenance/maintenance.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
-import { BASELINE_FEATURES, newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-10-30T12:00:00.000Z");

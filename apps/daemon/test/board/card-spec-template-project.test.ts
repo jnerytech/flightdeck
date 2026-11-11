@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, linkSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { templateRootOf, untrustedTemplate } from "../../src/board/spec-template.ts";
-import { git, newBoard } from "../board-helpers.ts";
-import { tempDir, waitFor } from "../helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
+import { tempDir, waitFor } from "../support/helpers.ts";
 
 /**
  * Issue #78, slice S-T3a: a trusted project's own spec template (`.flightdeck/templates/spec.md`,

@@ -4,8 +4,8 @@ import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts
 import { GithubService } from "../../src/github/service.ts";
 import { Issues } from "../../src/issues/issues.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 setDefaultTimeout(60_000);
 

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { runCli } from "../../src/main.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(40_000);
 

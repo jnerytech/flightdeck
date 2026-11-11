@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

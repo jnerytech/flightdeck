@@ -5,9 +5,9 @@ import { BoardColumn, type BoardColumn as Column } from "@flightdeck/protocol";
 import { manageCard } from "../../src/board/manage.ts";
 import { FlightdeckError } from "../../src/errors.ts";
 import { PrWatch } from "../../src/watch/service.ts";
-import { newBoard } from "../board-helpers.ts";
 import { item } from "../boardsync/contract.ts";
 import { syncSetup } from "../boardsync/setup.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

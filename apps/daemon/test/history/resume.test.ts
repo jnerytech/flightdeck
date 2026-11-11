@@ -2,14 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Command } from "@flightdeck/protocol";
 import { HistoryIndexer, MAYBE_ACTIVE_MS } from "../../src/history/indexer.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 import {
   FrameClient,
   projectsRoot,
   summaryLine,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const TOKEN = "retomada-token-0123456789";
 const ID = "55555555-5555-4555-8555-555555555555";

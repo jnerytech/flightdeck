@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Command, ServerMessage } from "@flightdeck/protocol";
 import { startServer } from "../../src/server.ts";
-import { poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { commitWorkflow, sha256, workflowCard } from "../workflow-helpers.ts";
+import { poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { commitWorkflow, sha256, workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
 setDefaultTimeout(20_000);

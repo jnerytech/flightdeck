@@ -3,9 +3,9 @@ import type { Automations } from "../../src/automations/automations.ts";
 import type { Issues } from "../../src/issues/issues.ts";
 import type { AutoApprover } from "../../src/permissions/auto-approve.ts";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "recursos-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

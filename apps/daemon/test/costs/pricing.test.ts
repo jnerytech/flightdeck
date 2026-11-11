@@ -13,9 +13,14 @@ import {
 import { UsageIndexer, type UsageTokens } from "../../src/costs/usage-indexer.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { BASELINE_FEATURES, newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertSession, SESSION, usageEntries, writeUsageTranscript } from "../usage-helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import {
+  insertSession,
+  SESSION,
+  usageEntries,
+  writeUsageTranscript,
+} from "../support/usage-helpers.ts";
 
 const TOKEN = "prices-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

@@ -4,8 +4,8 @@ import { join } from "node:path";
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
 import { knowledgeFeedFor } from "../../src/knowledge/serve.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: what a session is given of the library: trusted, not switched off, from the trusted checkout. */
 const TOKEN = "knowledge-serve-token-0123456789";

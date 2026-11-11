@@ -7,8 +7,8 @@ import type { AuthStatus } from "../../src/account/readers.ts";
 import { startDaemon } from "../../src/main.ts";
 import { Quota } from "../../src/quota/quota.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "account-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

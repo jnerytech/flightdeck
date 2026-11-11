@@ -3,8 +3,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { KnowledgeListResult } from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: the daemon announces and serves the change of a document's status. */
 const TOKEN = "knowledge-status-daemon-token-01234";

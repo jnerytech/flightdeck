@@ -5,7 +5,7 @@ import { ExternalSession } from "@flightdeck/protocol";
 import { ExternalSessions, type ExternalSession as Session } from "../../src/central/external.ts";
 import { type Tail, tailOfFile, waitingIn } from "../../src/central/waiting.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const T0 = Date.parse("2026-11-10T12:00:00.000Z");
 

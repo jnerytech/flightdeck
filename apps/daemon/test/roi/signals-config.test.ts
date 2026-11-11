@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Project } from "@flightdeck/protocol";
 import { RoiSummarizer } from "../../src/roi/summary.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {

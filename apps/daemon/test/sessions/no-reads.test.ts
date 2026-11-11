@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { PersonaAgent } from "@flightdeck/protocol";
 import type { PreparedPersonas } from "../../src/personas/prepare.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, waitFor } from "../helpers.ts";
+import { newManager, waitFor } from "../support/helpers.ts";
 
 const AGENT: PersonaAgent = { description: "Reviews", prompt: "Look for leaks." };
 

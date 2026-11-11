@@ -10,7 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
-import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { installFakeClaude } from "../apps/daemon/test/support/fake-claude.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,

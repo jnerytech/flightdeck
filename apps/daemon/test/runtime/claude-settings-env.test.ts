@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { claudeSettingsEnv } from "../../src/terminal/claude-settings-env.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const dirs: string[] = [];
 afterEach(async () => {

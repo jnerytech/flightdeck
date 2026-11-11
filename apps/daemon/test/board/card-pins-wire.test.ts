@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: over the wire, a card's pinned documents are announced, set and refused. */
 setDefaultTimeout(20_000);

@@ -6,8 +6,8 @@ import { SecretScanner } from "@flightdeck/protocol";
 import { FileLog } from "../../src/logs/file-log.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "logs-token-0123456789abcdef";

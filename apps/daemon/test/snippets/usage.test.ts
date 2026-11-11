@@ -7,9 +7,9 @@ import { Snippets } from "../../src/snippets/store.ts";
 import { SnippetUse } from "../../src/snippets/use.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
-import { newManager, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { fakePtys } from "../pty-helpers.ts";
+import { newManager, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { fakePtys } from "../support/pty-helpers.ts";
 
 const TOKEN = "snippets-use-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

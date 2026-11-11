@@ -3,8 +3,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FlightdeckError } from "../../src/errors.ts";
 import type { CheckRunner } from "../../src/workflows/check-runner.ts";
-import { git } from "../board-helpers.ts";
-import { durableWorkflowCard, workflowCard } from "../workflow-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { durableWorkflowCard, workflowCard } from "../support/workflow-helpers.ts";
 
 setDefaultTimeout(30_000);
 

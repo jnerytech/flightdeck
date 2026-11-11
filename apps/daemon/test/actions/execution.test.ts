@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { type RunOptions, resolveParams, runAction } from "../../src/actions/run.ts";
 import { type ActionDef, validateAction } from "../../src/actions/schema.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const BUN = process.execPath;
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");

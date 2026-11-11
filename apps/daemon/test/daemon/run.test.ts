@@ -3,10 +3,10 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { must, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { fakePtys } from "../pty-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { must, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { fakePtys } from "../support/pty-helpers.ts";
 
 // Real git, a daemon and a fake runtime: more than the default 5 s.
 setDefaultTimeout(30_000);

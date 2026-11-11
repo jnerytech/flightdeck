@@ -12,7 +12,7 @@ import type {
   StartOptions,
 } from "../../src/runtime/types.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 /** An OpenCode stand-in whose first turn asks to run a shell command, then ends. */
 class AskingOpenCode implements AgentRuntime {

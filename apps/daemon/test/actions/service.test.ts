@@ -6,8 +6,8 @@ import { Actions, type ActionsFrame, type ActionsOptions } from "../../src/actio
 import { FlightdeckError } from "../../src/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 const VALUE = "tok_SEGREDO-DE-TESTE-7d2f9a";
 const BASE64 = Buffer.from(VALUE).toString("base64");

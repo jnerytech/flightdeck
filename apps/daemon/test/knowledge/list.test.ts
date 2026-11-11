@@ -3,8 +3,8 @@ import { link, mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { listKnowledge } from "../../src/knowledge/list.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: the project's library of documents, read only: the folders, the status and the warnings. */
 const TOKEN = "knowledge-token-0123456789abcdef";

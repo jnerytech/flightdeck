@@ -3,8 +3,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { KnowledgeFeedState, KnowledgeIndexResult } from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: the person switches the index on or off for a project; the host's config keeps it. */
 const TOKEN = "knowledge-switch-daemon-token-0123456";

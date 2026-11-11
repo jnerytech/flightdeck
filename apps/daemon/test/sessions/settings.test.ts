@@ -3,8 +3,8 @@ import { Command, type SessionEvent } from "@flightdeck/protocol";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime, fakeSlashCommands } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "ajustes-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

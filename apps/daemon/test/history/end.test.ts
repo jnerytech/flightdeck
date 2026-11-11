@@ -2,14 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager } from "../helpers.ts";
+import { newManager } from "../support/helpers.ts";
 import {
   assistantLine,
   FrameClient,
   projectsRoot,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const TOKEN = "historico-fim-token-0123456789";
 const cleanups: Array<() => unknown> = [];

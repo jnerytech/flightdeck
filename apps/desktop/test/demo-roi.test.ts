@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { type DemoSeed, seedDemo } from "../../../scripts/demo-seed.ts";
-import { FrameClient } from "../../daemon/test/history-helpers.ts";
+import { FrameClient } from "../../daemon/test/support/history-helpers.ts";
 
 setDefaultTimeout(60_000);
 

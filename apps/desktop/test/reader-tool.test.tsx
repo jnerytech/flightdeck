@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { writeTranscript } from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settleMaybe, waiter } from "./wait.ts";

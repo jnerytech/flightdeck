@@ -5,7 +5,7 @@ import type { SessionEventOf } from "@flightdeck/protocol";
 import { UsageLedger } from "../../src/quota/usage.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
-import { newManager, tempDir } from "../helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

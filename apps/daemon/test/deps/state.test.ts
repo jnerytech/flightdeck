@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

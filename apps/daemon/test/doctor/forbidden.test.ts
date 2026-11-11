@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { runDoctor } from "../../src/doctor.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { refusedAddress } from "../../src/update.ts";
-import { newManager } from "../helpers.ts";
+import { newManager } from "../support/helpers.ts";
 
 const servers: Array<RunningServer | { stop(close?: boolean): unknown }> = [];
 afterEach(async () => {

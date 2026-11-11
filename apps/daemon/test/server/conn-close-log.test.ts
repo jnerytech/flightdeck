@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { CLOSE_HEARTBEAT } from "@flightdeck/protocol";
 import { type CloseFacts, closeLine } from "../../src/server/close-log.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 const TOKEN = "close-log-token-0123456789ab";
 const servers: RunningServer[] = [];

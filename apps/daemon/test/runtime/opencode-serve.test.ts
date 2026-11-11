@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { delimiter } from "node:path";
 import { ServeFailed, startPrivateServer } from "../../src/runtime/opencode-serve.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 import { manualTimers } from "./fake-acp-agent.ts";
 import { installFakeOpenCode } from "./fake-opencode.ts";
 

@@ -7,9 +7,9 @@ import { SessionFiles } from "../../src/review/session-files.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { usageFixture } from "../usage-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { usageFixture } from "../support/usage-helpers.ts";
 
 const TOKEN = "session-files-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

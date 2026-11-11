@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { BoardSyncStore, LOG_LIMIT, type SyncLogEntry } from "../../src/boardsync/store.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

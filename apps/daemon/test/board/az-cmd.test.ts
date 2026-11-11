@@ -9,7 +9,7 @@ import {
 } from "../../src/board/az-text.ts";
 import { AzureDevOpsCli, GithubCli } from "../../src/board/pr.ts";
 import { AzureIssues } from "../../src/issues/providers.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(() => {

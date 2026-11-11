@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CheckResult, CheckRunner } from "../../src/workflows/check-runner.ts";
-import { record } from "../helpers.ts";
-import { durableWorkflowCard } from "../workflow-helpers.ts";
+import { record } from "../support/helpers.ts";
+import { durableWorkflowCard } from "../support/workflow-helpers.ts";
 
 // Real git, a file store and several restarts per test: more than the default 5 s.
 setDefaultTimeout(30_000);

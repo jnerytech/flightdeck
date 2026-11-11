@@ -16,9 +16,9 @@ import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { whichOnPath } from "../../src/which.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "bg-start-token-0123456789a";
 const HOOKS = "hooks-token-0123456789";

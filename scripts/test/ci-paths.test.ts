@@ -113,7 +113,7 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, ["apps/desktop/src/ui/App.tsx"]).e2e).toBe(true);
     // The demo the journeys drive starts the real daemon (scripts/demo-seed.ts, #410 review).
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(true);
-    expect(ciPlan(PR, ["apps/daemon/test/workflow-helpers.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["apps/daemon/test/support/workflow-helpers.ts"]).e2e).toBe(true);
     expect(ciPlan(PR, ["scripts/test/fake-cli.ts"]).e2e).toBe(true);
     expect(ciPlan(PR, ["scripts/test/slot.test.ts"]).e2e).toBe(false);
     expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);

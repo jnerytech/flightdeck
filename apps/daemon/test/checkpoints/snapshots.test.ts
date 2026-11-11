@@ -6,9 +6,9 @@ import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { runCli } from "../../src/main.ts";
 import { Maintenance } from "../../src/maintenance/maintenance.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const DAY = 86_400_000;
 const sha = (path: string) =>

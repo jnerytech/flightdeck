@@ -3,8 +3,8 @@ import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import type { OtlpEvent } from "../../src/telemetry/otlp.ts";
 import { TelemetryStore } from "../../src/telemetry/store.ts";
-import { BASELINE_FEATURES, newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const T0 = Date.UTC(2026, 10, 1, 12, 0, 0);
 const TOKEN = "tempo-token-0123456789abcdef";

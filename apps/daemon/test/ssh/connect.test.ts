@@ -16,10 +16,10 @@ import {
 import { SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
-import { newManager, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { fakePtys } from "../pty-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { newManager, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { fakePtys } from "../support/pty-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 const TOKEN = "ssh-connect-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

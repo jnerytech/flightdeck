@@ -7,7 +7,7 @@ import { GithubService } from "../../src/github/service.ts";
 import { type GithubStartRequest, startFromGithub } from "../../src/github/start.ts";
 import { Issues, UNTRUSTED_MARK } from "../../src/issues/issues.ts";
 import type { GitRunner } from "../../src/project-find.ts";
-import { git, newBoard } from "../board-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(30_000);
 

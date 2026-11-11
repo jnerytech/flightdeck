@@ -6,8 +6,8 @@ import { startReceptor } from "../../src/central/receptor.ts";
 import { runCli } from "../../src/main.ts";
 import { daemonCommand } from "../../src/service.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll } from "../helpers.ts";
-import { runHookCommand } from "../hook-shell.ts";
+import { poll } from "../support/helpers.ts";
+import { runHookCommand } from "../support/hook-shell.ts";
 
 const TOKEN = "hooks-token-0123456789";
 const cleanups: Array<() => unknown> = [];

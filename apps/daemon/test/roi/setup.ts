@@ -1,7 +1,7 @@
 /** Phase 36: a board with a project, and helpers to put usage and delivered cards into it on given days. */
 import { afterEach } from "bun:test";
 import { RoiSummarizer } from "../../src/roi/summary.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

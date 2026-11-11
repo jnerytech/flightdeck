@@ -3,8 +3,8 @@ import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { Traces } from "../../src/watch/trace.ts";
-import { git } from "../board-helpers.ts";
-import { cleanups, fixture, work } from "../watch-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { cleanups, fixture, work } from "../support/watch-helpers.ts";
 
 setDefaultTimeout(30_000);
 

@@ -1,8 +1,8 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
-import { QuotaGuard } from "@/components/hosts/quota-guard";
 import { Grid } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
+import { QuotaGuard } from "@/features/quota/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore, HostView } from "../lib/app-store.ts";

@@ -7,8 +7,8 @@ import { QuotaHistory } from "../../src/quota/history.ts";
 import type { QuotaReading } from "../../src/runtime/types.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "quota-history-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

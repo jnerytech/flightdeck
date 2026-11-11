@@ -9,10 +9,10 @@ import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
 import { ProjectMemory } from "../../src/memory/memory.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { git, gitRepo, newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { writeUsageTranscript } from "../usage-helpers.ts";
+import { git, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { writeUsageTranscript } from "../support/usage-helpers.ts";
 
 setDefaultTimeout(30_000);
 

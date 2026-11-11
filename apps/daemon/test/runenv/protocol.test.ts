@@ -5,9 +5,9 @@ import { RunConfigs } from "../../src/runenv/config.ts";
 import { RunManager } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
 import { startServer } from "../../src/server.ts";
-import { git, newBoard } from "../board-helpers.ts";
-import { poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 import { fakeRunHost } from "./helpers.ts";
 
 // Real git in a temp repository and a server: more than the default 5 s.

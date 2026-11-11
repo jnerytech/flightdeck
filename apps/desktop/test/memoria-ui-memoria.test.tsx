@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { tempDir } from "../../daemon/test/helpers.ts";
+import { tempDir } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { memoriaHost } from "./memoria-ui-setup.ts";

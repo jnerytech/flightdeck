@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { git, hooksOff, must, SAFE } from "../../src/teleport/git.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * Issue #100 (#715): the git calls of a teleport run no hook of the repository. `/dev/null` is a

@@ -5,15 +5,15 @@ import { withTurnUuids } from "../../src/checkpoints/turn-uuid.ts";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { newManager } from "../helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { newManager } from "../support/helpers.ts";
 import {
   assistantLine,
   FrameClient,
   projectsRoot,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const TOKEN = "turn-uuid-token-0123456789abcdef";
 

@@ -6,9 +6,9 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { MASK, McpConfig } from "../../src/agentcfg/mcp.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "mcp-token-0123456789abcdef";
 const ECO = resolve(import.meta.dir, "../fixtures/mcp/eco-server.ts");

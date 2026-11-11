@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { git } from "../../daemon/test/board-helpers.ts";
+import { git } from "../../daemon/test/support/board-helpers.ts";
 import { daemon as makeDaemon } from "./fixtures.ts";
 
 export const GH_REMOTE = "git@github.com:Acme/App.git";
