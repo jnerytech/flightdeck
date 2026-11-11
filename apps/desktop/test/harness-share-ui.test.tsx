@@ -7,8 +7,8 @@ import { settle, settleMaybe, uiIdle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { HarnessShare } = await import("../src/components/projects/harness-share.tsx");
-const { HarnessPanel } = await import("../src/components/projects/harness-panel.tsx");
+const { HarnessShare } = await import("../src/features/harness/harness-share.tsx");
+const { HarnessPanel } = await import("../src/features/harness/harness-panel.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
