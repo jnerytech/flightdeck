@@ -40,7 +40,6 @@ import type {
   TeamInfo,
   TeamsUpdatedFrame,
   WatchInfo,
-  WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { EPHEMERAL_EVENTS, FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
@@ -122,6 +121,7 @@ import {
   VaultSecretsSlice,
 } from "../features/vault/index.ts";
 import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
+import { WatchSlice } from "../features/watch/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -1145,6 +1145,21 @@ export class AppStore {
     this.webhookFeed = new WebhookFeed(this.webhooks, (hostId, cwd) => {
       const clientId = cwd ? this.clientScope().clientOfFolder(hostId, cwd) : UNASSIGNED;
       return clientId === UNASSIGNED ? null : clientId;
+    });
+    this.prWatch = new WatchSlice({
+      command: (hostId, type, payload, options) => this.hostCommand(hostId, type, payload, options),
+      hosts: () => this.state.hosts,
+      watchOf: (hostId, cardId) => this.state.watches[sessionKey(hostId, cardId)],
+      keep: (hostId, watch) =>
+        this.update({
+          watches: { ...this.state.watches, [sessionKey(hostId, watch.cardId)]: watch },
+        }),
+      card: (hostId, cardId) => this.state.cards[sessionKey(hostId, cardId)],
+      feed: (host, title, before, watch) => this.webhookFeed.watch(host, title, before, watch),
+      notify: (notification, route, fallbackUrl, source) =>
+        this.inbox.notify(notification, route, fallbackUrl, source),
+      fail: (error, text) => this.fail(error, text),
+      t: () => this.i18n.t,
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
@@ -2723,7 +2738,7 @@ export class AppStore {
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
       onTeams: (frame) => this.onTeams(config.id, frame),
       onMessagingAlert: (alert) => this.messaging.onLoopAlert(config.id, alert),
-      onWatch: (frame) => this.keepWatch(config.id, frame.watch),
+      onWatch: (frame) => this.prWatch.keep(config.id, frame.watch),
       onMessages: (frame) => {
         if (frame.type === "messages.updated") {
           for (const listener of this.messageListeners) listener(config.id, frame.message);
@@ -3387,117 +3402,8 @@ export class AppStore {
     }
   }
 
-  /** Phase 22: keeps a card's watch; a card that starts to need you is told to the OS. */
-  private keepWatch(hostId: string, watch: WatchInfo): void {
-    const key = sessionKey(hostId, watch.cardId);
-    const before = this.state.watches[key];
-    this.update({ watches: { ...this.state.watches, [key]: watch } });
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    this.webhookFeed.watch(
-      { id: hostId, name: host?.name ?? hostId },
-      this.state.cards[key]?.title ?? watch.cardId,
-      before,
-      watch,
-    );
-    if (watch.status === "needs_you" && before?.status !== "needs_you") {
-      const card = this.state.cards[key];
-      const title = card?.title ?? watch.cardId;
-      this.inbox.notify(
-        { title: this.i18n.t("watchUi.notifyTitle"), body: `${title}: ${watch.reason ?? ""}` },
-        card
-          ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
-          : undefined,
-        card?.prUrl,
-        {
-          event: "pr-watch",
-          hostId,
-          ...(card ? { project: `${hostId}/${card.projectId}` } : {}),
-        },
-      );
-    }
-  }
-
-  /** Phase 22: reads a card's watch from its host. */
-  async loadWatch(hostId: string, cardId: string): Promise<void> {
-    const watch = await this.hostCommand(hostId, "watch.get", { cardId });
-    if (watch) this.keepWatch(hostId, watch);
-  }
-
-  /** Phase 22: turns the watch of a card's PR on or off (`null`: the project's default). */
-  async setWatch(hostId: string, cardId: string, enabled: boolean | null): Promise<void> {
-    const watch = await this.hostCommand(hostId, "watch.set", { cardId, enabled });
-    if (watch) this.keepWatch(hostId, watch);
-  }
-
-  /** Issue #77: the person allows a card's watch `rounds` more fixing rounds. */
-  async extendWatch(hostId: string, cardId: string, rounds: number): Promise<void> {
-    // A refusal (no watch, another limit) would come back: nothing to retry.
-    const watch = await this.hostCommand(
-      hostId,
-      "watch.extend",
-      { cardId, rounds },
-      { retry: false },
-    );
-    if (watch) this.keepWatch(hostId, watch);
-  }
-
-  /** Issue #77: a round held for drift, pushed as it is or dropped. */
-  async resolveHeld(
-    hostId: string,
-    cardId: string,
-    roundId: string,
-    action: "push" | "drop",
-  ): Promise<void> {
-    // Repeated later, a push or drop would act on a round that may be settled already.
-    const watch = await this.hostCommand(
-      hostId,
-      "watch.resolveHeld",
-      { cardId, roundId, action },
-      { retry: false },
-    );
-    if (watch) this.keepWatch(hostId, watch);
-  }
-
-  /**
-   * Phase 22: the screen of a PR link pasted in the palette: the card it belongs to, or else the
-   * first session the history knows for it. The hosts that watch PRs are asked in order; when
-   * none knows it, a toast says so and the answer is null.
-   */
-  async openPrLink(url: string): Promise<Route | null> {
-    for (const host of this.state.hosts) {
-      if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "watch", false))
-        continue;
-      const found = await this.hostCommand(host.id, "watch.byUrl", { url }); // NOSONAR: hosts are asked in order and the first that knows the address wins
-      if (found?.via === "card" && found.trace) {
-        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId }); // NOSONAR: hosts are asked in order and the first that knows the address wins
-        if (card) {
-          return { name: "card", host: host.id, projectId: card.projectId, cardId: card.id };
-        }
-      }
-      const session = found?.sessions[0];
-      if (session) {
-        return {
-          name: "reader",
-          target: { hostId: host.id, claudeSessionId: session.claudeSessionId },
-        };
-      }
-    }
-    this.fail(new Error(this.i18n.t("palette.noPrMatch")), this.i18n.t("palette.noPrMatch"));
-    return null;
-  }
-
-  /**
-   * Phase 22: a project's PR watch settings, with `patch` changed first when given. The host's
-   * settings after it, or null when it refuses (the toast says why).
-   */
-  watchSettings(hostId: string, projectId: string, patch?: Partial<WatchSettings>) {
-    return this.hostCommand(hostId, "watch.settings", { projectId, ...(patch ? { patch } : {}) });
-  }
-
-  /** Phase 22: the PR description made from the card's sessions, for the person to edit. */
-  describePr(hostId: string, cardId: string) {
-    return this.hostCommand(hostId, "watch.describe", { cardId });
-  }
+  /** The PR watch of the cards: each card's watch, its commands and the screen a PR link opens (#1596). */
+  readonly prWatch: WatchSlice;
 
   /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
   async detectPrProvider(

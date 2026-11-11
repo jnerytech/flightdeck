@@ -185,9 +185,9 @@ describe("rastro-paleta: a pasted PR link opens what was made for it", () => {
       store.getState().hosts.every((h) => h.hostInfo != null || h.status !== "online"),
     );
     expect(store.getState().hosts.map((h) => h.status)).toEqual(["offline", "online", "online"]);
-    let route: Awaited<ReturnType<typeof store.openPrLink>> = null;
+    let route: Awaited<ReturnType<typeof store.prWatch.openLink>> = null;
     await act(async () => {
-      route = await store.openPrLink(PR);
+      route = await store.prWatch.openLink(PR);
     });
     expect(route).toMatchObject({ name: "card", projectId: "p1", cardId: "c1" });
     expect(plain.commands.filter((c) => c.type === "watch.byUrl")).toEqual([]);

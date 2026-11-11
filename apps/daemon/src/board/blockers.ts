@@ -1,7 +1,9 @@
 import type { Database } from "bun:sqlite";
 import type { UnblockWhen } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonWith } from "../json-text.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
+import { AutoStart } from "./row-json.ts";
 import type { BoardColumn, Card, CardRow, PrState } from "./types.ts";
 
 const now = () => new Date().toISOString();
@@ -83,9 +85,7 @@ export class Blockers {
     if (row.waiting === 0) return;
     db.query("UPDATE cards SET waiting = 0 WHERE id = ?").run(id);
     if (hasRun) return;
-    const auto = row.auto_start
-      ? (JSON.parse(row.auto_start) as { workflow: string | null })
-      : null;
+    const auto = row.auto_start ? parseJsonWith(AutoStart, row.auto_start) : null;
     if (!auto) {
       db.query("UPDATE cards SET unblocked_at = ? WHERE id = ?").run(now(), id);
       return;

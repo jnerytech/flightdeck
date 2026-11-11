@@ -39,8 +39,11 @@ const LAZY_SCREENS = [
  * not edit this test.
  */
 const FEATURES = resolve(UI, "../features");
-/** A screen whose domain folder is not its name (GLOSSARY Domains): the Conversations screen is messaging. */
-const DOMAIN_OF: Record<string, string> = { ConversationsPage: "messaging" };
+/** A screen whose domain folder is not its name (GLOSSARY Domains): the Conversations screen is messaging, Connections is ssh. */
+const DOMAIN_OF: Record<string, string> = {
+  ConversationsPage: "messaging",
+  ConnectionsPage: "ssh",
+};
 
 const specifierOf = (name: string) => {
   const feature = name.replace(/Page$/, "").toLowerCase();

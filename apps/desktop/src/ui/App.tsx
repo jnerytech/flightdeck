@@ -7,7 +7,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
@@ -22,6 +21,7 @@ import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
+import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
@@ -276,7 +276,7 @@ export function runPaletteTarget(
       store.snippets.choose({ hostId: target.hostId, snippetId: target.snippetId });
       return;
     case "pull-link":
-      void store.openPrLink(target.url).then((route) => {
+      void store.prWatch.openLink(target.url).then((route) => {
         if (route) ui.go(route);
       });
       return;

@@ -11,7 +11,9 @@ import {
   type PersonaSubagentsMode,
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
 } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
@@ -29,6 +31,19 @@ import { WORKTREE_INCLUDE } from "./worktree.ts";
 export const DEFAULT_PROMPT_TEMPLATE =
   "Trabalhe somente nesta worktree, sem mexer em outras pastas do repositório, e faça commits " +
   "com mensagens descritivas a cada passo concluído.";
+
+/** A per-column map keeps the columns the board has; a key that is no column (an old one) is dropped. */
+const byKnownColumn = <V extends z.ZodType>(value: V) =>
+  z.record(z.string(), value).transform((map) => {
+    const known: Partial<Record<z.infer<typeof BoardColumnSchema>, z.infer<V>>> = {};
+    for (const [key, v] of Object.entries(map)) {
+      const column = BoardColumnSchema.safeParse(key);
+      if (column.success) known[column.data] = v;
+    }
+    return known;
+  });
+const PersonaByColumn = byKnownColumn(z.string());
+const ContractByColumn = byKnownColumn(ColumnContract);
 
 /** A blank script means "no script": nothing is ever run unless the user registered one. */
 const script = (value: string | null | undefined) => value?.trim() || null;
@@ -48,10 +63,14 @@ function toProject(row: ProjectRow): Project {
     promptTemplate: row.prompt_template,
     // The file answer needs IO: `forWire` fills it in where a project leaves for the app.
     worktreeInclude: false,
-    autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
-    issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
-    personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
-    contractByColumn: row.contract_by_column ? JSON.parse(row.contract_by_column) : {},
+    autoApprove: parseJsonWith(AutoApproveSettings, row.auto_approve ?? "{}"),
+    issues: row.issues ? parseJsonWith(IssuesConfig, row.issues) : null,
+    personaByColumn: row.persona_by_column
+      ? parseJsonOr(PersonaByColumn, row.persona_by_column, {})
+      : {},
+    contractByColumn: row.contract_by_column
+      ? parseJsonOr(ContractByColumn, row.contract_by_column, {})
+      : {},
     personaSubagents: row.persona_subagents ?? "all",
     defaultHours: row.default_hours,
     roiSignals: { commits: row.roi_commits === 1, issues: row.roi_issues === 1 },
