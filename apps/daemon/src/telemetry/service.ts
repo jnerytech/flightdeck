@@ -1,8 +1,10 @@
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { TELEMETRY_FILE } from "../central/wrapper.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
+import { parseJsonOr } from "../json-text.ts";
 import type { Logger } from "../logger.ts";
 import { type OtlpEvent, startOtlpReceiver } from "./otlp.ts";
 
@@ -24,13 +26,13 @@ export interface TelemetryService {
 
 const HOUR_MS = 3_600_000;
 
+const CONFIG_TOKEN = z.object({ telemetry: z.object({ token: z.unknown() }).partial().optional() });
+
 /** The token as the config file has it right now, so a rotation takes effect without a restart. */
 async function currentToken(configFile: string): Promise<string | undefined> {
   try {
-    const raw = JSON.parse(await readFile(configFile, "utf8")) as {
-      telemetry?: { token?: unknown };
-    };
-    return typeof raw.telemetry?.token === "string" ? raw.telemetry.token : undefined;
+    const raw = parseJsonOr(CONFIG_TOKEN, await readFile(configFile, "utf8"), null);
+    return typeof raw?.telemetry?.token === "string" ? raw.telemetry.token : undefined;
   } catch {
     return undefined;
   }

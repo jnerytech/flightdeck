@@ -1,5 +1,7 @@
 import { promisify } from "node:util";
 import { gunzip } from "node:zlib";
+import { z } from "zod";
+import { parseJsonWith } from "../json-text.ts";
 import { tokenMatches } from "../token.ts";
 
 const inflate = promisify(gunzip);
@@ -140,7 +142,7 @@ function parseNanos(value: unknown): bigint {
 function decodeJson(text: string): OtlpEvent[] {
   let root: unknown;
   try {
-    root = JSON.parse(text);
+    root = parseJsonWith(z.unknown(), text);
   } catch {
     throw new OtlpDecodeError("JSON that does not parse");
   }
