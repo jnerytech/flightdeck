@@ -13,6 +13,8 @@ describe("mutation testing (#1607)", () => {
       mutate: string[];
       commandRunner: { command: string };
       testRunner: string;
+      inPlace?: boolean;
+      tempDirName?: string;
     };
 
   test("every file it mutates exists, and the command runs a test file that exists", () => {
@@ -23,6 +25,13 @@ describe("mutation testing (#1607)", () => {
     const tests = commandRunner.command.split(" ").filter((part) => part.endsWith(".test.ts"));
     expect(tests.length).toBeGreaterThan(0);
     for (const test of tests) expect(existsSync(join(ROOT, test)), test).toBe(true);
+  });
+
+  test("mutants run in a copy of the repo, never in place, in a folder git ignores", () => {
+    const { inPlace, tempDirName, testRunner } = config();
+    expect(testRunner).toBe("command");
+    expect(inPlace ?? false).toBe(false);
+    expect(read(".gitignore")).toContain(`${tempDirName}/`);
   });
 
   test("the run is by hand: `bun run mutation`, and no CI workflow starts it", () => {
