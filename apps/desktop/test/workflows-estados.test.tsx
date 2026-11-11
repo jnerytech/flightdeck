@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { WorkflowsPage } = await import("../src/ui/WorkflowsPage.tsx");
+const { WorkflowsPage } = await import("../src/features/workflows/page.tsx");
 
 afterEach(cleanup);
 
