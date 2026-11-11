@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 
-const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
 
 /** The value of a token inside the first `selector { … }` block. */
 function token(selector: string, name: string): string {

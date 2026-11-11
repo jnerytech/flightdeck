@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { colorOf, contrast, tokensOf } from "../../../scripts/lib/theme-contrast.ts";
 import { activeNav } from "../src/lib/nav-active.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 const settle = waiter(4000);
-const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
 
 /** The value of a token inside the first `selector { … }` block. */
 function token(selector: string, name: string): string {
@@ -64,7 +64,7 @@ describe("cromo-calmo", () => {
   });
 
   test("lines: the light ones stay faint (6% alpha); the dark ones are opaque, 3:1 against the surfaces but never harsher than 6:1 (issue #98)", () => {
-    const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+    const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
     // Light: translucent black, as softened in phase 10 (#98 left the light theme alone).
     for (const name of ["--border", "--sidebar-border"]) {
       const alpha = Number(/\/\s*(\d+)%/.exec(token(":root", name))?.[1]);

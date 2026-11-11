@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { EMPTY_PERIOD } from "../../src/lib/roi.ts";
 import { canScrollRight } from "../../src/lib/scroll-edge.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -17,7 +17,7 @@ const { RoiTable } = await import("../../src/features/roi/roi-table.tsx");
 
 afterEach(cleanup);
 const settle = waiter(5000);
-const css = readFileSync(join(import.meta.dir, "../../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 const SHOP: RoiPeriod = { ...EMPTY_PERIOD, costUsd: 12, cards: 3, prsMerged: 3, hours: 6 };
 const RESULT: RoiSummaryResult = {

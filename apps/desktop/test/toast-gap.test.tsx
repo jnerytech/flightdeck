@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -14,7 +14,7 @@ const { App } = await import("../src/ui/App.tsx");
 const { demoToast } = await import("../src/demo/boot.ts");
 const { Composer } = await import("../src/components/session/parts.tsx");
 
-const CSS = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const CSS = readStyles(join(import.meta.dir, "../src/styles.css"));
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   cleanup();

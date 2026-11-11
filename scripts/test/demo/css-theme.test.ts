@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { themeBlocksProblem } from "../../lib/css-theme.ts";
+import { readStyles } from "../../lib/styles-source.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -46,8 +46,6 @@ describe("css-theme: a stylesheet has one :root block and the .dark block after 
   });
 
   test("the app's stylesheet is right", () => {
-    expect(
-      themeBlocksProblem(readFileSync(resolve(ROOT, "apps/desktop/src/styles.css"), "utf8")),
-    ).toBeNull();
+    expect(themeBlocksProblem(readStyles(resolve(ROOT, "apps/desktop/src/styles.css")))).toBeNull();
   });
 });

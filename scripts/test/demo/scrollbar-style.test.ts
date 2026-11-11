@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../lib/styles-source.ts";
 import { colorOf, contrast, tokensOf } from "../../lib/theme-contrast.ts";
 
-const css = readFileSync(join(import.meta.dir, "../../../apps/desktop/src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../../../apps/desktop/src/styles.css"));
 
 /** The declarations of the first rule whose selector line is exactly `selector {`. */
 function rule(selector: string): string {

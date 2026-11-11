@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../lib/styles-source.ts";
 import { colorOf, contrast, oklchOf, tokensOf } from "../../lib/theme-contrast.ts";
 
-const css = readFileSync(resolve(import.meta.dir, "../../../apps/desktop/src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../../../apps/desktop/src/styles.css"));
 
 describe("theme-contrast: the helpers", () => {
   test("black and white are 21:1, equal colors 1:1, and oklch maps to sRGB", () => {
