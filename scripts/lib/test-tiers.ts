@@ -108,6 +108,11 @@ export function testTiers(sources: Map<string, string>): Record<string, Tier> {
   return tiers;
 }
 
+/** The tier each test file runs in on CI's shards (#1854): testTiers' tiers, a stub for now. */
+export function shardTiers(sources: Map<string, string>): Record<string, Tier> {
+  return testTiers(sources);
+}
+
 /** How many files each tier holds. */
 export function tierCounts(tiers: Record<string, Tier>): Record<Tier, number> {
   const counts = { unit: 0, component: 0, integration: 0, e2e: 0 };
