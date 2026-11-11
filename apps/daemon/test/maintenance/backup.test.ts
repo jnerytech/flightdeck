@@ -255,3 +255,21 @@ describe("backup", () => {
     expect(status?.lastPrune.dryRun).toBe(true);
   });
 });
+
+describe("backup: odd folders", () => {
+  test("listing backups of something that is not a folder fails; restoring into an empty data folder keeps nothing to save", async () => {
+    const dir = tempDir("fd-backup-");
+    writeFileSync(join(dir, "afile"), "x");
+    await expect(listBackups(join(dir, "afile"))).rejects.toMatchObject({ code: "ENOTDIR" });
+    const live = new EventStore(join(dir, "live.db"));
+    const file = (
+      await backupNow(live.db, join(dir, "backups"), Date.parse("2026-11-03T10:00:00Z"))
+    ).path;
+    live.close();
+    const dataDir = join(dir, "empty-data");
+    mkdirSync(dataDir, { recursive: true });
+    const result = await restoreBackup({ file, dataDir });
+    expect(statSync(join(dataDir, "flightdeck.db")).isFile()).toBe(true);
+    expect(() => statSync(result.beforeRestore)).toThrow();
+  });
+});

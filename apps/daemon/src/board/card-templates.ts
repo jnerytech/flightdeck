@@ -12,6 +12,7 @@ import {
   specPathProblem,
 } from "@flightdeck/protocol";
 import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 
 /** A name a person types in a file: one line, not blank, not a page. */
 const line = (max: number) =>
@@ -50,13 +51,8 @@ function describe(entry: z.infer<typeof Entry>): string {
 export function parseCardTemplates(
   text: string,
 ): Pick<CardTemplates, "templates" | "dropped"> & { invalid: boolean } {
-  let list: unknown;
-  try {
-    list = JSON.parse(text);
-  } catch {
-    return { templates: [], dropped: 0, invalid: true };
-  }
-  if (!Array.isArray(list)) return { templates: [], dropped: 0, invalid: true };
+  const list = parseJsonOr(z.array(z.unknown()), text, null);
+  if (list === null) return { templates: [], dropped: 0, invalid: true };
   const templates: CardTemplate[] = [];
   const seen = new Set<string>();
   let dropped = 0;

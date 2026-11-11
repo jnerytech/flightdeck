@@ -622,3 +622,29 @@ describe("times: deleting a team", () => {
     expect(await reasonOf(() => teams.delete("nada"))).toBe("team_not_found");
   });
 });
+
+describe("times: damaged stored JSON (#1609)", () => {
+  test("a team whose members or checks are damaged is still read, with no members and no checks", async () => {
+    const { teams, project, store } = await setup();
+    const team = await teams.create({
+      ...NEW,
+      projectId: project.id,
+      name: "login",
+      checks: ["bun test"],
+    });
+    const read = (members: string, checks: string) => {
+      store.db
+        .query("UPDATE teams SET members = ?, checks = ? WHERE id = ?")
+        .run(members, checks, team.id);
+      try {
+        const got = teams.get(team.id);
+        return [got.members.length, got.checks];
+      } catch {
+        return "threw";
+      }
+    };
+    expect(read("not json", "not json")).toEqual([0, []]);
+    expect(read('{"a":1}', '{"a":1}')).toEqual([0, []]);
+    expect(read('[{"name":5}]', "[1]")).toEqual([0, []]);
+  });
+});

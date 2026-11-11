@@ -60,7 +60,7 @@ function setup(lang: "en" | "pt-BR") {
   const { platform, notifications } = memoryPlatform(false, lang);
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  store.loadProjects = async () => null;
+  store.projectList.load = async () => null;
   store.hostCommand = (async (_host: string, type: string) => {
     if (type === "teams.list") return { teams: [TEAM] };
     if (type === "teams.status") {
