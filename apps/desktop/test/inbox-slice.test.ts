@@ -8,7 +8,14 @@ import { requestLink } from "../src/lib/request-link.ts";
  * A notification center over stand-ins: what the system showed, the badges the taskbar was told,
  * the keys of what waits, the hosts that are up, and the storage the entries are kept in.
  */
-function inbox(over: { prefs?: Partial<NotifyPrefs>; shown?: boolean; saved?: string } = {}) {
+function inbox(
+  over: {
+    prefs?: Partial<NotifyPrefs>;
+    shown?: boolean;
+    saved?: string;
+    badgeFails?: boolean;
+  } = {},
+) {
   let entries: InboxEntry[] = [];
   let waiting: string[] = [];
   const online = new Set<string>(["h"]);
@@ -33,7 +40,10 @@ function inbox(over: { prefs?: Partial<NotifyPrefs>; shown?: boolean; saved?: st
       shown.push(n.title);
       return over.shown ?? true;
     },
-    setBadge: async (count) => void badges.push(count),
+    setBadge: async (count) => {
+      badges.push(count);
+      if (over.badgeFails) throw new Error("the taskbar refused");
+    },
     t: () => ((key: string) => key) as never,
   });
   let plays = 0;
@@ -137,6 +147,14 @@ describe("inbox slice", () => {
     w.slice.syncBadge();
     w.slice.resendBadge();
     expect(w.badges).toEqual([1, 1]);
+  });
+
+  test("a taskbar that refuses the badge does not stop the notification", async () => {
+    const w = inbox({ badgeFails: true });
+    w.slice.notify({ title: "a", body: "" });
+    w.slice.resendBadge();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect([w.entries().length, w.badges]).toEqual([1, [1, 1]]);
   });
 
   test("a request answered since it was sent leaves the bell, one never seen waiting does not", () => {
