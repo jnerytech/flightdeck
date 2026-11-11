@@ -18,7 +18,6 @@ function world(language: "en" | "pt-BR" = "en") {
   store.i18n.start();
   const internals = store as unknown as {
     update(patch: object): void;
-    onSummary(hostId: string, summary: object): void;
   };
   internals.update({
     hosts: [
@@ -38,20 +37,22 @@ function world(language: "en" | "pt-BR" = "en") {
     projects: { h1: [{ id: "p-api", name: "api", path: "/work/api", baseBranch: "main" }] },
   });
   const summary = (id: string, status: string, pending: string[] = [], cwd = "/work/api") =>
-    internals.onSummary("h1", {
-      type: "session.summary",
-      sessionId: id,
-      name: `sessao-${id}`,
-      cwd,
-      status,
-      pendingPermissions: pending.map((requestId) => ({
-        requestId,
-        toolName: "Bash",
-        input: {},
-        createdAt: "2026-11-04T10:00:00Z",
-      })),
-      updatedAt: "2026-11-04T10:00:00Z",
-    });
+    store.summaries.apply("h1", [
+      {
+        type: "session.summary",
+        sessionId: id,
+        name: `sessao-${id}`,
+        cwd,
+        status,
+        pendingPermissions: pending.map((requestId) => ({
+          requestId,
+          toolName: "Bash",
+          input: {},
+          createdAt: "2026-11-04T10:00:00Z",
+        })),
+        updatedAt: "2026-11-04T10:00:00Z",
+      } as never,
+    ]);
   const titles = () => mem.notifications.map((n) => n.title);
   const flush = () => {
     for (const fn of queue.splice(0)) fn();
@@ -210,7 +211,7 @@ const team = (workers: string[]): TeamInfo =>
 describe("notify-prefs-store: a team's workers are folded into one message (issue #149)", () => {
   test("three workers finishing together send one folded notification", () => {
     const w = world();
-    w.store.rememberTeam("h1", team(["w1", "w2", "w3"]));
+    w.store.summaries.rememberTeam("h1", team(["w1", "w2", "w3"]));
     for (const id of ["w1", "w2", "w3"]) w.summary(id, "idle");
     for (const id of ["w1", "w2", "w3"]) finishTurn(w, id);
     expect(w.titles()).toEqual([]);
@@ -221,7 +222,7 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
 
   test("one worker alone is told as itself once the window ends", () => {
     const w = world();
-    w.store.rememberTeam("h1", team(["w1", "w2"]));
+    w.store.summaries.rememberTeam("h1", team(["w1", "w2"]));
     w.summary("w1", "idle");
     finishTurn(w, "w1");
     w.flush();
@@ -230,7 +231,7 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
 
   test("a worker's permission request notifies at once, and the coordinator is a session like any other", () => {
     const w = world();
-    w.store.rememberTeam("h1", team(["w1"]));
+    w.store.summaries.rememberTeam("h1", team(["w1"]));
     w.summary("w1", "idle");
     w.summary("w1", "running", ["r1"]);
     expect(w.titles()).toEqual(["alfa · sessao-w1: needs you"]);
@@ -242,7 +243,7 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
   test("with folding off each worker notifies on its own", () => {
     const w = world();
     w.store.notifyPrefs.setTeamFold(false);
-    w.store.rememberTeam("h1", team(["w1", "w2"]));
+    w.store.summaries.rememberTeam("h1", team(["w1", "w2"]));
     for (const id of ["w1", "w2"]) {
       w.summary(id, "idle");
       finishTurn(w, id);
@@ -253,7 +254,7 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
   test("a muted worker is left out of the count", () => {
     const w = world();
     w.store.notifyPrefs.muteSession("h1/w2", true);
-    w.store.rememberTeam("h1", team(["w1", "w2", "w3"]));
+    w.store.summaries.rememberTeam("h1", team(["w1", "w2", "w3"]));
     for (const id of ["w1", "w2", "w3"]) w.summary(id, "idle");
     for (const id of ["w1", "w2", "w3"]) finishTurn(w, id);
     w.flush();
@@ -282,7 +283,7 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
 
   test("a closed team stops folding: its sessions are plain ones again", () => {
     const w = world();
-    w.store.rememberTeam("h1", { ...team(["w1"]), state: "closed" });
+    w.store.summaries.rememberTeam("h1", { ...team(["w1"]), state: "closed" });
     w.summary("w1", "idle");
     finishTurn(w, "w1");
     expect(w.titles()).toEqual(["alfa · sessao-w1: turn finished"]);

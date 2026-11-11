@@ -64,7 +64,6 @@ describe("stall-state: the app learns which sessions are quiet (issue #1478)", (
     const store = new AppStore(memoryPlatform(false, "en").platform, { now: () => NOW });
     const inner = store as unknown as {
       update(p: object): void;
-      onSummaries(hostId: string, summaries: object[]): void;
     };
     inner.update({ hosts: [{ id: "h", name: "alfa", status: "online", sessions: [] }] });
     const summary = (over: object = {}) => ({
@@ -77,10 +76,10 @@ describe("stall-state: the app learns which sessions are quiet (issue #1478)", (
       updatedAt: at(1),
       ...over,
     });
-    inner.onSummaries("h", [summary({ quietSince: at(20), quietTool: "Bash" })]);
+    store.summaries.apply("h", [summary({ quietSince: at(20), quietTool: "Bash" }) as never]);
     const first = store.getState().hosts[0]?.sessions[0];
     expect([first?.quietSince, first?.quietTool]).toEqual([at(20), "Bash"]);
-    inner.onSummaries("h", [summary()]);
+    store.summaries.apply("h", [summary() as never]);
     const next = store.getState().hosts[0]?.sessions[0];
     // The session is still listed: an absent one would pass the two checks below by itself.
     expect(next?.id).toBe("s1");

@@ -13,7 +13,6 @@ function world(focused = false) {
   store.i18n.start();
   const internals = store as unknown as {
     update(patch: object): void;
-    onSummary(hostId: string, summary: object): void;
   };
   internals.update({
     hosts: [
@@ -45,15 +44,17 @@ function world(focused = false) {
       : { ok: true, data: { files: Array.from({ length: changes.files }, () => ({})) } };
   }) as unknown as typeof store.hostRequest;
   const summary = (id: string, status: string) =>
-    internals.onSummary("h1", {
-      type: "session.summary",
-      sessionId: id,
-      name: `sessao-${id}`,
-      cwd: "/work/api",
-      status,
-      pendingPermissions: [],
-      updatedAt: "2026-11-08T10:00:00Z",
-    });
+    store.summaries.apply("h1", [
+      {
+        type: "session.summary",
+        sessionId: id,
+        name: `sessao-${id}`,
+        cwd: "/work/api",
+        status,
+        pendingPermissions: [],
+        updatedAt: "2026-11-08T10:00:00Z",
+      } as never,
+    ]);
   return { store, mem, clock, changes, summary, known };
 }
 
