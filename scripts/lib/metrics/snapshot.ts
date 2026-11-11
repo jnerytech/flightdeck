@@ -55,8 +55,9 @@ export interface Unavailable {
 }
 
 interface Windowed<T> {
+  /** Null with no previous tag, or when its read failed (`unavailable` says which). */
   sinceRelease: T | null;
-  last30Days: T;
+  last30Days: T | null;
 }
 
 export interface Snapshot {
@@ -107,36 +108,53 @@ async function gitMetrics(
   };
 }
 
+/** The git metrics of one window of history; null, with the reason, when its `git log` failed. */
+async function windowMetrics(
+  deps: MetricsDeps,
+  tag: string,
+  window: { name: string; revision: string[] },
+  unavailable: Unavailable[],
+): Promise<{ hotspots: Hotspot[]; coupling: CoupledPair[] } | null> {
+  const log = await deps.git(["log", "--no-merges", LOG_FORMAT, "--name-only", ...window.revision]);
+  if (log.code === 0) return gitMetrics(deps, tag, parseLog(log.stdout));
+  for (const metric of ["hotspots", "coupling"]) {
+    unavailable.push({ metric, reason: `git log failed for ${window.name}` });
+  }
+  return null;
+}
+
+/** A tag name as git writes one: it never starts with `-`, so git cannot read it as an option. */
+const TAG_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+
 /** The snapshot of the repository at `tag`. */
 export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Snapshot> {
+  if (!TAG_NAME.test(tag)) throw new Error(`tag ${tag} is not a tag name`);
   const commit = await line(deps, ["rev-parse", `${tag}^{commit}`]);
   if (commit === null) throw new Error(`tag ${tag} is not in this repository`);
-  const tagDate =
-    (await line(deps, ["log", "-1", "--format=%cI", tag])) ?? deps.now().toISOString();
+  const tagDate = await line(deps, ["log", "-1", "--format=%cI", tag]);
+  if (tagDate === null) throw new Error(`tag ${tag} has no commit date`);
   const previousTag = await line(deps, ["describe", "--tags", "--abbrev=0", `${tag}^`]);
   const previousTagDate = previousTag
     ? await line(deps, ["log", "-1", "--format=%cI", previousTag])
     : null;
   const since = new Date(Date.parse(tagDate) - DAYS * 86_400_000).toISOString();
 
-  const recent = parseLog(
-    (await deps.git(["log", "--no-merges", LOG_FORMAT, "--name-only", `--since=${since}`, tag]))
-      .stdout,
-  );
-  const last30Days = await gitMetrics(deps, tag, recent);
-  let sinceRelease: Awaited<ReturnType<typeof gitMetrics>> | null = null;
-  if (previousTag) {
-    const sinceLog = await deps.git([
-      "log",
-      "--no-merges",
-      LOG_FORMAT,
-      "--name-only",
-      `${previousTag}..${tag}`,
-    ]);
-    sinceRelease = await gitMetrics(deps, tag, parseLog(sinceLog.stdout));
-  }
-
   const unavailable: Unavailable[] = [];
+  const last30Days = await windowMetrics(
+    deps,
+    tag,
+    { name: `the last ${DAYS} days`, revision: [`--since=${since}`, tag] },
+    unavailable,
+  );
+  const sinceRelease = previousTag
+    ? await windowMetrics(
+        deps,
+        tag,
+        { name: `the range since ${previousTag}`, revision: [`${previousTag}..${tag}`] },
+        unavailable,
+      )
+    : null;
+
   const ratchets = await deps.arch().catch(() => null);
   if (ratchets === null)
     unavailable.push({ metric: "ratchets", reason: "arch-report.ts wrote no report" });
@@ -151,8 +169,14 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     commit,
     generatedAt: deps.now().toISOString(),
     window: { previousTag, previousTagDate, days: DAYS },
-    hotspots: { sinceRelease: sinceRelease?.hotspots ?? null, last30Days: last30Days.hotspots },
-    coupling: { sinceRelease: sinceRelease?.coupling ?? null, last30Days: last30Days.coupling },
+    hotspots: {
+      sinceRelease: sinceRelease?.hotspots ?? null,
+      last30Days: last30Days?.hotspots ?? null,
+    },
+    coupling: {
+      sinceRelease: sinceRelease?.coupling ?? null,
+      last30Days: last30Days?.coupling ?? null,
+    },
     ratchets,
     coverage: null,
     ciHealth: null,
