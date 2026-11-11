@@ -1,6 +1,6 @@
-import type { AppStore } from "../lib/app-store.ts";
-import type { BoardFiles } from "../lib/board-files.ts";
-import { FileExplorer } from "./FileExplorer.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { BoardFiles } from "../../lib/board-files.ts";
+import { FileExplorer } from "./file-explorer.tsx";
 
 /**
  * The files of the checkout the sidebar picked, beside the board (#117). The tree is keyed by its

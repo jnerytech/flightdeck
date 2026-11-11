@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { FileExplorer, SessionFiles } from "@/features/files/index.ts";
 import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
 import { SessionFinish } from "../components/session/session-finish.tsx";
@@ -29,8 +30,6 @@ import {
 } from "../lib/session-views.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import type { XtermDeps } from "../lib/xterm-screen.ts";
-import { FileExplorer } from "./FileExplorer.tsx";
-import { SessionFiles } from "./SessionFiles.tsx";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";

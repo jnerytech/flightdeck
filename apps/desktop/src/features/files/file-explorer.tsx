@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import type { AppStore } from "../lib/app-store.ts";
-import { affectedDirs } from "../lib/file-changes.ts";
-import { FileSearch } from "./FileSearch.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { affectedDirs } from "../../lib/file-changes.ts";
+import { FileSearch } from "./file-search.tsx";
 
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first open.
-const FileViewer = lazy(() => import("./FileViewer.tsx").then((m) => ({ default: m.FileViewer })));
+const FileViewer = lazy(() => import("./file-viewer.tsx").then((m) => ({ default: m.FileViewer })));
 
 /** A folder as the explorer has it: on its way, listed, or refused with the text to show. */
 type Folder = "loading" | FileListing | { refused: string };
