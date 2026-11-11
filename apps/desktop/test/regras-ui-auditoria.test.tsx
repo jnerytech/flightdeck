@@ -35,7 +35,7 @@ async function setup() {
   daemon.features.push("actions");
   const hostId = await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
-  const deploy = await store.addSecret({
+  const deploy = await store.secrets.add({
     name: "deploy",
     type: "token",
     value: "audit-value",

@@ -47,7 +47,7 @@ async function online() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "alfa", url: d.server.url, token: TOKEN }));
-  const secret = await store.addSecret({
+  const secret = await store.secrets.add({
     name: "token-staging",
     type: "token",
     value: "form-value-xyz",

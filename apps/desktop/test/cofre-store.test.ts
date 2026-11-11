@@ -29,7 +29,7 @@ async function setup(options: ConstructorParameters<typeof AppStore>[1] = {}) {
   const hostId = await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("external.watch"));
-  const meta = await store.addSecret({
+  const meta = await store.secrets.add({
     name: "deploy",
     type: "token",
     value: VALUE,
@@ -47,7 +47,7 @@ describe("cofre-store", () => {
     expect(store.getState().secrets).toEqual([meta]);
     expect(meta.tags).toEqual(["prod"]);
     expect(JSON.stringify(store.getState()).includes(VALUE)).toBe(false);
-    await store.removeSecret(meta.id);
+    await store.secrets.remove(meta.id);
     expect(store.getState().secrets).toEqual([]);
     expect(await store.vault.value(meta.id)).toBeNull();
   });

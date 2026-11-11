@@ -48,8 +48,8 @@ async function open() {
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await snippetsHost(cleanups, store, { snippets: { history: { bash } } });
-  await store.addSecret({ name: "deploy key", type: "password", value: VAULT_VALUE });
-  await store.addSecret({
+  await store.secrets.add({ name: "deploy key", type: "password", value: VAULT_VALUE });
+  await store.secrets.add({
     name: "release env",
     type: "env",
     value: `API_URL=https://example.test\nRELEASE_AUTH="${ENV_VALUE}"`,

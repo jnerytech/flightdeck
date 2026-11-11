@@ -101,7 +101,7 @@ const fill = async (label: string, value: string) => {
 describe("cofre-ui: backup", () => {
   test("Exportar cofre saves a cofre.fdvault that holds the secrets and shows no value", async () => {
     const { store, saved } = await open();
-    await store.addSecret({ name: "deploy", type: "password", value: VALUE });
+    await store.secrets.add({ name: "deploy", type: "password", value: VALUE });
     await fill("Frase-senha", PASS);
     await fill("Confirmar frase-senha", PASS);
     await click("Exportar cofre");

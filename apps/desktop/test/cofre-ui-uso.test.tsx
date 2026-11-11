@@ -27,8 +27,8 @@ async function open(requests = true) {
   await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("external.watch"));
-  const github = await store.addSecret({ name: "github", type: "token", value: VALUE });
-  const deploy = await store.addSecret({ name: "deploy", type: "password", value: VALUE });
+  const github = await store.secrets.add({ name: "github", type: "token", value: VALUE });
+  const deploy = await store.secrets.add({ name: "deploy", type: "password", value: VALUE });
   if (requests) {
     daemon.push({
       type: "vault.request",

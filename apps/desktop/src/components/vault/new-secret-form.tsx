@@ -37,19 +37,19 @@ export function NewSecretForm(
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
   const save = async () => {
-    await store.addSecret({ name: name.trim(), type, value, tags: splitTags(tags) });
+    await store.secrets.add({ name: name.trim(), type, value, tags: splitTags(tags) });
     props.onClose();
   };
 
   const generate = async () => {
-    const made = await store.generateSshKey({ name: name.trim(), tags: splitTags(tags) });
+    const made = await store.secrets.generateKey({ name: name.trim(), tags: splitTags(tags) });
     if (!made) return;
     setPublicKey(made.publicKey);
     setName("");
   };
 
   const importFile = async () => {
-    const meta = await store.importKeyFile({
+    const meta = await store.secrets.importKeyFile({
       name: name.trim(),
       tags: splitTags(tags),
       deleteOriginal,

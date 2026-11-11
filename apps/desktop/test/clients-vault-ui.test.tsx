@@ -48,7 +48,7 @@ async function open(selection: string) {
     ["s-solto", []],
     ["s-beta", ["client:beta"]],
   ] as const) {
-    await store.addSecret({ name, type: "token", value: "v", tags: [...tags] });
+    await store.secrets.add({ name, type: "token", value: "v", tags: [...tags] });
   }
   if (selection !== "all") await act(async () => store.setClientSelection(selection));
   await act(async () => store.router.push({ name: "vault" }));

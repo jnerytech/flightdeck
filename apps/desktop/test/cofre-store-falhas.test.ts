@@ -31,14 +31,14 @@ const errors = (store: ReturnType<typeof broken>) =>
 describe("cofre-store: a tool of the shell that fails", () => {
   test("generating a key reports the error and stores nothing", async () => {
     const store = broken();
-    expect(await store.generateSshKey({ name: "deploy" })).toBeNull();
+    expect(await store.secrets.generateKey({ name: "deploy" })).toBeNull();
     expect(errors(store)).toEqual(["the shell broke"]);
     expect(store.getState().secrets).toEqual([]);
   });
 
   test("importing a key file reports the error and stores nothing", async () => {
     const store = broken();
-    expect(await store.importKeyFile({ name: "deploy" })).toBeNull();
+    expect(await store.secrets.importKeyFile({ name: "deploy" })).toBeNull();
     expect(errors(store)).toEqual(["the shell broke"]);
     expect(store.getState().secrets).toEqual([]);
   });
@@ -46,13 +46,13 @@ describe("cofre-store: a tool of the shell that fails", () => {
   test("a save dialog that fails reports the error and the export is not done", async () => {
     const store = broken();
     const pass = "uma frase bem longa";
-    expect(await store.exportVault(pass, pass)).toEqual({ ok: false, code: "cancelled" });
+    expect(await store.secrets.exportFile(pass, pass)).toEqual({ ok: false, code: "cancelled" });
     expect(errors(store)).toEqual(["the shell broke"]);
   });
 
   test("a file dialog that fails reports the error and there is no preview", async () => {
     const store = broken();
-    expect(await store.previewVaultImport("uma frase bem longa")).toEqual({
+    expect(await store.secrets.previewImport("uma frase bem longa")).toEqual({
       ok: false,
       code: "cancelled",
     });
@@ -67,7 +67,7 @@ describe("cofre-store: a tool of the shell that fails", () => {
     };
     const store = new AppStore(platform, { baseDelayMs: 60_000 });
     stores.push(store);
-    const meta = await store.addSecret({ name: "deploy", type: "token", value: "v-123" });
+    const meta = await store.secrets.add({ name: "deploy", type: "token", value: "v-123" });
     expect(await store.copySecret(meta.id, 5)).toBe(true);
     await Bun.sleep(40);
     expect(copied).toEqual(["v-123"]);

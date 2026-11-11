@@ -34,7 +34,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
   };
 
   const doExport = async () => {
-    const outcome = await store.exportVault(passphrase, confirmation);
+    const outcome = await store.secrets.exportFile(passphrase, confirmation);
     if (outcome.ok) {
       setExportMessage(t("vault.backup.exported"));
       setPassphrase("");
@@ -49,7 +49,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
   const doPreview = async () => {
     setPreview(null);
     setImportMessage(null);
-    const outcome = await store.previewVaultImport(filePassphrase);
+    const outcome = await store.secrets.previewImport(filePassphrase);
     if (outcome.ok) {
       setPreview(outcome.preview);
       setChoice("skip");
@@ -60,7 +60,7 @@ export function BackupPanel(props: Readonly<{ store: AppStore }>) {
 
   const doApply = async () => {
     if (!preview) return;
-    const result = await store.applyVaultImport(preview, choice);
+    const result = await store.secrets.applyImport(preview, choice);
     setPreview(null);
     setFilePassphrase("");
     setImportMessage(

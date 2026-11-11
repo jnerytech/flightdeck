@@ -121,9 +121,11 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     const generate = slow();
     const importKey = slow();
     const store = {
-      addSecret: add.call,
-      generateSshKey: generate.call,
-      importKeyFile: importKey.call,
+      secrets: {
+        add: add.call,
+        generateKey: generate.call,
+        importKeyFile: importKey.call,
+      },
       copyText: () => Promise.resolve(true),
     } as unknown as AppStore;
     render(

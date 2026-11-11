@@ -42,19 +42,19 @@ async function open(
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   const allowedHosts = input.allowed === false ? ["local"] : [hostId];
-  const key = await store.addSecret({
+  const key = await store.secrets.add({
     name: "deploy key",
     type: "ssh-key",
     value: KEY,
     allowedHosts,
   });
-  const password = await store.addSecret({
+  const password = await store.secrets.add({
     name: "box password",
     type: "password",
     value: PASSWORD,
     allowedHosts,
   });
-  await store.addSecret({
+  await store.secrets.add({
     name: "a token",
     type: "token",
     value: "ghp_aTokenThatIsNotAKey123456",
@@ -67,7 +67,7 @@ async function open(
   } else {
     d.targets.push(sshTarget({ id: "t1", name: "vps" }));
   }
-  if (input.remove) await store.removeSecret(key.id);
+  if (input.remove) await store.secrets.remove(key.id);
   render(<App store={store} />);
   await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   await act(async () => {

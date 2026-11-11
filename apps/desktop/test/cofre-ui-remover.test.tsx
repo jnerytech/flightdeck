@@ -22,7 +22,7 @@ async function open() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
   await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
-  const meta = await store.addSecret({
+  const meta = await store.secrets.add({
     name: "github",
     type: "password",
     value: "remove-test-value",
