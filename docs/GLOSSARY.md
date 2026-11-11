@@ -191,6 +191,7 @@ test's baseline, with the issue that renames them.
 | `messaging` | message | Messages between sessions, their policy, loops and exceptions |
 | `names` | standard name | The display name and alias of every session |
 | `needs-you` | needs you | The sessions that wait for an answer: the screen and its rows, and the summary of what happened while the person was away |
+| `palette` | palette | The command palette and the global search: the box, its sections and scope chips, and what a choice opens |
 | `permissions` | permission | Permission requests, risk, auto-approval and the rules behind them |
 | `personas` | persona | Engineering roles a session takes, the pack and their storage |
 | `plugins` | plugin | Claude Code plugins of the host, through the `claude plugin` CLI |
