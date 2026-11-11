@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
-const { TimingBreakdown } = await import("../src/ui/TimingBreakdown.tsx");
+const { TimingBreakdown } = await import("../src/features/costs/TimingBreakdown.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 

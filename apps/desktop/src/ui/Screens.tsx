@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
+import type { TopSession } from "../features/costs/page.tsx";
 import {
   type AppState,
   type AppStore,
@@ -32,7 +33,6 @@ import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ActivityBoard } from "./ActivityBoard.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
-import type { TopSession } from "./CostsPage.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
@@ -66,7 +66,7 @@ const ClientsPage = lazyScreen(() => import("./ClientsPage.tsx"), "ClientsPage")
 const ConnectionsPage = lazyScreen(() => import("./ConnectionsPage.tsx"), "ConnectionsPage");
 const ConversationsPage = lazyScreen(() => import("./ConversationsPage.tsx"), "ConversationsPage");
 const PullRequestsPage = lazyScreen(() => import("./PullRequestsPage.tsx"), "PullRequestsPage");
-const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
+const CostsPage = lazyScreen(() => import("../features/costs/page.tsx"), "CostsPage");
 const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
