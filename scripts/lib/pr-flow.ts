@@ -273,8 +273,8 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     deps.log(otherPrsMessage(branch, others));
     return 1;
   }
-  // #1707: a session's PR needs the record of both reviews on its head; the coordinator's (rc, release) does not.
-  if (deps.env.FLIGHTDECK_COORDINATOR !== "1") {
+  // #1707: a session's PR needs the record of both reviews on its head; the coordinator's rc branch (workers cannot push rc/*) does not.
+  if (!branch.startsWith("rc/")) {
     const problem = await reviewProblem(branch, base, deps.git);
     if (problem) {
       deps.log(problem);

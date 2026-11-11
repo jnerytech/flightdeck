@@ -6,35 +6,18 @@
  * that changes the tree asks for a new review.
  */
 
-/** The commits a branch's `Code-Review` and `Security-Review` trailers name, as written (a sha). */
-export interface ReviewNames {
-  code: string[];
-  security: string[];
-}
-
 /** Runs git with these arguments: its exit code and stdout. */
 export type ReviewGit = (args: string[]) => Promise<{ code: number; stdout: string }>;
 
-/** A commit name as `git rev-parse` takes it from a trailer: lowercase hex, never an option or a ref. */
+/** A commit name as git takes it from a trailer: lowercase hex, never an option or a ref. */
 const SHA = /^[0-9a-f]{7,40}$/;
 
-/** The sha each value of a trailer names (its first word); the values are joined by \x1d. */
-function namedShas(field: string): string[] {
-  return field
-    .split("\x1d")
+/** The sha each value of a review trailer names (its first word), in `git log --format=%x1e<trailers>` output. */
+export function parseReviewLog(log: string): string[] {
+  return log
+    .split(/[\x1e\x1d]/)
     .map((value) => value.trim().split(/\s+/)[0] ?? "")
     .filter((word) => SHA.test(word));
-}
-
-/** The names in `git log --format=%x1e<Code-Review trailers>%x1f<Security-Review trailers>` output. */
-export function parseReviewLog(log: string): ReviewNames {
-  const names: ReviewNames = { code: [], security: [] };
-  for (const record of log.split("\x1e")) {
-    const [code = "", security = ""] = record.split("\x1f");
-    names.code.push(...namedShas(code));
-    names.security.push(...namedShas(security));
-  }
-  return names;
 }
 
 /** What to run, and the record to commit, when a review is missing. */
@@ -51,31 +34,40 @@ export async function reviewProblem(
   base: string,
   git: ReviewGit,
 ): Promise<string | null> {
-  const format =
-    "--format=%x1e%(trailers:key=Code-Review,valueonly,unfold,separator=%x1d)" +
-    "%x1f%(trailers:key=Security-Review,valueonly,unfold,separator=%x1d)";
-  const log = await git(["log", "--no-show-signature", format, `origin/${base}..origin/${branch}`]);
-  const head = await git(["rev-parse", "--verify", "--quiet", `origin/${branch}^{tree}`]);
-  if (log.code !== 0 || head.code !== 0)
+  // One log per trailer key: a control byte in a value cannot move a sha to the other review.
+  const trailers = (key: string) =>
+    git([
+      "log",
+      "--no-show-signature",
+      `--format=%x1e%(trailers:key=${key},valueonly,unfold,separator=%x1d)`,
+      `origin/${base}..origin/${branch}`,
+    ]);
+  const [codeLog, securityLog, head] = await Promise.all([
+    trailers("Code-Review"),
+    trailers("Security-Review"),
+    git(["rev-parse", "--verify", "--quiet", `origin/${branch}^{tree}`]),
+  ]);
+  if (codeLog.code !== 0 || securityLog.code !== 0 || head.code !== 0)
     return `review: the log or the head of ${branch} cannot be read`;
-  const names = parseReviewLog(log.stdout);
   // A review counts when a commit it names has the tree of the head: the record's own commit is empty.
+  // `git log -1 --format=%T` prints nothing for a name that is no commit (a tree sha passes rev-parse).
   const reviewed = async (shas: string[]): Promise<boolean> => {
     for (const sha of new Set(shas)) {
       const tree = await git([
-        "rev-parse",
-        "--verify",
-        "--quiet",
+        "log",
+        "-1",
+        "--no-show-signature",
+        "--format=%T",
         "--end-of-options",
-        `${sha}^{tree}`,
+        sha,
       ]);
       if (tree.code === 0 && tree.stdout.trim() === head.stdout.trim()) return true;
     }
     return false;
   };
   const missing = [
-    ...((await reviewed(names.code)) ? [] : ["/code-review"]),
-    ...((await reviewed(names.security)) ? [] : ["/security-review"]),
+    ...((await reviewed(parseReviewLog(codeLog.stdout))) ? [] : ["/code-review"]),
+    ...((await reviewed(parseReviewLog(securityLog.stdout))) ? [] : ["/security-review"]),
   ];
   if (missing.length === 0) return null;
   return [
