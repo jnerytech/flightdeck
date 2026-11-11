@@ -29,7 +29,8 @@ export function layoutLike(text: string | null, value: unknown): string {
 
 /**
  * The JSON of `text` checked against `schema`; throws when the text is not JSON or does not fit.
- * The error names where the text does not fit, never the text: it may hold a secret and ends in logs.
+ * The error says how many problems and of which kind, never the text or its keys: they may hold a
+ * secret, and the message ends in logs.
  */
 export function parseJsonWith<T>(schema: z.ZodType<T>, text: string): T {
   let value: unknown;
@@ -40,8 +41,8 @@ export function parseJsonWith<T>(schema: z.ZodType<T>, text: string): T {
   }
   const result = schema.safeParse(value);
   if (result.success) return result.data;
-  const where = result.error.issues.map((issue) => issue.path.join(".") || "(root)");
-  throw new Error(`JSON does not fit at ${[...new Set(where)].join(", ")}`);
+  const kinds = [...new Set(result.error.issues.map((issue) => issue.code))].join(", ");
+  throw new Error(`JSON does not fit (${result.error.issues.length} problem(s): ${kinds})`);
 }
 
 /** Like `parseJsonWith`, but `fallback` for text that is not JSON or does not fit `schema`. */

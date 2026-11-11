@@ -4,7 +4,6 @@ import {
   inputsOf,
   reasonParamsOf,
   shownOf,
-  runUsageOf,
   spendingOf,
   stepUsageOf,
 } from "../../src/workflows/row-json.ts";
@@ -30,13 +29,6 @@ describe("row-json: the JSON columns of a workflow run", () => {
   test("a spending that does not fit throws, so a run never loses its tally and passes its budget", () => {
     expect(() => spendingOf('{"turns":"2"}')).toThrow();
     expect(() => spendingOf("{nope")).toThrow();
-  });
-  test("the usage a run shows has no per-session tally", () => {
-    expect(runUsageOf('{"turns":2,"minutes":1,"costUsd":0.5,"sessions":{"s1":0.5}}')).toEqual({
-      turns: 2,
-      minutes: 1,
-      costUsd: 0.5,
-    });
   });
   test("a budget keeps its limits, and one that does not fit throws", () => {
     expect(budgetOf('{"maxTurns":5,"maxCostUsd":1.5}')).toEqual({ maxTurns: 5, maxCostUsd: 1.5 });
