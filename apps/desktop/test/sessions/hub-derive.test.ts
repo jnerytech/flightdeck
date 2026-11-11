@@ -115,7 +115,7 @@ describe("refreshSignature", () => {
 
 describe("rowOffers", () => {
   const idle = { origin: "flightdeck", state: "idle", asleep: false, sessionId: "s1" } as const;
-  const on = { teleportPreview: true, canTeleport: true };
+  const on = { teleportPreview: true, canTeleport: () => true };
 
   test("an idle managed session can be put to sleep and moved", () => {
     expect(rowOffers(idle, on)).toEqual({ sleep: true, teleport: true });
@@ -135,9 +135,22 @@ describe("rowOffers", () => {
     expect(rowOffers({ ...idle, asleep: true }, on).teleport).toBe(true);
   });
 
+  test("the host is asked only for a session that could be moved", () => {
+    const asked: string[] = [];
+    const ask = () => {
+      asked.push("h");
+      return true;
+    };
+    rowOffers({ ...idle, state: "running" }, { teleportPreview: true, canTeleport: ask });
+    rowOffers(idle, { teleportPreview: false, canTeleport: ask });
+    expect(asked).toEqual([]);
+    rowOffers(idle, { teleportPreview: true, canTeleport: ask });
+    expect(asked).toEqual(["h"]);
+  });
+
   test("the move needs the preview on and a host that can do it", () => {
-    expect(rowOffers(idle, { teleportPreview: false, canTeleport: true }).teleport).toBe(false);
-    expect(rowOffers(idle, { teleportPreview: true, canTeleport: false }).teleport).toBe(false);
+    expect(rowOffers(idle, { teleportPreview: false, canTeleport: () => true }).teleport).toBe(false);
+    expect(rowOffers(idle, { teleportPreview: true, canTeleport: () => false }).teleport).toBe(false);
   });
 });
 
