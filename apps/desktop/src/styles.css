@@ -9,6 +9,8 @@
 @import "@fontsource-variable/inter";
 /* xterm's own rules: they hide its helper textarea and measure element, and place its layers. */
 @import "@xterm/xterm/css/xterm.css";
+/* Each feature's own rules, one file per feature (#1599); they are utilities, so their order is free. */
+@import "./styles/activity.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -3550,4 +3552,3 @@ html:not(:has([data-slot="status-bar"])) {
   color: var(--muted-foreground);
   font-size: 0.75rem;
 }
-@import "./styles/activity.css";
