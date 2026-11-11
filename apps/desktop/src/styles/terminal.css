@@ -1,0 +1,27 @@
+/* A file a terminal printed, open in the Files viewer under the terminal (#506). */
+@utility terminal-file {
+  max-height: 45vh;
+  overflow-y: auto;
+  border-top-width: 1px;
+  padding-top: 0.5rem;
+}
+
+/* The popover that asks for a terminal's persona before it opens (issue #177). */
+@utility terminal-ask {
+  display: flex;
+  width: 18rem;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* The terminal's find bar: the box, where the match is, and the buttons in one row. */
+@utility terminal-find {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* A find option (#476): a ghost button, so pressed it takes the shared pressed look (#812). */
+@utility terminal-find-toggle {
+  font-family: var(--font-mono, monospace);
+}
