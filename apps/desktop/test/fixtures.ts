@@ -554,7 +554,7 @@ export function daemon(
             tasks: new TaskTracker({ dir: join(root, `tasks-${++taskDirs}`) }),
           }
         : {}),
-      ...(options.knowledge ? { knowledge: listKnowledge } : {}),
+      ...(options.knowledge ? { knowledge: { list: listKnowledge } } : {}),
       ...(githubService ? { github: githubService } : {}),
       ...(boardSyncService ? { boardsync: boardSyncService } : {}),
       ...(roiSummarizer ? { roi: roiSummarizer } : {}),

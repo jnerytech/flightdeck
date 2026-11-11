@@ -54,7 +54,7 @@ async function terminalHost(feed: ((path: string) => Promise<KnowledgeIndexResul
   const server = startServer({
     manager: newManager().manager,
     personas,
-    ...(feed ? { knowledgeFeed: feed } : {}),
+    ...(feed ? { knowledge: { feed } } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

@@ -128,6 +128,44 @@ import type { Worktrees } from "./worktrees/worktrees.ts";
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
+/**
+ * A domain's group of server options (#1593), checked both ways: every service of the group is
+ * there, and none it does not know (a variable skips the excess-property check `satisfies` gives).
+ * `K` names the option the group fills, so the wiring needs no import of the group's type.
+ */
+export const serverGroup =
+  <K extends keyof ServerOptions>() =>
+  <T extends Required<Group<K>>>(
+    h: T & Record<Exclude<keyof T, keyof Group<K>>, never>,
+  ): Group<K> =>
+    // A generic Required<X> is not provably an X to the compiler; at each call it is.
+    h as unknown as Group<K>;
+type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
+
+/** Issue #76, #1593: the knowledge domain's part of the server, each service optional. */
+interface KnowledgeServer {
+  /** The library of documents of a project, read only. */
+  list?: (path: string) => Promise<KnowledgeListResult>;
+  /** The index of the project's current documents for a session's system prompt. */
+  feed?: (path: string) => Promise<KnowledgeIndexResult>;
+  /** Whether sessions in a project are given that index, and the person's switch for it. */
+  feedSwitch?: KnowledgeSwitch;
+  /** The status of one library document, written into its front matter. */
+  status?: (
+    path: string,
+    file: string,
+    status: KnowledgeStatus,
+    expectedHash: string,
+  ) => Promise<KnowledgeEntry>;
+  /** #1039: a new library document from a template, in the project's folder for its kind. */
+  create?: (
+    path: string,
+    kind: KnowledgeKind,
+    title: string,
+    body?: string,
+  ) => Promise<KnowledgeEntry>;
+}
+
 export interface ServerOptions {
   manager: SessionManager;
   /** Phase 39: whether OpenCode runs on this host, and its models. */
@@ -168,26 +206,8 @@ export interface ServerOptions {
   harnessStack?: (path: string) => Promise<HarnessStack>;
   /** Issue #79: the open alerts of the repository in a folder, read with `gh`. */
   alerts?: (cwd: string) => Promise<AlertList>;
-  /** Issue #76: the library of documents of a project, read only. */
-  knowledge?: (path: string) => Promise<KnowledgeListResult>;
-  /** #76: the index of the project's current documents for a session's system prompt. */
-  knowledgeFeed?: (path: string) => Promise<KnowledgeIndexResult>;
-  /** #76: whether sessions in a project are given that index, and the person's switch for it. */
-  knowledgeFeedSwitch?: KnowledgeSwitch;
-  /** #76: the status of one library document, written into its front matter. */
-  knowledgeStatus?: (
-    path: string,
-    file: string,
-    status: KnowledgeStatus,
-    expectedHash: string,
-  ) => Promise<KnowledgeEntry>;
-  /** #1039: a new library document from a template, in the project's folder for its kind. */
-  knowledgeCreate?: (
-    path: string,
-    kind: KnowledgeKind,
-    title: string,
-    body?: string,
-  ) => Promise<KnowledgeEntry>;
+  /** Issue #76: the project's library of documents; each part is announced by `host.info` on its own. */
+  knowledge?: KnowledgeServer;
   /** #75: what adding harness parts would add, written nowhere. */
   harnessPreview?: (
     path: string,
