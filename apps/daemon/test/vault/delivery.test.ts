@@ -448,12 +448,14 @@ describe("cofre-entrega", () => {
     const logs: string[] = [];
     const server = startServer({
       manager: newManager().manager,
-      sshConnect: {
-        connect: async (req: { privateKey?: string }) =>
-          void calls.push(`connect:${req.privateKey ?? ""}`),
-        test: async (req: { privateKey?: string }) =>
-          void calls.push(`test:${req.privateKey ?? ""}`),
-      } as never,
+      ssh: {
+        connect: {
+          connect: async (req: { privateKey?: string }) =>
+            void calls.push(`connect:${req.privateKey ?? ""}`),
+          test: async (req: { privateKey?: string }) =>
+            void calls.push(`test:${req.privateKey ?? ""}`),
+        } as never,
+      },
       log: (m) => logs.push(m),
       hostName: "h",
       bind: lan.address,
@@ -492,11 +494,13 @@ describe("cofre-entrega", () => {
     const calls: string[] = [];
     const server = startServer({
       manager: newManager().manager,
-      sshConnect: {
-        connect: async (req: { privateKey?: string }) =>
-          void calls.push(`connect:${req.privateKey}`),
-        test: async (req: { privateKey?: string }) => void calls.push(`test:${req.privateKey}`),
-      } as never,
+      ssh: {
+        connect: {
+          connect: async (req: { privateKey?: string }) =>
+            void calls.push(`connect:${req.privateKey}`),
+          test: async (req: { privateKey?: string }) => void calls.push(`test:${req.privateKey}`),
+        } as never,
+      },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

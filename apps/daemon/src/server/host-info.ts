@@ -130,7 +130,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.automations, "automation"),
     ...when(opts.autoApprove, "autoapprove"),
     // Phase 15: the app shows Conexões for hosts that keep ssh destinos.
-    ...when(opts.ssh, "ssh"),
+    ...when(opts.ssh?.targets, "ssh"),
     // Phase 17: the actions that use a vault secret without Claude seeing it.
     ...when(opts.actions, "actions"),
     // Phase 18: saved commands and prompts of the host and its projects.
