@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -15,7 +15,7 @@ const ALL = ["costs", "messaging", "teams", "plugins", "personas", "snippets", "
 function setup(
   features: string[] = ALL,
   platform = memoryPlatform(false, "en").platform,
-  route?: import("../src/lib/router.ts").Route,
+  route?: import("../../src/lib/router.ts").Route,
 ) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -55,7 +55,7 @@ function setup(
   return { store, view, platform, opened };
 }
 
-type R = import("../src/lib/router.ts").Route;
+type R = import("../../src/lib/router.ts").Route;
 
 /** Every destination of the bar and the route that opens it (SG-M1). */
 const DESTINATIONS: Array<[string, R]> = [

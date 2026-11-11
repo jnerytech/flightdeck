@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { seedDemoHosts } from "../src/demo/boot.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { SIDEBAR_FOLD_KEY } from "../src/lib/sidebar-fold.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { SIDEBAR_FOLD_KEY } from "../../src/lib/sidebar-fold.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppShell } = await import("../src/components/layout/app-shell.tsx");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppShell } = await import("../../src/components/layout/app-shell.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 const settle = waiter(4000);

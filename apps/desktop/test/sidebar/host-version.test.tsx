@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe, stays } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settleMaybe, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/ui/Sidebar.tsx");
-const { APP_VERSION } = await import("../src/lib/version.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { APP_VERSION } = await import("../../src/lib/version.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

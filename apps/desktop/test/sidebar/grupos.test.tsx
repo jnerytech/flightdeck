@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -16,7 +16,7 @@ const ALL = ["costs", "messaging", "teams", "plugins", "personas", "snippets", "
 function setup(
   features: string[] = ALL,
   platform = memoryPlatform(false, "en").platform,
-  route?: import("../src/lib/router.ts").Route,
+  route?: import("../../src/lib/router.ts").Route,
   appVersion?: string,
 ) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });

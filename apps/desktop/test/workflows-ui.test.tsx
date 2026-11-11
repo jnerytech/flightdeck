@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { waiter } from "./wait.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 

@@ -14,7 +14,7 @@ import { must, poll } from "../../daemon/test/support/helpers.ts";
 import { isLocalUrl, terminalLaunch } from "../src/lib/terminal.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
