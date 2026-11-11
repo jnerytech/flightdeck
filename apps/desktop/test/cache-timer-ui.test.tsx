@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { CacheTimer } = await import("../src/components/hub/cache-timer.tsx");
+const { CacheTimer } = await import("../src/features/sessions/cache-timer.tsx");
 const { SessionsHub } = await import("../src/ui/SessionsHub.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 

@@ -1,7 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { CacheTimer } from "@/components/hub/cache-timer";
 import { Page } from "@/components/layout/page";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -9,6 +8,7 @@ import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { draftUrl, type HostDraft, HostForm, HostOfflineBanner } from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
+import { CacheTimer } from "@/features/sessions/cache-timer";
 import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
@@ -66,7 +66,7 @@ const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "Co
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");
 const PrsPage = lazyScreen(() => import("../features/board/pull-requests.tsx"), "PullRequestsPage");
 const CostsPage = lazyScreen(() => import("../features/costs/page.tsx"), "CostsPage");
-const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
+const HomePage = lazyScreen(() => import("../features/home/page.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("../features/hosts/page.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("../features/plugins/page.tsx"), "PluginsPage");
