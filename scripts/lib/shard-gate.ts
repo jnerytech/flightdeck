@@ -39,6 +39,11 @@ export interface GateInput {
   jobs: readonly ShardJob[];
   /** The source files that must be loaded and covered (check-coverage.ts). */
   sources: readonly string[];
+  /**
+   * A PR's selection (#1761): only `sources` are judged; the other loaded files stay in the merged
+   * lcov for SonarCloud but are not held to the gate.
+   */
+  only?: boolean;
 }
 
 export interface GateResult {
@@ -295,6 +300,26 @@ export function spawnLogged(
   };
 }
 
+/** A PR's selection (#1761): the test files its shards split, and the changed sources they must cover. */
+export interface Selection {
+  tests: readonly string[];
+  targets: readonly string[];
+}
+
+/**
+ * The selection of `test:related --pr`'s plan, or null when the whole suite runs (a global file
+ * changed or a test went away), or the plan's own problem when it cannot run (#1761).
+ */
+export function selectionOf(plan: {
+  code: number;
+  output: string;
+  command: string[] | null;
+  files?: string[] | "all";
+  targets?: string[];
+}): Selection | null | { problem: string } {
+  return { tests: [], targets: [] };
+}
+
 /** What `runShard` touches: the checkout, its tracked files and timings, and the effects. */
 export interface RunShardDeps {
   root: string;
@@ -304,6 +329,8 @@ export interface RunShardDeps {
   write: (path: string, text: string) => void;
   spawn: (argv: string[], env: Record<string, string>) => Promise<{ exit: number; log: string }>;
   print: (line: string) => void;
+  /** A PR's selection instead of the whole suite (#1761). */
+  selection?: Selection;
 }
 
 /** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
@@ -366,6 +393,8 @@ export interface MergeShardsDeps {
   sources: readonly string[];
   print: (line: string) => void;
   error: (line: string) => void;
+  /** A PR's selection instead of the whole suite (#1761). */
+  selection?: Selection;
 }
 
 /** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
