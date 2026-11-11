@@ -2936,9 +2936,7 @@ async function flatTabsProblem(page: Page): Promise<string | null> {
     if (!bar) return ["no tab bar"];
     // A prod host's tab and a drop target carry their own borders on purpose.
     const items = [
-      ...bar.querySelectorAll<HTMLElement>(
-        ".tab-item:not([data-pinned]):not([data-prod='true']):not([data-drop])",
-      ),
+      ...bar.querySelectorAll<HTMLElement>(".tab-item:not([data-prod='true']):not([data-drop])"),
     ];
     const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
     const other = items.find((it) => it !== active);
@@ -3229,10 +3227,9 @@ export async function layoutAbas(c: Context, problems: string[]) {
   const tabList = await tabListProblem(c.page);
   if (tabList)
     problems.push(`${c.lang} ${smallest.width}x${smallest.height} lista de abas: ${tabList}`);
-  // Which tab is open shows at a glance (#488), checked at 1280x800 with three tabs, so a shared
-  // tab besides the active one is on the bar (the board's is its host's, which the bar may not list).
+  // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
   await c.page.setViewportSize({ width: 1280, height: 800 });
-  await openCrowded(c, { name: "hub" }, 3);
+  await openCrowded(c, { name: "hub" }, 2);
   const activeTab = await activeTabProblem(c.page);
   if (activeTab) problems.push(`${c.lang} 1280x800 aba ativa: ${activeTab}`);
   const flatTabs = await flatTabsProblem(c.page);
