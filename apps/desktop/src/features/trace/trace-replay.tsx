@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { Panel } from "../components/layout/panel.tsx";
-import { Inline, Stack } from "../components/layout/stack.tsx";
-import type { AppStore } from "../lib/app-store.ts";
-import { flatten, turnOf } from "../lib/trace.ts";
-import { hasFeature } from "../lib/version.ts";
-import { nodeNumbers, nodeTitle } from "./TracePanel.tsx";
+import { Panel } from "../../components/layout/panel.tsx";
+import { Inline, Stack } from "../../components/layout/stack.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { flatten, turnOf } from "../../lib/trace.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { nodeNumbers, nodeTitle } from "./trace-panel.tsx";
 
 const SPEEDS = [1, 2, 4];
 
