@@ -141,6 +141,53 @@ describe("metrics: PR size and rework", () => {
     expect(size.reworkShare).toBeNull();
   });
 
+  test("files every change touches (a baseline, the timings, a doc, a test) are not rework; a source file is (#2019)", () => {
+    const feat = commit("f", "2026-11-01T00:00:00Z", "feat(x): one", [
+      "json-parse-baseline.json",
+      "scripts/test-timings.json",
+      "docs/a.md",
+      "apps/daemon/test/a.test.ts",
+    ]);
+    const fix = commit("x", "2026-11-02T06:00:00Z", "fix(x): soon", [
+      "json-parse-baseline.json",
+      "scripts/test-timings.json",
+      "docs/a.md",
+      "apps/daemon/test/a.test.ts",
+    ]);
+    expect(prSize(prs, [feat, fix], WINDOW).reworkShare).toBe(0);
+    const src = commit("s", "2026-11-01T01:00:00Z", "feat(y): src", ["apps/daemon/src/a.ts"]);
+    const srcFix = commit("t", "2026-11-02T06:00:00Z", "fix(y): src", ["apps/daemon/src/a.ts"]);
+    expect(prSize(prs, [src, srcFix], WINDOW).reworkShare).toBe(1);
+  });
+
+  test("a fix counts when most of its source files were in one feat, not when it only shares a hot file (#2019)", () => {
+    const feat = commit("f", "2026-11-01T00:00:00Z", "feat(x): one", ["apps/daemon/src/hot.ts"]);
+    const mostly = commit("m", "2026-11-02T00:00:00Z", "fix(x): same files", [
+      "apps/daemon/src/hot.ts",
+      "apps/daemon/src/b.ts",
+    ]);
+    const hotOnly = commit("h", "2026-11-02T00:00:00Z", "fix(z): elsewhere", [
+      "apps/daemon/src/hot.ts",
+      "apps/daemon/src/c.ts",
+      "apps/daemon/src/d.ts",
+    ]);
+    // 1 of 2 source files is not most of them; 1 of 3 neither: only a half or more would count.
+    expect(prSize(prs, [feat, mostly], WINDOW).reworkShare).toBe(1);
+    expect(prSize(prs, [feat, hotOnly], WINDOW).reworkShare).toBe(0);
+  });
+
+  test("a fix right after the feat of its own pull request is not rework: it needs an hour of distance (#2019)", () => {
+    const feat = commit("f", "2026-11-01T00:00:00Z", "feat(x): one", ["apps/daemon/src/a.ts"]);
+    const review = commit("r", "2026-11-01T00:40:00Z", "fix(x): review finding", [
+      "apps/daemon/src/a.ts",
+    ]);
+    const later = commit("l", "2026-11-01T05:00:00Z", "fix(x): the next day", [
+      "apps/daemon/src/a.ts",
+    ]);
+    expect(prSize(prs, [feat, review], WINDOW).reworkShare).toBe(0);
+    expect(prSize(prs, [feat, later], WINDOW).reworkShare).toBe(1);
+  });
+
   test("a fix within 48 hours of a feat on the same file counts; one 60 hours later does not", () => {
     const feat = commit("f", "2026-11-01T00:00:00Z", "feat(x): one", ["a.ts"]);
     const soon = commit("s", "2026-11-02T06:00:00Z", "fix(x): soon", ["a.ts"]);

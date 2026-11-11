@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
-const { CardDeps } = await import("../src/ui/CardDeps.tsx");
+const { CardDeps } = await import("../src/features/board/card-deps.tsx");
 
 afterEach(cleanup);
 
