@@ -5,10 +5,10 @@ import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { PersonaPicker } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
-import type { AppStore } from "../lib/app-store.ts";
-import type { TerminalTarget } from "../lib/terminal.ts";
-import { hasFeature } from "../lib/version.ts";
-import { useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { TerminalTarget } from "../../lib/terminal.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { useLiveElsewhereGuard } from "../../ui/use-live-elsewhere-guard.tsx";
 
 /**
  * "Abrir no terminal" for a session, card or project: opens one on this machine, or copies the

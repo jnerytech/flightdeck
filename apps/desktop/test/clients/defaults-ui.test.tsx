@@ -109,7 +109,7 @@ describe("clients-defaults: the persona of Claude here", () => {
     const store = newStore();
     const h = await personasHost(cleanups, store);
     addClient(store, "Acme", h.d.root, { persona });
-    const { TerminalButton } = await import("../../src/ui/TerminalButton.tsx");
+    const { TerminalButton } = await import("../../src/features/terminal/terminal-button.tsx");
     const { TContext } = await import("../../src/i18n/context.tsx");
     render(
       <TContext.Provider value={store.i18n.t}>

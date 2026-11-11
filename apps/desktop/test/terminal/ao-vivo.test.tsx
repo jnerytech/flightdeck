@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { TerminalButton } = await import("../../src/ui/TerminalButton.tsx");
+const { TerminalButton } = await import("../../src/features/terminal/terminal-button.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { liveElsewhere } = await import("../../src/lib/live-elsewhere.ts");
 
