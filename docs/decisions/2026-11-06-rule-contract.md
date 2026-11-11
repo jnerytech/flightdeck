@@ -7,7 +7,7 @@ way we thought Claude Code matches it. Issue #395 asked for a check against the 
 - **The contract source.** Claude Code documents Read and Edit rules as gitignore patterns. The
   installed CLI (2.1.319) is a native binary, but its bundled JavaScript carries the `ignore`
   package: its error texts are in the binary. So `ignore` (a dev dependency, pinned exactly) stands
-  in for the CLI's matcher in `apps/daemon/test/rule-risk-contract.test.ts`. For each rule
+  in for the CLI's matcher in `apps/daemon/test/permissions/rule-risk-contract.test.ts`. For each rule
   `ruleLevel` accepts, every probe path the matcher lets the rule cover must rate no higher with
   the daemon's own `RiskClassifier`. It runs case-insensitive (Windows, and the library's default)
   and case-sensitive. The version the CLI bundles cannot be read from the binary.
