@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { addWorktree } from "../../src/board/worktree.ts";
+import { refArg } from "../../src/board/ref-arg.ts";
+import { addWorktree, excludeLocalSettingsAsync, freshBase } from "../../src/board/worktree.ts";
 import { cardWhen, git, gitRepo, newBoard } from "../support/board-helpers.ts";
 import { must, record } from "../support/helpers.ts";
 
@@ -162,5 +163,39 @@ describe("worktree: falhas do git", () => {
     );
     expect(result.startsWith("invalid_state: git worktree add: ")).toBe(true);
     expect(git(repo, "branch", "--list", "fd/*")).toBe("");
+  });
+});
+
+describe("worktree: refreshing the base", () => {
+  test("freshBase: no origin keeps the base; a failed fetch is a notice; a remote ahead wins; level stays local", async () => {
+    const { root, repo } = gitRepo();
+    expect(await freshBase(repo, refArg("main"))).toEqual({ ref: "main", notice: null });
+    git(repo, "remote", "add", "origin", join(root, "nowhere.git"));
+    const failed = await freshBase(repo, refArg("main"));
+    expect(failed.ref).toBe("main");
+    expect(failed.notice).toContain("Could not refresh main from origin");
+    const remote = join(root, "remote.git");
+    git(root, "init", "-q", "--bare", "-b", "main", "remote.git");
+    git(repo, "remote", "set-url", "origin", remote);
+    git(repo, "push", "-q", "origin", "main");
+    expect(await freshBase(repo, refArg("main"))).toEqual({ ref: "main", notice: null });
+    git(root, "clone", "-q", remote, "other");
+    const other = join(root, "other");
+    writeFileSync(join(other, "new.txt"), "x\n");
+    git(other, "add", ".");
+    git(other, "-c", "user.name=t", "-c", "user.email=t@x.invalid", "commit", "-q", "-m", "ahead");
+    git(other, "push", "-q", "origin", "main");
+    expect(await freshBase(repo, refArg("main"))).toEqual({ ref: "origin/main", notice: null });
+  }, 30_000);
+});
+
+describe("worktree: the local exclude file", () => {
+  test("a repository without the local exclude file gets one with the line", async () => {
+    const { repo } = gitRepo();
+    rmSync(join(repo, ".git", "info", "exclude"), { force: true });
+    await excludeLocalSettingsAsync(repo);
+    expect(
+      readFileSync(join(repo, ".git", "info", "exclude"), "utf8").trim().length,
+    ).toBeGreaterThan(0);
   });
 });

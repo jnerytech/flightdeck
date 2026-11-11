@@ -21,7 +21,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
-import { AccountSlice, initialAccountState } from "../features/account/index.ts";
+import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
   initialActivityState,
@@ -51,7 +51,11 @@ import {
   wireHealth,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
-import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
+import {
+  initialMessagingState,
+  type MessagingSlice,
+  wireMessaging,
+} from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
@@ -351,6 +355,7 @@ export class AppStore {
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
+    t: () => this.i18n.t,
   };
 
   constructor(
@@ -415,20 +420,7 @@ export class AppStore {
       t: () => this.i18n.t,
       now: () => this.now(),
     });
-    this.account = new AccountSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      stream: (hostId) => {
-        const conn = this.connections.get(hostId);
-        return (
-          conn && {
-            watch: (on) => conn.watchAccount(on),
-            get: () => conn.request("account.get", {}),
-          }
-        );
-      },
-      refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
-    });
+    this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = new BudgetsSlice({
       state: () => this.state,
@@ -442,13 +434,8 @@ export class AppStore {
         this.inbox.notify(notification, route, undefined, source),
       t: () => this.i18n.t,
     });
-    this.messaging = new MessagingSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
-      setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
+    this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
-      t: () => this.i18n.t,
     });
     this.settings = new SettingsSlice({
       state: () => this.state,
