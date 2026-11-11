@@ -19,3 +19,11 @@ export {
 } from "./store.ts";
 export { SessionStreamSlice } from "./stream.ts";
 export { SummariesSlice } from "./summaries.ts";
+export {
+  wireExternalSessions,
+  wireSessionCommands,
+  wireSessionLists,
+  wireSessionStream,
+  wireSessions,
+  wireSummaries,
+} from "./wire.ts";
