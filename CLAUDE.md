@@ -210,6 +210,11 @@ New code and every move follow these rules; older code moves toward them one str
 - Dictionaries per domain as they are split: `i18n/<lang>/<domain>.ts`, both languages in the same PR.
 - Size is a signal: a source file past about 800 lines likely holds two responsibilities; one under
   about 50 lines that only forwards calls is likely a shallow module. Split or merge accordingly.
+- Fitness functions (#1610): `bun run arch` runs dependency-cruiser's known violations, the source-size
+  and flat-test ratchets and prints one table, each baseline against today's count (CI adds it to the
+  job summary; `scripts/arch-report.ts --json <file>` writes the rows). A figure above its baseline
+  fails, so a baseline only goes down: `.dependency-cruiser-known-violations.json`,
+  `src-size-baseline.json` and `test-layout-baseline.json` (flat test files per workspace).
 - Moves are strangler-fig steps (Fowler, Feathers), like the board.ts split (#1523): one move per
   PR, structure only, behavior unchanged, tests green before and after. Never mix a move with a
   behavior change in one commit (Beck: make the change easy, then make the easy change).
