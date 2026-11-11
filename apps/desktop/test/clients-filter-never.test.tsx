@@ -77,7 +77,7 @@ async function setup() {
     await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
-  await act(async () => store.setClientSelection("acme"));
+  await act(async () => store.clientScope.select("acme"));
   await d.central.hooksInstall(true);
   const token = (await loadConfig(d.configFile)).hooks.token ?? "";
   const hook = (event: string, body: Record<string, unknown> = {}) =>

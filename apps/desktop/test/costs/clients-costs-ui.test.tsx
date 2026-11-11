@@ -174,13 +174,13 @@ describe("clients-costs: the Costs screen across hosts", () => {
   test("the selected client narrows the totals and the breakdowns, and the split by client is not shown", async () => {
     const { store } = await setup();
     await settle(() => total() === "US$ 6,00");
-    await act(async () => store.setClientSelection("beta"));
+    await act(async () => store.clientScope.select("beta"));
     await settle(() => total() === "US$ 3,00");
     expect(total()).toBe("US$ 3,00");
     expect(rowsOf("Por projeto")).toEqual(["github.com/beta/appUS$ 3,00"]);
     expect(screen.queryByRole("region", { name: "Por cliente" })).toBeNull();
     expect(screen.queryByText("Só o cliente Beta.")).not.toBeNull();
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     await settle(() => total() === "US$ 1,00");
     expect(total()).toBe("US$ 1,00");
   });
@@ -227,7 +227,7 @@ describe("clients-costs: the Costs screen across hosts", () => {
         asked.push(JSON.stringify((payload as { projectKey?: string }).projectKey ?? "*"));
       return ask(hostId, type as never, payload as never);
     }) as typeof store.hostCommand;
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await settle(() => total() === "US$ 2,00");
     await uiIdle();
     expect(asked.sort()).toEqual(['"*"', '"*"', '"github.com/acme/api"']);

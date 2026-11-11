@@ -33,7 +33,7 @@ export function ClientRules(
   const clean = value.trim();
   const input: RuleInput =
     kind === "remote" ? { kind, pattern: clean } : { kind, path: clean, ...(host ? { host } : {}) };
-  const matches = clean ? store.clientScope().matching(input).length : 0;
+  const matches = clean ? store.clientScope.get().matching(input).length : 0;
   const valid = clean !== "" && (kind === "folder" || !/\s/.test(clean));
 
   const hostLabel = (rule: ClientRule) => {

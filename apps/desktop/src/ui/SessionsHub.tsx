@@ -26,7 +26,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AssignMenu, ClientChip } from "@/features/clients/index.ts";
+import { AssignMenu } from "@/features/clients/assign-menu.tsx";
+import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { HostsBanner } from "@/features/hosts/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
@@ -190,7 +191,7 @@ export function SessionsHub(
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const allRows = useMemo(
     () =>
-      store.clientScope().filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey),
+      store.clientScope.get().filter(hubRows(state, t), state.clientSelection, (r) => r.projectKey),
     [
       store,
       state.hosts,
@@ -265,7 +266,7 @@ export function SessionsHub(
     [views, limit],
   );
   const viewOf = (key: string): HubGroupView | undefined => views.find((v) => v.group.key === key);
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   // The personas the sessions run in: the Persona filter offers only those.
   const personas = [
     ...new Map(

@@ -1,6 +1,6 @@
 import { memo, type ReactNode } from "react";
 import { StatusDot } from "@/components/status/status-dot";
-import { ClientChip } from "@/features/clients/index.ts";
+import { ClientChip } from "@/features/clients/client-chip.tsx";
 import type { LoopAlert } from "@/features/messaging";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";

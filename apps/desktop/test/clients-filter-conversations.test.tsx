@@ -107,13 +107,13 @@ describe("clients-filter: the Conversations screen", () => {
 
   test("a client lists the messages that touch one of its sessions, at either end", async () => {
     const { store, texts, has } = await open();
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await settle(() => texts().length === 2);
     expect(texts()).toHaveLength(2);
     expect(has("dentro da acme")).toBe(true);
     expect(has("cruzada")).toBe(true);
     expect(has("dentro da beta")).toBe(false);
-    await act(async () => store.setClientSelection("beta"));
+    await act(async () => store.clientScope.select("beta"));
     await settle(() => has("dentro da beta"));
     expect(texts()).toHaveLength(2);
     expect(has("cruzada")).toBe(true);
@@ -121,7 +121,7 @@ describe("clients-filter: the Conversations screen", () => {
 
   test("Unassigned lists the messages of sessions the app cannot place", async () => {
     const { store, texts, has } = await open();
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     await settle(() => texts().length === 1);
     expect(texts()).toHaveLength(1);
     expect(has("sem projeto")).toBe(true);

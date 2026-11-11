@@ -31,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClientSwitcher } from "@/features/clients/index.ts";
+import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
 import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";

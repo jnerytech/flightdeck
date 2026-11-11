@@ -27,7 +27,7 @@ export function ClientDefaults(
   const [tag, setTag, savedTag] = useDraft(client.defaults.snippetTag ?? "");
   const [vaultTag, setVaultTag, savedVaultTag] = useDraft(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const projects = scope.projectKeysOf(client.id);
   const saved = client.defaults.vaultTag;
   const tagged = saved ? state.secrets.filter((s) => s.tags.includes(saved)) : [];

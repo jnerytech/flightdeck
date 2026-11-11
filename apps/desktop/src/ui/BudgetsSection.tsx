@@ -108,7 +108,7 @@ export function BudgetsSection(
   const { budgets } = props;
   const editing = budgets.find((b) => b.id === draft.id);
   // The selected client's project budgets, and the host's own, which cap everything on the host.
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const { clientSelection: selection, hosts } = useStoreSlice(store, BUDGETS_KEYS);
   // A host that runs the quota can measure a budget in a share of its plan window.
   const byWindow = hasFeature(

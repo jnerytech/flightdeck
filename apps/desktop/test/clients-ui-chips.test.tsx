@@ -138,7 +138,7 @@ describe("clients-ui: chips on the projects", () => {
 
   test("with one client selected the chip is not repeated", async () => {
     const { store } = await setup(TWO, false);
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     expect(chip("api")).toBeNull();
   });
 

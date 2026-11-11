@@ -1182,7 +1182,7 @@ function NewSession(
   // The persona the route asked for, else the one chosen, else the folder's client's default.
   const [picked, setPicked] = useState<string | null>(props.persona ?? null);
   const [cwd, setCwd] = useState("");
-  const persona = picked ?? props.store.clientScope().defaultPersona(host.id, cwd);
+  const persona = picked ?? props.store.clientScope.get().defaultPersona(host.id, cwd);
   const [background, setBackground] = useState(false);
   const personas = hasFeature(host.hostInfo?.features, "personas", false);
   const withBackground = hasFeature(host.hostInfo?.features, "bg", false);

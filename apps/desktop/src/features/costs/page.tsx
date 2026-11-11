@@ -49,7 +49,7 @@ function askCosts(store: AppStore, ids: string[], filter: CostsFilter, selection
     hostIds: ids,
     filter,
     selection,
-    scope: store.clientScope(),
+    scope: store.clientScope.get(),
     ask: (id, f) => store.hostCommand(id, "costs.summary", f),
   });
 }
@@ -370,7 +370,7 @@ export const CostsPage = memo(function CostsPage(props: {
     if (alertHost) setRouteHost(alertHost);
     setRouteProject(alertProject ?? null);
     setFilters({});
-    if (alertClient) store.setClientSelection(alertClient);
+    if (alertClient) store.clientScope.select(alertClient);
   }, [store, alertHost, alertProject, alertClient, setRouteHost, setRouteProject]);
   const days = period === "range" ? range : periodRange(period, today);
   const filter: CostsFilter = { ...days, ...filters, ...(projectKey ? { projectKey } : {}) };
@@ -415,7 +415,7 @@ export const CostsPage = memo(function CostsPage(props: {
     ]),
   ].map((key) => ({ key, label: projectName(key) }));
   // The split by client is the whole spend of the period: it is not shown for one client.
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const byClient =
     summary && scope.active && selection === ALL_CLIENTS
       ? costByClient(summary, scope, state.clientList, t("clients.unassigned"))

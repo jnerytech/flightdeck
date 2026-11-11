@@ -146,7 +146,7 @@ describe("clients-defaults: the snippets of the selected client", () => {
     await h.save({ name: "c-outro", type: "command", run: "echo 3", tags: ["x"] });
     const acme = addClient(store, "Acme", "/none", { snippetTag: "acme" });
     addClient(store, "Beta", "/none2");
-    if (selection) store.setClientSelection(selection === "acme" ? acme : selection);
+    if (selection) store.clientScope.select(selection === "acme" ? acme : selection);
     render(<App store={store} />);
     await settle(() => screen.queryByRole("button", { name: "Snippets" }) !== null);
     await act(async () => {

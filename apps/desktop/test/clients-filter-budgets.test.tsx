@@ -100,7 +100,7 @@ describe("clients-filter: the Budgets section", () => {
 
   test("a client lists its projects' budgets and the host's own, and says how many it hides", async () => {
     const { store } = await online();
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await settle(() => rows().length === 2);
     expect(rows()).toHaveLength(2);
     expect(rows().some((r) => r.startsWith("orçamento do host"))).toBe(true);
@@ -111,7 +111,7 @@ describe("clients-filter: the Budgets section", () => {
 
   test("Unassigned keeps only the host's own budget", async () => {
     const { store } = await online();
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     await settle(() => rows().length === 1);
     expect(rows()).toHaveLength(1);
     expect(rows()[0]?.startsWith("orçamento do host")).toBe(true);

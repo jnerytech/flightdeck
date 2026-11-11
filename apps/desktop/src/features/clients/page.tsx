@@ -35,7 +35,7 @@ export function ClientsPage(
   const [renaming, setRenaming] = useState<Client | null>(null);
   const [removing, setRemoving] = useState<Client | null>(null);
 
-  const ambiguous = store.clientScope().ambiguousNames;
+  const ambiguous = store.clientScope.get().ambiguousNames;
   const clean = name.trim();
   const taken = clients.some(
     (c) => c.id !== renaming?.id && c.name.toLowerCase() === clean.toLowerCase(),
