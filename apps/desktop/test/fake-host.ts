@@ -80,3 +80,28 @@ export function onWire(call: (payload: unknown) => Promise<unknown>): HostHandle
     return answer;
   };
 }
+
+/**
+ * Puts a test between a real store and its real host (#1870): every command goes through
+ * `intercept`, which answers it, makes it fail or waits, and calls `next()` for the host's own
+ * answer. This is the one place a test breaks the wire, instead of replacing a method of the store
+ * (`hostCommand`, `terminals.host`). Returns the call that puts the wire back.
+ */
+export function interceptWire(
+  store: AppStore,
+  hostId: string,
+  intercept: (type: string, payload: unknown, next: () => Promise<unknown>) => Promise<unknown>,
+): () => void {
+  const connections = (store as unknown as { connections: Map<string, WireEnd> }).connections;
+  const end = connections.get(hostId);
+  if (!end) throw new Error(`no connection to ${hostId}: add the host first`);
+  const real = end.request;
+  end.request = (type, payload) => intercept(type, payload, () => real.call(end, type, payload));
+  return () => {
+    end.request = real;
+  };
+}
+
+interface WireEnd {
+  request(type: string, payload: unknown): Promise<unknown>;
+}
