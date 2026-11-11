@@ -95,6 +95,7 @@ import {
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
 import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
+import { RoiSlice } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
   initialSessionsState,
@@ -1124,6 +1125,16 @@ export class AppStore {
       const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
       return clientId === UNASSIGNED ? null : clientId;
     });
+    this.roiFigures = new RoiSlice({
+      hosts: () => this.state.hosts,
+      now: () => this.now(),
+      summary: (hostId, range) => this.hostRequest(hostId, "roi.summary", range),
+      clientOf: (projectKey) => {
+        const clientId = this.clientScope.get().clientOf(projectKey);
+        return clientId === UNASSIGNED ? null : clientId;
+      },
+      settings: () => this.roi,
+    });
     this.projectList = new ProjectsSlice({
       state: () => this.state,
       setProjects: (projects) => this.update({ projects }),
@@ -1505,13 +1516,9 @@ export class AppStore {
     return (this.options.day ?? localDay)(this.now());
   }
 
-  /**
-   * Phase 36: the day the hosts' ROI figures end on. A host dates a delivery by its UTC day, so
-   * the range ends on today's UTC day: west of Greenwich, late in the evening, the local day is
-   * still yesterday and today's work would fall outside it.
-   */
+  /** Phase 36: the day the hosts' ROI figures end on (UTC, as a host dates a delivery). */
   roiToday(): string {
-    return new Date(this.now()).toISOString().slice(0, 10);
+    return this.roiFigures.today();
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
@@ -2877,45 +2884,25 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /**
-   * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
-   * that cannot be reached, is left out; the card says how many answered.
-   */
-  async roiSummaries(
+  /** Phase 36: each online host's `roi.summary` for the days given; a host that cannot answer is left out. */
+  roiSummaries(
     from: string,
     to: string,
   ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    const hosts = this.getState().hosts.filter(
-      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "roi", false),
-    );
-    const answers = await Promise.all(
-      hosts.map(async (host) => ({
-        hostId: host.id,
-        asked: await this.hostRequest(host.id, "roi.summary", { from, to }),
-      })),
-    );
-    return answers.flatMap(({ hostId, asked }) =>
-      asked.ok ? [{ hostId, result: asked.data }] : [],
-    );
+    return this.roiFigures.summaries(from, to);
   }
 
   /** Phase 36: what the person typed that turns the work of a project into money. */
   roiMoneyOf(projectKey: string): RoiMoney {
-    const clientId = this.clientScope.get().clientOf(projectKey);
-    const settings = this.roi.data();
-    return {
-      rate: this.roi.rateFor(projectKey, clientId === UNASSIGNED ? null : clientId),
-      billed: null,
-      planShareUsd: null,
-      countReview: settings.countReview,
-      reviewCapSeconds: settings.reviewCapMinutes * 60,
-    };
+    return this.roiFigures.moneyOf(projectKey);
   }
 
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
   readonly roi: RoiSettings;
+  /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
+  private readonly roiFigures: RoiSlice;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;

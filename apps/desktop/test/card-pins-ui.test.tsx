@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, waitFor, within } = await import("@test
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
-const { CardPins } = await import("../src/components/card/card-pins.tsx");
+const { CardPins } = await import("../src/features/board/card-pins.tsx");
 
 afterEach(cleanup);
 
