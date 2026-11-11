@@ -15,6 +15,8 @@ const inputs = (over: Partial<ArchInputs> = {}): ArchInputs => ({
   srcBaseline: { "apps/daemon/src/main.ts": 1202, "apps/daemon/src/board/board.ts": 835 },
   flatCounts: { "apps/desktop/test": 600, "packages/protocol/test": 23 },
   flatBaseline: { "apps/desktop/test": 680, "packages/protocol/test": 23 },
+  knipCounts: { exports: 150, types: 100, files: 15 },
+  knipBaseline: { exports: 160, types: 100, files: 15 },
   ...over,
 });
 
@@ -23,6 +25,9 @@ describe("arch-report (#1610)", () => {
     expect(ratchetRows(inputs())).toEqual([
       { ratchet: "depcruise domain-index-only", baseline: 10, today: 10 },
       { ratchet: "depcruise no-cycles", baseline: 4, today: 3 },
+      { ratchet: "knip exports", baseline: 160, today: 150 },
+      { ratchet: "knip files", baseline: 15, today: 15 },
+      { ratchet: "knip types", baseline: 100, today: 100 },
       { ratchet: "src-size files over the limit", baseline: 2, today: 1 },
       { ratchet: "test-layout apps/desktop/test", baseline: 680, today: 600 },
       { ratchet: "test-layout packages/protocol/test", baseline: 23, today: 23 },
@@ -48,6 +53,18 @@ describe("arch-report (#1610)", () => {
       baseline: 0,
       today: 1,
     });
+  });
+
+  test("a planted unused export puts the knip exports row above its baseline", () => {
+    const rows = ratchetRows(inputs({ knipCounts: { exports: 161, types: 100, files: 15 } }));
+    expect(growing(rows)).toEqual([{ ratchet: "knip exports", baseline: 160, today: 161 }]);
+  });
+
+  test("a knip kind new against the baseline is a row with baseline 0", () => {
+    const rows = ratchetRows(inputs({ knipCounts: { dependencies: 1 }, knipBaseline: {} }));
+    expect(rows.filter((r) => r.ratchet.startsWith("knip"))).toEqual([
+      { ratchet: "knip dependencies", baseline: 0, today: 1 },
+    ]);
   });
 
   test("only a row above its baseline is growing", () => {
