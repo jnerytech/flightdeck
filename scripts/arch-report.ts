@@ -57,8 +57,10 @@ const sources = tracked
     return text === null ? [] : [{ path, text }];
   });
 // The tier of each test file is computed from its content (#261); the shape counts files per tier.
-const allTs = tracked
-  .filter((path) => /\.tsx?$/.test(path))
+// Every tracked TypeScript file, as `bun run test:tiers` reads them, so the two agree.
+const allTs = (git(["ls-files", "*.ts", "*.tsx"]) ?? "")
+  .split("\n")
+  .filter(Boolean)
   .flatMap((path) => {
     const text = read(path);
     return text === null ? [] : [[path, text] as const];
