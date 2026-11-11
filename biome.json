@@ -81,10 +81,6 @@
       "linter": { "rules": { "suspicious": { "useArraySortCompare": "error" } } }
     },
     {
-      "includes": ["apps/desktop/src/styles.css"],
-      "linter": { "rules": { "correctness": { "noInvalidPositionAtImportRule": "off" } } }
-    },
-    {
       "includes": ["apps/desktop/src/components/ui/**"],
       "linter": { "enabled": false },
       "assist": { "enabled": false }
