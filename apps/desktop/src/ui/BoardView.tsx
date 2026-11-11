@@ -36,6 +36,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  boardOrder,
+  dropPositions,
+  shownCards,
+  startableWorkflows,
+  stayingPicks,
+} from "@/features/board/board-derive";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
 import { BoardSyncControl } from "@/features/board/board-sync";
@@ -63,19 +70,13 @@ import { cn } from "@/lib/utils";
 import { BulkRunDialog } from "../features/board/bulk-run-dialog.tsx";
 import { CardStartDialog } from "../features/board/card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "../features/board/card-template-field.tsx";
+import { BoardColumnEmpty } from "../features/board/column-empty.tsx";
 import { DeleteCardDialog } from "../features/board/delete-card-dialog.tsx";
 import { NewCardDialog } from "../features/board/new-card-dialog.tsx";
 import { ExternalSeal, IssuesPanel } from "../features/issues/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import {
-  boardTitle,
-  COLUMNS,
-  filterCards,
-  positionBefore,
-  positionsBefore,
-  projectCards,
-} from "../lib/board.ts";
+import { boardTitle, COLUMNS, positionBefore, projectCards } from "../lib/board.ts";
 import {
   bulkRunOutcome,
   bulkSkipReason,
@@ -112,13 +113,12 @@ import {
 import { cardStartBlock } from "../lib/card-start-block.ts";
 import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
-import { activeWorktreeFilter, cardInFilter, worktreeOfProject } from "../lib/project-tree.ts";
+import { activeWorktreeFilter, worktreeOfProject } from "../lib/project-tree.ts";
 import { quietAlerts } from "../lib/quiet.ts";
 import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
-import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
@@ -559,9 +559,7 @@ export const BoardView = memo(function BoardView(props: {
   // The branch picked in the sidebar tree keeps the cards of that checkout (of this project only).
   const active = activeWorktreeFilter(state);
   const treeBranch = worktreeOfProject(active, hostId, projectId);
-  const shown = filterCards(all, filter)
-    .filter((card) => !onlyBlocked || card.waitingOn.length > 0)
-    .filter((card) => !treeBranch || cardInFilter(card, treeBranch));
+  const shown = shownCards(all, filter, onlyBlocked, treeBranch);
   const files = boardFiles(
     treeBranch,
     all,
@@ -577,15 +575,12 @@ export const BoardView = memo(function BoardView(props: {
           label: filteredCountLabel(t, inColumn, ofColumn),
         }
       : { count: columnCount(inColumn), label: countLabel(t, inColumn) };
-  // The board's order: column by column, top to bottom, among the cards a filter leaves.
-  const boardOrder = COLUMNS.flatMap(({ id }) =>
-    shown.filter((card) => card.column === id).map((card) => card.id),
-  );
+  const boardIds = boardOrder(shown);
   const selection = pruneSelection(
     picked,
     all.map((card) => card.id),
   );
-  const acting = shownSelection(selection, boardOrder);
+  const acting = shownSelection(selection, boardIds);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
   /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
   const moveSelected = async (
@@ -607,14 +602,7 @@ export const BoardView = memo(function BoardView(props: {
     const ids = new Set(cards.map((card) => card.id));
     setBusy(true);
     // Dropped on a card, the group lands before it, in the board's order.
-    const positions =
-      targetId && !ids.has(targetId)
-        ? positionsBefore(
-            columnOf(column).filter((card) => !ids.has(card.id)),
-            targetId,
-            cards.length,
-          )
-        : undefined;
+    const positions = dropPositions(columnOf(column), cards, targetId);
     const refused = await moveMany(
       cards,
       column,
@@ -630,7 +618,7 @@ export const BoardView = memo(function BoardView(props: {
       positions,
     );
     const stayed = new Set(refused.map((r) => r.card.id));
-    setPicked((before) => before.filter((id) => stayed.has(id) || !ids.has(id)));
+    setPicked((before) => stayingPicks(before, ids, stayed));
     setNotice(
       refusalNotice(t, refused, nameRefusals(refused), {
         one: "board.stayedOne",
@@ -724,11 +712,7 @@ export const BoardView = memo(function BoardView(props: {
         return;
       }
       // As the start dialog does: only a trusted workflow with no errors goes with a card.
-      setWorkflows(
-        (result?.workflows ?? [])
-          .filter((w) => w.trusted && w.errors.length === 0)
-          .map((w) => ({ name: w.name, inputs: w.inputs })),
-      );
+      setWorkflows(startableWorkflows(result.workflows));
     });
   };
   /** #1406: runs of Update from the base that finished; each puts the focus back after its render. */
@@ -1019,7 +1003,7 @@ export const BoardView = memo(function BoardView(props: {
         rangeBase,
         anchor,
         shownIds,
-        boardOrder,
+        boardOrder: boardIds,
         selection,
         cards: all,
         focusCard,

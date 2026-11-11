@@ -1,0 +1,35 @@
+/* The account card: a command to copy, a pill, a meter line and its footer. */
+@utility code-chip {
+  width: fit-content;
+  padding-inline: 0.5rem;
+  padding-block: 0.25rem;
+}
+
+@utility row-gap2 {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@utility meter-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+@utility row-baseline-spread {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+@utility row-wrap-loose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@utility meter-height {
+  height: 0.5rem;
+}

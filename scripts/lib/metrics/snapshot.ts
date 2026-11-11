@@ -169,6 +169,34 @@ async function ghList<T>(
     : { reason: `${what} printed an unexpected shape` };
 }
 
+/** A UTC day as `YYYY-MM-DD`. */
+const dayOf = (at: Date) => at.toISOString().slice(0, 10);
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Every row `gh` lists in the days from `from` to `to`: a range that fills the 1000 rows `gh` gives
+ * is split in two and asked again, down to one day, so a busy window is counted whole (#2019). A
+ * single day that still fills the list comes back `cut`.
+ */
+async function ghRange<T>(
+  deps: MetricsDeps,
+  argsFor: (range: string) => string[],
+  from: Date,
+  to: Date,
+  valid: (row: Record<string, unknown>) => boolean,
+): Promise<{ rows: T[]; cut: boolean } | { reason: string }> {
+  const got = await ghList<T>(deps, argsFor(`${dayOf(from)}..${dayOf(to)}`), valid);
+  if ("reason" in got || !got.cut || dayOf(from) === dayOf(to)) return got;
+  const days = Math.round((Date.parse(dayOf(to)) - Date.parse(dayOf(from))) / DAY_MS);
+  const middle = new Date(Date.parse(dayOf(from)) + Math.floor(days / 2) * DAY_MS);
+  const left = await ghRange<T>(deps, argsFor, from, middle, valid);
+  if ("reason" in left) return left;
+  const right = await ghRange<T>(deps, argsFor, new Date(middle.getTime() + DAY_MS), to, valid);
+  if ("reason" in right) return right;
+  return { rows: [...left.rows, ...right.rows], cut: left.cut || right.cut };
+}
+
 const RUN_FIELDS = "createdAt,startedAt,updatedAt,attempt,status,conclusion";
 const isRun = (row: Record<string, unknown>) =>
   typeof row.createdAt === "string" &&
@@ -234,30 +262,53 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     sinceRelease: previousTagDate ? { from: new Date(previousTagDate), to } : null,
     last30Days: { from: new Date(since), to },
   };
-  const runsOf = [
+  // One query for both windows: from the earlier start to the tag, in day ranges.
+  const starts = [windows.last30Days.from, windows.sinceRelease?.from].filter(
+    (d): d is Date => !!d,
+  );
+  const wideFrom = new Date(Math.min(...starts.map((d) => d.getTime())));
+  const runsOf = (range: string) => [
     "run",
     "list",
     "--workflow",
     "CI",
+    "--created",
+    range,
     "--limit",
     String(LIST_LIMIT),
     "--json",
     RUN_FIELDS,
   ];
-  const ci = await ghList<CiRun>(deps, [...runsOf, "--event", "pull_request"], isRun);
-  const main = await ghList<CiRun>(deps, [...runsOf, "--branch", "main", "--event", "push"], isRun);
-  const prs = await ghList<MergedPr>(
+  const ci = await ghRange<CiRun>(
     deps,
-    [
+    (range) => [...runsOf(range), "--event", "pull_request"],
+    wideFrom,
+    to,
+    isRun,
+  );
+  const main = await ghRange<CiRun>(
+    deps,
+    (range) => [...runsOf(range), "--branch", "main", "--event", "push"],
+    wideFrom,
+    to,
+    isRun,
+  );
+  const prs = await ghRange<MergedPr>(
+    deps,
+    (range) => [
       "pr",
       "list",
       "--state",
       "merged",
+      "--search",
+      `merged:${range}`,
       "--limit",
       String(LIST_LIMIT),
       "--json",
       "additions,deletions,mergedAt",
     ],
+    wideFrom,
+    to,
     isMergedPr,
   );
   for (const [metric, read] of [
@@ -270,7 +321,7 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     else if (read.cut) {
       unavailable.push({
         metric,
-        reason: `gh listed ${LIST_LIMIT} rows, the most it gives: the older ones are not counted`,
+        reason: `one day holds ${LIST_LIMIT} rows or more, the most gh gives: the oldest of that day are not counted`,
       });
     }
   }

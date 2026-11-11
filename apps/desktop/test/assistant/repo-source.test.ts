@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { AssistantContextBundle, AssistantResult } from "@flightdeck/protocol";
-import { AssistantController } from "../src/lib/assistant.ts";
-import type { AssistantPrefs } from "../src/lib/assistant-prefs.ts";
-import { fakeAssistant } from "./fixtures.ts";
+import { AssistantController } from "../../src/lib/assistant.ts";
+import type { AssistantPrefs } from "../../src/lib/assistant-prefs.ts";
+import { fakeAssistant } from "../fixtures.ts";
 
 /**
  * Issue #162: a commit or PR message is written from the card's repo. The host provider reads the

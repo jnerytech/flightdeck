@@ -12,7 +12,7 @@ import { McpConfig } from "./agentcfg/mcp.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
-import { BgService } from "./bg/service.ts";
+import { createBgService } from "./bg/wiring.ts";
 import { Board } from "./board/board.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
@@ -59,9 +59,7 @@ import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
 import { packPersonas } from "./personas/pack.ts";
-import { type Prepare, preparePersonas } from "./personas/prepare.ts";
-import { agentPublisher } from "./personas/publish.ts";
-import { Personas } from "./personas/store.ts";
+import { createPersonas } from "./personas/wiring.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
@@ -71,12 +69,9 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { Changes } from "./review/changes.ts";
 import { ReviewFiles } from "./review/files.ts";
-import { SessionCommits } from "./review/session-commit.ts";
 import { SessionFiles } from "./review/session-files.ts";
-import { SessionPrs } from "./review/session-pr.ts";
-import { createReview } from "./review/wiring.ts";
+import { createChanges, createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
@@ -89,8 +84,7 @@ import { serverGroup, startServer } from "./server.ts";
 import { daemonCommand } from "./service.ts";
 import { appServiceInstall } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
-import { SessionManager } from "./sessions/session-manager.ts";
-import { createSessionSettings } from "./sessions/wiring.ts";
+import { createSessionManager, createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
@@ -106,8 +100,7 @@ import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { ProjectTrust } from "./trust/project-trust.ts";
-import { trustServer } from "./trust/wiring.ts";
+import { createProjectTrust, trustServer } from "./trust/wiring.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
@@ -283,12 +276,11 @@ export async function startDaemon(
   const snippetScanner = new SecretScanner();
   // Phase 12's agent editor also writes the personas published as project agents.
   const agentcfg = new AgentConfig();
-  const personaStore = new Personas({
+  const { personaStore, prepare } = createPersonas({
     db: store.db,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
-    pack: packPersonas,
-    publisher: agentPublisher(agentcfg),
+    agents: agentcfg,
   });
   const awake: {
     pinned?: (claudeSessionId: string | null) => boolean;
@@ -303,55 +295,31 @@ export async function startDaemon(
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
 
-  // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
-  // where the person trusted it (or already worked in it before this existed). A card's worktree is
-  // read from its project's main checkout.
-  const projectTrust = new ProjectTrust(store.db, {
-    roots: () => config.allowedRoots,
-    configRootOf: (cwd) => {
-      const found = board.projectForCwd(cwd);
-      return found?.card ? found.project.path : null;
-    },
+  // A folder's trust (issue #196), a card's worktree read from its project's main checkout.
+  const { projectTrust, trustForKnowledge } = createProjectTrust({
+    db: store.db,
+    config,
+    projectForCwd: (cwd) => board.projectForCwd(cwd),
     log: (line) => logger.log(line),
   });
-  // The library's index (#76) goes to a trusted folder only, read from its trusted checkout.
-  const trustForKnowledge = async (path: string) => {
-    await projectTrust.prepare(path);
-    return projectTrust.sessionTrust(path);
-  };
   const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
-  const manager = new SessionManager({
+  const manager = createSessionManager({
     folderLocks,
     store,
     runtime,
     risk,
-    onActivity: (active) => keepAwake.update(active),
-    trust: projectTrust.sessionTrust.bind(projectTrust),
-    prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
-    allowedRoots: config.allowedRoots,
-    defaultPermissionMode: config.defaultPermissionMode,
-    allowApiKey: config.allowApiKey,
-    allowBypass: () => config.allowBypassPermissions,
+    config,
+    projectTrust,
+    keepAwake,
     // A pinned session and a card's stay awake; filled in below, once the board and the meta exist.
-    keepAwake: (session) =>
-      awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
+    awake,
     baseEnv: env,
     ...present({ opencode: opencode.runtime }),
     onQuota,
-    onTurn: (sessionId, cwd, turn, runtime) => {
-      usage.record(sessionId, cwd, turn);
-      // The account card reads the Claude plan; an OpenCode turn spends none of it.
-      if (runtime === "claude") account?.turnEnded();
-    },
-    onTurnEdge: (edge) =>
-      snapshots.enqueue({
-        cwd: edge.cwd,
-        claudeSessionId: edge.claudeSessionId,
-        kind: edge.kind,
-        ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
-        ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
-      }),
+    usage,
+    account,
+    snapshots,
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
@@ -404,7 +372,6 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
     folderLocks,
     preparePersonas: prepare,
@@ -448,29 +415,15 @@ export async function startDaemon(
     self: selfCommand,
     log: (message) => logger.log(message),
   });
-  // The diff of every session and card, for the review (phase 11).
-  const changes = new Changes({
+  // The diff of every session and card, for the review (phase 11), and a plain session's commit
+  // and PR (#1133).
+  const { changes, sessionCommits, sessionPrs } = createChanges({
     db: store.db,
     board,
     log: logger.log.bind(logger),
-    // A terminal's folder is a target of the Files viewer (#506).
     terminals,
-    // A project's checkout is one too, inside these (#797).
     allowedRoots: config.allowedRoots,
-  });
-  // #1133: a plain session's changes committed on a new branch in its own checkout.
-  const sessionCommits = new SessionCommits({
-    changes,
     scanner: snippetScanner,
-    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
-  });
-  // #1133: the branch a session's commit made, pushed and opened as a PR.
-  const sessionPrs = new SessionPrs({
-    changes,
-    commits: sessionCommits,
-    scanner: snippetScanner,
-    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
-    projectProvider: (root) => board.projectForCwd(root)?.project.prProvider ?? null,
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
@@ -754,25 +707,14 @@ export async function startDaemon(
     usage,
     costs,
     telemetry: telemetryStore,
-    bg: new BgService({
+    bg: createBgService({
       db: store.db,
-      claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
+      config,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
-      trust: projectTrust.sessionTrust.bind(projectTrust),
-      prepare: projectTrust.prepare.bind(projectTrust),
-      // A listed session's folder is checked against the roots before respawn or message runs in it.
-      allowedRoots: config.allowedRoots,
-      // `getCard` refuses a card that does not exist, with the not_found the app knows.
-      card: (cardId) => {
-        const card = board.getCard(cardId);
-        const prompt = [card.title, card.description].filter(Boolean).join("\n\n");
-        return { cwd: board.getProject(card.projectId).path, prompt, name: card.title };
-      },
-      start: {
-        self: selfCommand,
-        configFile,
-        allowedRoots: config.allowedRoots,
-      },
+      projectTrust,
+      board,
+      self: selfCommand,
+      configFile,
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),

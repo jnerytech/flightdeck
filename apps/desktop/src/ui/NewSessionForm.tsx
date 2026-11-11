@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { ModelOptions } from "../features/sessions/index.ts";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
@@ -17,7 +18,6 @@ import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
-import { ModelOptions } from "./ModelOptions.tsx";
 
 const MODES: PermissionMode[] = [
   "default",

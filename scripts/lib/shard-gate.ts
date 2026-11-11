@@ -220,12 +220,13 @@ export function shardGate(input: GateInput): GateResult {
     if (!functions) continue;
     const covered = [...hits.values()].filter((n) => n > 0).length;
     report.set(path, { functions, lines: [covered, hits.size] });
-    const bunFunctions = parts.map((p) => p.functions);
     records.push(
       [
         `SF:${path}`,
-        `FNF:${bunFunctions[0]?.[1] ?? 0}`,
-        `FNH:${Math.max(...bunFunctions.map(([hit]) => hit))}`,
+        // The merged counts of the file (the istanbul maps' union): each shard's own Bun count is of
+        // what that shard loaded, so their max could pass the first one's total (#2019).
+        `FNF:${functions[1]}`,
+        `FNH:${functions[0]}`,
         ...[...hits].sort(([a], [b]) => a - b).map(([at, n]) => `DA:${at},${n}`),
         `LF:${hits.size}`,
         `LH:${covered}`,

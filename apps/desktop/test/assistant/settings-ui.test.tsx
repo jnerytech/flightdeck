@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ModelOption } from "@flightdeck/protocol";
-import { AXE_RUN_OPTIONS, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { fakeAssistant, memoryPlatform, seedHosts } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { AXE_RUN_OPTIONS, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { fakeAssistant, memoryPlatform, seedHosts } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { AssistantSettings } = await import("../src/components/assistant/assistant-settings.tsx");
-const { Settings } = await import("../src/ui/Settings.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { AssistantSettings } = await import("../../src/components/assistant/assistant-settings.tsx");
+const { Settings } = await import("../../src/features/settings/page.tsx");
 const axe = (await import("axe-core")).default;
 
 setDefaultTimeout(30_000);

@@ -194,7 +194,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { CostsPage } = await import("../src/features/costs/page.tsx");
     const { ConnectionsPage } = await import("../src/features/ssh/page.tsx");
     const { ConversationsPage } = await import("../src/features/messaging/page.tsx");
-    const { Settings } = await import("../src/ui/Settings.tsx");
+    const { Settings } = await import("../src/features/settings/page.tsx");
     const { TargetForm } = await import("../src/features/ssh/target-form.tsx");
     const { SnippetUse } = await import("../src/features/snippets/snippet-use.tsx");
     const { EditSecretForm } = await import("../src/features/vault/edit-secret-form.tsx");
