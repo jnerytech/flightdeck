@@ -35,7 +35,12 @@ describe("release.yml: the metrics job (#1949)", () => {
   test("it is a second job on ubuntu that waits for the release job and may write to the release", () => {
     expect(metrics?.["runs-on"]).toBe("ubuntu-latest");
     expect([metrics?.needs].flat()).toEqual(["release"]);
-    expect(metrics?.permissions).toEqual({ contents: "write" });
+    // The release is written to; the CI runs and the merged pull requests the metrics read need their own scopes.
+    expect(metrics?.permissions).toEqual({
+      contents: "write",
+      actions: "read",
+      "pull-requests": "read",
+    });
   });
 
   test("it checks the tag out with the whole history, which hotspots and coupling read", () => {
