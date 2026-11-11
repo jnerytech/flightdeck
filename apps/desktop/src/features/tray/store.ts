@@ -10,7 +10,7 @@ export type TrayPlatform = Pick<
 >;
 
 /** What the tray and the title read of the app's state: the hosts and the requests seen so far. */
-type TrayState = Pick<AppState, "hosts" | "sessions">;
+export type TrayState = Pick<AppState, "hosts" | "sessions">;
 
 /** The state fields whose change can alter the tray, the title or the menu. */
 export type TrayPatch = Partial<
