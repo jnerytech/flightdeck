@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TAB_SCOPE_KEY, TabScopeController } from "../src/lib/tab-scope.ts";
+import { TAB_SCOPE_KEY, TabScopeController } from "../../src/lib/tab-scope.ts";
 
 /** A storage that keeps what it is given. */
 function storage(initial?: string) {
