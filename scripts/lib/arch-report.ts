@@ -18,6 +18,9 @@ export type ArchInputs = {
   /** Flat test files per workspace today and in test-layout-baseline.json. */
   flatCounts: Record<string, number>;
   flatBaseline: Record<string, number>;
+  /** Dead-code findings by kind today (knip) and in knip-baseline.json. */
+  knipCounts: Record<string, number>;
+  knipBaseline: Record<string, number>;
 };
 
 /** One row per ratchet figure, sorted by name. */

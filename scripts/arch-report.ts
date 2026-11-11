@@ -45,6 +45,8 @@ const rows = ratchetRows({
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),
   flatBaseline: json("test-layout-baseline.json"),
+  knipCounts: {},
+  knipBaseline: {},
 });
 const table = formatTable(rows);
 console.log(table);
