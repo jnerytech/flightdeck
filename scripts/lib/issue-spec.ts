@@ -16,6 +16,8 @@ const KINDS = ["feature", "bug", "refactor", "task"] as const;
 type Kind = (typeof KINDS)[number];
 const REPO = "jnerytech/flightdeck";
 const ASSIGNEE = "jnerytech";
+/** The label every issue written in this format carries (#1938). */
+const LABEL = "mini-spec";
 const USAGE =
   'usage: bun run issue -- check (--body-file <md> | <n>) | new --title "<t>" --body-file <md> | edit <n> --body-file <md>';
 
@@ -47,10 +49,10 @@ function sectionsOf(body: string): Map<string, string> {
   };
   for (const line of body.split(/\r?\n/).slice(1)) {
     if (/^\s*```/.test(line)) fenced = !fenced;
-    const heading = fenced ? null : /^## (.+?)\s*$/.exec(line);
-    if (heading) {
+    const heading = !fenced && line.startsWith("## ") ? line.slice(3).trim() : "";
+    if (heading !== "") {
       close();
-      name = heading[1] as string;
+      name = heading;
       text = [];
     } else text.push(line);
   }
@@ -60,7 +62,9 @@ function sectionsOf(body: string): Map<string, string> {
 
 /** The items of a list: its `- ` or `1. ` lines, without the marker. */
 const itemsOf = (text: string) =>
-  text.split(/\r?\n/).flatMap((line) => /^\s*(?:[-*]|\d+\.)\s+(.*)$/.exec(line)?.[1] ?? []);
+  text
+    .split(/\r?\n/)
+    .flatMap((line) => /^(?:[-*]|\d+\.)\s+(.*)$/.exec(line.trimStart())?.[1] ?? []);
 
 /** The kind from the first line, plus the problems of that line. */
 function headerOf(body: string): { kind: Kind | null; problems: string[] } {
@@ -140,72 +144,101 @@ function accepted(body: string, deps: IssueDeps): boolean {
 /** `gh api` failed: say so, with its first line of error and nothing more. */
 function ghFailed(what: string, result: GhResult, deps: IssueDeps): number {
   const detail = (result.stderr ?? "").trim().split("\n")[0] ?? "";
-  deps.log(`${what} failed${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+  const why = detail ? `: ${detail.slice(0, 200)}` : "";
+  deps.log(`${what} failed${why}`);
   return 1;
 }
 
 const ISSUE_NUMBER = /^\d+$/;
 
+/** The issue number at the head of the arguments, or null. */
+const numberOf = (rest: string[]): string | null =>
+  rest[0] && ISSUE_NUMBER.test(rest[0]) ? rest[0] : null;
+
+/** `check <n>` reads the issue from GitHub; `check --body-file <md>` reads a file. Writes nothing. */
+async function runCheck(rest: string[], deps: IssueDeps): Promise<number> {
+  const n = numberOf(rest);
+  let body: string | number;
+  if (n === null) body = bodyFrom(rest, deps);
+  else {
+    const read = await deps.gh(["api", `repos/${REPO}/issues/${n}`, "--jq", ".body"]);
+    if (read.code !== 0) return ghFailed(`reading issue ${n}`, read, deps);
+    body = read.stdout;
+  }
+  if (typeof body === "number") return body;
+  return accepted(body, deps) ? 0 : 1;
+}
+
+/** `new`: the issue is created with its assignee and the mini-spec label in one call. */
+async function runNew(rest: string[], deps: IssueDeps): Promise<number> {
+  const title = flag(rest, "--title");
+  if (!title || title.length > 256) {
+    deps.log('--title "<t>" is required, at most 256 characters');
+    return 2;
+  }
+  const body = bodyFrom(rest, deps);
+  if (typeof body === "number") return body;
+  if (!accepted(body, deps)) return 1;
+  const made = await deps.gh([
+    "api",
+    "-X",
+    "POST",
+    `repos/${REPO}/issues`,
+    "-f",
+    `title=${title}`,
+    "-f",
+    `body=${body}`,
+    "-f",
+    `assignees[]=${ASSIGNEE}`,
+    "-f",
+    `labels[]=${LABEL}`,
+    "--jq",
+    ".number",
+  ]);
+  if (made.code !== 0) return ghFailed("creating the issue", made, deps);
+  deps.log(made.stdout.trim());
+  return 0;
+}
+
+/** `edit`: the body is patched, then the label is added through the labels endpoint. */
+async function runEdit(rest: string[], deps: IssueDeps): Promise<number> {
+  const n = numberOf(rest);
+  if (n === null) {
+    deps.log(USAGE);
+    return 2;
+  }
+  const body = bodyFrom(rest, deps);
+  if (typeof body === "number") return body;
+  if (!accepted(body, deps)) return 1;
+  const patched = await deps.gh([
+    "api",
+    "-X",
+    "PATCH",
+    `repos/${REPO}/issues/${n}`,
+    "-f",
+    `body=${body}`,
+  ]);
+  if (patched.code !== 0) return ghFailed(`editing issue ${n}`, patched, deps);
+  // The labels endpoint only adds: a PATCH with labels[] would replace the issue's whole set.
+  const labelled = await deps.gh([
+    "api",
+    "-X",
+    "POST",
+    `repos/${REPO}/issues/${n}/labels`,
+    "-f",
+    `labels[]=${LABEL}`,
+  ]);
+  if (labelled.code === 0) return 0;
+  deps.log("the body is saved and the label is not");
+  return ghFailed(`labelling issue ${n}`, labelled, deps);
+}
+
 /** `check`, `new` or `edit`: the exit code. */
 export async function runIssue(args: string[], deps: IssueDeps): Promise<number> {
   const [command, ...rest] = args;
-  if (command === "check") {
-    const n = rest[0] && ISSUE_NUMBER.test(rest[0]) ? rest[0] : null;
-    if (n !== null) {
-      const read = await deps.gh(["api", `repos/${REPO}/issues/${n}`, "--jq", ".body"]);
-      if (read.code !== 0) return ghFailed(`reading issue ${n}`, read, deps);
-      return accepted(read.stdout, deps) ? 0 : 1;
-    }
-    const body = bodyFrom(rest, deps);
-    if (typeof body === "number") return body;
-    return accepted(body, deps) ? 0 : 1;
-  }
-  if (command === "new") {
-    const title = flag(rest, "--title");
-    if (!title || title.length > 256) {
-      deps.log('--title "<t>" is required, at most 256 characters');
-      return 2;
-    }
-    const body = bodyFrom(rest, deps);
-    if (typeof body === "number") return body;
-    if (!accepted(body, deps)) return 1;
-    const made = await deps.gh([
-      "api",
-      "-X",
-      "POST",
-      `repos/${REPO}/issues`,
-      "-f",
-      `title=${title}`,
-      "-f",
-      `body=${body}`,
-      "-f",
-      `assignees[]=${ASSIGNEE}`,
-      "--jq",
-      ".number",
-    ]);
-    if (made.code !== 0) return ghFailed("creating the issue", made, deps);
-    deps.log(made.stdout.trim());
-    return 0;
-  }
-  if (command === "edit") {
-    const n = rest[0] && ISSUE_NUMBER.test(rest[0]) ? rest[0] : null;
-    if (n === null) {
-      deps.log(USAGE);
-      return 2;
-    }
-    const body = bodyFrom(rest, deps);
-    if (typeof body === "number") return body;
-    if (!accepted(body, deps)) return 1;
-    const patched = await deps.gh([
-      "api",
-      "-X",
-      "PATCH",
-      `repos/${REPO}/issues/${n}`,
-      "-f",
-      `body=${body}`,
-    ]);
-    return patched.code === 0 ? 0 : ghFailed(`editing issue ${n}`, patched, deps);
-  }
+  if (command === "check") return runCheck(rest, deps);
+  if (command === "new") return runNew(rest, deps);
+  if (command === "edit") return runEdit(rest, deps);
   deps.log(USAGE);
   return 2;
 }
