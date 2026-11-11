@@ -13,6 +13,7 @@ import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
 import { SessionFinish } from "../components/session/session-finish.tsx";
 import { SessionMessages } from "../features/messaging/session-messages.tsx";
+import { TempoPanel } from "../features/telemetry/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   offeredViews,
@@ -30,7 +31,6 @@ import { ChangesPanel } from "./ChangesPanel.tsx";
 import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
 import { SessionTerminal } from "./SessionTerminal.tsx";
-import { TempoPanel } from "./TempoPanel.tsx";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";
