@@ -9,11 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/features/vault/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { actionIssueText, refusalText } from "@/i18n/errors";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
-import { InlineNotice } from "../components/feedback/inline-notice.tsx";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import type { ActionSeed } from "../lib/snippets.ts";
+import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { InlineNotice } from "../../components/feedback/inline-notice.tsx";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { ActionSeed } from "../../lib/snippets.ts";
 
 type Approval = ActionInfo["approval"];
 const APPROVALS: Approval[] = ["first-per-session", "always", "never"];

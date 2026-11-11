@@ -6,14 +6,14 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMinLoading } from "@/hooks/use-min-loading";
-import { isProd } from "../features/ssh/index.ts";
-import { actionIssueText } from "../i18n/errors.ts";
-import type { T } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import type { ActionSeed } from "../lib/snippets.ts";
-import type { SecretMeta } from "../lib/vault.ts";
-import { ActionForm } from "./ActionForm.tsx";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { actionIssueText } from "../../i18n/errors.ts";
+import type { T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { ActionSeed } from "../../lib/snippets.ts";
+import type { SecretMeta } from "../../lib/vault.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { isProd } from "../ssh/index.ts";
+import { ActionForm } from "./action-form.tsx";
 
 /** Where the action runs, in words: this host, a named one or an SSH destination. */
 function whereText(t: T, action: ActionInfo): string {
