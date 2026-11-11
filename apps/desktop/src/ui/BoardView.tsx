@@ -38,10 +38,15 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   boardOrder,
+  cardMoves,
+  columnCards,
   dropPositions,
+  idsByColumn,
+  showingColumn,
   shownCards,
   startableWorkflows,
   stayingPicks,
+  tabStops,
 } from "@/features/board/board-derive";
 import { BoardNotice } from "@/features/board/board-notice";
 import { BoardStatus } from "@/features/board/board-status";
@@ -895,8 +900,7 @@ export const BoardView = memo(function BoardView(props: {
 
   /** The card to focus once a move has happened: where it was, to tell when it has moved. */
   const refocus = useRef<MoveFocus | null>(null);
-  const columnOf = (column: BoardColumn) =>
-    all.filter((card) => card.column === column).sort((a, b) => a.position - b.position);
+  const columnOf = (column: BoardColumn) => columnCards(all, column);
   const runMove = (cardId: string, column: BoardColumn, targetId?: string, force = false) => {
     const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
@@ -929,31 +933,21 @@ export const BoardView = memo(function BoardView(props: {
   };
   /** The menu's moves for a card: to each other column, and up or down within its own. */
   const movesOf = (card: Card) => {
-    const here = columnOf(card.column);
-    const index = here.findIndex((other) => other.id === card.id);
-    const go = (column: BoardColumn, targetId?: string) => () => {
-      refocus.current = { cardId: card.id, column: card.column, index };
-      move(card.id, column, targetId);
-    };
-    return [
-      ...COLUMNS.filter(({ id }) => id !== card.column).map(({ id }) => ({
-        key: id,
-        label: t("board.moveTo", { column: t(`kanban.columns.${id}` as Key) }),
-        onSelect: go(id),
-      })),
-      {
-        key: "up",
-        label: t("board.moveUp"),
-        disabled: index <= 0,
-        onSelect: go(card.column, here[index - 1]?.id),
+    const { index, moves } = cardMoves(columnOf(card.column), card);
+    return moves.map(({ key, column, targetId, disabled }) => ({
+      key,
+      label:
+        key === "up"
+          ? t("board.moveUp")
+          : key === "down"
+            ? t("board.moveDown")
+            : t("board.moveTo", { column: t(`kanban.columns.${key}` as Key) }),
+      ...(disabled !== undefined ? { disabled } : {}),
+      onSelect: () => {
+        refocus.current = { cardId: card.id, column: card.column, index };
+        move(card.id, column, targetId);
       },
-      {
-        key: "down",
-        label: t("board.moveDown"),
-        disabled: index === here.length - 1,
-        onSelect: go(card.column, here[index + 2]?.id),
-      },
-    ];
+    }));
   };
   // After a move the card is somewhere else, so its old element is gone: focus the new one.
   const boardRef = useRef<HTMLDivElement>(null);
@@ -962,21 +956,14 @@ export const BoardView = memo(function BoardView(props: {
   const width = chosen ? chosenWidth : fitColumnWidth(boardPx, COLUMNS.length, COLUMN_GAP);
   // #1198: under 40rem (the board's own snap breakpoint) a narrow board shows one column at a time.
   const switcher = boardPx > 0 && boardPx < 640;
-  const shownIds = COLUMNS.map(({ id }) =>
-    shown.filter((card) => card.column === id).map((card) => card.id),
-  );
-  const showing: BoardColumn =
-    shownColumn ?? COLUMNS.find((_, i) => (shownIds[i]?.length ?? 0) > 0)?.id ?? "backlog";
+  const shownIds = idsByColumn(shown);
+  const showing: BoardColumn = showingColumn(shownColumn, shownIds);
   /**
    * Each column's one Tab stop: the card last focused when it is there, else its first card. One
    * per column, not per board: each column's list scrolls, and axe asks a scrolling region to hold
    * something the keyboard reaches (scrollable-region-focusable).
    */
-  const stops = new Set(
-    shownIds.map((ids) =>
-      focusedCard !== null && ids.includes(focusedCard) ? focusedCard : ids[0],
-    ),
-  );
+  const stops = tabStops(shownIds, focusedCard);
   const titleOf = (cardId: string) =>
     boardRef.current?.querySelector<HTMLElement>(`li[data-card="${cardId}"] [data-card-open]`);
   /** Focuses a card, showing its column first on a narrow board. */
