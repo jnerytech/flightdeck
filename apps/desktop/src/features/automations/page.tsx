@@ -7,11 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useMinLoading } from "@/hooks/use-min-loading";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { actionText, confirmOnText, triggerText } from "../lib/automations.ts";
-import { AutomationForm } from "./AutomationForm.tsx";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { actionText, confirmOnText, triggerText } from "../../lib/automations.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { AutomationForm } from "./automation-form.tsx";
 
 const RUN_TONE: Record<AutomationRun["status"], string> = {
   ok: "text-status-idle",

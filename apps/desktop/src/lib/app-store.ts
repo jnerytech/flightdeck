@@ -24,7 +24,11 @@ import {
   initialActivityState,
   wireActivity,
 } from "../features/activity/index.ts";
-import { AppUpdateSlice, initialAppUpdateState } from "../features/appupdate/index.ts";
+import {
+  type AppUpdateSlice,
+  initialAppUpdateState,
+  wireAppUpdates,
+} from "../features/appupdate/index.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -50,7 +54,7 @@ import {
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
-import { InboxSlice } from "../features/inbox/index.ts";
+import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import {
   initialMessagingState,
   type MessagingSlice,
@@ -572,15 +576,11 @@ export class AppStore {
     this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
-    this.appUpdates = new AppUpdateSlice({
+    this.appUpdates = wireAppUpdates(this.kernel, {
       updater: () => this.platform.updater,
-      state: () => this.state.appUpdate,
-      setState: (appUpdate) => this.update({ appUpdate }),
-      switches: () => this.state.settings,
       intervalMs: () => this.options.appUpdateIntervalMs,
       log: (level, source, message) => this.appLog.log(level, source, message),
       quitNow: () => this.platform.quitNow(),
-      t: () => this.i18n.t,
     });
     this.terminals = new TerminalsSlice({
       hosts: () => this.state.hosts,
@@ -641,18 +641,13 @@ export class AppStore {
       rememberToken: (token) => this.scan.rememberToken(token),
       t: () => this.i18n.t,
     });
-    this.inbox = new InboxSlice({
+    this.inbox = wireInbox(this.kernel, {
       storage: platform.storage,
-      entries: () => this.state.inbox,
-      setEntries: (entries) => this.update({ inbox: entries }),
       prefs: () => this.notifyPrefs.value,
       soundFile: () => this.notifyPrefs.soundFile(),
       waiting: () => needsYou(this.state).map((i) => `${i.hostId}/${i.requestId}`),
-      hostOnline: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.status === "online",
-      now: () => this.now(),
       show: (notification) => this.platform.notify(notification),
       setBadge: (count) => this.platform.setBadge?.(count),
-      t: () => this.i18n.t,
     });
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
