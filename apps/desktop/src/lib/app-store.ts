@@ -9,7 +9,6 @@ import type {
   HistoryListResult,
   MessageInfo,
   Project,
-  ProjectDetectResult,
   RunConfigInfo,
   RunState,
   SessionImage,
