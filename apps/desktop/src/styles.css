@@ -20,6 +20,7 @@
 @import "./styles/shell.css";
 @import "./styles/session.css";
 @import "./styles/projects.css";
+@import "./styles/settings.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -1611,23 +1612,6 @@ html:not(:has([data-slot="status-bar"])) {
   padding: 0.125rem;
 }
 
-/* A select in a Settings row: one width for all of them, so the rows line up. */
-@utility setting-select {
-  width: 11rem;
-}
-/* A setting's row (#588): one label column for every row, so the controls line up. */
-/* A setting: its label above its control when narrow, the two side by side from 30 rem (#641). */
-@utility setting-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-  @container (width >= 30rem) {
-    grid-template-columns: 12rem minmax(0, 1fr);
-    gap: 1rem;
-  }
-}
 /* A project on the Projects page: its name and whole path on one line, its actions on the next (#588). */
 @utility project-row {
   display: flex;
@@ -1700,13 +1684,6 @@ html:not(:has([data-slot="status-bar"])) {
   justify-content: flex-end;
   gap: 0.5rem;
 }
-/* The help under a checkbox, indented to its words (the box and the 8 px gap). */
-@utility setting-hint {
-  display: block;
-  padding-left: calc(13px + 0.5rem);
-  font-size: 0.75rem;
-  color: var(--color-muted-foreground);
-}
 
 @utility header-crumbs {
   display: flex;
@@ -1774,60 +1751,6 @@ html:not(:has([data-slot="status-bar"])) {
 
 @utility field-row-end {
   align-items: flex-end;
-}
-
-/* Settings: a rail of the sections (and a search) beside the sections themselves. */
-/* Narrow, the section list sits above the content; from a 48 rem area it is a column beside it (#641). */
-@utility settings-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
-  @container (width >= 48rem) {
-    grid-template-columns: 13rem minmax(0, 1fr);
-  }
-}
-
-@utility settings-side {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  @container (width >= 48rem) {
-    position: sticky;
-    top: 0;
-  }
-}
-
-@utility settings-rail {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.125rem;
-  & [aria-current="true"] {
-    background: var(--color-accent);
-    color: var(--color-accent-foreground);
-  }
-  @container (width >= 48rem) {
-    flex-direction: column;
-    flex-wrap: nowrap;
-  }
-}
-
-/* Its own container: a setting lays itself out by the room the content has, not the window. */
-@utility settings-sections {
-  display: flex;
-  max-width: 42rem;
-  flex-direction: column;
-  gap: 1.25rem;
-  container-type: inline-size;
-}
-
-@utility settings-section {
-  &:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 4px;
-    border-radius: 0.5rem;
-  }
 }
 
 /* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
