@@ -38,6 +38,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
 import {
+  commandItemsOf,
   ModelOptions,
   missedAfter,
   queueStep,
@@ -59,13 +60,6 @@ import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { ToolCall } from "./ToolCall.tsx";
-
-/** The menu group of each kind of command the daemon names. */
-const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
-  builtin: "commands",
-  skill: "skills",
-  mcp: "mcp",
-};
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, ScrollPosition>();
@@ -342,20 +336,6 @@ interface SessionViewProps {
   pickPath?: (done: (path: string | null) => void) => ReactNode;
   /** The AI wand of the message box (phase 40): the assistant and where "no provider" goes. */
   assist?: WandBinding;
-}
-
-/** The slash commands as menu items: with group and description when the daemon describes them. */
-function commandItemsOf(
-  described: SessionViewProps["session"]["commands"],
-  names: SessionViewProps["session"]["slashCommands"],
-): MenuItem[] {
-  if (!described) return (names ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` }));
-  return described.map((command) => ({
-    key: `slash:${command.name}`,
-    name: `/${command.name}`,
-    ...(command.description ? { description: command.description } : {}),
-    group: GROUP_OF_KIND[command.kind],
-  }));
 }
 
 /** The snippets of the host and the commands of the session behind one `/` menu. */
