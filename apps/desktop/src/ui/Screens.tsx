@@ -66,7 +66,7 @@ const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "Co
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");
 const PrsPage = lazyScreen(() => import("../features/board/pull-requests.tsx"), "PullRequestsPage");
 const CostsPage = lazyScreen(() => import("../features/costs/page.tsx"), "CostsPage");
-const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
+const HomePage = lazyScreen(() => import("../features/home/page.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("../features/hosts/page.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("../features/plugins/page.tsx"), "PluginsPage");
