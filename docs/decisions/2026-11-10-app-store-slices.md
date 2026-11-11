@@ -47,3 +47,7 @@ as one slice per domain under `features/<domain>/`.
 - A domain's pure view logic moves into its feature with its slice (`awayView`, `features/activity`).
 - The history's global search is the first slice. `app-store.ts` reaches its goal (it only composes the
   slices and owns the shared side effects, under 300 lines) once every domain has moved.
+
+## Update 2026-11-11 (issue #1596)
+
+More than 50 slices exist now, and some AppStore methods still forward to them. The forwarders go: screens bind the slice (`store.<slice>.x`), one PR per screen. The slices' lambdas move out of the constructor into one wire file per domain: see `2026-11-11-app-store-wiring.md`.

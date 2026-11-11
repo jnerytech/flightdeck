@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { RunAgain } = await import("../src/components/card/run-again.tsx");
+const { RunAgain } = await import("../src/features/board/run-again.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

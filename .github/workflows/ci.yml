@@ -117,9 +117,9 @@ jobs:
   # suite and the checks in parallel. The required check `test (ubuntu-latest)` is the aggregate
   # below.
   # The whole suite in four shards named by tier (#1854), the base of the pyramid first: unit +
-  # component 1/2 and 2/2, then integration 1/2 and 2/2 (scripts/lib/tier-shards.ts). Each run twice: Bun's coverage gives the lines (and the
+  # component 1/3, 2/3 and 3/3, then integration 1/1 (scripts/lib/tier-shards.ts). Each run twice: Bun's coverage gives the lines (and the
   # lcov SonarCloud reads), istanbul's function maps give the functions, since Bun's lcov counts
-  # functions but does not name them. The suite job merges the six, failing closed.
+  # functions but does not name them. The suite job merges the eight, failing closed.
   test-shard:
     name: ${{ matrix.tier }} ${{ matrix.part }} ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
     needs: [quick]
@@ -133,10 +133,10 @@ jobs:
         kind: [bun, istanbul]
         # The tier group of each shard, as scripts/lib/tier-shards.ts numbers them.
         include:
-          - { shard: 1, tier: "unit + component", part: "1/2" }
-          - { shard: 2, tier: "unit + component", part: "2/2" }
-          - { shard: 3, tier: "integration", part: "1/2" }
-          - { shard: 4, tier: "integration", part: "2/2" }
+          - { shard: 1, tier: "unit + component", part: "1/3" }
+          - { shard: 2, tier: "unit + component", part: "2/3" }
+          - { shard: 3, tier: "unit + component", part: "3/3" }
+          - { shard: 4, tier: "integration", part: "1/1" }
     defaults:
       run:
         shell: bash
@@ -268,6 +268,9 @@ jobs:
     if: "!cancelled() && needs.test-suite.result == 'success' && (github.event_name == 'pull_request' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))"
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # The action's default; the scanner it downloads and the one verified here are this version.
+      SONAR_SCANNER_VERSION: 8.3.0.16463
     steps:
       # Full history: SonarCloud uses the blame to tell new code from old.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -303,13 +306,32 @@ jobs:
           elif [ -n "$PR_REPO" ] && [ "$PR_REPO" != "$REPO" ]; then echo "a fork's PR: no SONAR_TOKEN, no scan"
           else echo "SONAR_TOKEN is empty: no scan, so no SonarCloud verdict"; exit 1; fi
 
+      # The action checks the scanner's signature against a key it asks a keyserver for, and waited
+      # out the job when that keyserver did not answer (#1883). The check is done here, against
+      # SonarSource's committed key pinned by fingerprint, with a timeout and one retry; the action
+      # then takes the verified zip from localhost and skips its own check.
+      - name: Download and verify the SonarScanner (committed key, no keyserver)
+        if: steps.sonar.outputs.enabled == 'true'
+        timeout-minutes: 3
+        env:
+          SONAR_SCANNER_VERSION: ${{ env.SONAR_SCANNER_VERSION }}
+        run: |
+          bun run scripts/sonar-scanner-verify.ts "$RUNNER_TEMP/scanner"
+          setsid python3 -m http.server 8765 --bind 127.0.0.1 --directory "$RUNNER_TEMP/scanner" >/dev/null 2>&1 &
+          for _ in $(seq 20); do curl -fsS -o /dev/null http://127.0.0.1:8765/ && exit 0; sleep 0.5; done
+          echo "the local server for the verified scanner did not start"; exit 1
+
       - name: SonarCloud
         if: steps.sonar.outputs.enabled == 'true'
+        timeout-minutes: 10
         uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: -Dsonar.projectVersion=${{ env.FD_VERSION }}
+          scannerVersion: ${{ env.SONAR_SCANNER_VERSION }}
+          scannerBinariesUrl: http://127.0.0.1:8765
+          skipSignatureVerification: true
 
   # The rest of the Linux leg, in parallel with the suite: the smokes and the Rust shell, each only
   # when the path plan asks for it (#264).
@@ -801,7 +823,18 @@ jobs:
         env:
           DEMO_BUILD: "1"
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
+          E2E_JSON: e2e-json/e2e.json
         run: bun run e2e -- --shard=${{ matrix.shard }}/3
+
+      # The pyramid's e2e row (#1854) is built from this report by the aggregate job.
+      - name: Publicar o JSON do e2e
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-json-${{ matrix.shard }}
+          path: e2e-json/e2e.json
+          if-no-files-found: ignore
+          retention-days: 30
 
       # A journey that failed and passed on its retry shows as flaky in the report, never hidden.
       - name: Publicar o relatório e2e
@@ -828,6 +861,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # The e2e row of the pyramid (#1854): a table in the job summary, never a gate.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: always() && needs.quick.outputs.e2e == 'true'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        if: always() && needs.quick.outputs.e2e == 'true'
+        with:
+          bun-version: 1.4.4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: always() && needs.quick.outputs.e2e == 'true'
+        continue-on-error: true
+        with:
+          pattern: e2e-json-*
+          path: ${{ runner.temp }}/e2e-json
+      - name: E2E journeys by outcome
+        if: always() && needs.quick.outputs.e2e == 'true'
+        continue-on-error: true
+        run: bun run scripts/e2e-summary.ts
+
       # A pull request whose paths need no screen run passes here, so the check still reports. The
       # e2e result is every shard's: one failed shard fails it.
       - name: The prints and the e2e journeys passed

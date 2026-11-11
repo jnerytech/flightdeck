@@ -24,9 +24,20 @@ export type ArchInputs = {
   /** Raw `JSON.parse` calls per source file today and in json-parse-baseline.json. */
   jsonParseCounts: Record<string, number>;
   jsonParseBaseline: Record<string, number>;
+  /** The share of test files per upper tier today (integration, e2e), in basis points, and in test-shape-baseline.json. */
+  shapeShares: Record<string, number>;
+  shapeBaseline: Record<string, number>;
 };
 
 const sum = (counts: Record<string, number>) => Object.values(counts).reduce((a, b) => a + b, 0);
+
+/** The share of the test files in the integration and e2e tiers (#1854), in basis points, rounded up. */
+export function shapeShares(filesByTier: Record<string, number>): Record<string, number> {
+  const total = sum(filesByTier);
+  const share = (tier: string) =>
+    total === 0 ? 0 : Math.ceil(((filesByTier[tier] ?? 0) * 10_000) / total);
+  return { integration: share("integration"), e2e: share("e2e") };
+}
 
 /** One row per ratchet figure, sorted by name. */
 export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
@@ -52,6 +63,15 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
     baseline: sum(inputs.jsonParseBaseline),
     today: sum(inputs.jsonParseCounts),
   });
+  for (const tier of new Set([
+    ...Object.keys(inputs.shapeBaseline),
+    ...Object.keys(inputs.shapeShares),
+  ]))
+    rows.push({
+      ratchet: `test-shape ${tier} share (basis points)`,
+      baseline: inputs.shapeBaseline[tier] ?? 0,
+      today: inputs.shapeShares[tier] ?? 0,
+    });
   for (const kind of new Set([
     ...Object.keys(inputs.knipBaseline),
     ...Object.keys(inputs.knipCounts),
