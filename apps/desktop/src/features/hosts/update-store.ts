@@ -46,6 +46,8 @@ export interface HostUpdateCore {
 export class HostUpdateSlice {
   /** When the page last asked each host for an update check on its own. */
   private readonly autoChecks = new Map<string, number>();
+  /** The "late" timer of each host's pending update: one per host, so a second click replaces it. */
+  private readonly lates = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(private readonly core: HostUpdateCore) {}
 
@@ -56,6 +58,7 @@ export class HostUpdateSlice {
   async apply(hostId: string): Promise<void> {
     const target = this.core.host(hostId)?.hostInfo?.update?.version;
     if (!target || !this.core.connected(hostId)) return;
+    this.settled(hostId);
     this.core.patch(hostId, { daemonUpdate: { target, failed: null } });
     const fail = (failed: string) => {
       if (this.core.host(hostId)?.daemonUpdate?.target === target)
@@ -64,23 +67,35 @@ export class HostUpdateSlice {
     try {
       await this.core.apply(hostId);
     } catch (error) {
-      fail((error as Error).message);
+      fail(this.core.describeError(error));
       return;
     }
-    setTimeout(
-      () => fail(this.core.t()("messages.daemonUpdateLate", { version: target })),
-      this.core.timeoutMs ?? DAEMON_UPDATE_TIMEOUT_MS,
+    this.lates.set(
+      hostId,
+      setTimeout(() => {
+        this.lates.delete(hostId);
+        fail(this.core.t()("messages.daemonUpdateLate", { version: target }));
+      }, this.core.timeoutMs ?? DAEMON_UPDATE_TIMEOUT_MS),
     );
   }
 
   /** The host came back on the update's version: its late timer is not needed. */
-  settled(_hostId: string): void {}
+  settled(hostId: string): void {
+    clearTimeout(this.lates.get(hostId));
+    this.lates.delete(hostId);
+  }
 
   /** A host was removed: its timer and its last check go. */
-  forget(_hostId: string): void {}
+  forget(hostId: string): void {
+    this.settled(hostId);
+    this.autoChecks.delete(hostId);
+  }
 
   /** The store is closing: no timer outlives it. */
-  dispose(): void {}
+  dispose(): void {
+    for (const id of [...this.lates.keys()]) this.settled(id);
+    this.autoChecks.clear();
+  }
 
   /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
   async check(hostId: string): Promise<void> {
@@ -105,6 +120,8 @@ export class HostUpdateSlice {
     const last = this.autoChecks.get(hostId);
     const now = this.core.now();
     if (last !== undefined && now - last < AUTO_UPDATE_CHECK_MS) return;
+    // Set before the check on purpose: a host whose check fails is not asked again on every render
+    // of its page; "Check now" is the person's way to ask sooner.
     this.autoChecks.set(hostId, now);
     await this.check(hostId);
   }
