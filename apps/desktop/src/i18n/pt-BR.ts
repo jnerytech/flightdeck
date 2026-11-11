@@ -8,6 +8,7 @@ import { chrome } from "./pt-BR/chrome.ts";
 import { clients } from "./pt-BR/clients.ts";
 import { costs } from "./pt-BR/costs.ts";
 import { firstrun } from "./pt-BR/firstrun.ts";
+import { github } from "./pt-BR/github.ts";
 import { hosts } from "./pt-BR/hosts.ts";
 import { notifications } from "./pt-BR/notifications.ts";
 import { palette } from "./pt-BR/palette.ts";
@@ -81,53 +82,7 @@ export const ptBR = {
         'O OpenCode é opcional. Para usar, ponha "opencode": { "enabled": true } na configuração do host e reinicie o daemon; a seção OpenCode do manual explica cada motivo.',
     },
   },
-  github: {
-    title: "GitHub",
-    hint: "Entre com a conta do GitHub que este host usa. Passa pelo gh do host: o Flightdeck nunca vê o seu token.",
-    notInstalled:
-      "O gh (a CLI do GitHub) não está instalado neste host. Instale e verifique de novo.",
-    signedOut: "Sem login no GitHub neste host.",
-    signIn: "Entrar com o GitHub",
-    codeLabel: "Código de uso único",
-    codeHint: "Digite este código na página do GitHub e confirme.",
-    copyCode: "Copiar código",
-    openGithub: "Abrir o GitHub",
-    waiting: "Esperando você confirmar no GitHub…",
-    cancel: "Cancelar",
-    recheck: "Verificar de novo",
-    signedIn: "Conectado como {login}",
-    source: {
-      keyring: "guardado no chaveiro do sistema",
-      file: "guardado no arquivo do próprio gh",
-      env: "definido por uma variável de ambiente do daemon",
-    },
-    scopes: "Acesso: {scopes}",
-    signOut: "Sair",
-    signOutEnv: "O login vem de uma variável de ambiente do daemon: remova-a de lá.",
-  },
-  githubStart: {
-    open: "Começar pelo GitHub",
-    title: "Começar pelo GitHub",
-    description:
-      "Escolha um repositório ou uma das issues dele. Ele é clonado numa pasta permitida do host, ou usa o clone que já estiver lá.",
-    search: "Buscar repositórios",
-    searchButton: "Buscar",
-    mine: "Meus repositórios",
-    repos: "Repositórios",
-    noRepos: "Nenhum repositório encontrado.",
-    issues: "Issues de {repo}",
-    noIssues: "Nenhuma issue aberta.",
-    wholeRepo: "Sem issue: só o repositório",
-    folder: "Clonar em",
-    mode: "Abrir como",
-    modeCard: "Um card do quadro",
-    modeSession: "Uma sessão",
-    start: "Começar",
-    pickRepo: "Escolha um repositório antes.",
-    private: "privado",
-    done: "Começou em {path}.",
-    reused: "Foi usado o clone que já estava lá.",
-  },
+  ...github,
   ...board,
   ...costs,
   toast: {
@@ -559,16 +514,6 @@ export const ptBR = {
     copy: "Copiar comando",
     copyNamed: "Copiar comando de {name}",
   },
-  pr: {
-    open: "PR aberto",
-    merged: "PR mesclado",
-    closed: "PR fechado",
-  },
-  checks: {
-    pending: "checks pendentes",
-    passing: "checks passando",
-    failing: "checks falhando",
-  },
   away: {
     title: "Enquanto você esteve fora",
     lastActive: "Última atividade {ago}",
@@ -585,42 +530,6 @@ export const ptBR = {
     quota: "Cota usada: {windows}",
     quotaLine: "{window} {pct}%",
     unreached: "{host} não respondeu",
-  },
-  pullRequests: {
-    title: "Pull requests",
-    subtitle: "Todo pull request aberto nos seus hosts, com o que fazer em seguida.",
-    list: "Pull requests abertos",
-    loading: "Lendo os pull requests…",
-    empty: "Nenhum pull request aberto.",
-    emptyDetail: "O PR de um card aparece aqui enquanto está aberto.",
-    updateLeftOut: "Ficam de fora: {items}.",
-    refused: "{title}: {reason}",
-    noHosts: "Nenhum host está online.",
-    watchOff: "Vigiar e consertar está desligado",
-    conflict: "Em conflito com a base",
-    mergeClean: "Sem conflitos",
-    mergeBlocked: "Merge bloqueado",
-    reviewApproved: "Aprovado",
-    reviewChanges: "Mudanças pedidas",
-    reviewRequired: "Revisão pendente",
-    opened: "Aberto {ago}",
-    conflictHint:
-      "Este PR conflita com a base: atualize a branch com a base e depois faça o merge.",
-    heldHint: "O GitHub pode recusar este merge: {why}.",
-    heldWhy: {
-      blocked: "as regras da branch o seguram",
-      changes: "pediram mudanças",
-      required: "falta uma revisão",
-    },
-  },
-  conflictRadar: {
-    badgeOne: "Pode conflitar com {title}",
-    badgeMany: "Pode conflitar com {n} cards",
-    title: "Pode conflitar com outros cards",
-    intro:
-      "Estes cards mudam os mesmos arquivos. Quem fizer o merge depois pode ter de resolver conflitos.",
-    mergeLine:
-      "Outros cards mudam os mesmos arquivos: {titles}. Quem fizer o merge depois pode ter de resolver conflitos.",
   },
   teleportUi: {
     menu: "Mover para outro host…",
