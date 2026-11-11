@@ -1,0 +1,213 @@
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { FULL_SUITE_JOB } from "../../lib/pr-flow.ts";
+
+/**
+ * #220: the Windows tests run in three shards and the prints apart from e2e, while the four checks
+ * the main ruleset requires keep their exact names (an aggregate job each) and Linux keeps the
+ * exact 100% coverage gate and SonarCloud.
+ */
+const ROOT = resolve(import.meta.dir, "../../..");
+
+interface Step {
+  name?: string;
+  run?: string;
+  if?: string;
+  uses?: string;
+  with?: Record<string, string>;
+  env?: Record<string, string>;
+}
+interface Job {
+  name?: string;
+  if?: string;
+  needs?: string[];
+  "continue-on-error"?: boolean;
+  "runs-on"?: string;
+  strategy?: { matrix?: Record<string, unknown> };
+  steps: Step[];
+}
+const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
+  jobs: Record<string, Job>;
+};
+const job = (key: string): Job => ci.jobs[key] ?? { steps: [] };
+const runs = (key: string) =>
+  job(key)
+    .steps.map((s) => s.run ?? "")
+    .join("\n");
+const DISPATCH = "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'";
+const SUFFIX = "${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}";
+
+describe("ci-shards", () => {
+  test("pr tag's full-run check names the job that holds the merged shard gate (#296)", () => {
+    // A dispatch counts as a full green run when this job passed: it must be the merge.
+    expect(job("test-suite").name?.startsWith(FULL_SUITE_JOB)).toBe(true);
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
+    expect(job("test-suite").needs).toContain("test-shard");
+  });
+
+  test("Linux runs the whole suite in shards with the exact merged 100% gate, and SonarCloud in another job (#293, #296)", () => {
+    expect(job("test-suite")["runs-on"]).toBe("ubuntu-latest");
+    expect(runs("test-suite")).toContain("bun run scripts/shard-gate.ts merge");
+    expect(runs("test-shard")).toContain("bun run scripts/shard-gate.ts run");
+    expect(job("test-suite").steps.some((s) => s.name === "SonarCloud")).toBe(false);
+    expect(job("sonar").steps.some((s) => s.name === "SonarCloud")).toBe(true);
+  });
+
+  test("Windows runs the tests in three shards, without coverage", () => {
+    const shard = job("test-windows-shard");
+    expect(shard["runs-on"]).toBe("windows-latest");
+    // One shard on a PR, three for the whole suite (#444): the plan says how many.
+    expect(shard.strategy?.matrix?.shard).toBe(
+      "${{ fromJSON(needs.quick.outputs.windows_shards) }}",
+    );
+    // Split by the seconds each test file took (scripts/test-timings.json), not by file count (#292).
+    expect(runs("test-windows-shard")).toContain(
+      "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml",
+    );
+    expect(runs("test-windows-shard")).not.toContain("--shard=");
+    // A long selection runs in batches, each with its own JUnit file (#483): the upload keeps them all.
+    const upload = job("test-windows-shard").steps.find(
+      (s) => s.name === "Publicar os tempos dos testes",
+    );
+    expect(upload?.with?.path).toBe("junit-${{ matrix.shard }}*.xml");
+    expect(runs("test-windows-shard")).not.toMatch(/bun run test(\s|$)/);
+  });
+
+  test("the area config the shards run with skips the same paths as the full suite's (the mods run under claude plugin test)", () => {
+    const ignored = (file: string) =>
+      (
+        Bun.TOML.parse(readFileSync(join(ROOT, file), "utf8")) as {
+          test?: { pathIgnorePatterns?: string[] };
+        }
+      ).test?.pathIgnorePatterns ?? [];
+    expect(ignored("bunfig.toml")).toContain("mods/**");
+    expect(ignored("bunfig.area.toml")).toEqual(ignored("bunfig.toml"));
+  });
+
+  test("the Windows smokes, cargo, bundle budget and performance baseline run in their own job", () => {
+    const checks = runs("checks-windows");
+    for (const command of [
+      "bun run smoke:roi",
+      "cargo test",
+      "bun run bundle:budget",
+      "bun run perf:baseline",
+    ]) {
+      expect(`${command}: ${checks.includes(command)}`).toBe(`${command}: true`);
+    }
+    expect(job("checks-windows").steps.some((s) => s.with?.name === "perf-baseline-windows")).toBe(
+      true,
+    );
+    for (const key of ["test-windows-shard", "checks-windows"]) {
+      expect(job(key).steps.some((s) => s.name === "Git Bash para os hooks")).toBe(true);
+    }
+  });
+
+  test("test (windows-latest) is one aggregate that fails unless every shard and the checks succeeded", () => {
+    const gate = job("test-windows");
+    expect(gate.name).toBe(`test (windows-latest)${SUFFIX}`);
+    expect(gate.needs).toEqual(["quick", "test-windows-shard", "checks-windows"]);
+    expect(gate.if).toBe(`always() && (${DISPATCH})`);
+    const check = runs("test-windows");
+    expect(check).toContain('test "${{ needs.test-windows-shard.result }}" = success');
+    expect(check).toContain('test "${{ needs.checks-windows.result }}" = success');
+  });
+
+  test("the Windows jobs are a signal in the full runs, never a gate (#534): a red one leaves the run green", () => {
+    for (const key of ["test-windows-shard", "checks-windows", "test-windows"]) {
+      expect(`${key}: ${job(key)["continue-on-error"]}`).toBe(`${key}: true`);
+    }
+    // Nothing that gates a release or a merge waits for them.
+    for (const key of Object.keys(ci.jobs)) {
+      if (key.includes("windows")) continue;
+      expect(`${key}: ${(job(key).needs ?? []).filter((n) => n.includes("windows"))}`).toBe(
+        `${key}: `,
+      );
+    }
+  });
+
+  test("screenshots (prints, axe e e2e) is one aggregate over the prints and the e2e jobs", () => {
+    expect(runs("screenshots-prints")).toContain("bun run demo:shots");
+    expect(runs("screenshots-e2e")).toContain("bun run e2e");
+    const gate = job("screenshots");
+    expect(gate.name).toBe("screenshots (prints, axe e e2e)");
+    expect(gate.needs).toEqual(["quick", "screenshots-prints", "screenshots-e2e"]);
+    expect(gate.if).toBe("always()");
+    expect(runs("screenshots")).toContain(
+      'test "${{ needs.screenshots-prints.result }}" = success',
+    );
+    expect(runs("screenshots")).toContain('test "${{ needs.screenshots-e2e.result }}" = success');
+  });
+
+  test("every test job skips a screenshots-only dispatch, and dispatched names never take a required name", () => {
+    expect(job("test").if).toBe(`!cancelled() && (${DISPATCH})`);
+    // The Windows jobs also wait for the path plan (#264).
+    for (const key of ["test-windows-shard", "checks-windows"]) {
+      expect(`${key}: ${job(key).if}`).toBe(
+        `${key}: (${DISPATCH}) && needs.quick.outputs.windows == 'true'`,
+      );
+    }
+    for (const key of ["test-windows-shard", "checks-windows"]) {
+      expect(job(key).name ?? "").toEndWith(SUFFIX);
+    }
+  });
+
+  test("SonarCloud reads the merged lcov of a full run of main, never a main push's partial one; a PR keeps its own (#296)", () => {
+    // A main push uploads only the related tests' lcov: main's coverage read 76% to 95% from it.
+    // The schedule and a dispatch of main run the whole suite in shards; a dispatch of a branch
+    // (ci:branch) is no analysis of main.
+    expect(job("sonar").if).toBe(
+      "!cancelled() && needs.test-suite.result == 'success' && (github.event_name == 'pull_request' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))",
+    );
+    // The required check: SonarCloud must run on a PR and on a full run of main, never skip
+    // silently (it skipped on every PR once). The event and ref come in through env, not spliced.
+    const gate = job("test").steps.find((s) => s.run?.includes("needs.sonar.result"));
+    expect(gate?.env).toEqual({ EVENT: "${{ github.event_name }}", REF: "${{ github.ref }}" });
+    expect(gate?.run ?? "").toContain(
+      'case "$EVENT/$REF" in pull_request/*|schedule/*|workflow_dispatch/refs/heads/main) test "${{ needs.sonar.result }}" = success ;; esac',
+    );
+  });
+
+  test("#895 review: a scan that cannot run fails the sonar job, except on a fork's PR, so success means SonarCloud ran", () => {
+    const step = job("sonar").steps.find((s) => s.name === "Versão para o SonarCloud");
+    expect(step?.env).toEqual({
+      SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}",
+      PR_REPO: "${{ github.event.pull_request.head.repo.full_name }}",
+      REPO: "${{ github.repository }}",
+    });
+    const run = step?.run ?? "";
+    expect(run).toContain('if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"');
+    // A fork's PR gets no secrets: no scan, and that is not a failure.
+    expect(run).toContain(
+      'elif [ -n "$PR_REPO" ] && [ "$PR_REPO" != "$REPO" ]; then echo "a fork\'s PR: no SONAR_TOKEN, no scan"',
+    );
+    // A same-repo PR, the schedule or a dispatch of main with no token has no verdict: it fails.
+    expect(run).toContain(
+      'else echo "SONAR_TOKEN is empty: no scan, so no SonarCloud verdict"; exit 1; fi',
+    );
+  });
+
+  test("a PR skips the shards, and every job after them still runs: each states its own status check (#296)", () => {
+    // GitHub skips a job whose needs chain holds a skipped job unless its `if` names a status
+    // function, so without one SonarCloud stopped running on every PR and main push.
+    const after = new Set(["test-shard"]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const [key, value] of Object.entries(ci.jobs)) {
+        if (!after.has(key) && (value.needs ?? []).some((need) => after.has(need))) {
+          after.add(key);
+          grew = true;
+        }
+      }
+    }
+    after.delete("test-shard");
+    const unguarded = [...after].filter(
+      (key) => !/!cancelled\(\)|always\(\)/.test(job(key).if ?? ""),
+    );
+    expect(unguarded).toEqual([]);
+    expect(after.has("sonar")).toBe(true);
+    // SonarCloud still reads only a suite that passed.
+    expect(job("sonar").if ?? "").toContain("needs.test-suite.result == 'success'");
+  });
+});

@@ -153,7 +153,7 @@ teste `simple-vocabulary` varre está em `apps/desktop/src/lib/simple-words.ts` 
 The domain folders of the code (#1600), one word each: `apps/daemon/src/<folder>`, later
 `apps/desktop/src/features/<folder>` and `packages/protocol/src/<folder>`. The same domain keeps
 the same folder name in every app. The context map that groups them and draws their borders is
-`docs/decisions/2026-11-10-context-map.md`; `scripts/test/domain-glossary.test.ts` fails on a
+`docs/decisions/2026-11-10-context-map.md`; `scripts/test/guards/domain-glossary.test.ts` fails on a
 folder with no row here. Folders still named after a layer (`server`, `store`, `bg`) are in that
 test's baseline, with the issue that renames them.
 

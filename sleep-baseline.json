@@ -108,8 +108,8 @@
   "apps/desktop/test/times-ui.test.tsx": 2,
   "apps/desktop/test/versoes-ui.test.tsx": 1,
   "apps/desktop/test/webhook-fila.test.ts": 1,
-  "scripts/test/lazy-wait-ratchet.test.ts": 28,
-  "scripts/test/migrate-esperas.test.ts": 6,
-  "scripts/test/sleep-ratchet.test.ts": 21,
-  "scripts/test/slot.test.ts": 6
+  "scripts/test/guards/lazy-wait-ratchet.test.ts": 28,
+  "scripts/test/guards/sleep-ratchet.test.ts": 21,
+  "scripts/test/harness/migrate-waits.test.ts": 6,
+  "scripts/test/slot/slot.test.ts": 6
 }

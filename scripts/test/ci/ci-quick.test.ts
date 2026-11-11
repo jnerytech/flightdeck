@@ -1,0 +1,152 @@
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { quickTests } from "../../lib/ci-quick.ts";
+
+const ROOT = resolve(import.meta.dir, "../../..");
+
+interface Step {
+  name?: string;
+  run?: string;
+  if?: string;
+  with?: Record<string, unknown>;
+}
+interface Job {
+  name?: string;
+  if?: string;
+  needs?: string[];
+  "runs-on"?: string;
+  "timeout-minutes"?: number;
+  steps: Step[];
+}
+const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
+  jobs: Record<string, Job>;
+};
+const job = (key: string): Job => ci.jobs[key] ?? { steps: [] };
+const runs = (key: string) =>
+  job(key)
+    .steps.map((s) => s.run ?? "")
+    .join("\n");
+const QUICK_PASSED = 'test "${{ needs.quick.result }}" = success';
+
+describe("ci-quick", () => {
+  test("#169: no skip is noted under an issue any more, so the quick job reads no issues", () => {
+    expect(runs("quick")).not.toContain("unstable-issues");
+    // #1057 review: no step of the job is handed the token either.
+    const env = job("quick").steps.map((s) => (s as { env?: Record<string, string> }).env ?? {});
+    expect(env.filter((e) => "GH_TOKEN" in e)).toEqual([]);
+    // The token keeps contents: read, as in the rest of the workflow.
+    expect((job("quick") as { permissions?: Record<string, string> }).permissions).toEqual({
+      contents: "read",
+    });
+  });
+
+  test("the quick tests are every ratchet and the protocol surface, in order (#272)", () => {
+    expect(
+      quickTests(
+        [
+          "scripts/test/guards/wait-ratchet.test.ts",
+          "apps/desktop/test/layout-ratchet.test.ts",
+          "scripts/test/guards/protocol-surface.test.ts",
+          "scripts/test/ci/ci-quick.test.ts",
+          "scripts/lib/wait-ratchet.ts",
+          "scripts/test/ci/perf-baseline.test.ts",
+          "apps/desktop/test/x-ratchet.test.tsx",
+        ],
+        () => "",
+      ),
+    ).toEqual([
+      "apps/desktop/test/layout-ratchet.test.ts",
+      "apps/desktop/test/x-ratchet.test.tsx",
+      "scripts/test/guards/protocol-surface.test.ts",
+      "scripts/test/guards/wait-ratchet.test.ts",
+    ]);
+  });
+
+  test("#1068: md-links runs in the quick job, so the PR that names a missing doc fails, whatever it changed", () => {
+    // #1108: it runs there through its // repo-wide marker, as every scan of the whole repo does.
+    const real = (path: string) => readFileSync(join(ROOT, path), "utf8");
+    expect(
+      quickTests(["scripts/test/guards/md-links.test.ts", "scripts/lib/md-links.ts"], real),
+    ).toEqual(["scripts/test/guards/md-links.test.ts"]);
+    expect(quickTests(["scripts/test/guards/md-links.test.ts"], () => "")).toEqual([]);
+    // #1114 review: a file that cannot be read is not marked, and the job does not crash on it.
+    const missing = () => {
+      throw new Error("ENOENT");
+    };
+    let picked: string[];
+    try {
+      picked = quickTests(["scripts/test/gone.test.ts", "scripts/test/a-ratchet.test.ts"], missing);
+    } catch {
+      picked = ["the read error stopped the job"];
+    }
+    expect(picked).toEqual(["scripts/test/a-ratchet.test.ts"]);
+  });
+
+  test("#1108: a test marked // repo-wide runs in the quick job, wherever it is and whatever its name", () => {
+    const sources: Record<string, string> = {
+      "scripts/test/guards/sort-compare.test.ts": `// repo-${"wide"} (#1108): scans the code\n`,
+      "apps/daemon/test/home.test.ts": `  // repo-${"wide"}: reads apps/daemon/src\n`,
+      "scripts/test/plain.test.ts": `const a = "// repo-${"wide"}";\n`,
+      "scripts/test/guards/wait-ratchet.test.ts": "",
+    };
+    expect(quickTests(Object.keys(sources), (path) => sources[path] ?? "")).toEqual([
+      "apps/daemon/test/home.test.ts",
+      "scripts/test/guards/sort-compare.test.ts",
+      "scripts/test/guards/wait-ratchet.test.ts",
+    ]);
+  });
+
+  test("a quick job runs typecheck, lint, the TDD audit and the ratchet tests (#272), no local Sonar (#283)", () => {
+    const quick = job("quick");
+    expect(quick.name).toBe("quick checks");
+    expect(quick["runs-on"]).toBe("ubuntu-latest");
+    expect(quick["timeout-minutes"]).toBeLessThanOrEqual(10);
+    expect(quick.needs).toBeUndefined();
+    const commands = runs("quick");
+    for (const command of [
+      "bun run typecheck",
+      "bun run lint",
+      "bun run tdd:audit -- --since auto",
+      "bun run scripts/ci-quick.ts",
+    ]) {
+      expect(commands).toContain(command);
+    }
+    // The TDD audit counts from the merge-base: it needs the whole history.
+    expect(quick.steps[0]?.with?.["fetch-depth"]).toBe(0);
+    expect(ci.jobs["sonar-lint"]).toBeUndefined();
+    expect(commands).not.toContain("lint:sonar");
+  });
+
+  test("the heavy jobs wait for the quick one, and the Linux suite no longer repeats its checks (#272)", () => {
+    for (const key of [
+      "test",
+      "test-suite",
+      "checks-linux",
+      "test-windows-shard",
+      "checks-windows",
+      "screenshots-prints",
+      "screenshots-e2e",
+    ]) {
+      expect(`${key}: ${job(key).needs?.includes("quick")}`).toBe(`${key}: true`);
+    }
+    expect(runs("test")).not.toContain("bun run typecheck");
+    expect(runs("test")).not.toContain("bun run lint");
+    expect(runs("test")).not.toContain("tdd:audit");
+  });
+
+  test("a failed quick job fails every required check instead of skipping it (#272)", () => {
+    // GitHub counts a skipped required check as passed: `test (ubuntu-latest)` runs anyway and
+    // fails at once, and each aggregate checks the quick result before the skip by path.
+    expect(job("test").if ?? "").toStartWith("!cancelled() && ");
+    expect(job("test").steps[0]?.run ?? "").toContain(QUICK_PASSED);
+    for (const key of ["test-windows", "screenshots"]) {
+      expect(job(key).needs).toContain("quick");
+      const check = runs(key);
+      const passed = check.indexOf(QUICK_PASSED);
+      expect(`${key}: ${passed >= 0 && passed < check.indexOf("skipped by path")}`).toBe(
+        `${key}: true`,
+      );
+    }
+  });
+});

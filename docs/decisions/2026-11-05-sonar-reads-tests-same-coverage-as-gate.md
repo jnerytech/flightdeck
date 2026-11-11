@@ -5,7 +5,7 @@
   main-scope and 37 test-scope; `lint:sonar` runs each set on its kind of file (`testRules` in `scripts/sonar-profile.json`).
   The first local run found 120 test findings (116 generic assertions); they are fixed, and 4 profile rules still have no ESLint twin.
 - **One list for coverage.** Sonar read 99.4% while the gate says 100% because the two exclusion lists differed (the build config, type
-  declarations and `scripts/e2e` were counted by Sonar only). `scripts/test/sonar-coverage.test.ts` now checks every tracked file:
+  declarations and `scripts/e2e` were counted by Sonar only). `scripts/test/ci/sonar-coverage.test.ts` now checks every tracked file:
   Sonar counts it for coverage exactly when `isCoverageSource` (the gate's rule) does, so the lists cannot drift. The properties file
   cannot call code, so it keeps its own glob list and the test is what ties it to `scripts/lib/coverage-check.ts`.
 - **Not verified here:** the scanner itself needs the token, so the overlap of `sonar.sources` and `sonar.tests` (with

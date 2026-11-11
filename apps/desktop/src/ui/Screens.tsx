@@ -53,7 +53,7 @@ import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
- * keeps the entry chunk under its limit; scripts/test/screens-lazy.test.ts lists them).
+ * keeps the entry chunk under its limit; scripts/test/demo/screens-lazy.test.ts lists them).
  */
 const ActionsPage = lazyScreen(() => import("./ActionsPage.tsx"), "ActionsPage");
 const AgentPage = lazyScreen(() => import("./AgentPage.tsx"), "AgentPage");

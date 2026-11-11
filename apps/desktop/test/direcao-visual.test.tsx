@@ -93,7 +93,7 @@ describe("direcao-visual", () => {
     expect(lightness(dark["--background"])).toBeLessThan(0.22);
     expect(light["--border"]).toMatch(/\/\s*\d+%/);
     // Issue #98: the dark lines are opaque, so their 3:1 contrast against the surfaces can be
-    // checked (scripts/test/theme-contrast.test.ts); the light ones stay translucent.
+    // checked (scripts/test/demo/theme-contrast.test.ts); the light ones stay translucent.
     expect(dark["--border"]).toMatch(/^oklch\(/);
   });
 
