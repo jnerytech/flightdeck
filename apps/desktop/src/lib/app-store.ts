@@ -34,10 +34,11 @@ import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
-  ClientBudgetsSlice,
+  type ClientBudgetsSlice,
   initialBudgetsState,
   initialClientBudgetsState,
   wireBudgets,
+  wireClientBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
@@ -88,10 +89,13 @@ import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.t
 import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
-  VaultApprovalsSlice,
-  VaultRulesSlice,
+  type VaultApprovalsSlice,
+  type VaultRulesSlice,
   VaultScanSlice,
-  VaultSecretsSlice,
+  type VaultSecretsSlice,
+  wireVaultApprovals,
+  wireVaultRules,
+  wireVaultSecrets,
 } from "../features/vault/index.ts";
 import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { WatchSlice } from "../features/watch/index.ts";
@@ -445,42 +449,30 @@ export class AppStore {
       this.clearShownUnread();
     });
     this.vault = new Vault(platform);
-    this.vaultApprovals = new VaultApprovalsSlice({
+    this.vaultApprovals = wireVaultApprovals(this.kernel, {
       vault: this.vault,
-      pending: () => this.state.vaultApprovals,
-      setPending: (items) => this.update({ vaultApprovals: items }),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name ?? null,
-      dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
       optionsPolicy: () => this.options.vaultPolicy,
-      now: () => (this.options.now ?? Date.now)(),
       notify: (title, body) => this.inbox.notify({ title, body, event: "needs-you" }),
       recorded: (outcome) => {
         this.usage.recordOutcome(outcome);
         this.keepUsage();
       },
-      t: () => this.i18n.t,
     });
-    this.secrets = new VaultSecretsSlice({
+    this.secrets = wireVaultSecrets(this.kernel, {
       vault: this.vault,
-      secretsChanged: () => this.update({ secrets: this.vault.list() }),
       workFactor: () => this.options.vaultWorkFactor,
       saveFile: (name, text) => this.platform.saveFile(name, text),
       pickFile: () => this.platform.vault.pickFile(),
       fail: (error) => this.fail(error),
     });
     this.scan = new VaultScanSlice({ vault: this.vault });
-    this.vaultRules = new VaultRulesSlice({
+    this.vaultRules = wireVaultRules(this.kernel, {
       rules: new VaultRules(platform.storage),
       secrets: () => this.vault.list(),
-      hosts: () => this.state.hosts,
       clients: () => this.state.clientList,
       projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
-      secretsChanged: () => this.update({ secrets: this.vault.list() }),
-      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
-      preview: (hostId, payload) => this.hostCommand(hostId, "vault.rules.preview", payload),
       fail: (error, text) => this.fail(error, text),
       success: (text) => this.success(text),
-      t: () => this.i18n.t,
     });
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
@@ -506,26 +498,18 @@ export class AppStore {
         this.clientBudgets.onLimitsChanged();
       },
     });
-    this.clientBudgets = new ClientBudgetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.clientBudgets = wireClientBudgets(this.kernel, {
       storage: platform.storage,
       limits: () => this.clients.budgets(),
-      hostsWithCosts: () =>
-        this.state.hosts
-          .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-          .map((h) => h.id),
       today: () => this.today(),
       scope: () => this.clientScope.get(),
       clients: () => this.state.clientList,
-      summary: (hostId, filter) => this.hostCommand(hostId, "costs.summary", filter),
       feed: (name, clientId, percent, limit) =>
         this.webhookFeed.clientBudget(name, clientId, percent, limit),
       notify: (notification, clientId) =>
         this.inbox.notify(notification, { name: "costs", client: clientId }, undefined, {
           event: "budget-quota",
         }),
-      t: () => this.i18n.t,
     });
     this.roi = new RoiSettings(platform, {
       onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),

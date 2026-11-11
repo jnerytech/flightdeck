@@ -22,3 +22,4 @@ export {
   type VaultSecretsCore,
   VaultSecretsSlice,
 } from "./secrets-store.ts";
+export { wireVaultApprovals, wireVaultRules, wireVaultSecrets } from "./wire.ts";

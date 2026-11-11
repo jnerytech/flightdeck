@@ -33,4 +33,4 @@ export {
   type BudgetsSliceState,
   initialBudgetsState,
 } from "./store.ts";
-export { wireBudgets } from "./wire.ts";
+export { wireBudgets, wireClientBudgets } from "./wire.ts";
