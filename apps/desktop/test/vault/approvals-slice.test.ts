@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultRequestFrame } from "@flightdeck/protocol";
-import { type VaultApprovalsCore, VaultApprovalsSlice } from "../src/features/vault/index.ts";
-import type { PendingItem } from "../src/lib/app-store.ts";
-import type { SecretMeta } from "../src/lib/vault.ts";
-import type { VaultOutcome, VaultPolicy } from "../src/lib/vault-requests.ts";
+import { type VaultApprovalsCore, VaultApprovalsSlice } from "../../src/features/vault/index.ts";
+import type { PendingItem } from "../../src/lib/app-store.ts";
+import type { SecretMeta } from "../../src/lib/vault.ts";
+import type { VaultOutcome, VaultPolicy } from "../../src/lib/vault-requests.ts";
 
 const VALUE = "the-secret-value-123";
 const SECRET = { id: "s1", name: "deploy key", allowedHosts: ["h"] } as unknown as SecretMeta;

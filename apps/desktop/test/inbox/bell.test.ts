@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { describeRequest, type InboxEntry, inboxRows, unreadRows } from "../src/lib/inbox.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { describeRequest, type InboxEntry, inboxRows, unreadRows } from "../../src/lib/inbox.ts";
 
 const NOW = new Date(2026, 10, 4, 15, 0, 0);
 const at = (h: number, day = 4) => new Date(2026, 10, day, h, 0, 0).toISOString();
