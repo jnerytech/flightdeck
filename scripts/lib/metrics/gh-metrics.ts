@@ -123,21 +123,21 @@ export function mainRed(runs: CiRun[], window: TimeWindow): MainRed {
   return { periods, totalSeconds };
 }
 
-/** The share of `fix` commits with a `feat` commit one to 48 hours before it that touched one of its source files. */
+/** The share of `fix` commits with a `feat` commit one to 48 hours before it that touched half or more of its source files. */
 function reworkShare(commits: LogCommit[]): number | null {
   const fixes = commits.filter((c) => /^fix(\(|:|!)/.test(c.subject));
   if (fixes.length === 0) return null;
   const feats = commits.filter((c) => /^feat(\(|:|!)/.test(c.subject));
   const reworked = fixes.filter((fix) => {
     const t = Date.parse(fix.date);
+    const mine = fix.files.filter(isSource);
+    if (mine.length === 0) return false;
     return feats.some((feat) => {
       const gap = t - Date.parse(feat.date);
-      // Only source files tie two changes: a baseline, the timings, a doc or a test is touched by all.
-      return (
-        gap >= SAME_PR_MS &&
-        gap <= REWORK_MS &&
-        feat.files.some((file) => isSource(file) && fix.files.includes(file))
-      );
+      if (gap < SAME_PR_MS || gap > REWORK_MS) return false;
+      // Half of the fix's source files in the one feat: sharing a file everyone touches is not rework.
+      const shared = mine.filter((file) => feat.files.includes(file)).length;
+      return shared * 2 >= mine.length;
     });
   });
   return reworked.length / fixes.length;
