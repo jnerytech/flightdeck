@@ -119,32 +119,32 @@ export const agentsHandlers = {
     };
   },
   "snippets.list": async (payload, { server }) => {
-    return await server.need("snippets").list(payload);
+    return await server.needIn("snippets", "library").list(payload);
   },
   "snippets.save": async (payload, { server }) => {
-    return await server.need("snippets").save(payload);
+    return await server.needIn("snippets", "library").save(payload);
   },
   "snippets.get": async (payload, { server }) => {
     const { id, name, projectPath } = payload;
     return id
-      ? await server.need("snippets").get(id)
-      : await server.need("snippets").find(name as string, projectPath);
+      ? await server.needIn("snippets", "library").get(id)
+      : await server.needIn("snippets", "library").find(name as string, projectPath);
   },
   "snippets.remove": async (payload, { server }) => {
-    await server.need("snippets").remove(payload.id);
+    await server.needIn("snippets", "library").remove(payload.id);
   },
   "snippets.trust": async (payload, { server }) => {
-    return await server.need("snippets").trust(payload.projectPath, payload.hash);
+    return await server.needIn("snippets", "library").trust(payload.projectPath, payload.hash);
   },
   "snippets.favorite": async (payload, { server }) => {
-    return await server.need("snippets").favorite(payload.id, payload.favorite);
+    return await server.needIn("snippets", "library").favorite(payload.id, payload.favorite);
   },
   "snippets.parse": (payload, { server }) => {
-    return server.need("snippets").parse(payload.text);
+    return server.needIn("snippets", "library").parse(payload.text);
   },
   "snippets.importHistory": async (payload, { server }) => {
     const { limit, reveal, select } = payload;
-    const importer = server.need("snippetHistory");
+    const importer = server.needIn("snippets", "history");
     const done = select ? await importer.import(select) : { created: [], skipped: [] };
     const preview = await importer.preview({
       ...(limit ? { limit } : {}),
@@ -188,9 +188,9 @@ export const agentsHandlers = {
     return await server.need("personas").trust(payload.projectPath, payload.id, payload.hash);
   },
   "snippets.render": async (payload, { server }) => {
-    return await server.need("snippetUse").render(payload);
+    return await server.needIn("snippets", "use").render(payload);
   },
   "snippets.use": async (payload, { server }) => {
-    return await server.need("snippetUse").use(payload);
+    return await server.needIn("snippets", "use").use(payload);
   },
 } satisfies Partial<Handlers>;

@@ -312,8 +312,10 @@ describe("snippets-historico: pelo protocolo", () => {
   ) {
     const server = startServer({
       manager: newManager().manager,
-      ...(importer ? { snippetHistory: importer } : {}),
-      ...(snippets ? { snippets } : {}),
+      snippets: {
+        ...(importer ? { history: importer } : {}),
+        ...(snippets ? { library: snippets } : {}),
+      },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

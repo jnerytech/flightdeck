@@ -61,9 +61,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   roi: "roi",
   runenv: "runEnv",
   sessionFiles: "sessionFiles",
-  snippetHistory: "snippetHistory",
-  snippetUse: "snippetUse",
-  snippets: "snippets",
   summary: "summary",
   teams: "teams",
   telemetry: "telemetry",
@@ -121,6 +118,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     connect: "sshConnect",
     askpass: "askpass",
   },
+  snippets: {
+    library: "snippets",
+    history: "snippetHistory",
+    use: "snippetUse",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -163,7 +165,7 @@ describe("server-gates", () => {
   test("a grouped service names the same feature as its flat option did, and one the host runs is returned", () => {
     expect(JSON.parse(JSON.stringify(GROUP_GATES))).toEqual(GROUPED);
     const off = {} as ServerOptions;
-    const offIn = { knowledge: {}, harness: {}, ssh: {} } as ServerOptions;
+    const offIn = { knowledge: {}, harness: {}, ssh: {}, snippets: {} } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
     );

@@ -51,9 +51,6 @@ export const GATES = {
   roi: "roi",
   runenv: "runEnv",
   sessionFiles: "sessionFiles",
-  snippetHistory: "snippetHistory",
-  snippetUse: "snippetUse",
-  snippets: "snippets",
   summary: "summary",
   teams: "teams",
   telemetry: "telemetry",
@@ -111,6 +108,11 @@ export const GROUP_GATES = {
     hostKeys: "sshHostKeys",
     connect: "sshConnect",
     askpass: "askpass",
+  },
+  snippets: {
+    library: "snippets",
+    history: "snippetHistory",
+    use: "snippetUse",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<keyof NonNullable<ServerOptions[G]>, string>;

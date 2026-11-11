@@ -38,7 +38,7 @@ async function setup(options: { snippets?: boolean; cwd?: "project" | "outside" 
   });
   const server = startServer({
     manager: newManager().manager,
-    ...(options.snippets === false ? {} : { snippets }),
+    ...(options.snippets === false ? {} : { snippets: { library: snippets } }),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
