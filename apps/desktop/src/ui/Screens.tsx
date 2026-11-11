@@ -58,7 +58,7 @@ import { TranscriptReader } from "./TranscriptReader.tsx";
 const ActionsPage = lazyScreen(() => import("../features/actions/page.tsx"), "ActionsPage");
 const AgentPage = lazyScreen(() => import("../features/agentcfg/page.tsx"), "AgentPage");
 const AutoApprovalsPage = lazyScreen(() => import("./AutoApprovalsPage.tsx"), "AutoApprovalsPage");
-const AutomationsPage = lazyScreen(() => import("./AutomationsPage.tsx"), "AutomationsPage");
+const Automations = lazyScreen(() => import("../features/automations/page.tsx"), "AutomationsPage");
 const BoardView = lazyScreen(() => import("./BoardView.tsx"), "BoardView");
 const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
 const ClientsPage = lazyScreen(() => import("../features/clients/page.tsx"), "ClientsPage");
@@ -1070,7 +1070,7 @@ function routeScreen(props: ScreenProps): ReactNode {
       );
     case "automations":
       return (
-        <AutomationsPage
+        <Automations
           key={`${route.host}/${route.projectId}`}
           store={store}
           hostId={route.host}

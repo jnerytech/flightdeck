@@ -70,3 +70,42 @@ jobs:
 
       - name: Publicar a release
         run: gh release create "$TAG" --title "$TAG" --generate-notes release-assets/*
+
+  # The engineering metrics of this version (#1949), attached to the release the job above already
+  # published: a failure here never blocks it. It reads full history, so it checks the tag out
+  # without the depth of 1 and runs on Linux, where the git and gh reads are cheap.
+  metrics:
+    name: metrics snapshot
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      # The metrics read the CI runs and the merged pull requests with gh.
+      actions: read
+      pull-requests: read
+    env:
+      # Inputs go through the environment, never straight into a script.
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Snapshot das métricas
+        run: bun run metrics -- --tag "$TAG" --out "metrics-${TAG#v}.json"
+
+      - name: Anexar à release
+        run: gh release upload "$TAG" "metrics-${TAG#v}.json" --clobber

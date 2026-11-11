@@ -10,3 +10,4 @@ export {
 } from "./store.ts";
 export { UpdateBanner } from "./update-banner.tsx";
 export { UpdateCard } from "./update-card.tsx";
+export { wireAppUpdates } from "./wire.ts";

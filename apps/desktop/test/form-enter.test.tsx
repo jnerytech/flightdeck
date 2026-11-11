@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { ArenaStartForm } = await import("../src/features/board/arena-start-form.tsx");
 const { ActionForm } = await import("../src/features/actions/action-form.tsx");
-const { AutomationForm } = await import("../src/ui/AutomationForm.tsx");
+const { AutomationForm } = await import("../src/features/automations/automation-form.tsx");
 const { AgentMcp } = await import("../src/features/agentcfg/agent-mcp.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
