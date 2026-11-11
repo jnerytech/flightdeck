@@ -46,14 +46,15 @@ describe("event store: JSON columns that do not fit", () => {
     expect(store.requireSession("s1").persona?.id).toBe("p1");
   });
 
-  test("the last reported mode is none when its payload does not fit", () => {
+  test("the last reported mode throws when its payload does not fit, so a tightened mode is never lost", () => {
     const store = newStore();
+    expect(store.lastMode("s1")).toBeNull();
     store.db
       .query(
         "INSERT INTO events (session_id, seq, ts, type, payload) VALUES ('s1', 1, 't', 'session.mode', ?)",
       )
       .run('{"permissionMode":5}');
-    expect(store.lastMode("s1")).toBeNull();
+    expect(() => store.lastMode("s1")).toThrow(/does not fit/);
   });
 
   test("the persona and agents a session opened with are read whole, and one that does not fit throws without its text", () => {
