@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Card, KnowledgeEntry } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
-const { CardPins } = await import("../src/features/board/card-pins.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
+const { CardPins } = await import("../../src/features/board/card-pins.tsx");
 
 afterEach(cleanup);
 

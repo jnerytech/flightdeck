@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../../daemon/test/support/helpers.ts";
-import { chooseFromCardMenu } from "../card-menu.ts";
+import { chooseFromCardMenu } from "../board/card-menu.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, uiIdle } from "../wait.ts";
