@@ -1,4 +1,5 @@
 import type {
+  ExternalSession,
   ExternalStatus,
   HistorySessionSummary,
   SessionLine,
@@ -52,6 +53,8 @@ export interface HubRow {
   /** Issue #1478: the host marked this running session quiet, since when; and its last tool. */
   quietSince?: string;
   quietTool?: string | null;
+  /** Issue #1736: a terminal session waits at a plan approval or a question (read by the daemon). */
+  waiting?: "plan" | "question";
 }
 
 export interface HubFilter {
@@ -196,6 +199,14 @@ const EXTERNAL: Record<ExternalStatus, HubState> = {
   unknown: "idle",
   ended: "ended",
 };
+
+/** The hub state of a terminal session: what its hooks said, and a plan or a question it waits at (#1736). */
+export function externalState(session: ExternalSession): HubState {
+  // A session that ended is over, whatever its transcript's end says; one that asks for a permission
+  // already needs the person.
+  if (session.waiting && session.status !== "ended") return "needs_you";
+  return EXTERNAL[session.status];
+}
 
 /** A managed session's line state, from its status. */
 const LINE: Record<SessionStatus, SessionLine["state"]> = {
@@ -364,7 +375,9 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
           request: s.summary?.request ?? null,
           cwd: cwd || s.claudeSessionId,
         }),
-        state: EXTERNAL[s.status],
+        // At a plan or a question the session needs the person, whatever its hooks last said (#1736).
+        state: externalState(s),
+        ...(s.waiting && s.status !== "ended" ? { waiting: s.waiting } : {}),
         controllable: s.controllable,
         lastActivity: s.lastEventAt,
         summary: s.summary ?? null,
@@ -544,6 +557,7 @@ export function rowStatus(row: HubRow, nowMs: number, t: T = PT): { word: string
   const word = row.asleep ? t("hub.asleep") : t(`hub.rowWord.${row.state}` as Key);
   const tool = row.summary?.tool ?? null;
   if (row.state === "needs_you") {
+    if (row.waiting) return { word, detail: t(`hub.rowDetail.waiting.${row.waiting}` as Key) };
     return { word, detail: tool ? t("hub.rowDetail.waitingTool", { tool }) : "" };
   }
   if (row.state === "running") {

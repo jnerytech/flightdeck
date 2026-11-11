@@ -75,9 +75,11 @@ function fakeStore(accounts: Record<string, AccountState>) {
     subscribe: () => () => undefined,
     getState: () => state,
     hostCommand: async () => null,
-    watchAccount: (id: string) => {
-      watched.push(id);
-      return () => undefined;
+    account: {
+      watch: (id: string) => {
+        watched.push(id);
+        return () => undefined;
+      },
     },
   };
   return { store: store as never, watched };

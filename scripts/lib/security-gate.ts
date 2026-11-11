@@ -303,7 +303,7 @@ export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
  * token to paste, a permission denied) are no secret or permission code; a secret's own shape is,
  * on any line, and every other line (code) is read in every area as everywhere.
  */
-const DICTIONARY = /^apps\/desktop\/src\/i18n\/(?:en|pt-BR)\.ts$/;
+const DICTIONARY = /^apps\/desktop\/src\/i18n\/(?:en|pt-BR)(?:\/[\w-]+)?\.ts$/;
 // The text shapes of a dictionary line (#1541, #1587). A string literal: a backslash only starts
 // an escape pair (so `\\"` cannot pass for an escaped quote, and nothing backtracks), and a
 // template has no `$` at all (an expression in it is code).
