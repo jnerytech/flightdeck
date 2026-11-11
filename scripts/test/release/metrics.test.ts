@@ -7,7 +7,7 @@ import {
   type LogCommit,
   parseLog,
 } from "../../lib/metrics/git-log.ts";
-import { buildSnapshot, type MetricsDeps } from "../../lib/metrics/snapshot.ts";
+import { buildSnapshot, type MetricsDeps, parseRatchetRows } from "../../lib/metrics/snapshot.ts";
 
 /**
  * Issue #1949 (task 1): the git-based metrics and the ratchets of a release snapshot. Git is a fake
@@ -228,5 +228,15 @@ describe("metrics: the snapshot", () => {
       git: async (args) => (args[0] === "rev-parse" ? { code: 128, stdout: "" } : deps.git(args)),
     };
     await expect(buildSnapshot(failing, "v9.9.9")).rejects.toThrow("tag");
+  });
+});
+
+describe("metrics: the ratchet report", () => {
+  test("parseRatchetRows reads the rows arch-report writes and refuses anything else", () => {
+    const rows = [{ ratchet: "knip files", baseline: 15, today: 14 }];
+    expect(parseRatchetRows(JSON.stringify(rows))).toEqual(rows);
+    expect(parseRatchetRows("not json")).toBeNull();
+    expect(parseRatchetRows('{"a":1}')).toBeNull();
+    expect(parseRatchetRows('[{"ratchet":"x","baseline":"1","today":2}]')).toBeNull();
   });
 });
