@@ -1927,6 +1927,54 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       footInWindow: true,
       hostsHigh: true,
     });
+
+    // 7. The theme's native controls (#567, #1850), in both themes: the dropdown of a select is
+    // painted with the popover colors (WebView2 paints it light in the dark theme otherwise), a
+    // disabled option stays readable, the page declares its color scheme, and a scroll area has a
+    // thin bar with no arrow buttons.
+    const native = await c.page.evaluate(() => {
+      const root = document.documentElement;
+      const wasDark = root.classList.contains("dark");
+      const probe = document.createElement("div");
+      const select = document.createElement("select");
+      select.innerHTML = "<option>a</option><option disabled>b</option>";
+      const scroller = document.createElement("div");
+      scroller.style.cssText = "overflow: auto; width: 100px; height: 40px";
+      scroller.innerHTML = '<div style="height: 200px"></div>';
+      document.body.append(probe, select, scroller);
+      const colorOf = (token: string, property: "backgroundColor" | "color") => {
+        probe.style.cssText = `${property === "color" ? "color" : "background-color"}: var(${token})`;
+        return getComputedStyle(probe)[property];
+      };
+      const bar = (part = "") => getComputedStyle(scroller, `::-webkit-scrollbar${part}`);
+      const found: Record<string, unknown> = {};
+      for (const dark of [false, true]) {
+        root.classList.toggle("dark", dark);
+        const on = select.options.item(0) as HTMLOptionElement;
+        const off = select.options.item(1) as HTMLOptionElement;
+        found[dark ? "dark" : "light"] = {
+          scheme: getComputedStyle(root).colorScheme,
+          paper: getComputedStyle(on).backgroundColor === colorOf("--popover", "backgroundColor"),
+          ink: getComputedStyle(on).color === colorOf("--popover-foreground", "color"),
+          disabled: getComputedStyle(off).color === colorOf("--muted-foreground", "color"),
+          thin: [bar().width, bar().height].every((one) => {
+            const size = Number.parseFloat(one);
+            return size >= 4 && size <= 10;
+          }),
+          noArrows: bar("-button").display === "none",
+        };
+      }
+      root.classList.toggle("dark", wasDark);
+      probe.remove();
+      select.remove();
+      scroller.remove();
+      return found;
+    });
+    const same = { paper: true, ink: true, disabled: true, thin: true, noArrows: true };
+    expect(native, "the native controls in both themes").toEqual({
+      light: { scheme: "light", ...same },
+      dark: { scheme: "dark", ...same },
+    });
   },
 
   // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
