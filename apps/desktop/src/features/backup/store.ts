@@ -3,9 +3,10 @@ import { BackupError, type BackupErrorCode } from "../../lib/backup-error.ts";
 import { BACKUP_NAME } from "../../lib/backup-target.ts";
 import { DriveError } from "../../lib/drive-target.ts";
 import type { ConflictChoice } from "../../lib/vault-backup.ts";
+import { PICKED_FILE_MAX_BYTES } from "../../platform/pick-file.ts";
 
-/** What the restore picker reads at most (PICKED_FILE_MAX_BYTES in src-tauri/src/lib.rs, #1241). */
-const BACKUP_FILE_MAX_BYTES = 1024 * 1024;
+/** What the restore reads at most: the picker's limit, so a backup saved here can always be picked again (#1241). */
+const BACKUP_FILE_MAX_BYTES = PICKED_FILE_MAX_BYTES;
 
 /** What a backup or a read says besides a BackupError code: a cancelled dialog, or any other failure. */
 export type BackupOutcomeCode =
