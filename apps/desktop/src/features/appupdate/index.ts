@@ -8,3 +8,4 @@ export {
   type AppUpdateState,
   initialAppUpdateState,
 } from "./store.ts";
+export { wireAppUpdates } from "./wire.ts";
