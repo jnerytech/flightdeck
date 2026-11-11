@@ -5,7 +5,7 @@ import { AssistField } from "@/components/assistant/assist-field";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { PersonaSwitch } from "@/features/personas";
+import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";

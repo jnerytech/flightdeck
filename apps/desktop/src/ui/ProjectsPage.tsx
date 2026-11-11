@@ -13,7 +13,7 @@ import { StartFromGithub } from "@/components/projects/start-from-github";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PersonaPicker } from "@/features/personas";
+import { PersonaPicker } from "@/features/personas/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";

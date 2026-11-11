@@ -26,7 +26,7 @@ import {
   PermissionSelect,
   PersonaPicker,
   useSuggestedPersona,
-} from "@/features/personas";
+} from "@/features/personas/index.ts";
 import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";

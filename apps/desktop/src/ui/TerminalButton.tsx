@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { PersonaPicker } from "@/features/personas";
+import { PersonaPicker } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import type { TerminalTarget } from "../lib/terminal.ts";

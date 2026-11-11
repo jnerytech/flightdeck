@@ -50,7 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { useSuggestedPersona } from "@/features/personas";
+import { useSuggestedPersona } from "@/features/personas/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
 import { useStartAsk } from "@/hooks/use-start-ask";

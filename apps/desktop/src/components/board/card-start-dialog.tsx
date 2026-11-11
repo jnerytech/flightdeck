@@ -7,7 +7,7 @@ import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertPicker } from "@/components/workflows/alert-picker";
-import { PersonaPicker, useSuggestedPersona } from "@/features/personas";
+import { PersonaPicker, useSuggestedPersona } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../../lib/app-store.ts";

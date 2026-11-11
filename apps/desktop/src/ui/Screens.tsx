@@ -9,7 +9,7 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { UntrustedNotice } from "@/components/projects/untrusted-notice";
 import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
-import { PersonaPicker, PersonaSwitch } from "@/features/personas";
+import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import {
