@@ -9,7 +9,9 @@ import type {
   UnpricedModel,
   UsageOrigin,
 } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { costOf, PRICING_DATE, type Pricing } from "./pricing.ts";
 import type { InitialLoad, UsageTokens } from "./usage-indexer.ts";
 
@@ -27,6 +29,9 @@ const DIVERGENCE_RATIO = 0.1;
 const DIVERGENCE_USD = 0.05;
 /** A message is stamped a little before the API request that paid for it ends. */
 const TELEMETRY_SLACK_MS = 60_000;
+
+/** The SDK's running total in a `turn.result` payload; a damaged payload says nothing. */
+const TurnCost = z.looseObject({ costUsd: z.number().optional().catch(undefined) });
 
 const farApart = (computed: number, reported: number) => {
   const gap = Math.abs(computed - reported);
@@ -388,7 +393,7 @@ export class Costs {
       .all();
     const divergences: CostsDivergence[] = [];
     for (const { id, computed, payload } of rows) {
-      const sdk = payload ? (JSON.parse(payload).costUsd as number | undefined) : undefined;
+      const sdk = payload ? parseJsonOr(TurnCost, payload, {}).costUsd : undefined;
       if (sdk === undefined) continue;
       if (!farApart(computed, sdk)) continue;
       const { model } = this.db
