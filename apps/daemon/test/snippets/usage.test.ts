@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startServer } from "../src/server.ts";
-import { SecretScanner } from "../src/snippets/model.ts";
-import { Snippets } from "../src/snippets/store.ts";
-import { SnippetUse } from "../src/snippets/use.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { TerminalManager } from "../src/terminal/terminal-manager.ts";
-import { newManager, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { fakePtys } from "./pty-helpers.ts";
+import { startServer } from "../../src/server.ts";
+import { SecretScanner } from "../../src/snippets/model.ts";
+import { Snippets } from "../../src/snippets/store.ts";
+import { SnippetUse } from "../../src/snippets/use.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
+import { newManager, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { fakePtys } from "../pty-helpers.ts";
 
 const TOKEN = "snippets-use-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

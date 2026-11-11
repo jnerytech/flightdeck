@@ -2,12 +2,12 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Snippet } from "@flightdeck/protocol";
-import { startServer } from "../src/server.ts";
-import { SecretScanner } from "../src/snippets/model.ts";
-import { Snippets } from "../src/snippets/store.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { BASELINE_FEATURES, newManager, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { startServer } from "../../src/server.ts";
+import { SecretScanner } from "../../src/snippets/model.ts";
+import { Snippets } from "../../src/snippets/store.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { BASELINE_FEATURES, newManager, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "snippets-token-0123456789abcdef0123";
 const cleanups: Array<() => unknown> = [];

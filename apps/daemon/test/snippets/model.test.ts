@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { fieldsOf, normalizeSnippet, renderSnippet, SecretScanner } from "../src/snippets/model.ts";
+import {
+  fieldsOf,
+  normalizeSnippet,
+  renderSnippet,
+  SecretScanner,
+} from "../../src/snippets/model.ts";
 
 const scanner = new SecretScanner();
 

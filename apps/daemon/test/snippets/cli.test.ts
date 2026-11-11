@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseArgs, runCli } from "../src/main.ts";
-import { startServer } from "../src/server.ts";
-import { SecretScanner } from "../src/snippets/model.ts";
-import { Snippets } from "../src/snippets/store.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { newManager, tempDir, workspace } from "./helpers.ts";
+import { parseArgs, runCli } from "../../src/main.ts";
+import { startServer } from "../../src/server.ts";
+import { SecretScanner } from "../../src/snippets/model.ts";
+import { Snippets } from "../../src/snippets/store.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { newManager, tempDir, workspace } from "../helpers.ts";
 
 setDefaultTimeout(20_000);
 

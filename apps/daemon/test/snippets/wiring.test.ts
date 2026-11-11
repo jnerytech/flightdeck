@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { createSnippets } from "../src/snippets/wiring.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { tempDir } from "./helpers.ts";
+import { createSnippets } from "../../src/snippets/wiring.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * The snippets as main.ts builds them (#1593): the host's scanner, which knows the vault's values,

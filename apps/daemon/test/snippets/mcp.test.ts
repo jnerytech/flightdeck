@@ -3,12 +3,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { runCli } from "../src/main.ts";
-import { startServer } from "../src/server.ts";
-import { SecretScanner } from "../src/snippets/model.ts";
-import { Snippets } from "../src/snippets/store.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { newManager, tempDir, workspace } from "./helpers.ts";
+import { runCli } from "../../src/main.ts";
+import { startServer } from "../../src/server.ts";
+import { SecretScanner } from "../../src/snippets/model.ts";
+import { Snippets } from "../../src/snippets/store.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { newManager, tempDir, workspace } from "../helpers.ts";
 
 setDefaultTimeout(20_000);
 
