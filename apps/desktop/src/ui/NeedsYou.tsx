@@ -250,7 +250,7 @@ function RequestActions(
         {item.vaultOnce && (
           <ActionButton
             variant="outline"
-            onClick={() => store.approveVaultForSession(item.hostId, item.requestId)}
+            onClick={() => store.vaultApprovals.approveForSession(item.hostId, item.requestId)}
           >
             {t("vaultRulesUi.approveSession")}
           </ActionButton>
