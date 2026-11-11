@@ -41,7 +41,7 @@ function setup(picked: string | null, scope: "host" | "all" = "host", offline = 
   store.i18n.start();
   store.loadPalette = async () => {};
   store.hostCommand = (async () => null) as never;
-  if (picked) store.pickHost(picked);
+  if (picked) store.hostTabs.switchHost(picked);
   store.tabScope.set(scope);
   const state = {
     ...store.getState(),
@@ -104,7 +104,7 @@ describe("projects-switcher: the project lists follow the host switcher (#932)",
   test("a switch to beta lists beta's projects", async () => {
     const { store } = setup("h1");
     await settleMaybe(() => names().length > 0);
-    act(() => store.pickHost("h2"));
+    act(() => store.hostTabs.switchHost("h2"));
     await settleMaybe(() => names().join() === "docs");
     expect(names()).toEqual(["docs"]);
   });
@@ -114,7 +114,7 @@ describe("projects-switcher: the sidebar's project tree follows the switcher too
   test("with alfa chosen, the tree lists alfa's projects and not beta's", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
-    store.pickHost("h1");
+    store.hostTabs.switchHost("h1");
     const state = {
       ...store.getState(),
       hosts: [host("h1", "alfa"), host("h2", "beta")],
@@ -149,7 +149,7 @@ describe("projects-switcher: the sidebar's project tree follows the switcher too
   test("with beta chosen in the switcher, Board and Workflows open beta's, whatever session was selected", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
-    store.pickHost("h2");
+    store.hostTabs.switchHost("h2");
     const state = {
       ...store.getState(),
       hosts: [host("h1", "alfa"), host("h2", "beta")],

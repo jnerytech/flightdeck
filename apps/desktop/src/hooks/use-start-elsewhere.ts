@@ -50,7 +50,7 @@ export function useStartElsewhere(options: {
         if (mine !== asked.current || !list) return;
         const projects = list.projects.map((p) => ({
           id: p.id,
-          key: store.projectKeyOf(host.id, p),
+          key: store.projectList.keyOf(host.id, p),
         }));
         // The limit is the host's, so the cards running in all its projects count against it.
         if (projects.some((p) => p.key === sourceKey)) {

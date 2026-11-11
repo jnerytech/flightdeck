@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { Central } from "../../src/central/central.ts";
 import {
   type HookTarget,
   HTTP_HOOK_EVENTS,
@@ -9,9 +10,10 @@ import {
   installHooks,
   uninstallHooks,
 } from "../../src/central/hooks-install.ts";
+import { ProjectKeys } from "../../src/central/project-key.ts";
 import { expandHome, loadConfig } from "../../src/config.ts";
 import { parseArgs, runCli } from "../../src/main.ts";
-import { tempDir } from "../support/helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
 
 const TARGET: HookTarget = {
   command: ["C:\\Program Files\\flightdeck\\flightdeckd.exe"],
@@ -253,5 +255,48 @@ describe("hooks-install: CLI", () => {
     await runCli(["hooks", "install", "--config", config({ hooks: { port: 0 } })], deps);
     expect(exitCode).toBe(1);
     expect(out.join("\n")).toContain("hooks.port");
+  });
+});
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+/** A Central over a fresh manager; the receptor asks for `token` when one is given. */
+function newCentral(dir: string, options: { token?: string; dataDir?: string } = {}) {
+  const configFile = join(dir, "config.json");
+  writeFileSync(configFile, "{}");
+  const { manager, store, project } = newManager();
+  const central = new Central({
+    db: store.db,
+    keys: new ProjectKeys("h", async () => ({ code: 1, stdout: "" })),
+    manager,
+    hooks: {
+      port: 0,
+      ...(options.token ? { token: options.token } : {}),
+      permissionTimeoutS: 600,
+      staleAfterS: 900,
+    },
+    dataDir: options.dataDir ?? join(dir, "data"),
+    hostName: "h",
+    configFile,
+    selfCommand: ["flightdeckd"],
+    settingsPath: () => join(dir, "settings.json"),
+  });
+  return { central, manager, project };
+}
+
+describe("hooks-install: through the Central", () => {
+  test("hooks: asking to install needs confirm; install, status and uninstall go through the host's settings", async () => {
+    const dir = tempDir("fd-central-");
+    const { central } = newCentral(dir);
+    cleanups.push(() => central.stop());
+    await expect(central.hooksInstall(false)).rejects.toThrow("confirm");
+    await expect(central.hooksUninstall(false)).rejects.toThrow("confirm");
+    expect((await central.hooksStatus()).status).toBe("absent");
+    expect((await central.hooksInstall(true)).status).toBe("installed");
+    expect((await central.hooksStatus()).status).toBe("installed");
+    expect((await central.hooksUninstall(true)).status).toBe("absent");
   });
 });

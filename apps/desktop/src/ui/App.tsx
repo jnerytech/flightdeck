@@ -399,7 +399,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const projectsKnown = projectHost === null || state.projects[projectHost] !== undefined;
   const projectHostOnline = state.hosts.some((h) => h.id === projectHost && h.status === "online");
   useEffect(() => {
-    if (projectHost && !projectsKnown && projectHostOnline) void store.loadProjects(projectHost);
+    if (projectHost && !projectsKnown && projectHostOnline)
+      void store.projectList.load(projectHost);
   }, [store, projectHost, projectsKnown, projectHostOnline]);
 
   /** Opening anything closes the layers above it: the palette (dialogs go with their screen). */
@@ -610,7 +611,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                 t={t}
                 onChoose={(hostId) => {
                   store.select(hostId, null);
-                  store.pickHost(hostId);
+                  store.hostTabs.switchHost(hostId);
                 }}
                 onAdd={() => go({ name: "add-host" })}
                 allHosts={tabScope === "all"}

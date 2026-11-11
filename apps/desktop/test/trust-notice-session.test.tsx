@@ -35,7 +35,7 @@ describe("trust-notice-session: the session screen offers the review of its proj
     const hostId = store.getState().hosts[0]?.id ?? "";
     const project = await store.hostCommand(hostId, "project.add", { path: repo });
     await act(async () => {
-      await store.loadProjects(hostId);
+      await store.projectList.load(hostId);
     });
     const { sessionId } = await d.manager.create({ cwd: repo, prompt: "hello" });
     await act(async () => {
@@ -66,7 +66,7 @@ describe("trust-notice-session: the session screen offers the review of its proj
     await store.hostCommand(hostId, "project.add", { path: repo });
     await store.hostCommand(hostId, "project.trust.set", { path: repo, trusted: true });
     await act(async () => {
-      await store.loadProjects(hostId);
+      await store.projectList.load(hostId);
     });
     const { sessionId } = await d.manager.create({ cwd: repo, prompt: "hello" });
     await act(async () => {

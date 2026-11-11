@@ -223,7 +223,7 @@ describe("card-pr-detect-ui: the card page reads the provider from the remote (#
   test("a project the app has not listed yet is added when the host answers", async () => {
     const w = setup({ answers: [{ outcome: "set", host: null, prProvider: "github" }] });
     (w.store as unknown as { update(p: object): void }).update({ projects: { h1: [] } });
-    await w.store.detectPrProvider("h1", "p1");
+    await w.store.projectList.detectProvider("h1", "p1");
     expect(w.store.getState().projects.h1?.map((one) => one.id)).toEqual(["p1"]);
   });
 });

@@ -1,10 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
+import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import { Central } from "../../src/central/central.ts";
 import { ExternalSessions, type ExternalStatus } from "../../src/central/external.ts";
+import { ProjectKeys } from "../../src/central/project-key.ts";
 import { type Receptor, startReceptor } from "../../src/central/receptor.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
 import { EventStore } from "../../src/store/event-store.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
 
 const TOKEN = "hooks-token-0123456789";
 const cleanups: Array<() => unknown> = [];
@@ -140,5 +145,65 @@ describe("hooks-receptor", () => {
       canUseTool: async () => ({ behavior: "allow" }),
     });
     expect(options?.env).toEqual({ PATH: "/bin", FLIGHTDECK_MANAGED: "1" });
+  });
+});
+
+const CENTRAL_TOKEN = "central-token-0123456789abcdef";
+
+/** A Central over a fresh manager; the receptor asks for `token` when one is given. */
+function newCentral(dir: string, options: { token?: string; dataDir?: string } = {}) {
+  const configFile = join(dir, "config.json");
+  writeFileSync(configFile, "{}");
+  const { manager, store, project } = newManager();
+  const central = new Central({
+    db: store.db,
+    keys: new ProjectKeys("h", async () => ({ code: 1, stdout: "" })),
+    manager,
+    hooks: {
+      port: 0,
+      ...(options.token ? { token: options.token } : {}),
+      permissionTimeoutS: 600,
+      staleAfterS: 900,
+    },
+    dataDir: options.dataDir ?? join(dir, "data"),
+    hostName: "h",
+    configFile,
+    selfCommand: ["flightdeckd"],
+    settingsPath: () => join(dir, "settings.json"),
+  });
+  return { central, manager, project };
+}
+
+describe("hooks-receptor: through the Central", () => {
+  test("a hook from a session the host does not run is checked against the sessions it does", async () => {
+    const dir = tempDir("fd-central-hook-");
+    const { central, manager, project } = newCentral(dir, { token: CENTRAL_TOKEN });
+    cleanups.push(() => central.stop());
+    await manager.create({ cwd: project, prompt: "hi" });
+    const response = await fetch(`${central.receptorUrl()}/hooks/Stop`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${CENTRAL_TOKEN}`,
+      },
+      body: JSON.stringify({ session_id: "not-managed-here" }),
+    });
+    expect(response.status).toBe(200);
+    expect(central.external.get("not-managed-here")).toBeDefined();
+  });
+
+  test("a receptor file that cannot be written does not crash the daemon, and stopping settles", async () => {
+    const dir = tempDir("fd-central-file-");
+    const notAFolder = join(dir, "data");
+    writeFileSync(notAFolder, "a file where the data folder should be");
+    const { central } = newCentral(dir, { token: CENTRAL_TOKEN, dataDir: notAFolder });
+    await expect(central.ready()).rejects.toThrow();
+    // Stopping waits for the failed write and settles (cleaning up under a file may complain).
+    expect(["stopped", "refused"]).toContain(
+      await central.stop().then(
+        () => "stopped",
+        () => "refused",
+      ),
+    );
   });
 });

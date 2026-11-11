@@ -369,7 +369,7 @@ describe("orcamentos-ui", () => {
     git(repo, "commit", "-q", "-m", "inicial");
     const hostId = store.getState().hosts[0]?.id ?? "";
     const project = await store.hostCommand(hostId, "project.add", { path: repo });
-    await store.loadProjects(hostId);
+    await store.projectList.load(hostId);
     await act(async () => {
       store.router.push({ name: "project", host: hostId, projectId: project?.id ?? "" });
     });
@@ -380,7 +380,7 @@ describe("orcamentos-ui", () => {
     });
     const route = store.router.current;
     expect(route).toMatchObject({ name: "costs", host: hostId });
-    const key = store.projectKeyOf(hostId, store.getState().projects[hostId]?.[0] as never);
+    const key = store.projectList.keyOf(hostId, store.getState().projects[hostId]?.[0] as never);
     expect(route.name === "costs" ? route.projectKey : "").toBe(key);
   });
 

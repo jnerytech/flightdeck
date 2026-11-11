@@ -67,9 +67,11 @@ export function RoiTable(
   useEffect(() => {
     let live = true;
     const load = () =>
-      void store.roiSummaries(from, to === store.today() ? store.roiToday() : to).then((all) => {
-        if (live) setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
-      });
+      void store.roiFigures
+        .summaries(from, to === store.today() ? store.roiFigures.today() : to)
+        .then((all) => {
+          if (live) setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
+        });
     load();
     const timer = setInterval(load, REFRESH_MS);
     return () => {
@@ -82,7 +84,7 @@ export function RoiTable(
   const rows = rowsFrom({
     summaries: answers,
     inScope: (key) => scope.includes(selection, key),
-    moneyOf: (key) => store.roiMoneyOf(key),
+    moneyOf: (key) => store.roiFigures.moneyOf(key),
     nameOf: (key, name) => projectName(key) || name,
     lang: t.lang,
   });
