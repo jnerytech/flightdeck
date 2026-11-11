@@ -24,7 +24,7 @@ const ACTION: VaultRequestFrame = {
  * A slice over stand-ins: every command sent to a host is written down as `type payload`, every
  * notice as its title, and the outcomes the usage log would get as they come.
  */
-function slice(over: { policy?: VaultPolicy; now?: number } = {}) {
+function slice(over: { policy?: VaultPolicy; now?: number; denyFails?: boolean } = {}) {
   let pending: PendingItem[] = [];
   const sent: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const notices: string[] = [];
@@ -41,6 +41,7 @@ function slice(over: { policy?: VaultPolicy; now?: number } = {}) {
     hostName: (id) => (id === "h" ? "alfa" : null),
     dispatch: (async (_host: string, type: string, payload: Record<string, unknown>) => {
       sent.push({ type, payload });
+      if (over.denyFails && type === "vault.deny") throw new Error("the host is gone");
       return {};
     }) as VaultApprovalsCore["dispatch"],
     policy: () => over.policy,
@@ -144,5 +145,17 @@ describe("vault approvals slice", () => {
     expect(heard).toEqual(["denied by the options"]);
     expect(pending()).toEqual([]);
     expect(sent.map((c) => c.type)).toEqual(["vault.deny", "vault.deny"]);
+  });
+
+  test("a host that cannot be told of the refusal does not stop the outcome from being heard", async () => {
+    const { approvals, recorded } = slice({
+      policy: () => ({ kind: "deny", reason: "no" }),
+      denyFails: true,
+    });
+    const heard: string[] = [];
+    approvals.onOutcome((o) => heard.push(o.reason));
+    await approvals.onRequest(HOST, ACTION);
+    expect(heard).toEqual(["no"]);
+    expect(recorded).toHaveLength(1);
   });
 });
