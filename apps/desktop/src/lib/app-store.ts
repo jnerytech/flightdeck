@@ -40,7 +40,6 @@ import type {
   TeamInfo,
   TeamsUpdatedFrame,
   TerminalInfo,
-  VaultRequestFrame,
   WatchInfo,
   WatchSettings,
   WorkflowRun,
@@ -113,7 +112,11 @@ import {
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
-import { VaultRulesSlice, VaultSecretsSlice } from "../features/vault/index.ts";
+import {
+  VaultApprovalsSlice,
+  VaultRulesSlice,
+  VaultSecretsSlice,
+} from "../features/vault/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -149,7 +152,6 @@ import {
 } from "./finished.ts";
 import { googleConfig } from "./google-config.ts";
 import type { GoogleConfig } from "./google-oauth.ts";
-import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { HomeCache } from "./home-cache.ts";
 import {
   type ConnectionStatus,
@@ -255,15 +257,7 @@ import {
   saveTreePinned,
 } from "./tree-fold.ts";
 import { type SecretMeta, Vault } from "./vault.ts";
-import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
-import {
-  answerVaultRequest,
-  checkDelivery,
-  type DeliveryRefusal,
-  type VaultOutcome,
-  type VaultPolicy,
-  type VaultRequestContext,
-} from "./vault-requests.ts";
+import { checkDelivery, type DeliveryRefusal, type VaultPolicy } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { APP_VERSION, hasFeature } from "./version.ts";
@@ -1153,6 +1147,21 @@ export class AppStore {
       this.clearShownUnread();
     });
     this.vault = new Vault(platform);
+    this.vaultApprovals = new VaultApprovalsSlice({
+      vault: this.vault,
+      pending: () => this.state.vaultApprovals,
+      setPending: (items) => this.update({ vaultApprovals: items }),
+      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name ?? null,
+      dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
+      optionsPolicy: () => this.options.vaultPolicy,
+      now: () => (this.options.now ?? Date.now)(),
+      notify: (title, body) => this.notifyUser({ title, body, event: "needs-you" }),
+      recorded: (outcome) => {
+        this.usage.recordOutcome(outcome);
+        this.keepUsage();
+      },
+      t: () => this.i18n.t,
+    });
     this.secrets = new VaultSecretsSlice({
       vault: this.vault,
       secretsChanged: () => this.update({ secrets: this.vault.list() }),
@@ -2956,10 +2965,9 @@ export class AppStore {
   ): Promise<void> {
     if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
-    const question = this.vaultQuestions.get(requestId);
-    if (question) {
-      question(decision === "allow" ? { scope: "once", via: "app" } : null);
-    } else {
+    // A request of the vault is answered in its own queue; any other goes to the host.
+    const vaultAnswer = decision === "allow" ? ({ scope: "once", via: "app" } as const) : null;
+    if (!this.vaultApprovals.settle(requestId, vaultAnswer)) {
       try {
         await this.connections
           .get(hostId)
@@ -3192,7 +3200,7 @@ export class AppStore {
       onSummaries: (summaries) => this.onSummaries(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
-      onVaultRequest: (request) => void this.onVaultRequest(config, request),
+      onVaultRequest: (request) => void this.vaultApprovals.onRequest(config, request),
       onVaultUsed: (used) => {
         this.usage.recordUsed(config.id, used);
         this.keepUsage();
@@ -3719,6 +3727,8 @@ export class AppStore {
   readonly vaultRules: VaultRulesSlice;
   /** The vault's secrets and their `.fdvault` file; `state.secrets` is the list the screens read. */
   readonly secrets: VaultSecretsSlice;
+  /** The daemon's requests for a secret: the policy, the queue and the outcome listeners. */
+  readonly vaultApprovals: VaultApprovalsSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
@@ -3833,8 +3843,6 @@ export class AppStore {
     this.update({ vaultUsage: this.usage.list() });
   }
 
-  private readonly vaultListeners = new Set<(outcome: VaultOutcome) => void>();
-
   /**
    * The vault's values, line by line and an env set's variable by variable, long enough to tell
    * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
@@ -3899,19 +3907,6 @@ export class AppStore {
     });
     return pieces;
   }
-
-  /** Calls `listener` with the result of each `vault.request` the daemon makes. */
-  onVaultOutcome(listener: (outcome: VaultOutcome) => void): () => void {
-    this.vaultListeners.add(listener);
-    return () => {
-      this.vaultListeners.delete(listener);
-    };
-  }
-
-  /** Phase 17: the questions about the daemon's requests, answered from the queue, by request id. */
-  private readonly vaultQuestions = new Map<string, (answer: VaultAnswer | null) => void>();
-
-  private defaultVaultPolicy: VaultPolicy | null = null;
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
   /** Sessions whose lost frame was asked for again (cleared when the next frame fits). */
@@ -4165,148 +4160,6 @@ export class AppStore {
     const sync = () => void syncPeers(this.relayDeps()).catch(() => {});
     sync();
     this.peersTimer ??= setInterval(sync, this.options.peersSyncMs ?? 5000);
-  }
-
-  /** Approves a request for a secret for the rest of the requester's session (phase 19). */
-  approveVaultForSession(hostId: string, requestId: string): Promise<void> {
-    // Only where the rule allows it and no hold is needed: the session approval has no button to
-    // hold, so it can never stand in for one.
-    const item = this.state.vaultApprovals.find(
-      (i) => i.hostId === hostId && i.requestId === requestId,
-    );
-    // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
-    if (!item?.vaultOnce || item.risk === "high") return Promise.resolve();
-    this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
-    return Promise.resolve();
-  }
-
-  /** The policy of the options, or the one that puts action requests to the user. */
-  private vaultPolicy(): VaultPolicy {
-    this.defaultVaultPolicy ??= actionPolicy({
-      ask: (context) => this.askVault(context),
-      now: this.options.now ?? Date.now,
-      // Phase 19: a request the rules made ask is approved on the daemon before the delivery.
-      approve: async ({ request, hostId }, answer) => {
-        await this.dispatch(hostId, "vault.approve", {
-          requestId: request.requestId,
-          via: answer.via,
-          scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
-        });
-      },
-    });
-    return this.options.vaultPolicy ?? this.defaultVaultPolicy;
-  }
-
-  /** Puts a request of the daemon for a secret in the queue and waits for the user's answer. */
-  private askVault({ request, hostId, secret }: VaultRequestContext): Promise<VaultAnswer | null> {
-    const { t } = this.i18n;
-    const free = request.command !== undefined;
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    const requester = t(`actionsUi.requester.${request.requester}` as Key);
-    const input: Record<string, string> = {
-      [t("vaultApproval.requester")]: requester,
-      // Phase 19: the rule that made it ask, and the tags it saw.
-      ...(request.reason ? { [t("vaultApproval.rule")]: request.reason } : {}),
-      ...(request.tags?.length ? { [t("vaultApproval.tags")]: request.tags.join(", ") } : {}),
-      ...(free
-        ? {
-            [t("vaultApproval.command")]: request.command ?? "",
-            [t("vaultApproval.secrets")]: (
-              request.secrets ?? [secret?.name ?? request.secretId]
-            ).join(", "),
-            ...(request.host ? { [t("vaultApproval.host")]: request.host } : {}),
-          }
-        : {
-            [t("vaultApproval.action")]: request.action ?? "",
-            [t("vaultApproval.secret")]: secret?.name ?? request.secretId,
-            ...Object.fromEntries(
-              Object.entries(request.params ?? {}).map(([k, v]) => [
-                `${t("vaultApproval.param")} ${k}`,
-                v,
-              ]),
-            ),
-          }),
-    };
-    const item: PendingItem = {
-      hostId,
-      hostName: host?.name ?? hostId,
-      sessionId: "",
-      sessionName: t("vaultApproval.session", { requester }),
-      requestId: request.requestId,
-      toolName: free ? "run_with_secret" : (request.action ?? ""),
-      createdAt: new Date((this.options.now ?? Date.now)()).toISOString(),
-      input,
-      ...(free || request.needsHold
-        ? {
-            risk: "high" as const,
-            riskReason: free ? t("vaultApproval.freeReason") : (request.reason ?? ""),
-          }
-        : {}),
-      vault: true,
-      // A request that needs holding is approved only by the held button, one use at a time.
-      // Not a free command either: it is high risk, and a session approval has no hold (#244).
-      ...(request.once && !request.needsHold && !free ? { vaultOnce: true as const } : {}),
-      vaultRule: {
-        secretId: request.secretId,
-        match: {
-          requester: request.requester,
-          // actionPolicy only asks for a request that names an action or a command.
-          ...(free
-            ? { purpose: "run_with_secret" }
-            : { purpose: "action", action: request.action as string }),
-        },
-      },
-    };
-    this.notifyUser({
-      title: t("vaultApproval.notifyTitle"),
-      body: t("vaultApproval.notifyBody", {
-        requester,
-        what: free ? "run_with_secret" : item.toolName,
-        host: item.hostName,
-      }),
-      event: "needs-you",
-    });
-    return new Promise((resolve) => {
-      // Phase 19: unanswered when the daemon gives up on it, it is denied and leaves the queue.
-      const expiry =
-        request.expiresAt === undefined
-          ? undefined
-          : setTimeout(
-              () => this.vaultQuestions.get(request.requestId)?.(null),
-              Math.max(0, request.expiresAt - (this.options.now ?? Date.now)()),
-            );
-      this.vaultQuestions.set(request.requestId, (approved) => {
-        clearTimeout(expiry);
-        this.vaultQuestions.delete(request.requestId);
-        this.update({
-          vaultApprovals: this.state.vaultApprovals.filter(
-            (i) => i.requestId !== request.requestId,
-          ),
-        });
-        resolve(approved);
-      });
-      this.update({ vaultApprovals: [...this.state.vaultApprovals, item] });
-    });
-  }
-
-  /** A `vault.request` of the daemon: the policy decides, and nothing is delivered unless it says so. */
-  private async onVaultRequest(config: HostConfig, request: VaultRequestFrame): Promise<void> {
-    const outcome = await answerVaultRequest(request, {
-      hostId: config.id,
-      hostUrl: config.url,
-      vault: this.vault,
-      policy: this.vaultPolicy(),
-      deliver: (payload) => this.dispatch(config.id, "vault.deliver", payload),
-      now: this.options.now ?? Date.now,
-    });
-    this.usage.recordOutcome(outcome);
-    this.keepUsage();
-    // A run that waits for the secret fails at once, instead of at the daemon's deadline.
-    if (!outcome.delivered) {
-      void this.dispatch(config.id, "vault.deny", { requestId: request.requestId }).catch(() => {});
-    }
-    for (const listener of this.vaultListeners) listener(outcome);
   }
 
   private onRun(hostId: string, run: WorkflowRun): void {

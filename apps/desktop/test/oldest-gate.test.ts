@@ -77,12 +77,14 @@ describe("oldest-gate: approve or deny the oldest request from the palette", () 
 
   test("a vault request first is opened to be seen, never granted from the palette", () => {
     const { store, answered, opened } = storeWithGateFirst();
-    const hidden = store as unknown as {
-      state: { vaultApprovals: unknown[]; runs: unknown };
-      vaultQuestions: Map<string, (answer: unknown) => void>;
-    };
+    const hidden = store as unknown as { state: { vaultApprovals: unknown[]; runs: unknown } };
+    const questions = (
+      store.vaultApprovals as unknown as {
+        questions: Map<string, (answer: unknown) => void>;
+      }
+    ).questions;
     const granted: unknown[] = [];
-    hidden.vaultQuestions.set("v1", (answer) => granted.push(answer));
+    questions.set("v1", (answer) => granted.push(answer));
     hidden.state = {
       ...hidden.state,
       runs: {},
