@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import * as protocol from "@flightdeck/protocol";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 setDefaultTimeout(30_000);
 

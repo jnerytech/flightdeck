@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { linkSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { templateRootOf } from "../../src/board/spec-template.ts";
-import { newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * Issue #1058, slice 2: a project's own validation template (`.flightdeck/templates/validation.md`)

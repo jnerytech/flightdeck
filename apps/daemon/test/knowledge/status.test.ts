@@ -14,8 +14,8 @@ import type { KnowledgeEntry } from "@flightdeck/protocol";
 import { listKnowledge } from "../../src/knowledge/list.ts";
 import { setKnowledgeStatus } from "../../src/knowledge/status.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: the status of a document, written into its front matter and nowhere else. */
 const TOKEN = "knowledge-status-token-0123456789a";

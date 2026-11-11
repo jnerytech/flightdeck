@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { assistantLine, userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import {
+  assistantLine,
+  userLine,
+  writeTranscript,
+} from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";

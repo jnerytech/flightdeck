@@ -5,8 +5,8 @@ import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Idle } from "../../src/messaging/idle.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager } from "../helpers.ts";
-import { PROJECT, setup } from "../mensagens-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { PROJECT, setup } from "../support/messaging-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

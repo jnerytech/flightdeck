@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, join } from "node:path";
 import { UsageIndexer, type UsageIndexerOptions } from "../../src/costs/usage-indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 import {
   type EntryRow,
   insertCard,
@@ -13,7 +13,7 @@ import {
   SESSION,
   usageEntries,
   writeUsageTranscript,
-} from "../usage-helpers.ts";
+} from "../support/usage-helpers.ts";
 
 /** The host is at UTC−3: 01:30 UTC is still the day before there. */
 const minus3 = (ms: number) => new Date(ms - 3 * 3_600_000).toISOString().slice(0, 10);

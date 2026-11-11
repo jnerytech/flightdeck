@@ -4,7 +4,7 @@ import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
 import type { ProcReader } from "../../src/resources/resources.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "res-token-0123456789abcdef";

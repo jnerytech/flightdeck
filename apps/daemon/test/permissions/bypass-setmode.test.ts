@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 async function live(allowBypass: boolean, mode: "default" | "plan" = "default") {
   const runtime = new FakeRuntime({ delayMs: 1 });

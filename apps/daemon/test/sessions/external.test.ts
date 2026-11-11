@@ -7,7 +7,7 @@ import {
   type ExternalStatus,
 } from "../../src/central/external.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const T0 = Date.parse("2026-10-29T12:00:00.000Z");
 

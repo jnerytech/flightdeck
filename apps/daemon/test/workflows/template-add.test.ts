@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { CreatePr, PrProvider } from "../../src/board/pr.ts";
 import { addWorkflowTemplate } from "../../src/workflows/template-add.ts";
 import { workflowTemplates } from "../../src/workflows/templates.ts";
-import { git, gitRepoWithOrigin } from "../board-helpers.ts";
+import { git, gitRepoWithOrigin } from "../support/board-helpers.ts";
 
 /**
  * Issue #1221: a workflow template is committed on a new branch the host names, pushed, and opened

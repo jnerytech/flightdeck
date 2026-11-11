@@ -3,9 +3,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readConfig, statuslineText } from "../../src/costs/statusline.ts";
 import { runCli, startDaemon } from "../../src/main.ts";
-import { tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { SESSION } from "../usage-helpers.ts";
+import { tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { SESSION } from "../support/usage-helpers.ts";
 
 setDefaultTimeout(20_000);
 

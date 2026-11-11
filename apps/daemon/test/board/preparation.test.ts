@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { shellCommand } from "../../src/board/setup.ts";
 import type { StartOptions } from "../../src/runtime/types.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {

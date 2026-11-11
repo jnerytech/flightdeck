@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { startServer } from "../../src/server.ts";
 import { type SshTargetInput, SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { BASELINE_FEATURES, newManager, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "ssh-targets-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

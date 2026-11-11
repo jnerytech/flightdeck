@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createCosts } from "../../src/costs/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 /**
  * The usage and costs as main.ts builds them (phases 8 and 13, #1593): the costs report the usage

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Board } from "../../src/board/board.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 

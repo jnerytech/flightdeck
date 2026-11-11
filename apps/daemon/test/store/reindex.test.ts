@@ -4,14 +4,14 @@ import { dirname, join } from "node:path";
 import { acquireLock } from "../../src/lock.ts";
 import { type CliDeps, parseArgs, runCli } from "../../src/main.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 import {
   assistantLine,
   projectsRoot,
   summaryLine,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 function setup() {
   const root = projectsRoot();

@@ -9,8 +9,8 @@ import {
   type TeleportClaim,
   type TeleportImportDeps,
 } from "../../src/teleport/import.ts";
-import { git, gitRepo, gitRepoWithOrigin } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { git, gitRepo, gitRepoWithOrigin } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * Issue #100, slice 2b: the target turns a received package into a session of its own. The code

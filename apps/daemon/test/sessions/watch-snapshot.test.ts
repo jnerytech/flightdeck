@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type EventEnvelope, parseServerMessage, type SessionEventOf } from "@flightdeck/protocol";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 type Summary = SessionEventOf<"session.summary">;
 const TOKEN = "watch-snapshot-token-0123456789";

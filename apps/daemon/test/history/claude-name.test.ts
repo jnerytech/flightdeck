@@ -4,7 +4,7 @@ import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { lastTitle, parseLine, parseLines } from "../../src/history/parser.ts";
 import { Names } from "../../src/names/names.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { projectsRoot, userLine, writeTranscript } from "../support/history-helpers.ts";
 
 const CWD = "/home/dev/app";
 const ID = "11111111-0000-4000-8000-000000000000";

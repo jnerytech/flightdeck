@@ -7,7 +7,7 @@ import {
   portEnv,
 } from "../../src/runenv/ports.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const WEB_API = ["web", "api"];
 

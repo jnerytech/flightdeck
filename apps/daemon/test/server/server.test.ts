@@ -8,7 +8,7 @@ import {
   parseServerMessage,
 } from "@flightdeck/protocol";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, tempDir, waitFor } from "../helpers.ts";
+import { newManager, tempDir, waitFor } from "../support/helpers.ts";
 
 const TOKEN = "test-token-0123456789abcdef";
 

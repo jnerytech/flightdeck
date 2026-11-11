@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { runCommand } from "../../src/board/command.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 afterEach(() => {
   delete process.env.FD_PROBE;

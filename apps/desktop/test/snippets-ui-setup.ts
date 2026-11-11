@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Snippet } from "@flightdeck/protocol";
-import { git } from "../../daemon/test/board-helpers.ts";
+import { git } from "../../daemon/test/support/board-helpers.ts";
 import type { AppStore } from "../src/lib/app-store.ts";
 import { daemon as makeDaemon, TOKEN } from "./fixtures.ts";
 

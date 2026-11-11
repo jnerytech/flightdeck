@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
-import { manualTime } from "../../daemon/test/time-helpers.ts";
+import { manualTime } from "../../daemon/test/support/time-helpers.ts";
 import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";

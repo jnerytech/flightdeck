@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs, runCli } from "../../src/main.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 import {
   card,
   fakeDaemon,

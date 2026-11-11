@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { FileLog } from "../../src/logs/file-log.ts";
 import { logPathFor, tailForOrigin } from "../../src/logs/serve.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const make = async () => {
   const log = new FileLog({

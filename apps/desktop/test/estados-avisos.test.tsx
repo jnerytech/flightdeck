@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../daemon/test/board-helpers.ts";
-import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { git } from "../../daemon/test/support/board-helpers.ts";
+import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
 import { MIN_LOADING_MS, useMinLoading } from "../src/hooks/use-min-loading.ts";
 import { translator } from "../src/i18n/index.ts";
 import type { HostView } from "../src/lib/app-store.ts";

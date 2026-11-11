@@ -7,9 +7,9 @@ import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "fork-token-0123456789abcdef";
 

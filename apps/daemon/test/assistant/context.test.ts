@@ -7,8 +7,8 @@ import { workingDiff } from "../../src/board/diff.ts";
 import { FlightdeckError } from "../../src/errors.ts";
 import { credential, isCredentialPath } from "../../src/permissions/risk.ts";
 import { REMOVED_LINE } from "../../src/watch/trace.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const POSIX = process.platform !== "win32";
 

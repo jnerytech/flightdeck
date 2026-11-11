@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ProjectTrustState } from "@flightdeck/protocol";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "trust-transport-token-0123456789abcdef";
 const servers: RunningServer[] = [];

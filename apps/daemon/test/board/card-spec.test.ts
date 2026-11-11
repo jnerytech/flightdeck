@@ -14,8 +14,8 @@ import {
 import { join } from "node:path";
 import { descriptorInside, readSpec, readSpecText, stillThere } from "../../src/board/spec.ts";
 import { FlightdeckError } from "../../src/errors.ts";
-import { newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const posix = process.platform !== "win32";
 

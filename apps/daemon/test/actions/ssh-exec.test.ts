@@ -5,7 +5,7 @@ import { HostKeys } from "../../src/ssh/hostkey.ts";
 import type { DeliveredKey } from "../../src/ssh/key-delivery.ts";
 import { SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

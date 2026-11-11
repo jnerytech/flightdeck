@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { git, gitRepo } from "../../daemon/test/board-helpers.ts";
+import { git, gitRepo } from "../../daemon/test/support/board-helpers.ts";
 import { AppStore, sessionKey } from "../src/lib/app-store.ts";
 import { WORKSPACE_KEY } from "../src/lib/workspace.ts";
 import { liveScreen, registerDom } from "./dom.ts";

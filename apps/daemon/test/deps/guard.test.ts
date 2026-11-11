@@ -5,7 +5,7 @@ import * as protocol from "@flightdeck/protocol";
 import { type FakeCli, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { logLines } from "../../../../scripts/test/log-lines.ts";
 import { startDaemon } from "../../src/main.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 const TOKEN = "deps-guard-token-0123456789abcdef";
 const stops: Array<() => Promise<void>> = [];

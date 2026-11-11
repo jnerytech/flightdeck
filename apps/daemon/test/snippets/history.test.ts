@@ -7,8 +7,8 @@ import { defaultHistorySources, HistoryImporter } from "../../src/snippets/histo
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { Snippets } from "../../src/snippets/store.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "snippets-history-token-0123456789abc";
 const cleanups: Array<() => unknown> = [];

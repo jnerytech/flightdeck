@@ -5,8 +5,8 @@ import type { SshJob } from "../../src/actions/run.ts";
 import { FlightdeckError } from "../../src/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { poll } from "../helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 const TOKEN = "tok_ACTION-TOKEN-5c1e";
 const KEY =

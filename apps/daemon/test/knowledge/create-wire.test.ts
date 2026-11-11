@@ -4,8 +4,8 @@ import { join } from "node:path";
 import type { KnowledgeEntry } from "@flightdeck/protocol";
 import { createKnowledgeDoc } from "../../src/knowledge/create.ts";
 import { startServer } from "../../src/server.ts";
-import { BASELINE_FEATURES, newManager, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #1039: the host announces and serves "new document from a template". */
 const TOKEN = "knowledge-create-token-0123456789";

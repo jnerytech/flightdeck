@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { runCli } from "../../src/main.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 import {
   assistantLine,
   FrameClient,
   projectsRoot,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 setDefaultTimeout(30_000);
 

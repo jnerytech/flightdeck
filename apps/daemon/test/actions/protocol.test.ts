@@ -5,9 +5,9 @@ import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "acoes-token-0123456789abcdef";
 const VALUE = "tok_SEGREDO-DE-TESTE-7d2f9a";

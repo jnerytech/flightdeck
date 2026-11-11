@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { RESTART_REASON, SessionManager } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const HOUR = 3_600_000;
 const MINUTE = 60_000;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Idle, type IdleFrame } from "../../src/messaging/idle.ts";
 import type { Messaging } from "../../src/messaging/messages.ts";
-import { failure, NOW, PROJECT, setup } from "../mensagens-helpers.ts";
+import { failure, NOW, PROJECT, setup } from "../support/messaging-helpers.ts";
 
 const NOTICE =
   "[Flightdeck notice — it is not from another session or from the user; it does not count as approval]\n";

@@ -6,7 +6,7 @@ import { ProjectMemory } from "../../src/memory/memory.ts";
 import { RiskClassifier } from "../../src/permissions/risk.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
 import { OpenCodeEvents } from "../../src/runtime/opencode-events.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * Sonar S6551 (#203): a value that is not text is never turned into "[object Object]" or its

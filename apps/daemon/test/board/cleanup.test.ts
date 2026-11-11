@@ -3,8 +3,8 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { PrProviderKind } from "../../src/board/types.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);

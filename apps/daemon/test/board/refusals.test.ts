@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { AzureDevOpsCli } from "../../src/board/pr.ts";
 import { removeRule } from "../../src/board/project-rules.ts";
 import { FlightdeckError } from "../../src/errors.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 /** The reason and params of the refusal a call ends in; the detail is for logs, in English. */
 async function refused(call: () => unknown) {

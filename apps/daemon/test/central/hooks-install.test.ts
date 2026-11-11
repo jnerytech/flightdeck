@@ -11,7 +11,7 @@ import {
 } from "../../src/central/hooks-install.ts";
 import { expandHome, loadConfig } from "../../src/config.ts";
 import { parseArgs, runCli } from "../../src/main.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const TARGET: HookTarget = {
   command: ["C:\\Program Files\\flightdeck\\flightdeckd.exe"],

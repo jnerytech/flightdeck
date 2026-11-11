@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/errors.ts";
 import { OpenCodeRuntime } from "../../src/runtime/opencode-runtime.ts";
 import type { RuntimeEvent } from "../../src/runtime/types.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import { configOptions, FakeAcpAgent, manualTimers } from "./fake-acp-agent.ts";
 
 function setup(fingerprints: string[] = ["fp"]) {

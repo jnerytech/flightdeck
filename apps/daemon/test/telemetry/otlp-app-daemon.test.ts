@@ -5,8 +5,8 @@ import { loadConfig } from "../../src/config.ts";
 import { FlightdeckError } from "../../src/errors.ts";
 import { startServer } from "../../src/server.ts";
 import { TelemetryOptIn } from "../../src/telemetry/optin.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "optin-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

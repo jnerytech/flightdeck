@@ -3,7 +3,7 @@ import { appendFileSync, existsSync, renameSync, rmSync, writeFileSync } from "n
 import { join } from "node:path";
 import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../../src/board/diff.ts";
 import { type Rev, refArg } from "../../src/board/ref-arg.ts";
-import { git, gitRepo } from "../board-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
 
 // Real git in temp repositories.
 setDefaultTimeout(30_000);

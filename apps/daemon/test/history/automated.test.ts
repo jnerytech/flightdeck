@@ -2,8 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { Command } from "@flightdeck/protocol";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
-import { assistantLine, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import {
+  assistantLine,
+  projectsRoot,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 const HOME_CWD = "/home/dev/app";
 const ID = (n: number) => `${String(n).padStart(8, "0")}-0000-4000-8000-000000000000`;

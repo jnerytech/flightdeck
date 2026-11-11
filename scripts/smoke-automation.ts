@@ -11,7 +11,7 @@ import { join, resolve } from "node:path";
  * on; an arena of two variants makes two worktrees and choosing `b` removes `a`.
  */
 import { type Ack, byCodeUnit, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
-import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { installFakeClaude } from "../apps/daemon/test/support/fake-claude.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,

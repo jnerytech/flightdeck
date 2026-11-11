@@ -6,10 +6,10 @@ import type { BoardOptions } from "../../src/board/board.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
 import { startServer } from "../../src/server.ts";
 import type { CheckRunner } from "../../src/workflows/check-runner.ts";
-import { git, whenChanged } from "../board-helpers.ts";
-import { record } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { git, whenChanged } from "../support/board-helpers.ts";
+import { record } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git and worktrees, two or more sessions per test: more than the default 5 s.
 setDefaultTimeout(20_000);

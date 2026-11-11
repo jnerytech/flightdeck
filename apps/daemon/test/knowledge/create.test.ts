@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { FlightdeckError } from "../../src/errors.ts";
 import { createKnowledgeDoc } from "../../src/knowledge/create.ts";
 import { listKnowledge } from "../../src/knowledge/list.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /** Issue #1039: a new library document from a template. */
 const posix = process.platform !== "win32";

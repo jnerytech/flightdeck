@@ -7,8 +7,8 @@ import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, poll, record, waitFor, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, record, waitFor, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "personas-open-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

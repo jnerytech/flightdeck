@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import type { PrComment } from "../../src/board/pr.ts";
-import { cardWhen, git } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { cleanups, comment, failing, fixture, PR, work } from "../watch-helpers.ts";
+import { cardWhen, git } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { cleanups, comment, failing, fixture, PR, work } from "../support/watch-helpers.ts";
 
 // Real git, a fake runtime and several turns per test: more than the default 5 s.
 setDefaultTimeout(30_000);

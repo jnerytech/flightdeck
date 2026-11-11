@@ -5,8 +5,8 @@ import { Command, SecretScanner, SessionRecap } from "@flightdeck/protocol";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { SummaryService } from "../../src/summary/service.ts";
-import { BASELINE_FEATURES, newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const SESSION = "cccccccc-0000-4000-8000-000000000030";
 const TOKEN = "summary-token-0123456789abcdef";

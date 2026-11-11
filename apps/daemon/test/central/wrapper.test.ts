@@ -6,8 +6,8 @@ import { startReceptor } from "../../src/central/receptor.ts";
 import { buildClaudeLaunch, RECEPTOR_FILE } from "../../src/central/wrapper.ts";
 import { runCli } from "../../src/main.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { tempDir } from "../helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const HOOKS = "hooks-token-0123456789";
 const cleanups: Array<() => unknown> = [];

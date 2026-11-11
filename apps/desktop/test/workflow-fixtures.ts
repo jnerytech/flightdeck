@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../daemon/test/board-helpers.ts";
-import { commitWorkflow, sha256 } from "../../daemon/test/workflow-helpers.ts";
+import { git } from "../../daemon/test/support/board-helpers.ts";
+import { commitWorkflow, sha256 } from "../../daemon/test/support/workflow-helpers.ts";
 import { daemon as makeDaemon } from "./fixtures.ts";
 
 /**

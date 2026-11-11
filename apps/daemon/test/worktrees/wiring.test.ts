@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FolderLocks } from "../../src/worktrees/locks.ts";
 import { createWorktrees } from "../../src/worktrees/wiring.ts";
-import { git, newBoard } from "../board-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
 
 /** Nothing else is using any folder. */
 const quiet = {

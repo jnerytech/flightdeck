@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Idle } from "../../src/messaging/idle.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { PROJECT, setup } from "../mensagens-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { PROJECT, setup } from "../support/messaging-helpers.ts";
 
 const TOKEN = "mensagens-token-0123456789abcdef";
 

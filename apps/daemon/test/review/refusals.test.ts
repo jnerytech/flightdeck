@@ -12,10 +12,10 @@ import { RUN_CONFIG_PATH, RunConfigs } from "../../src/runenv/config.ts";
 import { RunManager } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { git, gitRepo, newBoard } from "../board-helpers.ts";
-import { newManager, tempDir } from "../helpers.ts";
 import { fakeRunHost, runConfig } from "../runenv/helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { git, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 // Real git in temporary repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

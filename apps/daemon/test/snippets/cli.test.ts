@@ -6,7 +6,7 @@ import { startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { Snippets } from "../../src/snippets/store.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, tempDir, workspace } from "../helpers.ts";
+import { newManager, tempDir, workspace } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 

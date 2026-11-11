@@ -18,10 +18,10 @@ import { startServer } from "../../src/server.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { cardWhen, git, gitRepo } from "../board-helpers.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, sessionStarter, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, git, gitRepo } from "../support/board-helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, sessionStarter, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(40_000);
 

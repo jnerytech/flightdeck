@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { killTree, terminalRunHost } from "../../src/runenv/host.ts";
 import { bunPty } from "../../src/terminal/pty.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
-import { poll, workspace } from "../helpers.ts";
-import { fakePtys } from "../pty-helpers.ts";
+import { poll, workspace } from "../support/helpers.ts";
+import { fakePtys } from "../support/pty-helpers.ts";
 
 function realm() {
   const { root, project } = workspace();

@@ -2,9 +2,9 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { runCli } from "../../src/main.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(100_000);
 

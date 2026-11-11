@@ -18,7 +18,7 @@ import {
 } from "../../src/telemetry/otlp-env.ts";
 import { claudeSettingsEnv } from "../../src/terminal/claude-settings-env.ts";
 import { inspectProject } from "../../src/trust/inspect.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * Issue #1014: a settings.json that a Windows editor saved with a UTF-8 BOM (and CRLF) is read by

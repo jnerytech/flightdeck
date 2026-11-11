@@ -6,8 +6,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { runCli } from "../../src/main.ts";
 import { Idle } from "../../src/messaging/idle.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { type FakeEndpoints, PROJECT, setup } from "../mensagens-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { type FakeEndpoints, PROJECT, setup } from "../support/messaging-helpers.ts";
 
 setDefaultTimeout(20_000);
 

@@ -7,8 +7,8 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import { ExternalPermissions } from "../../src/central/external-permissions.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "app-token-0123456789abcdef";
 const HOOKS = "hooks-token-0123456789";

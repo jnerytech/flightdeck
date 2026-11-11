@@ -4,7 +4,7 @@ import { FlightdeckError } from "../../src/errors.ts";
 import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { CompleteOptions } from "../../src/runtime/types.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const usage = {
   input_tokens: 300,

@@ -5,9 +5,9 @@ import { BoardSyncLoop } from "../../src/boardsync/loop.ts";
 import { BoardSyncService } from "../../src/boardsync/service.ts";
 import { BoardSyncStore } from "../../src/boardsync/store.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { newManager, poll } from "../helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 import { item } from "./contract.ts";
 import { FakeProvider } from "./fake.ts";
 

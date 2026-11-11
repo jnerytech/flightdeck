@@ -6,8 +6,8 @@ import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { INSTRUCTIONS_VERSION } from "../../src/teams/instructions.ts";
 import { Teams, type TeamsOptions } from "../../src/teams/teams.ts";
-import { cardWhen, newBoard, whenChanged } from "../board-helpers.ts";
-import { poll } from "../helpers.ts";
+import { cardWhen, newBoard, whenChanged } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 setDefaultTimeout(30_000);
 

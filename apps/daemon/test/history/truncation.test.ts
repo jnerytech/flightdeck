@@ -9,7 +9,7 @@ import {
   storedMessages,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const ID = "44444444-4444-4444-8444-444444444444";
 const CWD = "/home/dev/projeto-trunc";

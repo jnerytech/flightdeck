@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { runCli } from "../../daemon/src/main.ts";
-import { FrameClient } from "../../daemon/test/history-helpers.ts";
+import { FrameClient } from "../../daemon/test/support/history-helpers.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 const { AppStore } = await import("../src/lib/app-store.ts");

@@ -5,9 +5,9 @@ import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
 import { loopbackBind, terminalEnabled } from "../../src/terminal/policy.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
-import { poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { fakePtys, fakeSink } from "../pty-helpers.ts";
+import { poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { fakePtys, fakeSink } from "../support/pty-helpers.ts";
 
 const TOKEN = "terminal-safety-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

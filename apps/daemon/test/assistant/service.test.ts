@@ -14,9 +14,9 @@ import { startDaemon } from "../../src/main.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../../src/runtime/types.ts";
 import { startServer } from "../../src/server.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** A clock the test moves by hand. */
 function clock() {

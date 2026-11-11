@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { OUTPUTS_SEPARATOR } from "../../src/workflows/interpolate.ts";
-import { poll } from "../helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { poll } from "../support/helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
 setDefaultTimeout(30_000);

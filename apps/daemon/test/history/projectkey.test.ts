@@ -3,8 +3,13 @@ import { Command } from "@flightdeck/protocol";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import {
+  FrameClient,
+  projectsRoot,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 const TOKEN = "history-projectkey-token-01";
 const cleanups: Array<() => unknown> = [];

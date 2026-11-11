@@ -5,7 +5,7 @@ import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
 import type { ServiceContext } from "../../src/service.ts";
 import { stableBinPath } from "../../src/update.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 const TOKEN = "service-install-token-0123456789";
 // What the daemon compares itself with: the stable path is joined by the host's own path rules, so a

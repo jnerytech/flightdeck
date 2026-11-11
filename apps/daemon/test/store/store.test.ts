@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 function newStore() {
   const store = new EventStore(":memory:");

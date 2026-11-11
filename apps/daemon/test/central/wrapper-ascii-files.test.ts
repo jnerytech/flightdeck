@@ -11,8 +11,8 @@ import { Personas } from "../../src/personas/store.ts";
 import { startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, tempDir, workspace } from "../helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, tempDir, workspace } from "../support/helpers.ts";
 
 /**
  * Issue #936: every file the wrapper hands to `claude` by path (the channel config, the persona and

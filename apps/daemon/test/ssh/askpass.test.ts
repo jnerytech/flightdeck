@@ -7,9 +7,9 @@ import { startServer } from "../../src/server.ts";
 import { AskpassBroker, askpassHook, writeAskpassScript } from "../../src/ssh/askpass.ts";
 import { SshTargets } from "../../src/ssh/targets.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { newManager, poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 const TOKEN = "askpass-token-0123456789abcdef0123";
 const cleanups: Array<() => unknown> = [];

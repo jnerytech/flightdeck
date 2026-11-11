@@ -12,7 +12,7 @@ import {
   realPaths,
   ruleLevel,
 } from "../../src/permissions/rule-risk.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const PROJECT = "/proj";
 const HOME = "/home/me";

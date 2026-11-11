@@ -15,9 +15,9 @@ import { startDaemon } from "../../src/main.ts";
 import { displayPath } from "../../src/memory/display-path.ts";
 import { decisionLog, type MemoryDecision, ProjectMemory } from "../../src/memory/memory.ts";
 import { startServer } from "../../src/server.ts";
-import { git, gitRepo, newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const codeOf = async (fn: () => unknown): Promise<string> => {

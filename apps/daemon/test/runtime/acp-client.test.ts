@@ -11,7 +11,7 @@ import {
   AcpError,
   spawnAcp,
 } from "../../src/runtime/acp/client.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 /** An in-memory agent: what the client wrote, and a way to write back. */
 function pair(opts: AcpClientOptions = {}) {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { FlightdeckError } from "../../src/errors.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

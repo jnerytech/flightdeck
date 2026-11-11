@@ -8,7 +8,7 @@ import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
 import { FlightdeckError } from "../../src/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /** The code, reason and params of the refusal a call ends in; the detail is English, for logs. */
 async function refused(call: () => unknown) {

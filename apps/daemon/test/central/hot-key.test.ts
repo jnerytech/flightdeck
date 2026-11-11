@@ -9,8 +9,8 @@ import { RECEPTOR_FILE } from "../../src/central/wrapper.ts";
 import { Names } from "../../src/names/names.ts";
 import { type TrackOptions, trackNames, warmKnown } from "../../src/names/track.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newBoard } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
 
 const HOOKS = "hooks-token-0123456789";
 const cleanups: Array<() => unknown> = [];

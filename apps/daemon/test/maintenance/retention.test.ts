@@ -6,7 +6,7 @@ import { parseArgs, runCli } from "../../src/main.ts";
 import { Maintenance } from "../../src/maintenance/maintenance.ts";
 import { prune } from "../../src/maintenance/retention.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-10-30T12:00:00.000Z");
