@@ -36,10 +36,11 @@ import {
 import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
-  BudgetsSlice,
+  type BudgetsSlice,
   ClientBudgetsSlice,
   initialBudgetsState,
   initialClientBudgetsState,
+  wireBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
@@ -422,17 +423,10 @@ export class AppStore {
     });
     this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
-    this.budgets = new BudgetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      set: (hostId, input) => this.hostCommand(hostId, "budget.set", input),
-      setQuota: (hostId, input) => this.hostCommand(hostId, "budget.setQuota", input),
-      remove: (hostId, id) => this.hostCommand(hostId, "budget.remove", { id }),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
+    this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>
         this.inbox.notify(notification, route, undefined, source),
-      t: () => this.i18n.t,
     });
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
