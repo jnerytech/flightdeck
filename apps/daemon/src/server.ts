@@ -129,6 +129,15 @@ export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
 /** Issue #76, #1593: the knowledge domain's part of the server, each service optional. */
+/**
+ * A domain's group of server options (#1593), checked both ways: every service of the group is
+ * there, and none it does not know (a variable skips the excess-property check `satisfies` gives).
+ */
+export const serverGroup =
+  <G extends object>() =>
+  <T extends Required<G>>(h: T & Record<Exclude<keyof T, keyof G>, never>): G =>
+    h;
+
 export interface KnowledgeServer {
   /** The library of documents of a project, read only. */
   list?: (path: string) => Promise<KnowledgeListResult>;
