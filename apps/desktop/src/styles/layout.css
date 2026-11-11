@@ -1,0 +1,128 @@
+/* #1430: the shell's first Tab stop, "Skip to content". Out of sight and of the layout until it has
+   the focus, then a chip over the top-left corner of the title bar. */
+@utility skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  &:not(:focus) {
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * A wide table's frame (#641, responsive spec "Tables"): it scrolls sideways by itself, the only
+ * sideways scroller a page may hold. The shadows are drawn by the background: two covers that
+ * scroll with the content hide them at an end, two shadows fixed to the frame show them otherwise.
+ */
+@utility table-wide {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background-image:
+    linear-gradient(to right, var(--background) 30%, transparent),
+    linear-gradient(to left, var(--background) 30%, transparent),
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 18%, transparent), transparent),
+    linear-gradient(to left, color-mix(in oklab, var(--foreground) 18%, transparent), transparent);
+  background-position:
+    left center,
+    right center,
+    left center,
+    right center;
+  background-repeat: no-repeat;
+  background-size:
+    2.5rem 100%,
+    2.5rem 100%,
+    0.75rem 100%,
+    0.75rem 100%;
+  background-attachment: local, local, scroll, scroll;
+  /* The frame scrolls instead: a figure stays on one line, as wide as it needs. */
+  & :is(th, td) {
+    white-space: nowrap;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@utility form-actions-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  border-top-width: 1px;
+  background-color: var(--background);
+  padding-block: 0.75rem;
+}
+
+/* A form row and its help line: the reason a button is disabled sits under the first field. */
+@utility field-row-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+@utility field-help {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
+@utility header-crumbs {
+  display: flex;
+  min-width: 0;
+  /* A width of its own: the tabs start at the same x whatever the crumbs say. */
+  flex: 0 0 24rem;
+  max-width: 40%;
+  align-items: center;
+  gap: 0.5rem;
+  /* Narrow, the box is 40% of a small window: tighter gaps leave the crumbs their room (#391). */
+  @media (width < 1024px) {
+    gap: 0.25rem;
+  }
+}
+
+@utility header-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-self: stretch;
+  align-items: flex-end;
+  /* Issue #488: the tabs have a row of their own; this box keeps the top bar's actions on the right,
+     and in a window under 600 px tall it holds the one area's strip, filling the row. */
+  & > .tab-bar {
+    flex: 1 1 auto;
+    background: transparent;
+  }
+}
+
+/* The drawer's top row: back and forward, clear of the close button at its right edge. */
+@utility drawer-top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 3rem 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+@utility field-row-end {
+  align-items: flex-end;
+}
