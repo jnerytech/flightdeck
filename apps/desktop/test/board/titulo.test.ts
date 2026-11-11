@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { boardTitle } from "../src/lib/board.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { boardTitle } from "../../src/lib/board.ts";
 
 describe("board-titulo", () => {
   test("names the project once it is known, in both languages", () => {

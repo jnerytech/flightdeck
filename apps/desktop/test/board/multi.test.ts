@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { translator } from "../src/i18n/index.ts";
-import { positionsBefore } from "../src/lib/board.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { positionsBefore } from "../../src/lib/board.ts";
 import {
   BoardWidth,
   COLUMN_WIDTH,
@@ -17,8 +17,8 @@ import {
   rangeSelection,
   shownSelection,
   toggleSelection,
-} from "../src/lib/board-select.ts";
-import type { Platform } from "../src/platform/types.ts";
+} from "../../src/lib/board-select.ts";
+import type { Platform } from "../../src/platform/types.ts";
 
 describe("board-multi: the selection (issue #161)", () => {
   test("Ctrl-click adds a card and takes it out again, keeping the others", () => {

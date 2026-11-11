@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { contrastRatio } from "../src/lib/contrast.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { contrastRatio } from "../../src/lib/contrast.ts";
 
-const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
+const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
 
 /** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
 function tokens(selector: string): Record<string, string> {
