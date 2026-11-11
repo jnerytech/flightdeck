@@ -1,5 +1,7 @@
 import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { memo, useEffect, useRef, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
+import { Page } from "@/components/layout/page";
 import { CardSyncLog } from "@/features/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/features/board/card-adjustment";
 import { CardArena } from "@/features/board/card-arena";
@@ -11,8 +13,6 @@ import { CardHeaderActions, type CardTab, CardWork } from "@/features/board/card
 import { CheckLoopPanel } from "@/features/board/check-loop-panel";
 import { PostMortem } from "@/features/board/post-mortem";
 import { RunAgain } from "@/features/board/run-again";
-import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Page } from "@/components/layout/page";
 import { PrWatchPanel } from "@/features/watch/pr-watch-panel.tsx";
 import { useT } from "@/i18n/context";
 import { canMergeCardPr } from "@/lib/card-merge-pr";

@@ -22,17 +22,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { BoardNotice } from "@/features/board/board-notice";
-import { BoardStatus } from "@/features/board/board-status";
-import { BoardSyncControl } from "@/features/board/board-sync";
-import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
-import { ColumnHandle } from "@/features/board/column-handle";
-import { ColumnSwitcher } from "@/features/board/column-switcher";
-import { ContractDialog } from "@/features/board/contract-dialog";
-import { NeedsBadge, needsText } from "@/features/board/needs-badge";
-import { QuietBadge } from "@/features/board/quiet-badge";
-import { RadarBadge } from "@/features/board/radar-badge";
-import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline, Toolbar } from "@/components/layout/stack";
@@ -47,6 +36,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { BoardNotice } from "@/features/board/board-notice";
+import { BoardStatus } from "@/features/board/board-status";
+import { BoardSyncControl } from "@/features/board/board-sync";
+import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
+import { ColumnHandle } from "@/features/board/column-handle";
+import { ColumnSwitcher } from "@/features/board/column-switcher";
+import { ContractDialog } from "@/features/board/contract-dialog";
+import { NeedsBadge, needsText } from "@/features/board/needs-badge";
+import { QuietBadge } from "@/features/board/quiet-badge";
+import { RadarBadge } from "@/features/board/radar-badge";
+import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";

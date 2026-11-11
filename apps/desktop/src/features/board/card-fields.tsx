@@ -2,7 +2,6 @@ import { type Card, specPathProblem, type ValidationTemplate } from "@flightdeck
 import { useEffect, useState } from "react";
 import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
-import { CardSpec } from "./card-spec.tsx";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -14,6 +13,7 @@ import type { Key } from "@/i18n";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useDraft } from "@/lib/use-draft";
+import { CardSpec } from "./card-spec.tsx";
 
 /**
  * One text field of a card and its Save (issue #170). A draft exists only while the person edits;

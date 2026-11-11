@@ -1,7 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { CardStartDialog } from "./card-start-dialog.tsx";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
@@ -25,6 +24,7 @@ import { nextStep } from "../../lib/card-next-step.ts";
 import { cardStartBlock } from "../../lib/card-start-block.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { CardFinishDialog } from "./card-finish.tsx";
+import { CardStartDialog } from "./card-start-dialog.tsx";
 
 interface Confirming {
   kind: "complete" | "discard";
