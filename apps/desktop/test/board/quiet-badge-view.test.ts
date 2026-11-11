@@ -48,8 +48,9 @@ describe("quiet-badge-view: the words of a card's quiet badge", () => {
 
   test("a session that went quiet in the future reads as no time at all", () => {
     const future = alert({ since: "2026-11-11T12:05:00Z" });
-    expect(quietBadge({ sessionId: "s1" }, "h1", alerts(future), NOW, t)?.short).toBe(
-      `Quiet ${t("time.seconds", { n: 0 })}`,
-    );
+    expect(quietBadge({ sessionId: "s1" }, "h1", alerts(future), NOW, t)).toEqual({
+      short: "Quiet 0 s",
+      full: "Quiet for 0 s",
+    });
   });
 });
