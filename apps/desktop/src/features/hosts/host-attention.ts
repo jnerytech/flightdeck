@@ -1,10 +1,10 @@
-import type { DepsResult } from "@flightdeck/protocol";
-import type { HostView } from "../../lib/app-state.ts";
+import type { DepsResult, HostInfoResult } from "@flightdeck/protocol";
 import { requiredMissing } from "../../lib/deps-summary.ts";
+import type { ConnectionStatus } from "../../lib/host-connection.ts";
 
 /** A machine the person should look at: not connected, a required dependency missing, or its key forwarded. */
 export function hostNeedsAttention(
-  host: Pick<HostView, "status" | "hostInfo">,
+  host: { status: ConnectionStatus; hostInfo: HostInfoResult | null },
   deps: DepsResult | undefined,
 ): boolean {
   return (
