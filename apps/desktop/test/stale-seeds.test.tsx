@@ -10,7 +10,7 @@ const { act, cleanup, fireEvent, render, renderHook, within } = await import(
 const screen = liveScreen(within);
 const { useDraft } = await import("../src/lib/use-draft.ts");
 const { CardHours } = await import("../src/components/roi/card-hours.tsx");
-const { ClientDefaults } = await import("../src/ui/ClientDefaults.tsx");
+const { ClientDefaults } = await import("../src/features/clients/client-defaults.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 

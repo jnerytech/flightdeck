@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowUp, Briefcase } from "lucide-react";
 import { useState } from "react";
-import { ClientDot } from "@/components/clients/client-dot";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
 import { Page } from "@/components/layout/page";
@@ -9,16 +8,17 @@ import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import { CLIENT_COLORS, type Client, type ClientColor } from "../lib/clients.ts";
-import { hasFeature } from "../lib/version.ts";
-import { ClientBudget } from "./ClientBudget.tsx";
-import { ClientDefaults } from "./ClientDefaults.tsx";
-import { ClientRate } from "./ClientRate.tsx";
-import { ClientRules } from "./ClientRules.tsx";
-import { ClientsSuggest } from "./ClientsSuggest.tsx";
-import { ClientsTransfer } from "./ClientsTransfer.tsx";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { CLIENT_COLORS, type Client, type ClientColor } from "../../lib/clients.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { ClientBudget } from "./client-budget.tsx";
+import { ClientDefaults } from "./client-defaults.tsx";
+import { ClientDot } from "./client-dot";
+import { ClientRate } from "./client-rate.tsx";
+import { ClientRules } from "./client-rules.tsx";
+import { ClientsSuggest } from "./clients-suggest.tsx";
+import { ClientsTransfer } from "./clients-transfer.tsx";
 
 /** Phase 29: the clients that group projects across hosts, with their rules. */
 export function ClientsPage(
