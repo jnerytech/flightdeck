@@ -34,7 +34,7 @@ import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/ho
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
-import { budgetAlerts } from "../features/costs/index.ts";
+import { pendingCount } from "../features/needs-you/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { requiredMissing } from "../lib/deps-summary.ts";
@@ -46,12 +46,10 @@ import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
 import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";
-import { quietAlerts } from "../lib/quiet.ts";
 import type { Route } from "../lib/router.ts";
 import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
-import type { SidebarGroup } from "../lib/sidebar-groups.ts";
+import { type SidebarGroup, toggleGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
-import { watchAlerts } from "../lib/watch-alerts.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
 
@@ -288,12 +286,7 @@ export function Sidebar(
   const switcherId = useSwitcherHostId(props.store);
   const navHost = state.hosts.find((h) => h.id === switcherId) ?? state.hosts[0];
   const pendingItems = needsYou(state);
-  const pending =
-    pendingItems.length +
-    budgetAlerts(state).length +
-    state.loopAlerts.length +
-    watchAlerts(state).length +
-    quietAlerts(state, props.store.now()).length;
+  const pending = pendingCount(state, pendingItems.length, props.store.now());
   // The sidebar redraws on every store update, streaming events included: the rows and the tree
   // recompute only when the parts they are made of change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state
@@ -357,7 +350,7 @@ export function Sidebar(
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.viewPrefs.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
-    const next = folded.includes(group) ? folded.filter((g) => g !== group) : [...folded, group];
+    const next = toggleGroup(folded, group);
     setFolded(next);
     props.store.viewPrefs.setSidebarFolded(next);
   };
