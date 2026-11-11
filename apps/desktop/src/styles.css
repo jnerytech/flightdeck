@@ -34,6 +34,7 @@
 @import "./styles/summary.css";
 @import "./styles/palette.css";
 @import "./styles/shortcuts.css";
+@import "./styles/account.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -297,22 +298,6 @@ html:not(:has([data-slot="status-bar"])) {
   min-height: 1.5rem;
 }
 
-/* #1354: a board card's check while a selection exists: a 16 px box in its 24 px target
-   (hit-control), pulled into the card's padding so the title loses as little width as it can. */
-@utility card-check {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  margin: -0.125rem -0.25rem 0;
-  & > input {
-    width: 1rem;
-    height: 1rem;
-    margin: 0;
-    accent-color: var(--primary);
-  }
-}
-
 /* A small switch: the box is 24 px tall, the padding is not painted, so the track keeps its look. */
 @utility hit-switch {
   min-height: 1.5rem;
@@ -328,24 +313,6 @@ html:not(:has([data-slot="status-bar"])) {
   flex: 1 1 0%;
   flex-direction: column;
   min-height: 0;
-}
-
-/* A card's details; once its conversation shows, a pane above it that scrolls by itself (#641). */
-@utility card-info {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: 1.25rem;
-  &[data-split="true"] {
-    /* It keeps its share (up to 30%) and the conversation takes the rest. */
-    flex: 0 0 auto;
-    max-height: 30%;
-    overflow-y: auto;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
 }
 
 /* A button that floats over the bottom end of a scroller. */
@@ -468,13 +435,6 @@ html:not(:has([data-slot="status-bar"])) {
   &:has([data-slot="page"]) {
     overflow: hidden;
   }
-}
-
-/* A column under a dragged card: it shows where the card would land. */
-@utility drop-over {
-  outline: 2px dashed var(--ring);
-  outline-offset: -2px;
-  background-color: var(--accent);
 }
 
 /* Three dots that rise in turn while Claude works. */
@@ -602,37 +562,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* A vertical list of rows (the check results, the repositories found). */
-@utility check-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-
-/* One row of such a list: a line of text and, below it, what to do. */
-@utility check-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-/* The first line of a row: the name, then its state. */
-@utility check-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-/* A form block of the "find my projects" dialog. */
-@utility find-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
 @utility activity-line {
   display: flex;
   align-items: center;
@@ -738,38 +667,8 @@ html:not(:has([data-slot="status-bar"])) {
   padding-left: 0.75rem;
 }
 
-/* The account card: a command to copy, a pill, a meter line and its footer. */
-@utility code-chip {
-  width: fit-content;
-  padding-inline: 0.5rem;
-  padding-block: 0.25rem;
-}
 @utility pill {
   padding-inline: 0.5rem;
-}
-@utility row-gap2 {
-  display: flex;
-  gap: 0.5rem;
-}
-@utility meter-line {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-@utility row-baseline-spread {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-@utility row-wrap-loose {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-@utility meter-height {
-  height: 0.5rem;
 }
 
 /* The sidebar's body: the nav, the hosts and the pinned sessions scroll as one area between the

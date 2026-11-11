@@ -235,3 +235,44 @@
     align-self: start;
   }
 }
+
+/* #1354: a board card's check while a selection exists: a 16 px box in its 24 px target
+   (hit-control), pulled into the card's padding so the title loses as little width as it can. */
+@utility card-check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin: -0.125rem -0.25rem 0;
+  & > input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--primary);
+  }
+}
+
+/* A card's details; once its conversation shows, a pane above it that scrolls by itself (#641). */
+@utility card-info {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+  &[data-split="true"] {
+    /* It keeps its share (up to 30%) and the conversation takes the rest. */
+    flex: 0 0 auto;
+    max-height: 30%;
+    overflow-y: auto;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* A column under a dragged card: it shows where the card would land. */
+@utility drop-over {
+  outline: 2px dashed var(--ring);
+  outline-offset: -2px;
+  background-color: var(--accent);
+}
