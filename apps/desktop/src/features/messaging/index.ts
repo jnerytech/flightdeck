@@ -10,3 +10,4 @@ export {
   MessagingSlice,
   type MessagingSliceState,
 } from "./store.ts";
+export { wireMessaging } from "./wire.ts";

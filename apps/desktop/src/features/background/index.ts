@@ -9,3 +9,4 @@ export {
   type BackgroundSliceState,
   initialBackgroundState,
 } from "./store.ts";
+export { wireBackground } from "./wire.ts";

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import {
   Command,
   type EventEnvelope,
@@ -8,7 +9,10 @@ import {
 } from "@flightdeck/protocol";
 import { applyEnvelope, emptySession } from "../../../desktop/src/lib/session-state.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, poll } from "../support/helpers.ts";
+import { SecretScanner } from "../../src/snippets/model.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { SummaryService } from "../../src/summary/service.ts";
+import { newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";
 
 type Summary = SessionEventOf<"session.summary">;
 const TOKEN = "resumos-token-0123456789abc";
@@ -222,5 +226,22 @@ describe("resumos", () => {
         .map((s) => s.pendingPermissions.length);
     await poll(() => counts().length >= 4, 1000);
     expect(counts()).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe("resumos: a transcript that is gone", () => {
+  const cleanups: Array<() => unknown> = [];
+  afterEach(async () => {
+    for (const fn of cleanups.splice(0).reverse()) await fn();
+  });
+
+  test("the summary of a session whose transcript file is gone is 'not indexed'", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    store.db
+      .query("INSERT INTO history_sessions (claude_session_id, file_path) VALUES (?, ?)")
+      .run("gone", join(tempDir(), "no-such-transcript.jsonl"));
+    const service = new SummaryService({ db: store.db, scanner: new SecretScanner() });
+    expect(await reasonOf(service.get("gone"))).toBe("transcript_not_indexed");
   });
 });

@@ -1,6 +1,9 @@
 /** Phase 38: what the sync keeps in the database: the board links, the cards' external fields, the log. */
 import type { Database } from "bun:sqlite";
+import { BoardColumn } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import type { ColumnMap } from "./map.ts";
 
 export interface BoardLink {
@@ -67,13 +70,16 @@ interface CardRow {
   external_gone: number;
 }
 
+/** The stored map of a link; a damaged one reads as empty, and the next sync says so. */
+const COLUMN_MAP: z.ZodType<ColumnMap> = z.record(z.string(), BoardColumn);
+
 const toLink = (row: LinkRow): BoardLink => ({
   projectId: row.project_id,
   provider: row.provider,
   boardId: row.board_id,
   boardTitle: row.board_title,
   statusFieldId: row.status_field_id,
-  columnMap: JSON.parse(row.column_map) as ColumnMap,
+  columnMap: parseJsonOr(COLUMN_MAP, row.column_map, {}),
   push: row.push === 1,
   cursor: row.cursor,
   lastSyncedAt: row.last_synced_at,

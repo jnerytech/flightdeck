@@ -1,6 +1,6 @@
 # Sonar bugs and vulnerabilities (issue #198)
 
-- **CSS S8776 and S8767 are ignored for `apps/desktop/src/styles.css`, nothing else.** All 31 findings sit inside Tailwind v4
+- **CSS S8776 and S8767 are ignored for `apps/desktop/src/styles.css` and the per-feature files split out of it in `apps/desktop/src/styles/`, nothing else (#1599).** All 31 findings sit inside Tailwind v4
   `@utility` blocks (checked one by one): `&:hover`, `&[data-columns]` and declarations inside a nested `@media` are valid CSS
   nesting there, but Sonar's CSS parser treats `@utility` as an unknown at-rule and reports "Missing scoping root" and "Invalid
   position for declaration". Rewriting them as plain classes would drop the `@utility` variant support (`hover:`, `md:`) the app
