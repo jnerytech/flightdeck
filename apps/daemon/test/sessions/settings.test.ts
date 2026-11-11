@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Command, type SessionEvent } from "@flightdeck/protocol";
 import { ClaudeSdkRuntime, type QueryFn } from "../../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime, fakeSlashCommands } from "../../src/runtime/fake-runtime.ts";
+import type { AgentRuntime } from "../../src/runtime/types.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, poll } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -30,7 +31,7 @@ async function liveSession() {
 }
 
 describe("sessao-ajustes: mode, model and slash commands of a live session", () => {
-  test("the fake can list as many slash commands as asked, plain, plugin and MCP ones, from the option or the environment", () => {
+  test("the fake can list as many slash commands as asked, plain, plugin and MCP ones, from the option or the environment", async () => {
     const names = fakeSlashCommands(100);
     expect(names).toHaveLength(100);
     expect(new Set(names).size).toBe(100);
@@ -39,9 +40,14 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
     expect(names.some((n) => !n.includes(":") && !n.startsWith("mcp__"))).toBe(true);
     process.env.FLIGHTDECK_FAKE_SLASH = "7";
     try {
-      expect(
-        (new FakeRuntime() as unknown as { slashCommands?: string[] }).slashCommands,
-      ).toHaveLength(7);
+      const { manager, store, project } = newManager({ runtime: new FakeRuntime({ delayMs: 1 }) });
+      const { sessionId } = await manager.create({ cwd: project, prompt: "hi" });
+      await poll(() => manager.get(sessionId).status === "idle", 3000);
+      const init = store
+        .eventsSince(sessionId)
+        .map((e) => e.event)
+        .find((e) => e.type === "session.init");
+      expect(init?.type === "session.init" ? init.slashCommands : undefined).toHaveLength(7);
     } finally {
       delete process.env.FLIGHTDECK_FAKE_SLASH;
     }
@@ -71,11 +77,24 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
   });
 
   test("a run that cannot change its effort (OpenCode) refuses: invalid_state", async () => {
-    const { manager, sessionId } = await liveSession();
-    const live = (manager as unknown as { live: Map<string, { run: { setEffort?: unknown } }> })
-      .live;
-    const run = live.get(sessionId)?.run;
-    if (run) run.setEffort = undefined;
+    // A run of the same fake that offers only what every runtime must: no setEffort.
+    const base = new FakeRuntime({ delayMs: 1 });
+    const runtime: AgentRuntime = {
+      start: (opts) => {
+        const run = base.start(opts);
+        return {
+          get events() {
+            return run.events;
+          },
+          send: (text, uuid, images) => run.send(text, uuid, images),
+          interrupt: () => run.interrupt(),
+          close: () => run.close(),
+        };
+      },
+    };
+    const { manager, project } = newManager({ runtime });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "hi" });
+    await poll(() => manager.get(sessionId).status === "idle", 3000);
     expect(await code(manager.setEffort(sessionId, "low"))).toBe("invalid_state");
   });
 

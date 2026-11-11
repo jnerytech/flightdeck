@@ -26,6 +26,8 @@ const FAIL: CheckOutcome = {
 };
 const PASS: CheckOutcome = { kind: "passed" };
 
+type EngineFx = ConstructorParameters<typeof CheckLoopEngine>[0];
+
 function rig(
   over: {
     card?: Partial<LoopCard>;
@@ -70,7 +72,7 @@ function rig(
   let reads = 0;
   /** Runs inside `send`: the real manager emits busy and the message's echo during it. */
   let onSend: (() => void) | null = null;
-  const engine = new CheckLoopEngine({
+  const fx: EngineFx = {
     card: () => {
       reads += 1;
       // A copy per read, as the store gives one.
@@ -109,10 +111,14 @@ function rig(
         (handle as { cleared: boolean }).cleared = true;
       },
     },
-  });
+  };
+  const engine = new CheckLoopEngine(fx);
+  /** The same collaborators with some replaced: an engine whose check or record throws. */
+  const engineWith = (replace: Partial<EngineFx>) => new CheckLoopEngine({ ...fx, ...replace });
   const checksDone = () => engine.idle("c");
   return {
     engine,
+    engineWith,
     card,
     settings,
     log,
@@ -343,8 +349,7 @@ describe("check-loop: the security review's cases", () => {
 
   test("checks that throw end the loop with check_error, and the slot goes back", async () => {
     const r = rig();
-    const failing = new CheckLoopEngine({
-      ...(r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx,
+    const failing = r.engineWith({
       runChecks: async () => {
         throw new Error("spawn failed");
       },
@@ -359,9 +364,7 @@ describe("check-loop: the security review's cases", () => {
 
   test("even when recording the end throws, the slot goes back", async () => {
     const r = rig();
-    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
-    const failing = new CheckLoopEngine({
-      ...fx,
+    const failing = r.engineWith({
       runChecks: async () => {
         throw new Error("spawn failed");
       },
@@ -378,9 +381,7 @@ describe("check-loop: the security review's cases", () => {
 
   test("a placement that throws still releases the slot, once", async () => {
     const r = rig();
-    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
-    const engine = new CheckLoopEngine({
-      ...fx,
+    const engine = r.engineWith({
       place: () => {
         throw new Error("board write failed");
       },
@@ -396,10 +397,7 @@ describe("check-loop: the security review's cases", () => {
     const releases: number[] = [];
     for (const end of ["stop", "gone", "timer"] as const) {
       const r = rig();
-      const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] })
-        .fx;
-      const engine = new CheckLoopEngine({
-        ...fx,
+      const engine = r.engineWith({
         record: () => {
           throw new Error("disk full");
         },
@@ -602,9 +600,7 @@ describe("check-loop: the security review's cases", () => {
 
   test("a release that throws never escapes: not from the checks' end, not from a timer", async () => {
     const r = rig();
-    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
-    const engine = new CheckLoopEngine({
-      ...fx,
+    const engine = r.engineWith({
       release: () => {
         throw new Error("slot table locked");
       },
@@ -614,8 +610,7 @@ describe("check-loop: the security review's cases", () => {
       () => "settled",
       () => "rejected",
     );
-    const other = new CheckLoopEngine({
-      ...fx,
+    const other = r.engineWith({
       release: () => {
         throw new Error("slot table locked");
       },
@@ -679,9 +674,7 @@ describe("check-loop: the security review's cases", () => {
 
   test("a notify that throws when the checks start leaves the loop running, and it ends normally", async () => {
     const r = rig();
-    const fx = (r.engine as unknown as { fx: ConstructorParameters<typeof CheckLoopEngine>[0] }).fx;
-    const engine = new CheckLoopEngine({
-      ...fx,
+    const engine = r.engineWith({
       notify: () => {
         throw new Error("card gone");
       },
