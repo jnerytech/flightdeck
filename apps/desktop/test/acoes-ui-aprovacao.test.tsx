@@ -36,7 +36,7 @@ async function queued(over: Record<string, unknown>) {
   const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => daemon.asked.includes("vault.watch"));
   const meta = await act(() =>
-    store.addSecret({
+    store.secrets.add({
       name: "deploy",
       type: "token",
       value: "ui-value-123",

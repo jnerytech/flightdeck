@@ -41,7 +41,7 @@ async function open(allowed = true) {
   daemon.features.push("actions");
   const hostId = await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
-  const secret = await store.addSecret({
+  const secret = await store.secrets.add({
     name: "prod-key",
     type: "token",
     value: "preview-value",

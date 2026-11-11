@@ -233,7 +233,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
   test("a host's token and a vault value never reach the memory or the file, even typed into a message", async () => {
     const { store, written } = setup();
     await store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
-    await store.addSecret({ name: "deploy", type: "token", value: VAULT_VALUE });
+    await store.secrets.add({ name: "deploy", type: "token", value: VAULT_VALUE });
     // The scanner learns the vault's values after the list is read again.
     await settle(() =>
       (store as unknown as { scanValues(): string[] }).scanValues().includes(VAULT_VALUE),
@@ -298,17 +298,17 @@ describe("log-cobertura-app: the host's log path, the vault cache and the Settin
     const w = setup();
     const store = w.store as unknown as {
       vaultValuesForScan(): Promise<string[]>;
-      addSecret(input: { name: string; type: string; value: string }): Promise<unknown>;
+      secrets: { add(input: { name: string; type: string; value: string }): Promise<unknown> };
       scanValues(): string[];
     };
-    await store.addSecret({ name: "a", type: "token", value: "Vx9fakevaultvalue0123456789" });
+    await store.secrets.add({ name: "a", type: "token", value: "Vx9fakevaultvalue0123456789" });
     await settle(() => store.scanValues().includes("Vx9fakevaultvalue0123456789"));
     expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
     store.vaultValuesForScan = async () => {
       throw new Error("keychain locked");
     };
-    await store.addSecret({ name: "b", type: "token", value: "another-value-123456" });
-    // The refresh failed: the answer is that nothing changes, and `addSecret` is done when it returns.
+    await store.secrets.add({ name: "b", type: "token", value: "another-value-123456" });
+    // The refresh failed: the answer is that nothing changes, and `secrets.add` is done when it returns.
     await uiIdle();
     expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
   });

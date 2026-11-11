@@ -49,7 +49,7 @@ async function open(options: { tag?: string; allowedHosts?: (hostId: string) => 
   const beta = store.clients.add("Beta");
   store.clients.addRule(beta?.id ?? "", { kind: "remote", pattern: "github.com/beta/*" });
   if (options.tag) store.clients.setDefaults(acme?.id ?? "", { vaultTag: options.tag });
-  const secret = await store.addSecret({
+  const secret = await store.secrets.add({
     name: "token",
     type: "token",
     value: "v",

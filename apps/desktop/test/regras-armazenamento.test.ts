@@ -22,14 +22,14 @@ async function setup(platform = memoryPlatform().platform) {
   daemon.features.push("actions");
   const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
-  const here = await store.addSecret({
+  const here = await store.secrets.add({
     name: "staging",
     type: "token",
     value: "v1",
     tags: ["staging"],
     allowedHosts: [hostId],
   });
-  const elsewhere = await store.addSecret({
+  const elsewhere = await store.secrets.add({
     name: "outro",
     type: "token",
     value: "v2",
@@ -99,7 +99,7 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     other.features.push("actions");
     const otherId = await store.addHost({ name: "pi", url: other.url, token: TOKEN });
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
-    store.updateSecret(here.id, { allowedHosts: [store.getState().hosts[0]?.id ?? "", otherId] });
+    store.secrets.update(here.id, { allowedHosts: [store.getState().hosts[0]?.id ?? "", otherId] });
     other.refuse.set("vault.rules.set", "regra inválida");
     daemon.commands.length = 0;
     const looser = [{ id: "r1", match: {}, decision: "allow" }];

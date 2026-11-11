@@ -63,13 +63,13 @@ describe("cofre-ui: the screen", () => {
 
   test("each secret shows its name, type and tags", async () => {
     await open(async (store) => {
-      await store.addSecret({
+      await store.secrets.add({
         name: "github",
         type: "token",
         value: TOKEN_VALUE,
         tags: ["ci", "prod"],
       });
-      await store.addSecret({ name: "app env", type: "env", value: ENV_VALUE });
+      await store.secrets.add({ name: "app env", type: "env", value: ENV_VALUE });
     });
     const rows = within(await screen.findByRole("list", { name: "Segredos" })).getAllByRole(
       "listitem",
@@ -85,8 +85,8 @@ describe("cofre-ui: the screen", () => {
 
   test("the row shows what describes the secret (a token's hint, an env's names) and never the value", async () => {
     await open(async (store) => {
-      await store.addSecret({ name: "github", type: "token", value: TOKEN_VALUE });
-      await store.addSecret({ name: "app env", type: "env", value: ENV_VALUE });
+      await store.secrets.add({ name: "github", type: "token", value: TOKEN_VALUE });
+      await store.secrets.add({ name: "app env", type: "env", value: ENV_VALUE });
     });
     expect(await screen.findByText("ghp_…WXYZ")).not.toBeNull();
     expect(await screen.findByText("API_URL, API_KEY")).not.toBeNull();

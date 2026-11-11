@@ -34,7 +34,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
-      store.addSecret({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
+      store.secrets.add({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
     );
     await act(async () => {
       store.router.push({ name: "needs-you" });
@@ -71,7 +71,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
-      store.addSecret({ name: "staging", type: "token", value: "v", allowedHosts: [hostId] }),
+      store.secrets.add({ name: "staging", type: "token", value: "v", allowedHosts: [hostId] }),
     );
     const push = (requestId: string, once: boolean) =>
       act(async () => {
@@ -121,7 +121,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
     await settle(() => daemon.asked.includes("vault.watch"));
     const secret = await act(() =>
-      store.addSecret({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
+      store.secrets.add({ name: "prod-key", type: "token", value: "v", allowedHosts: [hostId] }),
     );
     await act(async () => {
       store.router.push({ name: "needs-you" });

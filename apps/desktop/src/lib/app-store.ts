@@ -113,7 +113,7 @@ import {
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
-import { VaultRulesSlice } from "../features/vault/index.ts";
+import { VaultRulesSlice, VaultSecretsSlice } from "../features/vault/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -129,7 +129,6 @@ import type {
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { AwayClock } from "./away.ts";
-import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
@@ -255,9 +254,8 @@ import {
   saveTreeOpened,
   saveTreePinned,
 } from "./tree-fold.ts";
-import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
+import { type SecretMeta, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
-import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
 import {
   answerVaultRequest,
   checkDelivery,
@@ -1155,6 +1153,14 @@ export class AppStore {
       this.clearShownUnread();
     });
     this.vault = new Vault(platform);
+    this.secrets = new VaultSecretsSlice({
+      vault: this.vault,
+      secretsChanged: () => this.update({ secrets: this.vault.list() }),
+      workFactor: () => this.options.vaultWorkFactor,
+      saveFile: (name, text) => this.platform.saveFile(name, text),
+      pickFile: () => this.platform.vault.pickFile(),
+      fail: (error) => this.fail(error),
+    });
     this.vaultRules = new VaultRulesSlice({
       rules: new VaultRules(platform.storage),
       secrets: () => this.vault.list(),
@@ -3711,6 +3717,8 @@ export class AppStore {
 
   /** Phase 19: each secret's usage rules, kept with the vault and handed to the hosts (#1596). */
   readonly vaultRules: VaultRulesSlice;
+  /** The vault's secrets and their `.fdvault` file; `state.secrets` is the list the screens read. */
+  readonly secrets: VaultSecretsSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
@@ -3827,86 +3835,6 @@ export class AppStore {
 
   private readonly vaultListeners = new Set<(outcome: VaultOutcome) => void>();
 
-  async addSecret(input: NewSecret): Promise<SecretMeta> {
-    const meta = await this.vault.create(input);
-    this.update({ secrets: this.vault.list() });
-    return meta;
-  }
-
-  /** `ssh-keygen` makes a pair; the private key goes to the vault, the public one comes back. */
-  async generateSshKey(input: NewKey): Promise<{ meta: SecretMeta; publicKey: string } | null> {
-    try {
-      const made = await this.vault.generateSshKey(input);
-      this.update({ secrets: this.vault.list() });
-      return made;
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
-  }
-
-  /** Stores a key file the person picks; null when the dialog is cancelled or it fails. */
-  async importKeyFile(input: NewKey & { deleteOriginal?: boolean }): Promise<SecretMeta | null> {
-    try {
-      const meta = await this.vault.importKeyFile(input);
-      this.update({ secrets: this.vault.list() });
-      return meta;
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
-  }
-
-  /** Saves the vault as an encrypted `cofre.fdvault`; the reason when it is refused or cancelled. */
-  async exportVault(
-    passphrase: string,
-    confirmation: string,
-  ): Promise<{ ok: true } | { ok: false; code: BackupErrorCode | "cancelled" }> {
-    try {
-      const { exportVault, toFdvault } = await import("./vault-backup.ts");
-      const file = await exportVault(this.vault, passphrase, confirmation, {
-        ...(this.options.vaultWorkFactor !== undefined && {
-          workFactor: this.options.vaultWorkFactor,
-        }),
-      });
-      const saved = await this.platform.saveFile("cofre.fdvault", toFdvault(file));
-      return saved ? { ok: true } : { ok: false, code: "cancelled" };
-    } catch (error) {
-      if (error instanceof BackupError) return { ok: false, code: error.code };
-      this.fail(error);
-      return { ok: false, code: "cancelled" };
-    }
-  }
-
-  /** Reads a `.fdvault` the person picks and compares it with the vault; changes nothing. */
-  async previewVaultImport(
-    passphrase: string,
-  ): Promise<
-    { ok: true; preview: ImportPreview } | { ok: false; code: BackupErrorCode | "cancelled" }
-  > {
-    try {
-      const file = await this.platform.vault.pickFile();
-      if (!file) return { ok: false, code: "cancelled" };
-      const { fromFdvault, previewImport } = await import("./vault-backup.ts");
-      const preview = await previewImport(this.vault, fromFdvault(file.text), passphrase);
-      return { ok: true, preview };
-    } catch (error) {
-      if (error instanceof BackupError) return { ok: false, code: error.code };
-      this.fail(error);
-      return { ok: false, code: "cancelled" };
-    }
-  }
-
-  async applyVaultImport(
-    preview: ImportPreview,
-    onConflict: ConflictChoice,
-  ): Promise<ImportResult> {
-    const { applyImport } = await import("./vault-backup.ts");
-    const result = await applyImport(this.vault, preview, onConflict);
-    this.update({ secrets: this.vault.list() });
-    return result;
-  }
-
   /**
    * The vault's values, line by line and an env set's variable by variable, long enough to tell
    * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
@@ -3970,18 +3898,6 @@ export class AppStore {
       }
     });
     return pieces;
-  }
-
-  /** Edits a secret's name, description, tags and allowed hosts; its value is not touched. */
-  updateSecret(id: string, patch: SecretPatch): SecretMeta | null {
-    const meta = this.vault.update(id, patch);
-    this.update({ secrets: this.vault.list() });
-    return meta;
-  }
-
-  async removeSecret(id: string): Promise<void> {
-    await this.vault.remove(id);
-    this.update({ secrets: this.vault.list() });
   }
 
   /** Calls `listener` with the result of each `vault.request` the daemon makes. */

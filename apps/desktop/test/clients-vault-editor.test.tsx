@@ -45,8 +45,8 @@ async function open(scoped: boolean) {
   const acme = store.clients.add("Acme");
   store.clients.addRule(acme?.id ?? "", { kind: "remote", pattern: "github.com/acme/*" });
   store.clients.setDefaults(acme?.id ?? "", { vaultTag: "client:acme", vaultScope: scoped });
-  await store.addSecret({ name: "do-acme", type: "token", value: "v", tags: ["client:acme"] });
-  await store.addSecret({ name: "solto", type: "token", value: "v", tags: [] });
+  await store.secrets.add({ name: "do-acme", type: "token", value: "v", tags: ["client:acme"] });
+  await store.secrets.add({ name: "solto", type: "token", value: "v", tags: [] });
   await act(async () => store.router.push({ name: "vault" }));
   await settle(() => screen.queryByRole("button", { name: "Regras de do-acme" }) !== null);
   return { store };

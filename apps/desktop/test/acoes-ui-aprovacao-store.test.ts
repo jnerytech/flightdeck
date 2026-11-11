@@ -22,7 +22,7 @@ async function setup() {
   const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => daemon.asked.includes("vault.watch"));
-  const meta = await store.addSecret({
+  const meta = await store.secrets.add({
     name: "deploy",
     type: "token",
     value: VALUE,

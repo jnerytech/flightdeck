@@ -43,10 +43,10 @@ async function open(input: { type: "password" | "ssh-key"; value: string; lastUs
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
   const hostId = await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
-  const meta = await store.addSecret({ name: "deploy", type: input.type, value: input.value });
+  const meta = await store.secrets.add({ name: "deploy", type: input.type, value: input.value });
   if (input.lastUsedAt !== undefined) {
     await store.vault.restore({ ...meta, lastUsedAt: input.lastUsedAt }, input.value);
-    store.updateSecret(meta.id, {}); // tells the screen, which reads the store's secrets
+    store.secrets.update(meta.id, {}); // tells the screen, which reads the store's secrets
   }
   render(<VaultPage store={store} />);
   await settle(() => store.getState().hosts.length > 0);

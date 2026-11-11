@@ -31,7 +31,7 @@ async function setup() {
   const daemon = legacyDaemon(cleanups);
   const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => daemon.asked.includes("vault.watch"));
-  const meta = await store.addSecret({
+  const meta = await store.secrets.add({
     name: "prod-key",
     type: "token",
     value: "regras-value-1",

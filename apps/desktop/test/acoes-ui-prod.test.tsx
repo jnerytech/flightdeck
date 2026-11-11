@@ -33,14 +33,14 @@ async function online() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "alfa", url: d.server.url, token: TOKEN }));
-  const prod = await store.addSecret({
+  const prod = await store.secrets.add({
     name: "chave-prod",
     type: "token",
     value: "x",
     tags: ["prod"],
     allowedHosts: [hostId],
   });
-  const dev = await store.addSecret({
+  const dev = await store.secrets.add({
     name: "chave-dev",
     type: "token",
     value: "y",

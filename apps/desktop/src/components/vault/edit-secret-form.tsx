@@ -27,7 +27,7 @@ export const EditSecretForm = memo(function EditSecretForm(props: {
     setAllowed((list) => (on ? [...list, hostId] : list.filter((h) => h !== hostId)));
 
   const save = () => {
-    store.updateSecret(secret.id, {
+    store.secrets.update(secret.id, {
       name: name.trim(),
       description,
       tags: tags

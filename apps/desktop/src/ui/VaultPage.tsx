@@ -303,7 +303,7 @@ export const VaultPage = memo(function VaultPage(props: {
           confirmLabel={t("vault.remove")}
           destructive
           onConfirm={() => {
-            void store.removeSecret(removing.id);
+            void store.secrets.remove(removing.id);
             setRemoving(null);
           }}
           onCancel={() => setRemoving(null)}
