@@ -3,13 +3,14 @@
  * `bun run scripts/arch-report.ts [--json <file>]`: the table of every structure ratchet, each
  * baseline against today's count (issue #1610). It prints the table, appends it to the CI job
  * summary when GITHUB_STEP_SUMMARY is set, writes the rows as JSON with `--json`, and exits 1 when
- * any figure is above its baseline. The logic is scripts/lib/arch-report.ts.
+ * any figure is above its baseline (it runs knip, about 7 s, for the dead-code rows). The logic is scripts/lib/arch-report.ts.
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN } from "./lib/arch-ratchet.ts";
 import { formatTable, growing, ratchetRows } from "./lib/arch-report.ts";
+import { knipCounts } from "./lib/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
 import { flatTestCounts } from "./lib/test-layout.ts";
 
@@ -26,6 +27,16 @@ const read = (path: string): string | null => {
   }
 };
 const json = (path: string): Record<string, number> => JSON.parse(read(path) ?? "{}");
+
+/** knip's JSON report; it exits 1 whenever it finds anything, so the exit code says nothing. */
+function runKnip(): string {
+  const proc = spawnSync(process.execPath, ["x", "knip", "--reporter", "json"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: 1 << 28,
+  }); // NOSONAR: bun itself, fixed arguments
+  return proc.stdout;
+}
 
 const mergeBase = ["origin/main", "main"]
   .map((main) => git(["merge-base", "HEAD", main])?.trim())
@@ -45,8 +56,8 @@ const rows = ratchetRows({
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),
   flatBaseline: json("test-layout-baseline.json"),
-  knipCounts: {},
-  knipBaseline: {},
+  knipCounts: knipCounts(runKnip()),
+  knipBaseline: json("knip-baseline.json"),
 });
 const table = formatTable(rows);
 console.log(table);

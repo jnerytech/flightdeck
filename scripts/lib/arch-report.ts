@@ -42,6 +42,15 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
     baseline: Object.keys(inputs.srcBaseline).length,
     today: Object.keys(inputs.srcOversized).length,
   });
+  for (const kind of new Set([
+    ...Object.keys(inputs.knipBaseline),
+    ...Object.keys(inputs.knipCounts),
+  ]))
+    rows.push({
+      ratchet: `knip ${kind}`,
+      baseline: inputs.knipBaseline[kind] ?? 0,
+      today: inputs.knipCounts[kind] ?? 0,
+    });
   for (const workspace of new Set([
     ...Object.keys(inputs.flatBaseline),
     ...Object.keys(inputs.flatCounts),
