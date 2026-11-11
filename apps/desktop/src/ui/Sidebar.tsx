@@ -897,7 +897,7 @@ export function Sidebar(
           onHideSetup={(hide) => props.store.setup.setHidden(hide)}
           onCheckUpdates={() => {
             go({ name: "settings" });
-            void props.store.checkAppUpdate();
+            void props.store.appUpdates.check();
           }}
           onShortcuts={() => props.onShortcuts?.()}
           hasNew={whatsNewDot && !shellPrefs.hideWhatsNew}

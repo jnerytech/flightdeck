@@ -94,8 +94,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     };
     const store = {
       i18n: { t },
-      installAppUpdate: install.call,
-      dismissAppUpdate: () => {},
+      appUpdates: { install: install.call, dismiss: () => {} },
       subscribe: () => () => {},
       getState: () => state,
     } as unknown as AppStore;

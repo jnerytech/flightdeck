@@ -61,6 +61,11 @@ import {
   initialActivityState,
 } from "../features/activity/index.ts";
 import {
+  AppUpdateSlice,
+  type AppUpdateState,
+  initialAppUpdateState,
+} from "../features/appupdate/index.ts";
+import {
   BackgroundSlice,
   type BackgroundSliceState,
   initialBackgroundState,
@@ -123,7 +128,6 @@ import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
 import type {
-  AppUpdate,
   Platform,
   TrayAction,
   TrayMenu,
@@ -385,20 +389,6 @@ export interface AppState
   /** Phase 9: the app's own update. */
   appUpdate: AppUpdateState;
 }
-
-export interface AppUpdateState {
-  /** A newer version on offer (hidden again by "Depois"). */
-  offer: AppUpdate | null;
-  /** The last check found nothing newer. */
-  upToDate: boolean;
-  /** Why the last check or install failed. */
-  error: string | null;
-  /** Issue #280: the version downloaded in the background, ready to install on a restart. */
-  ready: string | null;
-}
-
-/** How often the app looks for its own update while open. */
-const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
 /** What a host's terminals say to the one following them. */
@@ -906,7 +896,6 @@ export class AppStore {
   private readonly connections = new Map<string, HostConnection>();
   /** Sessions followed without being open (the project page's tiles), with how many follow each. */
   private readonly watched = new Map<string, number>();
-  private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private noticeSeq = 0;
   /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
@@ -928,7 +917,6 @@ export class AppStore {
   private trayMenuTimer: unknown = null;
   private offTrayAction: (() => void) | null = null;
   private offQuit: (() => void) | null = null;
-  private quitting = false;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   private stopWake: (() => void) | null = null;
@@ -1246,6 +1234,16 @@ export class AppStore {
     this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
+    this.appUpdates = new AppUpdateSlice({
+      updater: () => this.platform.updater,
+      state: () => this.state.appUpdate,
+      setState: (appUpdate) => this.update({ appUpdate }),
+      switches: () => this.state.settings,
+      intervalMs: () => this.options.appUpdateIntervalMs,
+      log: (level, source, message) => this.appLog.log(level, source, message),
+      quitNow: () => this.platform.quitNow(),
+      t: () => this.i18n.t,
+    });
     this.inbox = new InboxSlice({
       storage: platform.storage,
       entries: () => this.state.inbox,
@@ -1337,7 +1335,7 @@ export class AppStore {
       finished: [],
       finishedLook: null,
       hostsLoaded: false,
-      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
+      appUpdate: initialAppUpdateState(),
       ...initialSettingsState(platform),
     };
   }
@@ -1379,6 +1377,8 @@ export class AppStore {
   readonly notifyPrefs: NotifyPreferences;
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
+  /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
+  readonly appUpdates: AppUpdateSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
@@ -1540,16 +1540,9 @@ export class AppStore {
       ...initialHealthState(),
     });
     await this.settings.load();
-    const { notifyUpdates, autoUpdate } = this.state.settings;
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
     this.clientBudgets.start(this.options.clientBudgetIntervalMs);
-    if (this.platform.updater.supported && (notifyUpdates || autoUpdate)) {
-      void this.checkAppUpdate();
-      this.updateTimer = setInterval(() => {
-        const { notifyUpdates, autoUpdate } = this.state.settings;
-        if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
-      }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
-    }
+    this.appUpdates.start();
     // Issue #1344: the time the app is active, for the next start's "While you were away".
     this.awayClock.mark();
     if (this.awayTimer) clearInterval(this.awayTimer);
@@ -1560,7 +1553,7 @@ export class AppStore {
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
     this.offQuit?.();
-    this.offQuit = this.platform.onQuitRequested(() => void this.quitWithUpdate());
+    this.offQuit = this.platform.onQuitRequested(() => void this.appUpdates.quit());
     await inSequence(loadHosts(this.platform.storage), async (config) => {
       // A host added while init ran (#1718) is already listed and connecting.
       if (this.state.hosts.some((host) => host.id === config.id)) return;
@@ -2921,92 +2914,12 @@ export class AppStore {
     this.offQuit?.();
     this.offQuit = null;
     this.offTrayAction = null;
-    if (this.updateTimer) clearInterval(this.updateTimer);
-    this.updateTimer = null;
+    this.appUpdates.dispose();
     this.hostUpdate.dispose();
     this.backupScheduler.dispose();
     this.clientBudgets.dispose();
     this.vaultRules.dispose();
     this.theme.stop();
-  }
-
-  /** Asks the updater for a newer app version. */
-  async checkAppUpdate(): Promise<void> {
-    try {
-      const offer = await this.platform.updater.check();
-      this.appLog.log(
-        "info",
-        "update",
-        offer === null ? "up to date" : `version ${offer.version} is available`,
-      );
-      this.setAppUpdate({ offer, upToDate: offer === null, error: null });
-      if (offer && this.state.settings.autoUpdate) await this.downloadAppUpdate(offer.version);
-    } catch (error) {
-      this.appLog.log(
-        "error",
-        "update",
-        `the check failed: ${(error as Error).message ?? String(error)}`,
-      );
-      this.setAppUpdate({
-        error: this.i18n.t("messages.updateCheckFailed", {
-          error: (error as Error).message ?? String(error),
-        }),
-      });
-    }
-  }
-
-  /**
-   * Issue #280: downloads the version on offer in the background, once; the banner then offers to
-   * restart into it. A failure says why and is tried again at the next check.
-   */
-  private async downloadAppUpdate(version: string): Promise<void> {
-    if (this.state.appUpdate.ready === version) return;
-    try {
-      await this.platform.updater.download();
-      this.setAppUpdate({ ready: version });
-    } catch (error) {
-      this.setAppUpdate({
-        error: this.i18n.t("messages.updateDownloadFailed", {
-          error: (error as Error).message ?? String(error),
-        }),
-      });
-    }
-  }
-
-  /** Installs the offered version; the app restarts. A failure installs nothing and says why. */
-  async installAppUpdate(): Promise<void> {
-    try {
-      await this.platform.updater.install();
-    } catch (error) {
-      this.setAppUpdate({
-        error: this.i18n.t("messages.updateInstallFailed", {
-          error: (error as Error).message ?? String(error),
-        }),
-      });
-    }
-  }
-
-  /**
-   * Issue #402: the tray's Quit. A version downloaded in the background installs on the way out
-   * (no restart), so the next start is on it; then the app asks the shell to exit, also when the
-   * install failed.
-   */
-  private async quitWithUpdate(): Promise<void> {
-    // A second Quit while the first installs waits for it: the same bytes are never installed twice.
-    if (this.quitting) return;
-    this.quitting = true;
-    try {
-      if (this.state.appUpdate.ready) await this.platform.updater.installDownloaded();
-    } catch {
-      // Quitting wins: the update is offered again at the next start.
-    } finally {
-      await this.platform.quitNow();
-    }
-  }
-
-  /** "Depois": the banner goes until the next check. */
-  dismissAppUpdate(): void {
-    this.setAppUpdate({ offer: null });
   }
 
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
@@ -3042,10 +2955,6 @@ export class AppStore {
     this.select(hostId, sessionId);
     this.router.push({ name: "session", host: hostId, id: sessionId });
   };
-
-  private setAppUpdate(patch: Partial<AppUpdateState>): void {
-    this.update({ appUpdate: { ...this.state.appUpdate, ...patch } });
-  }
 
   // -- internals ------------------------------------------------------------
 

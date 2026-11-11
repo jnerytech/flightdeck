@@ -614,7 +614,7 @@ function makeSettingsActions(store: AppStore) {
     onCloseToTray: (enabled: boolean) => void store.settings.setCloseToTray(enabled),
     onAutostart: (enabled: boolean) => void store.settings.setAutostart(enabled),
     onGlobalShortcut: (text: string) => void store.settings.setGlobalShortcut(text),
-    onCheckUpdate: () => void store.checkAppUpdate(),
+    onCheckUpdate: () => void store.appUpdates.check(),
     onNotifyUpdates: (enabled: boolean) => store.settings.setNotifyUpdates(enabled),
     onAutoUpdate: (enabled: boolean) => store.settings.setAutoUpdate(enabled),
     onTheme: (mode: ThemeMode) => store.theme.setMode(mode),
