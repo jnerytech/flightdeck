@@ -19,6 +19,7 @@
   gap: 1rem;
 }
 
+/* The collapsed rail's host: its initial, with the status dot at the corner (issue #183). */
 @utility rail-host {
   position: relative;
   display: flex;
