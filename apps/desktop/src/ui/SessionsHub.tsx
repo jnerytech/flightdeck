@@ -32,6 +32,7 @@ import {
   awayHost,
   hubProjectKeys,
   projectChoices,
+  projectName,
   rowsInScope,
   scopeKeys,
 } from "@/features/sessions/index.ts";
@@ -43,7 +44,7 @@ import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import { UNASSIGNED } from "../lib/clients.ts";
-import { projectLabel, usd } from "../lib/costs.ts";
+import { usd } from "../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
@@ -555,7 +556,7 @@ export function SessionsHub(
           <InlineNotice tone="info">
             <span>
               {t("scope.projectNoSessions", {
-                project: projectNames.get(scopedProject) ?? projectLabel(scopedProject),
+                project: projectName(scopedProject, projectNames),
               })}{" "}
             </span>
             <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>

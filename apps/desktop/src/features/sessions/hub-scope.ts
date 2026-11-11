@@ -57,12 +57,17 @@ export function hubProjectKeys(
   return [...new Set([...rows.map((row) => row.projectKey), scoped])].filter((key) => key !== "");
 }
 
-/** The projects the scope menu offers, by label. A key with no name yet reads as its folder or remote. */
+/** A project's label: its name when the app has one, else its folder or remote. */
+export function projectName(key: string, names: ReadonlyMap<string, string>): string {
+  return names.get(key) ?? projectLabel(key);
+}
+
+/** The projects the scope menu offers, by label. */
 export function projectChoices(
   keys: readonly string[],
   names: ReadonlyMap<string, string>,
 ): { key: string; label: string }[] {
   return keys
-    .map((key) => ({ key, label: names.get(key) ?? projectLabel(key) }))
+    .map((key) => ({ key, label: projectName(key, names) }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }

@@ -11,6 +11,7 @@ export {
   awayHost,
   hubProjectKeys,
   projectChoices,
+  projectName,
   rowsInScope,
   scopeKeys,
 } from "./hub-scope.ts";
