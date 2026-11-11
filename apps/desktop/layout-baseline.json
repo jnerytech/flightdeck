@@ -1,4 +1,5 @@
 {
+  "src/features/appupdate/update-banner.tsx": 4,
   "src/features/backup/backup-all-panel.tsx": 8,
   "src/features/backup/backup-schedule-panel.tsx": 4,
   "src/features/board/board-notice.tsx": 4,
@@ -23,9 +24,9 @@
   "src/features/board/quiet-badge.tsx": 1,
   "src/features/board/radar-badge.tsx": 1,
   "src/features/board/selection-bar.tsx": 3,
+  "src/features/costs/QuotaCharts.tsx": 6,
   "src/features/costs/day-chart.tsx": 16,
   "src/features/costs/page.tsx": 18,
-  "src/features/costs/QuotaCharts.tsx": 6,
   "src/features/costs/usage-group.tsx": 10,
   "src/features/costs/usage-panel.tsx": 7,
   "src/features/deps/missing-tools-cards.tsx": 7,
@@ -144,14 +145,13 @@
   "src/ui/RunTimeline.tsx": 16,
   "src/ui/Screens.tsx": 9,
   "src/ui/SessionFiles.tsx": 6,
-  "src/ui/SessionsHub.tsx": 25,
   "src/ui/SessionTabs.tsx": 5,
   "src/ui/SessionView.tsx": 3,
+  "src/ui/SessionsHub.tsx": 25,
   "src/ui/Settings.tsx": 3,
   "src/ui/Sidebar.tsx": 30,
   "src/ui/TabBar.tsx": 5,
   "src/ui/TerminalPage.tsx": 3,
   "src/ui/ToolCall.tsx": 8,
-  "src/ui/TranscriptReader.tsx": 6,
-  "src/ui/UpdateBanner.tsx": 4
+  "src/ui/TranscriptReader.tsx": 6
 }

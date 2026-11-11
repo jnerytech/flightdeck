@@ -3,7 +3,7 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 const UPDATEBANNER_KEYS = ["appUpdate", "hosts", "settings"] as const;
 

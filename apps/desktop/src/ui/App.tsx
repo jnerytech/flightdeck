@@ -15,6 +15,7 @@ import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/to
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
+import { UpdateBanner, UpdateCard } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
 import { ResumeOfferDialog } from "@/features/sessions/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
@@ -42,8 +43,6 @@ import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
-import { UpdateBanner } from "./UpdateBanner.tsx";
-import { UpdateCard } from "./UpdateCard.tsx";
 import { useLiveElsewhereAsk } from "./use-live-elsewhere-guard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */

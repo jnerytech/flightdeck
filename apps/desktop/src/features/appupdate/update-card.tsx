@@ -3,7 +3,7 @@ import { memo, useId } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 const UPDATECARD_KEYS = ["appUpdate", "settings"] as const;
 

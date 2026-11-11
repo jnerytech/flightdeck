@@ -15,14 +15,21 @@ const FEATURE = `${HEAD("feature")}\n\n## Why\nx\n\n## Scope\n- a\n\n## Out of s
 
 function fakes(
   files: Record<string, string> = {},
-  answer: { code?: number; stdout?: string } = {},
+  answer: { code?: number; stdout?: string; stderr?: string } = {},
+  /** Answers one call by its arguments, over `answer`. */
+  per: (args: string[]) => { code: number; stderr?: string } | null = () => null,
 ) {
   const asked: string[][] = [];
   const out: string[] = [];
   const deps: IssueDeps = {
     gh: async (args) => {
       asked.push(args);
-      return { code: answer.code ?? 0, stdout: answer.stdout ?? "42\n" };
+      const own = per(args);
+      return {
+        code: own?.code ?? answer.code ?? 0,
+        stdout: answer.stdout ?? "42\n",
+        stderr: own?.stderr ?? answer.stderr ?? "",
+      };
     },
     readFile: (path) => files[path] ?? null,
     log: (line) => out.push(line),
@@ -152,7 +159,7 @@ describe("issue-spec: the commands", () => {
     expect(f.asked).toEqual([]);
   });
 
-  test("new with a valid body posts the title, the body and the assignee, and prints the number", async () => {
+  test("new with a valid body posts the title, the body, the assignee and the mini-spec label, and prints the number", async () => {
     const f = fakes({ "good.md": REFACTOR }, { stdout: "1919\n" });
     expect(await runIssue(["new", "--title", "A title", "--body-file", "good.md"], f.deps)).toBe(0);
     expect(f.asked).toEqual([
@@ -167,6 +174,8 @@ describe("issue-spec: the commands", () => {
         `body=${REFACTOR}`,
         "-f",
         "assignees[]=jnerytech",
+        "-f",
+        "labels[]=mini-spec",
         "--jq",
         ".number",
       ],
@@ -179,9 +188,42 @@ describe("issue-spec: the commands", () => {
     expect(await runIssue(["edit", "7", "--body-file", "bad.md"], f.deps)).toBe(1);
     expect(f.asked).toEqual([]);
     expect(await runIssue(["edit", "7", "--body-file", "good.md"], f.deps)).toBe(0);
+    // The body is patched with no labels argument (a PATCH would replace the issue's labels), then
+    // the label is added alone through the labels endpoint.
     expect(f.asked).toEqual([
       ["api", "-X", "PATCH", "repos/jnerytech/flightdeck/issues/7", "-f", `body=${REFACTOR}`],
+      [
+        "api",
+        "-X",
+        "POST",
+        "repos/jnerytech/flightdeck/issues/7/labels",
+        "-f",
+        "labels[]=mini-spec",
+      ],
     ]);
+  });
+
+  test("edit whose label call fails after the body was saved exits 1 and says so", async () => {
+    const f = fakes({ "good.md": REFACTOR }, {}, (args) =>
+      args.includes("labels[]=mini-spec") ? { code: 1, stderr: "label API down\nmore" } : null,
+    );
+    expect(await runIssue(["edit", "7", "--body-file", "good.md"], f.deps)).toBe(1);
+    expect(f.out.join("\n")).toContain("label API down");
+    expect(f.out.join("\n")).toContain("the body is saved");
+    expect(f.out.join("\n")).toContain("the label is not");
+    expect(f.asked).toHaveLength(2);
+  });
+
+  test("edit whose body call fails makes no label call", async () => {
+    const f = fakes({ "good.md": REFACTOR }, { code: 1 });
+    expect(await runIssue(["edit", "7", "--body-file", "good.md"], f.deps)).toBe(1);
+    expect(f.asked).toHaveLength(1);
+  });
+
+  test("check makes no write: only a read of the issue", async () => {
+    const f = fakes({}, { stdout: REFACTOR });
+    await runIssue(["check", "7"], f.deps);
+    expect(f.asked.every((args) => !args.includes("POST") && !args.includes("PATCH"))).toBe(true);
   });
 
   test("a gh failure, a missing file, a bad number and a missing title are refused with a message", async () => {
