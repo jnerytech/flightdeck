@@ -1,21 +1,49 @@
-import type { LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  Bot,
+  type LucideIcon,
+  MessageSquare,
+  SquareKanban,
+  SquareTerminal,
+} from "lucide-react";
 import { NAV_ICONS } from "@/components/nav-icons";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import type { TabBadge, TabKind } from "../../lib/tab-badge.ts";
+import { breadcrumb } from "../../lib/breadcrumb.ts";
+import { hostColorVar } from "../../lib/host-color.ts";
+import { type TabKind, tabBadge, tabIdleSince, tabKind } from "../../lib/tab-badge.ts";
 import type { Tab } from "../../lib/tabs.ts";
+import { isProd } from "../ssh/index.ts";
 
 export const TAB_ICONS: Record<TabKind, LucideIcon> = {
+  session: MessageSquare,
+  card: SquareKanban,
+  terminal: SquareTerminal,
+  reader: BookOpen,
+  agent: Bot,
+  screen: NAV_ICONS.sessions,
   ...NAV_ICONS,
-} as Record<TabKind, LucideIcon>;
+};
 
 /** What a terminal tab says about the ssh destino it was opened from, if it was. */
-export function sshOf(_tab: Tab, _store: AppStore): { name: string; tags: string[] } | undefined {
-  return undefined;
+export function sshOf(tab: Tab, store: AppStore) {
+  const route = tab.router.current;
+  return route.name === "terminal"
+    ? store.ssh.terminals.get(`${route.host}/${route.terminalId}`)
+    : undefined;
 }
 
-/** The title of a tab: the last step of the path its route shows in the header. */
-export function tabTitle(_tab: Tab, _state: AppState, _store: AppStore): string {
-  return "";
+/**
+ * The title of a tab: the last step of the path its route shows in the header. A host's Overview and
+ * History end in the host's name, which the row already says (it belongs to that host): they show
+ * their section instead (issue #644).
+ */
+export function tabTitle(tab: Tab, state: AppState, store: AppStore): string {
+  const ssh = sshOf(tab, store);
+  if (ssh) return store.i18n.t("terminalUi.sshBadge", { name: ssh.name });
+  const route = tab.router.current;
+  if (route.name === "host") return store.i18n.t("hostHome.overview");
+  if (route.name === "history") return store.i18n.t("sidebar.history");
+  return breadcrumb(route, state, store.i18n.t).at(-1)?.label ?? "";
 }
 
 export type TabFactsAt = {
@@ -27,16 +55,28 @@ export type TabFactsAt = {
 };
 
 /** What a tab of the strip shows and says: its name, kind, badge, server and the words a screen reader gets. */
-export function tabFacts(_tab: Tab, _at: TabFactsAt) {
+export function tabFacts(tab: Tab, at: TabFactsAt) {
+  const { t, state, store, host } = at;
+  const label = tabTitle(tab, state, store);
+  const kind = tabKind(tab.router.current);
+  const badge = tabBadge(tab.router.current, state);
+  const pinnedLabel = badge ? [label, t(`tabs.badge.${badge}`)].join(", ") : label;
+  const ssh = sshOf(tab, store);
+  const hostName = host ? (state.hosts.find((h) => h.id === host)?.name ?? host) : undefined;
+  // A pinned tab shows no title, and a host's tab no longer carries its host's name in it: the
+  // name is set here, with the badge's words.
+  const pinnedName = tab.pinned ? pinnedLabel : undefined;
   return {
-    label: "",
-    kind: "screen" as TabKind,
-    Icon: TAB_ICONS.screen,
-    badge: null as TabBadge,
-    cacheSince: null as string | null,
-    ssh: undefined as { name: string; tags: string[] } | undefined,
-    prod: undefined as boolean | undefined,
-    hostColor: undefined as string | undefined,
-    ariaLabel: undefined as string | undefined,
+    label,
+    kind,
+    Icon: TAB_ICONS[kind],
+    badge,
+    cacheSince: tabIdleSince(tab.router.current, state),
+    ssh,
+    // A production server is easy to mistake for another: its tab gets a red border.
+    prod: ssh ? isProd(ssh.tags) : undefined,
+    // The host's tabs carry its color.
+    hostColor: host ? hostColorVar(host) : undefined,
+    ariaLabel: hostName ? t("tabs.named", { title: pinnedLabel, host: hostName }) : pinnedName,
   };
 }

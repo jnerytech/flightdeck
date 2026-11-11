@@ -25,11 +25,18 @@ const state = (over: object = {}) =>
         sessions: [
           {
             id: "s1",
+            cwd: "/work/api",
             status: "running",
             pendingPermissions: [],
             updatedAt: "2026-11-11T10:00:00Z",
           },
-          { id: "s2", status: "idle", pendingPermissions: [], updatedAt: "2026-11-11T09:00:00Z" },
+          {
+            id: "s2",
+            cwd: "/work/web",
+            status: "idle",
+            pendingPermissions: [],
+            updatedAt: "2026-11-11T09:00:00Z",
+          },
         ],
       },
     ],
