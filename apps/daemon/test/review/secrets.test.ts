@@ -7,9 +7,9 @@ import { refArg } from "../../src/board/ref-arg.ts";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewComments } from "../../src/review/comments.ts";
 import { ReviewFiles } from "../../src/review/files.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 // Real git in temporary repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

@@ -3,9 +3,9 @@ import type { Messaging } from "../../src/messaging/messages.ts";
 import type { Names } from "../../src/names/names.ts";
 import { startServer } from "../../src/server.ts";
 import type { Teams } from "../../src/teams/teams.ts";
-import { newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "recursos-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

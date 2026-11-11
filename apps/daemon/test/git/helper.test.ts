@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { git, gitFailure, gitRepo, gitRepoWithOrigin } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { git, gitFailure, gitRepo, gitRepoWithOrigin } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const messageOf = (fn: () => unknown): string => {
   try {

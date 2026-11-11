@@ -7,7 +7,7 @@ import {
   MAX_INTERVAL_MS,
   MIN_INTERVAL_MS,
 } from "../../src/boardsync/loop.ts";
-import { manualTime } from "../time-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 import { syncSetup } from "./setup.ts";
 
 const REPORT: SyncReport = {

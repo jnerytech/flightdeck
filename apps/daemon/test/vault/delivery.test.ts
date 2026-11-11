@@ -12,8 +12,8 @@ import {
   Vault,
   type VaultDelivery,
 } from "../../src/vault/vault.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "cofre-token-0123456789abcdef";
 const VALUE = "ghp_SEGREDO-DE-TESTE-9f3a1c7e\ncom quebra e acentuação é ç 中";

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, poll } from "../helpers.ts";
-import { appendRaw, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { appendRaw, projectsRoot, userLine, writeTranscript } from "../support/history-helpers.ts";
 
 const origins = (db: EventStore["db"]) =>
   Object.fromEntries(

@@ -4,8 +4,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
-import { BASELINE_FEATURES, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 import { jsonLogs } from "./otlp-helpers.ts";
 
 const TOKEN = "daemon-token-0123456789abcdef0123456789";

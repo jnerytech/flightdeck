@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Quota } from "../../daemon/src/quota/quota.ts";
-import { manualTime } from "../../daemon/test/time-helpers.ts";
+import { manualTime } from "../../daemon/test/support/time-helpers.ts";
 import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";

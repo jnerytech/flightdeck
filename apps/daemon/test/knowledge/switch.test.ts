@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { testHome } from "../../../../scripts/test/temp-dir.ts";
 import { expandHome } from "../../src/config.ts";
 import { knowledgeSwitchFor } from "../../src/knowledge/switch.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /** Issue #76: the person's switch for the index, per project: a folder in `knowledge.feedOff`. */
 function host(initial: string[], trusted = true) {

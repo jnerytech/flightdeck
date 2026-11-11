@@ -8,8 +8,8 @@ import { startDaemon } from "../../src/main.ts";
 import { Quota, type Timers } from "../../src/quota/quota.ts";
 import { normalizeSdkMessage } from "../../src/runtime/claude-sdk-runtime.ts";
 import { startServer } from "../../src/server.ts";
-import { BASELINE_FEATURES, newManager, poll, record, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, record, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "quota-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

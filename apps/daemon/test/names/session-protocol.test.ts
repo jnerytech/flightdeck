@@ -6,8 +6,8 @@ import { Central } from "../../src/central/central.ts";
 import { Names } from "../../src/names/names.ts";
 import { trackNames } from "../../src/names/track.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "nomes-token-0123456789abcdef0";
 const cleanups: Array<() => unknown> = [];

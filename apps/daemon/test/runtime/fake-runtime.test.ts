@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { CanUseToolFn, RuntimeEvent, StartOptions } from "../../src/runtime/types.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 function opts(canUseTool: CanUseToolFn, extra: Partial<StartOptions> = {}): StartOptions {
   return { cwd: "/x", permissionMode: "default", env: {}, canUseTool, ...extra };

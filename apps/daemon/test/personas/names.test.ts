@@ -5,7 +5,7 @@ import { Messaging } from "../../src/messaging/messages.ts";
 import { Names } from "../../src/names/names.ts";
 import { trackNames } from "../../src/names/track.ts";
 import { Teams } from "../../src/teams/teams.ts";
-import { newBoard, whenChanged } from "../board-helpers.ts";
+import { newBoard, whenChanged } from "../support/board-helpers.ts";
 
 setDefaultTimeout(30_000);
 

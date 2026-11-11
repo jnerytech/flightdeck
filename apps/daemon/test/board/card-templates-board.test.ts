@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { templateRootOf } from "../../src/board/spec-template.ts";
 import { FlightdeckError } from "../../src/errors.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 /**
  * Issue #1201: a trusted project's card templates (`.flightdeck/templates/cards.json`) are offered

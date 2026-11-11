@@ -9,9 +9,9 @@ import {
 import type { FakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { CheckRunner } from "../../src/workflows/check-runner.ts";
 import { shellCheckRunner } from "../../src/workflows/check-runner.ts";
-import { cardWhen } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git, and every fake check is a Bun process: more than the default 5 s.
 setDefaultTimeout(20_000);

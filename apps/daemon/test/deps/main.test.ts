@@ -4,7 +4,7 @@ import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { startDaemon } from "../../src/main.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 const TOKEN = "deps-main-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

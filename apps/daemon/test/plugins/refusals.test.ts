@@ -10,7 +10,7 @@ import {
   type PluginCli,
   Plugins,
 } from "../../src/plugins/plugins.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(30_000);
 

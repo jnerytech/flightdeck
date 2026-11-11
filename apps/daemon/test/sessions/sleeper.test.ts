@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { IdleSleeper, type SleeperTimers } from "../../src/sessions/sleeper.ts";
-import { newManager, poll, record } from "../helpers.ts";
+import { newManager, poll, record } from "../support/helpers.ts";
 
 const MIN = 60_000;
 

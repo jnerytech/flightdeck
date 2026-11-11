@@ -8,8 +8,13 @@ import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import type { Messaging } from "../../src/messaging/messages.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import {
+  FrameClient,
+  projectsRoot,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 const TOKEN = "history-perf-token-0123456";
 const FOLDERS = 12;

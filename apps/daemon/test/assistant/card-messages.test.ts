@@ -3,9 +3,9 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git in temporary repositories, a worktree per card.
 setDefaultTimeout(30_000);

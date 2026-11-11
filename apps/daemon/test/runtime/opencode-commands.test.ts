@@ -5,7 +5,7 @@ import { SessionEvent } from "@flightdeck/protocol";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
 import { OpenCodeRuntime } from "../../src/runtime/opencode-runtime.ts";
 import type { AgentRun, RuntimeEvent, StartOptions } from "../../src/runtime/types.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import { FakeAcpAgent, manualTimers } from "./fake-acp-agent.ts";
 
 const ZWSP = "​";

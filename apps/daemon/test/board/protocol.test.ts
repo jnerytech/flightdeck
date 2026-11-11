@@ -6,9 +6,9 @@ import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
-import { git, gitRepo, newBoard } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);

@@ -6,9 +6,9 @@ import { applyHarness } from "../../src/harness/apply.ts";
 import { commitHarness } from "../../src/harness/commit.ts";
 import { previewHarness } from "../../src/harness/preview.ts";
 import { startServer } from "../../src/server.ts";
-import { git } from "../board-helpers.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /**
  * Issue #75, slice C1: what the harness apply wrote is committed on a new branch the host names,

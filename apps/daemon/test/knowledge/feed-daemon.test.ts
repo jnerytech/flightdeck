@@ -3,8 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #76: the daemon gives the index to a trusted project, unless the config switches it off. */
 const TOKEN = "knowledge-feed-daemon-token-0123456789";

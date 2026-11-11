@@ -7,10 +7,10 @@ import { Changes } from "../../src/review/changes.ts";
 import { SessionCommits } from "../../src/review/session-commit.ts";
 import { SessionPrs } from "../../src/review/session-pr.ts";
 import { startServer } from "../../src/server.ts";
-import { git, gitRepoWithOrigin } from "../board-helpers.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { git, gitRepoWithOrigin } from "../support/board-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 /**
  * Issue #1133, slice D2: the branch a plain session's commit made is pushed to `origin` and its PR

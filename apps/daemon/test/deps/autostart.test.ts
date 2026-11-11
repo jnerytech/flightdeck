@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Board, type BoardOptions } from "../../src/board/board.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

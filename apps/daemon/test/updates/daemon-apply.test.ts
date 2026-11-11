@@ -9,8 +9,8 @@ import { startServer } from "../../src/server.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../../src/service.ts";
 import { assetKey, DaemonUpdater } from "../../src/updates/apply.ts";
 import { updatePublicKey } from "../../src/updates/public-key.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "update-apply-token-0123456789";
 const BINARY = new TextEncoder().encode("flightdeckd 0.9.0 binário de teste");

@@ -2,7 +2,7 @@ import { afterEach } from "bun:test";
 import { BoardSync } from "../../src/boardsync/engine.ts";
 import { DEFAULT_COLUMN_MAP } from "../../src/boardsync/map.ts";
 import { BoardSyncStore } from "../../src/boardsync/store.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 import { BOARD, FakeProvider } from "./fake.ts";
 
 const cleanups: Array<() => unknown> = [];

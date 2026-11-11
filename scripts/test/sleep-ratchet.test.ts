@@ -65,8 +65,8 @@ describe("sleep-ratchet: a test waits on a condition, not on a guessed time (iss
     put("packages/protocol/test/c.test.ts", "await Bun.sleep(1);");
     put("scripts/test/d.test.ts", "await Bun.sleep(1);");
     put("scripts/test/clean.test.ts", "await settle(() => ok());");
-    put("apps/daemon/test/helpers.ts", "export const nap = () => Bun.sleep(1);");
-    put("apps/daemon/test/fake-claude-main.ts", "await Bun.sleep(1000);");
+    put("apps/daemon/test/support/helpers.ts", "export const nap = () => Bun.sleep(1);");
+    put("apps/daemon/test/support/fake-claude-main.ts", "await Bun.sleep(1000);");
     put("apps/daemon/src/real.ts", "await Bun.sleep(1000);");
     put("apps/daemon/test/node_modules/x/e.test.ts", "await Bun.sleep(1);");
     expect(sleepCounts(root)).toEqual({

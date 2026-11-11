@@ -7,8 +7,8 @@ import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { TelemetryStore } from "../../src/telemetry/store.ts";
 import { TraceService } from "../../src/trace/service.ts";
-import { BASELINE_FEATURES, newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const SESSION = "bbbbbbbb-0000-4000-8000-000000000025";
 const FIXTURES = join(import.meta.dir, "../fixtures/trace");

@@ -12,7 +12,7 @@ import type {
   RuntimeEvent,
   StartOptions,
 } from "../../src/runtime/types.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import { FakeAcpAgent, manualTimers, turns } from "./fake-acp-agent.ts";
 
 function setup(canUseTool: CanUseToolFn, over: Partial<StartOptions> = {}, consume = true) {

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { DepResult } from "@flightdeck/protocol";
 import { checkDeps, type DepsEnv } from "../../src/deps/deps.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOOLS: Record<string, { path: string; version: string }> = {
   claude: { path: "/usr/bin/claude", version: "2.1.0" },

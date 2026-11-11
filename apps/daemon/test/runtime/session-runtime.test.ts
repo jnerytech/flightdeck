@@ -10,7 +10,7 @@ import type {
 } from "../../src/runtime/types.ts";
 import type { SessionManager } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 /** An OpenCode stand-in: records preflights and starts, and can refuse or fail. */
 class StubOpenCode implements AgentRuntime {

@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { assistantLine, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import {
+  assistantLine,
+  projectsRoot,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 const A = "/home/dev/a";
 const B = "/home/dev/b";

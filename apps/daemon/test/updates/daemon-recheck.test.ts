@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { startServer } from "../../src/server.ts";
 import { UpdateChecker } from "../../src/updates/check.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 const TOKEN = "update-recheck-token-0123456789";
 const HOUR = 3_600_000;

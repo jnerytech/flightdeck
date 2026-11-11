@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient, projectsRoot, writeTranscript } from "../history-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient, projectsRoot, writeTranscript } from "../support/history-helpers.ts";
 
 const TOKEN = "history-tool-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

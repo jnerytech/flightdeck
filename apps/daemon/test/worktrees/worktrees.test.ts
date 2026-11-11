@@ -8,7 +8,7 @@ import {
   Worktrees,
   type WorktreesOptions,
 } from "../../src/worktrees/worktrees.ts";
-import { git, gitRepo } from "../board-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
 
 const DAY = 86_400_000;
 const MB = 1024 * 1024;

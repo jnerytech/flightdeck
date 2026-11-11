@@ -7,9 +7,9 @@ import { UsageIndexer, type UsageIndexerOptions } from "../../src/costs/usage-in
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { BASELINE_FEATURES, newManager, poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertSession, usageEntries, writeUsageTranscript } from "../usage-helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { insertSession, usageEntries, writeUsageTranscript } from "../support/usage-helpers.ts";
 
 const TOKEN = "initial-load-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

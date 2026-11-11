@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { runCli } from "../../src/main.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "identidade-token-0123456789abcdef";
 

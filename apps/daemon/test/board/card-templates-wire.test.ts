@@ -3,9 +3,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { templateRootOf } from "../../src/board/spec-template.ts";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /** Issue #1201: over the wire, a host with a board announces cardTemplates, lists them and fills a card from one. */
 setDefaultTimeout(20_000);

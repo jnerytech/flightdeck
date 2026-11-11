@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
 import { ProjectTrust } from "../../src/trust/project-trust.ts";
-import { tempDir, waitFor } from "../helpers.ts";
+import { tempDir, waitFor } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(() => {

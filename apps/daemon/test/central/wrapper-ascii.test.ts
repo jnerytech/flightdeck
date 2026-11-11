@@ -15,8 +15,8 @@ import { PLAIN_PATH, RECEPTOR_FILE, TERMINAL_LAUNCH_VAR } from "../../src/centra
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, tempDir, workspace } from "../helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, tempDir, workspace } from "../support/helpers.ts";
 
 /** Issue #936: on Windows the channel config goes to a plain path claude can read back. */
 const HOOKS = "hooks-token-0123456789";

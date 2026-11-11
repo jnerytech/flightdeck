@@ -6,11 +6,11 @@ import { Budgets, type BudgetUpdate } from "../../src/costs/budgets.ts";
 import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
-import { writeUsageTranscript } from "../usage-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
+import { writeUsageTranscript } from "../support/usage-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

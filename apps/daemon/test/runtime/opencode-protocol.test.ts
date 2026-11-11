@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import * as protocol from "@flightdeck/protocol";
 import type { OpenCodeInfo } from "../../src/runtime/opencode-discovery.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 const TOKEN = "opencode-protocol-token-0123456789";
 const cleanups: Array<() => unknown> = [];

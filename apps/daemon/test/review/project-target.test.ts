@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewComments } from "../../src/review/comments.ts";
 import { ReviewFiles } from "../../src/review/files.ts";
-import { newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

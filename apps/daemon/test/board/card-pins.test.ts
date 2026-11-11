@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { FlightdeckError } from "../../src/errors.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { poll, record } from "../helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { poll, record } from "../support/helpers.ts";
 
 /** Issue #76: a card pins library documents; its first prompt names them. */
 async function boardWithDocs(docs: Record<string, string>) {

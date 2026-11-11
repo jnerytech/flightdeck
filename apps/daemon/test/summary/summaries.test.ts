@@ -8,7 +8,7 @@ import {
 } from "@flightdeck/protocol";
 import { applyEnvelope, emptySession } from "../../../desktop/src/lib/session-state.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 type Summary = SessionEventOf<"session.summary">;
 const TOKEN = "resumos-token-0123456789abc";

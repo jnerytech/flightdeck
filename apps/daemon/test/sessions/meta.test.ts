@@ -4,8 +4,13 @@ import { join } from "node:path";
 import { Central } from "../../src/central/central.ts";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { newManager, poll, tempDir } from "../support/helpers.ts";
+import {
+  FrameClient,
+  projectsRoot,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 const TOKEN = "app-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

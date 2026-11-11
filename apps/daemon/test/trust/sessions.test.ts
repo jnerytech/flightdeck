@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { FolderLocks } from "../../src/worktrees/locks.ts";
-import { newManager, waitFor } from "../helpers.ts";
+import { newManager, waitFor } from "../support/helpers.ts";
 
 describe("trust-sessions: every run of a session is told whether its folder is trusted (#196)", () => {
   test("a new session and a resumed one ask the provider for their own folder", async () => {

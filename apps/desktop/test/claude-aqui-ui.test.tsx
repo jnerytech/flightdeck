@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { basename } from "node:path";
 import type { ExternalSession } from "@flightdeck/protocol";
-import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 

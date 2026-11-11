@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { newManager, waitFor } from "../helpers.ts";
+import { newManager, waitFor } from "../support/helpers.ts";
 
 describe("keep-awake-sessoes: the manager says how many sessions are active (#163)", () => {
   test("it counts a session while it starts and runs, and says zero when the turn is done", async () => {

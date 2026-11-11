@@ -34,7 +34,7 @@ import {
   type UpdateDeps,
   waitHealthy,
 } from "../../src/update.ts";
-import { newManager, tempDir } from "../helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

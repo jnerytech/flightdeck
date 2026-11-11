@@ -3,8 +3,8 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { BoardOptions } from "../../src/board/board.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must, poll } from "../helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must, poll } from "../support/helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -217,7 +217,7 @@ describe("board", () => {
   test("a card still starting when the daemon stops leaves no unhandled error and writes nothing after", async () => {
     // In a process of its own: an unhandled rejection there is output and an exit code to check.
     const script = `
-      import { newBoard } from ${JSON.stringify(join(import.meta.dir, "../board-helpers.ts"))};
+      import { newBoard } from ${JSON.stringify(join(import.meta.dir, "../support/board-helpers.ts"))};
       const { board, store, repo } = newBoard();
       const project = await board.addProject({ path: repo, promptTemplate: "" });
       const card = board.createCard(project.id, { title: "Parar no meio", description: "faça" });

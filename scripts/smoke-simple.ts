@@ -19,8 +19,8 @@ import type {
 import { startServer } from "../apps/daemon/src/server.ts";
 import { BUILTIN_TEMPLATES } from "../apps/daemon/src/templates/builtin.ts";
 import { TaskTracker } from "../apps/daemon/src/templates/tasks.ts";
-import { newManager } from "../apps/daemon/test/helpers.ts";
-import { FrameClient } from "../apps/daemon/test/history-helpers.ts";
+import { newManager } from "../apps/daemon/test/support/helpers.ts";
+import { FrameClient } from "../apps/daemon/test/support/history-helpers.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 

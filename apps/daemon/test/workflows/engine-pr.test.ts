@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { cardWhen, git } from "../board-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen, git } from "../support/board-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git, a local remote and the fake gh (a Bun process): more than the default 5 s.
 setDefaultTimeout(20_000);

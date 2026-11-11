@@ -7,8 +7,8 @@ import { applyHarness } from "../../src/harness/apply.ts";
 import { type DraftDeps, HarnessDrafts } from "../../src/harness/draft.ts";
 import { previewHarness } from "../../src/harness/preview.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /**
  * Issue #75, slice G1a: the host drafts a CLAUDE.md with its model from the detected stack and the

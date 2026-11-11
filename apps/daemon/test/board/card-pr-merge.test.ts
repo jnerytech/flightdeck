@@ -2,8 +2,8 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { PrProvider, PrStatus } from "../../src/board/pr.ts";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(30_000);
 

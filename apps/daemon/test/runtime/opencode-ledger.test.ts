@@ -8,7 +8,7 @@ import {
   parseStat,
   procSource,
 } from "../../src/runtime/process-ledger.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 /** A pretend /proc: processes by pid, each with its group and start. */
 class FakeProc implements ProcSource {

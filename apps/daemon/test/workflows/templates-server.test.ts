@@ -7,9 +7,9 @@ import type {
 } from "@flightdeck/protocol";
 import type { PrProvider } from "../../src/board/pr.ts";
 import { startServer } from "../../src/server.ts";
-import { git } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in a temporary repository: more than the default 5 s.
 setDefaultTimeout(20_000);

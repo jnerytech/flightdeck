@@ -6,8 +6,8 @@ import {
   Plugins,
 } from "../../src/plugins/plugins.ts";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "tok-parar";
 const NONE: PinStore = { all: () => ({}), set: () => {}, delete: () => {} };

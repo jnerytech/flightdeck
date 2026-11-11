@@ -8,7 +8,7 @@ import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, record, tempDir, waitFor } from "../helpers.ts";
+import { newManager, record, tempDir, waitFor } from "../support/helpers.ts";
 
 const errorCode = async (fn: () => unknown) => {
   try {

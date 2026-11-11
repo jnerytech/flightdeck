@@ -6,8 +6,8 @@ import { FileLog } from "../../src/logs/file-log.ts";
 import { createLogScanner } from "../../src/logs/scanner.ts";
 import { startDaemon } from "../../src/main.ts";
 import { Vault } from "../../src/vault/vault.ts";
-import { poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(20_000);
 // Bare, prefix-less values, as the real tokens are: no pattern knows their shape.

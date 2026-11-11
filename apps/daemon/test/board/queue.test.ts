@@ -2,8 +2,8 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Config, loadConfig } from "../../src/config.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);

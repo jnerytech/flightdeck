@@ -3,7 +3,7 @@ import { cpSync } from "node:fs";
 import { join } from "node:path";
 import { UNTRUSTED_MARK } from "../../src/issues/issues.ts";
 import { CARDS_PER_RUN, type Finding } from "../../src/workflows/findings.ts";
-import { newBoard } from "../board-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {

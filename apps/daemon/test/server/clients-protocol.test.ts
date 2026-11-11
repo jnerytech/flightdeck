@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { Project, ProjectListResult } from "@flightdeck/protocol";
 import type { BoardOptions } from "../../src/board/board.ts";
 import { startServer } from "../../src/server.ts";
-import { git, newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(20_000);
 

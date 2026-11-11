@@ -7,7 +7,15 @@ import {
   UNTRUSTED_MARK,
 } from "../../src/messaging/header.ts";
 import type { MessagingFrame } from "../../src/messaging/messages.ts";
-import { failure, HOUR, MINUTE, NOW, PROJECT, setup, twoHosts } from "../mensagens-helpers.ts";
+import {
+  failure,
+  HOUR,
+  MINUTE,
+  NOW,
+  PROJECT,
+  setup,
+  twoHosts,
+} from "../support/messaging-helpers.ts";
 
 const relays = (frames: MessagingFrame[]) =>
   frames.flatMap((f) => (f.type === "messages.relay" ? [f.message] : []));

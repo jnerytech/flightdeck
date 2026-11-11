@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { realpathSync } from "node:fs";
 import { type FakeCli, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { runGhIn } from "../../src/github/gh.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 

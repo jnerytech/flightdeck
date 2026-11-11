@@ -6,7 +6,7 @@ import { ExternalSessions } from "../../src/central/external.ts";
 import { startReceptor } from "../../src/central/receptor.ts";
 import { runCli } from "../../src/main.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 const TOKEN = "hooks-token-0123456789";
 const cleanups: Array<() => unknown> = [];

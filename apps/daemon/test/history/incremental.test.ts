@@ -10,7 +10,7 @@ import {
   storedMessages,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const ID = "33333333-3333-4333-8333-333333333333";
 const CWD = "/home/dev/projeto-inc";

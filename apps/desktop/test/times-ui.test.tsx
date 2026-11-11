@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { runCli } from "../../daemon/src/main.ts";
-import { FrameClient } from "../../daemon/test/history-helpers.ts";
+import { FrameClient } from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { fakeAssistant, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";

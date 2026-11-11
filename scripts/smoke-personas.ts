@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
-import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { installFakeClaude } from "../apps/daemon/test/support/fake-claude.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {

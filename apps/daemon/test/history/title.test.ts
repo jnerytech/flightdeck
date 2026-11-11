@@ -3,7 +3,12 @@ import { SecretScanner } from "@flightdeck/protocol";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { buildSummary } from "../../src/summary/summary.ts";
-import { projectsRoot, summaryLine, userLine, writeTranscript } from "../history-helpers.ts";
+import {
+  projectsRoot,
+  summaryLine,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

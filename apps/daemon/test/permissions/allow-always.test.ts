@@ -5,8 +5,8 @@ import type { PermissionUpdate } from "@flightdeck/protocol";
 import { checkUpdates, parseSuggestions } from "../../src/permissions/permission-updates.ts";
 import type { PathKind } from "../../src/permissions/rule-risk.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll, record, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, record, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "allow-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

@@ -5,9 +5,9 @@ import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts
 import { Issues } from "../../src/issues/issues.ts";
 import { azureCoords, githubCoords } from "../../src/issues/remote.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git, worktrees and fake CLIs (a Bun process each): more than the default 5 s.
 setDefaultTimeout(20_000);

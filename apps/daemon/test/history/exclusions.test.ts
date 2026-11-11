@@ -5,7 +5,7 @@ import { testHome } from "../../../../scripts/test/temp-dir.ts";
 import { loadConfig } from "../../src/config.ts";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 import {
   appendRaw,
   fileRow,
@@ -14,7 +14,7 @@ import {
   summaryLine,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const sessionIds = (db: EventStore["db"]) =>
   (

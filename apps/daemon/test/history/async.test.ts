@@ -8,7 +8,7 @@ import {
   storedMessages,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 const CWD = "/home/dev/projeto-async";
 const SMALL_A = "aaaaaaaa-0000-4000-8000-00000000000a";

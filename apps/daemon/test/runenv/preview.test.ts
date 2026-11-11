@@ -4,7 +4,7 @@ import { RunManager } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
 import { httpReady, type ReadyResult, waitForServer, waitReady } from "../../src/runenv/preview.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import { fakeRunHost, runConfig } from "./helpers.ts";
 
 describe("preview: só loopback", () => {

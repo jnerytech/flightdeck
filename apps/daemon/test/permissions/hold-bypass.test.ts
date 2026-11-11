@@ -6,7 +6,7 @@ import { RiskClassifier } from "../../src/permissions/risk.ts";
 import type { PathKind } from "../../src/permissions/rule-risk.ts";
 import type { PermissionDecision } from "../../src/runtime/types.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 const CWD = "/work/proj";
 const cleanups: Array<() => unknown> = [];

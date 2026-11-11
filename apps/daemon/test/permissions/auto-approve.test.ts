@@ -19,9 +19,9 @@ import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { JudgeOptions, JudgeResult } from "../../src/runtime/types.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { cardWhen, gitRepo, newBoard } from "../board-helpers.ts";
-import { must, newManager, poll, record, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { must, newManager, poll, record, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "auto-token-0123456789abcdef";
 const ON: AutoApproveSettings = { enabled: true, model: "claude-haiku-5-5", lowWithoutAi: true };

@@ -17,8 +17,8 @@ import type { HarnessPreview } from "@flightdeck/protocol";
 import { type ApplyFs, applyHarness } from "../../src/harness/apply.ts";
 import { previewHarness } from "../../src/harness/preview.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /**
  * Issue #75, slice S4: apply writes what the preview proposed, as a pure merge, and only while the

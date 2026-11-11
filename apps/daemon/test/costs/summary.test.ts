@@ -3,9 +3,14 @@ import { Costs } from "../../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertCard, insertCardRun, insertSession, insertStepRun } from "../usage-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import {
+  insertCard,
+  insertCardRun,
+  insertSession,
+  insertStepRun,
+} from "../support/usage-helpers.ts";
 
 const TOKEN = "costs-summary-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

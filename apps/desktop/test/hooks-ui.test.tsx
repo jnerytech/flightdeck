@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Central } from "../../daemon/src/central/central.ts";
 import { RECEPTOR_FILE } from "../../daemon/src/central/wrapper.ts";
 import { loadConfig } from "../../daemon/src/config.ts";
-import { poll } from "../../daemon/test/helpers.ts";
+import { poll } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";

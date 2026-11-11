@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import type { PrProviderKind } from "../../daemon/src/board/types.ts";
-import { cardWhen, git } from "../../daemon/test/board-helpers.ts";
+import { cardWhen, git } from "../../daemon/test/support/board-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";

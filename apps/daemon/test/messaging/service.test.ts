@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { UNTRUSTED_MARK } from "../../src/messaging/header.ts";
 import type { MessagingFrame, PeerSession } from "../../src/messaging/messages.ts";
-import { HOUR, MINUTE, NOW, PROJECT, setup, twoHosts } from "../mensagens-helpers.ts";
+import { HOUR, MINUTE, NOW, PROJECT, setup, twoHosts } from "../support/messaging-helpers.ts";
 
 const OTHER = "github.com/acme/outro";
 const peer = (over: Partial<PeerSession> = {}): PeerSession => ({

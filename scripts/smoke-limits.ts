@@ -11,7 +11,10 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
-import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import {
+  type FakeClaudeEvent,
+  installFakeClaude,
+} from "../apps/daemon/test/support/fake-claude.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import { type Pending, pollUntil } from "./lib/smoke-poll";
 import {

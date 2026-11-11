@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { PlainInfo } from "@flightdeck/protocol";
-import { newManager, waitFor } from "../helpers.ts";
+import { newManager, waitFor } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

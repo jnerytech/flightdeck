@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { runAction } from "../../src/actions/run.ts";
 import { validateAction } from "../../src/actions/schema.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /** A program that starts at once and ends only when it is killed, and a clock that moves by hand. */
 function fakes() {

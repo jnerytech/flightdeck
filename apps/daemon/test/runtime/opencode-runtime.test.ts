@@ -9,7 +9,7 @@ import {
   treeKiller,
 } from "../../src/runtime/opencode-runtime.ts";
 import type { AgentRun, RuntimeEvent, StartOptions } from "../../src/runtime/types.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import { configOptions, FakeAcpAgent, manualTimers, turns } from "./fake-acp-agent.ts";
 
 const MCP = {
