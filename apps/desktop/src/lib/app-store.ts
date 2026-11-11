@@ -99,7 +99,7 @@ import {
   wireSnippets,
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
-import { TerminalsSlice } from "../features/terminal/index.ts";
+import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
   type VaultApprovalsSlice,
@@ -581,17 +581,9 @@ export class AppStore {
       log: (level, source, message) => this.appLog.log(level, source, message),
       quitNow: () => this.platform.quitNow(),
     });
-    this.terminals = new TerminalsSlice({
-      hosts: () => this.state.hosts,
-      terminalEnv: () => this.state.terminalEnv,
-      dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
-      open: (hostId, payload) => this.hostCommand(hostId, "terminal.open", payload),
-      close: (hostId, terminalId, kill) =>
-        this.hostCommand(hostId, "terminal.close", { terminalId, kill }),
+    this.terminals = wireTerminals(this.kernel, {
       showTab: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
-      closing: () => this.state.closingTerminal,
-      setClosing: (closingTerminal) => this.update({ closingTerminal }),
       closingTab: (closing) => {
         // The area is the current host's, or another host's first one (a tab of the all-hosts row).
         const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
@@ -607,8 +599,7 @@ export class AppStore {
       },
       copyText: (text) => this.copyText(text),
       spawn: (program, args) => this.platform.terminal.open(program, args),
-      spawnFailed: (error) =>
-        this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) })),
+      describeError,
     });
     this.viewPrefs = new ViewPrefsSlice({ storage: platform.storage });
     this.roster = new HostRosterSlice({

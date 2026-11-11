@@ -4,3 +4,4 @@
  * close that asks detach or end. Another domain imports from here, never a file inside.
  */
 export { type ClosingTerminal, type TerminalListener, TerminalsSlice } from "./store.ts";
+export { wireTerminals } from "./wire.ts";
