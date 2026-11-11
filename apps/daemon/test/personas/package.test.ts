@@ -187,6 +187,51 @@ describe("personas-pacote: as treze", () => {
     }
   });
 
+  test("the frontend persona builds the interface and leaves UX judgment to ux: no UX in its name, no UX eye in its text, same model and effort, and it names ux and ui (#1936)", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const frontend = packPersonas(language).find((p) => p.id === "frontend");
+      expect([language, frontend?.name, frontend?.model, frontend?.effort]).toEqual([
+        language,
+        "Frontend",
+        "claude-sonnet-5-5",
+        "medium",
+      ]);
+      const text = `${frontend?.description ?? ""}\n${frontend?.body ?? ""}`;
+      const mustNot =
+        language === "en"
+          ? [/UX eye/i, /visual consistency/i, /\bUX\b/]
+          : [/olhar de UX/i, /consistência visual/i, /\bUX\b/];
+      for (const rule of mustNot)
+        expect([language, String(rule), rule.test(text)]).toEqual([language, String(rule), false]);
+      // The build rules stay.
+      const body = frontend?.body ?? "";
+      const must =
+        language === "en"
+          ? [
+              /accessible name/i,
+              /every state/i,
+              /design system/i,
+              /keyboard/i,
+              /contrast/i,
+              /narrow and wide/i,
+              /reduced motion/i,
+              /Split the work with the ux and ui personas/i,
+            ]
+          : [
+              /nome acessível/i,
+              /todos os estados/i,
+              /sistema de design/i,
+              /teclado/i,
+              /contraste/i,
+              /estreitas e largas/i,
+              /movimento reduzido/i,
+              /Divida o trabalho com as personas ux e ui/i,
+            ];
+      for (const rule of must)
+        expect([language, String(rule), rule.test(body)]).toEqual([language, String(rule), true]);
+    }
+  });
+
   test("a desenvolvedora escreve código: teste primeiro, mudança pequena, segue o CLAUDE.md, roda as checagens e nunca faz push", () => {
     for (const language of ["pt-BR", "en"] as const) {
       const dev = packPersonas(language).find((p) => p.id === "dev");
