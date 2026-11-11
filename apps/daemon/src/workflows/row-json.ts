@@ -1,22 +1,23 @@
-import type { RunBudget } from "@flightdeck/protocol";
+import { RunBudget, RunUsage } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
 import type { RunSpending } from "./budget.ts";
 
 /** The JSON columns of a workflow run and its steps, read through their schemas (#1609). */
-export type StepUsage = { turns: number; minutes: number; costUsd: number };
+const Spending = RunUsage.extend({ sessions: z.record(z.string(), z.number()).default({}) });
+const Inputs = z.record(z.string(), z.string());
+const ReasonParams = z.record(z.string(), z.union([z.string(), z.number()]));
 
-export const spendingOf = (_text: string): RunSpending => ({
-  turns: -1,
-  minutes: -1,
-  costUsd: -1,
-  sessions: {},
-});
-export const budgetOf = (_text: string): RunBudget => ({ maxTurns: -1 });
-export const inputsOf = (_text: string): Record<string, string> => ({ stub: "" });
-export const stepUsageOf = (_text: string | null): StepUsage | null => ({
-  turns: -1,
-  minutes: -1,
-  costUsd: -1,
-});
-export const reasonParamsOf = (_text: string): Record<string, string | number> | null => ({
-  stub: -1,
-});
+/** What a run spent. Throws when it does not fit: a lost tally would let the run pass its budget. */
+export const spendingOf = (text: string): RunSpending => parseJsonWith(Spending, text);
+/** What a run spent, as the wire shows it: without the per-session tally. */
+export const runUsageOf = (text: string): RunUsage => parseJsonWith(RunUsage, text);
+export const budgetOf = (text: string): RunBudget => parseJsonWith(RunBudget, text);
+export const inputsOf = (text: string): Record<string, string> => parseJsonWith(Inputs, text);
+
+/** What one step spent; none when the column is empty or unreadable (it is only shown). */
+export const stepUsageOf = (text: string | null): RunUsage | null =>
+  text ? parseJsonOr(RunUsage, text, null) : null;
+
+export const reasonParamsOf = (text: string | null): Record<string, string | number> | null =>
+  text ? parseJsonOr(ReasonParams, text, null) : null;

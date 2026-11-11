@@ -27,9 +27,21 @@ export function layoutLike(text: string | null, value: unknown): string {
   return `${bom}${JSON.stringify(value, null, indent).replaceAll("\n", eol)}${newline}`;
 }
 
-/** The JSON of `text` checked against `schema`; throws when the text is not JSON or does not fit. */
+/**
+ * The JSON of `text` checked against `schema`; throws when the text is not JSON or does not fit.
+ * The error names where the text does not fit, never the text: it may hold a secret and ends in logs.
+ */
 export function parseJsonWith<T>(schema: z.ZodType<T>, text: string): T {
-  return schema.parse(parseJsonText(text));
+  let value: unknown;
+  try {
+    value = parseJsonText(text);
+  } catch {
+    throw new Error("text is not JSON");
+  }
+  const result = schema.safeParse(value);
+  if (result.success) return result.data;
+  const where = result.error.issues.map((issue) => issue.path.join(".") || "(root)");
+  throw new Error(`JSON does not fit at ${[...new Set(where)].join(", ")}`);
 }
 
 /** Like `parseJsonWith`, but `fallback` for text that is not JSON or does not fit `schema`. */

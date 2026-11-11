@@ -19,11 +19,12 @@ import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
-import { addTurn, noSpending, overBudget, type RunSpending } from "./budget.ts";
+import { addTurn, noSpending, overBudget } from "./budget.ts";
 import type { CheckResult, CheckRunner } from "./check-runner.ts";
 import { CARDS_PER_RUN, type CardsRaised, type Finding, parseFindings } from "./findings.ts";
 import { type InterpolationContext, interpolate, OUTPUTS_SEPARATOR } from "./interpolate.ts";
 import { hashOf, type WorkflowSource, workflowSources } from "./repo.ts";
+import * as col from "./row-json.ts";
 import {
   type Action,
   type AgentAction,
@@ -131,7 +132,7 @@ const toStep = (row: StepRow): StepRun => ({
   exitCode: row.exit_code,
   note: row.note,
   message: row.message,
-  usage: row.usage ? JSON.parse(row.usage) : null,
+  usage: col.stepUsageOf(row.usage),
   startedAt: row.started_at,
   endedAt: row.ended_at,
 });
@@ -714,7 +715,6 @@ export class WorkflowEngine {
       .query<StepRow, [string]>("SELECT * FROM step_runs WHERE run_id = ? ORDER BY rowid")
       .all(id)
       .map(toStep);
-    const { turns, minutes, costUsd } = JSON.parse(row.usage) as RunSpending;
     const quotaUntil = this.quotaWaits.get(id);
     return {
       id: row.id,
@@ -724,10 +724,10 @@ export class WorkflowEngine {
       status: row.status,
       statusReason: row.status_reason,
       reasonKey: row.status_reason_key,
-      reasonParams: row.status_reason_params ? JSON.parse(row.status_reason_params) : null,
-      budget: JSON.parse(row.budget),
-      usage: { turns, minutes, costUsd },
-      inputs: JSON.parse(row.inputs),
+      reasonParams: col.reasonParamsOf(row.status_reason_params),
+      budget: col.budgetOf(row.budget),
+      usage: col.runUsageOf(row.usage),
+      inputs: col.inputsOf(row.inputs),
       startedAt: row.started_at,
       endedAt: row.ended_at,
       steps,
@@ -741,7 +741,7 @@ export class WorkflowEngine {
     const run = this.row(runId);
     // Validated when the run was prepared.
     const workflow = parseWorkflow(run.definition).workflow as Workflow;
-    const context: InterpolationContext = { inputs: JSON.parse(run.inputs), steps: {} };
+    const context: InterpolationContext = { inputs: col.inputsOf(run.inputs), steps: {} };
     try {
       await inSequence(workflow.steps, async (step) => {
         context.steps[step.id] = await this.runStep(run, worktree, step, context);
@@ -1062,7 +1062,7 @@ export class WorkflowEngine {
     const cut = this.stepRow(run.id, stepId, attempt);
     if (cut?.status === "completed") return cut.output ?? "";
     // Checked before every turn: a run over its budget pauses instead of spending more.
-    const over = overBudget(JSON.parse(run.budget), JSON.parse(this.row(run.id).usage));
+    const over = overBudget(col.budgetOf(run.budget), col.spendingOf(this.row(run.id).usage));
     if (over) throw new Stop("paused", over);
     // At the same point: over the plan quota, the turn waits for the window to reset.
     const quota = this.host.waitQuota();
@@ -1211,13 +1211,13 @@ export class WorkflowEngine {
     step: { stepId: string; attempt: number },
     turn: Parameters<typeof addTurn>[1],
   ): void {
-    const before: RunSpending = JSON.parse(this.row(runId).usage);
+    const before = col.spendingOf(this.row(runId).usage);
     const spending = addTurn(before, turn);
     this.db
       .query("UPDATE workflow_runs SET usage = ? WHERE id = ?")
       .run(JSON.stringify(spending), runId);
     const row = this.stepRow(runId, step.stepId, step.attempt) as StepRow;
-    const share = JSON.parse(row.usage ?? '{"turns":0,"minutes":0,"costUsd":0}');
+    const share = col.stepUsageOf(row.usage) ?? { turns: 0, minutes: 0, costUsd: 0 };
     const usage = {
       turns: share.turns + 1,
       minutes: share.minutes + turn.minutes,
