@@ -9,7 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 const { SetupPage } = await import("../src/ui/SetupPage.tsx");
-const { Settings } = await import("../src/ui/Settings.tsx");
+const { Settings } = await import("../src/features/settings/page.tsx");
 const { StartScreen } = await import("../src/ui/StartScreen.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

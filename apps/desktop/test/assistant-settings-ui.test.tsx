@@ -10,7 +10,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { AssistantSettings } = await import("../src/components/assistant/assistant-settings.tsx");
-const { Settings } = await import("../src/ui/Settings.tsx");
+const { Settings } = await import("../src/features/settings/page.tsx");
 const axe = (await import("axe-core")).default;
 
 setDefaultTimeout(30_000);

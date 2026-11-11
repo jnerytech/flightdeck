@@ -6,7 +6,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { Settings } = await import("../../src/ui/Settings.tsx");
+const { Settings } = await import("../../src/features/settings/page.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
