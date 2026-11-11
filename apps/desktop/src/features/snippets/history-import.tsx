@@ -78,7 +78,7 @@ export function HistoryImport(
     let alive = true;
     void (async () => {
       const preview = await store.hostCommand(hostId, "snippets.importHistory", { reveal });
-      const values = await store.vaultValuesForScan();
+      const values = await store.scan.vaultValues();
       if (!alive || !preview) return;
       setLines(
         preview.candidates.map((c: SnippetHistoryCandidate): Line => {
