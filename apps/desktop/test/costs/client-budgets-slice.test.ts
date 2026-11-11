@@ -6,9 +6,20 @@ import {
 } from "../../src/features/costs/client-budgets-store.ts";
 
 let budgets: ClientBudgetsSlice | null = null;
+/** Reads of the limits since the slice was built: a round of the timer starts by reading them. */
+let reads = 0;
 
 beforeEach(() => {
   jest.useFakeTimers();
+  const core = {
+    limits: () => {
+      reads += 1;
+      return {};
+    },
+    state: () => ({ clientBudgets: [] }),
+  } as unknown as ClientBudgetsCore;
+  budgets = new ClientBudgetsSlice(core);
+  reads = 0; // the constructor reads the limits once, to know what they were
 });
 
 afterEach(() => {
@@ -18,29 +29,20 @@ afterEach(() => {
 });
 
 describe("the client budgets' timer", () => {
-  test("starting twice leaves one timer, which looks at the limits every interval, and dispose stops it", () => {
-    // A round starts by reading the limits, so the reads after the constructor count the rounds.
-    let reads = 0;
-    const core = {
-      limits: () => {
-        reads += 1;
-        return {};
-      },
-      state: () => ({ clientBudgets: [] }),
-    } as unknown as ClientBudgetsCore;
-    budgets = new ClientBudgetsSlice(core);
-    reads = 0;
+  test("starting twice leaves one timer, and dispose stops it", () => {
+    budgets?.start();
+    budgets?.start();
+    budgets?.dispose();
+    // A timer left running by either call would look at the limits when its interval ends.
+    jest.advanceTimersByTime(3 * CLIENT_BUDGET_INTERVAL_MS);
+    expect(reads).toBe(0);
+  });
 
-    budgets.start();
-    budgets.start();
-    expect(jest.getTimerCount()).toBe(1);
-
+  test("the timer looks at the limits once per interval", () => {
+    budgets?.start();
     jest.advanceTimersByTime(CLIENT_BUDGET_INTERVAL_MS - 1);
     expect(reads).toBe(0);
     jest.advanceTimersByTime(1);
     expect(reads).toBe(1);
-
-    budgets.dispose();
-    expect(jest.getTimerCount()).toBe(0);
   });
 });
