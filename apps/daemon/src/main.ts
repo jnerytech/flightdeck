@@ -83,10 +83,7 @@ import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import type { PlatformInfo } from "./roots.ts";
-import { RunConfigs } from "./runenv/config.ts";
-import { terminalRunHost } from "./runenv/host.ts";
-import { RunManager } from "./runenv/manager.ts";
-import { CardPorts } from "./runenv/ports.ts";
+import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
@@ -646,29 +643,13 @@ export async function startDaemon(
   });
   prWatch.start();
   // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
-  const runConfigs = new RunConfigs({ db: store.db });
-  const cardPorts = new CardPorts({
+  const runEnv = createRunEnv({
     db: store.db,
-    base: config.run.portBase,
-    ...present({ isFree: options.portProbe }),
+    portBase: config.run.portBase,
+    portProbe: options.portProbe,
+    terminals,
+    board,
   });
-  const runManager = new RunManager({
-    db: store.db,
-    configs: runConfigs,
-    ports: cardPorts,
-    host: terminalRunHost(terminals),
-    card: (id) => board.getCard(id),
-    project: (id) => board.getProject(id),
-  });
-  // A card that is done stops its processes and gives its ports back.
-  const unwatchRunEnv = [
-    cardPorts.follow((listener) => board.watch(listener)),
-    runManager.follow((listener) => board.watch(listener)),
-  ];
-  // A worktree is not removed while a card's processes are still being ended.
-  board.addIdle(runManager.idle.bind(runManager));
-  // A discarded card ends its processes first: a live tree locks the files of its worktree.
-  board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   awake.pinned = (claudeSessionId) =>
@@ -820,7 +801,7 @@ export async function startDaemon(
     automations,
     history,
     board,
-    runenv: { configs: runConfigs, manager: runManager },
+    runenv: { configs: runEnv.configs, manager: runEnv.manager },
     quota: serverGroup<"quota">()({ windows: quota, pause: quotaPause, history: quotaHistory }),
     usage,
     costs,
@@ -889,7 +870,7 @@ export async function startDaemon(
     worktrees: createWorktrees({
       board,
       sessions: manager,
-      runs: runManager,
+      runs: runEnv.manager,
       terminals,
       externals: central.external,
       locks: folderLocks,
@@ -968,7 +949,7 @@ export async function startDaemon(
         vault.stop();
         await automations.idle();
         prWatch.stop();
-        for (const unwatch of unwatchRunEnv) unwatch();
+        for (const unwatch of runEnv.unwatch) unwatch();
         boardSync.loop.stop();
         board.stop();
         terminals.stop();
