@@ -56,25 +56,27 @@ describe("awayHost", () => {
 });
 
 describe("rowsInScope", () => {
-  const rows = [row("a", "p1"), row("a", "p2"), row("b", "p1")];
+  const a1 = row("a", "p1");
+  const a2 = row("a", "p2");
+  const b1 = row("b", "p1");
+  const rows = [a1, a2, b1];
 
   test("no narrowing keeps every row", () => {
     expect(rowsInScope(rows, none)).toEqual(rows);
   });
 
   test("the scoped host and the scoped project each keep only theirs", () => {
-    expect(rowsInScope(rows, { ...none, host: "a" })).toEqual([rows[0], rows[1]]);
-    expect(rowsInScope(rows, { ...none, project: "p1" })).toEqual([rows[0], rows[2]]);
+    expect(rowsInScope(rows, { ...none, host: "a" })).toEqual([a1, a2]);
+    expect(rowsInScope(rows, { ...none, project: "p1" })).toEqual([a1, b1]);
   });
 
   test("the project asked by the route keeps its host and its key together", () => {
-    expect(rowsInScope(rows, { ...none, only: { hostId: "b", projectKey: "p1" } })).toEqual([
-      rows[2],
-    ]);
+    expect(rowsInScope(rows, { ...none, only: { hostId: "b", projectKey: "p1" } })).toEqual([b1]);
   });
 
   test("the checkout picked in the sidebar keeps the sessions inside it", () => {
-    const inside = [row("a", "p1", "/work/app/wt1/src"), row("a", "p1", "/work/app/src")];
+    const inWt = row("a", "p1", "/work/app/wt1/src");
+    const inside = [inWt, row("a", "p1", "/work/app/src")];
     const picked = {
       hostId: "a",
       projectId: "p1",
@@ -84,7 +86,7 @@ describe("rowsInScope", () => {
     };
     expect(
       rowsInScope(inside, { ...none, picked, pickedProject: { path: "/work/app" }, worktrees: [] }),
-    ).toEqual([inside[0]]);
+    ).toEqual([inWt]);
   });
 
   test("a picked checkout with no project to read leaves the rows alone", () => {
