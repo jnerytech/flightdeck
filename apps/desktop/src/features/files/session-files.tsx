@@ -1,7 +1,7 @@
 import type { SessionFile } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
 import { useT } from "@/i18n/context";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /**
  * The files a session wrote, from its transcripts (`session.files`): path, how many tool calls
