@@ -4,6 +4,7 @@
  */
 import type { Database } from "bun:sqlite";
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
+import { parseJsonText } from "../json-text.ts";
 import { promptText } from "../transcript-text.ts";
 
 export interface PendingQuestion {
@@ -55,7 +56,7 @@ function fit(
 /** One line of the transcript as an object; null for a line that is not JSON. */
 function parseLine(raw: string): Json | null {
   try {
-    return obj(JSON.parse(raw));
+    return obj(parseJsonText(raw));
   } catch {
     return null;
   }
