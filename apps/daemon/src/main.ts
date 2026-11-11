@@ -69,12 +69,9 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { Changes } from "./review/changes.ts";
 import { ReviewFiles } from "./review/files.ts";
-import { SessionCommits } from "./review/session-commit.ts";
 import { SessionFiles } from "./review/session-files.ts";
-import { SessionPrs } from "./review/session-pr.ts";
-import { createReview } from "./review/wiring.ts";
+import { createChanges, createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
@@ -418,29 +415,15 @@ export async function startDaemon(
     self: selfCommand,
     log: (message) => logger.log(message),
   });
-  // The diff of every session and card, for the review (phase 11).
-  const changes = new Changes({
+  // The diff of every session and card, for the review (phase 11), and a plain session's commit
+  // and PR (#1133).
+  const { changes, sessionCommits, sessionPrs } = createChanges({
     db: store.db,
     board,
     log: logger.log.bind(logger),
-    // A terminal's folder is a target of the Files viewer (#506).
     terminals,
-    // A project's checkout is one too, inside these (#797).
     allowedRoots: config.allowedRoots,
-  });
-  // #1133: a plain session's changes committed on a new branch in its own checkout.
-  const sessionCommits = new SessionCommits({
-    changes,
     scanner: snippetScanner,
-    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
-  });
-  // #1133: the branch a session's commit made, pushed and opened as a PR.
-  const sessionPrs = new SessionPrs({
-    changes,
-    commits: sessionCommits,
-    scanner: snippetScanner,
-    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
-    projectProvider: (root) => board.projectForCwd(root)?.project.prProvider ?? null,
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
