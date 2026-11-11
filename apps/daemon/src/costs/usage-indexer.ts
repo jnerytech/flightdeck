@@ -2,7 +2,9 @@ import type { Database } from "bun:sqlite";
 import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import { normalizeCwd } from "../history/indexer.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
 
@@ -95,6 +97,9 @@ interface Owner {
   projectPath: string | null;
 }
 
+/** A transcript line: an object, whatever its keys; JSON that is anything else is no line. */
+const Line = z.record(z.string(), z.unknown()).nullable();
+
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const str = (value: unknown) => (typeof value === "string" ? value : null);
 /** How much of a file a pass reads before it pauses (about 25 ms of parsing). */
@@ -141,14 +146,10 @@ interface ReadLine {
 
 /** The `cwd` of a transcript line, the usage of an assistant message and its file writes. */
 function readLine(line: string): ReadLine {
-  let value: Record<string, unknown>;
-  try {
-    value = JSON.parse(line);
-  } catch {
-    return { cwd: null, at: null, usage: null, edits: [] };
-  }
-  const cwd = str(value?.cwd);
-  const message = value?.type === "assistant" ? (value.message as Record<string, unknown>) : null;
+  const value = parseJsonOr(Line, line, null);
+  if (!value) return { cwd: null, at: null, usage: null, edits: [] };
+  const cwd = str(value.cwd);
+  const message = value.type === "assistant" ? (value.message as Record<string, unknown>) : null;
   const messageId = str(message?.id);
   const model = str(message?.model);
   const at = str(value.timestamp);
@@ -448,7 +449,7 @@ export class UsageIndexer {
     );
     const folders = new Set<string>([row?.cwd ?? "", owner.projectPath ?? ""]);
     for (const [, escaped] of chunk.toString("utf8").matchAll(/"cwd":"((?:[^"\\]|\\.)*)"/g)) {
-      folders.add(JSON.parse(`"${escaped}"`) as string);
+      folders.add(parseJsonOr(z.string(), `"${escaped}"`, ""));
     }
     folders.delete("");
     await this.opts.warmKeys([...folders]);
