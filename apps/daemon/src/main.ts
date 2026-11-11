@@ -96,7 +96,7 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import { type ServerOptions, startServer } from "./server.ts";
+import { type ServerOptions, serverGroup, startServer } from "./server.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -884,8 +884,8 @@ export async function startDaemon(
     quotaPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
-    ...serverPart(knowledge),
-    ...serverPart(harness),
+    knowledge: serverGroup<"knowledge">()(knowledge),
+    harness: serverGroup<"harness", "draft">()(harness),
     projectTrust: {
       refresh: (paths) => projectTrust.refresh(paths),
       state: (paths) => paths.map(trustState),

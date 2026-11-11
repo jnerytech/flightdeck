@@ -190,8 +190,8 @@ describe("harness-draft: a CLAUDE.md drafted by the host's model, held, and appl
     };
     const draft = (path: string) => held.draft(path);
     const servers = [
-      startServer({ ...base, harnessDraft: draft }),
-      startServer({ ...base, harnessDraft: draft, peerOf: () => "8.8.8.8" }),
+      startServer({ ...base, harness: { draft } }),
+      startServer({ ...base, harness: { draft }, peerOf: () => "8.8.8.8" }),
       startServer(base),
     ];
     const clients = servers.map((server) => new FrameClient(server.url));

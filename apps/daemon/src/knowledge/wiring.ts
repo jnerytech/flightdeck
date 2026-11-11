@@ -23,11 +23,11 @@ export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
   // The feed and its switch read the same list of folders that are off, under the same trust.
   const gate = { off: () => config.knowledge.feedOff, trust };
   return {
-    knowledge: listKnowledge,
-    knowledgeStatus: setKnowledgeStatus,
-    knowledgeCreate: createKnowledgeDoc,
-    knowledgeFeed: knowledgeFeedFor(gate),
-    knowledgeFeedSwitch: knowledgeSwitchFor({
+    list: listKnowledge,
+    status: setKnowledgeStatus,
+    create: createKnowledgeDoc,
+    feed: knowledgeFeedFor(gate),
+    feedSwitch: knowledgeSwitchFor({
       ...gate,
       change: async (update) => {
         let next: string[] = [];

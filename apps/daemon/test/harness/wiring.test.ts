@@ -60,18 +60,18 @@ async function outcome(run: Promise<unknown>): Promise<string> {
 describe("harness-wiring: the host's harness, built from its runtime and data folder (#1593)", () => {
   test("a runtime that cannot run a one-shot offers no draft", () => {
     const { built } = harness({ oneShot: false });
-    expect("harnessDraft" in built).toBe(false);
+    expect("draft" in built).toBe(false);
   });
 
   test("a draft runs on the host's runtime in the assistant's folder, and an apply writes it", async () => {
     const { built, asked, cwd } = harness({ oneShot: true });
-    expect("harnessDraft" in built).toBe(true);
+    expect("draft" in built).toBe(true);
     const root = project();
-    const draft = await built.harnessDraft?.(root);
+    const draft = await built.draft?.(root);
     expect(asked).toEqual([{ cwd, allowApiKey: false }]);
-    const preview = await built.harnessPreview(root, ["claudeMd"]);
+    const preview = await built.preview(root, ["claudeMd"]);
     const digests = Object.fromEntries(preview.files.map((file) => [file.path, file.digest]));
-    await built.harnessApply(
+    await built.apply(
       root,
       ["claudeMd"],
       { ...digests, "CLAUDE.md": draft?.digest ?? "" },
@@ -82,13 +82,13 @@ describe("harness-wiring: the host's harness, built from its runtime and data fo
 
   test("a host that allows its API key lets the draft's one-shot use it", async () => {
     const { built, asked, cwd } = harness({ oneShot: true, allowApiKey: true });
-    await built.harnessDraft?.(project());
+    await built.draft?.(project());
     expect(asked).toEqual([{ cwd, allowApiKey: true }]);
   });
 
   test("the host's scanner judges the draft: one holding a vault value is not kept", async () => {
     const { built } = harness({ oneShot: true, text: `# Shop\n\nkey ${VAULT}\n` });
-    expect(await outcome(built.harnessDraft?.(project()) ?? Promise.resolve())).toBe(
+    expect(await outcome(built.draft?.(project()) ?? Promise.resolve())).toBe(
       "harness_draft_secret",
     );
   });
@@ -96,14 +96,14 @@ describe("harness-wiring: the host's harness, built from its runtime and data fo
   test("a shared template is kept in the data folder's harness-templates", async () => {
     const { built, dataDir } = harness({ oneShot: false });
     const root = project({ "CLAUDE.md": DRAFTED });
-    await built.harnessTemplates.export(root, "shop", "Shop");
+    await built.templates.export(root, "shop", "Shop");
     expect(existsSync(join(dataDir, "harness-templates", "shop"))).toBe(true);
   });
 
   test("the host's scanner judges a template: a title holding a vault value is not shared", async () => {
     const { built, dataDir } = harness({ oneShot: false });
     const root = project({ "CLAUDE.md": DRAFTED });
-    expect(await outcome(built.harnessTemplates.export(root, "shop", `Shop ${VAULT}`))).toBe(
+    expect(await outcome(built.templates.export(root, "shop", `Shop ${VAULT}`))).toBe(
       "harness_template_title_secret",
     );
     expect(existsSync(join(dataDir, "harness-templates", "shop"))).toBe(false);
@@ -113,10 +113,10 @@ describe("harness-wiring: the host's harness, built from its runtime and data fo
     const { built } = harness({ oneShot: false });
     const text = `# Shop\n\nkey ${VAULT}\n`;
     const root = project({ "CLAUDE.md": text });
-    expect(await outcome(built.harnessCommit(root, { "CLAUDE.md": sha(text) }))).toBe(
+    expect(await outcome(built.commit(root, { "CLAUDE.md": sha(text) }))).toBe(
       "harness_commit_secret",
     );
-    expect(await outcome(built.harnessCommit(root, { "CLAUDE.md": sha(DRAFTED) }))).toBe(
+    expect(await outcome(built.commit(root, { "CLAUDE.md": sha(DRAFTED) }))).toBe(
       "harness_commit_stale",
     );
   });

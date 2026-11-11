@@ -38,7 +38,7 @@ export const runsHandlers = {
     const project = server.need("board").getProject(payload.projectId);
     // The check line takes the project's test command when the host can tell it; a stack that
     // cannot be read leaves the placeholder, since the list is still worth showing.
-    const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
+    const stack = await server.opts.harness?.stack?.(project.path).catch(() => null);
     return { templates: workflowTemplates(stack?.commands.test ?? null) };
   },
   "workflow.template.add": async (payload, { ws, server }) => {
@@ -48,7 +48,7 @@ export const runsHandlers = {
     const board = server.need("board");
     const project = board.getProject(payload.projectId);
     // The same templates the list shows, the check line filled the same way.
-    const stack = await server.opts.harnessStack?.(project.path).catch(() => null);
+    const stack = await server.opts.harness?.stack?.(project.path).catch(() => null);
     const templates = workflowTemplates(stack?.commands.test ?? null);
     const { projectId, templateId, confirm } = payload;
     return await board.addWorkflowTemplate(projectId, templates, templateId, confirm === true);

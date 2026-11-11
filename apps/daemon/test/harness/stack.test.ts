@@ -156,7 +156,7 @@ describe("harness-stack: what a project is built with, read from its manifests (
       token: TOKEN,
       allowedRoots: [root],
     };
-    const server = startServer({ ...base, harnessStack: detectStack });
+    const server = startServer({ ...base, harness: { stack: detectStack } });
     const off = startServer(base);
     const client = new FrameClient(server.url);
     const bare = new FrameClient(off.url);

@@ -406,8 +406,8 @@ describe("harness-apply: writes what the preview proposed, a pure merge, while t
       allowedRoots: [root],
       allowedNetworks: ["0.0.0.0/0", "::/0"],
     };
-    const near = startServer({ ...base, harnessApply: applyHarness });
-    const far = startServer({ ...base, harnessApply: applyHarness, peerOf: () => "8.8.8.8" });
+    const near = startServer({ ...base, harness: { apply: applyHarness } });
+    const far = startServer({ ...base, harness: { apply: applyHarness }, peerOf: () => "8.8.8.8" });
     const off = startServer(base);
     const clients = [near, far, off].map((server) => new FrameClient(server.url));
     cleanups.push(async () => {

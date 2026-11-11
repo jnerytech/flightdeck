@@ -9,9 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
-import type { Key } from "../i18n/index.ts";
-import { usd } from "../lib/costs.ts";
-import { budgetLines, stepDuration, stepUsage } from "../lib/runs.ts";
+import type { Key } from "../../i18n/index.ts";
+import { usd } from "../../lib/costs.ts";
+import { budgetLines, stepDuration, stepUsage } from "../../lib/runs.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 

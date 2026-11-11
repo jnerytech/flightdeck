@@ -371,12 +371,11 @@ describe("harness-from-template: a host template as the source of a setup's Mark
       token: TOKEN,
       allowedRoots: [root],
       allowedNetworks: ["0.0.0.0/0", "::/0"],
-      harnessPreview: previewHarness,
-      harnessApply: applyHarness,
+      harness: { preview: previewHarness, apply: applyHarness },
     };
     const servers = [
-      startServer({ ...base, harnessTemplates: templates }),
-      startServer({ ...base, harnessTemplates: templates, peerOf: () => "8.8.8.8" }),
+      startServer({ ...base, harness: { ...base.harness, templates } }),
+      startServer({ ...base, harness: { ...base.harness, templates }, peerOf: () => "8.8.8.8" }),
       startServer(base),
     ];
     const clients = servers.map((server) => new FrameClient(server.url));

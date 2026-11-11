@@ -57,7 +57,7 @@ async function terminalHost(dataParts: string[]) {
   const server = startServer({
     manager: newManager().manager,
     personas,
-    knowledgeFeed: async () => INDEX,
+    knowledge: { feed: async () => INDEX },
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

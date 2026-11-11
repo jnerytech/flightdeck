@@ -352,10 +352,12 @@ describe("wrapper-ascii: the channel config is read back from a plain path (#936
     const server = startServer({
       manager: newManager().manager,
       // Asked after the config is written: the index's own name is taken in the folder by then.
-      knowledgeFeed: async () => {
-        const folder = join(programData, readdirSync(programData)[0] ?? "");
-        writeFileSync(join(folder, `${launchIdOf(folder)}.md`), "taken");
-        return { text: "index", fed: 1, truncated: false };
+      knowledge: {
+        feed: async () => {
+          const folder = join(programData, readdirSync(programData)[0] ?? "");
+          writeFileSync(join(folder, `${launchIdOf(folder)}.md`), "taken");
+          return { text: "index", fed: 1, truncated: false };
+        },
       },
       hostName: "h",
       bind: "127.0.0.1",
