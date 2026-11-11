@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { type ArchInputs, formatTable, growing, ratchetRows, shapeShares } from "../../lib/arch-report.ts";
+import {
+  type ArchInputs,
+  formatTable,
+  growing,
+  ratchetRows,
+  shapeShares,
+} from "../../lib/arch-report.ts";
 
 const known = (rules: Record<string, number>) =>
   JSON.stringify(
@@ -34,10 +40,10 @@ describe("arch-report (#1610)", () => {
       { ratchet: "knip files", baseline: 15, today: 15 },
       { ratchet: "knip types", baseline: 100, today: 100 },
       { ratchet: "src-size files over the limit", baseline: 2, today: 1 },
-      { ratchet: "test-shape e2e share (basis points)", baseline: 220, today: 220 },
-      { ratchet: "test-shape integration share (basis points)", baseline: 2390, today: 2380 },
       { ratchet: "test-layout apps/desktop/test", baseline: 680, today: 600 },
       { ratchet: "test-layout packages/protocol/test", baseline: 23, today: 23 },
+      { ratchet: "test-shape e2e share (basis points)", baseline: 220, today: 220 },
+      { ratchet: "test-shape integration share (basis points)", baseline: 2390, today: 2380 },
     ]);
   });
 
@@ -103,7 +109,7 @@ describe("arch-report (#1610)", () => {
 describe("test shape: the pyramid's upper tiers may not take a larger share of the test files (#1854)", () => {
   test("the share of integration and e2e files, in basis points, rounded up", () => {
     expect(shapeShares({ unit: 700, component: 500, integration: 400, e2e: 100 })).toEqual({
-      integration: 2354,
+      integration: 2353,
       e2e: 589,
     });
   });
