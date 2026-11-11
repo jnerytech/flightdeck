@@ -1,5 +1,5 @@
 import { expect } from "bun:test";
-import { settle } from "./wait.ts";
+import { settle } from "../wait.ts";
 
 /** What the helper needs from a test's own Testing Library import. */
 interface Kit {

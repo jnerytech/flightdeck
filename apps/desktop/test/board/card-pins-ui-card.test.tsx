@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 /** Issue #76: the card's detail pins a document of the project's library, against a real daemon. */
 setDefaultTimeout(20_000);

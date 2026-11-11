@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { AssistantResult } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { fakeAssistant } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { fakeAssistant } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { CardReview } = await import("../src/features/review/card-review.tsx");
-const { PrDescriptionDialog } = await import("../src/features/watch/pr-description-dialog.tsx");
-const { AssistantController } = await import("../src/lib/assistant.ts");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { memoryPlatform } = await import("./fixtures.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { CardReview } = await import("../../src/features/review/card-review.tsx");
+const { PrDescriptionDialog } = await import("../../src/features/watch/pr-description-dialog.tsx");
+const { AssistantController } = await import("../../src/lib/assistant.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { memoryPlatform } = await import("../fixtures.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { nextStep, opensOnChanges } from "../src/lib/card-next-step.ts";
+import { nextStep, opensOnChanges } from "../../src/lib/card-next-step.ts";
 
 const card = (over: Record<string, unknown> = {}) =>
   ({
