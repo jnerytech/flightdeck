@@ -47,7 +47,7 @@ function pr(
 }
 
 const MOVE = ["refactor(board): the totals move to cards.ts (#1523)"];
-const TEST = "apps/daemon/test/board.test.ts";
+const TEST = "apps/daemon/test/board/board.test.ts";
 
 describe("structure-guard (#1602)", () => {
   test("a move whose tests change only in their import paths passes", () => {

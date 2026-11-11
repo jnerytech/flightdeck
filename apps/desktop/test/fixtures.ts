@@ -74,7 +74,7 @@ import { inspectProject } from "../../daemon/src/trust/inspect.ts";
 import { ProjectTrust } from "../../daemon/src/trust/project-trust.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
-import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
+import { FakeProvider } from "../../daemon/test/boardsync/fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";

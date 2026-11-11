@@ -1,0 +1,257 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  type HookTarget,
+  HTTP_HOOK_EVENTS,
+  hookEntries,
+  hooksStatus,
+  installHooks,
+  uninstallHooks,
+} from "../../src/central/hooks-install.ts";
+import { expandHome, loadConfig } from "../../src/config.ts";
+import { parseArgs, runCli } from "../../src/main.ts";
+import { tempDir } from "../helpers.ts";
+
+const TARGET: HookTarget = {
+  command: ["C:\\Program Files\\flightdeck\\flightdeckd.exe"],
+  url: "http://127.0.0.1:7421",
+  token: "tok-0123456789",
+  permissionTimeoutS: 600,
+  platform: "win32",
+};
+
+/** A user's settings with other keys and third-party hooks on the same events. */
+const ORIGINAL = {
+  model: "opus",
+  permissions: { allow: ["Bash(ls:*)"] },
+  hooks: {
+    Stop: [{ hooks: [{ type: "command", command: "notify-send pronto" }] }],
+    PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "audit.sh" }] }],
+  },
+};
+
+function settingsFile(content?: unknown): string {
+  const dir = join(tempDir(), ".claude");
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, "settings.json");
+  if (content !== undefined) writeFileSync(file, `${JSON.stringify(content, null, 2)}\n`);
+  return file;
+}
+
+const read = (file: string) => JSON.parse(readFileSync(file, "utf8"));
+
+describe("hooks-install", () => {
+  test("entradas: SessionStart por comando com o caminho absoluto em barras normais, os outros http com token", async () => {
+    const entries = hookEntries(TARGET);
+    expect(Object.keys(entries).sort()).toEqual(["SessionStart", ...HTTP_HOOK_EVENTS].sort());
+    expect(entries.SessionStart).toEqual([
+      {
+        hooks: [
+          {
+            type: "command",
+            command:
+              '"C:/Program Files/flightdeck/flightdeckd.exe" hook session-start --url http://127.0.0.1:7421 --token tok-0123456789',
+            timeout: 5,
+          },
+        ],
+      },
+    ]);
+    expect(entries.Stop).toEqual([
+      {
+        hooks: [
+          {
+            type: "http",
+            url: "http://127.0.0.1:7421/hooks/Stop",
+            headers: { Authorization: "Bearer tok-0123456789" },
+            timeout: 5,
+          },
+        ],
+      },
+    ]);
+    expect(entries.PermissionRequest?.[0]?.hooks[0]?.timeout).toBe(600);
+    // Claude Code runs command hooks through Git Bash on Windows, where `\\` is an escape.
+    const dev = hookEntries({ ...TARGET, command: ["C:\\bun\\bun.exe", "run", "D:\\fd\\bin.ts"] });
+    expect(dev.SessionStart?.[0]?.hooks[0]?.command).toBe(
+      "C:/bun/bun.exe run D:/fd/bin.ts hook session-start --url http://127.0.0.1:7421 --token tok-0123456789",
+    );
+    // Elsewhere the path goes as it is.
+    const linux = hookEntries({ ...TARGET, command: ["/opt/fd/flightdeckd"], platform: "linux" });
+    expect(linux.SessionStart?.[0]?.hooks[0]?.command?.startsWith("/opt/fd/flightdeckd hook")).toBe(
+      true,
+    );
+  });
+
+  test("entrada antiga, com barras invertidas, fica desatualizada; install a troca e uninstall a reconhece", async () => {
+    // A complete install from before, differing only in how the SessionStart path is written.
+    const current = hookEntries({ ...TARGET, command: ["C:\\fd\\flightdeckd.exe"] });
+    const old = {
+      ...ORIGINAL,
+      hooks: {
+        ...ORIGINAL.hooks,
+        ...current,
+        Stop: [...ORIGINAL.hooks.Stop, ...(current.Stop ?? [])],
+        SessionStart: [
+          {
+            hooks: [
+              {
+                type: "command",
+                command:
+                  "C:\\fd\\flightdeckd.exe hook session-start --url http://127.0.0.1:7421 --token tok-0123456789",
+                timeout: 5,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const target = { ...TARGET, command: ["C:\\fd\\flightdeckd.exe"] };
+    const file = settingsFile(old);
+    expect(await hooksStatus(file, target)).toBe("outdated");
+    await installHooks(file, target);
+    expect(await hooksStatus(file, target)).toBe("installed");
+    expect(read(file).hooks.SessionStart).toEqual(hookEntries(target).SessionStart);
+    writeFileSync(file, JSON.stringify(old));
+    expect(await uninstallHooks(file)).toBe(true);
+    expect(read(file)).toEqual(ORIGINAL);
+  });
+
+  test("mescla no settings.json existente sem perder chaves nem hooks de terceiros, com backup", async () => {
+    const file = settingsFile(ORIGINAL);
+    const before = readFileSync(file, "utf8");
+    await installHooks(file, TARGET);
+    expect(existsSync(`${file}.flightdeck-backup`)).toBe(true);
+    const after = read(file);
+    expect(after.model).toBe("opus");
+    expect(after.permissions).toEqual(ORIGINAL.permissions);
+    expect(after.hooks.PreToolUse).toEqual(ORIGINAL.hooks.PreToolUse);
+    expect(after.hooks.Stop).toEqual([...ORIGINAL.hooks.Stop, ...(hookEntries(TARGET).Stop ?? [])]);
+    expect(after.hooks.SessionEnd).toEqual(hookEntries(TARGET).SessionEnd);
+    expect(readFileSync(`${file}.flightdeck-backup`, "utf8")).toBe(before);
+  });
+
+  test("reinstalar não duplica", async () => {
+    const file = settingsFile(ORIGINAL);
+    await installHooks(file, TARGET);
+    const once = read(file);
+    await installHooks(file, TARGET);
+    expect(read(file)).toEqual(once);
+    await installHooks(file, { ...TARGET, url: "http://127.0.0.1:9999" });
+    expect(read(file).hooks.Stop).toHaveLength(2);
+    expect(read(file).hooks.Stop[1].hooks[0].url).toBe("http://127.0.0.1:9999/hooks/Stop");
+  });
+
+  test("uninstall remove só as entradas do Flightdeck e devolve o settings.json original", async () => {
+    const file = settingsFile(ORIGINAL);
+    await installHooks(file, TARGET);
+    expect(await uninstallHooks(file)).toBe(true);
+    expect(read(file)).toEqual(ORIGINAL);
+    expect(await uninstallHooks(file)).toBe(false);
+  });
+
+  test("sem settings.json: install cria, sem backup; uninstall deixa um objeto vazio", async () => {
+    const file = settingsFile();
+    await installHooks(file, TARGET);
+    expect(existsSync(file)).toBe(true);
+    expect(existsSync(`${file}.flightdeck-backup`)).toBe(false);
+    expect(Object.keys(read(file).hooks)).toHaveLength(9);
+    await uninstallHooks(file);
+    expect(read(file)).toEqual({});
+    rmSync(file);
+    expect(await uninstallHooks(file)).toBe(false);
+  });
+
+  test("install, uninstall and status come back as promises: the settings file is read without blocking", async () => {
+    const file = settingsFile(ORIGINAL);
+    const installed = installHooks(file, TARGET);
+    expect(installed).toBeInstanceOf(Promise);
+    await installed;
+    expect(hooksStatus(file, TARGET)).toBeInstanceOf(Promise);
+    expect(uninstallHooks(file)).toBeInstanceOf(Promise);
+  });
+
+  test("status: ausente, instalado e desatualizado", async () => {
+    const file = settingsFile(ORIGINAL);
+    expect(await hooksStatus(file, TARGET)).toBe("absent");
+    await installHooks(file, TARGET);
+    expect(await hooksStatus(file, TARGET)).toBe("installed");
+    expect(await hooksStatus(file, { ...TARGET, permissionTimeoutS: 60 })).toBe("outdated");
+    expect(await hooksStatus(file, { ...TARGET, command: ["/outro/flightdeckd"] })).toBe(
+      "outdated",
+    );
+    const partial = read(file);
+    delete partial.hooks.SessionEnd;
+    writeFileSync(file, JSON.stringify(partial));
+    expect(await hooksStatus(file, TARGET)).toBe("outdated");
+    expect(await hooksStatus(join(tempDir(), "nao-existe.json"), TARGET)).toBe("absent");
+  });
+});
+
+describe("hooks-install: status without blocking", () => {});
+
+describe("hooks-install: CLI", () => {
+  const out: string[] = [];
+  let exitCode: number | null = null;
+  afterEach(() => {
+    out.length = 0;
+    exitCode = null;
+  });
+  const deps = {
+    env: {},
+    log: { log: (m: string) => out.push(m), error: (m: string) => out.push(m) },
+    exit: (code: number) => {
+      exitCode = code;
+    },
+    onSignal: () => {},
+    selfCommand: ["C:\\fd\\flightdeckd.exe"],
+  };
+
+  function config(extra: Record<string, unknown> = {}): string {
+    const file = join(tempDir(), "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: "t".repeat(32), dataDir: join(tempDir(), "d"), ...extra }),
+    );
+    return file;
+  }
+
+  test("install, status e uninstall no ~/.claude do HOME temporário, com hooks.token gerado", async () => {
+    const settings = expandHome("~/.claude/settings.json");
+    rmSync(settings, { force: true });
+    const file = config();
+    await runCli(["hooks", "install", "--config", file], deps);
+    expect(exitCode).toBe(0);
+    const token = (await loadConfig(file)).hooks.token ?? "";
+    expect(token.length).toBeGreaterThanOrEqual(16);
+    expect(read(settings).hooks.Stop[0].hooks[0]).toEqual({
+      type: "http",
+      url: "http://127.0.0.1:7421/hooks/Stop",
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5,
+    });
+    await runCli(["hooks", "status", "--config", file], deps);
+    expect(out.join("\n")).toContain("hooks: installed");
+    await runCli(["hooks", "install", "--config", file], deps);
+    expect((await loadConfig(file)).hooks.token).toBe(token);
+    await runCli(["hooks", "uninstall", "--config", file], deps);
+    expect(read(settings)).toEqual({});
+    await runCli(["hooks", "status", "--config", file], deps);
+    expect(out.join("\n")).toContain("hooks: absent");
+  });
+
+  test("ação de hooks desconhecida é recusada", async () => {
+    let message = "aceitou";
+    try {
+      parseArgs(["hooks", "limpar"]);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("invalid hooks action: limpar");
+  });
+
+  test("hooks.port 0 é recusado: o receptor não teria endereço fixo", async () => {
+    await runCli(["hooks", "install", "--config", config({ hooks: { port: 0 } })], deps);
+    expect(exitCode).toBe(1);
+    expect(out.join("\n")).toContain("hooks.port");
+  });
+});
