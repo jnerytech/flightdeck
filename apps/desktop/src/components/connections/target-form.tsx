@@ -5,7 +5,7 @@ import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SecretPicker } from "@/components/vault/secret-picker";
+import { SecretPicker } from "@/features/vault/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";

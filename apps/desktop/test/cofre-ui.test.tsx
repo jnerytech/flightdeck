@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SecretPicker } = await import("../src/components/vault/secret-picker.tsx");
+const { SecretPicker } = await import("../src/features/vault/secret-picker.tsx");
 
 afterEach(cleanup);
 
