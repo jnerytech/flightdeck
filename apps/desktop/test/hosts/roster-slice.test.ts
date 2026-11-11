@@ -63,10 +63,8 @@ function roster(hosts: Array<{ id: string; name: string; url: string }> = []) {
     detach: (hostId) => void log.push(`detach ${hostId}`),
     forget: (hostId) => {
       log.push(`forget ${hostId}`);
-      listed.splice(
-        listed.findIndex((h) => h.id === hostId),
-        1,
-      );
+      const at = listed.findIndex((h) => h.id === hostId);
+      if (at >= 0) listed.splice(at, 1);
     },
     setName: (hostId, name) => {
       log.push(`name ${hostId} ${name}`);
@@ -173,6 +171,17 @@ describe("host roster (#1596)", () => {
         "stop a",
         "connect a tok-link",
       ],
+    });
+  });
+
+  test("a host removed while its new token is tested keeps no secret", async () => {
+    const { slice, log, secrets } = roster([{ id: "a", name: "alfa", url: serve("ok") }]);
+    const pending = slice.pairAgain("a", "tok-late");
+    await slice.remove("a");
+    expect({ error: await pending, kept: secrets.has("a"), log }).toEqual({
+      error: t("hostOffline.pairGone"),
+      kept: false,
+      log: ["detach a", "secret.delete a", "forget a", "persist"],
     });
   });
 
