@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { resolve } from "node:path";
-import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 const axe = (await import("axe-core")).default;
-const { contrastRatio } = await import("../src/lib/contrast.ts");
+const { contrastRatio } = await import("../../src/lib/contrast.ts");
 
 /** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
 function declarations(css: string, selector: string): Record<string, string> {
@@ -27,7 +27,7 @@ function declarations(css: string, selector: string): Record<string, string> {
  * `--card` does at `--surface-1`), looking in the theme first and in `:root` after it.
  */
 function tokens(selector: string): Record<string, string> {
-  const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
+  const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
   const all = { ...declarations(css, ":root"), ...declarations(css, selector) };
   const resolved = (value: string, depth = 0): string => {
     const ref = /^var\((--[\w-]+)\)$/.exec(value.trim());
