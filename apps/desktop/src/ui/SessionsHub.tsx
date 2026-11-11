@@ -191,7 +191,7 @@ export function SessionsHub(
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const allRows = useMemo(
     () =>
-      store.clientScope().filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey),
+      store.clientScope.get().filter(hubRows(state, t), state.clientSelection, (r) => r.projectKey),
     [
       store,
       state.hosts,
@@ -266,7 +266,7 @@ export function SessionsHub(
     [views, limit],
   );
   const viewOf = (key: string): HubGroupView | undefined => views.find((v) => v.group.key === key);
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   // The personas the sessions run in: the Persona filter offers only those.
   const personas = [
     ...new Map(

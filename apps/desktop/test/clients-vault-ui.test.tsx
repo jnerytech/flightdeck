@@ -50,7 +50,7 @@ async function open(selection: string) {
   ] as const) {
     await store.secrets.add({ name, type: "token", value: "v", tags: [...tags] });
   }
-  if (selection !== "all") await act(async () => store.setClientSelection(selection));
+  if (selection !== "all") await act(async () => store.clientScope.select(selection));
   await act(async () => store.router.push({ name: "vault" }));
   await settle(() => screen.queryByRole("heading", { name: "Cofre" }) !== null);
   return { store };

@@ -73,7 +73,7 @@ export function RoiTable(
     };
   }, [store, from, to, hostKey]);
 
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const rows = rowsFrom({
     summaries: answers,
     inScope: (key) => scope.includes(selection, key),

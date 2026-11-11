@@ -46,7 +46,7 @@ export function ClientSwitcher(
     selection === UNASSIGNED
       ? t("clients.unassigned")
       : (selected?.name ?? t("clients.allClients"));
-  const counts = switcherCounts(store.clientScope(), hubRows(state), pending, selection);
+  const counts = switcherCounts(store.clientScope.get(), hubRows(state), pending, selection);
   const others =
     counts.othersWaiting > 0 ? t("clients.othersWaiting", { count: counts.othersWaiting }) : "";
   // The rail has no room for the badge: its words go to the name and a dot marks the icon.
@@ -86,7 +86,7 @@ export function ClientSwitcher(
         <DropdownMenuContent align="start">
           <DropdownMenuRadioGroup
             value={selection}
-            onValueChange={(value) => store.setClientSelection(value)}
+            onValueChange={(value) => store.clientScope.select(value)}
           >
             <DropdownMenuRadioItem value={ALL_CLIENTS}>
               {t("clients.allClients")}

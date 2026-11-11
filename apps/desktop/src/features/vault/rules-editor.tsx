@@ -76,7 +76,7 @@ export function RulesEditor(
   const generated = scoping
     ? generatedScopeRules(
         scoping,
-        store.clientScope().projectKeysOf(scoping.id),
+        store.clientScope.get().projectKeysOf(scoping.id),
         store.vaultRules.get(secret.id),
       ).length
     : 0;

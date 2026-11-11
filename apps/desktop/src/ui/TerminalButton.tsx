@@ -32,7 +32,7 @@ export function TerminalButton(
   const [asking, setAsking] = useState(false);
   // A second `claude` on a session live in another terminal only after asking (#502, #1705).
   const { guarded, dialog } = useLiveElsewhereGuard(store, hostId, target.claudeSessionId);
-  const persona = picked ?? store.clientScope().defaultPersona(hostId, target.cwd, true);
+  const persona = picked ?? store.clientScope.get().defaultPersona(hostId, target.cwd, true);
   const personas =
     embedded &&
     hasFeature(
