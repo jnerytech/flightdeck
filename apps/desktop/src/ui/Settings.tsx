@@ -13,6 +13,7 @@ import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppUpdateState } from "../features/appupdate/index.ts";
+import { MessagingRulesSection } from "../features/messaging/rules-section.tsx";
 import type { Settings as SettingsState } from "../features/settings/index.ts";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
@@ -23,7 +24,6 @@ import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BudgetsSection } from "./BudgetsSection.tsx";
-import { MessagingRulesSection } from "./MessagingRulesSection.tsx";
 import { WebhooksSection } from "./WebhooksSection.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
