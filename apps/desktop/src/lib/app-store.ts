@@ -101,7 +101,7 @@ import {
   wireVaultSecrets,
 } from "../features/vault/index.ts";
 import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
-import { WatchSlice } from "../features/watch/index.ts";
+import { type WatchSlice, wireWatch } from "../features/watch/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
@@ -534,20 +534,10 @@ export class AppStore {
       settings: () => this.roi,
     });
     this.projectList = wireProjects(this.kernel);
-    this.prWatch = new WatchSlice({
-      command: (hostId, type, payload, options) => this.hostCommand(hostId, type, payload, options),
-      hosts: () => this.state.hosts,
-      watchOf: (hostId, cardId) => this.state.watches[sessionKey(hostId, cardId)],
-      keep: (hostId, watch) =>
-        this.update({
-          watches: { ...this.state.watches, [sessionKey(hostId, watch.cardId)]: watch },
-        }),
-      card: (hostId, cardId) => this.state.cards[sessionKey(hostId, cardId)],
+    this.prWatch = wireWatch(this.kernel, {
       feed: (host, title, before, watch) => this.webhookFeed.watch(host, title, before, watch),
       notify: (notification, route, fallbackUrl, source) =>
         this.inbox.notify(notification, route, fallbackUrl, source),
-      fail: (error, text) => this.fail(error, text),
-      t: () => this.i18n.t,
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
