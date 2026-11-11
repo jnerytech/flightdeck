@@ -29,10 +29,10 @@ const dep = (
 });
 
 const check = (
-  id: string,
+  id: DoctorCheckResult["id"],
   status: DoctorCheckResult["status"],
   extra: Partial<DoctorCheckResult> = {},
-): DoctorCheckResult => ({ id, status, detail: `${id} detail`, ...extra }) as DoctorCheckResult;
+): DoctorCheckResult => ({ id, status, detail: `${id} detail`, ...extra });
 
 function env(over: Partial<RowEnv> = {}) {
   const calls: string[] = [];
@@ -86,6 +86,27 @@ describe("host-health-rows: a dependency row", () => {
       }),
     );
     expect(row.copy).toBe("sudo apt install git");
+  });
+
+  test("a missing dependency links its official page and words the note for its OS", () => {
+    const { env: e } = env();
+    const row = depRow(
+      dep("git", "required", "missing", {
+        fix: [
+          {
+            os: "linux",
+            command: "sudo apt install git",
+            url: "https://git-scm.com/downloads",
+            note: "elevated",
+          },
+        ],
+      }),
+      e,
+    );
+    expect(row.page).toBe("https://git-scm.com/downloads");
+    expect(row.step).toBe(t("hostDeps.fixNote.elevated"));
+    const other = depRow(dep("git", "required", "missing"), e);
+    expect([other.page, other.step]).toEqual([null, null]);
   });
 
   test("hooks and folders offer a one-click fix that asks or goes to the folders", () => {
@@ -209,10 +230,10 @@ describe("host-health-rows: which checks and counts the section shows", () => {
 
   test("the counts add the failing and warning checks to what the dependencies are missing", () => {
     const items = [dep("git", "required", "missing"), dep("gh", "optional", "missing")];
-    expect(healthCounts(items, [check("a", "fail"), check("b", "warn"), check("c", "ok")])).toEqual(
-      { required: 2, optional: 1 },
-    );
-    expect(healthCounts([dep("gh", "optional", "missing")], [check("b", "warn")])).toEqual({
+    expect(
+      healthCounts(items, [check("claude", "fail"), check("hooks", "warn"), check("daemon", "ok")]),
+    ).toEqual({ required: 2, optional: 1 });
+    expect(healthCounts([dep("gh", "optional", "missing")], [check("hooks", "warn")])).toEqual({
       required: 0,
       optional: 2,
     });
@@ -220,13 +241,10 @@ describe("host-health-rows: which checks and counts the section shows", () => {
   });
 
   test("only a warning or an error row needs the person", () => {
-    const row = (tone: HealthRow["look"]["tone"]) =>
-      ({ look: { icon: "check", tone } }) as HealthRow;
-    expect(["ok", "warn", "error", "off"].map((tone) => needsYou(row(tone as never)))).toEqual([
-      false,
-      true,
-      true,
-      false,
-    ]);
+    const row = (tone: HealthRow["look"]["tone"]): Pick<HealthRow, "look"> => ({
+      look: { icon: "check", tone },
+    });
+    const tones: HealthRow["look"]["tone"][] = ["ok", "warn", "error", "off"];
+    expect(tones.map((tone) => needsYou(row(tone)))).toEqual([false, true, true, false]);
   });
 });

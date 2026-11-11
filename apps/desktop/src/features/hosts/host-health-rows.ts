@@ -179,6 +179,6 @@ export function healthCounts(
 }
 
 /** A row needs the person when it warns or fails; the rest are folded (#640). */
-export function needsYou(row: HealthRow): boolean {
+export function needsYou(row: Pick<HealthRow, "look">): boolean {
   return row.look.tone === "warn" || row.look.tone === "error";
 }
