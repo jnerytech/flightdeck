@@ -10,6 +10,7 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { belowGate, COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
+import { pyramidOf, renderPyramid } from "./pyramid-table.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
 import { splitShards, type Timings, testFiles } from "./test-shards.ts";
@@ -451,6 +452,7 @@ export function mergeShards(
   lcovOut: string,
   deps: MergeShardsDeps,
 ): number {
+  const junits: Array<{ marker: ShardMarker | null; junit: string | null }> = [];
   const jobs: ShardJob[] = deps.folders(dir).map((name) => {
     const at = join(dir, name);
     let marker: ShardMarker | null = null;
@@ -462,9 +464,15 @@ export function mergeShards(
     // The istanbul job leaves its counters, the bun job its lcov; a folder with no marker still counts.
     const lcov = deps.read(join(at, "lcov.info"));
     const funcs = deps.read(join(at, "funcs.json"));
+    junits.push({ marker, junit: deps.read(join(at, "junit.xml")) });
     if (!marker) return { marker: null, data: lcov ?? funcs };
     return { marker, data: marker.kind === "istanbul" ? funcs : lcov };
   });
+  // The pyramid first: a run with no verdict still shows how long each tier took (#1854).
+  if (deps.tiers && deps.pyramid) {
+    const table = pyramidOf(deps.tiers, junits);
+    deps.pyramid(renderPyramid(table), JSON.stringify(table, null, 2));
+  }
   const result = shardGate({
     shards: count,
     tests: deps.selection ? deps.selection.tests : testFiles([...deps.tracked]),

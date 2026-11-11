@@ -10,7 +10,14 @@
  * - `merge <dir> <n> <lcov>`: reads each job's folder under <dir>, runs the merged coverage gate (80%), and
  *   writes the merged lcov for SonarCloud. It fails closed when a shard is missing or failed.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-check.ts";
 import {
@@ -109,6 +116,15 @@ if (command === "run") {
       sources,
       print: (line) => console.log(line),
       error: (line) => console.error(line),
+      tiers,
+      // The pyramid (#1854): in the log, in the job summary when GitHub gives one, and as JSON next
+      // to the lcov, for the artifact a trend is charted from.
+      pyramid: (markdown, json) => {
+        console.log(markdown);
+        if (process.env.GITHUB_STEP_SUMMARY)
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
+        write(join(dirname(c), "pyramid.json"), json);
+      },
       ...(selection ? { selection } : {}),
     }),
   );
