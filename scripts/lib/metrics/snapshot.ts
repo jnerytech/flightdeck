@@ -1,4 +1,5 @@
 /** Issue #1949: the engineering metrics snapshot of a release, written by `bun run metrics`. */
+import type { CoverageSummary } from "./coverage.ts";
 import {
   type CiHealth,
   type CiRun,
@@ -56,6 +57,8 @@ export interface MetricsDeps {
   git(args: string[]): Promise<GitResult>;
   /** Runs `gh <args>`; stderr is kept for the reason a metric was not read. */
   gh(args: string[]): Promise<GitResult & { stderr?: string }>;
+  /** The coverage summary of the latest full green run on the commit, or why there is none. */
+  coverage(commit: string): Promise<{ summary: CoverageSummary } | { reason: string }>;
   /** The rows of `scripts/arch-report.ts --json`, or null when the report could not be made. */
   arch(): Promise<RatchetRow[] | null>;
   now(): Date;

@@ -107,7 +107,9 @@ describe("metrics: hotspots and coupling", () => {
 });
 
 /** A fake git over a small history: two tags, v1 and v2, and a file's text at the tag. */
-function fakeGit(opts: { previous?: boolean; archRows?: boolean; ghFails?: string[] } = {}) {
+function fakeGit(
+  opts: { previous?: boolean; archRows?: boolean; ghFails?: string[]; coverage?: "none" } = {},
+) {
   const calls: string[][] = [];
   const commits = [
     commit("c3", "2026-11-10T09:00:00Z", ["src/big.ts", "src/small.ts"], "feat: three"),
@@ -183,6 +185,17 @@ function fakeGit(opts: { previous?: boolean; archRows?: boolean; ghFails?: strin
         ),
       };
     },
+    coverage: async () =>
+      opts.coverage === "none"
+        ? { reason: "no full green run on this commit" }
+        : {
+            summary: {
+              linesPercent: 81.5,
+              functionsPercent: 80.2,
+              lines: { hit: 815, found: 1000 },
+              functions: { hit: 802, found: 1000 },
+            },
+          },
     arch: async () =>
       opts.archRows === false ? null : [{ ratchet: "knip files", baseline: 15, today: 14 }],
     now: () => new Date("2026-11-16T12:00:00Z"),
@@ -262,11 +275,20 @@ describe("metrics: the snapshot", () => {
     expect(snapshot.hotspots.last30Days.length).toBeGreaterThan(0);
   });
 
-  test("coverage is still null and says it is not collected yet", async () => {
+  test("coverage is the summary of the full run on the tag's commit", async () => {
     const { deps } = fakeGit();
     const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
+    expect(snapshot.coverage).toMatchObject({ linesPercent: 81.5, functionsPercent: 80.2 });
+    expect(snapshot.unavailable).toEqual([]);
+  });
+
+  test("coverage with no full green run on the commit is null with the reason", async () => {
+    const { deps } = fakeGit({ coverage: "none" });
+    const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
     expect(snapshot.coverage).toBeNull();
-    expect(snapshot.unavailable.map((u: { metric: string }) => u.metric)).toContain("coverage");
+    expect(snapshot.unavailable).toEqual([
+      { metric: "coverage", reason: "no full green run on this commit" },
+    ]);
   });
 
   test("a git log that fails makes the git metrics null and named in unavailable, the ratchets still written", async () => {
