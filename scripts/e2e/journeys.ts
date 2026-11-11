@@ -890,12 +890,24 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // where to commit it and the file itself, Copy puts the file on the clipboard and says so, and
   // Back returns to the list. Nothing is written to the project.
   "workflow-templates": async (c) => {
-    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await open(c, {
       name: "workflows",
       host: ALFA,
       projectId: c.ids.project,
       projectName: c.ids.projectName,
+    });
+    // The runner's clipboard needs a permission that a headless run sometimes refuses (#1768): the
+    // app's own write is caught in the page instead, so the journey checks what the app copied.
+    await c.page.evaluate(() => {
+      const seen = window as unknown as { copiedText?: string };
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            seen.copiedText = text;
+          },
+        },
+      });
     });
     await c.page
       .getByRole("button", { name: c.t("workflowsUi.templates.open"), exact: true })
@@ -915,7 +927,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await dialog
       .getByText(c.t("workflowsUi.templates.copied"), { exact: true })
       .waitFor({ timeout: WAIT });
-    const copied = await c.page.evaluate(() => navigator.clipboard.readText());
+    const copied = await c.page.evaluate(
+      () => (window as unknown as { copiedText?: string }).copiedText ?? "",
+    );
     if (!copied.includes("steps")) {
       throw new Error("workflow-templates: the clipboard has no workflow file");
     }
