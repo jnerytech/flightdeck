@@ -12,7 +12,6 @@ export const GATES = {
   activity: "activity",
   actions: "actions",
   agentcfg: "agentcfg",
-  askpass: "askpass",
   autoApprove: "autoApprove",
   automations: "automations",
   bg: "bg",
@@ -55,10 +54,6 @@ export const GATES = {
   snippetHistory: "snippetHistory",
   snippetUse: "snippetUse",
   snippets: "snippets",
-  ssh: "ssh",
-  sshConnect: "sshConnect",
-  sshHostKeys: "sshHostKeys",
-  sshImport: "sshImport",
   summary: "summary",
   teams: "teams",
   telemetry: "telemetry",
@@ -81,13 +76,6 @@ export const GATES = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
-  // The knowledge gates: the index is gated by `knowledgeFeed` but names `knowledge`, and the
-  // feed switch names `knowledgeFeed`.
-  knowledge: "knowledge",
-  knowledgeFeed: "knowledge",
-  knowledgeStatus: "knowledgeStatus",
-  knowledgeCreate: "knowledgeCreate",
-  knowledgeFeedSwitch: "knowledgeFeed",
   // The three teleport services name one feature.
   teleport: "teleport",
   teleportInbox: "teleport",
@@ -95,6 +83,49 @@ export const GATES = {
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
+
+/**
+ * Issue #1593: the gates of the options grouped by domain, one per service of the group, since a
+ * host may run some of a domain's services and not others.
+ */
+export const GROUP_GATES = {
+  harness: {
+    stack: "harnessStack",
+    preview: "harnessPreview",
+    apply: "harnessApply",
+    templates: "harnessTemplates",
+    draft: "harnessDraft",
+    commit: "harnessCommit",
+  },
+  // The index is gated by the feed but names `knowledge`, and the feed switch names `knowledgeFeed`.
+  knowledge: {
+    list: "knowledge",
+    feed: "knowledge",
+    status: "knowledgeStatus",
+    create: "knowledgeCreate",
+    feedSwitch: "knowledgeFeed",
+  },
+  ssh: {
+    targets: "ssh",
+    import: "sshImport",
+    hostKeys: "sshHostKeys",
+    connect: "sshConnect",
+    askpass: "askpass",
+  },
+} as const satisfies {
+  [G in keyof ServerOptions]?: Record<keyof NonNullable<ServerOptions[G]>, string>;
+};
+
+export type GatedGroup = keyof typeof GROUP_GATES;
+
+/** A gated service of a grouped option: a key of both its gate row and its group. */
+export type GroupKey<G extends GatedGroup> = keyof (typeof GROUP_GATES)[G] &
+  keyof NonNullable<ServerOptions[G]>;
+
+/** A service of a grouped option, as `need` gives a flat one. */
+export type GroupService<G extends GatedGroup, K extends GroupKey<G>> = NonNullable<
+  NonNullable<ServerOptions[G]>[K]
+>;
 
 /** The service behind a gated option; refused with `feature_off` when this host does not run it. */
 export function need<K extends GatedOption>(
@@ -104,4 +135,15 @@ export function need<K extends GatedOption>(
   const service = opts[key];
   if (!service) throw featureOff(GATES[key]);
   return service as NonNullable<ServerOptions[K]>;
+}
+
+/** The service of a grouped option; refused with `feature_off` when this host does not run it. */
+export function needIn<G extends GatedGroup, K extends GroupKey<G>>(
+  opts: ServerOptions,
+  group: G,
+  key: K,
+): GroupService<G, K> {
+  const service = (opts[group] as Record<PropertyKey, unknown> | undefined)?.[key];
+  if (!service) throw featureOff(GROUP_GATES[group][key] as string);
+  return service as GroupService<G, K>;
 }

@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
-import type { AppStore } from "../lib/app-store.ts";
-import { isExternalAuthor } from "../lib/review.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { isExternalAuthor } from "../../lib/review.ts";
 
 /** `path:line` of a comment, or just `path` when it has no line. */
 function location(comment: PrComment): string {

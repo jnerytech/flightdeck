@@ -96,12 +96,12 @@ export async function createSsh({
       return named.length === 1 && named[0]?.auth === "vault-key" ? named[0].secretRef : null;
     },
     server: {
-      ssh: sshTargets,
-      sshHostKeys,
-      sshConnect,
+      targets: sshTargets,
+      hostKeys: sshHostKeys,
+      connect: sshConnect,
       askpass,
       // Read-only: this host's own ~/.ssh/config, under whatever home the daemon runs with.
-      sshImport: new SshImporter({
+      import: new SshImporter({
         targets: sshTargets,
         configPath: join(home, ".ssh", "config"),
         home,

@@ -47,7 +47,7 @@ async function serve(
     port: 0,
     token: TOKEN,
     allowedRoots: [ctx.root],
-    ...(harnessStack ? { harnessStack } : {}),
+    ...(harnessStack ? { harness: { stack: harnessStack } } : {}),
     // A far peer is let in by the network list, so the command's own gate is what refuses it.
     ...(peer ? { peerOf: () => peer, allowedNetworks: ["0.0.0.0/0", "::/0"] } : {}),
   });

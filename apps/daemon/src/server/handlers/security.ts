@@ -109,53 +109,53 @@ export const securityHandlers = {
     };
   },
   "ssh.list": (_payload, { server }) => {
-    return { targets: server.need("ssh").list() };
+    return { targets: server.needIn("ssh", "targets").list() };
   },
   "ssh.save": (payload, { server }) => {
-    return server.need("ssh").save(payload);
+    return server.needIn("ssh", "targets").save(payload);
   },
   "ssh.remove": (payload, { server }) => {
-    server.need("ssh").remove(payload.id, payload.confirm);
+    server.needIn("ssh", "targets").remove(payload.id, payload.confirm);
   },
   "askpass.watch": (_payload, { ws, send, server }) => {
     ws.data.unwatchAskpass?.();
-    ws.data.unwatchAskpass = server.need("askpass").watch((frame) => send(frame));
+    ws.data.unwatchAskpass = server.needIn("ssh", "askpass").watch((frame) => send(frame));
   },
   "askpass.ask": async (payload, { server }) => {
     return {
-      secret: await server.need("askpass").ask(payload.ticket, payload.prompt),
+      secret: await server.needIn("ssh", "askpass").ask(payload.ticket, payload.prompt),
     };
   },
   "askpass.answer": (payload, { server }) => {
-    server.need("askpass").answer(payload.requestId, payload.secret);
+    server.needIn("ssh", "askpass").answer(payload.requestId, payload.secret);
   },
   "ssh.connect": async (payload, { ws, server }) => {
     const { targetId, cols, rows, privateKey } = payload;
     // A key from the vault travels only where the vault delivers: loopback and Tailscale.
     if (privateKey) requireVaultTransport(ws.data.origin, "ssh.connect com chave", server.opts.log);
     const request = { targetId, cols, rows, ...(privateKey ? { privateKey } : {}) };
-    return await server.need("sshConnect").connect(request);
+    return await server.needIn("ssh", "connect").connect(request);
   },
   "ssh.test": async (payload, { ws, server }) => {
     const { targetId, privateKey } = payload;
     if (privateKey) requireVaultTransport(ws.data.origin, "ssh.test com chave", server.opts.log);
     return await server
-      .need("sshConnect")
+      .needIn("ssh", "connect")
       .test({ targetId, ...(privateKey ? { privateKey } : {}) });
   },
   "ssh.hostkey.check": async (payload, { server }) => {
-    return await server.need("sshHostKeys").check(payload.targetId);
+    return await server.needIn("ssh", "hostKeys").check(payload.targetId);
   },
   "ssh.hostkey.confirm": (payload, { server }) => {
-    return server.need("sshHostKeys").confirm(payload.targetId, payload.fingerprint);
+    return server.needIn("ssh", "hostKeys").confirm(payload.targetId, payload.fingerprint);
   },
   "ssh.hostkey.forget": (payload, { server }) => {
-    return server.need("sshHostKeys").forget(payload.targetId);
+    return server.needIn("ssh", "hostKeys").forget(payload.targetId);
   },
   "ssh.import.preview": async (_payload, { server }) => {
-    return await server.need("sshImport").preview();
+    return await server.needIn("ssh", "import").preview();
   },
   "ssh.import.apply": async (payload, { server }) => {
-    return await server.need("sshImport").apply(payload.aliases);
+    return await server.needIn("ssh", "import").apply(payload.aliases);
   },
 } satisfies Partial<Handlers>;

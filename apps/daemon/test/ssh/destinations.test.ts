@@ -263,7 +263,7 @@ describe("ssh-destinos", () => {
     const { root } = workspace();
     const server = startServer({
       manager: newManager().manager,
-      ssh: targets,
+      ssh: { targets },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
@@ -345,7 +345,7 @@ describe("ssh-destinos", () => {
       const { root } = workspace();
       const server = startServer({
         manager: newManager().manager,
-        ...(withSsh ? { ssh: targets } : {}),
+        ...(withSsh ? { ssh: { targets } } : {}),
         hostName: "h",
         bind: "127.0.0.1",
         port: 0,

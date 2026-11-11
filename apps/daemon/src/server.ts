@@ -128,6 +128,84 @@ import type { Worktrees } from "./worktrees/worktrees.ts";
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
+/**
+ * A domain's group of server options (#1593), checked both ways: every service of the group is
+ * there, and none it does not know (a variable skips the excess-property check `satisfies` gives).
+ * `K` names the option the group fills, so the wiring needs no import of the group's type;
+ * `Absent`, the services a host that does not run them leaves out.
+ */
+export const serverGroup =
+  <K extends keyof ServerOptions, Absent extends keyof Group<K> = never>() =>
+  <T extends Required<Omit<Group<K>, Absent>> & Pick<Group<K>, Absent>>(
+    h: T & Record<Exclude<keyof T, keyof Group<K>>, never>,
+  ): Group<K> =>
+    // A generic Required<X> is not provably an X to the compiler; at each call it is.
+    h as unknown as Group<K>;
+type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
+
+/** Phase 15, #1593: the ssh domain's part of the server, each service optional. */
+interface SshServer {
+  /** The ssh destinos behind `ssh.*`. */
+  targets?: SshTargets;
+  /** The read-only import of `~/.ssh/config` behind `ssh.import.*`. */
+  import?: SshImporter;
+  /** The server keys of the ssh destinos behind `ssh.hostkey.*`. */
+  hostKeys?: HostKeys;
+  /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test`. */
+  connect?: SshConnector;
+  /** The ssh password and passphrase requests behind `askpass.*`. */
+  askpass?: AskpassBroker;
+}
+
+/** Issue #75, #1593: the harness domain's part of the server, each service optional. */
+interface HarnessServer {
+  /** A project's stack and commands, read from its manifest files, never run. */
+  stack?: (path: string) => Promise<HarnessStack>;
+  /** What adding harness parts would add, written nowhere. */
+  preview?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    template?: TemplateMarkdown | null,
+  ) => Promise<HarnessPreview>;
+  /** Writes what the preview proposed, when `digests` still match the proposals. */
+  apply?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    digests: Readonly<Record<string, string>>,
+    options: { reformat: boolean; template?: TemplateMarkdown },
+  ) => Promise<HarnessApplied>;
+  /** Slice T1: the host's harness templates, shared from projects. */
+  templates?: Pick<HarnessTemplates, "export" | "list" | "files" | "remove">;
+  /** Slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
+  draft?: (path: string) => Promise<HarnessDraft>;
+  /** Slice C1: commits what apply wrote (by its digests) on a new branch. */
+  commit?: (path: string, digests: Readonly<Record<string, string>>) => Promise<HarnessCommitted>;
+}
+
+/** Issue #76, #1593: the knowledge domain's part of the server, each service optional. */
+interface KnowledgeServer {
+  /** The library of documents of a project, read only. */
+  list?: (path: string) => Promise<KnowledgeListResult>;
+  /** The index of the project's current documents for a session's system prompt. */
+  feed?: (path: string) => Promise<KnowledgeIndexResult>;
+  /** Whether sessions in a project are given that index, and the person's switch for it. */
+  feedSwitch?: KnowledgeSwitch;
+  /** The status of one library document, written into its front matter. */
+  status?: (
+    path: string,
+    file: string,
+    status: KnowledgeStatus,
+    expectedHash: string,
+  ) => Promise<KnowledgeEntry>;
+  /** #1039: a new library document from a template, in the project's folder for its kind. */
+  create?: (
+    path: string,
+    kind: KnowledgeKind,
+    title: string,
+    body?: string,
+  ) => Promise<KnowledgeEntry>;
+}
+
 export interface ServerOptions {
   manager: SessionManager;
   /** Phase 39: whether OpenCode runs on this host, and its models. */
@@ -164,52 +242,12 @@ export interface ServerOptions {
     req: Request,
     server: { requestIP(req: Request): { address: string } | null },
   ) => string;
-  /** #75: a project's stack and commands, read from its manifest files, never run. */
-  harnessStack?: (path: string) => Promise<HarnessStack>;
+  /** #75: the project's Claude Code setup (harness); each part is announced by `host.info` on its own. */
+  harness?: HarnessServer;
   /** Issue #79: the open alerts of the repository in a folder, read with `gh`. */
   alerts?: (cwd: string) => Promise<AlertList>;
-  /** Issue #76: the library of documents of a project, read only. */
-  knowledge?: (path: string) => Promise<KnowledgeListResult>;
-  /** #76: the index of the project's current documents for a session's system prompt. */
-  knowledgeFeed?: (path: string) => Promise<KnowledgeIndexResult>;
-  /** #76: whether sessions in a project are given that index, and the person's switch for it. */
-  knowledgeFeedSwitch?: KnowledgeSwitch;
-  /** #76: the status of one library document, written into its front matter. */
-  knowledgeStatus?: (
-    path: string,
-    file: string,
-    status: KnowledgeStatus,
-    expectedHash: string,
-  ) => Promise<KnowledgeEntry>;
-  /** #1039: a new library document from a template, in the project's folder for its kind. */
-  knowledgeCreate?: (
-    path: string,
-    kind: KnowledgeKind,
-    title: string,
-    body?: string,
-  ) => Promise<KnowledgeEntry>;
-  /** #75: what adding harness parts would add, written nowhere. */
-  harnessPreview?: (
-    path: string,
-    parts: readonly PreviewPart[],
-    template?: TemplateMarkdown | null,
-  ) => Promise<HarnessPreview>;
-  /** #75: writes what the preview proposed, when `digests` still match the proposals. */
-  harnessApply?: (
-    path: string,
-    parts: readonly PreviewPart[],
-    digests: Readonly<Record<string, string>>,
-    options: { reformat: boolean; template?: TemplateMarkdown },
-  ) => Promise<HarnessApplied>;
-  /** #75, slice T1: the host's harness templates, shared from projects. */
-  harnessTemplates?: Pick<HarnessTemplates, "export" | "list" | "files" | "remove">;
-  /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
-  harnessDraft?: (path: string) => Promise<HarnessDraft>;
-  /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
-  harnessCommit?: (
-    path: string,
-    digests: Readonly<Record<string, string>>,
-  ) => Promise<HarnessCommitted>;
+  /** Issue #76: the project's library of documents; each part is announced by `host.info` on its own. */
+  knowledge?: KnowledgeServer;
   projectTrust?: {
     /**
      * Reads what `state` and `set` compare with (the roots' real paths) and the git boundaries of
@@ -372,18 +410,10 @@ export interface ServerOptions {
   sessionCommits?: SessionCommits;
   /** #1133: a plain session's branch pushed and its PR opened. */
   sessionPrs?: SessionPrs;
-  /** The ssh destinos behind `ssh.*` (phase 15). */
-  ssh?: SshTargets;
-  /** The read-only import of `~/.ssh/config` behind `ssh.import.*` (phase 15). */
-  sshImport?: SshImporter;
-  /** The server keys of the ssh destinos behind `ssh.hostkey.*` (phase 15). */
-  sshHostKeys?: HostKeys;
-  /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test` (phase 15). */
-  sshConnect?: SshConnector;
+  /** The ssh destinos and what the server offers of them (phase 15, #1593). */
+  ssh?: SshServer;
   /** Where the server writes what it refuses and why a connection closed (never a secret). */
   log?: (message: string) => void;
-  /** The ssh password and passphrase requests behind `askpass.*` (phase 15). */
-  askpass?: AskpassBroker;
   /** The snippets behind `snippets.*` (phase 18). */
   snippets?: Snippets;
   /** The import from the shell history behind `snippets.importHistory` (phase 18). */

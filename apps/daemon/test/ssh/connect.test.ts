@@ -654,8 +654,7 @@ ${"x".repeat(500)}`,
     const { root } = workspace();
     const server = startServer({
       manager: newManager().manager,
-      ssh: s.targets,
-      sshConnect: s.connector,
+      ssh: { targets: s.targets, connect: s.connector },
       terminals: s.terminals,
       hostName: "h",
       bind: "127.0.0.1",

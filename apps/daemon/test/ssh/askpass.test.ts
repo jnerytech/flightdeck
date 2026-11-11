@@ -229,7 +229,7 @@ async function daemon() {
   });
   const server = startServer({
     manager: newManager().manager,
-    askpass: broker,
+    ssh: { askpass: broker },
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

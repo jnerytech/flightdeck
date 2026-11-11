@@ -36,9 +36,9 @@ export function createHarness({ runtime, quota, scanner, cwd, config }: HarnessD
     allowApiKey: config.allowApiKey,
   });
   return {
-    harnessStack: detectStack,
-    harnessPreview: previewHarness,
-    harnessApply: (
+    stack: detectStack,
+    preview: previewHarness,
+    apply: (
       path: string,
       parts: readonly PreviewPart[],
       digests: Readonly<Record<string, string>>,
@@ -46,10 +46,10 @@ export function createHarness({ runtime, quota, scanner, cwd, config }: HarnessD
     ) => applyHarness(path, parts, digests, { ...options, drafts: harnessDrafts }),
     // Only a runtime that can run a one-shot drafts: the feature is not offered otherwise.
     ...present({
-      harnessDraft: runtime.complete && ((path: string) => harnessDrafts.draft(path)),
+      draft: runtime.complete && ((path: string) => harnessDrafts.draft(path)),
     }),
-    harnessCommit: (path: string, digests: Readonly<Record<string, string>>) =>
+    commit: (path: string, digests: Readonly<Record<string, string>>) =>
       commitHarness(path, digests, { scanner }),
-    harnessTemplates: new HarnessTemplates(join(config.dataDir, "harness-templates"), scanner),
+    templates: new HarnessTemplates(join(config.dataDir, "harness-templates"), scanner),
   };
 }

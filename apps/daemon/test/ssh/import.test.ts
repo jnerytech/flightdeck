@@ -269,8 +269,7 @@ describe("ssh-import", () => {
     const { root } = workspace();
     const server = startServer({
       manager: newManager().manager,
-      ssh: targets,
-      sshImport: importer,
+      ssh: { targets, import: importer },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

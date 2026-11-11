@@ -9,7 +9,7 @@ import { refusalText } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { cardStartBlock } from "@/lib/card-start-block";
-import { FindingSeverity } from "./finding-severity";
+import { FindingSeverity } from "../review/index.ts";
 
 type Outcome = { kind: "result"; result: CardReviewResult } | { kind: "refused"; text: string };
 

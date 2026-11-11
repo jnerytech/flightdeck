@@ -7,34 +7,34 @@ import type { Handlers } from "../dispatch.ts";
 
 export const knowledgeHandlers = {
   "knowledge.list": async (payload, { server }) => {
-    const list = server.need("knowledge");
+    const list = server.needIn("knowledge", "list");
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await list(path);
   },
   "knowledge.index": async (payload, { server }) => {
-    const feed = server.need("knowledgeFeed");
+    const feed = server.needIn("knowledge", "feed");
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await feed(path);
   },
   "knowledge.setStatus": async (payload, { server }) => {
-    const setStatus = server.need("knowledgeStatus");
+    const setStatus = server.needIn("knowledge", "status");
     const { path: asked, file, status, expectedHash } = payload;
     const path = await resolveAllowedCwd(asked, server.opts.allowedRoots);
     return await setStatus(path, file, status, expectedHash);
   },
   "knowledge.create": async (payload, { server }) => {
-    const create = server.need("knowledgeCreate");
+    const create = server.needIn("knowledge", "create");
     const { path: asked, kind, title, body } = payload;
     const path = await resolveAllowedCwd(asked, server.opts.allowedRoots);
     return await create(path, kind, title, body);
   },
   "knowledge.feed": async (payload, { server }) => {
-    const feed = server.need("knowledgeFeedSwitch");
+    const feed = server.needIn("knowledge", "feedSwitch");
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await feed.state(path);
   },
   "knowledge.setFeed": async (payload, { server }) => {
-    const feed = server.need("knowledgeFeedSwitch");
+    const feed = server.needIn("knowledge", "feedSwitch");
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await feed.set(path, payload.enabled);
   },
