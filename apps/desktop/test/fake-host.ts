@@ -1,5 +1,17 @@
+import { afterEach } from "bun:test";
 import type { AppStore } from "../src/lib/app-store.ts";
 import { memoryPlatform, seedHosts } from "./fixtures.ts";
+
+/** The commands a fake host got with no handler and no `fallback`: the test fails after it, naming them. */
+const unhandled: string[] = [];
+afterEach(() => {
+  const left = unhandled.splice(0);
+  if (left.length > 0) {
+    throw new Error(
+      `the fake host got commands no handler answers: ${[...new Set(left)].join(", ")}`,
+    );
+  }
+});
 
 /** What a fake host does with a command: its answer, or a promise of it. */
 export type HostHandler = (payload: never) => unknown;
@@ -7,7 +19,7 @@ export type HostHandler = (payload: never) => unknown;
 /**
  * A real `AppStore` over a fake host (#1870): the store, its slices and the screens on it run as
  * they do in the app, and only the host's end of the wire is faked. Each command goes to the
- * handler of its type; one with no handler is answered with `fallback`. The calls are kept in
+ * handler of its type; one with no handler fails the test unless `fallback` is given. The calls are kept in
  * order. Load it after `registerDom()`: the store reads the DOM when it is imported.
  */
 export async function fakeHostStore(
@@ -30,7 +42,10 @@ export async function fakeHostStore(
     request: async (type: string, payload: unknown) => {
       calls.push({ type, payload });
       const handler = handlers[type];
-      return handler ? handler(payload as never) : (options.fallback ?? null);
+      if (handler) return handler(payload as never);
+      // A missing handler is a hole in the test, not an answer: only a given `fallback` stands in.
+      if (!("fallback" in options)) unhandled.push(type);
+      return options.fallback ?? null;
     },
     dispose: () => {},
   };

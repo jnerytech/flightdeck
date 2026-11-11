@@ -110,6 +110,8 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     const backup = slow();
     const prune = slow();
     const { store } = await fakeHostStore({
+      // The section asks for its status when it opens; this test is about the two buttons.
+      "maintenance.status": () => null,
       "maintenance.backup": (payload) => backup.call(payload),
       "maintenance.prune": (payload) => prune.call(payload),
     });
