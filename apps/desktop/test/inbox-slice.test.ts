@@ -153,7 +153,8 @@ describe("inbox slice", () => {
     const w = inbox({ badgeFails: true });
     w.slice.notify({ title: "a", body: "" });
     w.slice.resendBadge();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The refusals are caught in microtasks: let them run before the checks.
+    for (let i = 0; i < 5; i++) await Promise.resolve();
     expect([w.entries().length, w.badges]).toEqual([1, [1, 1]]);
   });
 
