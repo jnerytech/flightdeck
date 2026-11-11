@@ -3,7 +3,7 @@ import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
-import { DEFAULT_MODELS, type ServiceInstallResult } from "@flightdeck/protocol";
+import type { ServiceInstallResult } from "@flightdeck/protocol";
 import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
@@ -74,13 +74,12 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { CardReviews, reviewHold } from "./review/card-review.ts";
 import { Changes } from "./review/changes.ts";
-import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
 import { SessionCommits } from "./review/session-commit.ts";
 import { SessionFiles } from "./review/session-files.ts";
 import { SessionPrs } from "./review/session-pr.ts";
+import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import type { PlatformInfo } from "./roots.ts";
@@ -116,7 +115,6 @@ import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
-import { ulid } from "./ulid.ts";
 import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
@@ -713,56 +711,26 @@ export async function startDaemon(
     return { path, ...projectTrust.judged(path), ...(staleSessions > 0 ? { staleSessions } : {}) };
   };
   // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
-  const reviewComments = new ReviewComments({ db: store.db, changes, manager, board, central });
-  const complete = runtime.complete?.bind(runtime);
   const reviewScanner = new SecretScanner(() => heldValues());
-  const cardReviews = complete
-    ? new CardReviews({
-        db: store.db,
-        card: (id) => {
-          const card = board.getCard(id);
-          return {
-            id: card.id,
-            projectId: card.projectId,
-            title: card.title,
-            description: card.description,
-            worktreePath: card.worktreePath,
-            running:
-              card.queued ||
-              ["starting", "running", "awaiting_permission"].includes(card.sessionStatus ?? ""),
-          };
-        },
-        diff: (id) => board.diff(id),
-        // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
-        // link on the way, no hard link), never a credential file, at most 20 KB.
-        spec: async (id) => {
-          const { specPath, worktreePath } = board.getCard(id);
-          if (!specPath || !worktreePath || credential(specPath)) return undefined;
-          return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
-        },
-        hold: (projectId) =>
-          reviewHold({
-            paused: hostPause.blocked() !== null,
-            quota: quota.blocked() !== null,
-            memory: memoryGate.blocked() !== null,
-            budget: board.budgetHeld(projectId),
-          }),
-        complete,
-        comments: reviewComments,
-        redact: (text) => reviewScanner.redact(text, false),
-        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
-        model: DEFAULT_MODELS.host.careful,
-        record: (cardId, worktree, tokens) =>
-          usageIndex.record({
-            at: new Date().toISOString(),
-            model: tokens.model,
-            tokens,
-            projectPath: worktree,
-            messageId: `card-review-${cardId}-${ulid()}`,
-            origin: "card",
-          }),
-      })
-    : undefined;
+  const { reviewComments, cardReviews } = createReview({
+    db: store.db,
+    changes,
+    manager,
+    board,
+    central,
+    complete: runtime.complete?.bind(runtime),
+    // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
+    // link on the way, no hard link), never a credential file, at most 20 KB.
+    spec: async (id) => {
+      const { specPath, worktreePath } = board.getCard(id);
+      if (!specPath || !worktreePath || credential(specPath)) return undefined;
+      return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
+    },
+    redact: (text) => reviewScanner.redact(text, false),
+    persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
+    gates: { hostPause, quota, memory: memoryGate },
+    usage: usageIndex,
+  });
   const hostChecks = createHostChecks({
     config,
     env,
