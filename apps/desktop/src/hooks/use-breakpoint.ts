@@ -4,7 +4,7 @@ import { useMediaQuery } from "./use-media-query";
 export type Breakpoint = "compact" | "medium" | "wide";
 
 export const COMPACT_QUERY = "(width < 640px)";
-export const MEDIUM_QUERY = "(width < 1024px)";
+const MEDIUM_QUERY = "(width < 1024px)";
 
 /** Which of the three widths the window is in now, following its resize. */
 export function useBreakpoint(): Breakpoint {
