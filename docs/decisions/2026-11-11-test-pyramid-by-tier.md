@@ -20,3 +20,11 @@
   that verdict in seconds. `bun run fast-coverage` stays for `--write` and local use.
 - **Left for the next steps of the issue.** The table at the end of local runs, the shape row in
   `bun run arch`, and the e2e row's time.
+
+## UI tests that start a daemon run on the component shards (#1854)
+
+With one integration shard, the 77 UI tests that also start a daemon (they count as integration)
+ran in one process with the other integration files and failed together on CI (menus not found,
+waits timed out, in bun and istanbul alike); they pass next to the other DOM files. `shardTiers`
+(`scripts/lib/test-tiers.ts`) places a test that draws the DOM on the component shards; the pyramid
+table still counts it as integration, by `testTiers`.
