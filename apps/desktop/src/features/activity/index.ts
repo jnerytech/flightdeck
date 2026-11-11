@@ -11,3 +11,4 @@ export {
   initialActivityState,
 } from "./store.ts";
 export { type AwayNews, type AwayView, awayView } from "./summary.ts";
+export { wireActivity } from "./wire.ts";

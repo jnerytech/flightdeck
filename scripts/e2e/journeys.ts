@@ -1664,6 +1664,37 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         (personaBox?.width ?? 0) >= (rowBox?.width ?? Infinity) - 1,
         (modelBox?.height ?? Infinity) < lineHeight * 1.5,
       ]).toEqual([true, true]);
+      // The row is two even columns: the persona on its own line, the model and the permission
+      // side by side with the same width, then Remove under them at the left (#1222, #1850).
+      const cells = await row.evaluate((el) =>
+        [...el.children].map((one) => {
+          const box = one.getBoundingClientRect();
+          return { left: box.left, top: box.top, width: box.width, bottom: box.bottom };
+        }),
+      );
+      const [first, second, third] = cells;
+      const remove = cells[cells.length - 1];
+      const at = rowBox?.x ?? Infinity;
+      if (!first || !second || !third || !remove)
+        throw new Error(`the worker row at ${size.width}px has ${cells.length} cells`);
+      expect(remove.left, `Remove sits at the row's left at ${size.width}px`).toBeLessThanOrEqual(
+        at + 1,
+      );
+      expect(remove.top, `Remove is under the selects at ${size.width}px`).toBeGreaterThanOrEqual(
+        second.bottom - 1,
+      );
+      expect(
+        second.top,
+        `the model is under the persona at ${size.width}px`,
+      ).toBeGreaterThanOrEqual(first.bottom - 1);
+      if (cells.length > 3) {
+        expect(
+          // The row aligns its cells at the end, so a label that wraps makes one taller: the
+          // bottoms line up, not the tops.
+          [Math.abs(third.bottom - second.bottom) <= 1, Math.abs(third.width - second.width) <= 2],
+          `the model and the permission are side by side, as wide as each other, at ${size.width}px`,
+        ).toEqual([true, true]);
+      }
     }
   },
 
@@ -1815,6 +1846,51 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
     }
 
+    // 3b. The top bar and the status bar change at one width, 1024 px, the one `useBreakpoint()`
+    // uses (#641, #1850): at 1023 the host's name, the search's text and keys, the version and the
+    // quota window are hidden and the host's icon stands in; at 1024 the full forms show.
+    const shown = () =>
+      c.page.evaluate(() => {
+        const display = (selector: string) => {
+          const el = document.querySelector(selector);
+          return el ? getComputedStyle(el).display : null;
+        };
+        return {
+          name: display(".top-bar-host-name"),
+          chevron: display(".top-bar-host-chevron"),
+          // A host in use shows its dot and initial; with none, the server icon stands in.
+          mark: display(".top-bar-host-initial") ?? display(".top-bar-host-icon"),
+          searchText: display(".top-bar-search-text"),
+          searchKeys: display(".top-bar-search-keys"),
+          version: display(".top-bar-version"),
+          quota: display(".status-quota-window"),
+          search: document.querySelector(".top-bar-search")?.getBoundingClientRect().width ?? 0,
+        };
+      });
+    for (const width of [1023, 1024]) {
+      await c.page.setViewportSize({ width, height: 800 });
+      await c.page.locator(".top-bar-search").waitFor({ timeout: WAIT });
+      const now = await shown();
+      const compact = width < 1024;
+      const hidden = (value: string | null) => value === null || (value === "none") === compact;
+      expect(
+        {
+          hosts: [now.name, now.chevron, now.searchText, now.searchKeys, now.version].map((one) =>
+            one === null ? "missing" : one === "none" ? "hidden" : "shown",
+          ),
+          markHidden: now.mark === "none",
+          quotaFits: hidden(now.quota),
+          searchWide: now.search >= 150,
+        },
+        `the top bar at ${width}px`,
+      ).toEqual({
+        hosts: Array(5).fill(compact ? "hidden" : "shown"),
+        markHidden: !compact,
+        quotaFits: true,
+        searchWide: !compact,
+      });
+    }
+
     // 4. Settings (#641, #1850): beside its content the section list is sticky and a label sits
     // left of its control in a wide window; narrow, the list goes above the content, its links
     // wrap in a row, and the label goes above its control. Measured, not read from the stylesheet.
@@ -1855,6 +1931,126 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       const sideways = await pageScrollsSideways(c.page);
       if (sideways) throw new Error(`Settings scrolls sideways at ${width}px: ${sideways}`);
     }
+
+    // 5. The composer (#641, #1850): its box shares a line with its buttons, and in a dock under
+    // 20 rem wide (a narrow pane) it takes the line above them. The dock is forced to 300 px, since
+    // the query reads the dock's width, not the window's.
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+    const dock = c.page.locator(".composer-dock").first();
+    await dock.waitFor({ timeout: WAIT });
+    const composerAt = (dockWidth: number | null) =>
+      dock.evaluate((el, set) => {
+        (el as HTMLElement).style.width = set === null ? "" : `${set}px`;
+        const card = el.querySelector("[data-slot='composer-card']");
+        const box = card?.querySelector(".composer-box");
+        if (!card || !box) return null;
+        const field = box.getBoundingClientRect();
+        const around = card.getBoundingClientRect();
+        const buttons = [...card.querySelectorAll("button")]
+          .map((one) => one.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0);
+        const found = {
+          buttons: buttons.length > 0,
+          wholeLine: field.width >= around.width * 0.8,
+          above: buttons.every((rect) => rect.top >= field.bottom - 1),
+          sharesLine: buttons.some((rect) => rect.top < field.bottom && rect.bottom > field.top),
+        };
+        (el as HTMLElement).style.width = "";
+        return found;
+      }, dockWidth);
+    expect(await composerAt(null), "the composer in a wide dock").toEqual({
+      buttons: true,
+      wholeLine: false,
+      above: false,
+      sharesLine: true,
+    });
+    expect(await composerAt(300), "the composer in a dock under 20 rem").toEqual({
+      buttons: true,
+      wholeLine: true,
+      above: true,
+      sharesLine: false,
+    });
+
+    // 6. The sidebar (#171, #567, #1850): in a short window the nav and the hosts scroll as one
+    // body between the header and the footer; only the body scrolls, the footer stays in view, and
+    // the hosts are reachable by scrolling it.
+    await c.page.setViewportSize({ width: 1280, height: 420 });
+    await open(c, { name: "home" });
+    const bodyOf = c.page.locator("[data-slot='sidebar-body']");
+    await bodyOf.waitFor({ timeout: WAIT });
+    const side = await bodyOf.evaluate((body) => {
+      const nav = body.querySelector("nav");
+      const hosts = body.querySelector("[data-slot='sidebar-hosts']");
+      const foot = document.querySelector("[data-slot='sidebar-foot']");
+      if (!nav || !hosts || !foot) return null;
+      body.scrollTop = body.scrollHeight;
+      const room = body.getBoundingClientRect();
+      return {
+        scrolls:
+          getComputedStyle(body).overflowY === "auto" && body.scrollHeight > body.clientHeight,
+        own: [getComputedStyle(nav).overflowY, getComputedStyle(hosts).overflowY],
+        hostsReached: hosts.getBoundingClientRect().bottom <= room.bottom + 1,
+        footInWindow: foot.getBoundingClientRect().bottom <= window.innerHeight + 1,
+        hostsHigh: hosts.getBoundingClientRect().height >= 96,
+      };
+    });
+    if (!side) throw new Error("the sidebar's body, nav, hosts or footer is missing");
+    expect(side, "the sidebar in a 420 px high window").toEqual({
+      scrolls: true,
+      own: ["visible", "visible"],
+      hostsReached: true,
+      footInWindow: true,
+      hostsHigh: true,
+    });
+
+    // 7. The theme's native controls (#567, #1850), in both themes: the dropdown of a select is
+    // painted with the popover colors (WebView2 paints it light in the dark theme otherwise), a
+    // disabled option stays readable, the page declares its color scheme, and a scroll area has a
+    // thin bar with no arrow buttons.
+    const native = await c.page.evaluate(() => {
+      const root = document.documentElement;
+      const wasDark = root.classList.contains("dark");
+      const probe = document.createElement("div");
+      const select = document.createElement("select");
+      select.innerHTML = "<option>a</option><option disabled>b</option>";
+      const scroller = document.createElement("div");
+      scroller.style.cssText = "overflow: auto; width: 100px; height: 40px";
+      scroller.innerHTML = '<div style="height: 200px"></div>';
+      document.body.append(probe, select, scroller);
+      const colorOf = (token: string, property: "backgroundColor" | "color") => {
+        probe.style.cssText = `${property === "color" ? "color" : "background-color"}: var(${token})`;
+        return getComputedStyle(probe)[property];
+      };
+      const bar = (part = "") => getComputedStyle(scroller, `::-webkit-scrollbar${part}`);
+      const found: Record<string, unknown> = {};
+      for (const dark of [false, true]) {
+        root.classList.toggle("dark", dark);
+        const on = select.options.item(0) as HTMLOptionElement;
+        const off = select.options.item(1) as HTMLOptionElement;
+        found[dark ? "dark" : "light"] = {
+          scheme: getComputedStyle(root).colorScheme,
+          paper: getComputedStyle(on).backgroundColor === colorOf("--popover", "backgroundColor"),
+          ink: getComputedStyle(on).color === colorOf("--popover-foreground", "color"),
+          disabled: getComputedStyle(off).color === colorOf("--muted-foreground", "color"),
+          thin: [bar().width, bar().height].every((one) => {
+            const size = Number.parseFloat(one);
+            return size >= 4 && size <= 10;
+          }),
+          noArrows: bar("-button").display === "none",
+        };
+      }
+      root.classList.toggle("dark", wasDark);
+      probe.remove();
+      select.remove();
+      scroller.remove();
+      return found;
+    });
+    const same = { paper: true, ink: true, disabled: true, thin: true, noArrows: true };
+    expect(native, "the native controls in both themes").toEqual({
+      light: { scheme: "light", ...same },
+      dark: { scheme: "dark", ...same },
+    });
   },
 
   // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
@@ -2041,6 +2237,21 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         );
         if (sideways > 0)
           throw new Error(`a página rola ${sideways}px para o lado a ${size.width}px`);
+        // Issue #641, #1850: the views keep one row that scrolls, instead of a second row.
+        const strip = await list.evaluate((el) => ({
+          overflowX: getComputedStyle(el).overflowX,
+          wraps: getComputedStyle(el).flexWrap !== "nowrap",
+          rows: new Set(
+            [...el.querySelectorAll("[role='tab']")].map((tab) =>
+              Math.round(tab.getBoundingClientRect().top),
+            ),
+          ).size,
+        }));
+        expect(strip, `the views of a session at ${size.width}px`).toEqual({
+          overflowX: "auto",
+          wraps: false,
+          rows: 1,
+        });
       }
     }
     // Alt+1..7 pick the views in the order of the tabs; the tab picked says so.
@@ -2320,6 +2531,38 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await report.scrollIntoViewIfNeeded();
       const box = await report.boundingBox();
       expect(box === null ? Infinity : box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
+      // Issue #1006, #1850: narrow (below 640 px) a member's name and badges take the row's whole
+      // width and its state and actions go under them, from the left; wide, they sit beside.
+      const head = row.locator('[data-slot="member-head"]').first();
+      const found = await head.evaluate((el) => {
+        const id = el.querySelector('[data-slot="member-id"], .member-id');
+        const end = el.querySelector('[data-slot="member-end"]');
+        const action = end?.firstElementChild;
+        if (!id || !end || !action) return null;
+        const [bar, name, tail, first] = [el, id, end, action].map((one) =>
+          one.getBoundingClientRect(),
+        );
+        return {
+          nameWidth: name?.width ?? 0,
+          rowWidth: bar?.width ?? 0,
+          under: (tail?.top ?? 0) >= (name?.bottom ?? Infinity) - 1,
+          beside: (tail?.left ?? 0) >= (name?.right ?? Infinity) - 1,
+          firstAtLeft: (first?.left ?? Infinity) <= (name?.left ?? 0) + 1,
+          sideways: el.scrollWidth > el.clientWidth + 1,
+        };
+      });
+      if (!found) throw new Error(`a team member's head at ${size.width}px is missing a part`);
+      if (size.width < 640) {
+        expect(
+          [found.nameWidth >= found.rowWidth - 1, found.under, found.firstAtLeft, found.sideways],
+          `a member's head stacks at ${size.width}px`,
+        ).toEqual([true, true, true, false]);
+      } else {
+        expect(
+          [found.beside, found.sideways],
+          `a member's head is one line at ${size.width}px`,
+        ).toEqual([true, false]);
+      }
     }
   },
 

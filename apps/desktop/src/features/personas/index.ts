@@ -16,3 +16,4 @@ export {
   type PersonasSliceState,
 } from "./store.ts";
 export { SubagentsSwitch } from "./subagents-switch.tsx";
+export { wirePersonas } from "./wire.ts";

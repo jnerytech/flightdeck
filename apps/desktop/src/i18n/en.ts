@@ -1,6 +1,8 @@
+import { account } from "./en/account.ts";
 import { agent } from "./en/agent.ts";
 import { assistant } from "./en/assistant.ts";
 import { automations } from "./en/automations.ts";
+import { backup } from "./en/backup.ts";
 import { board } from "./en/board.ts";
 import { changes } from "./en/changes.ts";
 import { chrome } from "./en/chrome.ts";
@@ -16,6 +18,7 @@ import { projects } from "./en/projects.ts";
 import { refusals } from "./en/refusals.ts";
 import { sessions } from "./en/sessions.ts";
 import { snippets } from "./en/snippets.ts";
+import { telemetry } from "./en/telemetry.ts";
 import { vault } from "./en/vault.ts";
 import type { Dictionary } from "./index.ts";
 
@@ -139,118 +142,7 @@ export const en: Dictionary = {
   ...personas,
   ...snippets,
   ...vault,
-  backupAll: {
-    title: "Back up everything",
-    intro:
-      "One encrypted file with your settings, personas, snippets, hosts (with their tokens) and the vault. Only the passphrase you choose opens it.",
-    exportTitle: "Back up",
-    passphrase: "Passphrase",
-    confirm: "Confirm passphrase",
-    passphraseHelp: "At least 12 characters. Without it the backup cannot be opened.",
-    export: "Back up now",
-    exportNeeds: "Type the passphrase and repeat it.",
-    saved:
-      "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
-    importTitle: "Restore a backup",
-    sourceLegend: "Restore from",
-    source: { file: "A file", drive: "Google Drive" },
-    driveLook: "Look in Google Drive",
-    driveNone: "No backups on Google Drive yet.",
-    driveChoiceLegend: "Backups on Google Drive",
-    driveNeedsSignIn: "Sign in to Google under Scheduled backups first.",
-    driveReadNeeds: "Choose a backup and type its passphrase.",
-    filePassphrase: "File passphrase",
-    read: "Read backup",
-    needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",
-    readNeeds: "Type the file's passphrase.",
-    kinds: {
-      settings: "Settings",
-      personas: "Personas",
-      snippets: "Snippets",
-      hosts: "Hosts",
-      vault: "Vault",
-    },
-    line: "{kind}: {added} new, {same} the same, {conflicting} different",
-    conflictList: "Different here",
-    newHosts: "New hosts",
-    choiceLegend: "When it differs",
-    nothingToRestore: "Nothing here is new. Choose to replace a difference to restore it.",
-    keep: "Keep what is here",
-    replace: "Replace with the backup",
-    restore: "Restore",
-    replaceMessage: "Replace {names} with what is in the backup? What is here is lost.",
-    replaceConfirm: "Replace",
-    result:
-      "Restored: {added} new, {overwritten} replaced, {skipped} kept. Close and reopen Flightdeck to use them.",
-    error: {
-      "short-passphrase": "The passphrase needs at least 12 characters.",
-      mismatch: "The passphrases do not match.",
-      unreadable:
-        "The file could not be read. Check the passphrase; a changed file is refused too.",
-      failed: "The restore failed and nothing was changed.",
-      "drive-auth":
-        "Google Drive does not accept the sign-in. Sign in again under Scheduled backups.",
-      "drive-failed": "Google Drive could not be read. Try again.",
-      unexpected: "Something went wrong. Nothing was changed.",
-      "too-big":
-        "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",
-    },
-  },
-  backupSchedule: {
-    title: "Scheduled backups",
-    intro:
-      "A backup is made on its own into a folder you choose, and only the last few files stay. The passphrase is asked once each time the app starts and stays in memory.",
-    cadenceLegend: "How often",
-    cadence: { off: "Off", daily: "Every day", weekly: "Every week" },
-    folder: "Folder",
-    noFolder: "No folder chosen",
-    chooseFolder: "Choose folder",
-    targetLegend: "Where to save",
-    target: { folder: "A folder", drive: "Google Drive" },
-    driveHelp:
-      "Backups go to Flightdeck's own hidden folder in your Google Drive. Only this app can see it, and each file stays encrypted with your passphrase.",
-    driveSignedIn: "Signed in to Google",
-    driveSignedOut: "Not signed in to Google",
-    driveSignIn: "Sign in with Google",
-    driveSignOut: "Sign out",
-    driveRefused: "Google did not accept the sign-in. Try again.",
-    keep: "Files to keep",
-    keepInvalid: "Type a whole number from 1. The saved number ({count}) stays.",
-    passphrase: "Passphrase for this session",
-    passphraseHelp:
-      "At least 12 characters. Kept in memory until you close Flightdeck, never saved.",
-    usePassphrase: "Use it",
-    passphraseNeeds: "Type a passphrase of at least 12 characters.",
-    passphraseSet: "Passphrase set until you close Flightdeck.",
-    lastRun: "Last backup: {when}",
-    neverRun: "No scheduled backup yet.",
-    pruneFailed: "The backup was saved, but the old files could not be removed.",
-    attention: {
-      passphrase: {
-        title: "Scheduled backups need your passphrase",
-        body: "Type it in Settings, section Backup. Until then no backup is made.",
-      },
-      "no-folder": {
-        title: "Scheduled backups have no folder",
-        body: "Choose a folder in Settings, section Backup. Until then no backup is made.",
-      },
-      failed: {
-        title: "A scheduled backup failed",
-        body: "Check that the folder still exists and has room, in Settings, section Backup.",
-      },
-      "drive-auth": {
-        title: "Scheduled backups to Google Drive need you to sign in",
-        body: "Sign in again in Settings, section Backup. Until then no backup is made.",
-      },
-    },
-    skipped: {
-      "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
-      "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
-      failed:
-        "The last backup could not be saved. Check that the folder still exists and has room.",
-      "drive-auth": "A backup is due, but Google Drive is not signed in. Sign in again.",
-    },
-  },
+  ...backup,
   states: {
     connecting: "Connecting to {host}…",
     loading: "Loading…",
@@ -353,81 +245,7 @@ export const en: Dictionary = {
     },
   },
   ...notifications,
-  account: {
-    region: "Claude account of {host}",
-    title: "Claude account",
-    loading: "Reading the account…",
-    offline: "{host} is offline: the account shows again when it is back.",
-    plans: {
-      free: "Free",
-      pro: "Pro",
-      max: "Max",
-      ultra: "Ultra",
-      team: "Team",
-      enterprise: "Enterprise",
-    },
-    planHint:
-      "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
-    windows: {
-      five_hour: "5 hours",
-      seven_day: "7 days",
-      seven_day_opus: "7 days · Opus",
-      seven_day_sonnet: "7 days · Sonnet",
-    },
-    meter: "{window} of {host}",
-    meterText: "{percent}%, {reset}",
-    meterTextNoReset: "{percent}%",
-    resetsIn: "resets in {d}",
-    lastRead: "Last read {ago}",
-    noWindows: "The host reported no plan windows.",
-    stale: "Could not refresh: this is the last reading.",
-    refresh: "Refresh",
-    refreshing: "Reading…",
-    refreshLabel: "Refresh the account of {host}",
-    signedOut: {
-      title: "This host is not signed in to Claude.",
-      steps:
-        "Open this host's terminal, run this command and follow the steps there, then come back:",
-    },
-    copy: "Copy command",
-    copied: "Command copied",
-    terminal: "Open terminal",
-    apiKey: "This host uses an API key. Plan limits do not apply.",
-    provider: "This host uses {provider}. Plan limits do not apply.",
-    unknownSignIn: "This host's sign-in is not one the app knows.",
-    unavailable: "The account could not be read.",
-    retry: "Try again",
-  },
-  quota: {
-    windows: { five_hour: "5 hours", seven_day: "7 days" },
-    shortWindows: { five_hour: "5 h", seven_day: "7 days" },
-    region: "Quota of {host}",
-    meter: "{window} of {host}",
-    noReading: "no reading yet",
-    resets: "resets at {time}",
-    read: "read {ago}",
-    hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
-    guard: {
-      label: "New cards wait from",
-      labelFor: "New cards wait from, on {host}",
-      off: "Never",
-      hint: "Sessions already running are never stopped.",
-      readOnly:
-        "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
-      readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
-    },
-    popover: {
-      label: "Plan quota of the hosts",
-      showRunning: "Show what is running",
-      openHost: "Open the host page",
-      openHostOf: "Open the page of {host}",
-    },
-    projection: {
-      few: "too few readings to project",
-      exhausts: "at the current pace, the {window} window runs out at {time}",
-      holds: "won't run out before {time}",
-    },
-  },
+  ...account,
   errors: {
     bad_request: "The host refused the request.",
     unauthorized:
@@ -726,50 +544,7 @@ export const en: Dictionary = {
     movedToast: "The session moved to {host}.",
     preview: "Preview: move a session to another host",
   },
-  telemetry: {
-    tab: "Time",
-    region: "Session timeline",
-    empty:
-      "No timing data for this session. It appears for sessions opened with flightdeckd claude, or after flightdeckd telemetry install.",
-    prompt: "Prompt {n}",
-    waited: "waited {wait} for you",
-    api: "API request",
-    apiError: "API error {status}",
-    apiErrorPlain: "API error",
-    failed: "failed ({error})",
-    failedPlain: "failed",
-    permission: "Permission for {tool}: {decision} {by}",
-    allowed: "allowed",
-    denied: "denied",
-    byConfig: "by settings",
-    byHook: "by a hook",
-    byYou: "by you",
-    byOther: "",
-    ms: "{n} ms",
-    seconds: "{n} s",
-    note: "The wait is estimated from the gap before the answer. The text of prompts and answers is never collected.",
-    optinTitle: "Telemetry",
-    optinAsking: "Asking…",
-    optinHint:
-      "For a plain claude (flightdeckd claude gets it by itself): writes the keys that send the time and cost of sessions to this host into settings.json, on this machine only.",
-    optinInstalled: "Installed",
-    optinAbsent: "Not installed",
-    optinOutdated: "Out of date: install again",
-    optinConflict: "settings.json has an exporter of yours ({keys}): nothing will be changed.",
-    optinInstall: "Install telemetry",
-    optinUninstall: "Remove telemetry",
-    optinInstallMessage:
-      "This edits {path}: it adds the keys that send Claude Code's telemetry to this host's daemon, on this machine only, and keeps a copy in settings.json.flightdeck-telemetry-backup. Prompts and answers are never sent.",
-    optinUninstallMessage:
-      "This removes only Flightdeck's keys from {path} and changes the receiver's token. The rest of the file stays.",
-    costsTitle: "Time per project",
-    slowest: "Slowest tools",
-    slowTool: "{tool}: {avg} on average, {max} at most ({calls})",
-    calls: { one: "{n} call", other: "{n} calls" },
-    none: "No tools measured yet.",
-    divergence: "the telemetry cost differs from the transcripts': {items}",
-    divergenceItem: "{session} (transcripts {computed}, telemetry {telemetry})",
-  },
+  ...telemetry,
   bg: {
     region: "Background session",
     state: {
@@ -1195,41 +970,6 @@ export const en: Dictionary = {
       subscribed: "Someone has the session open, so it stays awake.",
       kept_awake: "The session is pinned or belongs to a card, so it stays awake.",
     },
-  },
-  resources: {
-    title: "Resources",
-    guard: {
-      label: "New cards wait from memory at",
-      labelFor: "New cards wait from memory at, on {host}",
-      off: "Never",
-      hint: "Only new cards wait, and start once memory frees up; sessions already running are never stopped.",
-    },
-    memory: "Memory",
-    disk: "Disk",
-    load: "Load {n}%",
-    used: "{used} of {total} used",
-    high: "High",
-    critical: "Critical",
-    kinds: { session: "Session", terminal: "Terminal" },
-    session: "Session",
-    project: "Project",
-    memoryCol: "Memory",
-    cpu: "CPU",
-    programs: "Programs",
-    unmeasured: "not measured",
-    list: "Sessions and terminals by memory",
-    empty: "No session or terminal is running.",
-    notMeasured:
-      "Per-session numbers are not measured here. Processes are only measured on Linux hosts.",
-    orphans: "Leftover processes",
-    orphansHelp:
-      "Started by this host's daemon, but no session owns them. They may be left from a session that is gone.",
-    orphanLine: "{name} · pid {pid} · {age} · {memory}",
-    end: "End",
-    endTitle: "End process",
-    endMessage: "End process {pid} ({name})? The host's daemon started it and no session owns it.",
-    endFailed: "That process could not be ended.",
-    unreadable: "This host's resources could not be read. They show when the host answers.",
   },
   ...plugins,
   maintenance: {

@@ -22,17 +22,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { BoardNotice } from "@/components/board/board-notice";
-import { BoardStatus } from "@/components/board/board-status";
-import { BoardSyncControl } from "@/components/board/board-sync";
-import { BulkDiscardDialog, discardCommand } from "@/components/board/bulk-discard-dialog";
-import { ColumnHandle } from "@/components/board/column-handle";
-import { ColumnSwitcher } from "@/components/board/column-switcher";
-import { ContractDialog } from "@/components/board/contract-dialog";
-import { NeedsBadge, needsText } from "@/components/board/needs-badge";
-import { QuietBadge } from "@/components/board/quiet-badge";
-import { RadarBadge } from "@/components/board/radar-badge";
-import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline, Toolbar } from "@/components/layout/stack";
@@ -47,6 +36,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { BoardNotice } from "@/features/board/board-notice";
+import { BoardStatus } from "@/features/board/board-status";
+import { BoardSyncControl } from "@/features/board/board-sync";
+import { BulkDiscardDialog, discardCommand } from "@/features/board/bulk-discard-dialog";
+import { ColumnHandle } from "@/features/board/column-handle";
+import { ColumnSwitcher } from "@/features/board/column-switcher";
+import { ContractDialog } from "@/features/board/contract-dialog";
+import { NeedsBadge, needsText } from "@/features/board/needs-badge";
+import { QuietBadge } from "@/features/board/quiet-badge";
+import { quietBadge } from "@/features/board/quiet-badge-view";
+import { RadarBadge } from "@/features/board/radar-badge";
+import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
@@ -58,12 +59,11 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import { BulkRunDialog } from "../components/board/bulk-run-dialog.tsx";
-import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
-import { startPersonaOf, startWorkflowOf } from "../components/board/card-template-field.tsx";
-import { DeleteCardDialog } from "../components/board/delete-card-dialog.tsx";
-import { NewCardDialog } from "../components/board/new-card-dialog.tsx";
-import { formatDuration } from "../i18n/format.ts";
+import { BulkRunDialog } from "../features/board/bulk-run-dialog.tsx";
+import { CardStartDialog } from "../features/board/card-start-dialog.tsx";
+import { startPersonaOf, startWorkflowOf } from "../features/board/card-template-field.tsx";
+import { DeleteCardDialog } from "../features/board/delete-card-dialog.tsx";
+import { NewCardDialog } from "../features/board/new-card-dialog.tsx";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import {
@@ -111,7 +111,7 @@ import { cardStartBlock } from "../lib/card-start-block.ts";
 import { radarBadge } from "../lib/conflict-radar.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { activeWorktreeFilter, cardInFilter, worktreeOfProject } from "../lib/project-tree.ts";
-import { quietAlerts, quietText } from "../lib/quiet.ts";
+import { quietAlerts } from "../lib/quiet.ts";
 import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
@@ -905,14 +905,7 @@ export const BoardView = memo(function BoardView(props: {
   /** #1553: the cards whose session says nothing, by session, with the badge's words. */
   const nowMs = store.now();
   const quietBySession = new Map(quietAlerts(state, nowMs, t).map((alert) => [alert.key, alert]));
-  const quietOf = (card: Card) => {
-    const alert = card.sessionId
-      ? quietBySession.get(sessionKey(hostId, card.sessionId))
-      : undefined;
-    if (!alert) return null;
-    const span = formatDuration(Math.max(0, nowMs - Date.parse(alert.since)), t);
-    return { short: t("activityBoard.quiet", { span }), full: quietText(alert, nowMs, t) };
-  };
+  const quietOf = (card: Card) => quietBadge(card, hostId, quietBySession, nowMs, t);
   const titlesOf = (ids: string[]) =>
     ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 

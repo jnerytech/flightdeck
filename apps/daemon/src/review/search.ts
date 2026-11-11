@@ -12,8 +12,10 @@ import {
   type FileSearchResult,
   SecretScanner,
 } from "@flightdeck/protocol";
+import { z } from "zod";
 import { type CommandResult, gitLimitedFor, runLimited } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { isInside } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { whichOnPath } from "../which.ts";
@@ -257,10 +259,16 @@ async function byContent(root: string, query: string, opts: SearchOptions): Prom
 }
 
 /** One match of `rg --json`; a path or a line that is not UTF-8 comes as `bytes`, and is skipped. */
-interface RgMatch {
-  type: string;
-  data?: { path?: { text?: string }; lines?: { text?: string }; line_number?: number };
-}
+const RG_MATCH = z.object({
+  type: z.string(),
+  data: z
+    .object({
+      path: z.object({ text: z.string().optional() }).optional(),
+      lines: z.object({ text: z.string().optional() }).optional(),
+      line_number: z.number().optional(),
+    })
+    .optional(),
+});
 
 async function withRg(rg: string, root: string, query: string, opts: SearchOptions) {
   // `--no-config`: a config file named in the environment could add `--pre` (a program to run).
@@ -287,12 +295,8 @@ async function withRg(rg: string, root: string, query: string, opts: SearchOptio
   );
   const matches: FileSearchMatch[] = [];
   for (const line of result.stdout.split("\n")) {
-    let event: RgMatch;
-    try {
-      event = JSON.parse(line) as RgMatch;
-    } catch {
-      continue;
-    }
+    const event = parseJsonOr(RG_MATCH.nullable(), line, null);
+    if (event === null) continue;
     const path = event.data?.path?.text;
     const text = event.data?.lines?.text;
     const number = event.data?.line_number;

@@ -179,6 +179,7 @@ test's baseline, with the issue that renames them.
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
 | `harness` | harness | A project's Markdown harness shared as a host template |
 | `history` | history | The conversations Claude Code already recorded, indexed and read only |
+| `home` | home | The landing screen: KPIs, sparklines and leaderboards over the chosen scope and period |
 | `hosts` | host | The machines the app talks to: what each reports about its health (dependencies and doctor), then its saved list and connection |
 | `inbox` | notification | The notification center: what the app sent, kept for the bell, read and unread, the taskbar badge, the system toast and the sound |
 | `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
@@ -188,6 +189,7 @@ test's baseline, with the issue that renames them.
 | `memory` | memory | Claude Code's auto memory of a project, edited only by an explicit action |
 | `messaging` | message | Messages between sessions, their policy, loops and exceptions |
 | `names` | standard name | The display name and alias of every session |
+| `needs-you` | needs you | The sessions that wait for an answer: the screen and its rows, and the summary of what happened while the person was away |
 | `permissions` | permission | Permission requests, risk, auto-approval and the rules behind them |
 | `personas` | persona | Engineering roles a session takes, the pack and their storage |
 | `plugins` | plugin | Claude Code plugins of the host, through the `claude plugin` CLI |
@@ -205,6 +207,7 @@ test's baseline, with the issue that renames them.
 | `snippets` | snippet | Saved commands and prompts with `{{name}}` places, and their use |
 | `ssh` | SSH destination | SSH destinations, server keys, key delivery and the ssh runs of actions |
 | `summary` | summary | A short summary of a session built from its transcript, with no model call |
+| `tabs` | tab | The strip of open tabs: each tab's title, icon, badge, host color and the words a screen reader gets |
 | `teams` | team | A coordinator session and its workers, started together |
 | `telemetry` | telemetry | Claude Code's OTLP export, received locally: timings, never text |
 | `teleport` | teleport | Moves a session with its work to another host |

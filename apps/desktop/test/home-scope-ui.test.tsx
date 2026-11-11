@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
 const { DATA_SCOPE_KEY } = await import("../src/lib/data-scope.ts");
-const { HomePage } = await import("../src/ui/HomePage.tsx");
+const { HomePage } = await import("../src/features/home/page.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

@@ -1,6 +1,8 @@
+import { account } from "./pt-BR/account.ts";
 import { agent } from "./pt-BR/agent.ts";
 import { assistant } from "./pt-BR/assistant.ts";
 import { automations } from "./pt-BR/automations.ts";
+import { backup } from "./pt-BR/backup.ts";
 import { board } from "./pt-BR/board.ts";
 import { changes } from "./pt-BR/changes.ts";
 import { chrome } from "./pt-BR/chrome.ts";
@@ -16,6 +18,7 @@ import { projects } from "./pt-BR/projects.ts";
 import { refusals } from "./pt-BR/refusals.ts";
 import { sessions } from "./pt-BR/sessions.ts";
 import { snippets } from "./pt-BR/snippets.ts";
+import { telemetry } from "./pt-BR/telemetry.ts";
 import { vault } from "./pt-BR/vault.ts";
 
 /**
@@ -142,116 +145,7 @@ export const ptBR = {
   ...personas,
   ...snippets,
   ...vault,
-  backupAll: {
-    title: "Backup de tudo",
-    intro:
-      "Um arquivo cifrado com as configurações, personas, snippets, hosts (com os tokens) e o cofre. Só a frase-senha que você escolher abre o arquivo.",
-    exportTitle: "Fazer backup",
-    passphrase: "Frase-senha",
-    confirm: "Confirmar frase-senha",
-    passphraseHelp: "Pelo menos 12 caracteres. Sem ela o backup não abre.",
-    export: "Fazer backup agora",
-    exportNeeds: "Digite a frase-senha e repita-a.",
-    saved: "Backup salvo, onde você escolheu. Guarde a frase-senha: sem ela o backup não abre.",
-    importTitle: "Restaurar um backup",
-    sourceLegend: "Restaurar de",
-    source: { file: "Um arquivo", drive: "Google Drive" },
-    driveLook: "Procurar no Google Drive",
-    driveNone: "Ainda não há backups no Google Drive.",
-    driveChoiceLegend: "Backups no Google Drive",
-    driveNeedsSignIn: "Entre no Google primeiro, em Backups agendados.",
-    driveReadNeeds: "Escolha um backup e digite a frase-senha dele.",
-    filePassphrase: "Frase-senha do arquivo",
-    read: "Ler backup",
-    needsDesktop: "Restaurar um backup precisa do app para desktop: o navegador não abre arquivos.",
-    readNeeds: "Digite a frase-senha do arquivo.",
-    kinds: {
-      settings: "Configurações",
-      personas: "Personas",
-      snippets: "Snippets",
-      hosts: "Hosts",
-      vault: "Cofre",
-    },
-    line: "{kind}: {added} novos, {same} iguais, {conflicting} diferentes",
-    conflictList: "Diferentes aqui",
-    newHosts: "Hosts novos",
-    choiceLegend: "Quando for diferente",
-    nothingToRestore: "Nada aqui é novo. Escolha substituir uma diferença para restaurar.",
-    keep: "Manter o que está aqui",
-    replace: "Substituir pelo backup",
-    restore: "Restaurar",
-    replaceMessage: "Substituir {names} pelo que está no backup? O que está aqui se perde.",
-    replaceConfirm: "Substituir",
-    result:
-      "Restaurado: {added} novos, {overwritten} substituídos, {skipped} mantidos. Feche e abra o Flightdeck de novo para usar.",
-    error: {
-      "short-passphrase": "A frase-senha precisa ter pelo menos 12 caracteres.",
-      mismatch: "As frases-senha não são iguais.",
-      unreadable:
-        "Não foi possível ler o arquivo. Confira a frase-senha; um arquivo alterado também é recusado.",
-      failed: "A restauração falhou e nada foi alterado.",
-      "drive-auth": "O Google Drive não aceita a entrada. Entre de novo em Backups agendados.",
-      "drive-failed": "Não foi possível ler o Google Drive. Tente de novo.",
-      unexpected: "Algo deu errado. Nada foi alterado.",
-      "too-big":
-        "Este backup é grande demais para ser restaurado depois (mais de 1 MiB), então não foi salvo. Remova personas ou snippets grandes e tente de novo.",
-    },
-  },
-  backupSchedule: {
-    title: "Backups agendados",
-    intro:
-      "O backup é feito sozinho numa pasta que você escolhe, e só os últimos arquivos ficam. A frase-senha é pedida uma vez a cada abertura do app e fica só na memória.",
-    cadenceLegend: "Com que frequência",
-    cadence: { off: "Desligado", daily: "Todo dia", weekly: "Toda semana" },
-    folder: "Pasta",
-    noFolder: "Nenhuma pasta escolhida",
-    chooseFolder: "Escolher pasta",
-    targetLegend: "Onde salvar",
-    target: { folder: "Uma pasta", drive: "Google Drive" },
-    driveHelp:
-      "Os backups vão para a pasta oculta do Flightdeck no seu Google Drive. Só este app a enxerga, e cada arquivo continua criptografado com a sua frase-senha.",
-    driveSignedIn: "Conectado ao Google",
-    driveSignedOut: "Não conectado ao Google",
-    driveSignIn: "Entrar com o Google",
-    driveSignOut: "Sair",
-    driveRefused: "O Google não aceitou a entrada. Tente de novo.",
-    keep: "Arquivos a manter",
-    keepInvalid:
-      "Digite um número inteiro a partir de 1. O número salvo ({count}) continua valendo.",
-    passphrase: "Frase-senha desta sessão",
-    passphraseHelp:
-      "Pelo menos 12 caracteres. Fica na memória até você fechar o Flightdeck e nunca é salva.",
-    usePassphrase: "Usar",
-    passphraseNeeds: "Digite uma frase-senha de pelo menos 12 caracteres.",
-    passphraseSet: "Frase-senha definida até você fechar o Flightdeck.",
-    lastRun: "Último backup: {when}",
-    neverRun: "Ainda não houve backup agendado.",
-    pruneFailed: "O backup foi salvo, mas não deu para apagar os arquivos antigos.",
-    attention: {
-      passphrase: {
-        title: "Os backups agendados precisam da sua frase-senha",
-        body: "Digite-a em Configurações, seção Backup. Até lá, nenhum backup é feito.",
-      },
-      "no-folder": {
-        title: "Os backups agendados estão sem pasta",
-        body: "Escolha uma pasta em Configurações, seção Backup. Até lá, nenhum backup é feito.",
-      },
-      failed: {
-        title: "Um backup agendado falhou",
-        body: "Veja se a pasta ainda existe e tem espaço, em Configurações, seção Backup.",
-      },
-      "drive-auth": {
-        title: "Os backups agendados no Google Drive precisam que você entre",
-        body: "Entre de novo em Configurações, seção Backup. Até lá, nenhum backup é feito.",
-      },
-    },
-    skipped: {
-      "no-folder": "Há um backup a fazer, mas nenhuma pasta está escolhida. Escolha uma pasta.",
-      "no-passphrase": "Há um backup a fazer, mas ele espera a frase-senha. Digite-a abaixo.",
-      failed: "O último backup não pôde ser salvo. Veja se a pasta ainda existe e tem espaço.",
-      "drive-auth": "Há um backup a fazer, mas o Google Drive não está conectado. Entre de novo.",
-    },
-  },
+  ...backup,
   states: {
     connecting: "Conectando a {host}…",
     loading: "Carregando…",
@@ -354,81 +248,7 @@ export const ptBR = {
     },
   },
   ...notifications,
-  account: {
-    region: "Conta do Claude de {host}",
-    title: "Conta do Claude",
-    loading: "Lendo a conta…",
-    offline: "{host} está offline: a conta aparece de novo quando ele voltar.",
-    plans: {
-      free: "Free",
-      pro: "Pro",
-      max: "Max",
-      ultra: "Ultra",
-      team: "Team",
-      enterprise: "Enterprise",
-    },
-    planHint:
-      "Vem do login do claude neste host. Mudou de plano? Saia e entre de novo lá, depois toque em Atualizar.",
-    windows: {
-      five_hour: "5 horas",
-      seven_day: "7 dias",
-      seven_day_opus: "7 dias · Opus",
-      seven_day_sonnet: "7 dias · Sonnet",
-    },
-    meter: "{window} de {host}",
-    meterText: "{percent}%, {reset}",
-    meterTextNoReset: "{percent}%",
-    resetsIn: "reinicia em {d}",
-    lastRead: "Última leitura {ago}",
-    noWindows: "O host não informou janelas do plano.",
-    stale: "Não foi possível atualizar: esta é a última leitura.",
-    refresh: "Atualizar",
-    refreshing: "Lendo…",
-    refreshLabel: "Atualizar a conta de {host}",
-    signedOut: {
-      title: "Este host não está conectado ao Claude.",
-      steps: "Abra o terminal deste host, rode este comando e siga os passos lá; depois volte:",
-    },
-    copy: "Copiar comando",
-    copied: "Comando copiado",
-    terminal: "Abrir terminal",
-    apiKey: "Este host usa uma chave de API. Os limites do plano não se aplicam.",
-    provider: "Este host usa {provider}. Os limites do plano não se aplicam.",
-    unknownSignIn: "O app não conhece o tipo de login deste host.",
-    unavailable: "Não foi possível ler a conta.",
-    retry: "Tentar de novo",
-  },
-  quota: {
-    windows: { five_hour: "5 horas", seven_day: "7 dias" },
-    shortWindows: { five_hour: "5 h", seven_day: "7 dias" },
-    region: "Cota de {host}",
-    meter: "{window} de {host}",
-    noReading: "sem leitura ainda",
-    resets: "reinicia às {time}",
-    read: "lida {ago}",
-    guard: {
-      label: "Cartões novos esperam a partir de",
-      labelFor: "Cartões novos esperam a partir de, em {host}",
-      off: "Nunca",
-      hint: "Sessões que já estão rodando nunca são paradas.",
-      readOnly:
-        "Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
-      readOnlyOff:
-        "A trava está desligada. Este host não deixa mudar pelo app: atualize o flightdeckd.",
-    },
-    popover: {
-      label: "Cota do plano dos hosts",
-      showRunning: "Mostrar o que está rodando",
-      openHost: "Abrir a página do host",
-      openHostOf: "Abrir a página de {host}",
-    },
-    hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
-    projection: {
-      few: "poucas leituras para projetar",
-      exhausts: "no ritmo atual, a janela de {window} esgota às {time}",
-      holds: "não esgota antes de {time}",
-    },
-  },
+  ...account,
   errors: {
     bad_request: "O host recusou o pedido.",
     unauthorized:
@@ -725,50 +545,7 @@ export const ptBR = {
     movedToast: "A sessão foi movida para {host}.",
     preview: "Prévia: mover uma sessão para outro host",
   },
-  telemetry: {
-    tab: "Tempo",
-    region: "Linha do tempo da sessão",
-    empty:
-      "Sem dados de tempo para esta sessão. Eles aparecem em sessões abertas com flightdeckd claude, ou depois de flightdeckd telemetry install.",
-    prompt: "Prompt {n}",
-    waited: "esperou {wait} por você",
-    api: "Pedido à API",
-    apiError: "Erro de API {status}",
-    apiErrorPlain: "Erro de API",
-    failed: "falhou ({error})",
-    failedPlain: "falhou",
-    permission: "Permissão para {tool}: {decision} {by}",
-    allowed: "permitida",
-    denied: "negada",
-    byConfig: "pelas configurações",
-    byHook: "por um hook",
-    byYou: "por você",
-    byOther: "",
-    ms: "{n} ms",
-    seconds: "{n} s",
-    note: "A espera é estimada pelo intervalo até a resposta. Textos de prompts e respostas nunca são coletados.",
-    optinTitle: "Telemetria",
-    optinAsking: "Consultando…",
-    optinHint:
-      "Para o claude puro (o flightdeckd claude já recebe sozinho): grava no settings.json as chaves que mandam o tempo e o custo das sessões para este host, só nesta máquina.",
-    optinInstalled: "Instalada",
-    optinAbsent: "Não instalada",
-    optinOutdated: "Desatualizada: instale de novo",
-    optinConflict: "Há um exportador seu no settings.json ({keys}): nada será mudado.",
-    optinInstall: "Instalar telemetria",
-    optinUninstall: "Remover telemetria",
-    optinInstallMessage:
-      "Isto edita {path}: acrescenta as chaves que mandam a telemetria do Claude Code para o daemon deste host, só nesta máquina, e guarda uma cópia em settings.json.flightdeck-telemetry-backup. Prompts e respostas nunca são enviados.",
-    optinUninstallMessage:
-      "Isto tira de {path} só as chaves do Flightdeck e troca o token do receptor. O resto do arquivo não muda.",
-    costsTitle: "Tempo por projeto",
-    slowest: "Ferramentas mais lentas",
-    slowTool: "{tool}: {avg} em média, {max} no máximo ({calls})",
-    calls: { one: "{n} chamada", other: "{n} chamadas" },
-    none: "Sem ferramentas medidas ainda.",
-    divergence: "o custo da telemetria difere do dos transcripts: {items}",
-    divergenceItem: "{session} (transcripts {computed}, telemetria {telemetry})",
-  },
+  ...telemetry,
   bg: {
     region: "Sessão em segundo plano",
     state: {
@@ -1191,42 +968,6 @@ export const ptBR = {
       subscribed: "Alguém está com a sessão aberta, então ela fica acordada.",
       kept_awake: "A sessão está fixada ou pertence a um card, então fica acordada.",
     },
-  },
-  resources: {
-    title: "Recursos",
-    guard: {
-      label: "Cartões novos esperam com a memória em",
-      labelFor: "Cartões novos esperam com a memória em, em {host}",
-      off: "Nunca",
-      hint: "Só cartões novos esperam, e começam quando a memória libera; sessões que já estão rodando nunca são paradas.",
-    },
-    memory: "Memória",
-    disk: "Disco",
-    load: "Carga {n}%",
-    used: "{used} de {total} em uso",
-    high: "Alta",
-    critical: "Crítica",
-    kinds: { session: "Sessão", terminal: "Terminal" },
-    session: "Sessão",
-    project: "Projeto",
-    memoryCol: "Memória",
-    cpu: "CPU",
-    programs: "Programas",
-    unmeasured: "não medido",
-    list: "Sessões e terminais por memória",
-    empty: "Nenhuma sessão ou terminal em execução.",
-    notMeasured:
-      "Os números por sessão não são medidos aqui. Os processos só são medidos em hosts Linux.",
-    orphans: "Processos que sobraram",
-    orphansHelp:
-      "Iniciados pelo daemon deste host, mas sem sessão dona. Podem ser sobras de uma sessão que acabou.",
-    orphanLine: "{name} · pid {pid} · {age} · {memory}",
-    end: "Encerrar",
-    endTitle: "Encerrar processo",
-    endMessage:
-      "Encerrar o processo {pid} ({name})? O daemon do host o iniciou e nenhuma sessão é dona dele.",
-    endFailed: "Não foi possível encerrar esse processo.",
-    unreadable: "Não deu para ler os recursos deste host. Eles aparecem quando o host responder.",
   },
   ...plugins,
   maintenance: {
