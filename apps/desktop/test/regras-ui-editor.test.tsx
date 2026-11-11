@@ -50,7 +50,7 @@ async function open(rules: unknown[] = []) {
     value: "editor-value",
     allowedHosts: [hostId],
   });
-  if (rules.length > 0) await store.setVaultRules(deploy.id, rules);
+  if (rules.length > 0) await store.vaultRules.set(deploy.id, rules);
   render(<VaultPage store={store} />);
   await click("Regras de deploy");
   const editor = () => screen.queryByRole("region", { name: "Regras de deploy" });
@@ -70,7 +70,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await change("Decisão na regra 1", "allow");
     await click("Salvar regras", editor());
     await settle(() => editor() === null);
-    expect(store.vaultRules(deploy.id)).toEqual([
+    expect(store.vaultRules.get(deploy.id)).toEqual([
       { id: "r1", match: { requester: "claude", action: "deploy-staging" }, decision: "allow" },
     ]);
     expect(daemon.commands.filter((c) => c.type === "vault.rules.set")).toHaveLength(1);
@@ -87,7 +87,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
     expect(within(editor() as HTMLElement).queryByRole("alert")?.textContent).toBe(
       "O host recusou o pedido. regra r1: allow para run_with_secret nunca é permitido",
     );
-    expect(store.vaultRules(deploy.id)).toEqual([]);
+    expect(store.vaultRules.get(deploy.id)).toEqual([]);
   });
 
   test("a refusal that lists what is wrong marks each field, in the language, and says how many in all", async () => {
@@ -121,7 +121,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
       .map((a) => a.textContent);
     expect(alerts).toContain("Só estes valores são aceitos: mon, tue, wed, thu, fri, sat, sun.");
     expect(alerts).toContain("Algumas regras não valem: corrija o que está marcado.");
-    expect(store.vaultRules(deploy.id)).toEqual([]);
+    expect(store.vaultRules.get(deploy.id)).toEqual([]);
   });
 
   test("the order changes with Descer and Subir and by dragging, and a rule can be removed", async () => {
@@ -129,7 +129,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await click("Descer regra 1");
     await click("Salvar regras", editor());
     await settle(() => editor() === null);
-    expect(store.vaultRules(deploy.id)).toEqual([TWO, ONE]);
+    expect(store.vaultRules.get(deploy.id)).toEqual([TWO, ONE]);
     await click("Regras de deploy");
     await click("Subir regra 2");
     const [first, second] = within(editor() as HTMLElement).getAllByRole("group", {
@@ -144,7 +144,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await click("Remover regra 2");
     await click("Salvar regras", editor());
     await settle(() => editor() === null);
-    expect(store.vaultRules(deploy.id)).toEqual([TWO]);
+    expect(store.vaultRules.get(deploy.id)).toEqual([TWO]);
   });
 
   test("once per session shows only with ask, and a window takes days, times and what holds outside it", async () => {
@@ -170,7 +170,7 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await change("Máximo por hora na regra 1", "3");
     await click("Salvar regras", editor());
     await settle(() => editor() === null);
-    expect(store.vaultRules(deploy.id)).toEqual([
+    expect(store.vaultRules.get(deploy.id)).toEqual([
       {
         id: "r1",
         match: { tags: ["prod"] },
@@ -188,6 +188,6 @@ describe("regras-ui-editor: the rules of a secret", () => {
     await click("Adicionar regra");
     await click("Cancelar", editor());
     expect(editor()).toBeNull();
-    expect(store.vaultRules(deploy.id)).toEqual([]);
+    expect(store.vaultRules.get(deploy.id)).toEqual([]);
   });
 });

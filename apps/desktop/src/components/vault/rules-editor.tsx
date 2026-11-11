@@ -66,7 +66,7 @@ export function RulesEditor(
   const id = useId();
   const { store, secret } = props;
   const [drafts, setDrafts] = useState<RuleDraft[]>(() => {
-    const saved = store.vaultRules(secret.id).map(draftOf);
+    const saved = store.vaultRules.get(secret.id).map(draftOf);
     return props.seed ? [{ ...newDraft(saved), ...props.seed }, ...saved] : saved;
   });
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function RulesEditor(
     ? generatedScopeRules(
         scoping,
         store.clientScope().projectKeysOf(scoping.id),
-        store.vaultRules(secret.id),
+        store.vaultRules.get(secret.id),
       ).length
     : 0;
   // A ref: the drop reads it in the same gesture that set it, before any render.
@@ -86,7 +86,7 @@ export function RulesEditor(
     setDrafts(drafts.map((d, j) => (j === i ? { ...d, ...patch } : d)));
 
   const save = async () => {
-    const result = await store.setVaultRules(secret.id, drafts.map(ruleOf));
+    const result = await store.vaultRules.set(secret.id, drafts.map(ruleOf));
     if (result.ok) props.onClose();
     else {
       setError(refusalText(result.code, result.message, t, result));

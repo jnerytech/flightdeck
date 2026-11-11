@@ -82,7 +82,7 @@ const ids = (rules: Sent["rules"] | undefined) => (rules ?? []).map((r) => r.id)
 describe("clients-vault: what a scoped secret is sent", () => {
   test("its own rules go after the client's, and what the editor reads is only its own", async () => {
     const { store, secret, lastFor } = await open(true);
-    const done = await store.setVaultRules(secret.id, [OWN]);
+    const done = await store.vaultRules.set(secret.id, [OWN]);
     expect(done.ok).toBe(true);
     expect(ids(lastFor(secret.id)?.rules)).toEqual([
       `${SCOPE_RULE_PREFIX}${store.getState().clientList[0]?.id}:0:0`,
@@ -91,12 +91,12 @@ describe("clients-vault: what a scoped secret is sent", () => {
       `${SCOPE_RULE_PREFIX}${store.getState().clientList[0]?.id}:deny:workflow`,
       "mine",
     ]);
-    expect(store.vaultRules(secret.id)).toEqual([OWN]);
+    expect(store.vaultRules.get(secret.id)).toEqual([OWN]);
   });
 
   test("the requester you is not denied by the generated rules", async () => {
     const { store, secret, lastFor } = await open(true);
-    await store.setVaultRules(secret.id, [OWN]);
+    await store.vaultRules.set(secret.id, [OWN]);
     const denied = (lastFor(secret.id)?.rules ?? [])
       .filter((r) => r.decision === "deny")
       .map((r) => r.match?.requester);
@@ -112,13 +112,13 @@ describe("clients-vault: what a scoped secret is sent", () => {
       tags: [],
       allowedHosts: [hostId],
     });
-    await store.setVaultRules(other.id, [OWN]);
+    await store.vaultRules.set(other.id, [OWN]);
     expect(lastFor(other.id)?.rules).toEqual([OWN]);
   });
 
   test("when a host connects it is sent the scoped rules too", async () => {
     const { store, platform, daemon, secret } = await open(true);
-    await store.setVaultRules(secret.id, [OWN]);
+    await store.vaultRules.set(secret.id, [OWN]);
     const again = new AppStore(platform.platform, { baseDelayMs: 60_000 });
     cleanups.push(() => again.dispose());
     const before = daemon.commands.length;
@@ -134,7 +134,7 @@ describe("clients-vault: what a scoped secret is sent", () => {
 describe("clients-vault: turning scope on and off", () => {
   test("turning it on sends the scoped rules at once, turning it off sends the own rules back", async () => {
     const { store, acme, secret, lastFor } = await open(false);
-    await store.setVaultRules(secret.id, [OWN]);
+    await store.vaultRules.set(secret.id, [OWN]);
     expect(lastFor(secret.id)?.rules).toEqual([OWN]);
     await act(async () => {
       store.clients.setDefaults(acme, { vaultScope: true });
@@ -163,7 +163,7 @@ describe("clients-vault: turning scope on and off", () => {
 describe("clients-vault: when the client's projects change", () => {
   test("the rules are generated again and a notice says so", async () => {
     const { store, daemon, secret, lastFor, said } = await open(true);
-    await store.setVaultRules(secret.id, [OWN]);
+    await store.vaultRules.set(secret.id, [OWN]);
     const before = ids(lastFor(secret.id)?.rules);
     daemon.hub.managed = [
       managed("s1", "github.com/acme/api"),
@@ -178,7 +178,7 @@ describe("clients-vault: when the client's projects change", () => {
 
   test("a change that is only the person's own rules makes no notice", async () => {
     const { store, secret, said } = await open(true);
-    await store.setVaultRules(secret.id, [OWN]);
+    await store.vaultRules.set(secret.id, [OWN]);
     await stays(() => said.length === 0, 400);
     expect(said).toEqual([]);
   });
@@ -189,16 +189,16 @@ describe("clients-vault: reading the rules back from a host", () => {
 
   test("the generated rules are taken out, so what is read back is only the person's own", async () => {
     const { store, hostId, secret } = await open(true);
-    await store.setVaultRules(secret.id, [OWN]);
-    expect(await store.readHostVaultRules(hostId, secret.id)).toEqual([OWN]);
+    await store.vaultRules.set(secret.id, [OWN]);
+    expect(await store.vaultRules.readHost(hostId, secret.id)).toEqual([OWN]);
   });
 
   test("scope on, read back, edit an own rule and save, scope off: the host ends with exactly the own rules", async () => {
     const { store, hostId, acme, secret, daemon } = await open(true);
-    await store.setVaultRules(secret.id, [OWN]);
-    const readBack = await store.readHostVaultRules(hostId, secret.id);
+    await store.vaultRules.set(secret.id, [OWN]);
+    const readBack = await store.vaultRules.readHost(hostId, secret.id);
     expect(readBack).toEqual([OWN]);
-    await store.setVaultRules(secret.id, [...(readBack ?? []), OWN2]);
+    await store.vaultRules.set(secret.id, [...(readBack ?? []), OWN2]);
     const held = daemon.vaultRules[secret.id] as Array<{ id: string }>;
     expect(held.filter((r) => r.id.startsWith(SCOPE_RULE_PREFIX))).toHaveLength(5);
     expect(held.filter((r) => !r.id.startsWith(SCOPE_RULE_PREFIX))).toEqual([OWN, OWN2]);
@@ -212,7 +212,7 @@ describe("clients-vault: reading the rules back from a host", () => {
   test("a read-back that is not a list is nothing, and a host that does not answer gives none", async () => {
     const { store, hostId, secret } = await open(true);
     expect(stripGenerated([{ id: `${SCOPE_RULE_PREFIX}x:0` }, "odd", OWN])).toEqual(["odd", OWN]);
-    expect(await store.readHostVaultRules("nowhere", secret.id)).toBeNull();
+    expect(await store.vaultRules.readHost("nowhere", secret.id)).toBeNull();
     expect(hostId).toBeTruthy();
   });
 });
@@ -241,7 +241,7 @@ describe("clients-vault: another writer", () => {
 
   test("rules the host holds without the client's generated ones are noticed on connect, and the scope is sent again", async () => {
     const opened = await open(true);
-    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    await opened.store.vaultRules.set(opened.secret.id, [OWN]);
     // Another app saved this secret's rules on the host: the generated ones are gone.
     opened.daemon.vaultRules[opened.secret.id] = [OTHER];
     const { errors } = await reconnect(opened);
@@ -257,7 +257,7 @@ describe("clients-vault: another writer", () => {
 
   test("a host that cannot say what it holds is sent the rules all the same", async () => {
     const opened = await open(true);
-    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    await opened.store.vaultRules.set(opened.secret.id, [OWN]);
     opened.daemon.vaultRules[opened.secret.id] = [OTHER];
     opened.daemon.refuse.set("vault.rules.get", "not now");
     const { errors } = await reconnect(opened);
@@ -270,7 +270,7 @@ describe("clients-vault: another writer", () => {
 
   test("a host that holds nothing yet gets the rules without a warning", async () => {
     const opened = await open(true);
-    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    await opened.store.vaultRules.set(opened.secret.id, [OWN]);
     opened.daemon.vaultRules[opened.secret.id] = [];
     const { errors } = await reconnect(opened);
     await settle(() => (opened.daemon.vaultRules[opened.secret.id]?.length ?? 0) === 5);
@@ -279,7 +279,7 @@ describe("clients-vault: another writer", () => {
 
   test("generated rules that are there but out of date are regenerated with the usual notice", async () => {
     const opened = await open(true);
-    await opened.store.setVaultRules(opened.secret.id, [OWN]);
+    await opened.store.vaultRules.set(opened.secret.id, [OWN]);
     const held = opened.daemon.vaultRules[opened.secret.id] as Array<{ id: string }>;
     // The host still has the rules of a time when the client had one project fewer.
     opened.daemon.vaultRules[opened.secret.id] = held.slice(1);

@@ -22,7 +22,7 @@ export function RulesPreview(props: Readonly<{ store: AppStore; secretId: string
   const [result, setResult] = useState<VaultVerdict | "none" | null>(null);
 
   const run = async () => {
-    const verdict = await props.store.previewVaultUse(props.secretId, {
+    const verdict = await props.store.vaultRules.preview(props.secretId, {
       requester,
       purpose,
       ...(action.trim() ? { action: action.trim() } : {}),

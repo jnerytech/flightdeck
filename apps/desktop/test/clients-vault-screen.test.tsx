@@ -185,7 +185,7 @@ describe("clients-vault: what could take a secret out of its client", () => {
       tag: "client:acme",
       allowedHosts: (hostId) => [hostId, "ghost"],
     });
-    await store.setVaultRules(secret.id, rules);
+    await store.vaultRules.set(secret.id, rules);
     await settle(
       () => screen.queryByText(/uma regra libera ou pede o projeto de outro cliente/) !== null,
     );

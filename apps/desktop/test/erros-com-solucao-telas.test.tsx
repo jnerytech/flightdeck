@@ -32,9 +32,8 @@ const press = async (view: ReturnType<typeof render>, name: string) => {
 describe("erros-com-solucao: refusals shown by forms", () => {
   test("the vault rules editor says what the code means, then the daemon's message", async () => {
     const store = {
-      vaultRules: () => [],
+      vaultRules: { get: () => [], set: async () => REFUSED },
       getState: () => ({ clientList: [] }),
-      setVaultRules: async () => REFUSED,
     } as unknown as AppStore;
     const secret = { id: "s1", name: "token", rules: [] } as never;
     const view = render(<RulesEditor store={store} secret={secret} onClose={() => {}} />);
