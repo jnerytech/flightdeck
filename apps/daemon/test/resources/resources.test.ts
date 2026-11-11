@@ -5,7 +5,7 @@ import {
   type ResourceSession,
   Resources,
   type ResourceTerminal,
-} from "../src/resources/resources.ts";
+} from "../../src/resources/resources.ts";
 
 const MB = 1024 * 1024;
 const PAGE = 4096;

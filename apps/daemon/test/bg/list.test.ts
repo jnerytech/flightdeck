@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { BgService } from "../src/bg/service.ts";
-import { startServer } from "../src/server.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { whichOnPath } from "../src/which.ts";
-import { installFakeClaude } from "./fake-claude.ts";
-import { BASELINE_FEATURES, newManager } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { BgService } from "../../src/bg/service.ts";
+import { startServer } from "../../src/server.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { whichOnPath } from "../../src/which.ts";
+import { installFakeClaude } from "../fake-claude.ts";
+import { BASELINE_FEATURES, newManager } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "bg-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

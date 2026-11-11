@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { TeleportManifest } from "@flightdeck/protocol";
-import type { FlightdeckError } from "../src/errors.ts";
-import { TeleportInbox, type TeleportInboxDeps } from "../src/teleport/receive.ts";
-import { tempDir } from "./helpers.ts";
+import type { FlightdeckError } from "../../src/errors.ts";
+import { TeleportInbox, type TeleportInboxDeps } from "../../src/teleport/receive.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * Issue #100, slice 2a: the target side of a teleport receives a package. The app relays the

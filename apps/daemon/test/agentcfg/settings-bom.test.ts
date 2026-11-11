@@ -1,24 +1,24 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { McpConfig } from "../src/agentcfg/mcp.ts";
-import { addRules, readRules } from "../src/board/project-rules.ts";
+import { McpConfig } from "../../src/agentcfg/mcp.ts";
+import { addRules, readRules } from "../../src/board/project-rules.ts";
 import {
   type HookTarget,
   hooksStatus,
   installHooks,
   uninstallHooks,
-} from "../src/central/hooks-install.ts";
-import { layoutLike, parseJsonText } from "../src/json-text.ts";
+} from "../../src/central/hooks-install.ts";
+import { layoutLike, parseJsonText } from "../../src/json-text.ts";
 import {
   installTelemetry,
   type TelemetryTarget,
   telemetryStatus,
   uninstallTelemetry,
-} from "../src/telemetry/otlp-env.ts";
-import { claudeSettingsEnv } from "../src/terminal/claude-settings-env.ts";
-import { inspectProject } from "../src/trust/inspect.ts";
-import { tempDir } from "./helpers.ts";
+} from "../../src/telemetry/otlp-env.ts";
+import { claudeSettingsEnv } from "../../src/terminal/claude-settings-env.ts";
+import { inspectProject } from "../../src/trust/inspect.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * Issue #1014: a settings.json that a Windows editor saved with a UTF-8 BOM (and CRLF) is read by

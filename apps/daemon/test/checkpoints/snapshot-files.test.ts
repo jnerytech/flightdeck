@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Snapshots } from "../src/checkpoints/snapshots.ts";
-import { startServer } from "../src/server.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { git, gitRepo } from "./board-helpers.ts";
-import { newManager } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { Snapshots } from "../../src/checkpoints/snapshots.ts";
+import { startServer } from "../../src/server.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { git, gitRepo } from "../board-helpers.ts";
+import { newManager } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "files-token-0123456789abcdef";
 const sha = (path: string) =>

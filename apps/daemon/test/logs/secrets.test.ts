@@ -2,12 +2,12 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type * as protocol from "@flightdeck/protocol";
-import { FileLog } from "../src/logs/file-log.ts";
-import { createLogScanner } from "../src/logs/scanner.ts";
-import { startDaemon } from "../src/main.ts";
-import { Vault } from "../src/vault/vault.ts";
-import { poll, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { FileLog } from "../../src/logs/file-log.ts";
+import { createLogScanner } from "../../src/logs/scanner.ts";
+import { startDaemon } from "../../src/main.ts";
+import { Vault } from "../../src/vault/vault.ts";
+import { poll, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 setDefaultTimeout(20_000);
 // Bare, prefix-less values, as the real tokens are: no pattern knows their shape.

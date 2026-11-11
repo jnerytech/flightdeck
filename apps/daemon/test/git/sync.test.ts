@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { installSleepingGit, type SleepingGit } from "../../../scripts/test/sleeping-git.ts";
-import { Board } from "../src/board/board.ts";
-import { excludeLocalSettingsAsync } from "../src/board/worktree.ts";
-import { ProjectKeys } from "../src/central/project-key.ts";
-import { UsageIndexer } from "../src/costs/usage-indexer.ts";
-import { ProjectMemory } from "../src/memory/memory.ts";
-import { startServer } from "../src/server.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { git, gitRepo, newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { writeUsageTranscript } from "./usage-helpers.ts";
+import { installSleepingGit, type SleepingGit } from "../../../../scripts/test/sleeping-git.ts";
+import { Board } from "../../src/board/board.ts";
+import { excludeLocalSettingsAsync } from "../../src/board/worktree.ts";
+import { ProjectKeys } from "../../src/central/project-key.ts";
+import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
+import { ProjectMemory } from "../../src/memory/memory.ts";
+import { startServer } from "../../src/server.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { git, gitRepo, newBoard } from "../board-helpers.ts";
+import { tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { writeUsageTranscript } from "../usage-helpers.ts";
 
 setDefaultTimeout(30_000);
 
@@ -35,7 +35,7 @@ function sleepingGit(delayMs: number): SleepingGit {
   return sleeping;
 }
 
-const SRC = join(import.meta.dir, "../src");
+const SRC = join(import.meta.dir, "../../src");
 
 /** Every file under `dir` that is TypeScript. */
 function sources(dir: string): string[] {

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Central } from "../src/central/central.ts";
-import { Snapshots } from "../src/checkpoints/snapshots.ts";
-import { runCli } from "../src/main.ts";
-import { Maintenance } from "../src/maintenance/maintenance.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { git, gitRepo } from "./board-helpers.ts";
-import { newManager, poll, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { Central } from "../../src/central/central.ts";
+import { Snapshots } from "../../src/checkpoints/snapshots.ts";
+import { runCli } from "../../src/main.ts";
+import { Maintenance } from "../../src/maintenance/maintenance.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { git, gitRepo } from "../board-helpers.ts";
+import { newManager, poll, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const DAY = 86_400_000;
 const sha = (path: string) =>

@@ -9,7 +9,7 @@ import {
   RESPONSE_MAX,
   TEXT_MAX,
   TITLE_MAX,
-} from "../src/github/alerts.ts";
+} from "../../src/github/alerts.ts";
 
 const CODE = `repos/{owner}/{repo}/code-scanning/alerts?state=open&per_page=${PER_SOURCE}`;
 const DEPENDABOT = `repos/{owner}/{repo}/dependabot/alerts?state=open&per_page=${PER_SOURCE}`;

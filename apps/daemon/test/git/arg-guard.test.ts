@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { cardDiff } from "../src/board/diff.ts";
-import { aheadBehind, assertLocalBranch, mergeIntoBase, rebaseOnto } from "../src/board/merge.ts";
-import { type Rev, refArg } from "../src/board/ref-arg.ts";
-import { freshBase } from "../src/board/worktree.ts";
-import { workflowSources } from "../src/workflows/repo.ts";
-import { gitRepo, gitRepoWithOrigin, newBoard } from "./board-helpers.ts";
+import { cardDiff } from "../../src/board/diff.ts";
+import {
+  aheadBehind,
+  assertLocalBranch,
+  mergeIntoBase,
+  rebaseOnto,
+} from "../../src/board/merge.ts";
+import { type Rev, refArg } from "../../src/board/ref-arg.ts";
+import { freshBase } from "../../src/board/worktree.ts";
+import { workflowSources } from "../../src/workflows/repo.ts";
+import { gitRepo, gitRepoWithOrigin, newBoard } from "../board-helpers.ts";
 
 // Real git in temp repositories.
 setDefaultTimeout(30_000);

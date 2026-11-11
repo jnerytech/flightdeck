@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { HistoryIndexer } from "../src/history/indexer.ts";
-import { startServer } from "../src/server.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { type TeleportImportDeps, teleportImportDeps } from "../src/teleport/import.ts";
-import { TeleportPackages, type TeleportSession, teleportDeps } from "../src/teleport/package.ts";
-import { TeleportInbox } from "../src/teleport/receive.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient, projectsRoot, userLine, writeTranscript } from "./history-helpers.ts";
+import { HistoryIndexer } from "../../src/history/indexer.ts";
+import { startServer } from "../../src/server.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { type TeleportImportDeps, teleportImportDeps } from "../../src/teleport/import.ts";
+import {
+  TeleportPackages,
+  type TeleportSession,
+  teleportDeps,
+} from "../../src/teleport/package.ts";
+import { TeleportInbox } from "../../src/teleport/receive.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
 
 /**
  * Issue #100, slice 1: how the daemon wires a teleport. The transcript is the file the history

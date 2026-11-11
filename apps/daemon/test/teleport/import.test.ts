@@ -2,15 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, readdir, readFile, symlink, utimes, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SessionStatus, TeleportManifest } from "@flightdeck/protocol";
-import { bundleCode } from "../src/teleport/bundle.ts";
+import { bundleCode } from "../../src/teleport/bundle.ts";
 import {
   importPackage,
   isPrefix,
   type TeleportClaim,
   type TeleportImportDeps,
-} from "../src/teleport/import.ts";
-import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+} from "../../src/teleport/import.ts";
+import { git, gitRepo, gitRepoWithOrigin } from "../board-helpers.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * Issue #100, slice 2b: the target turns a received package into a session of its own. The code

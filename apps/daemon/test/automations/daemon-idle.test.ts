@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Automations } from "../src/automations/automations.ts";
-import type { PrProvider } from "../src/board/pr.ts";
-import { Budgets } from "../src/costs/budgets.ts";
-import { startDaemon } from "../src/main.ts";
-import { PrWatch } from "../src/watch/service.ts";
-import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
-import { probeTimers } from "./timer-probe.ts";
+import { Automations } from "../../src/automations/automations.ts";
+import type { PrProvider } from "../../src/board/pr.ts";
+import { Budgets } from "../../src/costs/budgets.ts";
+import { startDaemon } from "../../src/main.ts";
+import { PrWatch } from "../../src/watch/service.ts";
+import { cardWhen, git, newBoard } from "../board-helpers.ts";
+import { tempDir } from "../helpers.ts";
+import { probeTimers } from "../timer-probe.ts";
 
 // Real git and a daemon: more than the default 5 s.
 setDefaultTimeout(30_000);

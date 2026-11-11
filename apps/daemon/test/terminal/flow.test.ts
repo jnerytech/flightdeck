@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { startServer } from "../src/server.ts";
+import { startServer } from "../../src/server.ts";
 import {
   FLOW_HIGH_BYTES,
   FLOW_LOW_BYTES,
   TerminalManager,
   type TerminalSink,
-} from "../src/terminal/terminal-manager.ts";
-import { newManager, poll, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { fakePtys, fakeSink } from "./pty-helpers.ts";
-import { manualTime } from "./time-helpers.ts";
+} from "../../src/terminal/terminal-manager.ts";
+import { newManager, poll, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { fakePtys, fakeSink } from "../pty-helpers.ts";
+import { manualTime } from "../time-helpers.ts";
 
 const TOKEN = "terminal-flow-token-0123456789abcdef";
 const KB = 1024;

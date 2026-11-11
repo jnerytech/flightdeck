@@ -3,12 +3,12 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { applyHarness } from "../src/harness/apply.ts";
-import { type DraftDeps, HarnessDrafts } from "../src/harness/draft.ts";
-import { previewHarness } from "../src/harness/preview.ts";
-import { startServer } from "../src/server.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { applyHarness } from "../../src/harness/apply.ts";
+import { type DraftDeps, HarnessDrafts } from "../../src/harness/draft.ts";
+import { previewHarness } from "../../src/harness/preview.ts";
+import { startServer } from "../../src/server.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 /**
  * Issue #75, slice G1a: the host drafts a CLAUDE.md with its model from the detected stack and the

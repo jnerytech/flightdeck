@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { ExternalSessions } from "../src/central/external.ts";
-import { LocalEndpoints } from "../src/messaging/endpoints.ts";
-import { Messaging } from "../src/messaging/messages.ts";
-import { Names } from "../src/names/names.ts";
-import { type TrackOptions, trackNames } from "../src/names/track.ts";
-import { Teams } from "../src/teams/teams.ts";
-import { newBoard, whenChanged } from "./board-helpers.ts";
-import { poll } from "./helpers.ts";
+import { ExternalSessions } from "../../src/central/external.ts";
+import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
+import { Messaging } from "../../src/messaging/messages.ts";
+import { Names } from "../../src/names/names.ts";
+import { type TrackOptions, trackNames } from "../../src/names/track.ts";
+import { Teams } from "../../src/teams/teams.ts";
+import { newBoard, whenChanged } from "../board-helpers.ts";
+import { poll } from "../helpers.ts";
 
 setDefaultTimeout(30_000);
 

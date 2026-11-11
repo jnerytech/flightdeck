@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { FlightdeckError } from "../src/errors.ts";
-import { ClaudeSdkRuntime, type QueryHandle } from "../src/runtime/claude-sdk-runtime.ts";
-import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
-import type { CompleteOptions } from "../src/runtime/types.ts";
-import { tempDir } from "./helpers.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { ClaudeSdkRuntime, type QueryHandle } from "../../src/runtime/claude-sdk-runtime.ts";
+import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
+import type { CompleteOptions } from "../../src/runtime/types.ts";
+import { tempDir } from "../helpers.ts";
 
 const usage = {
   input_tokens: 300,

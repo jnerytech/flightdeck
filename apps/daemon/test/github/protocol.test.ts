@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import * as protocol from "@flightdeck/protocol";
-import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { GithubService } from "../src/github/service.ts";
-import { Issues } from "../src/issues/issues.ts";
-import { type RunningServer, startServer } from "../src/server.ts";
-import { newBoard } from "./board-helpers.ts";
-import { newManager, poll } from "./helpers.ts";
+import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { GithubService } from "../../src/github/service.ts";
+import { Issues } from "../../src/issues/issues.ts";
+import { type RunningServer, startServer } from "../../src/server.ts";
+import { newBoard } from "../board-helpers.ts";
+import { newManager, poll } from "../helpers.ts";
 
 setDefaultTimeout(60_000);
 

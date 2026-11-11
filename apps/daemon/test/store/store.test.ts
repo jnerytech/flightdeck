@@ -2,9 +2,9 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { EventStore } from "../src/store/event-store.ts";
-import { MIGRATIONS } from "../src/store/migrations.ts";
-import { tempDir } from "./helpers.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { MIGRATIONS } from "../../src/store/migrations.ts";
+import { tempDir } from "../helpers.ts";
 
 function newStore() {
   const store = new EventStore(":memory:");

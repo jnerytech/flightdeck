@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DepResult } from "@flightdeck/protocol";
-import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import type { DepsEnv } from "../src/deps/deps.ts";
-import { doctorExitCode, formatDeps } from "../src/deps/format.ts";
-import { type CliDeps, runCli } from "../src/main.ts";
-import { tempDir } from "./helpers.ts";
+import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import type { DepsEnv } from "../../src/deps/deps.ts";
+import { doctorExitCode, formatDeps } from "../../src/deps/format.ts";
+import { type CliDeps, runCli } from "../../src/main.ts";
+import { tempDir } from "../helpers.ts";
 
 const dep = (
   id: DepResult["id"],

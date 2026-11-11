@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { type ProcReader, Resources } from "../src/resources/resources.ts";
-import { startServer } from "../src/server.ts";
-import { newManager, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { type ProcReader, Resources } from "../../src/resources/resources.ts";
+import { startServer } from "../../src/server.ts";
+import { newManager, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "board-token-0123456789abcdef";

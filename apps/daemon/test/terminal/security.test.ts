@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig } from "../src/config.ts";
-import { startDaemon } from "../src/main.ts";
-import { loopbackBind, terminalEnabled } from "../src/terminal/policy.ts";
-import { TerminalManager } from "../src/terminal/terminal-manager.ts";
-import { poll, tempDir, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { fakePtys, fakeSink } from "./pty-helpers.ts";
+import { loadConfig } from "../../src/config.ts";
+import { startDaemon } from "../../src/main.ts";
+import { loopbackBind, terminalEnabled } from "../../src/terminal/policy.ts";
+import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
+import { poll, tempDir, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { fakePtys, fakeSink } from "../pty-helpers.ts";
 
 const TOKEN = "terminal-safety-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

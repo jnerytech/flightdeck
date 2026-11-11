@@ -3,9 +3,9 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { createHarness } from "../src/harness/wiring.ts";
-import type { CompleteOptions } from "../src/runtime/types.ts";
-import { tempDir } from "./helpers.ts";
+import { createHarness } from "../../src/harness/wiring.ts";
+import type { CompleteOptions } from "../../src/runtime/types.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * The harness the server offers (#75), as main.ts builds it (#1593): the drafts run on the host's

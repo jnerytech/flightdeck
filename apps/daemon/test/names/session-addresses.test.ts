@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { MessagingFrame } from "../src/messaging/messages.ts";
-import { PROJECT, setup, twoHosts } from "./mensagens-helpers.ts";
+import type { MessagingFrame } from "../../src/messaging/messages.ts";
+import { PROJECT, setup, twoHosts } from "../mensagens-helpers.ts";
 
 const relays = (frames: MessagingFrame[]) =>
   frames.flatMap((f) => (f.type === "messages.relay" ? [f.message] : []));

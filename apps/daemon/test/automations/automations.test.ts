@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { Automations } from "../src/automations/automations.ts";
-import type { BoardOptions } from "../src/board/board.ts";
-import { Issues } from "../src/issues/issues.ts";
-import type { Quota } from "../src/quota/quota.ts";
-import { startServer } from "../src/server.ts";
-import { cardWhen, git } from "./board-helpers.ts";
-import { must, poll, record } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { workflowCard } from "./workflow-helpers.ts";
+import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { Automations } from "../../src/automations/automations.ts";
+import type { BoardOptions } from "../../src/board/board.ts";
+import { Issues } from "../../src/issues/issues.ts";
+import type { Quota } from "../../src/quota/quota.ts";
+import { startServer } from "../../src/server.ts";
+import { cardWhen, git } from "../board-helpers.ts";
+import { must, poll, record } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { workflowCard } from "../workflow-helpers.ts";
 
 // Real git, worktrees and fake CLIs: more than the default 5 s.
 /**

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type DoctorDeps, runDoctor } from "../src/doctor.ts";
-import { type CliDeps, runCli } from "../src/main.ts";
-import { tempDir } from "./helpers.ts";
+import { type DoctorDeps, runDoctor } from "../../src/doctor.ts";
+import { type CliDeps, runCli } from "../../src/main.ts";
+import { tempDir } from "../helpers.ts";
 
 const config = { bind: "127.0.0.1", port: 7777, allowedRoots: ["/code"] };
 

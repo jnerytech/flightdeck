@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { realTempDir } from "../../../scripts/test/temp-dir.ts";
-import { runGh } from "../src/github/gh.ts";
-import { Github } from "../src/github/github.ts";
+import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
+import { runGh } from "../../src/github/gh.ts";
+import { Github } from "../../src/github/github.ts";
 
 setDefaultTimeout(20_000);
 

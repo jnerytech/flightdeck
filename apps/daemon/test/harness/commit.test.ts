@@ -2,13 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { applyHarness } from "../src/harness/apply.ts";
-import { commitHarness } from "../src/harness/commit.ts";
-import { previewHarness } from "../src/harness/preview.ts";
-import { startServer } from "../src/server.ts";
-import { git } from "./board-helpers.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { applyHarness } from "../../src/harness/apply.ts";
+import { commitHarness } from "../../src/harness/commit.ts";
+import { previewHarness } from "../../src/harness/preview.ts";
+import { startServer } from "../../src/server.ts";
+import { git } from "../board-helpers.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 /**
  * Issue #75, slice C1: what the harness apply wrote is committed on a new branch the host names,

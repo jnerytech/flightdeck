@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { Account } from "../src/account/account.ts";
-import { accountReaders } from "../src/account/readers.ts";
-import { Quota } from "../src/quota/quota.ts";
+import { Account } from "../../src/account/account.ts";
+import { accountReaders } from "../../src/account/readers.ts";
+import { Quota } from "../../src/quota/quota.ts";
 
 const T0 = Date.UTC(2026, 10, 6, 12, 0, 0);
 

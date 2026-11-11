@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startDaemon } from "../src/main.ts";
-import { startServer } from "../src/server.ts";
-import { bunPty, type SpawnFn } from "../src/terminal/pty.ts";
-import { Ring } from "../src/terminal/ring.ts";
-import { defaultShell } from "../src/terminal/shell.ts";
+import { startDaemon } from "../../src/main.ts";
+import { startServer } from "../../src/server.ts";
+import { bunPty, type SpawnFn } from "../../src/terminal/pty.ts";
+import { Ring } from "../../src/terminal/ring.ts";
+import { defaultShell } from "../../src/terminal/shell.ts";
 import {
   type TerminalInfo,
   TerminalManager,
   type TerminalManagerOptions,
-} from "../src/terminal/terminal-manager.ts";
-import { newManager, poll, tempDir, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { dataOf, fakePtys, fakeSink } from "./pty-helpers.ts";
-import { manualTime } from "./time-helpers.ts";
+} from "../../src/terminal/terminal-manager.ts";
+import { newManager, poll, tempDir, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { dataOf, fakePtys, fakeSink } from "../pty-helpers.ts";
+import { manualTime } from "../time-helpers.ts";
 
 const TOKEN = "terminal-token-0123456789abcdef";
 const MB = 1024 * 1024;

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { FlightdeckError } from "../src/errors.ts";
-import { cardWhen, newBoard } from "./board-helpers.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { cardWhen, newBoard } from "../board-helpers.ts";
 
 setDefaultTimeout(20_000);
 
@@ -102,7 +102,7 @@ describe("deps-gate: a blocked card does not start", () => {
 
 /** The files of the daemon that call `startCard`, relative to `src`. */
 function startCallers(): string[] {
-  const src = join(import.meta.dir, "../src");
+  const src = join(import.meta.dir, "../../src");
   const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter((f) =>
     f.endsWith(".ts"),
   );

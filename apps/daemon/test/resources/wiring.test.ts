@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { osTempDir, realTempDir } from "../../../scripts/test/temp-dir.ts";
-import { createResources } from "../src/resources/wiring.ts";
+import { osTempDir, realTempDir } from "../../../../scripts/test/temp-dir.ts";
+import { createResources } from "../../src/resources/wiring.ts";
 
 const MB = 1024 * 1024;
 
@@ -247,7 +247,7 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
   );
 
   test("a machine that cannot say falls back to 4 KB and 100 ticks", async () => {
-    const { defaultSysconf } = await import("../src/resources/wiring.ts");
+    const { defaultSysconf } = await import("../../src/resources/wiring.ts");
     expect(await defaultSysconf(() => null, "PAGESIZE")).toBe(4096);
     expect(await defaultSysconf(() => null, "CLK_TCK")).toBe(100);
     expect(await defaultSysconf((name) => (name === "PAGESIZE" ? 65536 : 128), "PAGESIZE")).toBe(
@@ -259,7 +259,7 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
 
 describe("resources-wiring: getconf when it cannot run", () => {
   test("a getconf that cannot be started, or answers something else, is no answer", async () => {
-    const { getconf } = await import("../src/resources/wiring.ts");
+    const { getconf } = await import("../../src/resources/wiring.ts");
     const broken = (() => {
       throw new Error("spawn getconf ENOENT");
     }) as unknown as typeof Bun.spawn;
@@ -284,7 +284,7 @@ describe("resources-wiring: getconf when it cannot run", () => {
 
 describe("resources-wiring: getconf", () => {
   test("the machine's own page size and clock are asked, and are whole positive numbers", async () => {
-    const { getconf } = await import("../src/resources/wiring.ts");
+    const { getconf } = await import("../../src/resources/wiring.ts");
     if (process.platform === "win32") return;
     expect(await getconf("PAGESIZE")).toBeGreaterThanOrEqual(4096);
     expect(await getconf("CLK_TCK")).toBeGreaterThan(0);

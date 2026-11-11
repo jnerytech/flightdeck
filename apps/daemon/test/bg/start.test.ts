@@ -8,21 +8,21 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { BgService } from "../src/bg/service.ts";
-import { ExternalSessions } from "../src/central/external.ts";
-import { startReceptor } from "../src/central/receptor.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { runCli } from "../src/main.ts";
-import { startServer } from "../src/server.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { whichOnPath } from "../src/which.ts";
-import { installFakeClaude } from "./fake-claude.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { BgService } from "../../src/bg/service.ts";
+import { ExternalSessions } from "../../src/central/external.ts";
+import { startReceptor } from "../../src/central/receptor.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { runCli } from "../../src/main.ts";
+import { startServer } from "../../src/server.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { whichOnPath } from "../../src/which.ts";
+import { installFakeClaude } from "../fake-claude.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "bg-start-token-0123456789a";
 const HOOKS = "hooks-token-0123456789";
-const BIN = join(import.meta.dir, "../src/bin.ts");
+const BIN = join(import.meta.dir, "../../src/bin.ts");
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();

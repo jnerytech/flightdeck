@@ -4,13 +4,13 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Command, type HarnessPreview, SecretScanner } from "@flightdeck/protocol";
-import { applyHarness } from "../src/harness/apply.ts";
-import { commitHarness } from "../src/harness/commit.ts";
-import { previewHarness } from "../src/harness/preview.ts";
-import { HarnessTemplates } from "../src/harness/templates-store.ts";
-import { startServer } from "../src/server.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { applyHarness } from "../../src/harness/apply.ts";
+import { commitHarness } from "../../src/harness/commit.ts";
+import { previewHarness } from "../../src/harness/preview.ts";
+import { HarnessTemplates } from "../../src/harness/templates-store.ts";
+import { startServer } from "../../src/server.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 /**
  * Issue #75, slice T1b: a host template is the source of the Markdown parts a setup proposes. Its

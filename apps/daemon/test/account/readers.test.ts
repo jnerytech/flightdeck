@@ -7,9 +7,9 @@ import {
   normalizePlan,
   usageReport,
   withIdleQuery,
-} from "../src/account/readers.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import type { Exec } from "../src/exec.ts";
+} from "../../src/account/readers.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import type { Exec } from "../../src/exec.ts";
 
 const SIGNED_IN = {
   loggedIn: true,

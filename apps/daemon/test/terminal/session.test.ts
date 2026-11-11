@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TerminalInfo } from "@flightdeck/protocol";
-import { startDaemon } from "../src/main.ts";
-import { tempDir, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { fakePtys } from "./pty-helpers.ts";
+import { startDaemon } from "../../src/main.ts";
+import { tempDir, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { fakePtys } from "../pty-helpers.ts";
 
 const TOKEN = "terminal-session-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

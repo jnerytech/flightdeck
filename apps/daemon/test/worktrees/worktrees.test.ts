@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git as run } from "../src/board/command.ts";
+import { git as run } from "../../src/board/command.ts";
 import {
   duSize,
   type WorktreeCard,
   Worktrees,
   type WorktreesOptions,
-} from "../src/worktrees/worktrees.ts";
-import { git, gitRepo } from "./board-helpers.ts";
+} from "../../src/worktrees/worktrees.ts";
+import { git, gitRepo } from "../board-helpers.ts";
 
 const DAY = 86_400_000;
 const MB = 1024 * 1024;

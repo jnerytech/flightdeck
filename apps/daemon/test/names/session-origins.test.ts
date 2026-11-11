@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { ExternalSessions } from "../src/central/external.ts";
-import { Names } from "../src/names/names.ts";
-import { type TrackOptions, trackNames } from "../src/names/track.ts";
-import { cardWhen, newBoard } from "./board-helpers.ts";
+import { ExternalSessions } from "../../src/central/external.ts";
+import { Names } from "../../src/names/names.ts";
+import { type TrackOptions, trackNames } from "../../src/names/track.ts";
+import { cardWhen, newBoard } from "../board-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

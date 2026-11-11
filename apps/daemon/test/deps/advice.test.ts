@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DepResult } from "@flightdeck/protocol";
-import { checkDeps, type DepsEnv } from "../src/deps/deps.ts";
+import { checkDeps, type DepsEnv } from "../../src/deps/deps.ts";
 
 /** A machine where `present` programs exist at the versions given, and nothing else. */
 function machine(

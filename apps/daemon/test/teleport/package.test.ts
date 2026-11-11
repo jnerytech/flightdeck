@@ -2,14 +2,14 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { FlightdeckError } from "../src/errors.ts";
+import { FlightdeckError } from "../../src/errors.ts";
 import {
   type TeleportDeps,
   TeleportPackages,
   type TeleportSession,
-} from "../src/teleport/package.ts";
-import { secretLines } from "../src/teleport/secrets.ts";
-import { poll, tempDir } from "./helpers.ts";
+} from "../../src/teleport/package.ts";
+import { secretLines } from "../../src/teleport/secrets.ts";
+import { poll, tempDir } from "../helpers.ts";
 
 /**
  * Issue #100, slice 1: the source side of a teleport. An idle Claude Code session's transcript is

@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AccountState } from "@flightdeck/protocol";
-import { Account } from "../src/account/account.ts";
-import { Quota } from "../src/quota/quota.ts";
+import { Account } from "../../src/account/account.ts";
+import { Quota } from "../../src/quota/quota.ts";
 
-const DIR = join(import.meta.dir, "../src/account");
+const DIR = join(import.meta.dir, "../../src/account");
 
 function sources(): Array<{ file: string; text: string }> {
   return readdirSync(DIR, { recursive: true, encoding: "utf8" })

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { AlertList } from "../src/github/alerts.ts";
-import { startServer } from "../src/server.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { workflowCard } from "./workflow-helpers.ts";
+import type { AlertList } from "../../src/github/alerts.ts";
+import { startServer } from "../../src/server.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { workflowCard } from "../workflow-helpers.ts";
 
 // Real git in a temporary repository: more than the default 5 s.
 setDefaultTimeout(20_000);

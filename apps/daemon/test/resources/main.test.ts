@@ -2,9 +2,9 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { startDaemon } from "../src/main.ts";
-import type { ProcReader } from "../src/resources/resources.ts";
-import { tempDir } from "./helpers.ts";
+import { startDaemon } from "../../src/main.ts";
+import type { ProcReader } from "../../src/resources/resources.ts";
+import { tempDir } from "../helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "res-token-0123456789abcdef";

@@ -2,11 +2,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TaskResultsResult, TemplateStartResult } from "@flightdeck/protocol";
-import { startServer } from "../src/server.ts";
-import { BUILTIN_TEMPLATES } from "../src/templates/builtin.ts";
-import { TaskTracker } from "../src/templates/tasks.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { startServer } from "../../src/server.ts";
+import { BUILTIN_TEMPLATES } from "../../src/templates/builtin.ts";
+import { TaskTracker } from "../../src/templates/tasks.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "t".repeat(32);
 const cleanups: Array<() => unknown> = [];

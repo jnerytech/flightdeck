@@ -4,7 +4,7 @@ import {
   type ProcStat,
   type ResourceSession,
   Resources,
-} from "../src/resources/resources.ts";
+} from "../../src/resources/resources.ts";
 
 const PAGE = 4096;
 const HZ = 100;

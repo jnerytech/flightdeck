@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { type SshTargetInput, SshTargets } from "../src/ssh/targets.ts";
-import { EventStore } from "../src/store/event-store.ts";
+import { type SshTargetInput, SshTargets } from "../../src/ssh/targets.ts";
+import { EventStore } from "../../src/store/event-store.ts";
 
 function setup() {
   const store = new EventStore(":memory:");

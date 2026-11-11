@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { AgentConfig } from "../src/agentcfg/files.ts";
-import { MASK, McpConfig } from "../src/agentcfg/mcp.ts";
-import { Forker } from "../src/checkpoints/fork.ts";
-import { Rewinder } from "../src/checkpoints/rewind.ts";
-import { Snapshots } from "../src/checkpoints/snapshots.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { tempDir } from "./helpers.ts";
+import { AgentConfig } from "../../src/agentcfg/files.ts";
+import { MASK, McpConfig } from "../../src/agentcfg/mcp.ts";
+import { Forker } from "../../src/checkpoints/fork.ts";
+import { Rewinder } from "../../src/checkpoints/rewind.ts";
+import { Snapshots } from "../../src/checkpoints/snapshots.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { tempDir } from "../helpers.ts";
 
 /** The code, reason and params of the refusal a call ends in; the detail is English, for logs. */
 async function refused(call: () => unknown) {

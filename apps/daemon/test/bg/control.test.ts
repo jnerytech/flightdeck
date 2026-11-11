@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { BgService } from "../src/bg/service.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { startServer } from "../src/server.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { whichOnPath } from "../src/which.ts";
-import { installFakeClaude } from "./fake-claude.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { BgService } from "../../src/bg/service.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { startServer } from "../../src/server.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { whichOnPath } from "../../src/which.ts";
+import { installFakeClaude } from "../fake-claude.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "bg-control-token-0123456789";
 const SESSION = "11111111-2222-4333-8444-555555555555";

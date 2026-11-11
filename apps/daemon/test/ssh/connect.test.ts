@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig } from "../src/config.ts";
-import { startServer } from "../src/server.ts";
-import { processRun, resolveSshPath, SshConnector } from "../src/ssh/connect.ts";
-import { HostKeys } from "../src/ssh/hostkey.ts";
+import { loadConfig } from "../../src/config.ts";
+import { startServer } from "../../src/server.ts";
+import { processRun, resolveSshPath, SshConnector } from "../../src/ssh/connect.ts";
+import { HostKeys } from "../../src/ssh/hostkey.ts";
 import {
   type AgentOps,
   chooseDelivery,
@@ -12,14 +12,14 @@ import {
   createFileDelivery,
   type DeliveredKey,
   processOps,
-} from "../src/ssh/key-delivery.ts";
-import { SshTargets } from "../src/ssh/targets.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { TerminalManager } from "../src/terminal/terminal-manager.ts";
-import { newManager, tempDir, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
-import { fakePtys } from "./pty-helpers.ts";
-import { manualTime } from "./time-helpers.ts";
+} from "../../src/ssh/key-delivery.ts";
+import { SshTargets } from "../../src/ssh/targets.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
+import { newManager, tempDir, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+import { fakePtys } from "../pty-helpers.ts";
+import { manualTime } from "../time-helpers.ts";
 
 const TOKEN = "ssh-connect-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

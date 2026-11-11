@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { startServer } from "../src/server.ts";
-import { HostKeys, knownHostsLines } from "../src/ssh/hostkey.ts";
-import { SshTargets } from "../src/ssh/targets.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { newManager, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { startServer } from "../../src/server.ts";
+import { HostKeys, knownHostsLines } from "../../src/ssh/hostkey.ts";
+import { SshTargets } from "../../src/ssh/targets.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { newManager, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "ssh-hostkey-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

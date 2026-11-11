@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { Automations } from "../src/automations/automations.ts";
-import { ulid } from "../src/ulid.ts";
-import { cleanups, fixture } from "./watch-helpers.ts";
+import { Automations } from "../../src/automations/automations.ts";
+import { ulid } from "../../src/ulid.ts";
+import { cleanups, fixture } from "../watch-helpers.ts";
 
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();

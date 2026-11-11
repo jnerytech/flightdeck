@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { Names } from "../src/names/names.ts";
-import { adoptTitles } from "../src/names/track.ts";
-import { EventStore } from "../src/store/event-store.ts";
+import { Names } from "../../src/names/names.ts";
+import { adoptTitles } from "../../src/names/track.ts";
+import { EventStore } from "../../src/store/event-store.ts";
 
 const setup = () => {
   const store = new EventStore(":memory:");

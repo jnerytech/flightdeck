@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { addWorktree } from "../src/board/worktree.ts";
-import { cardWhen, git, gitRepo, newBoard } from "./board-helpers.ts";
-import { must, record } from "./helpers.ts";
+import { addWorktree } from "../../src/board/worktree.ts";
+import { cardWhen, git, gitRepo, newBoard } from "../board-helpers.ts";
+import { must, record } from "../helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {

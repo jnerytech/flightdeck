@@ -3,11 +3,11 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type * as protocol from "@flightdeck/protocol";
 import { SecretScanner } from "@flightdeck/protocol";
-import { FileLog } from "../src/logs/file-log.ts";
-import { startDaemon } from "../src/main.ts";
-import { startServer } from "../src/server.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { FileLog } from "../../src/logs/file-log.ts";
+import { startDaemon } from "../../src/main.ts";
+import { startServer } from "../../src/server.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "logs-token-0123456789abcdef";

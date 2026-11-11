@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { AccountState } from "@flightdeck/protocol";
-import { Account, type AccountReaders } from "../src/account/account.ts";
-import type { AuthStatus } from "../src/account/readers.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { Quota, type Timers } from "../src/quota/quota.ts";
+import { Account, type AccountReaders } from "../../src/account/account.ts";
+import type { AuthStatus } from "../../src/account/readers.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { Quota, type Timers } from "../../src/quota/quota.ts";
 
 const T0 = Date.UTC(2026, 10, 3, 12, 0, 0);
 const FIVE_MIN = 5 * 60_000;

@@ -8,11 +8,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { AgentConfig } from "../src/agentcfg/files.ts";
-import { startServer } from "../src/server.ts";
-import { newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { AgentConfig } from "../../src/agentcfg/files.ts";
+import { startServer } from "../../src/server.ts";
+import { newBoard } from "../board-helpers.ts";
+import { tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "agentcfg-token-0123456789abc";
 const sha = (text: string | Buffer) => new Bun.CryptoHasher("sha256").update(text).digest("hex");

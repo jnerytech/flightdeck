@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { FileLog } from "../src/logs/file-log.ts";
-import { logPathFor, tailForOrigin } from "../src/logs/serve.ts";
-import { tempDir } from "./helpers.ts";
+import { FileLog } from "../../src/logs/file-log.ts";
+import { logPathFor, tailForOrigin } from "../../src/logs/serve.ts";
+import { tempDir } from "../helpers.ts";
 
 const make = async () => {
   const log = new FileLog({

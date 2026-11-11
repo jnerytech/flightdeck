@@ -6,17 +6,17 @@ import {
   type AssistantRunPayload,
   SecretScanner,
 } from "@flightdeck/protocol";
-import { assistantService } from "../src/assistant/factory.ts";
-import { assistantDir } from "../src/assistant/paths.ts";
-import { AssistantService } from "../src/assistant/service.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { startDaemon } from "../src/main.ts";
-import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
-import type { CompleteOptions, CompleteResult } from "../src/runtime/types.ts";
-import { startServer } from "../src/server.ts";
-import { git, gitRepo } from "./board-helpers.ts";
-import { newManager, poll, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { assistantService } from "../../src/assistant/factory.ts";
+import { assistantDir } from "../../src/assistant/paths.ts";
+import { AssistantService } from "../../src/assistant/service.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { startDaemon } from "../../src/main.ts";
+import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
+import type { CompleteOptions, CompleteResult } from "../../src/runtime/types.ts";
+import { startServer } from "../../src/server.ts";
+import { git, gitRepo } from "../board-helpers.ts";
+import { newManager, poll, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 /** A clock the test moves by hand. */
 function clock() {

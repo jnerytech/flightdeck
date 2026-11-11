@@ -2,9 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { startDaemon } from "../src/main.ts";
-import { poll, tempDir } from "./helpers.ts";
+import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { startDaemon } from "../../src/main.ts";
+import { poll, tempDir } from "../helpers.ts";
 
 const TOKEN = "deps-main-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

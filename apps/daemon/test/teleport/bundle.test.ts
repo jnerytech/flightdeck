@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { cpSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { bundleCode } from "../src/teleport/bundle.ts";
-import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { bundleCode } from "../../src/teleport/bundle.ts";
+import { git, gitRepo, gitRepoWithOrigin } from "../board-helpers.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * Issue #100, slice 1b: the code of a teleported session travels as one git bundle: the commits

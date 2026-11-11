@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { assistantDir } from "../src/assistant/paths.ts";
-import { Budgets } from "../src/costs/budgets.ts";
-import { Costs } from "../src/costs/costs.ts";
-import { DEFAULT_PRICING } from "../src/costs/pricing.ts";
-import { UsageIndexer } from "../src/costs/usage-indexer.ts";
-import { autoApproveDir, historyExcludes } from "../src/permissions/auto-approve.ts";
-import { EventStore } from "../src/store/event-store.ts";
+import { assistantDir } from "../../src/assistant/paths.ts";
+import { Budgets } from "../../src/costs/budgets.ts";
+import { Costs } from "../../src/costs/costs.ts";
+import { DEFAULT_PRICING } from "../../src/costs/pricing.ts";
+import { UsageIndexer } from "../../src/costs/usage-indexer.ts";
+import { autoApproveDir, historyExcludes } from "../../src/permissions/auto-approve.ts";
+import { EventStore } from "../../src/store/event-store.ts";
 
 const tokens = (model: string) => ({
   model,

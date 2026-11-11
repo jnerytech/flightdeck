@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { Board } from "../src/board/board.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { git, newBoard } from "./board-helpers.ts";
+import { Board } from "../../src/board/board.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { git, newBoard } from "../board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

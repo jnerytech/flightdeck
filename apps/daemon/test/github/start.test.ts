@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { runGh } from "../src/github/gh.ts";
-import { GithubService } from "../src/github/service.ts";
-import { type GithubStartRequest, startFromGithub } from "../src/github/start.ts";
-import { Issues, UNTRUSTED_MARK } from "../src/issues/issues.ts";
-import type { GitRunner } from "../src/project-find.ts";
-import { git, newBoard } from "./board-helpers.ts";
+import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { runGh } from "../../src/github/gh.ts";
+import { GithubService } from "../../src/github/service.ts";
+import { type GithubStartRequest, startFromGithub } from "../../src/github/start.ts";
+import { Issues, UNTRUSTED_MARK } from "../../src/issues/issues.ts";
+import type { GitRunner } from "../../src/project-find.ts";
+import { git, newBoard } from "../board-helpers.ts";
 
 setDefaultTimeout(30_000);
 

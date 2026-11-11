@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { previewHarness } from "../src/harness/preview.ts";
-import { startServer } from "../src/server.ts";
-import { newManager, tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { previewHarness } from "../../src/harness/preview.ts";
+import { startServer } from "../../src/server.ts";
+import { newManager, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 /**
  * Issue #75, slice S3: what adding harness parts to a project would add, written nowhere. For

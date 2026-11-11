@@ -7,7 +7,7 @@ import {
   type ResourceSession,
   Resources,
   type ResourceTerminal,
-} from "../src/resources/resources.ts";
+} from "../../src/resources/resources.ts";
 
 const MB = 1024 * 1024;
 const PAGE = 4096;
@@ -342,7 +342,7 @@ describe("resources-security: the request (F5, F6)", () => {
   test("F5: ending an orphan asks for the same transport as the other host-changing commands", () => {
     // Issue #1288: the command moved out of server.ts into the hostChanges handlers.
     const source = readFileSync(
-      join(import.meta.dir, "../src/server/handlers/hostChanges.ts"),
+      join(import.meta.dir, "../../src/server/handlers/hostChanges.ts"),
       "utf8",
     );
     expect(source).toMatch(

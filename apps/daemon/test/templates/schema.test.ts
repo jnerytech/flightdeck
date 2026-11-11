@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Template } from "@flightdeck/protocol";
-import { BUILTIN_TEMPLATES } from "../src/templates/builtin.ts";
+import { BUILTIN_TEMPLATES } from "../../src/templates/builtin.ts";
 
 const both = (en: string, ptBr = `${en} (pt)`) => ({ en, "pt-BR": ptBr });
 

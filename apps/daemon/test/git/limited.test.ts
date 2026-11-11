@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { gitLimitedFor } from "../src/board/command.ts";
-import { tempDir } from "./helpers.ts";
+import { gitLimitedFor } from "../../src/board/command.ts";
+import { tempDir } from "../helpers.ts";
 
 /**
  * Issue #100: the capped git read the teleport's secret scan goes through also has a time limit.

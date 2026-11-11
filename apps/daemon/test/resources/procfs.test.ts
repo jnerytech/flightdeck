@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { realTempDir } from "../../../scripts/test/temp-dir.ts";
-import { parseStat, procfsReader } from "../src/resources/procfs.ts";
+import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
+import { parseStat, procfsReader } from "../../src/resources/procfs.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -106,7 +106,7 @@ describe("resources-procfs: nothing that holds arguments or secrets is opened (F
       add(100, stat(100, "flightdeckd", 1, 0, 0, 0, 10));
       add(200, stat(200, "claude", 100, 5, 5, 1, 50), "/work/x");
       add(201, stat(201, "bash", 200, 1, 1, 2, 5));
-      const { Resources } = await import("../src/resources/resources.ts");
+      const { Resources } = await import("../../src/resources/resources.ts");
       const resources = new Resources({
         proc: procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 }),
         ownPid: 100,

@@ -12,8 +12,8 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { FileLog } from "../src/logs/file-log.ts";
-import { tempDir } from "./helpers.ts";
+import { FileLog } from "../../src/logs/file-log.ts";
+import { tempDir } from "../helpers.ts";
 
 const stamp = () => Date.parse("2026-11-05T12:00:00Z");
 const make = (over: Partial<ConstructorParameters<typeof FileLog>[0]> = {}) => {

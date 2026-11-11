@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { EventStore } from "../src/store/event-store.ts";
-import { tempDir } from "./helpers.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { tempDir } from "../helpers.ts";
 
 const stores: EventStore[] = [];
 afterEach(() => {

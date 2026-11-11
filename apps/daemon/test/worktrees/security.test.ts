@@ -8,14 +8,18 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { git as run, type runCommand } from "../src/board/command.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { FolderLocks } from "../src/worktrees/locks.ts";
-import { createWorktrees, gitWithin } from "../src/worktrees/wiring.ts";
-import { type WorktreeCard, Worktrees, type WorktreesOptions } from "../src/worktrees/worktrees.ts";
-import { git, gitRepo, gitRepoWithOrigin, newBoard } from "./board-helpers.ts";
-import { newManager } from "./helpers.ts";
-import { fakePtys } from "./pty-helpers.ts";
+import { git as run, type runCommand } from "../../src/board/command.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { FolderLocks } from "../../src/worktrees/locks.ts";
+import { createWorktrees, gitWithin } from "../../src/worktrees/wiring.ts";
+import {
+  type WorktreeCard,
+  Worktrees,
+  type WorktreesOptions,
+} from "../../src/worktrees/worktrees.ts";
+import { git, gitRepo, gitRepoWithOrigin, newBoard } from "../board-helpers.ts";
+import { newManager } from "../helpers.ts";
+import { fakePtys } from "../pty-helpers.ts";
 
 const DAY = 86_400_000;
 const MB = 1024 * 1024;
@@ -269,7 +273,7 @@ describe("worktrees-seguranca: nothing starts in a folder being removed (F4)", (
     await expect(manager.create({ cwd: project, prompt: "hi" })).rejects.toMatchObject({
       reason: "folder_removing",
     });
-    const { TerminalManager } = await import("../src/terminal/terminal-manager.ts");
+    const { TerminalManager } = await import("../../src/terminal/terminal-manager.ts");
     const terminals = new TerminalManager({
       pty: fakePtys().factory,
       allowedRoots: [project],
@@ -701,7 +705,7 @@ describe("worktrees-seguranca: only what a build recreates, at the root, goes un
   });
 
   test("the confirmation says that rebuildable files go with the folder", async () => {
-    const en = await Bun.file(new URL("../../desktop/src/i18n/en.ts", import.meta.url)).text();
+    const en = await Bun.file(new URL("../../../desktop/src/i18n/en.ts", import.meta.url)).text();
     expect(en).toMatch(/confirm:[\s\S]{0,300}rebuil/);
   });
 });
@@ -802,7 +806,7 @@ describe("worktrees-seguranca: the rest of the re-review (N3, N5, N6, N7)", () =
   });
 
   test("the remove has its own, longer deadline than the other git commands (N6)", async () => {
-    const { gitDeadlineFor } = await import("../src/worktrees/wiring.ts");
+    const { gitDeadlineFor } = await import("../../src/worktrees/wiring.ts");
     expect(gitDeadlineFor(["status"], 60_000)).toBe(60_000);
     expect(gitDeadlineFor(["-c", "x=y", "worktree", "remove", "/p"], 60_000)).toBeGreaterThan(
       5 * 60_000,

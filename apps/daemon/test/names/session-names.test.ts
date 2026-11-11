@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { aliasName, displayName, projectName, slug } from "../src/names/format.ts";
-import { Names } from "../src/names/names.ts";
-import { EventStore } from "../src/store/event-store.ts";
+import { aliasName, displayName, projectName, slug } from "../../src/names/format.ts";
+import { Names } from "../../src/names/names.ts";
+import { EventStore } from "../../src/store/event-store.ts";
 
 const code = (fn: () => unknown): string => {
   try {

@@ -2,10 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { type FakeCli, installFakeCli } from "../../../scripts/test/fake-cli.ts";
-import { logLines } from "../../../scripts/test/log-lines.ts";
-import { startDaemon } from "../src/main.ts";
-import { poll, tempDir } from "./helpers.ts";
+import { type FakeCli, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
+import { logLines } from "../../../../scripts/test/log-lines.ts";
+import { startDaemon } from "../../src/main.ts";
+import { poll, tempDir } from "../helpers.ts";
 
 const TOKEN = "deps-guard-token-0123456789abcdef";
 const stops: Array<() => Promise<void>> = [];

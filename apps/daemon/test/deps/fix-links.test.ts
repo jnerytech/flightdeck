@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkDeps, type DepsEnv } from "../src/deps/deps.ts";
+import { checkDeps, type DepsEnv } from "../../src/deps/deps.ts";
 
 /** A machine with nothing installed: every program is missing, so every fix is on offer. */
 const bare = (platform: DepsEnv["platform"]): DepsEnv => ({

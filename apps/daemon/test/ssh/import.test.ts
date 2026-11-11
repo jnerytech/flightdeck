@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startServer } from "../src/server.ts";
-import { SshImporter } from "../src/ssh/import.ts";
-import { SshTargets } from "../src/ssh/targets.ts";
-import { EventStore } from "../src/store/event-store.ts";
-import { newManager, tempDir, workspace } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { startServer } from "../../src/server.ts";
+import { SshImporter } from "../../src/ssh/import.ts";
+import { SshTargets } from "../../src/ssh/targets.ts";
+import { EventStore } from "../../src/store/event-store.ts";
+import { newManager, tempDir, workspace } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 const TOKEN = "ssh-import-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

@@ -2,13 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { type ContextDeps, extractRules, repoContext } from "../src/assistant/context.ts";
-import { workingDiff } from "../src/board/diff.ts";
-import { FlightdeckError } from "../src/errors.ts";
-import { credential, isCredentialPath } from "../src/permissions/risk.ts";
-import { REMOVED_LINE } from "../src/watch/trace.ts";
-import { git, gitRepo } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { type ContextDeps, extractRules, repoContext } from "../../src/assistant/context.ts";
+import { workingDiff } from "../../src/board/diff.ts";
+import { FlightdeckError } from "../../src/errors.ts";
+import { credential, isCredentialPath } from "../../src/permissions/risk.ts";
+import { REMOVED_LINE } from "../../src/watch/trace.ts";
+import { git, gitRepo } from "../board-helpers.ts";
+import { tempDir } from "../helpers.ts";
 
 const POSIX = process.platform !== "win32";
 
@@ -167,10 +167,7 @@ describe("assistant-context", () => {
 
   test("the repo's rules: the blocks of its own CLAUDE.md that are about commits, and nothing else", async () => {
     const repo = tempDir("fd-assistant-rules-");
-    copyFileSync(
-      join(import.meta.dir, "fixtures", "assistant", "CLAUDE.md"),
-      join(repo, "CLAUDE.md"),
-    );
+    copyFileSync(join(import.meta.dir, "../fixtures/assistant/CLAUDE.md"), join(repo, "CLAUDE.md"));
     const rules = await extractRules(repo);
     expect(rules.startsWith("- `.claude/`: the shared Claude Code setup.")).toBe(true);
     expect(rules).toContain(

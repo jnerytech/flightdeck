@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { startDaemon } from "../src/main.ts";
-import { gitRepo } from "./board-helpers.ts";
-import { installFakeClaude } from "./fake-claude.ts";
-import { tempDir } from "./helpers.ts";
-import { FrameClient } from "./history-helpers.ts";
+import { startDaemon } from "../../src/main.ts";
+import { gitRepo } from "../board-helpers.ts";
+import { installFakeClaude } from "../fake-claude.ts";
+import { tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
 
 setDefaultTimeout(30_000);
 const TOKEN = "bg-card-token-0123456789abcdef0123";

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { safeFixCommand, safeFixUrl } from "@flightdeck/protocol";
-import { checkDeps, type DepsEnv } from "../src/deps/deps.ts";
+import { checkDeps, type DepsEnv } from "../../src/deps/deps.ts";
 
 const bare = (platform: DepsEnv["platform"], linger: "on" | "off" = "off"): DepsEnv => ({
   platform,
