@@ -39,6 +39,18 @@ describe("approval-lines: who approved a request on its own, and why", () => {
     );
   });
 
+  test("says it in plain words", () => {
+    expect(autoLine({ by: "rule", reason: "read-only", model: null }, t)).toBe(
+      "Approved automatically (rule): read-only",
+    );
+    expect(autoLine({ by: "ai", reason: "safe", model: "haiku" }, t)).toBe(
+      "Approved automatically (AI, haiku): safe",
+    );
+    expect(autoLine({ by: "ai", reason: "safe", model: null }, t)).toBe(
+      "Approved automatically (AI): safe",
+    );
+  });
+
   test("a rule's model is not named even if one is set", () => {
     expect(autoLine({ by: "rule", reason: "r", model: "haiku" }, t)).toBe(
       t("approval.autoApproved", { by: t("approval.autoBy.rule"), reason: "r" }),
