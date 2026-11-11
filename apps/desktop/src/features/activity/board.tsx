@@ -1,13 +1,11 @@
 import { useEffect, useReducer, useState } from "react";
-import { ActivityCardView } from "@/components/activity/activity-card";
-import { ActivityColumnView } from "@/components/activity/activity-column";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Input } from "@/components/ui/input";
 import { useBoardTransition } from "@/hooks/use-board-transition";
 import { useStoreSlice } from "@/lib/use-store";
-import type { Key } from "../i18n/index.ts";
+import type { Key } from "../../i18n/index.ts";
 import {
   ACTIVITY_COLUMNS,
   ACTIVITY_KEYS,
@@ -15,10 +13,12 @@ import {
   activityBoard,
   activityOptions,
   NO_ACTIVITY_FILTER,
-} from "../lib/activity.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import type { HubRow } from "../lib/hub.ts";
-import type { Route } from "../lib/router.ts";
+} from "../../lib/activity.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { HubRow } from "../../lib/hub.ts";
+import type { Route } from "../../lib/router.ts";
+import { ActivityCardView } from "./activity-card.tsx";
+import { ActivityColumnView } from "./activity-column.tsx";
 
 /** How often the board reads the clock again. */
 const CLOCK_TICK_MS = 30_000;
