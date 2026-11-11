@@ -35,7 +35,7 @@ export interface TerminalCommands extends TerminalHost {
 export type TerminalFrame = TerminalData | TerminalExited | TerminalResync;
 
 /** What the terminals need to know of a host. */
-export interface TerminalsHost {
+interface TerminalsHost {
   id: string;
   url: string;
   status: string;

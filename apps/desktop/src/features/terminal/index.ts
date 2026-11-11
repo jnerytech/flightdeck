@@ -5,10 +5,6 @@
  */
 export {
   type ClosingTerminal,
-  type TerminalCommands,
-  type TerminalFrame,
   type TerminalListener,
-  type TerminalsCore,
-  type TerminalsHost,
   TerminalsSlice,
 } from "./store.ts";
