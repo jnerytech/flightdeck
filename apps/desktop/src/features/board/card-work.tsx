@@ -7,10 +7,10 @@ import type { AppStore } from "@/lib/app-store";
 import type { Key } from "../../i18n/index.ts";
 import { issueLabel, issueUrl } from "../../lib/issues.ts";
 import type { SessionState } from "../../lib/session-state.ts";
-import { ExternalSeal } from "../../ui/IssuesPanel.tsx";
 import { SessionView } from "../../ui/SessionView.tsx";
 import { StatusBadge } from "../../ui/StatusBadge.tsx";
 import { TerminalButton } from "../../ui/TerminalButton.tsx";
+import { ExternalSeal } from "../issues/index.ts";
 import { CardReview, ChangesPanel, PrComments } from "../review/index.ts";
 import { CardSecondOpinion } from "./card-second-opinion.tsx";
 
