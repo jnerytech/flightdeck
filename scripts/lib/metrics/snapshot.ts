@@ -321,7 +321,7 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     else if (read.cut) {
       unavailable.push({
         metric,
-        reason: `gh listed ${LIST_LIMIT} rows, the most it gives: the older ones are not counted`,
+        reason: `one day holds ${LIST_LIMIT} rows or more, the most gh gives: the oldest of that day are not counted`,
       });
     }
   }
