@@ -6,7 +6,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ArenaView } = await import("../src/ui/ArenaView.tsx");
+const { ArenaView } = await import("../src/features/board/arena-view.tsx");
 
 afterEach(cleanup);
 

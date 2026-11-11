@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { PersonaPicker } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { ArenaStartForm, type ArenaVariantInput } from "../../ui/ArenaStartForm.tsx";
-import { ArenaView, variantBusy } from "../../ui/ArenaView.tsx";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { ArenaStartForm, type ArenaVariantInput } from "./arena-start-form.tsx";
+import { ArenaView, variantBusy } from "./arena-view.tsx";
 
 /**
  * Phase 13: a card's arena. It owns the comparison, the start form and the variant being chosen,
