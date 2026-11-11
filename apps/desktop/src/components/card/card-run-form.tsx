@@ -248,8 +248,8 @@ export function CardRunForm(
                   onSelect={() =>
                     startAsk.ask(card, contracts, () => {
                       const ref = suggested.startsWith("host:") ? suggested.slice(5) : null;
-                      void store
-                        .startBackground(hostId, { cardId, ...(ref ? { persona: ref } : {}) })
+                      void store.background
+                        .start(hostId, { cardId, ...(ref ? { persona: ref } : {}) })
                         .then((started) => {
                           if (started) store.router.push({ name: "hub" });
                         });

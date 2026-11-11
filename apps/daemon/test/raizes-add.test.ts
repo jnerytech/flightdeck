@@ -47,6 +47,24 @@ describe("roots.add", () => {
     expect(saved).toEqual([[root, vault]]);
   });
 
+  test("the project trust reads the roots again once a folder is added, and not when nothing was added (#1738)", async () => {
+    let reads = 0;
+    const { client } = await serve({
+      projectTrust: {
+        refresh: async () => {
+          reads += 1;
+        },
+      },
+    });
+    const refused = await client.request("roots.add", { path: tempDir("fd-vault-") });
+    expect(refusal(refused).reason).toBe("root_confirm");
+    expect(reads).toBe(0);
+    const vault = realpathSync.native(tempDir("fd-vault-"));
+    const ack = await client.request("roots.add", { path: vault, confirm: true });
+    expect(ack.ok).toBe(true);
+    expect(reads).toBe(1);
+  });
+
   test("a session can start in the new folder at once", async () => {
     const { client } = await serve();
     const vault = realpathSync.native(tempDir("fd-vault-"));

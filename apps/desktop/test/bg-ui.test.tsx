@@ -71,7 +71,7 @@ describe("bg-ui: the hub", () => {
   test("the background sessions are rows of the origin segundo plano, with the state the listing gives", async () => {
     const { store, hostId } = await open();
     await act(async () => {
-      await store.loadBackground(hostId);
+      await store.background.load(hostId);
     });
     const rows = hubRows(store.getState()).filter((r) => r.origin === "background");
     expect(rows.map((r) => [r.title, r.state, r.claudeSessionId, r.cwd])).toEqual([
@@ -88,7 +88,7 @@ describe("bg-ui: the hub", () => {
       [BLOCKED, { ...DONE, state: "something-new", startedAt: null }],
     );
     await act(async () => {
-      await store.loadBackground(hostId);
+      await store.background.load(hostId);
     });
     const rows = hubRows(store.getState()).filter((r) => r.origin === "background");
     expect(rows.map((r) => rowRoute(r).name)).toEqual(["external", "hub"]);
@@ -168,7 +168,7 @@ describe("bg-ui: the actions of a session", () => {
   async function openPanel(features?: string[]) {
     const ctx = await open(features);
     await act(async () => {
-      await ctx.store.loadBackground(ctx.hostId);
+      await ctx.store.background.load(ctx.hostId);
       ctx.store.router.push({ name: "external", host: ctx.hostId, claudeSessionId: "c1" });
     });
     await settle(() => panel() !== null);
