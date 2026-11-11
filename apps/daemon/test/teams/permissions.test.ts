@@ -4,7 +4,7 @@ import type { FlightdeckError } from "../../src/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { Teams, type TeamsOptions } from "../../src/teams/teams.ts";
-import { newBoard, whenChanged } from "../board-helpers.ts";
+import { newBoard, whenChanged } from "../support/board-helpers.ts";
 
 setDefaultTimeout(30_000);
 

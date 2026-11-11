@@ -12,7 +12,7 @@ import {
   sizeError,
   validatePolicy,
 } from "../../src/messaging/policy.ts";
-import { setup } from "../mensagens-helpers.ts";
+import { setup } from "../support/messaging-helpers.ts";
 
 const NOW = Date.UTC(2026, 9, 28, 15, 0, 0);
 const HOUR = 3_600_000;

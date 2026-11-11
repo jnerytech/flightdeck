@@ -11,10 +11,10 @@ import {
   TerminalManager,
   type TerminalManagerOptions,
 } from "../../src/terminal/terminal-manager.ts";
-import { newManager, poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { dataOf, fakePtys, fakeSink } from "../pty-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { newManager, poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { dataOf, fakePtys, fakeSink } from "../support/pty-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 const TOKEN = "terminal-token-0123456789abcdef";
 const MB = 1024 * 1024;

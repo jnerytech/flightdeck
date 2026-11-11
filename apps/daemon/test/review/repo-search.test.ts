@@ -13,10 +13,10 @@ import { Changes } from "../../src/review/changes.ts";
 import { ReviewFiles } from "../../src/review/files.ts";
 import { findRg, MAX_SEARCHES, searchRepository } from "../../src/review/search.ts";
 import { startServer } from "../../src/server.ts";
-import { git, newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 const TOKEN = "repo-search-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

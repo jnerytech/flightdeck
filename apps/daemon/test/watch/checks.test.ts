@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { WatchSettings } from "@flightdeck/protocol";
-import { cleanups, comment, fixture, work } from "../watch-helpers.ts";
+import { cleanups, comment, fixture, work } from "../support/watch-helpers.ts";
 
 setDefaultTimeout(30_000);
 

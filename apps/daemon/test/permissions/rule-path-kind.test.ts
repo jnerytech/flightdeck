@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { statKind } from "../../src/permissions/path-kind.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 describe("rule-path-kind: what a path a rule names is on disk (issue #395)", () => {
   test("a folder, a file, and a path that is not there or cannot be under a file", async () => {

@@ -32,7 +32,7 @@ export interface ReleaseDeps {
 
 const MAIN = "main";
 const ISSUE = "(#275)";
-const VERSAO_TEST = "apps/daemon/test/versao.test.ts";
+const VERSAO_TEST = "apps/daemon/test/core/version.test.ts";
 const LOCK = "bun.lock";
 const BASELINE = "packages/protocol/surface-baseline.txt";
 const SURFACE = ["run", "scripts/protocol-surface.ts"];

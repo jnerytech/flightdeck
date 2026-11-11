@@ -11,8 +11,8 @@ import { EventStore } from "../../src/store/event-store.ts";
 import type { Rule } from "../../src/vault/rules.ts";
 import { VaultRules } from "../../src/vault/rules-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
-import { gitRepo } from "../board-helpers.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { gitRepo } from "../support/board-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 const VALUE = "tok_SEGREDO-DE-TESTE-7d2f9a";
 /** Wednesday 2026-10-28, 12:00 in São Paulo (UTC-3, no daylight time). */

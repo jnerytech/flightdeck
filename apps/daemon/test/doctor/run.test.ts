@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import * as protocol from "@flightdeck/protocol";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { BASELINE_FEATURES, newManager, poll } from "../helpers.ts";
+import { BASELINE_FEATURES, newManager, poll } from "../support/helpers.ts";
 
 const TOKEN = "doctor-run-token-0123456789";
 const stops: Array<() => Promise<void>> = [];

@@ -4,9 +4,9 @@ import { FlightdeckError } from "../../src/errors.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { whichOnPath } from "../../src/which.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "bg-control-token-0123456789";
 const SESSION = "11111111-2222-4333-8444-555555555555";

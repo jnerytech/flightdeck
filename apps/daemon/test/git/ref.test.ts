@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { isBranchName } from "@flightdeck/protocol";
-import { git, gitRepo } from "../board-helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
 
 /** Names git accepts and refuses (not `@` and `@{-n}`, which are shorthands of the current branch): option-looking ones, every rule of git-check-ref-format, accents and emoji. */
 const NAMES = [

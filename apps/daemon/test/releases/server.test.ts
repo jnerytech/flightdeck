@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type * as protocol from "@flightdeck/protocol";
 import { ReleaseFeed } from "../../src/releases/releases.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "releases-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

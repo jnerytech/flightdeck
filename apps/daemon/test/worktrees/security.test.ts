@@ -18,9 +18,9 @@ import {
   Worktrees,
   type WorktreesOptions,
 } from "../../src/worktrees/worktrees.ts";
-import { git, gitRepo, gitRepoWithOrigin, newBoard } from "../board-helpers.ts";
-import { newManager } from "../helpers.ts";
-import { fakePtys } from "../pty-helpers.ts";
+import { git, gitRepo, gitRepoWithOrigin, newBoard } from "../support/board-helpers.ts";
+import { newManager } from "../support/helpers.ts";
+import { fakePtys } from "../support/pty-helpers.ts";
 
 const DAY = 86_400_000;
 const MB = 1024 * 1024;

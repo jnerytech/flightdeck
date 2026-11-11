@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { utimesSync } from "node:fs";
 import type { ExternalSession } from "@flightdeck/protocol";
-import { assistantLine, userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import {
+  assistantLine,
+  userLine,
+  writeTranscript,
+} from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settleMaybe, stays, waiter } from "./wait.ts";

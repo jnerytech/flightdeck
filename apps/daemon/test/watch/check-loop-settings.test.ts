@@ -3,8 +3,8 @@ import { WatchSettings } from "@flightdeck/protocol";
 import { startServer } from "../../src/server.ts";
 import { PrWatch } from "../../src/watch/service.ts";
 import { PrWatcher } from "../../src/watch/watch.ts";
-import { newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(30_000);
 

@@ -4,7 +4,7 @@ import { Budgets, type BudgetUpdate } from "../../src/costs/budgets.ts";
 import { Quota } from "../../src/quota/quota.ts";
 import { costsHandlers } from "../../src/server/handlers/costs.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { manualTime } from "../time-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

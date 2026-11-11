@@ -8,7 +8,7 @@ import {
   spawnHolder,
   windowsScript,
 } from "../../src/power/keep-awake.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 
 /** A power context that records what was started and killed, and starts nothing real. */
 function fakeContext(over: Partial<PowerContext> & { present?: string[] } = {}) {

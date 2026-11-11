@@ -6,7 +6,7 @@ import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { DepsEnv } from "../../src/deps/deps.ts";
 import { doctorExitCode, formatDeps } from "../../src/deps/format.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const dep = (
   id: DepResult["id"],

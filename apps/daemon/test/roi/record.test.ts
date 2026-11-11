@@ -4,7 +4,7 @@ import { Board } from "../../src/board/board.ts";
 import type { PrProvider } from "../../src/board/pr.ts";
 import { readDone } from "../../src/roi/done-log.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

@@ -6,9 +6,9 @@ import { Changes } from "../../src/review/changes.ts";
 import { ReviewFiles } from "../../src/review/files.ts";
 import { startServer } from "../../src/server.ts";
 import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { fakePtys } from "../pty-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { fakePtys } from "../support/pty-helpers.ts";
 
 const TOKEN = "file-terminal-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

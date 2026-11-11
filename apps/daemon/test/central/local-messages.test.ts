@@ -7,7 +7,7 @@ import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, record, tempDir, waitFor } from "../helpers.ts";
+import { newManager, record, tempDir, waitFor } from "../support/helpers.ts";
 
 setDefaultTimeout(20_000);
 const PROJECT = "github.com/acme/app";

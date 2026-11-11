@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { Changes, type ChangesOptions } from "../../src/review/changes.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { cardWhen, git, gitRepo, newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES, must, newManager, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { cardWhen, git, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES, must, newManager, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

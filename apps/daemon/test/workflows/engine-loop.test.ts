@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCheck } from "../../../../scripts/test/check-guard.ts";
 import type { FakeRule } from "../../../../scripts/test/fake-cli.ts";
-import { cardWhen } from "../board-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen } from "../support/board-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git, and every fake check is a Bun process: more than the default 5 s.
 setDefaultTimeout(30_000);

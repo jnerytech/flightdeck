@@ -5,10 +5,10 @@ import type { PermissionUpdate } from "@flightdeck/protocol";
 import { ruleString } from "../../src/board/project-rules.ts";
 import { excludeLocalSettingsAsync } from "../../src/board/worktree.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { BASELINE_FEATURES, must, poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { BASELINE_FEATURES, must, poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories (the only place these tests write settings): more than 5 s.
 setDefaultTimeout(20_000);

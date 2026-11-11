@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCheck } from "../../../scripts/test/check-guard.ts";
 import { Quota } from "../../daemon/src/quota/quota.ts";
-import { poll } from "../../daemon/test/helpers.ts";
+import { poll } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";

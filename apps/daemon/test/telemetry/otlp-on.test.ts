@@ -15,8 +15,8 @@ import {
   wrapperTelemetryEnv,
 } from "../../src/telemetry/otlp-env.ts";
 import { startTelemetry } from "../../src/telemetry/service.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { tempDir } from "../helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { tempDir } from "../support/helpers.ts";
 import { jsonLogs } from "./otlp-helpers.ts";
 
 const TARGET: TelemetryTarget = {

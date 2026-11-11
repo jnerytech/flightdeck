@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Command, WebhookSendResult } from "@flightdeck/protocol";
 import { startServer } from "../../src/server.ts";
 import { WebhookSender } from "../../src/webhook/sender.ts";
-import { BASELINE_FEATURES, newManager } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { BASELINE_FEATURES, newManager } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "webhook-token-0123456789abcdef";
 const URL_SECRET = "https://hooks.slack.com/services/T000/B000/XXXXSECRETXXXX";

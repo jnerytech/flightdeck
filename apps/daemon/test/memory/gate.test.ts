@@ -10,9 +10,9 @@ import {
   osMemoryReading,
 } from "../../src/resources/memory-gate.ts";
 import type { ProcReader } from "../../src/resources/resources.ts";
-import { cardWhen, gitRepo, newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { cardWhen, gitRepo, newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 // Real git in a temp repository and a turn: more than the default 5 s.
 setDefaultTimeout(20_000);

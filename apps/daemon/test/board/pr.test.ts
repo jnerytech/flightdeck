@@ -5,8 +5,8 @@ import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts
 import { AzureDevOpsCli, GithubCli } from "../../src/board/pr.ts";
 import type { PrProviderKind } from "../../src/board/types.ts";
 import { Config, loadConfig } from "../../src/config.ts";
-import { cardWhen, git, newBoard, newBoardWithOrigin } from "../board-helpers.ts";
-import { must, tempDir } from "../helpers.ts";
+import { cardWhen, git, newBoard, newBoardWithOrigin } from "../support/board-helpers.ts";
+import { must, tempDir } from "../support/helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);

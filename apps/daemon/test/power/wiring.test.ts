@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PowerContext } from "../../src/power/keep-awake.ts";
 import { createKeepAwake } from "../../src/power/wiring.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * The keep-awake hold as main.ts builds it (issue #163, #1593): the client's switch writes the

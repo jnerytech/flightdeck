@@ -3,7 +3,7 @@ import type { PermissionUpdate, SessionEvent } from "@flightdeck/protocol";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { RiskClassifier } from "../../src/permissions/risk.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const TOOL = "mcp__flightdeck__finish_card";
 const risk = new RiskClassifier({ allowedRoots: [], home: tempDir() });

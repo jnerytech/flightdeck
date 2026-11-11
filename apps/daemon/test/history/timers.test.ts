@@ -7,7 +7,7 @@ import {
   storedMessages,
   userLine,
   writeTranscript,
-} from "../history-helpers.ts";
+} from "../support/history-helpers.ts";
 
 /**
  * #553: the boot pass, the fallback interval and the file watcher run on real timers and real file

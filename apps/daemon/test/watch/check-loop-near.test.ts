@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { startServer } from "../../src/server.ts";
-import { newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(30_000);
 

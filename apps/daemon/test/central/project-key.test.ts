@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { normalizeRemote, ProjectKeys } from "../../src/central/project-key.ts";
-import { git, gitRepo } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { git, gitRepo } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 describe("projeto-chave", () => {
   test("SSH e HTTPS do mesmo remoto dão a mesma chave, sem .git e em minúsculas", async () => {

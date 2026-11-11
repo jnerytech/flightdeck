@@ -5,7 +5,7 @@ import { runLimited } from "../../src/board/command.ts";
 import { checkCommandRefusal } from "../../src/watch/check-command.ts";
 import { whichOnPath } from "../../src/which.ts";
 import { boundedCheckRunner, checkEnvironment } from "../../src/workflows/check-runner.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 setDefaultTimeout(15_000);
 

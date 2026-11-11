@@ -6,9 +6,9 @@ import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { startServer } from "../../src/server.ts";
 import { Teams } from "../../src/teams/teams.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
-import { poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(30_000);
 

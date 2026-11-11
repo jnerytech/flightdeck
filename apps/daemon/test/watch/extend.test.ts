@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ulid } from "../../src/ulid.ts";
 import { PrWatch } from "../../src/watch/service.ts";
-import { cleanups, fixture } from "../watch-helpers.ts";
+import { cleanups, fixture } from "../support/watch-helpers.ts";
 
 afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();

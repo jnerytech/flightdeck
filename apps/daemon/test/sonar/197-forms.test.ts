@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { refusalCounts } from "../../../../scripts/lib/refusal-ratchet.ts";
 import { type GhIn, listAlerts, PER_SOURCE } from "../../src/github/alerts.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * Issue #197 (Sonar S3358, S4043, S6557): small rewrites that keep what they answered. Each answer

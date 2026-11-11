@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Board } from "../../src/board/board.ts";
 import { FlightdeckError } from "../../src/errors.ts";
-import { git, newBoard } from "../board-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
 
 setDefaultTimeout(20_000);
 

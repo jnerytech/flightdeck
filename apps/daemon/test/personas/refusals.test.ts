@@ -8,7 +8,7 @@ import { packPersonas } from "../../src/personas/pack.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, workspace } from "../helpers.ts";
+import { newManager, workspace } from "../support/helpers.ts";
 
 const scanner = new SecretScanner();
 const GOOD = { id: "seg", name: "Segurança", description: "Revisa", body: "Procure falhas." };

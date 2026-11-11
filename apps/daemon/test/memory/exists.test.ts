@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { exists } from "../../src/memory/exists.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 describe("memory-exists: whether a path is there", () => {
   test("a file and a folder exist; a missing path and a broken link do not", async () => {

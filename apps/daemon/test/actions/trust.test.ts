@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type ActionDef, validateAction } from "../../src/actions/schema.ts";
 import { changes, fingerprint } from "../../src/actions/trust.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 function action(over: Record<string, unknown> = {}): ActionDef {
   const { action: ok, errors } = validateAction({

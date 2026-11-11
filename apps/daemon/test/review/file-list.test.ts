@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewFiles } from "../../src/review/files.ts";
 import { startServer } from "../../src/server.ts";
-import { git } from "../board-helpers.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { insertSession } from "../usage-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { insertSession } from "../support/usage-helpers.ts";
 
 // Real git in temporary repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

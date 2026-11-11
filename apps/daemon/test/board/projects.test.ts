@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PROMPT_TEMPLATE } from "../../src/board/board.ts";
-import { newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
+import { newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const boards: Array<{ stop(): void }> = [];
 afterEach(() => {

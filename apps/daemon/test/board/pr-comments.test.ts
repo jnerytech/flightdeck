@@ -2,9 +2,9 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import type { PrProviderKind } from "../../src/board/types.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
-import { poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process): more than the default 5 s.
 setDefaultTimeout(30_000);

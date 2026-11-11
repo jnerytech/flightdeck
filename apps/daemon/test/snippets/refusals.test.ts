@@ -6,7 +6,7 @@ import { SecretScanner } from "../../src/snippets/model.ts";
 import { Snippets } from "../../src/snippets/store.ts";
 import { SnippetUse } from "../../src/snippets/use.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, workspace } from "../helpers.ts";
+import { newManager, workspace } from "../support/helpers.ts";
 
 async function refused(call: () => unknown) {
   try {

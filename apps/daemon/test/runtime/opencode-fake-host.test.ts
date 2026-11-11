@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 const TOKEN = "opencode-fake-host-token-0123456789";
 const stops: Array<() => Promise<void>> = [];

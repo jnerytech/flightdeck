@@ -2,9 +2,9 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../daemon/src/config.ts";
-import { git } from "../../daemon/test/board-helpers.ts";
-import { poll } from "../../daemon/test/helpers.ts";
-import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { git } from "../../daemon/test/support/board-helpers.ts";
+import { poll } from "../../daemon/test/support/helpers.ts";
+import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
 import {
   DEFAULT_HUB_FILTER,
   HUB_FILTER_KEY,

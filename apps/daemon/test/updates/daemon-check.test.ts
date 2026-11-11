@@ -5,9 +5,9 @@ import { Config } from "../../src/config.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { UpdateChecker } from "../../src/updates/check.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { manualTime } from "../time-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { manualTime } from "../support/time-helpers.ts";
 
 const TOKEN = "update-check-token-0123456789";
 const HOUR = 3_600_000;

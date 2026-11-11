@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { cpSync } from "node:fs";
 import { join } from "node:path";
 import type { FakeCli, FakeRule } from "../../../scripts/test/fake-cli.ts";
-import { tempDir } from "../../daemon/test/helpers.ts";
+import { tempDir } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { ok, pluginsHost, write } from "./plugins-ui-setup.ts";

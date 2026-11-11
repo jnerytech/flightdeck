@@ -9,7 +9,7 @@ import {
   type TeleportSession,
 } from "../../src/teleport/package.ts";
 import { secretLines } from "../../src/teleport/secrets.ts";
-import { poll, tempDir } from "../helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
 
 /**
  * Issue #100, slice 1: the source side of a teleport. An idle Claude Code session's transcript is

@@ -7,8 +7,8 @@ import { startReceptor } from "../../src/central/receptor.ts";
 import { SessionMetaStore } from "../../src/central/session-meta.ts";
 import { RiskClassifier } from "../../src/permissions/risk.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "bypass-token-0123456789abcdef";
 const HOOKS = "bypass-hooks-0123456789";

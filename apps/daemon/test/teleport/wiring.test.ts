@@ -10,8 +10,13 @@ import {
   teleportDeps,
 } from "../../src/teleport/package.ts";
 import { TeleportInbox } from "../../src/teleport/receive.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient, projectsRoot, userLine, writeTranscript } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import {
+  FrameClient,
+  projectsRoot,
+  userLine,
+  writeTranscript,
+} from "../support/history-helpers.ts";
 
 /**
  * Issue #100, slice 1: how the daemon wires a teleport. The transcript is the file the history

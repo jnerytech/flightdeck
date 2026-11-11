@@ -4,9 +4,9 @@ import { join } from "node:path";
 import type { FlightdeckError } from "../../src/errors.ts";
 import { startServer } from "../../src/server.ts";
 import type { CheckRunner } from "../../src/workflows/check-runner.ts";
-import { git } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { commitWorkflow, workflowCard } from "../workflow-helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { commitWorkflow, workflowCard } from "../support/workflow-helpers.ts";
 
 setDefaultTimeout(30_000);
 

@@ -11,7 +11,7 @@ import {
 import { type Rev, refArg } from "../../src/board/ref-arg.ts";
 import { freshBase } from "../../src/board/worktree.ts";
 import { workflowSources } from "../../src/workflows/repo.ts";
-import { gitRepo, gitRepoWithOrigin, newBoard } from "../board-helpers.ts";
+import { gitRepo, gitRepoWithOrigin, newBoard } from "../support/board-helpers.ts";
 
 // Real git in temp repositories.
 setDefaultTimeout(30_000);

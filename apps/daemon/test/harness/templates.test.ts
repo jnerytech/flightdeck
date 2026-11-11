@@ -12,8 +12,8 @@ import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { HarnessTemplates } from "../../src/harness/templates-store.ts";
 import { startServer } from "../../src/server.ts";
-import { newManager, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 /**
  * Issue #75, slice T1a: a project's Markdown harness (CLAUDE.md, agents, skills) is shared as a host

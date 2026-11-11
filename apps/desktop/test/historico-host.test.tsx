@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
-import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";

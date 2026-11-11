@@ -3,8 +3,8 @@ import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ProjectLoad, ProjectTrustState, ProjectTrustStates } from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "trust-commands-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];

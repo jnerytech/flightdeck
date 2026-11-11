@@ -6,8 +6,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { runCli } from "../../src/main.ts";
 import { daemonUrl } from "../../src/mcp.ts";
 import { startServer } from "../../src/server.ts";
-import { poll, tempDir } from "../helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and a whole workflow run: more than the default 5 s.
 setDefaultTimeout(20_000);

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Command } from "@flightdeck/protocol";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
-import { newManager, poll } from "../helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 describe("sessao-sem-prompt: a session can start with no first prompt", () => {
   test("the protocol accepts session.create with no prompt, and still refuses an empty one", () => {

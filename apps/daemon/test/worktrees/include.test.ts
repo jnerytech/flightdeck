@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync
 import { join } from "node:path";
 import type { BoardOptions } from "../../src/board/board.ts";
 import { addWorktree, copyIncluded, WORKTREE_INCLUDE_LIMIT } from "../../src/board/worktree.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
 
 // Real git in temp repositories: more than the default 5 s.
 setDefaultTimeout(20_000);

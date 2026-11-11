@@ -5,8 +5,8 @@ import { WatchSettings } from "@flightdeck/protocol";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { killTree, runCommand } from "../../src/board/command.ts";
 import { shellCheckRunner } from "../../src/workflows/check-runner.ts";
-import { tempDir } from "../helpers.ts";
-import { cleanups, fixture, work } from "../watch-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
+import { cleanups, fixture, work } from "../support/watch-helpers.ts";
 
 setDefaultTimeout(30_000);
 

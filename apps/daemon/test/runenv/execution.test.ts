@@ -3,7 +3,7 @@ import type { RunConfig } from "../../src/runenv/config.ts";
 import { RunManager, type RunState } from "../../src/runenv/manager.ts";
 import { CardPorts } from "../../src/runenv/ports.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { poll } from "../helpers.ts";
+import { poll } from "../support/helpers.ts";
 import { fakeRunHost, runConfig } from "./helpers.ts";
 
 const WORKTREE = (id: string) => `/work/${id}`;

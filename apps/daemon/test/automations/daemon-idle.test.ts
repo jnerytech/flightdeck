@@ -6,9 +6,9 @@ import type { PrProvider } from "../../src/board/pr.ts";
 import { Budgets } from "../../src/costs/budgets.ts";
 import { startDaemon } from "../../src/main.ts";
 import { PrWatch } from "../../src/watch/service.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { tempDir } from "../helpers.ts";
-import { probeTimers } from "../timer-probe.ts";
+import { probeTimers } from "../core/timer-probe.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 // Real git and a daemon: more than the default 5 s.
 setDefaultTimeout(30_000);

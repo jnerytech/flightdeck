@@ -8,9 +8,9 @@ import { EventStore } from "../../src/store/event-store.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
 import { PrWatcher, readWatchSettings } from "../../src/watch/watch.ts";
 import type { BoundedCheckResult } from "../../src/workflows/check-runner.ts";
-import { cardWhen, newBoard } from "../board-helpers.ts";
-import { poll, tempDir } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, newBoard } from "../support/board-helpers.ts";
+import { poll, tempDir } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git (a worktree per card): more than the default 5 s.
 setDefaultTimeout(30_000);

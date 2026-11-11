@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import type { PrProvider, PrStatus } from "../../src/board/pr.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
 
 // Real git (a worktree and a bare origin): more than the default 5 s.
 setDefaultTimeout(30_000);

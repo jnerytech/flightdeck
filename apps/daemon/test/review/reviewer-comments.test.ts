@@ -3,8 +3,8 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewComments } from "../../src/review/comments.ts";
-import { git } from "../board-helpers.ts";
-import { newManager, poll } from "../helpers.ts";
+import { git } from "../support/board-helpers.ts";
+import { newManager, poll } from "../support/helpers.ts";
 
 // Real git and a FakeRuntime turn: more than the default 5 s.
 setDefaultTimeout(20_000);

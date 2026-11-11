@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isServiceController, osServiceContext } from "../../src/service-os.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 describe("trava-servico", () => {
   test("systemctl, schtasks e loginctl (com caminho e .exe) são o controlador de serviço; o resto não", () => {

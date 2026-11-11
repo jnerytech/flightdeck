@@ -7,10 +7,10 @@ import type { BoardOptions } from "../../src/board/board.ts";
 import { Issues } from "../../src/issues/issues.ts";
 import type { Quota } from "../../src/quota/quota.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, git } from "../board-helpers.ts";
-import { must, poll, record } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen, git } from "../support/board-helpers.ts";
+import { must, poll, record } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git, worktrees and fake CLIs: more than the default 5 s.
 /**

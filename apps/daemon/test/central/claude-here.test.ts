@@ -12,10 +12,10 @@ import {
   TerminalManager,
   type TerminalManagerOptions,
 } from "../../src/terminal/terminal-manager.ts";
-import { installFakeClaude } from "../fake-claude.ts";
-import { newManager, poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
-import { fakePtys, pipedRunner } from "../pty-helpers.ts";
+import { installFakeClaude } from "../support/fake-claude.ts";
+import { newManager, poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
+import { fakePtys, pipedRunner } from "../support/pty-helpers.ts";
 
 // Real processes (flightdeckd, the fake claude): more than the default 5 s.
 setDefaultTimeout(40_000);

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { addTurn, noSpending, overBudget } from "../../src/workflows/budget.ts";
-import { cardWhen } from "../board-helpers.ts";
-import { workflowCard } from "../workflow-helpers.ts";
+import { cardWhen } from "../support/board-helpers.ts";
+import { workflowCard } from "../support/workflow-helpers.ts";
 
 // Real git in temp repositories and several turns per test: more than the default 5 s.
 setDefaultTimeout(20_000);

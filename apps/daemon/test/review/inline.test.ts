@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { Changes } from "../../src/review/changes.ts";
 import { ReviewComments, type ReviewCommentsOptions } from "../../src/review/comments.ts";
 import { startServer } from "../../src/server.ts";
-import { cardWhen, git, newBoard } from "../board-helpers.ts";
-import { must, newManager, poll } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { cardWhen, git, newBoard } from "../support/board-helpers.ts";
+import { must, newManager, poll } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 // Real git and FakeRuntime turns: more than the default 5 s.
 setDefaultTimeout(20_000);

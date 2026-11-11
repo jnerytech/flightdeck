@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { EventStore } from "../../src/store/event-store.ts";
 import { TraceService } from "../../src/trace/service.ts";
-import { tempDir } from "../helpers.ts";
+import { tempDir } from "../support/helpers.ts";
 
 const SESSION = "bbbbbbbb-0000-4000-8000-000000000025";
 const FIXTURES = join(import.meta.dir, "../fixtures/trace");

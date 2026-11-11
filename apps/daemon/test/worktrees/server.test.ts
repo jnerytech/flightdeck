@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { startServer } from "../../src/server.ts";
 import { FolderLocks } from "../../src/worktrees/locks.ts";
 import { createWorktrees } from "../../src/worktrees/wiring.ts";
-import { git, newBoard } from "../board-helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { git, newBoard } from "../support/board-helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 setDefaultTimeout(20_000);
 const TOKEN = "board-token-0123456789abcdef";

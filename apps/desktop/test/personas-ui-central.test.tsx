@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { poll } from "../../daemon/test/helpers.ts";
+import { poll } from "../../daemon/test/support/helpers.ts";
 import {
   DEFAULT_HUB_FILTER,
   type HubRow,

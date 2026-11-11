@@ -5,8 +5,8 @@ import { startDaemon } from "../../src/main.ts";
 import { localDay, UsageLedger } from "../../src/quota/usage.ts";
 import { startServer } from "../../src/server.ts";
 import { MIGRATIONS } from "../../src/store/migrations.ts";
-import { newManager, poll, tempDir, workspace } from "../helpers.ts";
-import { FrameClient } from "../history-helpers.ts";
+import { newManager, poll, tempDir, workspace } from "../support/helpers.ts";
+import { FrameClient } from "../support/history-helpers.ts";
 
 const TOKEN = "usage-token-0123456789abcdef";
 const cleanups: Array<() => unknown> = [];
