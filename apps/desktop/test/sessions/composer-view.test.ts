@@ -97,7 +97,7 @@ describe("a press on Send", () => {
 });
 
 describe("the slash commands as menu items", () => {
-  test("a daemon that only names them gets plain items, the shape of the name deciding the group", () => {
+  test("a daemon that only names them gets plain items without a group", () => {
     expect(commandItemsOf(undefined, ["compact", "review"])).toEqual([
       { key: "slash:compact", name: "/compact" },
       { key: "slash:review", name: "/review" },
