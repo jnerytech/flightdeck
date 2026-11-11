@@ -15,7 +15,7 @@ describe("timer-probe: the file that started a timer", () => {
   test("it reads the same frame on a Windows stack, whose paths use backslashes", () => {
     const stack = [
       "Error",
-      "      at fileOf (D:\\a\\flightdeck\\flightdeck\\apps\\daemon\\test\\timer-probe.ts:20:5)",
+      "      at fileOf (D:\\a\\flightdeck\\flightdeck\\apps\\daemon\\test\\core\\timer-probe.ts:20:5)",
       "      at start (D:\\a\\flightdeck\\flightdeck\\apps\\daemon\\src\\costs\\budgets.ts:88:12)",
     ].join("\n");
     expect(fileOfStack(stack)).toBe("costs/budgets.ts");
