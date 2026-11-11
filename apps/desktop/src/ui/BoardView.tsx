@@ -37,8 +37,6 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline, Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { AddProject } from "@/components/projects/add-project";
-import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { RoiCard } from "@/components/roi/roi-card";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +49,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
+import { AddProject, WorktreeChip } from "@/features/projects/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
 import { useStartAsk } from "@/hooks/use-start-ask";

@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, screen, within } = await import("@testi
 const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
-const { SessionTiles } = await import("../src/components/projects/session-tiles.tsx");
+const { SessionTiles } = await import("../src/features/projects/session-tiles.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

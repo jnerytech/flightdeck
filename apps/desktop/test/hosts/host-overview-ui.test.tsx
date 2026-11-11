@@ -164,7 +164,7 @@ describe("host-overview-ui: a host page leads with its sessions and projects", (
 
 describe("host-overview-ui: the Projects list filtered by a host", () => {
   test("only that host's cards, with a chip that clears the filter", async () => {
-    const { ProjectsOverview } = await import("../../src/ui/ProjectsOverview.tsx");
+    const { ProjectsOverview } = await import("../../src/features/projects/overview.tsx");
     const store: Store = new AppStore(memoryPlatform(false, "en").platform, {
       baseDelayMs: 600_000,
     });

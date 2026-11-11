@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, screen, within, waitFor } = await impor
   "@testing-library/react"
 );
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectsOverview } = await import("../src/ui/ProjectsOverview.tsx");
+const { ProjectsOverview } = await import("../src/features/projects/overview.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

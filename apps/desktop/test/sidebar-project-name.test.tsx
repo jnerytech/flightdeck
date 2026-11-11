@@ -7,7 +7,7 @@ registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectTree } = await import("../src/components/projects/project-tree.tsx");
+const { ProjectTree } = await import("../src/features/projects/project-tree.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

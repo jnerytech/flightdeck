@@ -6,7 +6,7 @@ import { memoryPlatform } from "./fixtures.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectPage } = await import("../src/ui/ProjectPage.tsx");
+const { ProjectPage } = await import("../src/features/projects/project.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

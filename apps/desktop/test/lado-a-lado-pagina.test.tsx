@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, screen } = await import("@testing-libra
 const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
-const { ProjectPage } = await import("../src/ui/ProjectPage.tsx");
+const { ProjectPage } = await import("../src/features/projects/project.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
