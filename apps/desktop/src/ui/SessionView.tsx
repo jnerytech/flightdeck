@@ -52,7 +52,7 @@ import type { T } from "../i18n/index.ts";
 import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { modeRows, nextMode } from "../lib/mode-menu.ts";
-import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
+import type { MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
