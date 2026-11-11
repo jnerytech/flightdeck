@@ -15,6 +15,7 @@ import { SessionFinish } from "../components/session/session-finish.tsx";
 import { SessionMessages } from "../features/messaging/session-messages.tsx";
 import { ChangesPanel } from "../features/review/index.ts";
 import { TempoPanel } from "../features/telemetry/index.ts";
+import { SessionTerminal } from "../features/terminal/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   offeredViews,
@@ -30,7 +31,6 @@ import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import type { XtermDeps } from "../lib/xterm-screen.ts";
 import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
-import { SessionTerminal } from "./SessionTerminal.tsx";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";

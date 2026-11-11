@@ -45,7 +45,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.sessionSettings, "session.settings", "session.effort"),
     // A message may carry images (`session.send` with `images`).
     "session.images",
-    ...when(opts.doctor, "doctor.run"),
+    ...when(opts.hostChecks?.doctor, "doctor.run"),
     ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
     ...when(opts.quotaPause, "quotaPause"),
@@ -56,7 +56,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.cardReview, "cardReview"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
-    ...when(opts.deps, "depsCheck"),
+    ...when(opts.hostChecks?.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harness?.stack, "harnessStack"),
     ...when(opts.alerts, "alerts"),

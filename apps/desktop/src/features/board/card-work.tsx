@@ -9,9 +9,9 @@ import { issueLabel, issueUrl } from "../../lib/issues.ts";
 import type { SessionState } from "../../lib/session-state.ts";
 import { SessionView } from "../../ui/SessionView.tsx";
 import { StatusBadge } from "../../ui/StatusBadge.tsx";
-import { TerminalButton } from "../../ui/TerminalButton.tsx";
 import { ExternalSeal } from "../issues/index.ts";
 import { CardReview, ChangesPanel, PrComments } from "../review/index.ts";
+import { TerminalButton } from "../terminal/index.ts";
 import { CardSecondOpinion } from "./card-second-opinion.tsx";
 
 /** The card's header actions: back, its state, its issue and synced item, its PR and checks, the terminal. */

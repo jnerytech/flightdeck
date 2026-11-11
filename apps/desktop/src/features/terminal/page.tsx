@@ -15,9 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SnippetPicker } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
-import type { AppStore } from "../lib/app-store.ts";
-import { insideFolder, resolvePath } from "../lib/terminal-paths.ts";
-import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { insideFolder, resolvePath } from "../../lib/terminal-paths.ts";
+import { TerminalSession, type TerminalState } from "../../lib/terminal-session.ts";
 import {
   type FindFlags,
   findPatternProblem,
@@ -25,19 +25,21 @@ import {
   pasteLines,
   TERMINAL_FONT_FAMILY,
   terminalTheme,
-} from "../lib/terminal-view.ts";
-import { useStoreState } from "../lib/use-store.ts";
-import { hasFeature } from "../lib/version.ts";
+} from "../../lib/terminal-view.ts";
+import { useStoreState } from "../../lib/use-store.ts";
+import { hasFeature } from "../../lib/version.ts";
 import {
   createXtermScreen,
   type FindResults,
   type XtermDeps,
   type XtermScreen,
-} from "../lib/xterm-screen.ts";
+} from "../../lib/xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first path opened.
-const FileViewer = lazy(() => import("./FileViewer.tsx").then((m) => ({ default: m.FileViewer })));
+const FileViewer = lazy(() =>
+  import("../../ui/FileViewer.tsx").then((m) => ({ default: m.FileViewer })),
+);
 
 export function TerminalPage(
   props: Readonly<{
@@ -104,7 +106,7 @@ export function TerminalPage(
     const stops: Array<() => void> = [];
     const parent = area.current;
     void (async () => {
-      const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
+      const deps = props.deps ?? (await import("../../lib/xterm-deps.ts")).realXtermDeps;
       if (!alive || !parent) return;
       const host = store.terminals.host(hostId);
       // The terminal's folder, for the relative paths of its output: known once the list answers.

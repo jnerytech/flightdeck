@@ -44,7 +44,7 @@ function server(doctor?: (appVersion?: string) => Promise<protocol.DoctorResult>
     port: 0,
     token: TOKEN,
     allowedRoots: [],
-    ...(doctor ? { doctor } : {}),
+    ...(doctor ? { hostChecks: { doctor } } : {}),
   });
   stops.push(() => started.stop());
   return started;

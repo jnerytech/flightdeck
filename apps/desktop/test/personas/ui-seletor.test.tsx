@@ -262,7 +262,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
 
   test("Claude aqui runs flightdeckd claude --persona with the persona chosen; the app's own are not offered there", async () => {
     const { store, hostId, d, repo } = await open(false);
-    const { TerminalButton } = await import("../../src/ui/TerminalButton.tsx");
+    const { TerminalButton } = await import("../../src/features/terminal/terminal-button.tsx");
     const { TContext } = await import("../../src/i18n/context.tsx");
     render(
       <TContext.Provider value={store.i18n.t}>
