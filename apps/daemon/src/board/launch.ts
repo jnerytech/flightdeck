@@ -2,10 +2,11 @@ import type { Database } from "bun:sqlite";
 import {
   type ContractOverrides,
   inSequence,
-  type PersonaRef,
+  PersonaRef,
   specExpectedPath,
 } from "@flightdeck/protocol";
 import { FlightdeckError, refusalOf } from "../errors.ts";
+import { parseJsonWith } from "../json-text.ts";
 import { withoutPersonas } from "../personas/prepare.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import type { BoardEvent } from "./columns.ts";
@@ -139,7 +140,7 @@ export class Launcher {
         "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
       )
       .get(runId);
-    const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
+    const personaRef = run?.persona ? parseJsonWith(PersonaRef, run.persona) : undefined;
     const prepared = await (this.port.opts.preparePersonas ?? withoutPersonas)(
       personaRef,
       worktree,
