@@ -30,6 +30,8 @@ export function runnerSettings(
     ["html", { open: "never", outputFolder: join(root, "playwright-report") }],
   ];
   if (ci) reporter.push(["github"]);
+  // The pyramid's e2e row (#1854) reads this report.
+  if (env.E2E_JSON) reporter.push(["json", { outputFile: resolve(root, env.E2E_JSON) }]);
   return {
     // A retried pass is reported as flaky, never hidden.
     retries: ci ? 1 : 0,

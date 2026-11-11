@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
 import { Markdown } from "../../ui/Markdown.tsx";
 import { ApprovalActions } from "./approval-actions.tsx";
+import { resolutionLine, savedAnswers } from "./approval-lines.ts";
 import { QuestionForm } from "./question-form.tsx";
 
 /** One open (or answered) permission request, from any kind of session. */
@@ -142,33 +143,6 @@ export function RiskSeal({
       {t(`approval.risk.${risk}` as Key)}
     </span>
   );
-}
-
-/** The answers a request already carries (the tool's input after it was answered), if any. */
-function savedAnswers(input: Record<string, unknown>): Record<string, string> | null {
-  const saved = input.answers;
-  return saved && typeof saved === "object" ? (saved as Record<string, string>) : null;
-}
-
-/** "Aprovado automaticamente (regra): motivo": who decided, and why. */
-function autoLine(auto: AutoApproval, t: T): string {
-  let by = t("approval.autoBy.rule");
-  if (auto.by === "ai") {
-    by = auto.model ? t("approval.autoBy.aiModel", { model: auto.model }) : t("approval.autoBy.ai");
-  }
-  return t("approval.autoApproved", { by, reason: auto.reason });
-}
-
-/** What the card says once the request is settled: the denial's reason, who approved it, or the decision. */
-function resolutionLine(
-  resolution: { decision: PermissionResolution; message?: string; auto?: AutoApproval },
-  t: T,
-): string {
-  if (resolution.decision === "deny" && resolution.message) {
-    return t("approval.deniedWith", { message: resolution.message });
-  }
-  if (resolution.auto) return autoLine(resolution.auto, t);
-  return t(`approval.resolved.${resolution.decision}` as Key);
 }
 
 /** The card's heading: a question, a plan, or the tool that asks. */

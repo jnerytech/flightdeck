@@ -42,6 +42,12 @@ describe("e2e runner settings", () => {
     ]);
   });
 
+  test("E2E_JSON adds the JSON report at that path, for the pyramid's e2e row (#1854)", () => {
+    const withJson = runnerSettings({ E2E_JSON: "out/e2e.json" }, ROOT).reporter;
+    expect(withJson).toContainEqual(["json", { outputFile: join(ROOT, "out", "e2e.json") }]);
+    expect(runnerSettings({}, ROOT).reporter.some(([name]) => name === "json")).toBe(false);
+  });
+
   test("E2E_FAILURES chooses where the traces and prints go", () => {
     expect(runnerSettings({ E2E_FAILURES: "out/fail" }, ROOT).outputDir).toBe(
       join(ROOT, "out", "fail"),

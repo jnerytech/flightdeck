@@ -1846,6 +1846,51 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
     }
 
+    // 3b. The top bar and the status bar change at one width, 1024 px, the one `useBreakpoint()`
+    // uses (#641, #1850): at 1023 the host's name, the search's text and keys, the version and the
+    // quota window are hidden and the host's icon stands in; at 1024 the full forms show.
+    const shown = () =>
+      c.page.evaluate(() => {
+        const display = (selector: string) => {
+          const el = document.querySelector(selector);
+          return el ? getComputedStyle(el).display : null;
+        };
+        return {
+          name: display(".top-bar-host-name"),
+          chevron: display(".top-bar-host-chevron"),
+          // A host in use shows its dot and initial; with none, the server icon stands in.
+          mark: display(".top-bar-host-initial") ?? display(".top-bar-host-icon"),
+          searchText: display(".top-bar-search-text"),
+          searchKeys: display(".top-bar-search-keys"),
+          version: display(".top-bar-version"),
+          quota: display(".status-quota-window"),
+          search: document.querySelector(".top-bar-search")?.getBoundingClientRect().width ?? 0,
+        };
+      });
+    for (const width of [1023, 1024]) {
+      await c.page.setViewportSize({ width, height: 800 });
+      await c.page.locator(".top-bar-search").waitFor({ timeout: WAIT });
+      const now = await shown();
+      const compact = width < 1024;
+      const hidden = (value: string | null) => value === null || (value === "none") === compact;
+      expect(
+        {
+          hosts: [now.name, now.chevron, now.searchText, now.searchKeys, now.version].map((one) =>
+            one === null ? "missing" : one === "none" ? "hidden" : "shown",
+          ),
+          markHidden: now.mark === "none",
+          quotaFits: hidden(now.quota),
+          searchWide: now.search >= 150,
+        },
+        `the top bar at ${width}px`,
+      ).toEqual({
+        hosts: Array(5).fill(compact ? "hidden" : "shown"),
+        markHidden: !compact,
+        quotaFits: true,
+        searchWide: !compact,
+      });
+    }
+
     // 4. Settings (#641, #1850): beside its content the section list is sticky and a label sits
     // left of its control in a wide window; narrow, the list goes above the content, its links
     // wrap in a row, and the label goes above its control. Measured, not read from the stylesheet.
@@ -1957,6 +2002,54 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       hostsReached: true,
       footInWindow: true,
       hostsHigh: true,
+    });
+
+    // 7. The theme's native controls (#567, #1850), in both themes: the dropdown of a select is
+    // painted with the popover colors (WebView2 paints it light in the dark theme otherwise), a
+    // disabled option stays readable, the page declares its color scheme, and a scroll area has a
+    // thin bar with no arrow buttons.
+    const native = await c.page.evaluate(() => {
+      const root = document.documentElement;
+      const wasDark = root.classList.contains("dark");
+      const probe = document.createElement("div");
+      const select = document.createElement("select");
+      select.innerHTML = "<option>a</option><option disabled>b</option>";
+      const scroller = document.createElement("div");
+      scroller.style.cssText = "overflow: auto; width: 100px; height: 40px";
+      scroller.innerHTML = '<div style="height: 200px"></div>';
+      document.body.append(probe, select, scroller);
+      const colorOf = (token: string, property: "backgroundColor" | "color") => {
+        probe.style.cssText = `${property === "color" ? "color" : "background-color"}: var(${token})`;
+        return getComputedStyle(probe)[property];
+      };
+      const bar = (part = "") => getComputedStyle(scroller, `::-webkit-scrollbar${part}`);
+      const found: Record<string, unknown> = {};
+      for (const dark of [false, true]) {
+        root.classList.toggle("dark", dark);
+        const on = select.options.item(0) as HTMLOptionElement;
+        const off = select.options.item(1) as HTMLOptionElement;
+        found[dark ? "dark" : "light"] = {
+          scheme: getComputedStyle(root).colorScheme,
+          paper: getComputedStyle(on).backgroundColor === colorOf("--popover", "backgroundColor"),
+          ink: getComputedStyle(on).color === colorOf("--popover-foreground", "color"),
+          disabled: getComputedStyle(off).color === colorOf("--muted-foreground", "color"),
+          thin: [bar().width, bar().height].every((one) => {
+            const size = Number.parseFloat(one);
+            return size >= 4 && size <= 10;
+          }),
+          noArrows: bar("-button").display === "none",
+        };
+      }
+      root.classList.toggle("dark", wasDark);
+      probe.remove();
+      select.remove();
+      scroller.remove();
+      return found;
+    });
+    const same = { paper: true, ink: true, disabled: true, thin: true, noArrows: true };
+    expect(native, "the native controls in both themes").toEqual({
+      light: { scheme: "light", ...same },
+      dark: { scheme: "dark", ...same },
     });
   },
 

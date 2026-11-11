@@ -1,11 +1,13 @@
 import type { Database } from "bun:sqlite";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { settled } from "../settled.ts";
 import { ulid } from "../ulid.ts";
 import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
@@ -64,19 +66,26 @@ interface RoundRow {
   drift: string | null;
 }
 
+const TRIGGER = z.object({
+  failed: z.array(z.string()),
+  conflicts: z.boolean(),
+  comments: z.array(z.string()),
+});
+const DRIFT = z.object({ outside: z.array(z.string()), churn: z.number(), limit: z.number() });
+
 const toRound = (row: RoundRow): FixRound => ({
   id: row.id,
   cardId: row.card_id,
   n: row.n,
   status: row.status,
-  trigger: JSON.parse(row.trigger),
+  trigger: parseJsonOr(TRIGGER, row.trigger, { failed: [], conflicts: false, comments: [] }),
   summary: row.summary,
   sessionId: row.session_id,
   costUsd: row.cost_usd,
   turns: row.turns,
   startedAt: row.started_at,
   endedAt: row.ended_at,
-  drift: row.drift ? JSON.parse(row.drift) : null,
+  drift: row.drift ? parseJsonOr(DRIFT.nullable(), row.drift, null) : null,
 });
 
 /** A commit id as git prints it (SHA-1 or SHA-256): the only form a stored one goes back into git as. */
