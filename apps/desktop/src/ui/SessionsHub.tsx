@@ -30,11 +30,18 @@ import { CacheTimer } from "@/features/sessions/cache-timer";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "@/features/sessions/group-header";
 import {
   awayHost,
+  costAsks,
+  cursorMove,
+  filterCount,
   hubProjectKeys,
+  personasOf,
   projectChoices,
   projectName,
+  refreshSignature,
+  rowOffers,
   rowsInScope,
   scopeKeys,
+  worktreesOf,
 } from "@/features/sessions/index.ts";
 import { SessionCard, STATE_TONES } from "@/features/sessions/session-card";
 import { TeleportMove } from "@/features/teleport/index.ts";
@@ -142,9 +149,7 @@ export function SessionsHub(
   const [name, setName] = useState("");
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
   // keeps failing to connect changes status on every attempt: only being online counts.
-  const signature = state.hosts
-    .map((h) => `${h.id}:${h.status === "online"}:${h.sessions.length}:${h.hostInfo ? "info" : ""}`)
-    .join();
+  const signature = refreshSignature(state.hosts);
   useEffect(() => {
     if (signature) void store.refreshHub();
   }, [store, signature]);
@@ -177,18 +182,7 @@ export function SessionsHub(
   const pickedProject = picked
     ? state.projects[picked.hostId]?.find((p) => p.id === picked.projectId)
     : undefined;
-  const worktrees = useMemo(
-    () =>
-      picked
-        ? Object.entries(state.cards)
-            .filter(
-              ([key, card]) =>
-                key.startsWith(`${picked.hostId}/`) && card.projectId === picked.projectId,
-            )
-            .flatMap(([, card]) => (card.worktreePath ? [card.worktreePath] : []))
-        : [],
-    [state.cards, picked],
-  );
+  const worktrees = useMemo(() => worktreesOf(state.cards, picked), [state.cards, picked]);
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const allRows = useMemo(
@@ -261,11 +255,7 @@ export function SessionsHub(
   const viewOf = (key: string): HubGroupView | undefined => views.find((v) => v.group.key === key);
   const scope = store.clientScope.get();
   // The personas the sessions run in: the Persona filter offers only those.
-  const personas = [
-    ...new Map(
-      rows.flatMap((r) => (r.persona ? [[r.persona.id, r.persona] as const] : [])),
-    ).values(),
-  ];
+  const personas = personasOf(rows);
   /** The rows as listed, top to bottom: what J and K walk. */
   const listed = groups.flatMap((g) => g.rows);
   /** The row the keyboard is on (-1: none yet). */
@@ -274,8 +264,8 @@ export function SessionsHub(
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
-      if (e.key === "j") setCursor(Math.min(listed.length - 1, cursor + 1));
-      else if (e.key === "k") setCursor(Math.max(0, cursor - 1));
+      const moved = cursorMove(e.key, cursor, listed.length);
+      if (moved !== null) setCursor(moved);
       else if (
         e.key === "Enter" &&
         listed[cursor] &&
@@ -289,14 +279,7 @@ export function SessionsHub(
   });
   /** Estimated cost of each row's session, by row key (hosts with costs, phase 8). */
   const [costs, setCosts] = useState<Record<string, number>>({});
-  const asked = JSON.stringify(
-    state.hosts
-      .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-      .map((h) => [
-        h.id,
-        rows.filter((r) => r.hostId === h.id && r.claudeSessionId).map((r) => r.claudeSessionId),
-      ]),
-  );
+  const asked = JSON.stringify(costAsks(state.hosts, rows));
   useEffect(() => {
     const byHost = JSON.parse(asked) as Array<[string, string[]]>;
     void Promise.all(
@@ -323,8 +306,13 @@ export function SessionsHub(
   const isMuted = (row: HubRow) =>
     store.notifyPrefs.value.mutedSessions.includes(sessionKeyOf(row));
   /** The row's actions menu, the same in a line and on a card. */
-  const rowActions = (row: HubRow) =>
-    row.claudeSessionId && (
+  const rowActions = (row: HubRow) => {
+    if (!row.claudeSessionId) return null;
+    const offers = rowOffers(row, {
+      teleportPreview: state.settings.teleportPreview,
+      canTeleport: canTeleport(row.hostId),
+    });
+    return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -353,22 +341,18 @@ export function SessionsHub(
           >
             {t("hub.rename")}
           </DropdownMenuItem>
-          {row.origin === "flightdeck" && row.state === "idle" && !row.asleep && row.sessionId && (
+          {offers.sleep && (
             <DropdownMenuItem
               onSelect={() => void store.sleepSession(row.hostId, row.sessionId as string)}
             >
               {t("hub.sleepNow")}
             </DropdownMenuItem>
           )}
-          {state.settings.teleportPreview &&
-            row.origin === "flightdeck" &&
-            row.state === "idle" &&
-            row.sessionId &&
-            canTeleport(row.hostId) && (
-              <DropdownMenuItem onSelect={() => setMoving(row)}>
-                {t("teleportUi.menu")}
-              </DropdownMenuItem>
-            )}
+          {offers.teleport && (
+            <DropdownMenuItem onSelect={() => setMoving(row)}>
+              {t("teleportUi.menu")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
             {row.pinned ? t("hub.unpin") : t("hub.pin")}
           </DropdownMenuItem>
@@ -397,6 +381,7 @@ export function SessionsHub(
         </DropdownMenuContent>
       </DropdownMenu>
     );
+  };
 
   /** A card's cost, when its host reported one. */
   /** The prompt cache countdown: only an idle session that says since when it has been idle. */
@@ -411,13 +396,7 @@ export function SessionsHub(
       ...(cost === undefined ? {} : { cost: usd(cost, t.lang) }),
     };
   };
-  const active = [
-    filter.origin !== "",
-    filter.state !== "",
-    filter.persona !== "",
-    filter.pinnedOnly,
-    filter.showArchived,
-  ].filter(Boolean).length;
+  const active = filterCount(filter);
   const starter = newSessionHost(state.hosts, state.selected);
   // No host at all, or none online and nothing cached to list: the list would be a dead end.
   const hostless =
