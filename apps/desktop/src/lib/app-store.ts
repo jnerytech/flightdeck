@@ -46,10 +46,11 @@ import { type HistorySlice, initialHistoryState, wireHistory } from "../features
 import {
   type HealthSlice,
   HostRosterSlice,
-  HostUpdateSlice,
+  type HostUpdateSlice,
   initialHealthState,
   type NewHost,
   wireHealth,
+  wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
 import {
@@ -390,16 +391,10 @@ export class AppStore {
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
     this.health = wireHealth(this.kernel);
-    this.hostUpdate = new HostUpdateSlice({
-      host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
+    this.hostUpdate = wireHostUpdate(this.kernel, {
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
-      connected: (hostId) => this.connections.has(hostId),
-      apply: (hostId) =>
-        this.openConnection(hostId).request("daemon.update.apply", { confirm: true }),
-      check: (hostId) => this.openConnection(hostId).request("daemon.update.check", {}),
+      open: (hostId) => this.openConnection(hostId),
       describeError,
-      t: () => this.i18n.t,
-      now: () => this.now(),
       timeoutMs: options.daemonUpdateTimeoutMs,
     });
     this.background = wireBackground(this.kernel, {
