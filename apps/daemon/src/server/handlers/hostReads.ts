@@ -3,7 +3,7 @@
  * dependency and doctor checks, and the runtime models.
  */
 import { statuslineData } from "../../costs/statusline.ts";
-import { FlightdeckError, featureOff } from "../../errors.ts";
+import { FlightdeckError } from "../../errors.ts";
 import { tailForOrigin } from "../../logs/serve.ts";
 import { localDay } from "../../quota/usage.ts";
 import { roiPeriod } from "../../roi/summary.ts";
@@ -57,12 +57,10 @@ export const hostReadsHandlers = {
     return { models: await opencode.models() };
   },
   "deps.check": async (_payload, { server }) => {
-    const { deps } = server.opts;
-    if (!deps) throw featureOff("depsCheck");
-    return await deps();
+    return await server.needIn("hostChecks", "deps")();
   },
   "doctor.run": async (payload, { server }) => {
-    return await server.need("doctor")(payload.appVersion);
+    return await server.needIn("hostChecks", "doctor")(payload.appVersion);
   },
   "statusline.get": (payload, { server }) => {
     const { quota, costs } = server.opts;

@@ -28,7 +28,9 @@ describe("daemon features: the list in the protocol matches the server", () => {
       ...[...source.matchAll(/featureOff\("(\w+)"\)/g)].map((m) => m[1]),
       ...Object.values(GATES).filter((feature) => /^\w+$/.test(feature)),
       // The options grouped by domain (#1593) gate each of their services.
-      ...Object.values(GROUP_GATES).flatMap((group) => Object.values(group)),
+      ...Object.values(GROUP_GATES)
+        .flatMap((group) => Object.values(group) as string[])
+        .filter((feature) => /^\w+$/.test(feature)),
     ]);
     expect(used.size).toBeGreaterThan(30);
     expect([...used].sort()).toEqual([...(DAEMON_FEATURES as readonly string[])].sort());
@@ -69,5 +71,14 @@ describe("daemon features: the list in the protocol matches the server", () => {
       snippetsOf({ use: {}, history: {} }),
       snippetsOf({ library: {} }),
     ]).toEqual([[], [], ["snippets"]]);
+    const checksOf = (opts: object) =>
+      featuresOf({ hostChecks: opts } as unknown as ServerOptions).filter(
+        (f) => f === "doctor.run" || f === "depsCheck",
+      );
+    expect([checksOf({}), checksOf({ doctor: fn }), checksOf({ deps: fn })]).toEqual([
+      [],
+      ["doctor.run"],
+      ["depsCheck"],
+    ]);
   });
 });

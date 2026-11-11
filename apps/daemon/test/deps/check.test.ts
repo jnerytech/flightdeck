@@ -210,7 +210,7 @@ describe("deps-check: over the protocol", () => {
       port: 0,
       token: TOKEN,
       allowedRoots: [],
-      ...(withDeps ? { deps: () => checkDeps(machine({ without: ["gh"] })) } : {}),
+      ...(withDeps ? { hostChecks: { deps: () => checkDeps(machine({ without: ["gh"] })) } } : {}),
     });
     servers.push(server);
     return server;

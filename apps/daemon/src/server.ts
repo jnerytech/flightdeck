@@ -143,6 +143,14 @@ export const serverGroup =
     h as unknown as Group<K>;
 type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
 
+/** #1593: the host's checks (`deps/`), each service optional. */
+interface HostChecksServer {
+  /** Runs the host's self-check for `doctor.run`. */
+  doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Checks the host's dependencies for `deps.check`. */
+  deps?: () => Promise<DepsResult>;
+}
+
 /** Phase 18, #1593: the snippets domain's part of the server, each service optional. */
 interface SnippetsServer {
   /** The snippets behind `snippets.*`. */
@@ -274,15 +282,13 @@ export interface ServerOptions {
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
-  /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
-  doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** The host's self-check and its dependencies (#1593); each service absent is refused and not announced. */
+  hostChecks?: HostChecksServer;
   /**
    * #1200: installs this daemon as a service for the next boot or login, refused without confirm;
    * absent (a daemon not run as its stable binary), the command is refused and not announced.
    */
   serviceInstall?: (confirm: boolean) => Promise<ServiceInstallResult>;
-  /** Checks the host's dependencies for `deps.check`; absent, the command is refused and not announced. */
-  deps?: () => Promise<DepsResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
   /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
