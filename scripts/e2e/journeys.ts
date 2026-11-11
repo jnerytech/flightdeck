@@ -1827,7 +1827,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         return {
           name: display(".top-bar-host-name"),
           chevron: display(".top-bar-host-chevron"),
-          icon: display(".top-bar-host-icon"),
+          // A host in use shows its dot and initial; with none, the server icon stands in.
+          mark: display(".top-bar-host-initial") ?? display(".top-bar-host-icon"),
           searchText: display(".top-bar-search-text"),
           searchKeys: display(".top-bar-search-keys"),
           version: display(".top-bar-version"),
@@ -1846,14 +1847,14 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
           hosts: [now.name, now.chevron, now.searchText, now.searchKeys, now.version].map((one) =>
             one === null ? "missing" : one === "none" ? "hidden" : "shown",
           ),
-          iconHidden: now.icon === "none",
+          markHidden: now.mark === "none",
           quotaFits: hidden(now.quota),
           searchWide: now.search >= 150,
         },
         `the top bar at ${width}px`,
       ).toEqual({
         hosts: Array(5).fill(compact ? "hidden" : "shown"),
-        iconHidden: !compact,
+        markHidden: !compact,
         quotaFits: true,
         searchWide: !compact,
       });
