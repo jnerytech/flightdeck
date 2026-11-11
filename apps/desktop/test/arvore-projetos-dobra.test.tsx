@@ -37,7 +37,7 @@ function setup(
   const mem = memoryPlatform(false, "en");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  if (options.folded) store.setTreeFolded(options.folded);
+  if (options.folded) store.viewPrefs.setTreeFolded(options.folded);
   const view = () => (
     <TContext.Provider value={store.i18n.t}>
       <ProjectTree
@@ -109,7 +109,7 @@ describe("arvore-projetos-dobra: a project with many worktrees (issue #215)", ()
     // A new store on the same storage: the fold is still there.
     const again = new AppStore(first.mem.platform, { baseDelayMs: 600_000 });
     again.i18n.start();
-    expect(again.treeFolded()).toEqual(["h1/p-api"]);
+    expect(again.viewPrefs.treeFolded()).toEqual(["h1/p-api"]);
     render(
       <TContext.Provider value={again.i18n.t}>
         <ProjectTree

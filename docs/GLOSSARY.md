@@ -212,6 +212,7 @@ test's baseline, with the issue that renames them.
 | `trust` | trusted | What a project's own files would load, read without running, and its trust |
 | `updates` | update | Checks, verifies and applies the daemon's signed updates |
 | `vault` | vault | Secrets in the OS store, their usage rules, windows and requests |
+| `viewprefs` | view preferences | How the person left the windows on this computer: list width, sidebar and tree folds, hub view and filter, tile layout, the board last opened |
 | `watch` | watch and fix | The rounds that watch a PR and fix what got worse |
 | `webhook` | webhook | Posts the app's events to a webhook URL, kept as a secret |
 | `workflows` | workflow | A card's steps (agent, check, gate), their engine and findings |

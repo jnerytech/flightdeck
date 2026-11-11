@@ -55,7 +55,7 @@ async function setup() {
 describe("host-ver-todas: See all sessions looks at one host without rewriting the saved filter (issue #207)", () => {
   test("the hub shows the host's sessions, but the filter kept for the next visit is the person's own", async () => {
     const { store } = await setup();
-    store.saveHubFilter({ ...store.hubFilter(), pinnedOnly: true });
+    store.viewPrefs.saveHubFilter({ ...store.viewPrefs.hubFilter(), pinnedOnly: true });
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Ver todas as sessões" })).not.toBeNull(),
     );
@@ -67,7 +67,10 @@ describe("host-ver-todas: See all sessions looks at one host without rewriting t
     // The hub counts the pinned filter; the host is the visit's scope, and the kept data scope
     // stays every host (#126).
     expect(screen.getByRole("button", { name: /Filtros/ }).textContent).toContain("1");
-    expect({ pinned: store.hubFilter().pinnedOnly, scope: store.dataScope.value }).toEqual({
+    expect({
+      pinned: store.viewPrefs.hubFilter().pinnedOnly,
+      scope: store.dataScope.value,
+    }).toEqual({
       pinned: true,
       scope: { kind: "all" },
     });
@@ -92,7 +95,10 @@ describe("host-ver-todas: See all sessions looks at one host without rewriting t
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Só fixadas" }));
     });
-    expect({ pinned: store.hubFilter().pinnedOnly, scope: store.dataScope.value }).toEqual({
+    expect({
+      pinned: store.viewPrefs.hubFilter().pinnedOnly,
+      scope: store.dataScope.value,
+    }).toEqual({
       pinned: true,
       scope: { kind: "all" },
     });

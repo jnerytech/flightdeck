@@ -558,8 +558,8 @@ export function NeedsYou(
       }
       onClose={() => setSelected(null)}
       labels={{ resize: t("needsYou.resize"), back: t("needsYou.back") }}
-      initialWidth={store.listWidth()}
-      onResize={(width) => store.setListWidth(width)}
+      initialWidth={store.viewPrefs.listWidth()}
+      onResize={(width) => store.viewPrefs.setListWidth(width)}
     />
   );
 }
