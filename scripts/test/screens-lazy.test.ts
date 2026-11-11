@@ -32,6 +32,10 @@ const LAZY_SCREENS = [
   "Settings",
 ];
 
+/** A lazy screen that moved into its feature folder (#1597): where Screens.tsx loads it from. */
+const MOVED: Record<string, string> = { SnippetsPage: "../features/snippets/page.tsx" };
+const specifierOf = (name: string) => MOVED[name] ?? `./${name}.tsx`;
+
 describe("screens-lazy: the secondary screens are not in the entry chunk", () => {
   const read = (file: string) => readFileSync(resolve(UI, file), "utf8");
 
@@ -39,7 +43,7 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
     const loaders = ["Screens.tsx", "App.tsx", "Sidebar.tsx"];
     const eager = loaders.flatMap((file) =>
       staticImports(read(file))
-        .filter((specifier) => LAZY_SCREENS.some((name) => specifier === `./${name}.tsx`))
+        .filter((specifier) => LAZY_SCREENS.some((name) => specifier === specifierOf(name)))
         .map((specifier) => `${file}: ${specifier}`),
     );
     expect(eager).toEqual([]);
@@ -48,7 +52,7 @@ describe("screens-lazy: the secondary screens are not in the entry chunk", () =>
   test("Screens.tsx loads each of them with import() inside React.lazy", () => {
     const source = read("Screens.tsx");
     for (const name of LAZY_SCREENS) {
-      expect(source).toContain(`import("./${name}.tsx")`);
+      expect(source).toContain(`import("${specifierOf(name)}")`);
     }
     expect(source).toContain("<Suspense");
   });

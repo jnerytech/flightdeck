@@ -190,13 +190,13 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { TeamsPage } = await import("../src/ui/TeamsPage.tsx");
     const { PluginsPage } = await import("../src/ui/PluginsPage.tsx");
     const { PersonasPage } = await import("../src/ui/PersonasPage.tsx");
-    const { SnippetsPage } = await import("../src/ui/SnippetsPage.tsx");
+    const { SnippetsPage } = await import("../src/features/snippets/page.tsx");
     const { CostsPage } = await import("../src/ui/CostsPage.tsx");
     const { ConnectionsPage } = await import("../src/ui/ConnectionsPage.tsx");
     const { ConversationsPage } = await import("../src/ui/ConversationsPage.tsx");
     const { Settings } = await import("../src/ui/Settings.tsx");
     const { TargetForm } = await import("../src/components/connections/target-form.tsx");
-    const { SnippetUse } = await import("../src/components/snippets/snippet-use.tsx");
+    const { SnippetUse } = await import("../src/features/snippets/snippet-use.tsx");
     const { EditSecretForm } = await import("../src/components/vault/edit-secret-form.tsx");
     const { UsageLog } = await import("../src/components/vault/usage-log.tsx");
     const { VaultReport } = await import("../src/components/vault/vault-report.tsx");

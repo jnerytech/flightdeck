@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { Page } from "@/components/layout/page";
-import { SnippetPicker } from "@/components/snippets/snippet-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SnippetPicker } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { insideFolder, resolvePath } from "../lib/terminal-paths.ts";

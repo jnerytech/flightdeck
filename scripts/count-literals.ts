@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { visibleLiterals } from "./lib/i18n-sweep.ts";
 
+const FEATURES = "apps/desktop/src/features";
 const dirs = [
   "apps/desktop/src/ui",
   "apps/desktop/src/components/approval",
@@ -9,6 +10,10 @@ const dirs = [
   "apps/desktop/src/components/layout",
   "apps/desktop/src/components/session",
   "apps/desktop/src/components/status",
+  // Screens move into their feature folder (#1597): a domain's folder is swept like the rest.
+  ...readdirSync(FEATURES, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `${FEATURES}/${entry.name}`),
 ];
 const verbose = process.argv.includes("--list");
 let total = 0;

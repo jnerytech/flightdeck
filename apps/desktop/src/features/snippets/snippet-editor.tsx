@@ -22,12 +22,11 @@ const split = (text: string) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
+/** A text per field name. */
+type Fields = Record<string, string>;
+
 /** The default and options a person typed for each field of the snippet; a field with neither is left out. */
-function varsOf(
-  names: string[],
-  defaults: Record<string, string>,
-  options: Record<string, string>,
-): Record<string, SnippetVar> {
+function varsOf(names: string[], defaults: Fields, options: Fields): Record<string, SnippetVar> {
   const vars: Record<string, SnippetVar> = {};
   for (const n of names) {
     const def = defaults[n]?.trim() ?? "";

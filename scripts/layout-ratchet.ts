@@ -10,7 +10,10 @@ import { initialised, type LayoutBaseline, screenCounts, tightened } from "./lib
 const DESKTOP = resolve(import.meta.dir, "../apps/desktop");
 const FILE = resolve(DESKTOP, "layout-baseline.json");
 
-const counts = screenCounts(resolve(DESKTOP, "src/ui"), DESKTOP);
+const counts = screenCounts(
+  [resolve(DESKTOP, "src/ui"), resolve(DESKTOP, "src/features")],
+  DESKTOP,
+);
 const baseline: LayoutBaseline = existsSync(FILE)
   ? (JSON.parse(readFileSync(FILE, "utf8")) as LayoutBaseline)
   : {};
