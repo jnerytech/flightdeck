@@ -19,6 +19,7 @@ function scope(
   const kept = new Map<string, string>();
   const log: string[] = [];
   let clientsKept = clients;
+  let overridesKept: Record<string, string | null> = { "repo-a": "acme" };
   const slice = new ClientScopeSlice({
     state: () => state,
     update: (patch) => {
@@ -28,7 +29,7 @@ function scope(
       getItem: (key) => kept.get(key) ?? null,
       setItem: (key, value) => void kept.set(key, value),
     },
-    clients: () => ({ list: () => clientsKept, overrides: () => ({ "repo-a": "acme" }) }),
+    clients: () => ({ list: () => clientsKept, overrides: () => overridesKept }),
     projects: () => {
       log.push("projects");
       return [{ key: "repo-a", cwds: [{ hostId: "h", path: "/work/a" }] }];
@@ -39,6 +40,10 @@ function scope(
     slice,
     log,
     selection: () => state.clientSelection,
+    read: () => ({ list: state.clientList.map((c) => c.id), overrides: state.clientOverrides }),
+    moveProject: (key: string, to: string | null) => {
+      overridesKept = { ...overridesKept, [key]: to };
+    },
     saved: () => kept.get(CLIENT_SELECTION_KEY) ?? null,
     removeClients: (left: Client[]) => {
       clientsKept = left;
@@ -99,6 +104,27 @@ describe("client scope (#1596)", () => {
       selection: ALL_CLIENTS,
       saved: ALL_CLIENTS,
       log: ["changed", "changed"],
+    });
+  });
+
+  test("a client list and the projects moved by hand are read again into the state", () => {
+    const { slice, read, removeClients, moveProject } = scope();
+    removeClients([client("beta")]);
+    moveProject("repo-a", null);
+    slice.sync();
+    expect(read()).toEqual({ list: ["beta"], overrides: { "repo-a": null } });
+  });
+
+  test("Unassigned stays selected while there are clients and goes back to all when the last one is gone", () => {
+    const { slice, selection, saved, removeClients } = scope({ selection: UNASSIGNED });
+    slice.sync();
+    const kept = selection();
+    removeClients([]);
+    slice.sync();
+    expect({ kept, selection: selection(), saved: saved() }).toEqual({
+      kept: UNASSIGNED,
+      selection: ALL_CLIENTS,
+      saved: ALL_CLIENTS,
     });
   });
 
