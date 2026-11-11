@@ -6,8 +6,8 @@ Uma **persona** é um papel de engenharia que o Claude assume numa sessão: nome
 modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções do papel. A tela
 **Personas** (barra lateral, para hosts que as guardam) lista pelo lugar onde ficam:
 
-- **Pacote**: treze vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
-  performance, revisor de código, docs, **frontend** (constrói as telas e deixa o julgamento de UX para a UX), **UX** (avalia se uma pessoa consegue concluir uma
+- **Pacote**: catorze vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
+  performance, revisor de código, docs, **Especificador** (transforma um pedido em issue: guarda as suas palavras, nunca muda o que foi pedido, deixa cada critério provável por um comando e não roda código), **frontend** (constrói as telas e deixa o julgamento de UX para a UX), **UX** (avalia se uma pessoa consegue concluir uma
   tarefa e só recomenda: não tem ferramenta de edição), **UI** (mantém a interface consistente com o sistema de
   design e a corrige em PRs pequenos), DBA, o coordenador de time da Fase 21 e o
   **Desenvolvedor**, o que escreve o código: teste primeiro, mudanças pequenas e no escopo, segue o

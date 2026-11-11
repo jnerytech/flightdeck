@@ -45,6 +45,8 @@ const PACK = [
   "performance",
   "revisor",
   "docs",
+  // Issue #1961: the one that turns a request into an issue, right after docs.
+  "specifier",
   "frontend",
   "ux",
   "ui",
