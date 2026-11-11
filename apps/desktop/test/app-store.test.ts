@@ -160,7 +160,7 @@ describe("desktop: estado do app", () => {
     const sessionId = (await store.createSession("a", { cwd: project, prompt: "oi" })) as string;
     await waitFor(() => store.getState().sessions[sessionKey("a", sessionId)]?.status === "idle");
     store.select("a", null);
-    await store.removeHost("a");
+    await store.roster.remove("a");
     expect(host(store, "a")).toBeUndefined();
     expect(await platform.secrets.get("a")).toBeNull();
     expect(store.getState().selected).toBeNull();

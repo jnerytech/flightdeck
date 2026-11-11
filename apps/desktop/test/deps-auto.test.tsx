@@ -74,7 +74,7 @@ describe("deps-auto: the health of a host is read by itself", () => {
   test("a reconnect, as after a daemon update, reads it again", async () => {
     const { store, hostId, asks } = await connected();
     await act(async () => {
-      await store.reconnectHost(hostId);
+      await store.roster.reconnect(hostId);
     });
     await pollFor(() => asks.deps >= 2 || undefined, "the second check");
     expect(asks.deps).toBe(2);

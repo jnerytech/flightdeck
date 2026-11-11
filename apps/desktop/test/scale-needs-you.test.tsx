@@ -102,7 +102,7 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
     act(() => store.i18n.setLang("en"));
     const translated = finished();
     act(() => {
-      store.renameHost("host-0", "alfa");
+      store.roster.rename("host-0", "alfa");
     });
     expect([appeared, translated, finished()]).toEqual([
       ["machine 0 · task 0: Concluída"],
