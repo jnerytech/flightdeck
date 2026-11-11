@@ -421,7 +421,7 @@ describe("second-opinion-ui: the Open PR confirm (#1446)", () => {
     store.hostCommand = (async (_h: string, type: string) =>
       type === "review.list" ? { comments } : {}) as never;
     store.hostRequest = (async () => ({ ok: true, data: {} })) as never;
-    store.describePr = (async () => ({ text: "Adds the cart", redacted: 0 })) as never;
+    store.prWatch.describe = (async () => ({ text: "Adds the cart", redacted: 0 })) as never;
     render(
       <TContext.Provider value={store.i18n.t}>
         <CardRunForm
@@ -463,7 +463,7 @@ describe("second-opinion-ui: the Open PR confirm (#1446)", () => {
       release = resolve;
     });
     let described = 0;
-    store.describePr = (async () => {
+    store.prWatch.describe = (async () => {
       described++;
       await hold;
       return { text: "Adds the cart", redacted: 0 };

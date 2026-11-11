@@ -31,14 +31,14 @@ function ProjectWatchSettings(
     setDraft(watchDraftOf(settings));
   }, []);
   useEffect(() => {
-    void store.watchSettings(hostId, project.id).then(keep);
+    void store.prWatch.settings(hostId, project.id).then(keep);
   }, [store, hostId, project.id, keep]);
   const set = (patch: Partial<typeof draft>) => setDraft({ ...draft, ...patch });
   const problem = validateWatchDraft(draft, t);
   const loopProblems = loopProblemsOf(draft, t);
   const save = async () => {
     if (!saved) return;
-    const settings = await store.watchSettings(hostId, project.id, watchPatchOf(draft, saved));
+    const settings = await store.prWatch.settings(hostId, project.id, watchPatchOf(draft, saved));
     keep(settings);
     if (settings) store.success(t("watchSettingsUi.saved"));
   };

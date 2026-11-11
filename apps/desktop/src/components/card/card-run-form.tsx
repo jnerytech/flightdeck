@@ -124,7 +124,7 @@ export function CardRunForm(
   /** Opens the PR: where the host watches PRs, the description is offered first and nothing opens until it is confirmed. */
   const openPr = async () => {
     if (!features.watch) return store.hostCommand(hostId, "card.pr.create", { cardId });
-    const offered = await store.describePr(hostId, cardId);
+    const offered = await store.prWatch.describe(hostId, cardId);
     prDialog.current += 1;
     setRefusal(null);
     if (offered) setDraft({ ...offered, note: await openFindingsNote() });

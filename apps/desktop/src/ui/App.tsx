@@ -276,7 +276,7 @@ export function runPaletteTarget(
       store.snippets.choose({ hostId: target.hostId, snippetId: target.snippetId });
       return;
     case "pull-link":
-      void store.openPrLink(target.url).then((route) => {
+      void store.prWatch.openLink(target.url).then((route) => {
         if (route) ui.go(route);
       });
       return;

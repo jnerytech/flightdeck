@@ -142,7 +142,7 @@ function WatchDetail(
         ))}
       </Stack>
       <Inline gap={2}>
-        <ActionButton onClick={() => store.setWatch(alert.hostId, alert.cardId, true)}>
+        <ActionButton onClick={() => store.prWatch.set(alert.hostId, alert.cardId, true)}>
           {t("watchUi.resume")}
         </ActionButton>
         {alert.projectId && (
