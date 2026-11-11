@@ -25,7 +25,8 @@ function refusalTexts(lang: string): string[] {
   const dir = resolve(import.meta.dir, "../../../apps/desktop/src/i18n");
   const files = [`${lang}.ts`];
   if (existsSync(resolve(dir, lang))) {
-    files.push(...readdirSync(resolve(dir, lang)).map((name) => `${lang}/${name}`));
+    const names = readdirSync(resolve(dir, lang)).filter((name) => name.endsWith(".ts"));
+    files.push(...names.map((name) => `${lang}/${name}`));
   }
   for (const file of files) {
     const source = readFileSync(resolve(dir, file), "utf8");
@@ -34,7 +35,7 @@ function refusalTexts(lang: string): string[] {
     const end = source.indexOf("\n  },\n", start);
     return [...source.slice(start, end).matchAll(/^ {4}(\w+):/gm)].map((m) => m[1] as string);
   }
-  return [];
+  throw new Error(`no assistantRefusal block in ${lang}.ts or the files of ${lang}/`);
 }
 
 describe("assistant-protocol", () => {

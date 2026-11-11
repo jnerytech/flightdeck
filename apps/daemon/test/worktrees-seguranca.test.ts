@@ -706,10 +706,14 @@ describe("worktrees-seguranca: only what a build recreates, at the root, goes un
     const dir = join(import.meta.dir, "../../desktop/src/i18n");
     const files = [join(dir, "en.ts")];
     if (existsSync(join(dir, "en"))) {
-      files.push(...readdirSync(join(dir, "en")).map((name) => join(dir, "en", name)));
+      const names = readdirSync(join(dir, "en")).filter((name) => name.endsWith(".ts"));
+      files.push(...names.map((name) => join(dir, "en", name)));
     }
-    const en = files.map((file) => readFileSync(file, "utf8")).join("\n");
-    expect(en).toMatch(/confirm:[\s\S]{0,300}rebuil/);
+    // One file must say it, never a match across two files.
+    const says = files.some((file) =>
+      /confirm:[\s\S]{0,300}rebuil/.test(readFileSync(file, "utf8")),
+    );
+    expect(says).toBe(true);
   });
 });
 
