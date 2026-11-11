@@ -14,9 +14,9 @@ type TrayState = Pick<AppState, "hosts" | "sessions">;
 
 /** The state fields whose change can alter the tray, the title or the menu. */
 export type TrayPatch = Partial<
-  Record<
-    "hosts" | "uiChoices" | "selected" | "externalRequests" | "externals" | "runs" | "cards",
-    unknown
+  Pick<
+    AppState,
+    "hosts" | "uiChoices" | "selected" | "externalRequests" | "externals" | "runs" | "cards"
   >
 >;
 
