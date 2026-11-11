@@ -9,7 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { CardSecondOpinion } = await import("../src/features/board/card-second-opinion.tsx");
-const { ReviewList } = await import("../src/ui/ReviewList.tsx");
+const { ReviewList } = await import("../src/features/review/review-list.tsx");
 const { CardRunForm } = await import("../src/features/board/card-run-form.tsx");
 
 setDefaultTimeout(30_000);

@@ -7,7 +7,7 @@ const { cleanup, render, waitFor, within } = await import("@testing-library/reac
 const screen = liveScreen(within);
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
-const { SessionFiles } = await import("../../src/ui/SessionFiles.tsx");
+const { SessionFiles } = await import("../../src/features/files/session-files.tsx");
 
 afterEach(cleanup);
 

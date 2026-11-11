@@ -10,7 +10,7 @@ const TABLE = [
   "| Area | Test file | What must pass |",
   "| --- | --- | --- |",
   "| `board-pull` | `apps/daemon/test/board-pull.test.ts` | a new item becomes a card |",
-  "| board-sync-ui | `apps/desktop/test/board-sync-ui.test.tsx` | the control, both languages |",
+  "| board-sync-ui | `apps/desktop/test/board/sync-ui.test.tsx` | the control, both languages |",
   "| `board-sync-smoke` | `scripts/smoke-boardsync.ts` | prints SMOKE BOARDSYNC OK |",
   "| `assistant-keys` | `apps/desktop/src-tauri/src/keys.rs` | set, status, delete (a Rust module's tests) |",
   "| `assistant-guard` | `apps/desktop/src-tauri/tests/assistant_guard.rs` | limits (a Rust integration test) |",
@@ -124,7 +124,7 @@ describe("spec-lint", () => {
   test("specAreas reads the table's areas, test files and lines", () => {
     expect(specAreas(spec()).map((a) => [a.area, a.testFile])).toEqual([
       ["board-pull", "apps/daemon/test/board-pull.test.ts"],
-      ["board-sync-ui", "apps/desktop/test/board-sync-ui.test.tsx"],
+      ["board-sync-ui", "apps/desktop/test/board/sync-ui.test.tsx"],
       ["board-sync-smoke", "scripts/smoke-boardsync.ts"],
       ["assistant-keys", "apps/desktop/src-tauri/src/keys.rs"],
       ["assistant-guard", "apps/desktop/src-tauri/tests/assistant_guard.rs"],

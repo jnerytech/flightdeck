@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { DiffView } = await import("../src/ui/DiffView.tsx");
+const { DiffView } = await import("../src/features/review/diff-view.tsx");
 
 afterEach(cleanup);
 

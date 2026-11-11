@@ -1,0 +1,31 @@
+/* The summary card under a session's header: the same 16 px from each side as the conversation. */
+@utility recap-slot {
+  flex-shrink: 0;
+  padding-inline: 1rem;
+  padding-top: 0.75rem;
+  /* Issue #422: in a short session area the band keeps tight, so the conversation keeps its room. */
+  &[data-short="true"] {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-top: 0.25rem;
+  }
+  /* No summary to show (an older daemon, a session with none): no empty band either. */
+  &:empty {
+    display: none;
+  }
+}
+
+/* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
+@utility recap-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* A short list that scrolls inside its panel instead of pushing the screen. */
+@utility rows-scroll {
+  max-height: 10rem;
+  overflow-y: auto;
+}

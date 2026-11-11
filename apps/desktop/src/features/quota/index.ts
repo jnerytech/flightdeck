@@ -3,6 +3,7 @@
  * pause guard and the notices they raise. Another domain imports from here, never a file inside.
  */
 export { QuotaGuard } from "./quota-guard.tsx";
+export { QuotaPanel } from "./quota-panel.tsx";
 export {
   initialQuotaState,
   type QuotaCore,
