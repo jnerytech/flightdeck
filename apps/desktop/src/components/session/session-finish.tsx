@@ -7,7 +7,7 @@ import { CheckField, Field } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
+import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";

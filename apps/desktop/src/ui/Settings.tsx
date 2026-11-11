@@ -8,9 +8,9 @@ import { NotificationPrefs } from "@/components/notifications/notification-prefs
 import { DiagnosticsPanel } from "@/components/settings/diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { WatchSettingsSection } from "@/components/watch/watch-settings-section";
 import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
+import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppUpdateState } from "../features/appupdate/index.ts";
 import { MessagingRulesSection } from "../features/messaging/rules-section.tsx";

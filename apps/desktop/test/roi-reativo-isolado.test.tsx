@@ -10,9 +10,9 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { RoiTable } = await import("../src/components/roi/roi-table.tsx");
-const { RoiCard } = await import("../src/components/roi/roi-card.tsx");
-const { RoiSettingsPanel } = await import("../src/components/roi/roi-settings-panel.tsx");
+const { RoiTable } = await import("../src/features/roi/roi-table.tsx");
+const { RoiCard } = await import("../src/features/roi/roi-card.tsx");
+const { RoiSettingsPanel } = await import("../src/features/roi/roi-settings-panel.tsx");
 const { RoiSettings } = await import("../src/lib/roi-settings.ts");
 
 afterEach(cleanup);

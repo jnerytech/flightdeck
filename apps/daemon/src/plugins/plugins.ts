@@ -8,9 +8,11 @@ import { appendFile, mkdir, readFile, realpath } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
 import { isInside } from "../paths.ts";
 import { whichOnPath } from "../which.ts";
 import { inspectPlugin, type PluginInventory } from "./inventory.ts";
+import { AnyJson, JsonObject, PinsJson } from "./json-reads.ts";
 
 export interface CliResult {
   code: number;
@@ -192,12 +194,7 @@ function split(id: string): { name: string; marketplace: string } {
 /** The CLI prints its answer as JSON on the last line; null when that line is not an object. */
 function lastJsonLine(stdout: string): Json | null {
   const line = stdout.trim().split(/\r?\n/).at(-1) ?? "";
-  try {
-    const json = JSON.parse(line);
-    return isObject(json) ? json : null;
-  } catch {
-    return null;
-  }
+  return parseJsonOr(JsonObject.nullable(), line, null);
 }
 
 /** The command the marketplace wants shown, when it came with a hash to send back. */
@@ -542,7 +539,8 @@ export class Plugins {
       );
     let catalog: unknown;
     try {
-      catalog = JSON.parse(
+      catalog = parseJsonWith(
+        AnyJson,
         await readFile(join(location, ".claude-plugin", "marketplace.json"), "utf8"),
       );
     } catch {
@@ -578,7 +576,7 @@ export class Plugins {
   private async validate(dir: string): Promise<{ success: boolean; errors: string[] }> {
     const result = await this.cli(["validate", dir, "--json"]);
     try {
-      const report = JSON.parse(result.stdout) as Json;
+      const report = parseJsonWith(JsonObject, result.stdout);
       const manifest = isObject(report.manifest) ? report.manifest : {};
       const errors = list(manifest.errors)
         .filter(isObject)
@@ -656,7 +654,7 @@ export class Plugins {
       });
     }
     try {
-      return JSON.parse(result.stdout);
+      return parseJsonWith(AnyJson, result.stdout);
     } catch {
       throw invalid(`claude plugin ${args[0]} did not return JSON`, "plugin_cli_not_json", {
         command: args[0] ?? "",
@@ -702,8 +700,7 @@ export function pluginDecisionLog(path: string): (decision: PluginDecision) => P
 export function filePins(path: string): PinStore {
   const read = async (): Promise<Record<string, Pin>> => {
     try {
-      const data = JSON.parse(await readFile(path, "utf8"));
-      return isObject(data) ? (data as Record<string, Pin>) : {};
+      return parseJsonOr<Record<string, Pin>>(PinsJson, await readFile(path, "utf8"), {});
     } catch {
       return {};
     }

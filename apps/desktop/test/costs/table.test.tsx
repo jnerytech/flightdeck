@@ -13,7 +13,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { RoiTable } = await import("../../src/components/roi/roi-table.tsx");
+const { RoiTable } = await import("../../src/features/roi/roi-table.tsx");
 
 afterEach(cleanup);
 const settle = waiter(5000);
