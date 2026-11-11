@@ -1,11 +1,11 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { readStyles } from "../../lib/styles-source.ts";
+import { realTempDir } from "../temp-dir.ts";
 
-const dir = mkdtempSync(join(tmpdir(), "styles-source-"));
+const dir = realTempDir("styles-source-");
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 function write(name: string, text: string): string {
