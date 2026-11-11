@@ -108,11 +108,14 @@ export const GROUP_GATES = {
 
 export type GatedGroup = keyof typeof GROUP_GATES;
 
+/** A gated service of a grouped option: a key of both its gate row and its group. */
+export type GroupKey<G extends GatedGroup> = keyof (typeof GROUP_GATES)[G] &
+  keyof NonNullable<ServerOptions[G]>;
+
 /** A service of a grouped option, as `need` gives a flat one. */
-export type GroupService<
-  G extends GatedGroup,
-  K extends keyof (typeof GROUP_GATES)[G],
-> = NonNullable<NonNullable<ServerOptions[G]>[K & keyof NonNullable<ServerOptions[G]>]>;
+export type GroupService<G extends GatedGroup, K extends GroupKey<G>> = NonNullable<
+  NonNullable<ServerOptions[G]>[K]
+>;
 
 /** The service behind a gated option; refused with `feature_off` when this host does not run it. */
 export function need<K extends GatedOption>(
@@ -125,7 +128,7 @@ export function need<K extends GatedOption>(
 }
 
 /** The service of a grouped option; refused with `feature_off` when this host does not run it. */
-export function needIn<G extends GatedGroup, K extends keyof (typeof GROUP_GATES)[G]>(
+export function needIn<G extends GatedGroup, K extends GroupKey<G>>(
   opts: ServerOptions,
   group: G,
   key: K,

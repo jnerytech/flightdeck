@@ -5,6 +5,7 @@ import {
   type GatedGroup,
   type GatedOption,
   GROUP_GATES,
+  type GroupKey,
   need,
   needIn,
 } from "../../src/server/gates.ts";
@@ -115,7 +116,7 @@ const GROUPED: Record<string, Record<string, string>> = {
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
 function groupOutcome(opts: ServerOptions, group: string, key: string): unknown {
   try {
-    return needIn(opts, group as GatedGroup, key as keyof (typeof GROUP_GATES)[GatedGroup]);
+    return needIn(opts, group as GatedGroup, key as GroupKey<GatedGroup>);
   } catch (error) {
     return error instanceof FlightdeckError
       ? { reason: error.reason, feature: error.params?.feature }

@@ -10,7 +10,7 @@ import type { SessionManager } from "../sessions/session-manager.ts";
 import {
   type GatedGroup,
   type GatedOption,
-  type GROUP_GATES,
+  type GroupKey,
   type GroupService,
   need,
   needIn,
@@ -27,10 +27,7 @@ export interface ServerContext {
   /** The service behind a gated option, or the `feature_off` refusal. */
   need<K extends GatedOption>(key: K): NonNullable<ServerOptions[K]>;
   /** The service of an option grouped by domain (#1593), or the `feature_off` refusal. */
-  needIn<G extends GatedGroup, K extends keyof (typeof GROUP_GATES)[G]>(
-    group: G,
-    key: K,
-  ): GroupService<G, K>;
+  needIn<G extends GatedGroup, K extends GroupKey<G>>(group: G, key: K): GroupService<G, K>;
   /** A registered project's folder, by its id (the board must be on). */
   projectPath(projectId: string): string;
   /** Phase 8: a session's line from its transcript and live state; null without the index. */
