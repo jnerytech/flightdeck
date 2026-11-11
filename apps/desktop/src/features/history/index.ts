@@ -10,3 +10,4 @@ export {
   initialHistoryState,
   type SearchState,
 } from "./store.ts";
+export { wireHistory } from "./wire.ts";

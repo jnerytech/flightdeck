@@ -22,9 +22,17 @@ import type {
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import { AccountSlice, initialAccountState } from "../features/account/index.ts";
-import { ActivitySlice, initialActivityState } from "../features/activity/index.ts";
+import {
+  type ActivitySlice,
+  initialActivityState,
+  wireActivity,
+} from "../features/activity/index.ts";
 import { AppUpdateSlice, initialAppUpdateState } from "../features/appupdate/index.ts";
-import { BackgroundSlice, initialBackgroundState } from "../features/background/index.ts";
+import {
+  type BackgroundSlice,
+  initialBackgroundState,
+  wireBackground,
+} from "../features/background/index.ts";
 import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
@@ -33,7 +41,7 @@ import {
   initialBudgetsState,
   initialClientBudgetsState,
 } from "../features/costs/index.ts";
-import { HistorySlice, initialHistoryState } from "../features/history/index.ts";
+import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
   HealthSlice,
   HostRosterSlice,
@@ -44,7 +52,11 @@ import {
 import { InboxSlice } from "../features/inbox/index.ts";
 import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
-import { initialPersonasState, PersonasSlice } from "../features/personas/index.ts";
+import {
+  initialPersonasState,
+  type PersonasSlice,
+  wirePersonas,
+} from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
 import { initialQuotaState, QuotaSlice } from "../features/quota/index.ts";
 import { RoiSlice } from "../features/roi/index.ts";
@@ -59,7 +71,11 @@ import {
   SummariesSlice,
 } from "../features/sessions/index.ts";
 import { initialSettingsState, SettingsSlice } from "../features/settings/index.ts";
-import { initialSnippetsState, SnippetsSlice } from "../features/snippets/index.ts";
+import {
+  initialSnippetsState,
+  type SnippetsSlice,
+  wireSnippets,
+} from "../features/snippets/index.ts";
 import { initialSshState, SshSlice } from "../features/ssh/index.ts";
 import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
@@ -82,8 +98,6 @@ import type {
   AppStoreOptions,
   GateRef,
   HistoryFilter,
-  HostCommandType,
-  HostResult,
   HostView,
   Notice,
   PendingItem,
@@ -121,6 +135,7 @@ import {
 import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { hubRows, takeHubHost } from "./hub.ts";
+import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { NotifyPreferences } from "./notify-policy.ts";
@@ -173,8 +188,6 @@ export type {
   AppStoreOptions,
   GateRef,
   HistoryFilter,
-  HostCommandType,
-  HostResult,
   HostView,
   NeedsYouState,
   Notice,
@@ -184,6 +197,7 @@ export type {
   SidebarSession,
 } from "./app-state.ts";
 export { HISTORY_PAGE, needsYou } from "./app-state.ts";
+export type { HostCommandType, HostResult } from "./kernel.ts";
 
 /** How often the app writes that it is still active (issue #1344). */
 const AWAY_MARK_MS = 60_000;
@@ -327,23 +341,22 @@ export class AppStore {
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
 
+  /** What every domain's wire file builds its slice's port from (#1596). */
+  private readonly kernel: AppKernel<AppState> = {
+    state: () => this.state,
+    update: (patch) => this.update(patch),
+    hostCommand: (hostId, type, payload, options) =>
+      this.hostCommand(hostId, type, payload, options),
+    hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+    connection: (hostId) => this.connections.get(hostId),
+  };
+
   constructor(
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.history = new HistorySlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      request: (hostId, query) =>
-        this.connections.get(hostId)?.request("history.search", { query }),
-      timeoutMs: () => options.searchTimeoutMs ?? 5000,
-    });
-    this.activity = new ActivitySlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      since: () => this.awayClock.since(),
-      request: (hostId, since) => this.hostRequest(hostId, "activity.since", { since }),
-    });
+    this.history = wireHistory(this.kernel, { searchTimeoutMs: options.searchTimeoutMs });
+    this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
     this.sessions = new SessionsSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -352,12 +365,8 @@ export class AppStore {
       t: () => this.i18n.t,
       success: (text) => this.success(text),
     });
-    this.personas = new PersonasSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.personas = wirePersonas(this.kernel, {
       storage: platform.storage,
-      list: (hostId, language) =>
-        this.hostCommand(hostId, "personas.list", { scope: "host", language }),
       language: () => this.i18n.lang,
     });
     this.ssh = new SshSlice({
@@ -392,21 +401,7 @@ export class AppStore {
       now: () => this.now(),
       timeoutMs: options.daemonUpdateTimeoutMs,
     });
-    this.background = new BackgroundSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      list: (hostId) => this.hostCommand(hostId, "bg.list", {}),
-      stop: (hostId, id) => this.hostCommand(hostId, "bg.stop", { id }),
-      respawn: (hostId, id) => this.hostCommand(hostId, "bg.respawn", { id }),
-      message: (hostId, id, text) => this.hostCommand(hostId, "bg.message", { id, text }),
-      start: (hostId, payload) => this.hostCommand(hostId, "bg.start", payload),
-      openTerminal: (hostId, session) =>
-        this.hostCommand(hostId, "terminal.open", {
-          cwd: session.cwd,
-          command: ["claude", "attach", session.id],
-          cols: 80,
-          rows: 24,
-        }),
+    this.background = wireBackground(this.kernel, {
       showTerminal: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
     });
@@ -439,15 +434,7 @@ export class AppStore {
       },
       refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
     });
-    this.snippets = new SnippetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      storage: platform.storage,
-      list: (hostId, type) => this.hostCommand(hostId, "snippets.list", { type }),
-      get: (hostId, id) => this.hostCommand(hostId, "snippets.get", { id }),
-      render: (hostId, id, cwd) =>
-        this.hostRequest(hostId, "snippets.render", { id, context: { cwd } }),
-    });
+    this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = new BudgetsSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -1623,12 +1610,7 @@ export class AppStore {
     hostId: string,
     type: T,
     payload: CommandPayload<T>,
-    /** `retry: false` for a command that opens something: repeated later, unseen, it would leave it behind. */
-    options: {
-      retry?: boolean;
-      /** The person gave this command: its refusal takes the focus when the step lost it (#1546). */
-      focusRefusal?: boolean;
-    } = {},
+    options: HostCommandOptions = {},
   ): Promise<CommandResults[T] | null> {
     try {
       return await this.dispatch(hostId, type, payload);
