@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 
 const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
-const tabBar = readFileSync(resolve(import.meta.dir, "../../src/ui/TabBar.tsx"), "utf8");
+const tabBar = readFileSync(
+  resolve(import.meta.dir, "../../src/features/tabs/tab-bar.tsx"),
+  "utf8",
+);
 
 /** The body of a named style of styles.css, or "" when there is none. */
 function utility(name: string): string {

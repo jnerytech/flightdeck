@@ -60,7 +60,7 @@ describe("guard: crumb-largura: the tab strip starts at the same place on every 
   });
 
   test("the active tab's outline is drawn on the whole tab, so its close button is inside it", () => {
-    const source = readFileSync(join(import.meta.dir, "../src/ui/TabBar.tsx"), "utf8");
+    const source = readFileSync(join(import.meta.dir, "../src/features/tabs/tab-bar.tsx"), "utf8");
     expect(source).toContain("has-[[role=tab]:focus-visible]:ring-2");
     expect(source).not.toMatch(/rounded-t-md px-2 py-1\.5 outline-none[^"]*focus-visible:ring-2/);
   });

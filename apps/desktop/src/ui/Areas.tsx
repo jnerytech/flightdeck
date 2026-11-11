@@ -3,13 +3,13 @@ import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "rea
 import { createPortal } from "react-dom";
 import { useHeaderSlot } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { TabBar } from "@/features/tabs/index.ts";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import type { Orientation } from "../lib/workspace.ts";
 import { Screen } from "./Screens.tsx";
-import { TabBar } from "./TabBar.tsx";
 
 /** Below this height the one area's tabs share the top bar's row (issue #488). */
 export const SHORT_WINDOW = "(max-height: 599px)";
