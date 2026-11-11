@@ -34,6 +34,17 @@ import { sessionLabel } from "../../lib/session-label.ts";
 import { useDraft } from "../../lib/use-draft.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import {
+  bypassAsked,
+  chosenProject,
+  confirmCopy,
+  createPayload,
+  memberPayload,
+  type NewTeamRow,
+  offeredChoice,
+  rowPersona,
+  type TeamConfirm,
+} from "./new-team.ts";
 import { TeamOutcome } from "./team-outcome.tsx";
 
 /**
@@ -50,10 +61,6 @@ function useModes(store: AppStore, hostId: string) {
   };
 }
 const MODES_KEYS = ["hosts"] as const;
-
-/** A choice the host no longer offers (Bypass after its switch went off) is the default again. */
-const offeredChoice = (value: PermissionChoice, allowBypass: boolean): PermissionChoice =>
-  value === "bypassPermissions" && !allowBypass ? "" : value;
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
@@ -72,13 +79,12 @@ function NewTeam(
   // The host's projects are asked for when the form opens: "none" is only said once it answered.
   const [asked, setAsked] = useState(false);
   useEffect(() => {
-    void store.loadProjects(hostId).finally(() => setAsked(true));
+    void store.projectList.load(hostId).finally(() => setAsked(true));
   }, [store, hostId]);
   const [goal, setGoal] = useState("");
   const [name, setName] = useState("");
   const [picked, setPicked] = useState("");
-  // The first project until another is chosen; a project just added is chosen at once.
-  const projectId = projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
+  const projectId = chosenProject(projects, picked);
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
   const modes = useModes(store, hostId);
@@ -89,46 +95,28 @@ function NewTeam(
    * One row per worker: the row's persona, model and permission mode ("" is the default). A persona
    * nobody picked is `null` and shows the Developer when the host has it.
    */
-  type Row = { persona: string | null; model: string; permission: PermissionChoice };
-  const [rows, setRows] = useState<Row[]>([
+  const [rows, setRows] = useState<NewTeamRow[]>([
     { persona: null, model: "", permission: "" },
     { persona: null, model: "", permission: "" },
   ]);
-  const setRow = (index: number, change: Partial<Row>) =>
+  const setRow = (index: number, change: Partial<NewTeamRow>) =>
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
   const workerDefault = useSuggestedPersona(store, hostId, "dev", true);
-  const personaOf = (row: Row) => row.persona ?? workerDefault;
+  const personaOf = (row: NewTeamRow) => rowPersona(row, workerDefault);
   const [creating, setCreating] = useState(false);
   // A second submit before the first answered would create the team twice.
   const inFlight = useRef(false);
   const create = async (confirmed = false) => {
     if (inFlight.current) return;
-    const coordinator = offeredChoice(permission, modes.allowBypass);
-    const workers = rows.map((row) => offeredChoice(row.permission, modes.allowBypass));
-    const asked = modes.offered ? [coordinator, ...workers] : [];
-    if (asked.includes("bypassPermissions") && !confirmed) {
+    const form = { projectId, goal, name, persona, model, permission, rows, workerDefault, modes };
+    if (bypassAsked(form) && !confirmed) {
       setAsking(true);
       return;
     }
     setAsking(false);
     inFlight.current = true;
     setCreating(true);
-    const team = await store.hostCommand(hostId, "teams.create", {
-      projectId,
-      goal,
-      ...(name.trim() ? { name: name.trim() } : {}),
-      workers: rows.length,
-      ...(persona ? { coordinatorPersona: persona } : {}),
-      ...(rows.some(personaOf) ? { workerPersonas: rows.map(personaOf) } : {}),
-      ...(model ? { coordinatorModel: model } : {}),
-      ...(rows.some((row) => row.model)
-        ? { workerModels: rows.map((row) => row.model || null) }
-        : {}),
-      ...(modes.offered && coordinator ? { coordinatorPermission: coordinator } : {}),
-      ...(modes.offered && workers.some(Boolean)
-        ? { workerPermissions: workers.map((mode) => mode || null) }
-        : {}),
-    });
+    const team = await store.hostCommand(hostId, "teams.create", createPayload(form));
     inFlight.current = false;
     setCreating(false);
     if (team) props.onCreated();
@@ -556,9 +544,7 @@ function Team(
     permission: PermissionChoice;
   } | null>(null);
   const modes = useModes(store, hostId);
-  const [confirm, setConfirm] = useState<
-    { kind: "close" } | { kind: "delete" } | { kind: "remove"; member: string } | null
-  >(null);
+  const [confirm, setConfirm] = useState<TeamConfirm | null>(null);
   const open = team.state !== "closed";
   const addMember = (member: { persona: string; model: string; permission: PermissionChoice }) => {
     setAdding(false);
@@ -566,11 +552,7 @@ function Team(
     void act(
       store.hostCommand(hostId, "teams.update", {
         team: team.id,
-        addMember: {
-          persona: member.persona || null,
-          model: member.model || null,
-          ...(member.permission ? { permission: member.permission } : {}),
-        },
+        addMember: memberPayload(member),
       }),
     );
   };
@@ -579,17 +561,8 @@ function Team(
     if (updated) props.onChanged(updated);
     return updated !== null;
   };
-  type Confirming = NonNullable<typeof confirm>;
-  const confirmMessage = (c: Confirming) => {
-    if (c.kind === "close") return t("teamsUi.closeMessage", { name: team.name });
-    if (c.kind === "delete") return t("teamsUi.deleteMessage", { name: team.name });
-    return t("teamsUi.removeMessage", { name: c.member });
-  };
-  const confirmLabel = (c: Confirming) => {
-    if (c.kind === "close") return t("teamsUi.closeButton");
-    return c.kind === "delete" ? t("teamsUi.delete") : t("teamsUi.removeButton");
-  };
-  const confirmed = (c: Confirming) => {
+  const copy = confirm ? confirmCopy(confirm, team.name, t) : null;
+  const confirmed = (c: TeamConfirm) => {
     if (c.kind === "close") {
       return store.hostCommand(hostId, "teams.close", { team: team.id, confirm: true });
     }
@@ -741,10 +714,10 @@ function Team(
           onCancel={() => setBypassing(null)}
         />
       )}
-      {confirm && (
+      {confirm && copy && (
         <ConfirmDialog
-          message={confirmMessage(confirm)}
-          confirmLabel={confirmLabel(confirm)}
+          message={copy.message}
+          confirmLabel={copy.label}
           destructive
           onConfirm={() => {
             setConfirm(null);
@@ -815,7 +788,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
     setStatuses(next);
   }, [store, current]);
   useEffect(() => {
-    if (current) void store.loadProjects(current);
+    if (current) void store.projectList.load(current);
     void load();
     return store.onTeamsUpdated(() => void load());
   }, [store, current, load]);

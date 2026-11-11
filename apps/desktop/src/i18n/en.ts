@@ -2,12 +2,14 @@ import { account } from "./en/account.ts";
 import { agent } from "./en/agent.ts";
 import { assistant } from "./en/assistant.ts";
 import { automations } from "./en/automations.ts";
+import { backup } from "./en/backup.ts";
 import { board } from "./en/board.ts";
 import { changes } from "./en/changes.ts";
 import { chrome } from "./en/chrome.ts";
 import { clients } from "./en/clients.ts";
 import { costs } from "./en/costs.ts";
 import { firstrun } from "./en/firstrun.ts";
+import { github } from "./en/github.ts";
 import { hosts } from "./en/hosts.ts";
 import { notifications } from "./en/notifications.ts";
 import { palette } from "./en/palette.ts";
@@ -19,6 +21,7 @@ import { sessions } from "./en/sessions.ts";
 import { snippets } from "./en/snippets.ts";
 import { telemetry } from "./en/telemetry.ts";
 import { vault } from "./en/vault.ts";
+import { watch } from "./en/watch.ts";
 import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
@@ -78,53 +81,7 @@ export const en: Dictionary = {
         'OpenCode is optional. To use it, set "opencode": { "enabled": true } in the host config and restart the daemon; the manual\'s OpenCode section explains each reason.',
     },
   },
-  github: {
-    title: "GitHub",
-    hint: "Sign in with the GitHub account this host uses. It goes through the host's gh: Flightdeck never sees your token.",
-    notInstalled:
-      "gh (the GitHub CLI) is not installed on this host. Install it, then check again.",
-    signedOut: "Not signed in to GitHub on this host.",
-    signIn: "Sign in with GitHub",
-    codeLabel: "One-time code",
-    codeHint: "Type this code on the GitHub page, then confirm.",
-    copyCode: "Copy code",
-    openGithub: "Open GitHub",
-    waiting: "Waiting for you to confirm on GitHub…",
-    cancel: "Cancel",
-    recheck: "Check again",
-    signedIn: "Signed in as {login}",
-    source: {
-      keyring: "kept in the system keyring",
-      file: "kept in gh's own file",
-      env: "set by an environment variable of the daemon",
-    },
-    scopes: "Access: {scopes}",
-    signOut: "Sign out",
-    signOutEnv: "The login comes from an environment variable of the daemon: remove it there.",
-  },
-  githubStart: {
-    open: "Start from GitHub",
-    title: "Start from GitHub",
-    description:
-      "Pick a repository or one of its issues. It is cloned into an allowed folder on the host, or the clone already there is used.",
-    search: "Search repositories",
-    searchButton: "Search",
-    mine: "My repositories",
-    repos: "Repositories",
-    noRepos: "No repository found.",
-    issues: "Issues of {repo}",
-    noIssues: "No open issue.",
-    wholeRepo: "No issue: just the repository",
-    folder: "Clone into",
-    mode: "Open as",
-    modeCard: "A board card",
-    modeSession: "A session",
-    start: "Start",
-    pickRepo: "Pick a repository first.",
-    private: "private",
-    done: "Started in {path}.",
-    reused: "The clone that was already there was used.",
-  },
+  ...github,
   ...board,
   ...costs,
   toast: {
@@ -141,118 +98,7 @@ export const en: Dictionary = {
   ...personas,
   ...snippets,
   ...vault,
-  backupAll: {
-    title: "Back up everything",
-    intro:
-      "One encrypted file with your settings, personas, snippets, hosts (with their tokens) and the vault. Only the passphrase you choose opens it.",
-    exportTitle: "Back up",
-    passphrase: "Passphrase",
-    confirm: "Confirm passphrase",
-    passphraseHelp: "At least 12 characters. Without it the backup cannot be opened.",
-    export: "Back up now",
-    exportNeeds: "Type the passphrase and repeat it.",
-    saved:
-      "Backup saved, where you chose. Keep the passphrase: without it the backup does not open.",
-    importTitle: "Restore a backup",
-    sourceLegend: "Restore from",
-    source: { file: "A file", drive: "Google Drive" },
-    driveLook: "Look in Google Drive",
-    driveNone: "No backups on Google Drive yet.",
-    driveChoiceLegend: "Backups on Google Drive",
-    driveNeedsSignIn: "Sign in to Google under Scheduled backups first.",
-    driveReadNeeds: "Choose a backup and type its passphrase.",
-    filePassphrase: "File passphrase",
-    read: "Read backup",
-    needsDesktop: "Restoring a backup needs the desktop app: a browser cannot open files.",
-    readNeeds: "Type the file's passphrase.",
-    kinds: {
-      settings: "Settings",
-      personas: "Personas",
-      snippets: "Snippets",
-      hosts: "Hosts",
-      vault: "Vault",
-    },
-    line: "{kind}: {added} new, {same} the same, {conflicting} different",
-    conflictList: "Different here",
-    newHosts: "New hosts",
-    choiceLegend: "When it differs",
-    nothingToRestore: "Nothing here is new. Choose to replace a difference to restore it.",
-    keep: "Keep what is here",
-    replace: "Replace with the backup",
-    restore: "Restore",
-    replaceMessage: "Replace {names} with what is in the backup? What is here is lost.",
-    replaceConfirm: "Replace",
-    result:
-      "Restored: {added} new, {overwritten} replaced, {skipped} kept. Close and reopen Flightdeck to use them.",
-    error: {
-      "short-passphrase": "The passphrase needs at least 12 characters.",
-      mismatch: "The passphrases do not match.",
-      unreadable:
-        "The file could not be read. Check the passphrase; a changed file is refused too.",
-      failed: "The restore failed and nothing was changed.",
-      "drive-auth":
-        "Google Drive does not accept the sign-in. Sign in again under Scheduled backups.",
-      "drive-failed": "Google Drive could not be read. Try again.",
-      unexpected: "Something went wrong. Nothing was changed.",
-      "too-big":
-        "This backup is too big to be restored later (over 1 MiB), so it was not saved. Remove large personas or snippets and try again.",
-    },
-  },
-  backupSchedule: {
-    title: "Scheduled backups",
-    intro:
-      "A backup is made on its own into a folder you choose, and only the last few files stay. The passphrase is asked once each time the app starts and stays in memory.",
-    cadenceLegend: "How often",
-    cadence: { off: "Off", daily: "Every day", weekly: "Every week" },
-    folder: "Folder",
-    noFolder: "No folder chosen",
-    chooseFolder: "Choose folder",
-    targetLegend: "Where to save",
-    target: { folder: "A folder", drive: "Google Drive" },
-    driveHelp:
-      "Backups go to Flightdeck's own hidden folder in your Google Drive. Only this app can see it, and each file stays encrypted with your passphrase.",
-    driveSignedIn: "Signed in to Google",
-    driveSignedOut: "Not signed in to Google",
-    driveSignIn: "Sign in with Google",
-    driveSignOut: "Sign out",
-    driveRefused: "Google did not accept the sign-in. Try again.",
-    keep: "Files to keep",
-    keepInvalid: "Type a whole number from 1. The saved number ({count}) stays.",
-    passphrase: "Passphrase for this session",
-    passphraseHelp:
-      "At least 12 characters. Kept in memory until you close Flightdeck, never saved.",
-    usePassphrase: "Use it",
-    passphraseNeeds: "Type a passphrase of at least 12 characters.",
-    passphraseSet: "Passphrase set until you close Flightdeck.",
-    lastRun: "Last backup: {when}",
-    neverRun: "No scheduled backup yet.",
-    pruneFailed: "The backup was saved, but the old files could not be removed.",
-    attention: {
-      passphrase: {
-        title: "Scheduled backups need your passphrase",
-        body: "Type it in Settings, section Backup. Until then no backup is made.",
-      },
-      "no-folder": {
-        title: "Scheduled backups have no folder",
-        body: "Choose a folder in Settings, section Backup. Until then no backup is made.",
-      },
-      failed: {
-        title: "A scheduled backup failed",
-        body: "Check that the folder still exists and has room, in Settings, section Backup.",
-      },
-      "drive-auth": {
-        title: "Scheduled backups to Google Drive need you to sign in",
-        body: "Sign in again in Settings, section Backup. Until then no backup is made.",
-      },
-    },
-    skipped: {
-      "no-folder": "A backup is due, but no folder is chosen. Choose a folder.",
-      "no-passphrase": "A backup is due, but it waits for the passphrase. Type it below.",
-      failed:
-        "The last backup could not be saved. Check that the folder still exists and has room.",
-      "drive-auth": "A backup is due, but Google Drive is not signed in. Sign in again.",
-    },
-  },
+  ...backup,
   states: {
     connecting: "Connecting to {host}…",
     loading: "Loading…",
@@ -393,25 +239,7 @@ export const en: Dictionary = {
       "The host reported an error the app does not know. Try again; if it repeats, check the daemon's log.",
   },
   ...automations,
-  ruleIssue: {
-    required: "The rule needs an id.",
-    duplicate: "Another rule has the same id.",
-    unknown_field: "This field does not exist: {field}.",
-    not_object: "This must be an object.",
-    not_list: "The rules must be a list.",
-    not_text: "This must be text.",
-    not_list_of_text: "This must be a list of texts.",
-    not_one_of: "Only these values are accepted: {allowed}.",
-    bad_time: "Use the format HH:MM, up to {last}.",
-    same_time: "The start and the end of the window cannot be the same.",
-    not_positive_int: "Use a positive whole number.",
-    not_timestamp: "Use an instant in milliseconds.",
-    once_needs_ask: "“Ask once per session” only works with the decision ask.",
-    outside_needs_window: "“Outside the window” only works together with a window.",
-    no_allow_run_with_secret: "No rule lets run_with_secret through without approval: use ask.",
-    prod_needs_window:
-      "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
-  },
+  ...watch,
   ...refusals,
   ...assistant,
   inbox: {
@@ -560,16 +388,6 @@ export const en: Dictionary = {
     copy: "Copy command",
     copyNamed: "Copy the command of {name}",
   },
-  pr: {
-    open: "PR open",
-    merged: "PR merged",
-    closed: "PR closed",
-  },
-  checks: {
-    pending: "checks pending",
-    passing: "checks passing",
-    failing: "checks failing",
-  },
   away: {
     title: "While you were away",
     lastActive: "Last active {ago}",
@@ -586,42 +404,6 @@ export const en: Dictionary = {
     quota: "Quota used: {windows}",
     quotaLine: "{window} {pct}%",
     unreached: "{host} did not answer",
-  },
-  pullRequests: {
-    title: "Pull requests",
-    subtitle: "Every open pull request on your hosts, with what to do next.",
-    list: "Open pull requests",
-    loading: "Reading the pull requests…",
-    empty: "No open pull requests.",
-    emptyDetail: "A card's PR shows up here while it is open.",
-    /** #1500: the PRs Update N from the base leaves out, each with its reason. */
-    updateLeftOut: "Left out: {items}.",
-    refused: "{title}: {reason}",
-    noHosts: "No host is online.",
-    watchOff: "Watch and fix is off",
-    conflict: "Conflicts with the base",
-    mergeClean: "No conflicts",
-    mergeBlocked: "Blocked from merging",
-    reviewApproved: "Approved",
-    reviewChanges: "Changes requested",
-    reviewRequired: "Review required",
-    opened: "Opened {ago}",
-    conflictHint: "This PR conflicts with its base: bring the branch up to date, then merge.",
-    heldHint: "GitHub may refuse this merge: {why}.",
-    heldWhy: {
-      blocked: "the branch rules hold it",
-      changes: "changes were requested",
-      required: "a review is required",
-    },
-  },
-  conflictRadar: {
-    badgeOne: "May conflict with {title}",
-    badgeMany: "May conflict with {n} cards",
-    title: "May conflict with other cards",
-    intro:
-      "These cards change the same files. Whoever merges second may have to resolve conflicts.",
-    mergeLine:
-      "Other cards change the same files: {titles}. Whoever merges second may have to resolve conflicts.",
   },
   teleportUi: {
     menu: "Move to another host…",
@@ -700,127 +482,6 @@ export const en: Dictionary = {
       expired: "Expired",
     },
   },
-  autoApprovalsUi: {
-    open: "Automatic approvals",
-    openHint:
-      "What the daemon approved, or asked you about, without your hand, and the suspended sessions.",
-    list: "Automatic decisions",
-    project: "Project",
-    allProjects: "All projects",
-    filter: "Filter decisions",
-    filterPlaceholder: "Tool or reason",
-    loading: "Loading the decisions",
-    empty: "No automatic decisions yet",
-    emptyHint:
-      "Decisions show up when a project turns automatic approval on and a session asks for permission.",
-    noMatch: "No decision matches the filter",
-    allow: "Approved",
-    ask: "Asked you",
-    byRule: "Rule",
-    byAi: "AI ({model})",
-    suspended: "Suspended sessions",
-    noSuspended: "No suspended sessions",
-    resume: "Resume {session}",
-    resumeConfirm: "Resume",
-    resumeMessage:
-      "Resume the automatic approval in {session}? It was suspended because: {reason}.",
-  },
-  watchSettingsUi: {
-    title: "Watch and fix PRs · {host}",
-    noProjects: "This host has no projects",
-    enabled: "Watch PRs by default",
-    maxRounds: "Rounds per PR",
-    budget: "Cost limit per PR (US$)",
-    daily: "Cost limit per day (US$)",
-    noLimit: "No limit",
-    checks: "Local checks (one command per line)",
-    save: "Save",
-    saved: "PR settings saved",
-    timeout: "Time limit per check (min)",
-    badTimeout: "Time limit per check: from 1 to 60 minutes",
-    badRounds: "Rounds per PR: from 1 to 10",
-    badCheck:
-      "Local checks: a command and its arguments, with no quotes, pipes, ; & $ or redirections",
-    badLimit: "{label}: empty or above zero",
-    checkRounds: "Check loop rounds",
-    checkEnv: "Extra check variables (one per line)",
-    checkLoopDefault: "Turn the check loop on for new cards",
-    badCheckRounds: "Check loop rounds: from 1 to 10",
-    badCheckEnv: "{name}: only where a tool lives, like JAVA_HOME, never a secret.",
-    envNameOnly: "{name}=…: write the name only ({name}).",
-    checkEnvHelp:
-      "Names only, like JAVA_HOME: the value comes from the host's environment. Never a secret.",
-    loopTitle: "Check loop",
-    loopIntro:
-      "When a card's turn ends, it runs these checks and sends what fails back to its session, at most this many rounds, before it moves on.",
-    maxRoundsHelp: "Rounds of fixing a PR's failing CI.",
-    fixMarked: "Fix the marked field.",
-    farReadOnly:
-      "The checks and the check loop change only over a near connection: this computer or Tailscale.",
-    tooManyCheckEnv: "Extra variables: at most 20 names, each up to 64 characters",
-  },
-  checkLoopUi: {
-    switch: "Keep going until the checks pass",
-    confirm:
-      "The checks will run the code this card writes, without asking you each time. That code can read your files and reach the network, as the session itself can.",
-    confirmAction: "Turn on",
-    farOff: "Turn it on from this computer or over Tailscale.",
-    ready: "On: when a turn ends, the project's checks run.",
-    checking: "Running the checks…",
-    fixing: "Round {round} of {max}: the session is fixing what the checks found.",
-    ended: {
-      passed: "The checks passed.",
-      rounds_spent: "The checks still failed after {max} rounds: {command}.",
-      budget: "Stopped: the project's budget is reached.",
-      quota: "Stopped: the plan's quota is reached.",
-      memory: "Stopped: the host is short of memory.",
-      person_turn: "You took over, so the loop stepped aside.",
-      stopped_by_you: "Stopped: the card was stopped, moved or the switch turned off.",
-      session_ended: "Stopped: the session ended.",
-      no_result: "Stopped: the session gave no answer in time.",
-      check_loop_confirm:
-        "Stopped: confirm the switch again for this permission mode or these checks.",
-      check_loop_untrusted: "Stopped: the project is not trusted.",
-      check_loop_mode: "Stopped: in plan mode the session cannot fix anything.",
-      check_refused: "Stopped: a check command is not allowed to run on its own.",
-      check_error: "Stopped: the checks could not be run.",
-      turn_error: "Stopped: the turn ended in an error.",
-      interrupted: "Stopped: Flightdeck restarted while a round was out.",
-    },
-  },
-  watchUi: {
-    switch: "Watch and fix",
-    watching: "Watching the PR",
-    needsYou: "Needs you: {reason}",
-    rounds: "Fixing rounds",
-    round: "Round {n} · {status}",
-    status: {
-      running: "running",
-      pushed: "pushed",
-      failed: "failed",
-      stopped: "stopped",
-      held: "held for you",
-    },
-    resume: "Watch again",
-    roundsUsed: "Fix rounds used: {used} of {max}",
-    extend: "Allow {n} more rounds",
-    outside: "Outside the PR: {files}",
-    churn: "{churn} of at most {limit} lines changed",
-    pushHeld: "Push anyway",
-    dropHeld: "Drop the round",
-    pushHeldConfirm:
-      "Push the round's commits as they are? They change files outside the PR: {files}. A push cannot be taken back.",
-    dropHeldConfirm:
-      "Drop the round's commits? The branch goes back to where the round started; work from before it stays.",
-    openCard: "Open the card",
-    notifyTitle: "A PR needs you",
-    entry: "PR of {card}: {reason}",
-    descriptionTitle: "PR description",
-    prTitle: "PR title",
-    redactedOne: "{n} line taken out for looking like a secret",
-    redactedMany: "{n} lines taken out for looking like secrets",
-    confirm: "Open the PR with this text",
-  },
   deps: {
     blocked: "Blocked · {count}",
     blockedTip: "Waiting for: {titles}",
@@ -863,34 +524,6 @@ export const en: Dictionary = {
     started: "Post-mortem started: {title}",
     notStarted:
       'The card "{title}" was made but did not start. Press Start to try again; it will not make another.',
-  },
-  alertsUi: {
-    open: "Choose an alert",
-    title: "Choose an alert",
-    intro:
-      "Open code-scanning and Dependabot alerts of this repository, the worst first. The alert's own words go into the field: read them before you start.",
-    loading: "Loading alerts",
-    failed:
-      "Could not read the alerts. The host may be offline or need a newer version of Flightdeck.",
-    list: "Alerts",
-    use: "Use alert {title}",
-    useShort: "Use",
-    empty: "No open alerts.",
-    kind: { "code-scanning": "Code scanning", dependabot: "Dependabot" },
-    severity: {
-      critical: "Critical",
-      high: "High",
-      medium: "Medium",
-      low: "Low",
-      unknown: "No severity",
-    },
-    reason: {
-      gh_missing: "{source}: the GitHub CLI (gh) is not installed on the host.",
-      not_signed_in: "{source}: gh on the host is not signed in to an account.",
-      unavailable:
-        "{source}: not available for this repository. It may be off, or gh on the host may lack access.",
-      failed: "{source}: could not be read.",
-    },
   },
   shortcuts: {
     title: "Keyboard shortcuts",
@@ -961,40 +594,6 @@ export const en: Dictionary = {
     message: "Message to {name}",
     send: "Send",
     placeholder: "Type a message",
-  },
-  rulesUi: {
-    title: "Rules",
-    note: '"Always in this project", in .claude/settings.local.json.',
-    remove: "Remove {rule}",
-    removeMessage: "Remove the rule {rule} from the project's .claude/settings.local.json?",
-    removeConfirm: "Remove rule",
-    empty:
-      'No rules yet. Choose "Always in this project" when Claude asks for permission and the rule shows up here.',
-  },
-  messagingRulesUi: {
-    title: "Messages between sessions on {host}",
-    intro: "By default only sessions of the same project or team talk. Exceptions add pairs.",
-    exceptions: "Exceptions",
-    none: "No exceptions.",
-    oneWay: "from {from} to {to}",
-    bothWays: "between {from} and {to}",
-    remove: "Remove the exception {label}",
-    removeShort: "Remove",
-    from: "From",
-    fromValue: "Source",
-    to: "To",
-    toValue: "Target",
-    both: "Both ways",
-    add: "Add exception",
-    addNeeds: "Fill in the exception's source and destination.",
-    kinds: { session: "session", project: "project", team: "team", host: "host" },
-    retention: "Retention (days)",
-    saveRetention: "Save retention",
-    paused: "Pairs paused for a loop",
-    noPaused: "No pair is paused.",
-    pair: "{a} and {b}",
-    release: "Free the pair {pair}",
-    releaseShort: "Free",
   },
   periods: {
     today: "Today",

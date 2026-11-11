@@ -63,7 +63,7 @@ export function AgentMcp(props: Readonly<{ store: AppStore; hostId: string; proj
   const liveSessionId = liveSession?.id;
 
   useEffect(() => {
-    if (!projects) void store.loadProjects(hostId);
+    if (!projects) void store.projectList.load(hostId);
   }, [store, hostId, projects]);
 
   const loadLive = useCallback(async () => {

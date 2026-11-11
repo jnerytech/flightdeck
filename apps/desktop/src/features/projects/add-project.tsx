@@ -60,7 +60,7 @@ export function AddProject(
     const project = await store.hostCommand(hostId, "project.add", { path: folder });
     if (!project) return;
     const known = store.getState().projects[hostId] ?? [];
-    store.rememberProjects(hostId, [...known.filter((p) => p.id !== project.id), project]);
+    store.projectList.remember(hostId, [...known.filter((p) => p.id !== project.id), project]);
     setOpen(false);
     setPath("");
     props.onAdded(project);

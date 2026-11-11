@@ -29,7 +29,7 @@ export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: str
   const loading = useMinLoading(decisions === null);
 
   useEffect(() => {
-    if (projects === undefined) void store.loadProjects(hostId);
+    if (projects === undefined) void store.projectList.load(hostId);
   }, [store, hostId, projects]);
   const load = useCallback(async () => {
     const result = await store.hostCommand(

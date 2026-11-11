@@ -18,9 +18,9 @@ describe("roi-pessoas-reativa: the people table follows the people the person ke
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     // Count the answers that came back: once the first load has finished, nothing else re-renders
     // the table, which is what the test is about.
-    const asked = store.roiSummaries.bind(store);
+    const asked = store.roiFigures.summaries.bind(store.roiFigures);
     let answered = 0;
-    store.roiSummaries = async (...args) => {
+    store.roiFigures.summaries = async (...args) => {
       const all = await asked(...args);
       answered += 1;
       return all;

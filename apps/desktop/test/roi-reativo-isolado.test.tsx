@@ -33,7 +33,7 @@ function answering() {
   // The card opens folded (issue #178); these tests read its details, so it starts open.
   mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
-  store.roiSummaries = async () => [{ hostId: "h1", result: RESULT }];
+  store.roiFigures.summaries = async () => [{ hostId: "h1", result: RESULT }];
   return store;
 }
 
@@ -83,7 +83,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
     // The card opens folded (issue #178); these tests read its details, so it starts open.
     mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
-    store.roiSummaries = async () => [];
+    store.roiFigures.summaries = async () => [];
     const project = {
       id: "p1",
       path: "/work/shop",

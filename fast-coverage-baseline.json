@@ -237,7 +237,6 @@
   "packages/protocol/src/snippets.ts",
   "scripts/lib/axe.ts",
   "scripts/lib/blocking-audit-ratchet.ts",
-  "scripts/lib/blocking-key-ratchet.ts",
   "scripts/lib/browser.ts",
   "scripts/lib/bundle-budget.ts",
   "scripts/lib/bundle-reach.ts",

@@ -39,7 +39,7 @@ export function ProjectPage(
   const project = state.projects[hostId]?.find((p) => p.id === projectId);
 
   useEffect(() => {
-    if (!state.projects[hostId]) void store.loadProjects(hostId);
+    if (!state.projects[hostId]) void store.projectList.load(hostId);
   }, [store, hostId, state.projects]);
   // The tiles are made of the hub's lists, which the Sessions screen used to be the only one to ask for.
   useEffect(() => {
@@ -84,7 +84,11 @@ export function ProjectPage(
       icon: NAV_ICONS.sessions,
       route: {
         name: "hub",
-        project: { hostId, projectKey: store.projectKeyOf(hostId, project), name: project.name },
+        project: {
+          hostId,
+          projectKey: store.projectList.keyOf(hostId, project),
+          name: project.name,
+        },
       },
     },
     {
@@ -104,7 +108,7 @@ export function ProjectPage(
             route: {
               name: "costs",
               host: hostId,
-              projectKey: store.projectKeyOf(hostId, project),
+              projectKey: store.projectList.keyOf(hostId, project),
             } as Route,
           },
         ]
@@ -194,7 +198,7 @@ export function ProjectPage(
         store={store}
         state={state}
         hostId={hostId}
-        projectKey={store.projectKeyOf(hostId, project)}
+        projectKey={store.projectList.keyOf(hostId, project)}
         path={project.path}
         onOpen={(row) => props.go({ name: "session", host: hostId, id: row.sessionId as string })}
       />

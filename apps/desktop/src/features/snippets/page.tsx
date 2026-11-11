@@ -57,7 +57,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const openSettings = () => props.go({ name: "settings", section: "assistant" });
 
   useEffect(() => {
-    if (hostId) void store.loadProjects(hostId);
+    if (hostId) void store.projectList.load(hostId);
   }, [store, hostId]);
 
   const reload = useCallback(async () => {

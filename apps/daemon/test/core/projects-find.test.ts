@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { FlightdeckError } from "../../src/errors.ts";
-import { cloneRepo, type GitRunner, scanRepos } from "../../src/project-find.ts";
+import { cloneRepo, type GitRunner, gitRunner, scanRepos } from "../../src/project-find.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
-import { BASELINE_FEATURES, newManager, poll, tempDir } from "../support/helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, reasonOf, tempDir } from "../support/helpers.ts";
 
 /** A root with repos at several depths, plus things a scan must not enter or follow. */
 function tree() {
@@ -240,4 +241,63 @@ describe("projetos-busca: the commands", () => {
       ...BASELINE_FEATURES,
     ]);
   });
+});
+
+describe("projetos-busca: odd inputs and the real git runner", () => {
+  test("an address that names nothing is a bad folder name", async () => {
+    const roots = [tempDir("fd-clone-")];
+    const git = async () => ({ code: 0, stderr: "" });
+    expect(
+      await reasonOf(cloneRepo({ url: "https://", root: roots[0] as string }, roots, git)),
+    ).toBe("clone_name_invalid");
+  });
+
+  test("the real git runner answers its exit code and stderr, and stops a git that never ends", async () => {
+    const run = gitRunner(5_000);
+    expect(await run(["--version"])).toMatchObject({ code: 0 });
+    const failed = await run([
+      "clone",
+      "--",
+      join(tempDir(), "no-such-repo"),
+      join(tempDir(), "dest"),
+    ]);
+    expect(failed.code).not.toBe(0);
+    // A git command that really runs for seconds on every OS: an alias that starts this Bun (git
+    // runs `!` aliases with its own sh, also on Windows, which has no `sleep` on the path).
+    const bun = process.execPath.replaceAll("\\", "/");
+    const impatient = gitRunner(300);
+    const started = Date.now();
+    const slow = await impatient([
+      "-c",
+      `alias.slow=!"${bun}" -e "setTimeout(() => {}, 5000)"`,
+      "slow",
+    ]);
+    const took = Date.now() - started;
+    expect(slow.code).not.toBe(0);
+    // It waited for the timer (a git that failed at once would be back sooner) and was stopped well
+    // before the five seconds were up.
+    expect(took).toBeGreaterThanOrEqual(250);
+    expect(took).toBeLessThan(4_000);
+  }, 30_000);
+
+  test("a scan skips a folder it cannot read and still finds the others", async () => {
+    const root = tempDir("fd-scan-");
+    for (const name of ["a/.git", "locked/inner/.git", "b/.git"])
+      mkdirSync(join(root, name), { recursive: true });
+    // A listing that fails for one folder, on every OS (chmod 000 does nothing on Windows).
+    const failing = (async (dir: Parameters<typeof readdir>[0], ...rest: unknown[]) => {
+      if (String(dir).endsWith("locked"))
+        throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+      return (readdir as (...args: unknown[]) => Promise<unknown>)(dir, ...rest);
+    }) as typeof readdir;
+    const found = await scanRepos([root], { readdir: failing });
+    expect(found.repos.map((r) => r.name).sort()).toEqual(["a", "b"]);
+  });
+
+  test("a scan stops after opening 2000 folders and says it was cut short", async () => {
+    const root = tempDir("fd-scan-many-");
+    for (let i = 0; i < 2_100; i += 1) mkdirSync(join(root, `d${i}`));
+    const found = await scanRepos([root]);
+    expect(found.truncated).toBe(true);
+  }, 30_000);
 });
