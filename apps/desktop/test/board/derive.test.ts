@@ -41,7 +41,9 @@ describe("board derive: the cards the board shows", () => {
     expect(
       shownCards(all, "", false, { kind: "worktree", path: "/wt/x" } as never).map((c) => c.id),
     ).toEqual(["b", "c"]);
-    expect(shownCards(all, "", false, { kind: "primary" } as never).map((c) => c.id)).toEqual(["a"]);
+    expect(shownCards(all, "", false, { kind: "primary" } as never).map((c) => c.id)).toEqual([
+      "a",
+    ]);
   });
 
   test("the filters stack", () => {
