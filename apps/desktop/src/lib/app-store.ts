@@ -74,13 +74,17 @@ import {
   SessionsSlice,
   SummariesSlice,
 } from "../features/sessions/index.ts";
-import { initialSettingsState, SettingsSlice } from "../features/settings/index.ts";
+import {
+  initialSettingsState,
+  type SettingsSlice,
+  wireSettings,
+} from "../features/settings/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
   wireSnippets,
 } from "../features/snippets/index.ts";
-import { initialSshState, SshSlice } from "../features/ssh/index.ts";
+import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
@@ -351,6 +355,7 @@ export class AppStore {
     hostCommand: (hostId, type, payload, options) =>
       this.hostCommand(hostId, type, payload, options),
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+    dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
     t: () => this.i18n.t,
@@ -375,15 +380,7 @@ export class AppStore {
       storage: platform.storage,
       language: () => this.i18n.lang,
     });
-    this.ssh = new SshSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      list: (hostId) => this.hostCommand(hostId, "ssh.list", {}),
-      peek: (hostId) => quiet(this.dispatch(hostId, "ssh.list", {})),
-      save: (hostId, payload) => this.hostCommand(hostId, "ssh.save", payload),
-      connect: (hostId, payload) => this.hostCommand(hostId, "ssh.connect", payload),
-      answer: (hostId, requestId, secret) =>
-        this.hostCommand(hostId, "askpass.answer", { requestId, secret }),
+    this.ssh = wireSsh(this.kernel, {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
@@ -415,11 +412,8 @@ export class AppStore {
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
     });
-    this.settings = new SettingsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.settings = wireSettings(this.kernel, {
       platform,
-      t: () => this.i18n.t,
       onShortcut: () => this.history.openSearch(),
     });
     this.hostTabs = HostTabs.restore(

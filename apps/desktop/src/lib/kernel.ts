@@ -157,6 +157,15 @@ export interface AppKernel<S extends object> {
     type: C,
     payload: CommandPayload<C>,
   ): Promise<HostResult<CommandResults[C]>>;
+  /**
+   * Sends a command to a host and gives its result; the cards and runs in it reach the app. A
+   * refusal or an offline host throws, with no banner: the caller decides what it shows.
+   */
+  dispatch<C extends HostCommandType>(
+    hostId: string,
+    type: C,
+    payload: CommandPayload<C>,
+  ): Promise<CommandResults[C]>;
   /** A host's open connection, if it has one. */
   connection(hostId: string): HostConnection | undefined;
   /** Milliseconds now (injected in tests). */
