@@ -2942,7 +2942,13 @@ async function flatTabsProblem(page: Page): Promise<string | null> {
     ];
     const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
     const other = items.find((it) => it !== active);
-    if (!active || !other) return ["need an active tab and another one"];
+    if (!active || !other) {
+      const all = [...bar.querySelectorAll<HTMLElement>(".tab-item")].map(
+        (it) =>
+          `${it.dataset.pinned ? "pinned " : ""}${it.dataset.prod ? "prod " : ""}${it.dataset.drop ? "drop " : ""}${it.querySelector('[role="tab"][aria-selected="true"]') ? "active" : "idle"}`,
+      );
+      return [`need an active tab and another one (tabs: ${all.join(", ") || "none"})`];
+    }
     // What a token resolves to on this page: a probe painted with it, read back as a colour.
     const token = (property: "background-color" | "color", value: string) => {
       const probe = document.createElement("span");
@@ -3223,9 +3229,10 @@ export async function layoutAbas(c: Context, problems: string[]) {
   const tabList = await tabListProblem(c.page);
   if (tabList)
     problems.push(`${c.lang} ${smallest.width}x${smallest.height} lista de abas: ${tabList}`);
-  // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
+  // Which tab is open shows at a glance (#488), checked at 1280x800 with three tabs, so a shared
+  // tab besides the active one is on the bar (the board's is its host's, which the bar may not list).
   await c.page.setViewportSize({ width: 1280, height: 800 });
-  await openCrowded(c, { name: "hub" }, 2);
+  await openCrowded(c, { name: "hub" }, 3);
   const activeTab = await activeTabProblem(c.page);
   if (activeTab) problems.push(`${c.lang} 1280x800 aba ativa: ${activeTab}`);
   const flatTabs = await flatTabsProblem(c.page);
