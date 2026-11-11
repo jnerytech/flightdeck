@@ -59,9 +59,7 @@ import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
 import { packPersonas } from "./personas/pack.ts";
-import { type Prepare, preparePersonas } from "./personas/prepare.ts";
-import { agentPublisher } from "./personas/publish.ts";
-import { Personas } from "./personas/store.ts";
+import { createPersonas } from "./personas/wiring.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
@@ -282,12 +280,11 @@ export async function startDaemon(
   const snippetScanner = new SecretScanner();
   // Phase 12's agent editor also writes the personas published as project agents.
   const agentcfg = new AgentConfig();
-  const personaStore = new Personas({
+  const { personaStore, prepare } = createPersonas({
     db: store.db,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
-    pack: packPersonas,
-    publisher: agentPublisher(agentcfg),
+    agents: agentcfg,
   });
   const awake: {
     pinned?: (claudeSessionId: string | null) => boolean;
@@ -394,7 +391,6 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
     folderLocks,
     preparePersonas: prepare,
