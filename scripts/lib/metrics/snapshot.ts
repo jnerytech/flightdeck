@@ -86,7 +86,7 @@ export interface Snapshot {
   hotspots: Windowed<Hotspot[]>;
   coupling: Windowed<CoupledPair[]>;
   ratchets: RatchetRow[] | null;
-  coverage: null;
+  coverage: CoverageSummary | null;
   ciHealth: Windowed<CiHealth> | null;
   prSize: Windowed<PrSize> | null;
   mainRed: Windowed<MainRed> | null;
@@ -97,7 +97,6 @@ const DAYS = 30;
 const HOTSPOT_LIMIT = 15;
 /** Files whose line count is read per window: the most changed, since a ranking needs lines for few. */
 const LINE_CANDIDATES = 60;
-const LATER_TASK = "not collected by this version of the script (#1949, a later task)";
 const LOG_FORMAT = "--format=%x1e%H%x1f%cI%x1f%s";
 
 /** The first line of a git answer, or null when it failed. */
@@ -223,7 +222,8 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
   const ratchets = await deps.arch().catch(() => null);
   if (ratchets === null)
     unavailable.push({ metric: "ratchets", reason: "arch-report.ts wrote no report" });
-  unavailable.push({ metric: "coverage", reason: LATER_TASK });
+  const covered = await deps.coverage(commit).catch((error: Error) => ({ reason: error.message }));
+  if ("reason" in covered) unavailable.push({ metric: "coverage", reason: covered.reason });
 
   const to = new Date(tagDate);
   const windows: { sinceRelease: TimeWindow | null; last30Days: TimeWindow } = {
@@ -262,7 +262,7 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
       last30Days: last30Days?.coupling ?? null,
     },
     ratchets,
-    coverage: null,
+    coverage: "summary" in covered ? covered.summary : null,
     ciHealth: "rows" in ci ? windowed(windows, (w) => ciHealth(ci.rows, w)) : null,
     prSize:
       "rows" in prs
