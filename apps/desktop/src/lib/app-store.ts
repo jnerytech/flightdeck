@@ -9,7 +9,7 @@ import type {
   HistoryListResult,
   MessageInfo,
   Project,
-  RoiSummaryResult,
+  ProjectDetectResult,
   RunConfigInfo,
   RunState,
   SessionImage,
@@ -50,7 +50,11 @@ import {
   wireHealth,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
-import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
+import {
+  initialMessagingState,
+  type MessagingSlice,
+  wireMessaging,
+} from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
@@ -145,7 +149,6 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
-import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import { sessionKey } from "./session-key.ts";
 import { SessionViews } from "./session-views.ts";
@@ -350,6 +353,7 @@ export class AppStore {
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
+    t: () => this.i18n.t,
   };
 
   constructor(
@@ -428,13 +432,8 @@ export class AppStore {
         this.inbox.notify(notification, route, undefined, source),
       t: () => this.i18n.t,
     });
-    this.messaging = new MessagingSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
-      setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
+    this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
-      t: () => this.i18n.t,
     });
     this.settings = new SettingsSlice({
       state: () => this.state,
@@ -958,11 +957,6 @@ export class AppStore {
   /** Today as `YYYY-MM-DD`, in this machine's time zone unless injected. */
   today(): string {
     return (this.options.day ?? localDay)(this.now());
-  }
-
-  /** Phase 36: the day the hosts' ROI figures end on (UTC, as a host dates a delivery). */
-  roiToday(): string {
-    return this.roiFigures.today();
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
@@ -2242,25 +2236,12 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /** Phase 36: each online host's `roi.summary` for the days given; a host that cannot answer is left out. */
-  roiSummaries(
-    from: string,
-    to: string,
-  ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    return this.roiFigures.summaries(from, to);
-  }
-
-  /** Phase 36: what the person typed that turns the work of a project into money. */
-  roiMoneyOf(projectKey: string): RoiMoney {
-    return this.roiFigures.moneyOf(projectKey);
-  }
-
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
   readonly roi: RoiSettings;
   /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
-  private readonly roiFigures: RoiSlice;
+  readonly roiFigures: RoiSlice;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;

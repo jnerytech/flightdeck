@@ -27,8 +27,8 @@ export function RoiPeople(props: Readonly<{ store: AppStore }>) {
   useEffect(() => {
     let live = true;
     const load = () => {
-      const { from, to } = periodRange("month", store.roiToday());
-      void store.roiSummaries(from, to).then((all) => {
+      const { from, to } = periodRange("month", store.roiFigures.today());
+      void store.roiFigures.summaries(from, to).then((all) => {
         if (live) setAnswers(all);
       });
     };
