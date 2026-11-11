@@ -29,10 +29,10 @@ describe("arch-report (#1610)", () => {
     ]);
   });
 
-  test("a rule that is new against main has baseline 0; no known file at all gives no depcruise rows", () => {
+  test("with no known file on main yet, today is the first baseline; no known file at all gives no depcruise rows", () => {
     const rows = ratchetRows(inputs({ knownBase: null, knownHead: known({ "no-cycles": 2 }) }));
     expect(rows.filter((r) => r.ratchet.startsWith("depcruise"))).toEqual([
-      { ratchet: "depcruise no-cycles", baseline: 0, today: 2 },
+      { ratchet: "depcruise no-cycles", baseline: 2, today: 2 },
     ]);
     expect(
       ratchetRows(inputs({ knownBase: null, knownHead: null })).some((r) =>
