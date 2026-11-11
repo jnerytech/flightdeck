@@ -53,6 +53,8 @@
   "src/features/ssh/target-form.tsx": 6,
   "src/features/teams/page.tsx": 21,
   "src/features/teams/team-outcome.tsx": 2,
+  "src/features/trust/trust-panel.tsx": 8,
+  "src/features/trust/untrusted-notice.tsx": 6,
   "src/features/vault/backup-panel.tsx": 4,
   "src/features/vault/edit-secret-form.tsx": 10,
   "src/features/vault/new-secret-form.tsx": 15,

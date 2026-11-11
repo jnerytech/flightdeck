@@ -5,7 +5,7 @@ import { memoryPlatform } from "./fixtures.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { UntrustedNotice } = await import("../src/components/projects/untrusted-notice.tsx");
+const { UntrustedNotice } = await import("../src/features/trust/untrusted-notice.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
