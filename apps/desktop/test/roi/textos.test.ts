@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { en } from "../src/i18n/en.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
+import { en } from "../../src/i18n/en.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
 
 type Tree = { [key: string]: string | Tree };
 
@@ -19,7 +19,7 @@ const texts = {
   en: flatten(en.roiUi as unknown as Tree),
   "pt-BR": flatten(ptBR.roiUi as unknown as Tree),
 };
-const glossary = readFileSync(resolve(import.meta.dir, "../../../docs/GLOSSARY.md"), "utf8");
+const glossary = readFileSync(resolve(import.meta.dir, "../../../../docs/GLOSSARY.md"), "utf8");
 
 describe("roi-textos: the words of the return on cost", () => {
   test("both dictionaries have the same keys", () => {
