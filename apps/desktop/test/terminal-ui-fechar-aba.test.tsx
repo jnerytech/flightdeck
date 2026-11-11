@@ -33,7 +33,7 @@ async function setup() {
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
   await waitFor(() => expect(store.getState().hosts[0]?.hostInfo).not.toBeNull());
-  const terminalId = await act(() => store.openTerminal(hostId));
+  const terminalId = await act(() => store.terminals.open(hostId));
   expect(terminalId).not.toBeNull();
   return { ...d, store, hostId, terminalId: terminalId as string };
 }
@@ -75,7 +75,7 @@ describe("terminal-ui: fechar a aba de um terminal", () => {
     await click(inDialog("Desanexar"));
     await waitFor(() => expect(store.tabs.tabs).toHaveLength(1));
     expect(ptys.spawned[0]?.killed).toBe(false);
-    const live = await store.terminalHost(hostId).list();
+    const live = await store.terminals.host(hostId).list();
     expect(live.map((terminal) => terminal.terminalId)).toEqual([terminalId]);
   });
 

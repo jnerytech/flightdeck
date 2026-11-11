@@ -47,7 +47,7 @@ async function open(withTerminal = true, extra: Array<Record<string, unknown>> =
   await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("snippets") === true);
   let terminalId = "";
   if (withTerminal) {
-    terminalId = (await store.terminalHost(h.hostId).open(h.d.project, 80, 24)).terminalId;
+    terminalId = (await store.terminals.host(h.hostId).open(h.d.project, 80, 24)).terminalId;
     await act(async () => {
       store.router.push({ name: "terminal", host: h.hostId, terminalId });
     });

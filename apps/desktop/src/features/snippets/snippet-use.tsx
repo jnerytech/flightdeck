@@ -97,8 +97,8 @@ export const SnippetUse = memo(function SnippetUse(props: {
     if (choice.hostId === null) {
       const text = fillGlobal();
       if (text === null) return;
-      await store
-        .terminalHost(terminal.host)
+      await store.terminals
+        .host(terminal.host)
         .write(terminal.terminalId, enter ? `${text}\r` : text);
       return done();
     }
@@ -121,8 +121,8 @@ export const SnippetUse = memo(function SnippetUse(props: {
     if (!hostId) return;
     const text = fillGlobal();
     if (text === null) return;
-    const { terminalId } = await store.terminalHost(hostId).open(folder, 120, 30);
-    await store.terminalHost(hostId).write(terminalId, `${text}\r`);
+    const { terminalId } = await store.terminals.host(hostId).open(folder, 120, 30);
+    await store.terminals.host(hostId).write(terminalId, `${text}\r`);
     store.hostTabs.open({ name: "terminal", host: hostId, terminalId });
     done();
   };
