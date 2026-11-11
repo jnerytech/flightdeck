@@ -16,6 +16,8 @@ const KINDS = ["feature", "bug", "refactor", "task"] as const;
 type Kind = (typeof KINDS)[number];
 const REPO = "jnerytech/flightdeck";
 const ASSIGNEE = "jnerytech";
+/** The label every issue written in this format carries (#1938). */
+const LABEL = "mini-spec";
 const USAGE =
   'usage: bun run issue -- check (--body-file <md> | <n>) | new --title "<t>" --body-file <md> | edit <n> --body-file <md>';
 
@@ -180,6 +182,8 @@ export async function runIssue(args: string[], deps: IssueDeps): Promise<number>
       `body=${body}`,
       "-f",
       `assignees[]=${ASSIGNEE}`,
+      "-f",
+      `labels[]=${LABEL}`,
       "--jq",
       ".number",
     ]);
@@ -204,7 +208,19 @@ export async function runIssue(args: string[], deps: IssueDeps): Promise<number>
       "-f",
       `body=${body}`,
     ]);
-    return patched.code === 0 ? 0 : ghFailed(`editing issue ${n}`, patched, deps);
+    if (patched.code !== 0) return ghFailed(`editing issue ${n}`, patched, deps);
+    // The labels endpoint only adds: a PATCH with labels[] would replace the issue's whole set.
+    const labelled = await deps.gh([
+      "api",
+      "-X",
+      "POST",
+      `repos/${REPO}/issues/${n}/labels`,
+      "-f",
+      `labels[]=${LABEL}`,
+    ]);
+    if (labelled.code === 0) return 0;
+    deps.log("the body is saved and the label is not");
+    return ghFailed(`labelling issue ${n}`, labelled, deps);
   }
   deps.log(USAGE);
   return 2;

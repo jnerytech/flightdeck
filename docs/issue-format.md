@@ -11,7 +11,7 @@ bun run issue -- new --title "<title>" --body-file body.md
 bun run issue -- edit <n> --body-file body.md
 ```
 
-`new` and `edit` refuse a body that fails the check (exit 1, nothing is sent). `new` creates the
+`new` and `edit` refuse a body that fails the check (exit 1, nothing is sent). `new` and `edit` add the `mini-spec` label to the issue, and never remove another label. `new` creates the
 issue in this repository, assigned to the account that owns it, and prints its number. Board
 placement and progress notes stay with `issue-note.sh`.
 
