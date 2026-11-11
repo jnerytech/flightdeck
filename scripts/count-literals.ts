@@ -6,7 +6,6 @@ const dirs = [
   "apps/desktop/src/ui",
   "apps/desktop/src/components/approval",
   "apps/desktop/src/components/feedback",
-  "apps/desktop/src/components/hosts",
   "apps/desktop/src/components/layout",
   "apps/desktop/src/components/session",
   "apps/desktop/src/components/status",

@@ -15,6 +15,7 @@ import type { Lang } from "@/i18n/index";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
+import { NeedsYou } from "../features/needs-you/page.tsx";
 import {
   type AppState,
   type AppStore,
@@ -38,7 +39,6 @@ import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
-import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
 import { RecapPanel } from "./RecapPanel.tsx";
@@ -64,7 +64,7 @@ const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
 const ClientsPage = lazyScreen(() => import("../features/clients/page.tsx"), "ClientsPage");
 const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "ConnectionsPage");
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");
-const PullRequestsPage = lazyScreen(() => import("./PullRequestsPage.tsx"), "PullRequestsPage");
+const PrsPage = lazyScreen(() => import("../features/board/pull-requests.tsx"), "PullRequestsPage");
 const CostsPage = lazyScreen(() => import("../features/costs/page.tsx"), "CostsPage");
 const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("../features/hosts/page.tsx"), "HostPage");
@@ -940,7 +940,7 @@ function routeScreen(props: ScreenProps): ReactNode {
         />
       );
     case "pull-requests":
-      return <PullRequestsPage store={store} go={go} />;
+      return <PrsPage store={store} go={go} />;
     case "conversations":
       return <Messaging store={store} go={go} />;
     case "personas":

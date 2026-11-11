@@ -13,7 +13,7 @@ import { PostMortem } from "@/components/card/post-mortem";
 import { RunAgain } from "@/components/card/run-again";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
-import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
+import { PrWatchPanel } from "@/features/watch/pr-watch-panel.tsx";
 import { useT } from "@/i18n/context";
 import { canMergeCardPr } from "@/lib/card-merge-pr";
 import { reasonText } from "@/lib/notice-text";

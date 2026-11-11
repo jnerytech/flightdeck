@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -12,7 +12,7 @@ const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../src/styles.css"));
 const block = (name: string) => css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
 describe("sidebar-hosts: the nav and the hosts scroll as one body between a fixed header and footer (#171, #567)", () => {

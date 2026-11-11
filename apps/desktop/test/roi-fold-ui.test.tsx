@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { RoiCard } = await import("../src/components/roi/roi-card.tsx");
+const { RoiCard } = await import("../src/features/roi/roi-card.tsx");
 const { EMPTY_PERIOD } = await import("../src/lib/roi.ts");
 
 setDefaultTimeout(30_000);

@@ -5,10 +5,8 @@ import type {
   CommandResults,
   CommandType,
   EffortLevel,
-  EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
-  ExternalUpdated,
   HelloResult,
   HistoryChanged,
   HistoryGetResult,
@@ -33,14 +31,13 @@ import type {
   SessionRecap,
   SessionRuntime,
   SessionStatus,
-  SessionSubscribeResult,
   SessionSummary,
   SettableMode,
   TeamsUpdatedFrame,
   WatchInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS, FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import {
   AccountSlice,
   type AccountSliceState,
@@ -96,10 +93,13 @@ import {
   PersonasSlice,
   type PersonasSliceState,
 } from "../features/personas/index.ts";
+import { ProjectsSlice } from "../features/projects/index.ts";
 import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
 import {
+  ExternalSessionsSlice,
   initialSessionsState,
   SessionCommandsSlice,
+  SessionStreamSlice,
   SessionsSlice,
   type SessionsSliceState,
   SummariesSlice,
@@ -165,26 +165,19 @@ import { hubRows, takeHubHost } from "./hub.ts";
 import type { InboxEntry } from "./inbox.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { externalRequestNotification } from "./notify.ts";
 import { NotifyPreferences } from "./notify-policy.ts";
 import { basename, isInside } from "./paths.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
-import { parseRequestLink, requestLink } from "./request-link.ts";
+import { parseRequestLink } from "./request-link.ts";
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
 import { sessionKey } from "./session-key.ts";
 import { sessionLabel } from "./session-label.ts";
-import {
-  applyEnvelope,
-  emptySession,
-  endStreaming,
-  markGap,
-  type SessionState,
-} from "./session-state.ts";
+import type { SessionState } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
 import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
@@ -807,13 +800,6 @@ function setupWants(
   };
 }
 
-/** The list with this project in the place of the one of its id, or at the end when it was not there. */
-function replaceOrAdd(projects: Project[], project: Project): Project[] {
-  return projects.some((one) => one.id === project.id)
-    ? projects.map((one) => (one.id === project.id ? project : one))
-    : [...projects, project];
-}
-
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -827,6 +813,10 @@ export class AppStore {
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
+  /** What a host tells about the Claude sessions started in a terminal (#1596). */
+  readonly external: ExternalSessionsSlice;
+  /** What a host's session events do to the conversations the app holds (#1596). */
+  readonly stream: SessionStreamSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -1134,6 +1124,19 @@ export class AppStore {
       const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
       return clientId === UNASSIGNED ? null : clientId;
     });
+    this.projectList = new ProjectsSlice({
+      state: () => this.state,
+      setProjects: (projects) => this.update({ projects }),
+      quietly: async (hostId, type, payload) => {
+        const conn = this.connections.get(hostId);
+        return conn ? quiet(conn.request(type, payload)) : null;
+      },
+      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+      refused: (hostId, { code, message, reason, params, items }) =>
+        this.fail(new RequestError(code, message, reason, params, items, hostId)),
+      success: (text) => this.success(text),
+      t: () => this.i18n.t,
+    });
     this.prWatch = new WatchSlice({
       command: (hostId, type, payload, options) => this.hostCommand(hostId, type, payload, options),
       hosts: () => this.state.hosts,
@@ -1315,6 +1318,22 @@ export class AppStore {
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
       fail: (error, text) => this.fail(error, text),
       t: () => this.i18n.t,
+    });
+    this.external = new ExternalSessionsSlice({
+      state: () => this.state,
+      patch: (patch) => this.update(patch),
+      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
+      isFocused: () => this.platform.isFocused(),
+      t: () => this.i18n.t,
+      notify: (...args) => this.inbox.notify(...args),
+      feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
+      feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
+    });
+    this.stream = new SessionStreamSlice({
+      sessions: () => this.state.sessions,
+      setSessions: (sessions) => this.update({ sessions }),
+      summary: (hostId, event) => this.summaries.apply(hostId, [event]),
+      resync: (hostId, sessionId) => this.connections.get(hostId)?.resync(sessionId),
     });
     this.summaries = new SummariesSlice({
       hosts: () => this.state.hosts,
@@ -1940,17 +1959,13 @@ export class AppStore {
   }
 
   /** A host's projects into the state (quiet: a host without a board, or offline, lists none). */
-  async loadProjects(hostId: string): Promise<Project[] | null> {
-    const conn = this.connections.get(hostId);
-    const list = conn ? await quiet(conn.request("project.list", {})) : null;
-    if (!list) return null;
-    this.rememberProjects(hostId, list.projects);
-    return list.projects;
+  loadProjects(hostId: string): Promise<Project[] | null> {
+    return this.projectList.load(hostId);
   }
 
   /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
   rememberProjects(hostId: string, projects: Project[]): void {
-    this.update({ projects: { ...this.state.projects, [hostId]: projects } });
+    this.projectList.remember(hostId, projects);
   }
 
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
@@ -1960,8 +1975,7 @@ export class AppStore {
 
   /** The key of a project of a host: the daemon's, else the one its folder would have. */
   projectKeyOf(hostId: string, project: Project): string {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return project.projectKey ?? `host:${host?.name ?? hostId}:${project.path}`;
+    return this.projectList.keyOf(hostId, project);
   }
 
   /**
@@ -2637,12 +2651,12 @@ export class AppStore {
       lastSeqFor: (sessionId) =>
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
       onStatus: (status) => this.onStatus(config.id, conn, status),
-      onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
+      onSubscribed: (sessionId, result) => this.stream.onSubscribed(config.id, sessionId, result),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
-      onEvent: (envelope) => this.onEvent(config.id, envelope),
+      onEvent: (envelope) => this.stream.onEvent(config.id, envelope),
       onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
-      onExternal: (frame) => this.onExternal(config.id, frame),
+      onExternal: (frame) => this.external.onExternal(config.id, frame),
       onVaultRequest: (request) => void this.vaultApprovals.onRequest(config, request),
       onVaultUsed: (used) => {
         this.usage.recordUsed(config.id, used);
@@ -2728,36 +2742,7 @@ export class AppStore {
       );
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") this.dropPartialText(hostId);
-  }
-
-  /** Partial text from before the drop will never be completed by a delta; drop it. */
-  private dropPartialText(hostId: string): void {
-    const sessions = { ...this.state.sessions };
-    for (const key of Object.keys(sessions)) {
-      if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);
-    }
-    this.update({ sessions });
-  }
-
-  /**
-   * A session asked from the start that had events (`lastSeq` > 0) but replays none lost them
-   * to the host's retention: the view says so instead of showing an empty conversation.
-   */
-  private onSubscribed(hostId: string, sessionId: string, result: SessionSubscribeResult): void {
-    const key = sessionKey(hostId, sessionId);
-    // What the host has after our last seq is on its way (it follows the answer): a hole that is
-    // still there when it arrives is one the host cannot fill.
-    if (this.resyncing.get(key) === "asked") this.resyncing.set(key, "answered");
-    const current = this.state.sessions[key] ?? emptySession();
-    if (result.replayed > 0 || result.session.lastSeq === 0 || current.lastSeq > 0) return;
-    const pruned = {
-      ...current,
-      pruned: true,
-      status: result.session.status,
-      cwd: result.session.cwd,
-    };
-    this.update({ sessions: { ...this.state.sessions, [key]: pruned } });
+    if (status === "connecting") this.stream.dropPartialText(hostId);
   }
 
   /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
@@ -2807,47 +2792,6 @@ export class AppStore {
     }
   }
 
-  private onEvent(hostId: string, envelope: EventEnvelope): void {
-    if (envelope.event.type === "session.summary") {
-      this.summaries.apply(hostId, [envelope.event]);
-      return;
-    }
-    const key = sessionKey(hostId, envelope.sessionId);
-    const known = this.state.sessions[key] ?? emptySession();
-    const current = this.afterLostFrames(hostId, key, envelope, known);
-    if (!current) return;
-    const session = applyEnvelope(current, envelope);
-    this.update({ sessions: { ...this.state.sessions, [key]: session } });
-  }
-
-  /**
-   * The state an event applies on: `known`, or `known` marked with a gap when the host could not
-   * replay what was lost; null when the frame must wait for that replay.
-   */
-  private afterLostFrames(
-    hostId: string,
-    key: string,
-    envelope: EventEnvelope,
-    known: SessionState,
-  ): SessionState | null {
-    if (EPHEMERAL_EVENTS.has(envelope.event.type) || known.lastSeq <= 0) return known;
-    if (envelope.seq === known.lastSeq + 1) this.resyncing.delete(key);
-    if (envelope.seq <= known.lastSeq + 1) return known;
-    // A frame was lost on the way: this one is not applied (it would leave a hole). The
-    // daemon replays from the last seq we have, once per hole.
-    const asked = this.resyncing.get(key);
-    if (asked === undefined) {
-      this.resyncing.set(key, "asked");
-      this.connections.get(hostId)?.resync(envelope.sessionId);
-      return null;
-    }
-    if (asked === "asked") return null;
-    // The host answered and the hole is still there (its retention cut it): go on from
-    // here and say so in the conversation.
-    this.resyncing.delete(key);
-    return markGap(known);
-  }
-
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
   private onTeams(hostId: string, frame: TeamsUpdatedFrame): void {
     this.summaries.rememberTeam(hostId, frame.team);
@@ -2888,83 +2832,6 @@ export class AppStore {
     const unread = { ...this.state.unread };
     for (const key of shown) delete unread[key];
     this.update({ unread });
-  }
-
-  /** External sessions follow `external.updated`; requests stay in the queue while open. */
-  private onExternal(hostId: string, frame: ExternalUpdated | ExternalPermissionFrame): void {
-    if (frame.type === "external.updated") {
-      const key = sessionKey(hostId, frame.session.claudeSessionId);
-      const known = this.state.hosts.find((h) => h.id === hostId);
-      if (known) {
-        this.webhookFeed.externalSession(
-          { id: hostId, name: known.name },
-          this.state.externals[key],
-          frame.session,
-        );
-      }
-      this.update({
-        externals: { ...this.state.externals, [key]: frame.session },
-        // The name and pin of a terminal session ride on its frames (phase 10).
-        ...(frame.session.meta ? { meta: { ...this.state.meta, [key]: frame.session.meta } } : {}),
-      });
-      return;
-    }
-    const key = sessionKey(hostId, frame.requestId);
-    const { [key]: _closed, ...open } = this.state.externalRequests;
-    if (frame.state === "closed") {
-      this.update({ externalRequests: open });
-      return;
-    }
-    this.update({ externalRequests: { ...open, [key]: frame } });
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    this.webhookFeed.externalPermission(
-      { id: hostId, name: host?.name ?? hostId },
-      frame,
-      this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
-    );
-    if (!this.platform.isFocused()) {
-      this.inbox.notify(
-        externalRequestNotification(
-          {
-            hostId,
-            hostName: host?.name ?? hostId,
-            subject: this.externalTitle(hostId, frame.claudeSessionId),
-            claudeSessionId: frame.claudeSessionId,
-            toolName: frame.toolName,
-            input: frame.input,
-            link: requestLink(hostId, frame.requestId),
-          },
-          this.i18n.t,
-        ),
-        undefined,
-        undefined,
-        {
-          event: "needs-you",
-          hostId,
-          session: sessionKey(hostId, frame.claudeSessionId),
-          ...this.projectOf(
-            hostId,
-            this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd,
-          ),
-        },
-      );
-    }
-  }
-
-  private projectOf(hostId: string, cwd: string | null | undefined): { project?: string } {
-    const project = this.sessionProject(hostId, cwd);
-    return project ? { project } : {};
-  }
-
-  /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
-  private externalTitle(hostId: string, claudeSessionId: string): string {
-    const key = sessionKey(hostId, claudeSessionId);
-    const cwd = this.state.externals[key]?.cwd;
-    return (
-      this.state.meta[key]?.name ??
-      this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
-      (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
-    );
   }
 
   /**
@@ -3062,8 +2929,6 @@ export class AppStore {
   }
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
-  /** Sessions whose lost frame was asked for again (cleared when the next frame fits). */
-  private readonly resyncing = new Map<string, "asked" | "answered">();
   private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
 
@@ -3104,46 +2969,17 @@ export class AppStore {
 
   /** The PR watch of the cards: each card's watch, its commands and the screen a PR link opens (#1596). */
   readonly prWatch: WatchSlice;
+  /** The projects each host lists: the list, a project's key and its PR provider (#1596). */
+  private readonly projectList: ProjectsSlice;
 
   /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
-  async detectPrProvider(
+  detectPrProvider(
     hostId: string,
     projectId: string,
     /** A press of the person's: a host that cannot answer, or finds nothing yet, is said. */
     report = false,
   ): Promise<ProjectDetectResult | null> {
-    const result = await this.hostRequest(hostId, "project.detectProvider", { projectId });
-    if (!result.ok) {
-      if (report)
-        this.fail(
-          new RequestError(
-            result.code,
-            result.message,
-            result.reason,
-            result.params,
-            result.items,
-            hostId,
-          ),
-        );
-      return null;
-    }
-    const { project, outcome } = result.data;
-    this.update({
-      projects: {
-        ...this.state.projects,
-        [hostId]: replaceOrAdd(this.state.projects[hostId] ?? [], project),
-      },
-    });
-    const { t } = this.i18n;
-    // The button that appears is not a surprise: the change is said.
-    if (outcome === "set")
-      this.success(
-        t("cardUi.providerDetected", {
-          provider: t(`cardUi.providerName.${project.prProvider}` as Key),
-        }),
-      );
-    else if (report && outcome === "no_remote") this.success(t("cardUi.remoteNone"));
-    return result.data;
+    return this.projectList.detectProvider(hostId, projectId, report);
   }
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */

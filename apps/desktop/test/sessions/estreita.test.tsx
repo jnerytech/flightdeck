@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { registerDom } from "../dom.ts";
 
@@ -12,7 +12,7 @@ const { SessionViews } = await import("../../src/lib/session-views.ts");
 const { ApprovalCard } = await import("../../src/components/approval/approval-card.tsx");
 
 afterEach(cleanup);
-const css = readFileSync(join(import.meta.dir, "../../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 /** The body of one `@utility` block, nested rules included. */
 function utility(name: string): string {
