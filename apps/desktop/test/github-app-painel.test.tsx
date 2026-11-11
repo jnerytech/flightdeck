@@ -220,8 +220,8 @@ describe("github-app: the sign-in poll", () => {
       jest.advanceTimersByTime(6000);
       expect(ticks).toBe(3);
     } finally {
-      jest.useRealTimers();
       store.dispose();
+      jest.useRealTimers();
     }
   });
 });

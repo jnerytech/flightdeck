@@ -24,7 +24,6 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
 import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import {
-  ALL_HOSTS,
   daysBetween,
   PERIODS,
   type Period,
@@ -37,6 +36,7 @@ import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-
 import { basename } from "../../lib/paths.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
+import { awayHost, hostScope, routeScopeOf, topModel } from "./costs-scope.ts";
 import { DayChart } from "./day-chart.tsx";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
@@ -94,42 +94,6 @@ const COSTSPAGE_KEYS = [
   "clientOverrides",
   "hostsLoaded",
 ] as const;
-
-/**
- * Which host(s) the screen reads (#126): every one that has costs, or the scoped one. A scoped host
- * that is offline or has no costs reads nothing, rather than another host's numbers.
- */
-function hostScope(scope: DataScope, hosts: Array<{ id: string }>) {
-  if (scope.kind === "host") {
-    const there = hosts.some((h) => h.id === scope.hostId);
-    return {
-      acrossHosts: false,
-      hostId: there ? scope.hostId : "",
-      hostIds: there ? [scope.hostId] : [],
-    };
-  }
-  const acrossHosts = hosts.length > 1;
-  if (acrossHosts) return { acrossHosts, hostId: ALL_HOSTS, hostIds: hosts.map((h) => h.id) };
-  const hostId = hosts[0]?.id ?? "";
-  return { acrossHosts, hostId, hostIds: hostId ? [hostId] : [] };
-}
-
-/** The scope a route's host asks for (`__all__` is every host), or null when it asks for none. */
-function routeScopeOf(routeHost: string | null): DataScope | null {
-  if (routeHost === ALL_HOSTS) return ALL_SCOPE;
-  return routeHost === null ? null : { kind: "host", hostId: routeHost };
-}
-
-/** The scoped host when it has no numbers to show: offline, or not reporting costs. */
-function awayHost<H extends { id: string; status: string }>(
-  hostSide: DataScope,
-  known: H[],
-  reporting: Array<{ id: string }>,
-): H | null {
-  const scoped = hostSide.kind === "host" ? known.find((h) => h.id === hostSide.hostId) : null;
-  if (!scoped || reporting.some((h) => h.id === scoped.id)) return null;
-  return scoped.status === "connecting" ? null : scoped;
-}
 
 /**
  * What the screen asks for: the hosts, the period, the filters, the client and how the client's
@@ -422,7 +386,7 @@ export const CostsPage = memo(function CostsPage(props: {
       : [];
 
   const loading = useMinLoading(hostId !== "" && summary === null);
-  const topModel = [...(summary?.byModel ?? [])].sort((a, b) => b.costUsd - a.costUsd)[0];
+  const top = topModel(summary?.byModel ?? []);
   const empty = summary !== null && summary.totals.costUsd === 0 && summary.byDay.length === 0;
   return (
     <Page
@@ -578,13 +542,8 @@ export const CostsPage = memo(function CostsPage(props: {
                 [t("costsUi.estimated"), usd(summary.totals.costUsd, t.lang)],
                 [t("costsUi.tokens"), number(tokensOf(summary.totals.tokens))],
                 [t("costsUi.cacheSavings"), usd(summary.totals.cacheSavingsUsd, t.lang)],
-                ...(topModel
-                  ? [
-                      [
-                        t("costsUi.topModel"),
-                        `${topModel.model} · ${usd(topModel.costUsd, t.lang)}`,
-                      ],
-                    ]
+                ...(top
+                  ? [[t("costsUi.topModel"), `${top.model} · ${usd(top.costUsd, t.lang)}`]]
                   : []),
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
