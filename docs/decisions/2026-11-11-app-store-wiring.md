@@ -17,16 +17,19 @@ only forward to a slice; fd-coordinator decided on 2026-11-11 that screens bind 
 - A domain that has a slice also has `features/<domain>/wire.ts`: one function,
   `wire<Domain>(kernel, deps): <Domain>Slice`, that builds the slice's port from a kernel and, when
   the slice needs another slice, from `deps`. The slice and its port type stay as they are.
-- `lib/kernel.ts` defines `AppKernel<S>`, the narrow part of the store every wire file may use:
-  `state()`, `update(patch)`, `hostCommand`, `hostRequest` and `connection(hostId)`. `S` is the
+- `lib/kernel.ts` defines `AppKernel<S>`, the narrow part of the store every wire file may use
+  (`lib/kernel.ts` is the list of its methods; it started with `state()`, `update(patch)`,
+  `hostCommand`, `hostRequest` and `connection(hostId)`). `S` is the
   state the slice reads (the store passes `AppState`, a wire file names its slice's), so the file
   imports neither the app state nor a feature and a wire file depending on it creates no cycle;
   `HostCommandType` and `HostResult` live there too. A need that is not in the kernel stays a `deps` argument typed by the slice it names
-  (`wireQuota(kernel, { inbox })`): the constructor keeps the construction order, the wire file
+  (`wireQuota(kernel, { notify })`): the constructor keeps the construction order, the wire file
   keeps the lambdas.
 - `AppStore` holds its `AppKernel` as a private object (so `update` stays private to the store) and
   its constructor reads as a list: `this.ssh = wireSsh(this.kernel)`. A kernel method joins
-  `lib/kernel.ts` with the first wire file that uses it (`onlineHosts()` comes with quota).
+  `lib/kernel.ts` with the first wire file that uses it, when it is something the store itself
+  owns and knows no domain (`onlineHosts()`, the clock, the banner); what belongs to another slice
+  or to the platform stays a `deps` argument, even when several domains need it.
   It stays the composition root (it builds, orders and disposes the slices, and owns `update`'s
   cross-domain side effects); it no longer knows what a domain asks of a host.
 - One domain per PR, structure only. A wire file of a few lines may share a PR with the next
@@ -51,8 +54,9 @@ only forward to a slice; fd-coordinator decided on 2026-11-11 that screens bind 
   1750. What remains is logic that talks to several slices at once (`connect`, `onStatus`,
   `loadHostInfo`, the notices, the tabs). Under 800 needs that hub split too, as its own decision
   once the wiring is out; this ADR does not promise it.
-- `AppKernel` is a new public type of the store. It must stay small: a method is added only when
-  two domains need it, and a domain-specific need goes to `deps`.
+- `AppKernel` is a new public type of the store. It must stay small: a method is added only for
+  something the store owns and that names no domain (the rule above), and a need that names a
+  slice or the platform goes to `deps`.
 - A slice built in a wire file is still built once per store, in the same order as today, so
   `dispose` and the start-up order do not change.
 - Slices that need the `connections` map directly (account, terminal) use `kernel.connection(hostId)`

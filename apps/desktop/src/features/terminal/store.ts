@@ -50,7 +50,7 @@ export interface ClosingTerminal {
 }
 
 /** What the terminals read and ask through the app's store. */
-interface TerminalsCore {
+export interface TerminalsCore {
   hosts(): TerminalsHost[];
   terminalEnv(): TerminalEnv | null;
   /** A terminal command of a host; a refusal throws, the caller decides what the person sees. */

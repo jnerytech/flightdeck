@@ -139,7 +139,8 @@ export interface HostCommandOptions {
  * port (#1596, docs/decisions/2026-11-11-app-store-wiring.md). `S` is the state the slice reads:
  * the store passes its whole `AppState`, a wire file names only its slice's, so this file imports
  * neither the app state nor a feature and a wire file depending on it creates no cycle. A method
- * joins with the first wire file that uses it; a need of one domain only is a `deps` argument.
+ * joins with the first wire file that uses it when the store owns it and it names no domain; what
+ * belongs to another slice or to the platform is a `deps` argument.
  */
 export interface AppKernel<S extends object> {
   state(): S;
