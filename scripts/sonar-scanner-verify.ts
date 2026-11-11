@@ -39,7 +39,22 @@ async function attempt(): Promise<boolean> {
       [files.zip, zip],
       [files.asc, asc],
     ] as const) {
-      const got = run("curl", ["-fsSL", "--max-time", "60", "-o", to, url], 75_000);
+      const got = run(
+        "curl",
+        [
+          "-fsSL",
+          "--proto",
+          "=https",
+          "--proto-redir",
+          "=https",
+          "--max-time",
+          "60",
+          "-o",
+          to,
+          url,
+        ],
+        75_000,
+      );
       if (got.status !== 0) {
         console.error(`download of ${url} failed (exit ${got.status})`);
         return false;
