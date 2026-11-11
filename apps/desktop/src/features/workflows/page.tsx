@@ -6,12 +6,12 @@ import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { WorkflowTemplates } from "@/components/workflows/workflow-templates";
 import { useT } from "@/i18n/context";
 import { workflowIssueText } from "@/i18n/errors";
-import type { T } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { WorkflowTemplates } from "./workflow-templates.tsx";
 
 /** What trusting a workflow allows, said before the user confirms it. */
 function trustMessage(workflow: WorkflowInfo, t: T): string {

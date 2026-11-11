@@ -32,6 +32,9 @@
   "src/features/snippets/snippet-editor.tsx": 13,
   "src/features/snippets/snippet-picker.tsx": 3,
   "src/features/snippets/snippet-use.tsx": 6,
+  "src/features/workflows/alert-picker.tsx": 3,
+  "src/features/workflows/page.tsx": 12,
+  "src/features/workflows/workflow-templates.tsx": 5,
   "src/ui/ActionForm.tsx": 8,
   "src/ui/ActionsPage.tsx": 21,
   "src/ui/AgentFiles.tsx": 25,
@@ -86,6 +89,5 @@
   "src/ui/TranscriptReader.tsx": 6,
   "src/ui/UpdateBanner.tsx": 4,
   "src/ui/UsagePanel.tsx": 7,
-  "src/ui/VaultPage.tsx": 13,
-  "src/ui/WorkflowsPage.tsx": 12
+  "src/ui/VaultPage.tsx": 13
 }
