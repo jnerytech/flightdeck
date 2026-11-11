@@ -32,7 +32,7 @@ describe("sonar-project: what sonar-project.properties tells SonarCloud (#283)",
 
   test("a file matching an inclusion is test code, the rest is source", () => {
     const inclusions = testInclusionsOf(properties);
-    expect(isTestFile("apps/daemon/test/board.test.ts", inclusions)).toBe(true);
+    expect(isTestFile("apps/daemon/test/board/board.test.ts", inclusions)).toBe(true);
     expect(isTestFile("apps/daemon/test/helper.ts", inclusions)).toBe(true);
     expect(isTestFile("scripts/e2e/journeys.ts", inclusions)).toBe(true);
     expect(isTestFile("apps/daemon/src/board/board.ts", inclusions)).toBe(false);
@@ -43,7 +43,7 @@ describe("sonar-project: what sonar-project.properties tells SonarCloud (#283)",
     expect(countsForCoverage("scripts/lib/slot.ts", properties)).toBe(true);
     expect(countsForCoverage("scripts/slot.ts", properties)).toBe(false);
     expect(countsForCoverage("apps/daemon/src/text-modules.d.ts", properties)).toBe(false);
-    expect(countsForCoverage("apps/daemon/test/board.test.ts", properties)).toBe(false);
+    expect(countsForCoverage("apps/daemon/test/board/board.test.ts", properties)).toBe(false);
     expect(countsForCoverage("apps/desktop/src/components/ui/button.tsx", properties)).toBe(false);
     expect(countsForCoverage("packages/protocol/dist/index.ts", properties)).toBe(false);
   });

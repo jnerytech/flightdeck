@@ -89,6 +89,30 @@ describe("light-lane", () => {
     expect(l.ran[0]?.holding).toEqual(["/t/lane-1.lock"]);
   });
 
+  test("a run that waited says how long, a run that did not wait says nothing", async () => {
+    const files = { "/t/lane-0.lock": holder(200), "/t/lane-1.lock": holder(201) };
+    const alive = new Set([ME, 200, 201]);
+    const l = lane(files, alive);
+    let clock = 10_000;
+    l.deps.now = () => clock;
+    l.onSleep.push(
+      () => {
+        clock += 1_000;
+      },
+      () => {
+        clock += 1_500;
+        alive.delete(201);
+      },
+    );
+    await runInLane(["tsc"], l.deps);
+    expect(l.logs).toContain("light lane: waited 2.5s");
+
+    const free = lane({}, new Set([ME]));
+    free.deps.now = () => 0;
+    await runInLane(["tsc"], free.deps);
+    expect(free.logs.filter((line) => line.includes("waited"))).toEqual([]);
+  });
+
   test("a lock left by a dead run is taken over", async () => {
     const l = lane({ "/t/lane-0.lock": holder(999) }, new Set([ME]));
     await runInLane(["tsc"], l.deps);

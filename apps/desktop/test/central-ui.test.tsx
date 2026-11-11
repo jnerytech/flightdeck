@@ -3,7 +3,7 @@ import { mkdirSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../daemon/src/config.ts";
 import { git } from "../../daemon/test/board-helpers.ts";
-import { connectChannel } from "../../daemon/test/channel-helpers.ts";
+import { connectChannel } from "../../daemon/test/central/channel-helpers.ts";
 import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
