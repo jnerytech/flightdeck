@@ -75,11 +75,20 @@ const seconds = (from: string, to: string) => (Date.parse(to) - Date.parse(from)
 
 /** Duration, queue time and rerun rate of the PR runs created in the window. */
 export function ciHealth(runs: CiRun[], window: TimeWindow): CiHealth {
-  const done = runs.filter((r) => r.status === "completed" && within(r.createdAt, window));
+  // A cancelled or skipped run says nothing about how long CI takes.
+  const done = runs.filter(
+    (r) =>
+      r.status === "completed" &&
+      (r.conclusion === "success" || r.conclusion === "failure") &&
+      within(r.createdAt, window),
+  );
   return {
     runs: done.length,
     durationSeconds: spread(done.map((r) => seconds(r.startedAt, r.updatedAt))),
-    queueSeconds: spread(done.map((r) => seconds(r.createdAt, r.startedAt))),
+    // A rerun keeps its first attempt's createdAt, so only a first attempt has a queue time.
+    queueSeconds: spread(
+      done.filter((r) => r.attempt === 1).map((r) => seconds(r.createdAt, r.startedAt)),
+    ),
     rerunRate: done.length === 0 ? null : done.filter((r) => r.attempt > 1).length / done.length,
   };
 }
@@ -87,7 +96,7 @@ export function ciHealth(runs: CiRun[], window: TimeWindow): CiHealth {
 /** The red periods of main that start in the window: from the first failed run to the next successful one. */
 export function mainRed(runs: CiRun[], window: TimeWindow): MainRed {
   const ordered = runs
-    .filter((r) => r.status === "completed")
+    .filter((r) => r.status === "completed" && Date.parse(r.createdAt) <= window.to.getTime())
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   let periods = 0;
   let totalSeconds = 0;
@@ -96,7 +105,8 @@ export function mainRed(runs: CiRun[], window: TimeWindow): MainRed {
     if (opened === null) return;
     if (within(opened, window)) {
       periods++;
-      totalSeconds += seconds(opened, end);
+      // A period never runs past the end of the window: the tag's date.
+      totalSeconds += Math.min(seconds(opened, end), seconds(opened, window.to.toISOString()));
     }
     opened = null;
   };

@@ -94,6 +94,8 @@ export interface Snapshot {
 }
 
 const DAYS = 30;
+/** Rows asked of one `gh` list: GitHub caps a list at 1000. */
+const LIST_LIMIT = 1000;
 const HOTSPOT_LIMIT = 15;
 /** Files whose line count is read per window: the most changed, since a ranking needs lines for few. */
 const LINE_CANDIDATES = 60;
@@ -146,7 +148,7 @@ async function ghList<T>(
   deps: MetricsDeps,
   args: string[],
   valid: (row: Record<string, unknown>) => boolean,
-): Promise<{ rows: T[] } | { reason: string }> {
+): Promise<{ rows: T[]; cut: boolean } | { reason: string }> {
   const answer = await deps.gh(args);
   const what = `gh ${args.slice(0, 2).join(" ")}`;
   if (answer.code !== 0) {
@@ -162,7 +164,9 @@ async function ghList<T>(
   const ok =
     Array.isArray(rows) &&
     rows.every((row) => row !== null && typeof row === "object" && valid(row));
-  return ok ? { rows: rows as T[] } : { reason: `${what} printed an unexpected shape` };
+  return ok
+    ? { rows: rows as T[], cut: (rows as unknown[]).length >= LIST_LIMIT }
+    : { reason: `${what} printed an unexpected shape` };
 }
 
 const RUN_FIELDS = "createdAt,startedAt,updatedAt,attempt,status,conclusion";
@@ -230,12 +234,30 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     sinceRelease: previousTagDate ? { from: new Date(previousTagDate), to } : null,
     last30Days: { from: new Date(since), to },
   };
-  const runsOf = ["run", "list", "--workflow", "CI", "--limit", "500", "--json", RUN_FIELDS];
+  const runsOf = [
+    "run",
+    "list",
+    "--workflow",
+    "CI",
+    "--limit",
+    String(LIST_LIMIT),
+    "--json",
+    RUN_FIELDS,
+  ];
   const ci = await ghList<CiRun>(deps, [...runsOf, "--event", "pull_request"], isRun);
   const main = await ghList<CiRun>(deps, [...runsOf, "--branch", "main", "--event", "push"], isRun);
   const prs = await ghList<MergedPr>(
     deps,
-    ["pr", "list", "--state", "merged", "--limit", "500", "--json", "additions,deletions,mergedAt"],
+    [
+      "pr",
+      "list",
+      "--state",
+      "merged",
+      "--limit",
+      String(LIST_LIMIT),
+      "--json",
+      "additions,deletions,mergedAt",
+    ],
     isMergedPr,
   );
   for (const [metric, read] of [
@@ -244,6 +266,13 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     ["prSize", prs],
   ] as const) {
     if ("reason" in read) unavailable.push({ metric, reason: read.reason });
+    // A list cut at the limit still gives its figures, for the newest rows only; the note says so.
+    else if (read.cut) {
+      unavailable.push({
+        metric,
+        reason: `gh listed ${LIST_LIMIT} rows, the most it gives: the older ones are not counted`,
+      });
+    }
   }
 
   return {

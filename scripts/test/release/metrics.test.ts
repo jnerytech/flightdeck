@@ -275,6 +275,30 @@ describe("metrics: the snapshot", () => {
     expect(snapshot.hotspots.last30Days.length).toBeGreaterThan(0);
   });
 
+  test("a gh list cut at its limit still gives its figures and says the older rows are not counted", async () => {
+    const { deps } = fakeGit();
+    const cut: MetricsDeps = {
+      ...deps,
+      gh: async (args) =>
+        args.includes("pr")
+          ? {
+              code: 0,
+              stdout: JSON.stringify(
+                Array.from({ length: 1000 }, () => ({
+                  additions: 1,
+                  deletions: 1,
+                  mergedAt: "2026-11-10T00:00:00Z",
+                })),
+              ),
+            }
+          : deps.gh(args),
+    };
+    const snapshot = (await buildSnapshot(cut, "v0.2.0")) as Record<string, any>;
+    expect(snapshot.prSize.last30Days.merged).toBe(1000);
+    const note = snapshot.unavailable.find((u: { metric: string }) => u.metric === "prSize");
+    expect(note.reason).toContain("1000 rows");
+  });
+
   test("coverage is the summary of the full run on the tag's commit", async () => {
     const { deps } = fakeGit();
     const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
