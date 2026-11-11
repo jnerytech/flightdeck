@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -12,23 +10,8 @@ const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
-const block = (name: string) => css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
-
 describe("sidebar-hosts: the nav and the hosts scroll as one body between a fixed header and footer (#171, #567)", () => {
-  test("the body takes the room left and scrolls; the nav and the hosts inside it do not scroll on their own", () => {
-    const body = block("sidebar-body");
-    expect(body).toMatch(/min-height:\s*0/);
-    expect(body).toMatch(/flex:\s*1 1 0/);
-    expect(body).toMatch(/overflow-y:\s*auto/);
-    expect(/overflow/.test(block("sidebar-nav"))).toBe(false);
-    expect(/overflow/.test(block("sidebar-hosts"))).toBe(false);
-  });
-
-  test("the hosts section still has a minimum height of its own (#171)", () => {
-    expect(block("sidebar-hosts")).toMatch(/min-height:\s*(?:[6-9]|1\d)(?:\.\d+)?rem/);
-  });
-
+  // How it scrolls, and the hosts' height, are measured by the e2e `layout-medido` journey.
   test("the sidebar marks the hosts section so a layout check can measure it", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();

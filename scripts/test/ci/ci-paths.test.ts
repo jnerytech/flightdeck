@@ -362,6 +362,7 @@ describe("ci-paths: the workflow", () => {
       .steps.map((s) => s.with?.name ?? "")
       .filter(Boolean);
     expect(names).toEqual([
+      "e2e-json-${{ matrix.shard }}",
       "relatorio-e2e-${{ matrix.shard }}",
       "e2e-failures-${{ matrix.shard }}",
     ]);

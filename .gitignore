@@ -28,3 +28,4 @@ junit-*.xml
 test-results/
 .stryker-tmp/
 reports/mutation/
+e2e-json/
