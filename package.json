@@ -74,6 +74,7 @@
     "deploy": "bun run scripts/deploy.ts",
     "ci:branch": "bun run scripts/ci-branch.ts",
     "main-red": "bun run scripts/main-red.ts",
+    "metrics": "bun run scripts/metrics.ts",
     "sonar-left": "bun run scripts/sonar-left.ts",
     "claim": "bun run scripts/claim.ts",
     "issue": "bun run scripts/issue.ts",
