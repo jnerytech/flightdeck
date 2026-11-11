@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
   boardOrder,
+  cardMoves,
+  columnCards,
   dropPositions,
+  idsByColumn,
+  showingColumn,
   shownCards,
   startableWorkflows,
   stayingPicks,
+  tabStops,
 } from "../../src/features/board/board-derive.ts";
 
 /**
@@ -111,5 +116,115 @@ describe("board derive: the workflows a card can start with", () => {
 
   test("a read with no list is no workflows", () => {
     expect(startableWorkflows(undefined)).toEqual([]);
+  });
+});
+
+describe("board derive: a column's cards", () => {
+  test("come top to bottom, and only the column's own", () => {
+    const all = [
+      card("c", { column: "review", position: 3 }),
+      card("a", { column: "review", position: 1 }),
+      card("x", { column: "done", position: 0 }),
+      card("b", { column: "review", position: 2 }),
+    ];
+    expect(columnCards(all, "review").map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(columnCards(all, "waiting")).toEqual([]);
+  });
+
+  test("the ids a filter leaves are listed once per column, in the board's column order", () => {
+    const shown = [
+      card("p", { column: "review" }),
+      card("q", { column: "backlog" }),
+      card("r", { column: "review" }),
+    ];
+    expect(idsByColumn(shown)).toEqual([["q"], [], [], ["p", "r"], []]);
+  });
+});
+
+describe("board derive: the column a narrow board shows", () => {
+  const ids = [[], [], ["w1"], ["r1"], []];
+
+  test("is the one the person picked", () => {
+    expect(showingColumn("done", ids)).toBe("done");
+  });
+
+  test("is the first column with a card until one is picked", () => {
+    expect(showingColumn(null, ids)).toBe("waiting");
+  });
+
+  test("is the backlog on an empty board", () => {
+    expect(showingColumn(null, [[], [], [], [], []])).toBe("backlog");
+  });
+});
+
+describe("board derive: each column's one Tab stop", () => {
+  const ids = [["a", "b"], [], ["c", "d"], [], ["e"]];
+
+  test("is the first card of a column until one is focused", () => {
+    expect([...tabStops(ids, null)].sort()).toEqual(["a", "c", "e"]);
+  });
+
+  test("is the focused card in its column, and the first in the others", () => {
+    expect([...tabStops(ids, "d")].sort()).toEqual(["a", "d", "e"]);
+  });
+
+  test("a focused card that is not on the board changes nothing", () => {
+    expect([...tabStops(ids, "gone")].sort()).toEqual(["a", "c", "e"]);
+  });
+});
+
+describe("board derive: the moves a card's menu offers", () => {
+  const here = [card("a"), card("b"), card("c"), card("d")];
+
+  test("one move to each other column, then up and down", () => {
+    const { moves } = cardMoves(here, card("b", { column: "backlog" }));
+    expect(moves.map((m) => m.key)).toEqual([
+      "in_progress",
+      "waiting",
+      "review",
+      "done",
+      "up",
+      "down",
+    ]);
+    expect(moves.slice(0, 4).map((m) => m.column)).toEqual([
+      "in_progress",
+      "waiting",
+      "review",
+      "done",
+    ]);
+  });
+
+  test("up lands before the card above, and down before the one two places below", () => {
+    const { index, moves } = cardMoves(here, card("b", { column: "backlog" }));
+    expect(index).toBe(1);
+    expect(moves.find((m) => m.key === "up")).toEqual({
+      key: "up",
+      column: "backlog",
+      targetId: "a",
+      disabled: false,
+    });
+    expect(moves.find((m) => m.key === "down")).toEqual({
+      key: "down",
+      column: "backlog",
+      targetId: "d",
+      disabled: false,
+    });
+  });
+
+  test("the first card cannot go up, and the last cannot go down", () => {
+    const first = cardMoves(here, card("a", { column: "backlog" }));
+    expect(first.moves.find((m) => m.key === "up")?.disabled).toBe(true);
+    const last = cardMoves(here, card("d", { column: "backlog" }));
+    expect(last.moves.find((m) => m.key === "down")?.disabled).toBe(true);
+  });
+
+  test("the one before the last goes down to the end, with no card to land before", () => {
+    const { moves } = cardMoves(here, card("c", { column: "backlog" }));
+    expect(moves.find((m) => m.key === "down")).toEqual({
+      key: "down",
+      column: "backlog",
+      targetId: undefined,
+      disabled: false,
+    });
   });
 });

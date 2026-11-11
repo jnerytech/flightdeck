@@ -1,4 +1,4 @@
-import type { Card, WorkflowInfo } from "@flightdeck/protocol";
+import type { BoardColumn, Card, WorkflowInfo } from "@flightdeck/protocol";
 import { COLUMNS, filterCards, positionsBefore } from "../../lib/board.ts";
 import { cardInFilter, type WorktreeFilter } from "../../lib/project-tree.ts";
 
@@ -55,4 +55,37 @@ export function startableWorkflows(
   return (list ?? [])
     .filter((w) => w.trusted && w.errors.length === 0)
     .map((w) => ({ name: w.name, inputs: w.inputs }));
+}
+
+/** A column's cards, top to bottom. */
+export function columnCards(_all: Card[], _column: BoardColumn): Card[] {
+  return [];
+}
+
+/** The card ids a filter leaves, one list per column, in the board's column order. */
+export function idsByColumn(_shown: Card[]): string[][] {
+  return [];
+}
+
+/** The column a narrow board shows: the one the person picked, else the first with a card, else the first. */
+export function showingColumn(_picked: BoardColumn | null, _ids: string[][]): BoardColumn {
+  return "review";
+}
+
+/** Each column's one Tab stop: the card last focused when it is there, else the column's first card. */
+export function tabStops(_ids: string[][], _focused: string | null): Set<string> {
+  return new Set(["?"]);
+}
+
+/** One move the card's menu offers: to a column, or up or down within its own (`targetId` is the card it lands before). */
+export interface CardMove {
+  key: BoardColumn | "up" | "down";
+  column: BoardColumn;
+  targetId?: string;
+  disabled?: boolean;
+}
+
+/** The moves the menu offers for a card, and where it sits in its column (`here`, top to bottom). */
+export function cardMoves(_here: Card[], _card: Card): { index: number; moves: CardMove[] } {
+  return { index: 0, moves: [] };
 }
