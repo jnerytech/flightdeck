@@ -34,17 +34,23 @@ export interface StructureVerdict {
 const TEST_FILE = /\.test\.tsx?$/;
 const DICTIONARY = /^apps\/desktop\/src\/i18n\//;
 const REFACTOR = /^refactor(\([^)]*\))?!?: /;
-/** An import or re-export statement, multi-line included, and a side-effect import. */
-const IMPORT =
-  /^[ \t]*(?:import(?=[\s{*])|export\s*(?:\*|\{))[^;]*?\bfrom\s*["'][^"']*["'];?|^[ \t]*import\s*["'][^"']*["'];?/gm;
+/** An import or re-export statement, multi-line included. */
+const IMPORT_FROM =
+  /^[ \t]*(?:import(?=[\s{*])|export\s*(?:\*|\{))[^;]*?\bfrom\s*["'][^"']*["'];?/gm;
+/** A side-effect import. */
+const IMPORT_BARE = /^[ \t]*import\s*["'][^"']*["'];?/gm;
+
+/** A source text with its import and re-export statements left out. */
+function withoutImports(text: string): string {
+  return text.replace(IMPORT_FROM, "").replace(IMPORT_BARE, "");
+}
 /** A string that names a module or file by a relative path or the workspace package. */
 const PATH = /(["'])(?:\.{1,2}\/|@flightdeck\/)[^"'\n]*\1/g;
 const STRING = /"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g;
 
 /** A test's text with its imports and path strings left out: what a move may not change. */
 function body(text: string): string {
-  return text
-    .replace(IMPORT, "")
+  return withoutImports(text)
     .replace(PATH, '"<path>"')
     .split("\n")
     .map((line) => line.trimEnd())
@@ -55,7 +61,7 @@ function body(text: string): string {
 /** The texts of a dictionary file, imports left out. */
 function texts(text: string | null): string[] {
   if (text === null) return [];
-  return [...text.replace(IMPORT, "").matchAll(STRING)].map((m) => m[1] ?? m[2] ?? m[3] ?? "");
+  return [...withoutImports(text).matchAll(STRING)].map((m) => m[1] ?? m[2] ?? m[3] ?? "");
 }
 
 /** The items of `a` that `b` does not have, counting repeats. */
