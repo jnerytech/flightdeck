@@ -35,7 +35,7 @@ export interface VaultApprovalsCore {
     payload: CommandPayload<C>,
   ): Promise<CommandResults[C]>;
   /** The policy the options chose; the one that puts requests to the person when absent. */
-  policy(): VaultPolicy | undefined;
+  optionsPolicy(): VaultPolicy | undefined;
   now(): number;
   /** Tells the person, in the bell and the OS, that a request waits. */
   notify(title: string, body: string): void;
@@ -119,7 +119,7 @@ export class VaultApprovalsSlice {
         });
       },
     });
-    return this.core.policy() ?? this.defaultPolicy;
+    return this.core.optionsPolicy() ?? this.defaultPolicy;
   }
 
   /** Puts a request of the daemon for a secret in the queue and waits for the person's answer. */

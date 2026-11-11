@@ -44,7 +44,7 @@ function slice(over: { policy?: VaultPolicy; now?: number; denyFails?: boolean }
       if (over.denyFails && type === "vault.deny") throw new Error("the host is gone");
       return {};
     }) as VaultApprovalsCore["dispatch"],
-    policy: () => over.policy,
+    optionsPolicy: () => over.policy,
     now: () => over.now ?? 1_000,
     notify: (title) => {
       notices.push(title);

@@ -1153,7 +1153,7 @@ export class AppStore {
       setPending: (items) => this.update({ vaultApprovals: items }),
       hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name ?? null,
       dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
-      policy: () => this.options.vaultPolicy,
+      optionsPolicy: () => this.options.vaultPolicy,
       now: () => (this.options.now ?? Date.now)(),
       notify: (title, body) => this.notifyUser({ title, body, event: "needs-you" }),
       recorded: (outcome) => {
