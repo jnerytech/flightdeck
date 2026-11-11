@@ -62,6 +62,8 @@
   }
 }
 
+/* A long page form's buttons (#731): they stay at the bottom of the page's scroller, over the
+   fields that scroll under them, so the primary is in reach without scrolling to the end. */
 @utility form-actions-sticky {
   position: sticky;
   bottom: 0;

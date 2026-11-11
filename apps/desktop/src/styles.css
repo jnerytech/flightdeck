@@ -754,8 +754,6 @@ html:not(:has([data-slot="status-bar"])) {
   flex-direction: column;
   gap: 0.5rem;
 }
-/* A long page form's buttons (#731): they stay at the bottom of the page's scroller, over the
-   fields that scroll under them, so the primary is in reach without scrolling to the end. */
 /* #1271: a dialog's fields in a box of their own, so its buttons stay in view while they scroll.
    Below 640 px the dialog is a sheet that scrolls itself and keeps the buttons at its bottom: a
    second scroller there would stop them mid-sheet, so the box shows all it holds. */
