@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { PromptMenu } = await import("../src/components/snippets/prompt-menu.tsx");
+const { PromptMenu } = await import("../src/features/snippets/prompt-menu.tsx");
 
 afterEach(cleanup);
 

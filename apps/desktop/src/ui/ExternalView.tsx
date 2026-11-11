@@ -4,7 +4,7 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { AssistField } from "@/components/assistant/assist-field";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
-import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
+import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";

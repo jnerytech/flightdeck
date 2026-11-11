@@ -14,7 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatusBarSlot } from "@/components/shell/status-bar";
 import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/top-bar";
-import { SnippetUse } from "@/components/snippets/snippet-use";
+import { SnippetUse } from "@/features/snippets/index.ts";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";

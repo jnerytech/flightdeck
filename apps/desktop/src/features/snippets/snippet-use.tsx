@@ -9,7 +9,7 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppState, AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import { AppDialogContent } from "../feedback/dialog-content.tsx";
+import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 

@@ -2,6 +2,9 @@
  * The snippets' public entry in the app (#1589, #1596): the saved commands and prompts, the hosts'
  * and the app's own. Another domain imports from here, never a file inside.
  */
+export { PromptMenu, type PromptSnippets } from "./prompt-menu.tsx";
+export { SnippetPicker } from "./snippet-picker.tsx";
+export { SnippetUse } from "./snippet-use.tsx";
 export {
   type AppSnippet,
   GlobalSnippets,

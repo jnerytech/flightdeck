@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { Page } from "@/components/layout/page";
-import { SnippetPicker } from "@/components/snippets/snippet-picker";
+import { SnippetPicker } from "@/features/snippets/index.ts";
 import {
   AlertDialog,
   AlertDialogAction,
