@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   keyMatches,
@@ -10,6 +9,7 @@ import {
   scannerFiles,
   withRetry,
 } from "../../lib/sonar-scanner.ts";
+import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const PRIMARY = "679F1EE92B19609DE816FDE81DB198F93525EC1A";
@@ -73,7 +73,7 @@ describe("sonar scanner download (#1883)", () => {
 
   const gpg = spawnSync("gpg", ["--version"]);
   test.skipIf(gpg.status !== 0)("the committed key file holds the pinned primary key", () => {
-    const home = mkdtempSync(join(tmpdir(), "sonar-key-"));
+    const home = realTempDir("sonar-key-");
     try {
       const listed = spawnSync(
         "gpg",
