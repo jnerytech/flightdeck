@@ -3,6 +3,7 @@
  * board decides what to do with them. The reply is untrusted text, so anything off the shape
  * refuses the whole list and nothing is created.
  */
+import { parseJsonText } from "../json-text.ts";
 
 /** A list longer than this is a runaway agent: refused whole, not cut. */
 export const FINDINGS_MAX_ITEMS = 50;
@@ -69,7 +70,7 @@ export function parseFindings(reply: string): FindingsResult {
   if (block === undefined) return { ok: false, reason: "findings_missing" };
   let list: unknown;
   try {
-    list = JSON.parse(block);
+    list = parseJsonText(block);
   } catch {
     return invalid("json");
   }
