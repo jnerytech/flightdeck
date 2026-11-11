@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Tier } from "../../lib/test-tiers.ts";
-import { TIER_GROUPS, TIER_SHARDS, tierShard, tierShardFiles } from "../../lib/tier-shards.ts";
+import { FAST_SHARDS, TIER_GROUPS, TIER_SHARDS, tierShard, tierShardFiles } from "../../lib/tier-shards.ts";
 
 const TIERS: Record<string, Tier> = {
   "a/unit-1.test.ts": "unit",
@@ -18,6 +18,14 @@ const tierOf = (path: string) => TIERS[path];
 const filesOf = (index: number, tiers = tierOf) =>
   tierShardFiles(FILES, tiers, TIMINGS, index, TIER_SHARDS)?.files ?? [];
 
+describe("tier shards: a PR's integration tests are few, so the base of the pyramid gets the runners (#1854)", () => {
+  test("three shards run the unit + component base and one the integration tier", () => {
+    expect(TIER_GROUPS.map((group) => group.shards)).toEqual([3, 1]);
+    expect(FAST_SHARDS).toEqual([1, 2, 3]);
+    expect(TIER_SHARDS).toBe(4);
+  });
+});
+
 describe("tier shards: the suite's shards are named by tier, in pyramid order (#1854)", () => {
   test("the plan holds unit + component first, then integration, and its shards add up", () => {
     expect(TIER_GROUPS.map((group) => group.label)).toEqual(["unit + component", "integration"]);
@@ -27,10 +35,10 @@ describe("tier shards: the suite's shards are named by tier, in pyramid order (#
   test("a shard says which tier group and which part of it it is", () => {
     const parts = Array.from({ length: TIER_SHARDS }, (_, k) => tierShard(k + 1, TIER_SHARDS));
     expect(parts.map((p) => `${p?.group.label} ${p?.part}/${p?.of}`)).toEqual([
-      "unit + component 1/2",
-      "unit + component 2/2",
-      "integration 1/2",
-      "integration 2/2",
+      "unit + component 1/3",
+      "unit + component 2/3",
+      "unit + component 3/3",
+      "integration 1/1",
     ]);
   });
 
