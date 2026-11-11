@@ -1,4 +1,8 @@
 import { SessionPersona } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+
+const Payload = z.record(z.string(), z.unknown());
 
 export interface SessionStartOptions {
   /** Receptor base URL, written into the hook command by `hooks install`. */
@@ -13,12 +17,7 @@ export interface SessionStartOptions {
 
 /** The badge `flightdeckd claude --persona` left in the environment; junk is not forwarded. */
 function personaBadge(raw: string | undefined) {
-  try {
-    const parsed = SessionPersona.safeParse(JSON.parse(raw ?? ""));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
+  return parseJsonOr(SessionPersona, raw ?? "", null);
 }
 
 /**
@@ -29,7 +28,7 @@ function personaBadge(raw: string | undefined) {
 export async function sendSessionStart(opts: SessionStartOptions): Promise<void> {
   let payload: Record<string, unknown>;
   try {
-    payload = JSON.parse(opts.input) as Record<string, unknown>;
+    payload = parseJsonWith(Payload, opts.input);
   } catch {
     return;
   }

@@ -210,6 +210,7 @@ test's baseline, with the issue that renames them.
 | `templates` | template | The task templates of simple mode and the presets they start with |
 | `terminal` | embedded terminal | Real shells on the host behind a PTY, attached by the app |
 | `trace` | trace | The tree of a session's turns, tool calls and subagents, with time and cost |
+| `tray` | tray | The tray badge, its "needs you" submenu and the window title, and the answers given from the submenu |
 | `trust` | trusted | What a project's own files would load, read without running, and its trust |
 | `updates` | update | Checks, verifies and applies the daemon's signed updates |
 | `vault` | vault | Secrets in the OS store, their usage rules, windows and requests |

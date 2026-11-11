@@ -114,6 +114,7 @@ import {
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
 import { type ClosingTerminal, TerminalsSlice } from "../features/terminal/index.ts";
+import { TraySlice } from "../features/tray/index.ts";
 import {
   VaultApprovalsSlice,
   VaultRulesSlice,
@@ -125,14 +126,7 @@ import { WatchSlice } from "../features/watch/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
-import type {
-  Platform,
-  TrayAction,
-  TrayMenu,
-  TrayStatus,
-  WebhookRequest,
-  WebhookResponse,
-} from "../platform/types.ts";
+import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { AwayClock } from "./away.ts";
@@ -213,7 +207,6 @@ import {
 import { isLocalUrl, type TerminalEnv } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type SecretMeta, Vault } from "./vault.ts";
 import { checkDelivery, type DeliveryRefusal, type VaultPolicy } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
@@ -839,17 +832,14 @@ export class AppStore {
   private readonly connections = new Map<string, HostConnection>();
   /** Sessions followed without being open (the project page's tiles), with how many follow each. */
   private readonly watched = new Map<string, number>();
-  private tray: TrayStatus | null = null;
+  /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
+  readonly tray: TraySlice;
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
-  /** The tray submenu last sent, and the debounce that will send the next one (phase 8). */
-  private trayMenuSent = JSON.stringify(trayMenu([]));
-  private trayMenuTimer: unknown = null;
-  private offTrayAction: (() => void) | null = null;
   private offQuit: (() => void) | null = null;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
@@ -1330,6 +1320,16 @@ export class AppStore {
       finished: (hostId, prev, next) => this.recordFinished(hostId, prev, next),
       later: (fn, ms) => void this.later(fn, ms),
     });
+    this.tray = new TraySlice(platform, {
+      state: () => this.state,
+      needsYou: () => needsYou(this.state, this.i18n.t),
+      t: () => this.i18n.t,
+      uiHostId: () => this.uiHostId(),
+      isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
+      answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
+      open: (item) => this.openRequest(item),
+      timers: options.timers ?? REAL_TIMERS,
+    });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -1556,8 +1556,7 @@ export class AppStore {
     // A schedule that cannot start (storage full) must not stop the app from starting.
     this.backupScheduler.start().catch(() => {});
     await this.settings.registerSaved();
-    this.offTrayAction?.();
-    this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
+    this.tray.start();
     this.offQuit?.();
     this.offQuit = this.platform.onQuitRequested(() => void this.appUpdates.quit());
     await inSequence(loadHosts(this.platform.storage), async (config) => {
@@ -1629,7 +1628,7 @@ export class AppStore {
     // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
     // palette is not the tray, so a vault grant is never logged as the tray's.
     if (item.gate || item.vault) this.openRequest(item);
-    else this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+    else this.tray.act({ key: `${item.hostId}/${item.requestId}`, action: decision });
   }
 
   /** What the palette was used for lately, most recent first. */
@@ -1656,28 +1655,6 @@ export class AppStore {
   private openRequest(item: PendingItem): void {
     void this.platform.showMainWindow();
     for (const listener of this.openRequestListeners) listener(item);
-  }
-
-  /** A click in the tray submenu: approve and deny answer without the window. */
-  private onTrayAction({ key, action }: TrayAction): void {
-    if (key === "more") {
-      void this.platform.showMainWindow();
-      return;
-    }
-    const item = needsYou(this.state, this.i18n.t).find(
-      (i) => `${i.hostId}/${i.requestId}` === key,
-    );
-    if (!item) return;
-    // The tray never approves a high-risk request: that takes holding the button in the app. A
-    // workflow gate is answered on its card, never as a permission (the host refuses its id).
-    // A vault grant is opened too (#244): the tray's line cannot show the secret and parameters.
-    if (
-      action === "open" ||
-      item.gate ||
-      (action === "approve" && (item.risk === "high" || item.vault))
-    )
-      this.openRequest(item);
-    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
@@ -2658,10 +2635,9 @@ export class AppStore {
     this.awayTimer = null;
     for (const conn of this.connections.values()) conn.dispose();
     this.connections.clear();
-    this.offTrayAction?.();
+    this.tray.stop();
     this.offQuit?.();
     this.offQuit = null;
-    this.offTrayAction = null;
     this.appUpdates.dispose();
     this.hostUpdate.dispose();
     this.backupScheduler.dispose();
@@ -3344,101 +3320,17 @@ export class AppStore {
     this.state = { ...this.state, ...patch };
     if (patch.hosts || patch.externalRequests) this.inbox.rememberWaiting();
     if (patch.secrets) void this.scan.refresh();
-    if (patch.hosts || patch.uiChoices) this.syncTray();
-    if (
-      patch.hosts ||
-      patch.uiChoices ||
-      patch.selected ||
-      patch.externalRequests ||
-      patch.externals ||
-      patch.runs
-    ) {
-      this.syncTitle();
-    }
     if (patch.hosts) this.clientBudgets.onHostsChanged();
     if (patch.hub || patch.projects) this.vaultRules.scopeChanged();
-    if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
-      this.scheduleTrayMenu();
-    }
+    this.tray.changed(patch);
     for (const listener of this.listeners) listener();
   }
 
   /**
-   * Rebuilds the tray submenu once the list stops changing for `TRAY_MENU_DELAY_MS`: each change
-   * restarts the wait, and a list equal to the one sent cancels it.
-   */
-  private scheduleTrayMenu(): void {
-    const timers = this.options.timers ?? REAL_TIMERS;
-    if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
-    this.trayMenuTimer = null;
-    if (JSON.stringify(this.trayMenuNow()) === this.trayMenuSent) return;
-    this.trayMenuTimer = timers.setTimeout(() => {
-      this.trayMenuTimer = null;
-      const menu = this.trayMenuNow();
-      this.trayMenuSent = JSON.stringify(menu);
-      void this.platform.setTrayMenu(menu);
-    }, TRAY_MENU_DELAY_MS);
-  }
-
-  /** The title the window has now, so the platform is told only when it changes. */
-  private titleShown = "Flightdeck";
-
-  /**
-   * The window shows one host (the selected one): in simple mode its title says how many tasks wait
-   * for an answer; in full mode the title is left alone (issue #88).
-   */
-  private syncTitle(): void {
-    const { t } = this.i18n;
-    const hostId = this.uiHostId();
-    let title = t("simple.windowTitle.idle");
-    if (hostId && this.uiMode(hostId).mode === "simple") {
-      const n = needsYou(this.state, t).filter((item) => item.hostId === hostId).length;
-      if (n > 0) title = t("simple.windowTitle.waiting", { n });
-    }
-    if (title === this.titleShown) return;
-    this.titleShown = title;
-    void Promise.resolve(this.platform.setTitle?.(title)).catch(() => {});
-  }
-
-  /** The tray's "needs you" menu now: a host in simple mode words its requests plainly (issue #88). */
-  private trayMenuNow(): TrayMenu {
-    return trayMenu(
-      needsYou(this.state, this.i18n.t),
-      this.i18n.t,
-      (hostId) => this.uiMode(hostId).mode === "simple",
-    );
-  }
-
-  /**
-   * A new language: the tray's texts change at once (no debounce, the list did not change) and
-   * every screen renders again.
+   * A new language: the tray's texts change at once and every screen renders again.
    */
   private onLanguage(): void {
-    this.syncTray();
-    this.syncTitle();
-    const menu = this.trayMenuNow();
-    this.trayMenuSent = JSON.stringify(menu);
-    void this.platform.setTrayMenu(menu);
+    this.tray.languageChanged();
     for (const listener of this.listeners) listener();
-  }
-
-  /** Pushes the fleet-wide badge to the tray whenever it changes. */
-  private syncTray(): void {
-    // The requests the daemon approved by itself that the app has seen in its sessions.
-    let autoApproved = 0;
-    for (const session of Object.values(this.state.sessions)) {
-      for (const item of session.items) {
-        if (item.kind === "permission" && item.resolution?.auto) autoApproved++;
-      }
-    }
-    const hosts = this.state.hosts.map((h) => ({
-      name: h.name,
-      sessions: h.sessions,
-      simple: this.uiMode(h.id).mode === "simple",
-    }));
-    const status = trayStatus(hosts, this.i18n.t, autoApproved);
-    if (this.tray?.label === status.label && this.tray.tooltip === status.tooltip) return;
-    this.tray = status;
-    void this.platform.setTrayStatus(status);
   }
 }
