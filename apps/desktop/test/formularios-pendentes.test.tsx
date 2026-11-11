@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { fakeHostStore, onWire } from "./fake-host.ts";
 import { uiIdle } from "./wait.ts";
 
 registerDom();
@@ -8,6 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
+const { RequestError } = await import("../src/lib/host-connection.ts");
 const { BudgetsSection } = await import("../src/ui/BudgetsSection.tsx");
 const { MessagingRulesSection } = await import("../src/features/messaging/rules-section.tsx");
 const { NewSecretForm } = await import("../src/features/vault/new-secret-form.tsx");
@@ -92,11 +94,10 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
 
   test("Adicionar exceção and Salvar retenção go busy and save once each", async () => {
     const save = slow();
-    const store = {
-      hostCommand: () =>
-        Promise.resolve({ policy: { exceptions: [], retentionDays: 7 }, paused: [] }),
-      hostRequest: save.call,
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore({
+      "messaging.rules.get": () => ({ policy: { exceptions: [], retentionDays: 7 }, paused: [] }),
+      "messaging.rules.set": onWire(save.call),
+    });
     render(
       <TContext.Provider value={t}>
         <MessagingRulesSection store={store} hostId="h" hostName="alfa" />
@@ -105,7 +106,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     await uiIdle();
     await type("Origem", "alfa");
     await type("Destino", "beta");
-    const result = { ok: true, data: { policy: { exceptions: [], retentionDays: 7 }, paused: [] } };
+    const result = { policy: { exceptions: [], retentionDays: 7 }, paused: [] };
     await expectBusyOnce("Adicionar exceção", save.calls, () => save.settle(result));
     const before = save.calls.length;
     await submit(formOf("Salvar retenção"));
@@ -155,7 +156,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
 
   test("Salvar persona goes busy and saves once, and a refusal brings the form back", async () => {
     const save = slow();
-    const store = { hostRequest: save.call, personas: { ref: () => null } } as unknown as AppStore;
+    const { store } = await fakeHostStore({ "personas.save": onWire(save.call) });
     render(
       <TContext.Provider value={t}>
         <PersonaEditor
@@ -174,7 +175,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     await type("Descrição", "revisa");
     await type("Instruções", "Revise com cuidado.");
     await expectBusyOnce("Salvar persona", save.calls, () =>
-      save.settle({ ok: false, code: "invalid", message: "persona inválida" }),
+      save.settle(new RequestError("invalid", "persona inválida")),
     );
     expect(screen.queryByText("persona inválida")).not.toBeNull();
     expect(button("Salvar persona")?.disabled).toBe(false);
@@ -182,7 +183,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
 
   test("Salvar snippet goes busy and saves once", async () => {
     const save = slow();
-    const store = { hostRequest: save.call } as unknown as AppStore;
+    const { store } = await fakeHostStore({ "snippets.save": onWire(save.call) });
     render(
       <TContext.Provider value={t}>
         <SnippetEditor
@@ -199,18 +200,14 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     await type("Nome", "status");
     await type("Comando", "git status");
     await expectBusyOnce("Salvar snippet", save.calls, () =>
-      save.settle({ ok: false, code: "invalid", message: "snippet inválido" }),
+      save.settle(new RequestError("invalid", "snippet inválido")),
     );
     expect(button("Salvar snippet")?.disabled).toBe(false);
   });
 
   test("Salvar (ação) goes busy and saves once", async () => {
     const save = slow();
-    const store = {
-      i18n: { t },
-      getState: () => ({ secrets: [] }),
-      hostRequest: save.call,
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore({ "actions.save": onWire(save.call) });
     render(
       <ActionForm
         store={store}
@@ -224,19 +221,14 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     await type("Nome da ação", "testar");
     await type("Comando, um argumento por linha", "bun\ntest");
     await expectBusyOnce("Salvar", save.calls, () =>
-      save.settle({ ok: false, code: "invalid", message: "ação inválida" }),
+      save.settle(new RequestError("invalid", "ação inválida")),
     );
     expect(button("Salvar")?.disabled).toBe(false);
   });
 
   test("Salvar destino goes busy and saves once", async () => {
     const save = slow();
-    const state = { secrets: [], hosts: [] };
-    const store = {
-      hostCommand: save.call,
-      subscribe: () => () => {},
-      getState: () => state,
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore({ "ssh.save": (payload) => save.call(payload) });
     render(
       <TContext.Provider value={t}>
         <TargetForm
