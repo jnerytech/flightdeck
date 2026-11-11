@@ -323,6 +323,28 @@ describe("resumo-ui", () => {
     }
     expect(document.body.textContent).not.toContain(raw);
   });
+
+  // Issue #177 (B11): a terminal session's page draws the summary in the same slot as a managed
+  // session's; the slot's padding is checked in sessions/session-header.test.tsx.
+  test("a terminal session's summary sits in the recap slot", async () => {
+    const { store } = await online("en");
+    const hostId = store.getState().hosts[0]?.id as string;
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <ExternalView
+          store={store}
+          state={store.getState()}
+          hostId={hostId}
+          hostName="alfa"
+          claudeSessionId={SESSION}
+          onResumed={() => {}}
+        />
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    const slot = screen.getByRole("region", { name: "Session summary" }).parentElement;
+    expect(slot?.className.split(" ") ?? []).toContain("recap-slot");
+  });
 });
 
 // Issue #232: the summary opened in full the first time a session was seen, and in a short window

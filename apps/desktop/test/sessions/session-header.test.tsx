@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { registerDom } from "../dom.ts";
@@ -39,13 +38,5 @@ describe("session-header: the summary card lines up with the header and the conv
     const slot = document.querySelector("[data-slot='recap']")?.parentElement;
     expect(slot?.className.split(" ")).toContain("recap-slot");
     expect(/padding-inline:\s*1rem;/.test(utility("recap-slot"))).toBe(true);
-  });
-
-  test("a screen that draws the summary itself puts it in the same slot (the terminal session's view)", () => {
-    const source = readFileSync(resolve(import.meta.dir, "../../src/ui/ExternalView.tsx"), "utf8");
-    const lines = source.split("\n");
-    const at = lines.findIndex((line) => line.includes("<RecapPanel"));
-    // The slot is RecapSlot, which draws .recap-slot and tightens it in a short area (#422).
-    expect(lines[at - 1] ?? "").toMatch(/recap-slot|<RecapSlot>/);
   });
 });
