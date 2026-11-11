@@ -10,7 +10,7 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN } from "./lib/arch-ratchet.ts";
 import { formatTable, growing, ratchetRows } from "./lib/arch-report.ts";
-import { rawJsonParseCounts } from "./lib/json-parse.ts";
+import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
 import { flatTestCounts } from "./lib/test-layout.ts";
@@ -50,7 +50,7 @@ const tracked = (git(["ls-files", "apps", "packages", "scripts"]) ?? "")
   .filter(Boolean);
 // every tracked TypeScript source file under a package's src; one deleted in the working copy is skipped
 const sources = tracked
-  .filter((path) => /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/.test(path))
+  .filter((path) => isScanned(path) || isMeasured(path))
   .flatMap((path) => {
     const text = read(path);
     return text === null ? [] : [{ path, text }];
