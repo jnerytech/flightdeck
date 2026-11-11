@@ -214,7 +214,7 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
     await click(screen.getByRole("button", { name: "Mostrar ou esconder api" }));
     // Kept under the project's stable key (issue #241); a choice under the old key still opens it.
-    expect(first.store.hubOpen()).toEqual({ "folder:api": true });
+    expect(first.store.viewPrefs.hubOpen()).toEqual({ "folder:api": true });
     cleanup();
     setup({ open: { [API]: true } });
     await settle(() => titles().length > 0);
@@ -237,11 +237,11 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
           .getAttribute("aria-expanded"),
       ).toBe("true");
     }
-    expect(Object.values(store.hubOpen()).every((open) => open)).toBe(true);
+    expect(Object.values(store.viewPrefs.hubOpen()).every((open) => open)).toBe(true);
     await click(collapseAll());
     expect(titles()).toEqual([]);
-    expect(Object.values(store.hubOpen()).every((open) => !open)).toBe(true);
-    expect(Object.keys(store.hubOpen()).length).toBeGreaterThanOrEqual(4);
+    expect(Object.values(store.viewPrefs.hubOpen()).every((open) => !open)).toBe(true);
+    expect(Object.keys(store.viewPrefs.hubOpen()).length).toBeGreaterThanOrEqual(4);
   });
 
   test("typing a project's name opens its history", async () => {

@@ -112,7 +112,7 @@ describe("tree-cap-ui: the tree shows a few projects (issue #689)", () => {
       });
     });
     await click(screen.queryByRole("button", { name: "Pin a" }));
-    expect(w.store.treePinned()).toEqual(["h1/p-a"]);
+    expect(w.store.viewPrefs.treePinned()).toEqual(["h1/p-a"]);
     cleanup();
     const again = new AppStore(w.mem.platform, { baseDelayMs: 600_000 });
     again.i18n.start();
@@ -122,7 +122,7 @@ describe("tree-cap-ui: the tree shows a few projects (issue #689)", () => {
       "true",
     );
     await click(screen.queryByRole("button", { name: "Unpin a" }));
-    expect(again.treePinned()).toEqual([]);
+    expect(again.viewPrefs.treePinned()).toEqual([]);
     expect(projectsOnTree()).toEqual(["h", "g", "f", "e", "d"]);
   });
 });
@@ -183,7 +183,7 @@ describe("tree-cap-ui: the fold at the start (issue #689)", () => {
     expect(expanded("d")).toBe("false");
     await click(nameButton("d"));
     expect(expanded("d")).toBe("true");
-    expect(w.store.treeOpened()).toEqual(["h1/p-d"]);
+    expect(w.store.viewPrefs.treeOpened()).toEqual(["h1/p-d"]);
     cleanup();
     const again = new AppStore(w.mem.platform, { baseDelayMs: 600_000 });
     again.i18n.start();
@@ -193,7 +193,7 @@ describe("tree-cap-ui: the fold at the start (issue #689)", () => {
     // Folding it again is a choice too.
     await click(nameButton("d"));
     expect(expanded("d")).toBe("false");
-    expect(again.treeOpened()).toEqual([]);
+    expect(again.viewPrefs.treeOpened()).toEqual([]);
   });
 
   test("a folded project with a needs-you or a running session shows a dot, an idle one does not", async () => {

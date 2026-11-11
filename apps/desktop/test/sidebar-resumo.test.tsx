@@ -22,7 +22,7 @@ const host = (over: object = {}) => ({
 function setup(options: { hosts?: object[]; deps?: object; folded?: boolean } = {}) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  if (options.folded !== false) store.setSidebarFolded(["machines"]);
+  if (options.folded !== false) store.viewPrefs.setSidebarFolded(["machines"]);
   const state = {
     ...store.getState(),
     hosts: options.hosts ?? [host()],

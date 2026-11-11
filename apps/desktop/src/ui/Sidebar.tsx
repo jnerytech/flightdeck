@@ -356,11 +356,11 @@ export function Sidebar(
   const progress = setupProgress(setup);
   const showSetup = !setupHidden && !progress.complete;
   const [pinnedOpen, setPinnedOpen] = useState(true);
-  const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
+  const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.viewPrefs.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
     const next = folded.includes(group) ? folded.filter((g) => g !== group) : [...folded, group];
     setFolded(next);
-    props.store.setSidebarFolded(next);
+    props.store.viewPrefs.setSidebarFolded(next);
   };
   // The project tree beside the rail's Projects icon (#689). Only a collapsed bar has it open, so
   // a bar that was expanded meanwhile does not bring it back on the next collapse.

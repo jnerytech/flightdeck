@@ -104,7 +104,7 @@ export function HistoryList(
   const loading = useMinLoading(sessions === null);
   const { t } = store.i18n;
   /** Lines or cards: the same choice as the hub's. */
-  const [view, setView] = useState<HubView>(() => store.hubView());
+  const [view, setView] = useState<HubView>(() => store.viewPrefs.hubView());
   /** Estimated cost by session id (hosts with costs); asked only for the cards. */
   const [costs, setCosts] = useState<Record<string, number>>({});
   const hasCosts = hasFeature(
@@ -175,7 +175,7 @@ export function HistoryList(
             cardsLabel={t("hub.viewCards")}
             onChange={(next) => {
               setView(next);
-              store.saveHubView(next);
+              store.viewPrefs.saveHubView(next);
             }}
           />
         </Inline>

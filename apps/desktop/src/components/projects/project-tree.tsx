@@ -64,9 +64,9 @@ export function ProjectTree(
     if (props.stay) return;
     props.go({ name: "board", host: project.hostId, projectId: project.projectId });
   };
-  const [folded, setFolded] = useState<string[]>(() => props.store.treeFolded());
-  const [unfolded, setUnfolded] = useState<string[]>(() => props.store.treeOpened());
-  const [pinned, setPinned] = useState<string[]>(() => props.store.treePinned());
+  const [folded, setFolded] = useState<string[]>(() => props.store.viewPrefs.treeFolded());
+  const [unfolded, setUnfolded] = useState<string[]>(() => props.store.viewPrefs.treeOpened());
+  const [pinned, setPinned] = useState<string[]>(() => props.store.viewPrefs.treePinned());
   const [query, setQuery] = useState("");
   // The checkouts a project lists past the cap, for this run only.
   const [opened, setOpened] = useState<string[]>([]);
@@ -87,13 +87,13 @@ export function ProjectTree(
     else if (foldedByDefault(total, key, active)) nextUnfolded = [...unfolded, key];
     setFolded(nextFolded);
     setUnfolded(nextUnfolded);
-    props.store.setTreeFolded(nextFolded);
-    props.store.setTreeOpened(nextUnfolded);
+    props.store.viewPrefs.setTreeFolded(nextFolded);
+    props.store.viewPrefs.setTreeOpened(nextUnfolded);
   };
   const pin = (key: string) => {
     const next = flip(pinned, key);
     setPinned(next);
-    props.store.setTreePinned(next);
+    props.store.viewPrefs.setTreePinned(next);
   };
   const projects = shownProjects(props.tree, pinned, query, active);
   return (

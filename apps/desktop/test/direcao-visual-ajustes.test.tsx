@@ -258,9 +258,9 @@ describe("direcao-visual: ajustes finos", () => {
     expect(separator()?.getAttribute("aria-valuenow")).toBe("412");
     // Nonsense in the storage falls back to the default.
     mem.platform.storage.setItem("flightdeck.listWidth", "abc");
-    expect(new AppStore(mem.platform).listWidth()).toBe(380);
+    expect(new AppStore(mem.platform).viewPrefs.listWidth()).toBe(380);
     mem.platform.storage.setItem("flightdeck.listWidth", "9999");
-    expect(new AppStore(mem.platform).listWidth()).toBe(640);
+    expect(new AppStore(mem.platform).viewPrefs.listWidth()).toBe(640);
   });
 
   test("reconectando também aparece na linha de hosts com problema, quando aberta", () => {
