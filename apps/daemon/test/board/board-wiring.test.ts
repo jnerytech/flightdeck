@@ -19,6 +19,9 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
+const cardCost = (cardId: string) => (cardId === "c1" ? 2 : null);
+const suspendApproval = () => {};
+
 function built(prPollIntervalMs = 0) {
   const store = new EventStore(":memory:");
   stores.push(store);
@@ -37,6 +40,8 @@ function built(prPollIntervalMs = 0) {
         ? { trusted: true, ...(cwd.endsWith("-wt") ? { configRoot: "/w/trusted" } : {}) }
         : { trusted: false, configRoot: "/w/other" },
     vaultValues: () => vault,
+    cardCost,
+    suspendApproval,
   });
   return { options, vault, configFile, db: store.db };
 }
@@ -72,10 +77,11 @@ describe("board-wiring: the board the daemon builds (#1593)", () => {
     const polled = built(9000).options;
     expect([
       off.db === db,
+      off.cardCost === cardCost && off.suspendApproval === suspendApproval,
       off.allowedRoots,
       off.maxParallelRuns,
       "prPollIntervalMs" in off,
       polled.prPollIntervalMs,
-    ]).toEqual([true, ["/w"], 3, false, 9000]);
+    ]).toEqual([true, true, ["/w"], 3, false, 9000]);
   });
 });
