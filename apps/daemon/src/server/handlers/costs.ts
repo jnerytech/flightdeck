@@ -65,22 +65,22 @@ export const costsHandlers = {
     ws.data.unwatchBudgets = host.watch((update) => send({ type: "budget.updated", ...update }));
   },
   "quota.history": (payload, { server }) => {
-    return server.need("quotaHistory").history(payload.window, payload.hours);
+    return server.needIn("quota", "history").history(payload.window, payload.hours);
   },
   "usage.summary": (payload, { server }) => {
     return server.need("usage").summary(payload.days);
   },
   "quota.get": (_payload, { server }) => {
-    return server.need("quota").state();
+    return server.needIn("quota", "windows").state();
   },
   "quota.setPauseAt": async (payload, { server }) => {
     // The quota first: a host without it refuses before anything is written.
-    const quota = server.need("quota");
-    await server.need("quotaPause").set(payload.pauseAt);
+    const quota = server.needIn("quota", "windows");
+    await server.needIn("quota", "pause").set(payload.pauseAt);
     return quota.state();
   },
   "quota.watch": (_payload, { ws, send, server }) => {
-    const host = server.need("quota");
+    const host = server.needIn("quota", "windows");
     ws.data.unwatchQuota?.();
     ws.data.unwatchQuota = host.watch((state) => send({ type: "quota.updated", ...state }));
   },
