@@ -26,3 +26,4 @@ playwright-report/
 junit-*.xml
 .features-gen/
 test-results/
+e2e-json/
