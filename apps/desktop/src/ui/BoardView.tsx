@@ -575,12 +575,12 @@ export const BoardView = memo(function BoardView(props: {
           label: filteredCountLabel(t, inColumn, ofColumn),
         }
       : { count: columnCount(inColumn), label: countLabel(t, inColumn) };
-  const order = boardOrder(shown);
+  const boardIds = boardOrder(shown);
   const selection = pruneSelection(
     picked,
     all.map((card) => card.id),
   );
-  const acting = shownSelection(selection, order);
+  const acting = shownSelection(selection, boardIds);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
   /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
   const moveSelected = async (
@@ -1003,7 +1003,7 @@ export const BoardView = memo(function BoardView(props: {
         rangeBase,
         anchor,
         shownIds,
-        boardOrder: order,
+        boardOrder: boardIds,
         selection,
         cards: all,
         focusCard,
