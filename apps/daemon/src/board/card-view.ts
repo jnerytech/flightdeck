@@ -2,7 +2,9 @@ import type { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import { BoardColumn as BoardColumnSchema, type BoardResult } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { isInside } from "../paths.ts";
+import { AutoStart, CardVariant, NoticeParams } from "./row-json.ts";
 import type { Card, CardRow, CardRun, Project, RunRow } from "./types.ts";
 
 /** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
@@ -90,12 +92,12 @@ export class CardView {
       sessionStatus: sessionId ? this.port.sessionStatus(sessionId) : null,
       notice: row.notice,
       noticeReason: row.notice_reason,
-      noticeParams: row.notice_params ? JSON.parse(row.notice_params) : null,
+      noticeParams: row.notice_params ? parseJsonOr(NoticeParams, row.notice_params, null) : null,
       discarded: false,
       runs,
       workflowRunId: active && this.port.isWorkflowRun(active.id) ? active.id : null,
       arenaOf: row.arena_of,
-      variant: row.variant ? JSON.parse(row.variant) : null,
+      variant: row.variant ? parseJsonOr(CardVariant, row.variant, null) : null,
       arenaVariants: db
         .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM cards WHERE arena_of = ?")
         .get(id)?.n as number,
@@ -123,7 +125,7 @@ export class CardView {
       blocking: this.port.blockers.blockingOf(id),
       waitingOn: rows.length === 0 ? this.port.blockers.unsatisfied(id, row.unblock_when) : [],
       unblockWhen: row.unblock_when,
-      autoStart: row.auto_start ? JSON.parse(row.auto_start) : null,
+      autoStart: row.auto_start ? parseJsonOr(AutoStart, row.auto_start, null) : null,
       unblockedAt: row.unblocked_at,
       ...this.port.queueState(
         active !== undefined && active.started_at === null && active.ended_at === null,
