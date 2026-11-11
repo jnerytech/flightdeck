@@ -69,12 +69,9 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { Changes } from "./review/changes.ts";
 import { ReviewFiles } from "./review/files.ts";
-import { SessionCommits } from "./review/session-commit.ts";
 import { SessionFiles } from "./review/session-files.ts";
-import { SessionPrs } from "./review/session-pr.ts";
-import { createReview } from "./review/wiring.ts";
+import { createChanges, createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
@@ -87,8 +84,7 @@ import { serverGroup, startServer } from "./server.ts";
 import { daemonCommand } from "./service.ts";
 import { appServiceInstall } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
-import { SessionManager } from "./sessions/session-manager.ts";
-import { createSessionSettings } from "./sessions/wiring.ts";
+import { createSessionManager, createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
@@ -307,38 +303,23 @@ export async function startDaemon(
     log: (line) => logger.log(line),
   });
   const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
-  const manager = new SessionManager({
+  const manager = createSessionManager({
     folderLocks,
     store,
     runtime,
     risk,
-    onActivity: (active) => keepAwake.update(active),
-    trust: projectTrust.sessionTrust.bind(projectTrust),
-    prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
-    allowedRoots: config.allowedRoots,
-    defaultPermissionMode: config.defaultPermissionMode,
-    allowApiKey: config.allowApiKey,
-    allowBypass: () => config.allowBypassPermissions,
+    config,
+    projectTrust,
+    keepAwake,
     // A pinned session and a card's stay awake; filled in below, once the board and the meta exist.
-    keepAwake: (session) =>
-      awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
+    awake,
     baseEnv: env,
     ...present({ opencode: opencode.runtime }),
     onQuota,
-    onTurn: (sessionId, cwd, turn, runtime) => {
-      usage.record(sessionId, cwd, turn);
-      // The account card reads the Claude plan; an OpenCode turn spends none of it.
-      if (runtime === "claude") account?.turnEnded();
-    },
-    onTurnEdge: (edge) =>
-      snapshots.enqueue({
-        cwd: edge.cwd,
-        claudeSessionId: edge.claudeSessionId,
-        kind: edge.kind,
-        ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
-        ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
-      }),
+    usage,
+    account,
+    snapshots,
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
@@ -434,29 +415,15 @@ export async function startDaemon(
     self: selfCommand,
     log: (message) => logger.log(message),
   });
-  // The diff of every session and card, for the review (phase 11).
-  const changes = new Changes({
+  // The diff of every session and card, for the review (phase 11), and a plain session's commit
+  // and PR (#1133).
+  const { changes, sessionCommits, sessionPrs } = createChanges({
     db: store.db,
     board,
     log: logger.log.bind(logger),
-    // A terminal's folder is a target of the Files viewer (#506).
     terminals,
-    // A project's checkout is one too, inside these (#797).
     allowedRoots: config.allowedRoots,
-  });
-  // #1133: a plain session's changes committed on a new branch in its own checkout.
-  const sessionCommits = new SessionCommits({
-    changes,
     scanner: snippetScanner,
-    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
-  });
-  // #1133: the branch a session's commit made, pushed and opened as a PR.
-  const sessionPrs = new SessionPrs({
-    changes,
-    commits: sessionCommits,
-    scanner: snippetScanner,
-    isCardWorktree: (root) => board.projectForCwd(root)?.card != null,
-    projectProvider: (root) => board.projectForCwd(root)?.project.prProvider ?? null,
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.

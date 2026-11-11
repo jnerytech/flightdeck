@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { fakeAssistant, memoryPlatform, seedHosts } from "./fixtures.ts";
-import { settle, stays } from "./wait.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { fakeAssistant, memoryPlatform, seedHosts } from "../fixtures.ts";
+import { settle, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { SessionView } = await import("../src/ui/SessionView.tsx");
-const { emptySession } = await import("../src/lib/session-state.ts");
-const { AssistantSettings } = await import("../src/components/assistant/assistant-settings.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { SessionView } = await import("../../src/ui/SessionView.tsx");
+const { emptySession } = await import("../../src/lib/session-state.ts");
+const { AssistantSettings } = await import("../../src/components/assistant/assistant-settings.tsx");
 
 setDefaultTimeout(30_000);
 const realObserver = globalThis.ResizeObserver;
