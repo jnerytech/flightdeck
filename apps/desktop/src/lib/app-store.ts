@@ -43,11 +43,12 @@ import {
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
-  HealthSlice,
+  type HealthSlice,
   HostRosterSlice,
   HostUpdateSlice,
   initialHealthState,
   type NewHost,
+  wireHealth,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
 import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
@@ -175,7 +176,7 @@ import { Vault } from "./vault.ts";
 import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { VaultUsageLog } from "./vault-usage.ts";
-import { APP_VERSION, hasFeature } from "./version.ts";
+import { hasFeature } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WhatsNew } from "./whats-new.ts";
@@ -349,6 +350,7 @@ export class AppStore {
       this.hostCommand(hostId, type, payload, options),
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
+    now: () => this.now(),
   };
 
   constructor(
@@ -381,14 +383,7 @@ export class AppStore {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
-    this.health = new HealthSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      features: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-      deps: (hostId) => this.hostRequest(hostId, "deps.check", {}),
-      doctor: (hostId) => this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION }),
-      now: () => this.now(),
-    });
+    this.health = wireHealth(this.kernel);
     this.hostUpdate = new HostUpdateSlice({
       host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
