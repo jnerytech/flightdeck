@@ -37,10 +37,11 @@ import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
-  ClientBudgetsSlice,
+  type ClientBudgetsSlice,
   initialBudgetsState,
   initialClientBudgetsState,
   wireBudgets,
+  wireClientBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
@@ -497,26 +498,18 @@ export class AppStore {
         this.clientBudgets.onLimitsChanged();
       },
     });
-    this.clientBudgets = new ClientBudgetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.clientBudgets = wireClientBudgets(this.kernel, {
       storage: platform.storage,
       limits: () => this.clients.budgets(),
-      hostsWithCosts: () =>
-        this.state.hosts
-          .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-          .map((h) => h.id),
       today: () => this.today(),
       scope: () => this.clientScope.get(),
       clients: () => this.state.clientList,
-      summary: (hostId, filter) => this.hostCommand(hostId, "costs.summary", filter),
       feed: (name, clientId, percent, limit) =>
         this.webhookFeed.clientBudget(name, clientId, percent, limit),
       notify: (notification, clientId) =>
         this.inbox.notify(notification, { name: "costs", client: clientId }, undefined, {
           event: "budget-quota",
         }),
-      t: () => this.i18n.t,
     });
     this.roi = new RoiSettings(platform, {
       onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
