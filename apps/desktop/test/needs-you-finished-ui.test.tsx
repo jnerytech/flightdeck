@@ -6,7 +6,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { NeedsYou } = await import("../src/ui/NeedsYou.tsx");
+const { NeedsYou } = await import("../src/features/needs-you/page.tsx");
 
 afterEach(() => cleanup());
 

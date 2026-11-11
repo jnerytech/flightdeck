@@ -15,6 +15,7 @@ import type { Lang } from "@/i18n/index";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
+import { NeedsYou } from "../features/needs-you/page.tsx";
 import {
   type AppState,
   type AppStore,
@@ -38,7 +39,6 @@ import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
-import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { QuotaPanel } from "./QuotaPanel.tsx";
 import { RecapPanel } from "./RecapPanel.tsx";
