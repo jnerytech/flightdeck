@@ -59,7 +59,7 @@ function setup(
         }
       : { ok: true, data: {} };
   }) as never;
-  store.describePr = (async () => {
+  store.prWatch.describe = (async () => {
     commands.push("describePr");
     return { text: "text", redacted: 0 };
   }) as never;
