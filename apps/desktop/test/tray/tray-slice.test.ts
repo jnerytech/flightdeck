@@ -83,6 +83,9 @@ function tray() {
   };
 }
 
+/** A selection that is truthy: only its presence matters to the tray. */
+const shown = { hostId: "h1" } as never;
+
 const withPermissions = (n: number) => [
   { pendingPermissions: Array.from({ length: n }, (_, i) => ({ requestId: `r${i}` })) },
 ];
@@ -119,10 +122,10 @@ describe("tray (#1596)", () => {
   test("a simple-mode host's window title says how many tasks wait, and full mode leaves it alone", () => {
     const { slice, log, world } = tray();
     world.items = [item("r1"), item("r2"), item("r3", { hostId: "h2" })];
-    slice.changed({ selected: "h1" });
+    slice.changed({ selected: shown });
     expect(log).toEqual([]);
     world.simple.add("h1");
-    slice.changed({ selected: "h1" });
+    slice.changed({ selected: shown });
     slice.changed({ externals: {} });
     world.items = [];
     slice.changed({ runs: {} });
@@ -135,7 +138,7 @@ describe("tray (#1596)", () => {
   test("the title stays put with no host shown", () => {
     const { slice, log, world } = tray();
     world.uiHost = null;
-    slice.changed({ selected: null });
+    slice.changed({ selected: shown });
     expect(log).toEqual([]);
   });
 
