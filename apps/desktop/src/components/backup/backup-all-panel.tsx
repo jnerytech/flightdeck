@@ -48,7 +48,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
 
   const doExport = async () => {
     setExportNote(null);
-    const outcome = await store.backupEverything(passphrase, confirmation);
+    const outcome = await store.backup.create(passphrase, confirmation);
     if (outcome.ok) {
       setExportNote({ tone: "info", text: t("backupAll.saved") });
       setPassphrase("");
@@ -63,8 +63,8 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
     setPreview(null);
     setImportNote(null);
     const outcome = onDrive
-      ? await store.previewDriveBackup(driveName, filePassphrase)
-      : await store.previewBackup(filePassphrase);
+      ? await store.backup.previewDrive(driveName, filePassphrase)
+      : await store.backup.preview(filePassphrase);
     if (outcome.ok) {
       setPreview(outcome.preview);
       setChoice("skip");
@@ -78,7 +78,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
   const doLook = async () => {
     setImportNote(null);
     setPreview(null);
-    const outcome = await store.listDriveBackups();
+    const outcome = await store.backup.driveList();
     if (outcome.ok) {
       setDriveNames(outcome.names);
       setDriveName("");
@@ -89,7 +89,7 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
 
   const doRestore = async () => {
     if (!preview) return;
-    const outcome = await store.restoreBackup(preview, choice);
+    const outcome = await store.backup.restore(preview, choice);
     if (outcome.ok) {
       setImportNote({ tone: "info", text: t("backupAll.result", { ...outcome.result }) });
     } else {
