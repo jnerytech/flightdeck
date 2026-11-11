@@ -5,16 +5,16 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
 import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { PrRefusal } from "@/components/pull-requests/pr-refusal";
-import { PrRow } from "@/components/pull-requests/pr-row";
 import { refusalText } from "@/i18n/errors";
-import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { bulkSplit, updateMany, updateSummary } from "../lib/board-bulk.ts";
-import { answerOf } from "../lib/board-select.ts";
-import { openPullRequests } from "../lib/pull-requests.ts";
-import type { Route } from "../lib/router.ts";
-import { useStoreSlice } from "../lib/use-store.ts";
-import { hasFeature } from "../lib/version.ts";
+import { type AppStore, sessionKey } from "../../lib/app-store.ts";
+import { bulkSplit, updateMany, updateSummary } from "../../lib/board-bulk.ts";
+import { answerOf } from "../../lib/board-select.ts";
+import { openPullRequests } from "../../lib/pull-requests.ts";
+import type { Route } from "../../lib/router.ts";
+import { useStoreSlice } from "../../lib/use-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { PrRefusal } from "./pr-refusal.tsx";
+import { PrRow } from "./pr-row.tsx";
 
 const SLICE = ["hosts", "projects", "cards", "watches"] as const;
 

@@ -177,18 +177,11 @@ describe("check-loop: the mode a card's switch is decided on", () => {
   test("a card with no session takes the host's default mode; a session, the mode it runs in now", async () => {
     const { manager, board, repo } = newBoard();
     const project = await board.addProject({ path: repo });
-    const ask = (sessionId: string | null) => {
-      try {
-        return (manager as unknown as { modeOf(id: string | null): string }).modeOf(sessionId);
-      } catch {
-        return "no answer";
-      }
-    };
     const { sessionId } = await manager.create(
       { cwd: project.path, prompt: "p", permissionMode: "acceptEdits" },
       {},
     );
-    expect([ask(null), ask(sessionId)]).toEqual(["default", "acceptEdits"]);
+    expect([manager.modeOf(null), manager.modeOf(sessionId)]).toEqual(["default", "acceptEdits"]);
   });
 });
 
