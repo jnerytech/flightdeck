@@ -116,11 +116,12 @@ jobs:
   # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
   # suite and the checks in parallel. The required check `test (ubuntu-latest)` is the aggregate
   # below.
-  # The whole suite in three shards (#296), each run twice: Bun's coverage gives the lines (and the
+  # The whole suite in four shards named by tier (#1854), the base of the pyramid first: unit +
+  # component 1/2 and 2/2, then integration 1/2 and 2/2 (scripts/lib/tier-shards.ts). Each run twice: Bun's coverage gives the lines (and the
   # lcov SonarCloud reads), istanbul's function maps give the functions, since Bun's lcov counts
   # functions but does not name them. The suite job merges the six, failing closed.
   test-shard:
-    name: test shard ${{ matrix.shard }}/3 ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    name: ${{ matrix.tier }} ${{ matrix.part }} ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
     needs: [quick]
     if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     runs-on: ubuntu-latest
@@ -128,8 +129,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
         kind: [bun, istanbul]
+        # The tier group of each shard, as scripts/lib/tier-shards.ts numbers them.
+        include:
+          - { shard: 1, tier: "unit + component", part: "1/2" }
+          - { shard: 2, tier: "unit + component", part: "2/2" }
+          - { shard: 3, tier: "integration", part: "1/2" }
+          - { shard: 4, tier: "integration", part: "2/2" }
     defaults:
       run:
         shell: bash
@@ -153,10 +160,10 @@ jobs:
 
       # Outside the checkout: the repo guard fails a test run that leaves a file in it.
       # A PR or a push to main (a base): its selection, split the same way (#1761).
-      - name: Shard ${{ matrix.shard }}/3 (${{ matrix.kind }})
+      - name: ${{ matrix.tier }} ${{ matrix.part }} (${{ matrix.kind }})
         env:
           BASE: ${{ needs.quick.outputs.base }}
-        run: bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}
+        run: bun run scripts/shard-gate.ts run ${{ matrix.shard }}/4 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}
 
       - name: Relatório do shard
         if: always()
@@ -210,11 +217,11 @@ jobs:
           pattern: shard-*
           path: ${{ runner.temp }}/shards
 
-      - name: Testes (cobertura 80%, 3 shards)
+      - name: Testes (cobertura 80%, 4 shards)
         id: merge
         env:
           BASE: ${{ needs.quick.outputs.base }}
-        run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info ${BASE:+--base "$BASE"}
+        run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 4 coverage/lcov.info ${BASE:+--base "$BASE"}
 
       # #1003: a test over 5 s or a test file over 60 s fails the PR, from each Bun shard's own times.
       - name: Testes lentos (#1003)
@@ -227,6 +234,16 @@ jobs:
             bun run scripts/slow-tests.ts "$report" || status=1
           done
           exit $status
+
+      # The pyramid table of the run (#1854), also in the job summary: the trend is charted from it.
+      - name: Pirâmide de testes por camada
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-pyramid
+          path: coverage/pyramid.json
+          if-no-files-found: ignore
+          retention-days: 30
 
       # SonarCloud reads it in its own job.
       - name: Relatório lcov para o SonarCloud
