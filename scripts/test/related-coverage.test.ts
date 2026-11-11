@@ -39,7 +39,7 @@ describe("related-coverage: which changed files the rule covers", () => {
 
   test("tests, declarations, entry points, the vendored ui and other scripts do not", () => {
     for (const path of [
-      "apps/daemon/test/board.test.ts",
+      "apps/daemon/test/board/board.test.ts",
       "apps/desktop/src/types.d.ts",
       "apps/daemon/src/bin.ts",
       "apps/desktop/src/main.tsx",
