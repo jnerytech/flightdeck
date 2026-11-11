@@ -160,6 +160,22 @@ describe("metrics: PR size and rework", () => {
     expect(prSize(prs, [src, srcFix], WINDOW).reworkShare).toBe(1);
   });
 
+  test("a fix counts when most of its source files were in one feat, not when it only shares a hot file (#2019)", () => {
+    const feat = commit("f", "2026-11-01T00:00:00Z", "feat(x): one", ["apps/daemon/src/hot.ts"]);
+    const mostly = commit("m", "2026-11-02T00:00:00Z", "fix(x): same files", [
+      "apps/daemon/src/hot.ts",
+      "apps/daemon/src/b.ts",
+    ]);
+    const hotOnly = commit("h", "2026-11-02T00:00:00Z", "fix(z): elsewhere", [
+      "apps/daemon/src/hot.ts",
+      "apps/daemon/src/c.ts",
+      "apps/daemon/src/d.ts",
+    ]);
+    // 1 of 2 source files is not most of them; 1 of 3 neither: only a half or more would count.
+    expect(prSize(prs, [feat, mostly], WINDOW).reworkShare).toBe(1);
+    expect(prSize(prs, [feat, hotOnly], WINDOW).reworkShare).toBe(0);
+  });
+
   test("a fix right after the feat of its own pull request is not rework: it needs an hour of distance (#2019)", () => {
     const feat = commit("f", "2026-11-01T00:00:00Z", "feat(x): one", ["apps/daemon/src/a.ts"]);
     const review = commit("r", "2026-11-01T00:40:00Z", "fix(x): review finding", [
