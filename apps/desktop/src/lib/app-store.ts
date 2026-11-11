@@ -99,6 +99,7 @@ import {
 import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
 import {
   initialSessionsState,
+  SessionCommandsSlice,
   SessionsSlice,
   type SessionsSliceState,
   SummariesSlice,
@@ -162,7 +163,6 @@ import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { hubRows, takeHubHost } from "./hub.ts";
 import type { InboxEntry } from "./inbox.ts";
-import { endMeasure, startMeasure } from "./measures.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { externalRequestNotification } from "./notify.ts";
@@ -827,6 +827,8 @@ export class AppStore {
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
+  /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
+  private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
@@ -1291,6 +1293,17 @@ export class AppStore {
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });
+    this.commands = new SessionCommandsSlice({
+      connection: (hostId) => this.connections.get(hostId),
+      selected: () => this.state.selected,
+      fail: (error, text, retry) => this.fail(error, text, retry),
+      opened: (hostId, sessionId) => {
+        this.select(hostId, sessionId);
+        // A new session opens, wherever it was created from (phase 10).
+        this.history.closeSearch();
+        this.router.push({ name: "session", host: hostId, id: sessionId });
+      },
+    });
     this.permissions = new PermissionsSlice({
       needsYou: () => needsYou(this.state, this.i18n.t),
       sessions: () => this.state.sessions,
@@ -1299,7 +1312,7 @@ export class AppStore {
       sendOn: (hostId, response) =>
         this.connections.get(hostId)?.request("permission.respond", response),
       sendSelected: (response) =>
-        this.onSelected((conn) => conn.request("permission.respond", response)),
+        this.commands.onSelected((conn) => conn.request("permission.respond", response)),
       fail: (error, text) => this.fail(error, text),
       t: () => this.i18n.t,
     });
@@ -2466,68 +2479,37 @@ export class AppStore {
     });
   }
 
-  async createSession(
-    hostId: string,
-    payload: CommandPayload<"session.create">,
-  ): Promise<string | null> {
-    const conn = this.connections.get(hostId);
-    if (!conn) {
-      this.fail(new RequestError("offline", "unknown host, or no token"));
-      return null;
-    }
-    try {
-      const { sessionId } = await conn.request("session.create", payload);
-      this.select(hostId, sessionId);
-      // A new session opens, wherever it was created from (phase 10).
-      this.history.closeSearch();
-      this.router.push({ name: "session", host: hostId, id: sessionId });
-      return sessionId;
-    } catch (error) {
-      this.fail(error, undefined, () => void this.createSession(hostId, payload));
-      return null;
-    }
+  createSession(hostId: string, payload: CommandPayload<"session.create">): Promise<string | null> {
+    return this.commands.create(hostId, payload);
   }
 
-  async send(text: string, images?: SessionImage[]): Promise<void> {
-    startMeasure("send");
-    await this.onSelected((conn, sessionId) =>
-      conn.request("session.send", { sessionId, text, ...(images?.length ? { images } : {}) }),
-    );
-    endMeasure("send");
+  send(text: string, images?: SessionImage[]): Promise<void> {
+    return this.commands.send(text, images);
   }
 
   interrupt(): Promise<void> {
-    return this.onSelected((conn, sessionId) => conn.request("session.interrupt", { sessionId }));
+    return this.commands.interrupt();
   }
 
   /** Whether the host took the mode (#935): false when it refused (said why), or no session is open. */
-  async setMode(permissionMode: SettableMode): Promise<boolean> {
-    let taken = false;
-    await this.onSelected(async (conn, sessionId) => {
-      await conn.request("session.setMode", { sessionId, permissionMode });
-      taken = true;
-    });
-    return taken;
+  setMode(permissionMode: SettableMode): Promise<boolean> {
+    return this.commands.setMode(permissionMode);
   }
 
   setModel(model: string | null): Promise<void> {
-    return this.onSelected((conn, sessionId) =>
-      conn.request("session.setModel", { sessionId, model }),
-    );
+    return this.commands.setModel(model);
   }
 
   setEffort(effort: EffortLevel | null): Promise<void> {
-    return this.onSelected((conn, sessionId) =>
-      conn.request("session.setEffort", { sessionId, effort }),
-    );
+    return this.commands.setEffort(effort);
   }
 
   close(): Promise<void> {
-    return this.onSelected((conn, sessionId) => conn.request("session.close", { sessionId }));
+    return this.commands.close();
   }
 
   resume(): Promise<void> {
-    return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
+    return this.commands.resume();
   }
 
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
@@ -2639,17 +2621,6 @@ export class AppStore {
   };
 
   // -- internals ------------------------------------------------------------
-
-  private async onSelected(action: (conn: HostConnection, sessionId: string) => Promise<unknown>) {
-    const selected = this.state.selected;
-    const conn = selected && this.connections.get(selected.hostId);
-    if (!conn || !selected?.sessionId) return;
-    try {
-      await action(conn, selected.sessionId);
-    } catch (error) {
-      this.fail(error);
-    }
-  }
 
   private connect(config: HostConfig, token: string): void {
     this.scan.rememberToken(token);
