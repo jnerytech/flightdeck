@@ -161,6 +161,8 @@ export interface AppKernel<S extends object> {
   connection(hostId: string): HostConnection | undefined;
   /** Milliseconds now (injected in tests). */
   now(): number;
+  /** The hosts the app is connected to right now, by id. */
+  onlineHosts(): string[];
   /** The app's translator now (it changes with the language). */
   t(): T;
 }
