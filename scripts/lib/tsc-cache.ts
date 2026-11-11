@@ -28,6 +28,22 @@ export interface SeedInput {
  * sources instead of at zero. Copies, for each name this checkout lacks, the newest one a sibling
  * has, and returns the names it copied.
  */
-export function seedCache(_input: SeedInput): string[] {
-  return [];
+export function seedCache(input: SeedInput): string[] {
+  const { root, siblings, names, files } = input;
+  const seeded: string[] = [];
+  for (const name of names) {
+    const own = join(root, TSC_CACHE, name);
+    if (files.exists(own)) continue;
+    let best: { path: string; at: number } | undefined;
+    for (const sibling of siblings) {
+      const path = join(sibling, TSC_CACHE, name);
+      if (!files.exists(path)) continue;
+      const at = files.mtime(path);
+      if (!best || at > best.at) best = { path, at };
+    }
+    if (!best) continue;
+    files.copy(best.path, own);
+    seeded.push(name);
+  }
+  return seeded;
 }

@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type CacheFiles, seedCache } from "../lib/tsc-cache.ts";
 
 /** An in-memory cache: path to its last change in ms. */
@@ -53,5 +57,50 @@ describe("seedCache", () => {
       files: m.files,
     });
     expect(seeded).toEqual(["a.tsbuildinfo"]);
+  });
+});
+
+describe("a seeded build info is safe", () => {
+  test("tsc still reports a type error that the donor's sources did not have", () => {
+    const base = mkdtempSync(join(realpathSync.native(tmpdir()), "tsc-seed-"));
+    const project = (dir: string, source: string) => {
+      mkdirSync(join(dir, "src"), { recursive: true });
+      writeFileSync(join(dir, "src/a.ts"), source);
+      writeFileSync(
+        join(dir, "tsconfig.json"),
+        JSON.stringify({ compilerOptions: { strict: true, noEmit: true }, include: ["src"] }),
+      );
+    };
+    const tsc = (dir: string) =>
+      spawnSync(
+        process.execPath,
+        [
+          "x",
+          "tsc",
+          "-p",
+          "tsconfig.json",
+          "--incremental",
+          "--tsBuildInfoFile",
+          "cache/p.tsbuildinfo",
+        ],
+        {
+          cwd: dir,
+          encoding: "utf8",
+        },
+      );
+    try {
+      const donor = join(base, "donor");
+      const worktree = join(base, "worktree");
+      project(donor, "export const a: number = 1;\n");
+      expect(tsc(donor).status).toBe(0);
+      project(worktree, 'export const a: number = "one";\n');
+      mkdirSync(join(worktree, "cache"), { recursive: true });
+      copyFileSync(join(donor, "cache/p.tsbuildinfo"), join(worktree, "cache/p.tsbuildinfo"));
+      const run = tsc(worktree);
+      expect(run.status).not.toBe(0);
+      expect(run.stdout).toContain("src/a.ts");
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 });

@@ -110,6 +110,23 @@ describe("typecheck-plan", () => {
   });
 });
 
+describe("no project is checked less", () => {
+  test.each(PROJECTS)(
+    "a type error in %s fails the run, in sequence and two at a time",
+    async (project) => {
+      for (const limit of [1, 2]) {
+        const code = await runAll(
+          typecheckPlan(),
+          async (command) => (command[2] === `${project}/tsconfig.json` ? 2 : 0),
+          () => {},
+          { limit },
+        );
+        expect(code).toBe(2);
+      }
+    },
+  );
+});
+
 describe("typecheckJobs", () => {
   const meminfo = (gb: number) => `MemTotal: 16000000 kB\nMemAvailable: ${gb * 1024 * 1024} kB\n`;
 
