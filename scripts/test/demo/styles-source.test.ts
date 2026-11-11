@@ -49,6 +49,13 @@ describe("styles-source: the stylesheet is the entry with its local imports put 
     expect(readStyles(pathToFileURL(entry))).toBe(".u { top: 2px; }\n");
   });
 
+  test("two files that import each other are an error that says so, not a stack overflow", () => {
+    write("cycle/styles/a.css", '@import "./b.css";\n');
+    write("cycle/styles/b.css", '@import "./a.css";\n');
+    const entry = write("cycle/styles.css", '@import "./styles/a.css";\n');
+    expect(() => readStyles(entry)).toThrow("import cycle");
+  });
+
   test("an import of a file that is not there is an error that names it", () => {
     const entry = write("missing/styles.css", '@import "./styles/gone.css";\n');
     expect(() => readStyles(entry)).toThrow("gone.css");
