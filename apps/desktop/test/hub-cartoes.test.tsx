@@ -12,7 +12,7 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SessionCard } = await import("../src/components/hub/session-card.tsx");
+const { SessionCard } = await import("../src/features/sessions/session-card.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 

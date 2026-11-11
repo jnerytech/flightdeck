@@ -8,9 +8,9 @@ registerDom();
 const { cleanup, render, screen, within } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { CardConflicts } = await import("../src/components/card/card-conflicts.tsx");
-const { RadarBadge } = await import("../src/components/board/radar-badge.tsx");
-const { CardMergePr } = await import("../src/components/card/card-merge-pr.tsx");
+const { CardConflicts } = await import("../src/features/board/card-conflicts.tsx");
+const { RadarBadge } = await import("../src/features/board/radar-badge.tsx");
+const { CardMergePr } = await import("../src/features/board/card-merge-pr.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { KpiCard } from "@/components/home/kpi-card";
-import { Leaderboard } from "@/components/home/leaderboard";
 import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
 import { ScopeMenu } from "@/components/shell/scope-menu";
@@ -9,16 +7,24 @@ import { Button } from "@/components/ui/button";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { T } from "@/i18n/index";
-import type { AppState, AppStore, HostView } from "../lib/app-store.ts";
-import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
-import { type HomeSnapshot, homeHostData, homeKey } from "../lib/home-cache.ts";
-import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
-import type { HomeLeaders } from "../lib/home-leaders.ts";
-import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "../lib/home-view.ts";
-import { knownProjectKeys } from "../lib/project-keys.ts";
-import type { Route } from "../lib/router.ts";
-import { hasFeature } from "../lib/version.ts";
+import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
+import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../../lib/costs.ts";
+import {
+  ALL_SCOPE,
+  activeScope,
+  awayKey,
+  type DataScope,
+  scopeHosts,
+} from "../../lib/data-scope.ts";
+import { type HomeSnapshot, homeHostData, homeKey } from "../../lib/home-cache.ts";
+import { type HomeKpis, homeKpis } from "../../lib/home-kpis.ts";
+import type { HomeLeaders } from "../../lib/home-leaders.ts";
+import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "../../lib/home-view.ts";
+import { knownProjectKeys } from "../../lib/project-keys.ts";
+import type { Route } from "../../lib/router.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { KpiCard } from "./kpi-card.tsx";
+import { Leaderboard } from "./leaderboard.tsx";
 
 /** The period the cards show; the cache keeps one entry for each period and set of hosts. */
 const PERIOD = "7d";

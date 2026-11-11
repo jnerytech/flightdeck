@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { DepsResult } from "@flightdeck/protocol";
+import type { DepsResult, DoctorResult } from "@flightdeck/protocol";
 import { registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
+import {
+  daemonRefusal,
+  daemon as makeDaemon,
+  memoryPlatform,
+  waitFor as pollFor,
+  TOKEN,
+} from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup } = await import("@testing-library/react");
@@ -18,8 +24,19 @@ const RESULT: DepsResult = {
   items: [{ id: "claude", group: "required", state: "ok", breaks: [], fix: [] }],
 };
 
-async function connected() {
-  const d = makeDaemon(cleanups, { firstRun: true, deps: RESULT });
+/** A host whose `deps.check` and `doctor.run` answer, refuse or wait as the test says. */
+async function connected(
+  answers: { deps?: () => DepsResult; doctor?: () => Promise<DoctorResult> } = {},
+) {
+  let depsAsked = 0;
+  const d = makeDaemon(cleanups, {
+    firstRun: true,
+    deps: () => {
+      depsAsked += 1;
+      return (answers.deps ?? (() => RESULT))();
+    },
+    ...(answers.doctor ? { doctor: answers.doctor } : {}),
+  });
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   await act(async () => {
@@ -27,18 +44,21 @@ async function connected() {
   });
   const hostId = await pollFor(() => store.getState().hosts[0]?.id, "the host");
   await pollFor(() => store.getState().healthAt[hostId] || undefined, "the first read");
-  return { store, hostId };
+  return { store, hostId, depsAsked: () => depsAsked, doctorAsked: () => d.doctorAsked.length };
 }
-
-type Request = (host: string, type: string, payload: unknown) => Promise<unknown>;
-const refusal = (message: string) => ({ ok: false, code: "internal", message });
 
 describe("deps-health-store: the background health read is silent and independent (HD-M3, HD-M4)", () => {
   test("a refusal gives no banner and no Retry, and the half that answered is kept", async () => {
-    const { store, hostId } = await connected();
+    let doctorDown = false;
+    const { store, hostId } = await connected({
+      doctor: async () => {
+        if (doctorDown) throw daemonRefusal("doctor is down");
+        return { ok: true, checks: [] };
+      },
+    });
+    expect(store.getState().healthError[hostId]).toBeUndefined();
     const notices = store.getState().notices.length;
-    (store as unknown as { hostRequest: Request }).hostRequest = async (_h, type) =>
-      type === "deps.check" ? { ok: true, data: RESULT } : refusal("doctor is down");
+    doctorDown = true;
     await store.health.check(hostId);
     expect(store.getState().notices).toHaveLength(notices);
     expect(store.getState().deps[hostId]).toEqual(RESULT);
@@ -46,28 +66,50 @@ describe("deps-health-store: the background health read is silent and independen
   });
 
   test("when both halves fail the error is kept for the screen, and a good read clears it", async () => {
-    const { store, hostId } = await connected();
-    const request = (store as unknown as { hostRequest: Request }).hostRequest.bind(store);
-    (store as unknown as { hostRequest: Request }).hostRequest = async () => refusal("host busy");
+    let busy = false;
+    const { store, hostId } = await connected({
+      deps: () => {
+        if (busy) throw daemonRefusal("host busy");
+        return RESULT;
+      },
+      doctor: async () => {
+        if (busy) throw daemonRefusal("host busy");
+        return { ok: true, checks: [] };
+      },
+    });
+    busy = true;
     await store.health.check(hostId);
     expect(store.getState().healthError[hostId]).toContain("host busy");
-    (store as unknown as { hostRequest: Request }).hostRequest = request;
+    busy = false;
     await store.health.check(hostId);
     expect(store.getState().healthError[hostId]).toBeUndefined();
   });
 
   test("two reads at the same time send one pair of commands and share the answer", async () => {
-    const { store, hostId } = await connected();
-    const asked: string[] = [];
-    (store as unknown as { hostRequest: Request }).hostRequest = async (_h, type) => {
-      asked.push(type);
-      // timing: a slow answer on purpose, so that two calls overlap
-      await new Promise((r) => setTimeout(r, 30));
-      return type === "deps.check" ? { ok: true, data: RESULT } : refusal("n/a");
-    };
-    await Promise.all([store.health.check(hostId), store.health.check(hostId)]);
-    expect(asked.sort()).toEqual(["deps.check", "doctor.run"]);
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = false;
+    const { store, hostId, depsAsked, doctorAsked } = await connected({
+      doctor: async () => {
+        // The first read's doctor.run waits here until the test has started the second read.
+        if (held) await gate;
+        return { ok: true, checks: [] };
+      },
+    });
+    // Joins any read still in flight from the connection, so the counts below are this test's own.
     await store.health.check(hostId);
-    expect(asked).toHaveLength(4);
+    const [depsBefore, doctorBefore] = [depsAsked(), doctorAsked()];
+    held = true;
+    const first = store.health.check(hostId);
+    await pollFor(() => (doctorAsked() > doctorBefore ? true : undefined), "the doctor asked");
+    const second = store.health.check(hostId);
+    release();
+    await Promise.all([first, second]);
+    expect([depsAsked() - depsBefore, doctorAsked() - doctorBefore]).toEqual([1, 1]);
+    held = false;
+    await store.health.check(hostId);
+    expect([depsAsked() - depsBefore, doctorAsked() - doctorBefore]).toEqual([2, 2]);
   });
 });

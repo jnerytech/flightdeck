@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { cleanup, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { CardSyncLog } = await import("../src/components/board/board-sync.tsx");
+const { CardSyncLog } = await import("../src/features/board/board-sync.tsx");
 
 afterEach(cleanup);
 

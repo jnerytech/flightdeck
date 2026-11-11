@@ -29,7 +29,7 @@ import {
 } from "./lib/shard-gate.ts";
 import { planRelated } from "./lib/test-related.ts";
 import type { Timings } from "./lib/test-shards.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { shardTiers, testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const tracked = Bun.spawnSync(["git", "ls-files"], { cwd: ROOT }) // NOSONAR: git comes from the PATH of the developer or the CI runner running the script
@@ -55,11 +55,12 @@ const [command, a = "", b = "", c = ""] = argv.filter(
 );
 
 /** The tier of every test file (#261), by path: the shards run the tier plan's groups (#1854). */
-const tiers = testTiers(
-  new Map(
-    tracked.filter((p) => /\.tsx?$/.test(p)).map((p) => [p, readFileSync(join(ROOT, p), "utf8")]),
-  ),
+const sourcesOfTests = new Map(
+  tracked.filter((p) => /\.tsx?$/.test(p)).map((p) => [p, readFileSync(join(ROOT, p), "utf8")]),
 );
+const tiers = testTiers(sourcesOfTests);
+/** Where each file runs: a UI test that also starts a daemon runs on the component shards (#1854). */
+const shardTierOf = shardTiers(sourcesOfTests);
 
 /** The PR's selection (#1761): null for the whole suite; exits when the plan cannot run. */
 function selectionFor(ref: string | undefined): Selection | undefined {
@@ -95,7 +96,7 @@ if (command === "run") {
       write,
       spawn: spawnLogged(ROOT),
       print: (line) => console.log(line),
-      tierOf: (path) => tiers[path],
+      tierOf: (path) => shardTierOf[path],
       now: Date.now,
       extraTargets: JSON.parse(readFileSync(join(ROOT, "fast-coverage-baseline.json"), "utf8")),
       ...(selection ? { selection } : {}),
@@ -118,6 +119,7 @@ if (command === "run") {
       print: (line) => console.log(line),
       error: (line) => console.error(line),
       tiers,
+      shardTiers: shardTierOf,
       // The pyramid (#1854): in the log, in the job summary when GitHub gives one, and as JSON next
       // to the lcov, for the artifact a trend is charted from.
       pyramid: (markdown, json) => {

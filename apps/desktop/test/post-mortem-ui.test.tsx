@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { PostMortem } = await import("../src/components/card/post-mortem.tsx");
+const { PostMortem } = await import("../src/features/board/post-mortem.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
