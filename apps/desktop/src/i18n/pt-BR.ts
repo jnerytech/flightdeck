@@ -1,5 +1,4 @@
 import { account } from "./pt-BR/account.ts";
-
 import { agent } from "./pt-BR/agent.ts";
 import { assistant } from "./pt-BR/assistant.ts";
 import { automations } from "./pt-BR/automations.ts";
@@ -18,6 +17,7 @@ import { projects } from "./pt-BR/projects.ts";
 import { refusals } from "./pt-BR/refusals.ts";
 import { sessions } from "./pt-BR/sessions.ts";
 import { snippets } from "./pt-BR/snippets.ts";
+import { telemetry } from "./pt-BR/telemetry.ts";
 import { vault } from "./pt-BR/vault.ts";
 
 /**
@@ -653,50 +653,7 @@ export const ptBR = {
     movedToast: "A sessão foi movida para {host}.",
     preview: "Prévia: mover uma sessão para outro host",
   },
-  telemetry: {
-    tab: "Tempo",
-    region: "Linha do tempo da sessão",
-    empty:
-      "Sem dados de tempo para esta sessão. Eles aparecem em sessões abertas com flightdeckd claude, ou depois de flightdeckd telemetry install.",
-    prompt: "Prompt {n}",
-    waited: "esperou {wait} por você",
-    api: "Pedido à API",
-    apiError: "Erro de API {status}",
-    apiErrorPlain: "Erro de API",
-    failed: "falhou ({error})",
-    failedPlain: "falhou",
-    permission: "Permissão para {tool}: {decision} {by}",
-    allowed: "permitida",
-    denied: "negada",
-    byConfig: "pelas configurações",
-    byHook: "por um hook",
-    byYou: "por você",
-    byOther: "",
-    ms: "{n} ms",
-    seconds: "{n} s",
-    note: "A espera é estimada pelo intervalo até a resposta. Textos de prompts e respostas nunca são coletados.",
-    optinTitle: "Telemetria",
-    optinAsking: "Consultando…",
-    optinHint:
-      "Para o claude puro (o flightdeckd claude já recebe sozinho): grava no settings.json as chaves que mandam o tempo e o custo das sessões para este host, só nesta máquina.",
-    optinInstalled: "Instalada",
-    optinAbsent: "Não instalada",
-    optinOutdated: "Desatualizada: instale de novo",
-    optinConflict: "Há um exportador seu no settings.json ({keys}): nada será mudado.",
-    optinInstall: "Instalar telemetria",
-    optinUninstall: "Remover telemetria",
-    optinInstallMessage:
-      "Isto edita {path}: acrescenta as chaves que mandam a telemetria do Claude Code para o daemon deste host, só nesta máquina, e guarda uma cópia em settings.json.flightdeck-telemetry-backup. Prompts e respostas nunca são enviados.",
-    optinUninstallMessage:
-      "Isto tira de {path} só as chaves do Flightdeck e troca o token do receptor. O resto do arquivo não muda.",
-    costsTitle: "Tempo por projeto",
-    slowest: "Ferramentas mais lentas",
-    slowTool: "{tool}: {avg} em média, {max} no máximo ({calls})",
-    calls: { one: "{n} chamada", other: "{n} chamadas" },
-    none: "Sem ferramentas medidas ainda.",
-    divergence: "o custo da telemetria difere do dos transcripts: {items}",
-    divergenceItem: "{session} (transcripts {computed}, telemetria {telemetry})",
-  },
+  ...telemetry,
   bg: {
     region: "Sessão em segundo plano",
     state: {
@@ -1119,42 +1076,6 @@ export const ptBR = {
       subscribed: "Alguém está com a sessão aberta, então ela fica acordada.",
       kept_awake: "A sessão está fixada ou pertence a um card, então fica acordada.",
     },
-  },
-  resources: {
-    title: "Recursos",
-    guard: {
-      label: "Cartões novos esperam com a memória em",
-      labelFor: "Cartões novos esperam com a memória em, em {host}",
-      off: "Nunca",
-      hint: "Só cartões novos esperam, e começam quando a memória libera; sessões que já estão rodando nunca são paradas.",
-    },
-    memory: "Memória",
-    disk: "Disco",
-    load: "Carga {n}%",
-    used: "{used} de {total} em uso",
-    high: "Alta",
-    critical: "Crítica",
-    kinds: { session: "Sessão", terminal: "Terminal" },
-    session: "Sessão",
-    project: "Projeto",
-    memoryCol: "Memória",
-    cpu: "CPU",
-    programs: "Programas",
-    unmeasured: "não medido",
-    list: "Sessões e terminais por memória",
-    empty: "Nenhuma sessão ou terminal em execução.",
-    notMeasured:
-      "Os números por sessão não são medidos aqui. Os processos só são medidos em hosts Linux.",
-    orphans: "Processos que sobraram",
-    orphansHelp:
-      "Iniciados pelo daemon deste host, mas sem sessão dona. Podem ser sobras de uma sessão que acabou.",
-    orphanLine: "{name} · pid {pid} · {age} · {memory}",
-    end: "Encerrar",
-    endTitle: "Encerrar processo",
-    endMessage:
-      "Encerrar o processo {pid} ({name})? O daemon do host o iniciou e nenhuma sessão é dona dele.",
-    endFailed: "Não foi possível encerrar esse processo.",
-    unreadable: "Não deu para ler os recursos deste host. Eles aparecem quando o host responder.",
   },
   ...plugins,
   maintenance: {
