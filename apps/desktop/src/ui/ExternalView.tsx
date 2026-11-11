@@ -8,6 +8,7 @@ import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-me
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
+import { externalState } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -16,15 +17,6 @@ import { CheckpointsButton } from "./Checkpoints.tsx";
 import { RecapPanel } from "./RecapPanel.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
-
-/** The dictionary key of a terminal session's state. */
-const STATE_KEYS = {
-  running: "running",
-  awaiting_permission: "needs_you",
-  idle: "idle",
-  unknown: "idle",
-  ended: "ended",
-} as const;
 
 /**
  * A live session opened outside Flightdeck: its transcript as it grows, its permission requests
@@ -73,7 +65,7 @@ export function ExternalView(
         title={title}
         subtitle={t("external.line", {
           host: props.hostName,
-          state: t(`hub.stateDots.${STATE_KEYS[session?.status ?? "unknown"]}`),
+          state: t(`hub.stateDots.${session ? externalState(session) : "idle"}`),
         })}
         controls={
           <>

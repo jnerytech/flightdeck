@@ -374,7 +374,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const refreshQuota = async () => {
     setRefreshingQuota(true);
     try {
-      await store.refreshQuota();
+      await store.quota.refresh();
     } finally {
       setRefreshingQuota(false);
     }

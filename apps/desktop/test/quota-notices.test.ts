@@ -42,7 +42,7 @@ function hosts(answer: (host: string, poll: number) => unknown) {
   store.hostCommand = (async (hostId: string) => answer(hostId, poll)) as never;
   const refresh = async () => {
     poll += 1;
-    await store.refreshQuota();
+    await store.quota.refresh();
   };
   // Only the quota raises a notice here: every bell entry is one.
   const notices = () => store.getState().inbox.length;

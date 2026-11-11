@@ -58,7 +58,7 @@ for (const [lang, dict] of [
       const store = await start(lang);
       let answer: () => void = () => {};
       let asked = 0;
-      store.refreshQuota = () => {
+      store.quota.refresh = () => {
         asked += 1;
         return new Promise<void>((resolve) => {
           answer = resolve;

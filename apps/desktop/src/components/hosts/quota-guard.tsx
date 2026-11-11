@@ -46,7 +46,7 @@ export function QuotaGuard(
           aria-label={t("quota.guard.labelFor", { host: host.name })}
           value={pauseAt === null ? OFF : String(pauseAt)}
           onChange={(event) =>
-            void store.setQuotaPause(
+            void store.quota.setPause(
               host.id,
               event.target.value === OFF ? null : Number(event.target.value),
             )
