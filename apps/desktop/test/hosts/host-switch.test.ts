@@ -82,7 +82,7 @@ describe("host-switch: the window says the switch, with a way back", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     await store.init();
-    store.pickHost("h1");
+    store.hostTabs.switchHost("h1");
     store.router.push(project("h1", "p-api"));
     store.router.push(project("h2", "p-docs"));
     const toast = store.getState().notices.at(-1);
@@ -106,7 +106,7 @@ describe("host-switch: the window says the switch, with a way back", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     await store.init();
-    store.pickHost("h1");
+    store.hostTabs.switchHost("h1");
     store.router.push(project("h1", "p-api"));
     store.router.push(project("h2", "p-docs"));
     const toast = store.getState().notices.at(-1);
@@ -130,12 +130,12 @@ describe("host-switch: the window says the switch, with a way back", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     await store.init();
-    store.pickHost("h1");
+    store.hostTabs.switchHost("h1");
     store.router.push(project("h1", "p-api"));
     store.router.push(project("h2", "p-docs"));
     const toast = store.getState().notices.at(-1);
     store.router.push(project("h2", "p-web"));
-    store.pickHost("h2");
+    store.hostTabs.switchHost("h2");
     const page = store.router.current;
     toast?.link?.run();
     expect({ host: store.activeHostId(), same: store.router.current === page }).toEqual({

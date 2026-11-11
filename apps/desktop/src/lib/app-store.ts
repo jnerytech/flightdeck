@@ -9,7 +9,6 @@ import type {
   HistoryListResult,
   MessageInfo,
   Project,
-  ProjectDetectResult,
   RoiSummaryResult,
   RunConfigInfo,
   RunState,
@@ -1382,11 +1381,6 @@ export class AppStore {
     else this.hostTabs.show({ name: "home" });
   }
 
-  /** The switcher picked a host: its tabs replace the row. */
-  pickHost(hostId: string): void {
-    this.hostTabs.switchHost(hostId);
-  }
-
   /** The host whose mode the window shows: the selected one, else the first that is online. */
   uiHostId(): string | null {
     const { hosts, selected } = this.state;
@@ -2357,17 +2351,7 @@ export class AppStore {
   /** The PR watch of the cards: each card's watch, its commands and the screen a PR link opens (#1596). */
   readonly prWatch: WatchSlice;
   /** The projects each host lists: the list, a project's key and its PR provider (#1596). */
-  private readonly projectList: ProjectsSlice;
-
-  /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
-  detectPrProvider(
-    hostId: string,
-    projectId: string,
-    /** A press of the person's: a host that cannot answer, or finds nothing yet, is said. */
-    report = false,
-  ): Promise<ProjectDetectResult | null> {
-    return this.projectList.detectProvider(hostId, projectId, report);
-  }
+  readonly projectList: ProjectsSlice;
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {
