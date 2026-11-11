@@ -2,7 +2,6 @@ import type { ResourceRow, ResourcesSnapshot } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { MemoryGuard } from "@/components/hosts/memory-guard";
 import { Bar } from "@/components/layout/bar";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
@@ -12,6 +11,7 @@ import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { basename } from "../../lib/paths.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { MemoryGuard } from "./memory-guard.tsx";
 
 /** How often a panel on screen reads the host again. */
 export const RESOURCES_EVERY_MS = 5000;

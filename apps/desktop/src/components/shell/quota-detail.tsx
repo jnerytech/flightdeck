@@ -1,7 +1,7 @@
 import { memo } from "react";
-import { QuotaGuard } from "@/components/hosts/quota-guard";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
+import { QuotaGuard } from "@/features/quota/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";

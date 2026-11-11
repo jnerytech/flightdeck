@@ -9,7 +9,6 @@ import {
 } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
-import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { StatusBarSlot } from "@/components/shell/status-bar";
@@ -18,6 +17,7 @@ import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
 import { draftFromLink } from "@/features/hosts/index.ts";
+import { ResumeOfferDialog } from "@/features/sessions/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";

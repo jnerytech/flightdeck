@@ -10,7 +10,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { SessionsHub } = await import("../src/ui/SessionsHub.tsx");
-const { SleepSetting } = await import("../src/components/hosts/sleep-setting.tsx");
+const { SleepSetting } = await import("../src/features/hosts/sleep-setting.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

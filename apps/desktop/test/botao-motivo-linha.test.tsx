@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { ActionButton } = await import("../src/components/feedback/action-button.tsx");
 const { FieldRow } = await import("../src/components/layout/form.tsx");
-const { AllowedFolders } = await import("../src/components/hosts/allowed-folders.tsx");
+const { AllowedFolders } = await import("../src/features/hosts/allowed-folders.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { Dialog, DialogContent, DialogFooter, DialogTitle } = await import(
   "../src/components/ui/dialog.tsx"

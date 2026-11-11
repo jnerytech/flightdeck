@@ -10,10 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { byProject, CONTINUATION } from "@/features/sessions";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { basename } from "@/lib/paths";
+import { byProject, CONTINUATION } from "./resume-offer.ts";
 
 type Outcome = { ok: true } | { ok: false; reason: string };
 

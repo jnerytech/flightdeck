@@ -6,6 +6,7 @@
  * main bundle.
  */
 
+export { AllowedFolders } from "./allowed-folders.tsx";
 export {
   type HealthAnswer,
   type HealthCore,
