@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
+/** An example address, not a word to translate (the text sweep of #1597 reads literals in the markup). */
+const CLONE_URL_EXAMPLE = "https://github.com/owner/repo.git";
+
 /** "Find my projects": scan the allowed folders for git repositories, or clone one from a URL. */
 export function FindProjects(
   props: Readonly<{ store: AppStore; hostId: string; onAdded(): void }>,
@@ -132,7 +135,7 @@ export function FindProjects(
               <p className="font-medium text-sm">{t("findProjects.cloneTitle")}</p>
               <Input
                 aria-label={t("findProjects.url")}
-                placeholder="https://github.com/owner/repo.git"
+                placeholder={CLONE_URL_EXAMPLE}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />

@@ -71,9 +71,9 @@ const HostPage = lazyScreen(() => import("../features/hosts/page.tsx"), "HostPag
 const PersonasPage = lazyScreen(() => import("../features/personas/page.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("../features/plugins/page.tsx"), "PluginsPage");
 const PreviewPage = lazyScreen(() => import("./PreviewPage.tsx"), "PreviewPage");
-const ProjectsPage = lazyScreen(() => import("./ProjectsPage.tsx"), "ProjectsPage");
-const ProjectsOverview = lazyScreen(() => import("./ProjectsOverview.tsx"), "ProjectsOverview");
-const ProjectPage = lazyScreen(() => import("./ProjectPage.tsx"), "ProjectPage");
+const ProjectsPage = lazyScreen(() => import("../features/projects/page.tsx"), "ProjectsPage");
+const Overview = lazyScreen(() => import("../features/projects/overview.tsx"), "ProjectsOverview");
+const ProjectPage = lazyScreen(() => import("../features/projects/project.tsx"), "ProjectPage");
 const SnippetsPage = lazyScreen(() => import("../features/snippets/page.tsx"), "SnippetsPage");
 const TeamsPage = lazyScreen(() => import("../features/teams/page.tsx"), "TeamsPage");
 const VaultPage = lazyScreen(() => import("../features/vault/page.tsx"), "VaultPage");
@@ -871,7 +871,7 @@ function filteredScreen(props: ScreenProps): ReactNode | undefined {
       );
     case "all-projects":
       return (
-        <ProjectsOverview
+        <Overview
           store={store}
           state={state}
           {...(route.host ? { host: route.host } : {})}

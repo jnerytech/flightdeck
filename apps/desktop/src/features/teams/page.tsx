@@ -7,7 +7,6 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
-import { AddProject } from "@/components/projects/add-project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +25,7 @@ import {
   PersonaPicker,
   useSuggestedPersona,
 } from "@/features/personas/index.ts";
+import { AddProject } from "@/features/projects/index.ts";
 import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../../lib/app-store.ts";

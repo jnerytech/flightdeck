@@ -6,14 +6,14 @@ import { Inline } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { KnowledgePanel } from "@/components/projects/knowledge-panel";
-import { SessionTiles } from "@/components/projects/session-tiles";
 import { TrustPanel } from "@/components/projects/trust-panel";
 import { Button } from "@/components/ui/button";
-import type { Key } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import type { HubRowState } from "../lib/hub.ts";
-import type { Route } from "../lib/router.ts";
-import { hasFeature } from "../lib/version.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { HubRowState } from "../../lib/hub.ts";
+import type { Route } from "../../lib/router.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { SessionTiles } from "./session-tiles.tsx";
 
 interface Destination {
   key: string;

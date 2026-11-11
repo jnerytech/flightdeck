@@ -6,20 +6,20 @@ import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { AddProject } from "@/components/projects/add-project";
 import { HostBoardLanding } from "@/components/projects/board-landing";
-import { FindProjects } from "@/components/projects/find-projects";
-import { StartFromGithub } from "@/components/projects/start-from-github";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PersonaPicker } from "@/features/personas/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
-import type { AppStore } from "../lib/app-store.ts";
-import { hasFeature } from "../lib/version.ts";
-import { FolderPicker } from "./FolderPicker.tsx";
-import { RulesSection } from "./RulesSection.tsx";
-import { TerminalButton } from "./TerminalButton.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { FolderPicker } from "../../ui/FolderPicker.tsx";
+import { RulesSection } from "../../ui/RulesSection.tsx";
+import { TerminalButton } from "../../ui/TerminalButton.tsx";
+import { AddProject } from "./add-project.tsx";
+import { FindProjects } from "./find-projects.tsx";
+import { StartFromGithub } from "./start-from-github.tsx";
 
 /** What a `.worktreeinclude` looks like: patterns in the format of `.gitignore`. */
 const WORKTREE_INCLUDE_EXAMPLE = [".env", ".env.local", "config/*.secret.json"].join("\n");

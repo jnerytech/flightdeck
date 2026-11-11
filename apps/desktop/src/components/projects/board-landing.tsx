@@ -3,6 +3,7 @@ import { FolderGit2 } from "lucide-react";
 import { type KeyboardEvent, useId, useMemo, useState } from "react";
 import { EmptyState } from "@/components/layout/states";
 import { Input } from "@/components/ui/input";
+import { AddProject } from "@/features/projects/index.ts";
 import { useProjectCards } from "@/hooks/use-project-cards";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -16,7 +17,6 @@ import {
   type ProjectCard,
 } from "../../lib/project-cards.ts";
 import { useStoreState } from "../../lib/use-store.ts";
-import { AddProject } from "./add-project.tsx";
 
 /** Past this many projects the landing offers a filter box. */
 const FILTER_FROM = 7;

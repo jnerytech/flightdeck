@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { StartFromGithub } = await import("../src/components/projects/start-from-github.tsx");
+const { StartFromGithub } = await import("../src/features/projects/start-from-github.tsx");
 const { GithubPanel } = await import("../src/features/hosts/github-panel.tsx");
 
 afterEach(cleanup);

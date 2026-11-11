@@ -17,8 +17,6 @@ import {
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
-import { ProjectTree } from "@/components/projects/project-tree";
-import { RailFlyout } from "@/components/projects/rail-flyout";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { ProgressRing } from "@/components/status/progress-ring";
@@ -33,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
 import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/index.ts";
+import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import { budgetAlerts } from "../features/costs/index.ts";

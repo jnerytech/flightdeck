@@ -12,8 +12,8 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { AddProject } = await import("../src/components/projects/add-project.tsx");
-const { ProjectsPage } = await import("../src/ui/ProjectsPage.tsx");
+const { AddProject } = await import("../src/features/projects/add-project.tsx");
+const { ProjectsPage } = await import("../src/features/projects/page.tsx");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
 const { App } = await import("../src/ui/App.tsx");
 

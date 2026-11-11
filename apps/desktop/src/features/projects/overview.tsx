@@ -4,20 +4,20 @@ import { useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
-import { NewProject } from "@/components/projects/new-project";
-import { ProjectCardTile } from "@/components/projects/project-card-tile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProjectCards } from "@/hooks/use-project-cards";
 import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import type { HubRowState } from "../lib/hub.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { HubRowState } from "../../lib/hub.ts";
 import {
   filterProjectCards,
   type ProjectCard,
   type ProjectSort,
   sortProjectCards,
-} from "../lib/project-cards.ts";
+} from "../../lib/project-cards.ts";
+import { NewProject } from "./new-project.tsx";
+import { ProjectCardTile } from "./project-card-tile.tsx";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 

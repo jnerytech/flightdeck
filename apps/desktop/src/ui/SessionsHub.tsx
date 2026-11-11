@@ -11,7 +11,6 @@ import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
-import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { ScopeMenu } from "@/components/shell/scope-menu";
 import { StatusDot } from "@/components/status/status-dot";
@@ -29,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { HostsBanner } from "@/features/hosts/index.ts";
+import { WorktreeChip } from "@/features/projects/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "../components/feedback/inline-notice.tsx";

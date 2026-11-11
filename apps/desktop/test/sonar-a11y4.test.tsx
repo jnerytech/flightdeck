@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
-const { SessionTiles } = await import("../src/components/projects/session-tiles.tsx");
+const { SessionTiles } = await import("../src/features/projects/session-tiles.tsx");
 const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
