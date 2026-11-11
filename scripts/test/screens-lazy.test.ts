@@ -34,15 +34,17 @@ const LAZY_SCREENS = [
 
 /**
  * Where Screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
- * is `features/<name without "Page", lowercased>/page.tsx`; the rest are still `ui/<name>.tsx`.
- * Looking at the disk means a move does not edit this test.
+ * is `features/<name without "Page", lowercased>/page.tsx`, or in the plural folder (`HostPage` is
+ * in `features/hosts`); the rest are still `ui/<name>.tsx`. Looking at the disk means a move does
+ * not edit this test.
  */
 const FEATURES = resolve(UI, "../features");
 const specifierOf = (name: string) => {
   const feature = name.replace(/Page$/, "").toLowerCase();
-  return existsSync(resolve(FEATURES, feature, "page.tsx"))
-    ? `../features/${feature}/page.tsx`
-    : `./${name}.tsx`;
+  const folder = [feature, `${feature}s`].find((dir) =>
+    existsSync(resolve(FEATURES, dir, "page.tsx")),
+  );
+  return folder ? `../features/${folder}/page.tsx` : `./${name}.tsx`;
 };
 
 describe("screens-lazy: the secondary screens are not in the entry chunk", () => {
