@@ -153,16 +153,27 @@ describe("changes-wiring: a plain session's commit and PR the daemon builds (#15
       "/w/plain": { card: null, project: { prProvider: "github" } },
     };
     const board = { projectForCwd: (cwd: string) => projects[cwd] ?? null } as never;
+    const terminals = { cwdOf: () => null } as never;
     const made = createChanges({
       db: store.db,
       board,
       log: () => undefined,
-      terminals: undefined,
+      terminals,
       allowedRoots: ["/w"],
       scanner,
     });
-    return { ...made, scanner };
+    return { ...made, scanner, board, terminals, db: store.db };
   }
+
+  test("the diffs get the board, the terminals and the allowed roots a project checkout is held to", () => {
+    const { changes, board, terminals, db } = built();
+    expect([
+      changes.opts.db === db,
+      changes.opts.board === board,
+      changes.opts.terminals === terminals,
+      changes.opts.allowedRoots,
+    ]).toEqual([true, true, true, ["/w"]]);
+  });
 
   test("a card's worktree is the board's: neither the commit nor the PR takes it", () => {
     const { sessionCommits, sessionPrs } = built();
