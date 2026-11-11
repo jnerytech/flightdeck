@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /**
  * What the automatic approval decided on a host (newest first, filtered by project and text) and
