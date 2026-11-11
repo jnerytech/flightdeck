@@ -7,14 +7,13 @@ import type { Database } from "bun:sqlite";
 import {
   inSequence,
   type MessageInfo,
-  PermissionMode,
+  type PermissionMode,
   type SessionTeam,
   type TeamInfo,
   type TeamMember,
   type TeamStatus,
   type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
-import { z } from "zod";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr } from "../json-text.ts";
@@ -30,6 +29,7 @@ import {
   type TeamBrief,
   workerInstructions,
 } from "./instructions.ts";
+import { STORED_CHECKS, STORED_MEMBERS, type StoredMember } from "./stored.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
@@ -111,23 +111,6 @@ export interface TeamPatch {
   };
   removeMember?: string;
 }
-
-/** What a team keeps of a member; the live session of a worker comes from its card. */
-const STORED_MEMBER = z.object({
-  name: z.string(),
-  role: z.enum(["coordinator", "worker"]),
-  persona: z.string().nullable(),
-  model: z.string().nullable().optional(),
-  /** Issue #93: the permission mode it was asked to open in. */
-  permission: PermissionMode.nullable().optional(),
-  cardId: z.string().nullable(),
-  sessionId: z.string().nullable(),
-  /** A worker's number in the team (issue #101); absent from a team saved before. */
-  number: z.number().nullable().optional(),
-});
-type StoredMember = z.infer<typeof STORED_MEMBER>;
-const STORED_MEMBERS = z.array(STORED_MEMBER);
-const STORED_CHECKS = z.array(z.string());
 
 /** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
 function numberOf(member: StoredMember): number | null {
