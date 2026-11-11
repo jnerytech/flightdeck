@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { must } from "../../../daemon/test/support/helpers.ts";
-import { chooseFromCardMenu } from "../card-menu.ts";
+import { chooseFromCardMenu } from "./card-menu.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { sidebarNav } from "../sidebar.ts";
