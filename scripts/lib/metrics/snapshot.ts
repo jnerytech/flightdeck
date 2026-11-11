@@ -20,7 +20,7 @@ import {
   parseLog,
 } from "./git-log.ts";
 
-export interface GitResult {
+interface GitResult {
   code: number;
   stdout: string;
 }
@@ -62,7 +62,7 @@ export interface MetricsDeps {
 }
 
 /** A metric that was not read, and why. */
-export interface Unavailable {
+interface Unavailable {
   metric: string;
   reason: string;
 }
