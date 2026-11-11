@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { DiffFile } from "@flightdeck/protocol";
 import { FlightdeckError } from "../../src/errors.ts";
-import { createReview, type ReviewDeps } from "../../src/review/wiring.ts";
+import { createChanges, createReview, type ReviewDeps } from "../../src/review/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 
 /**
@@ -140,5 +140,58 @@ describe("review-wiring: the card review the daemon builds (#1593)", () => {
       recorded[0]?.model,
       String(recorded[0]?.messageId).startsWith("card-review-c1-"),
     ]).toEqual(["card", "/w/c1", "m", true]);
+  });
+});
+
+describe("changes-wiring: a plain session's commit and PR the daemon builds (#1593)", () => {
+  function built() {
+    const store = new EventStore(":memory:");
+    stores.push(store);
+    const scanner = { scan: () => [] };
+    const projects: Record<string, { card: object | null; project: { prProvider: string } }> = {
+      "/w/card": { card: { id: "c1" }, project: { prProvider: "azure-devops" } },
+      "/w/plain": { card: null, project: { prProvider: "github" } },
+    };
+    const board = { projectForCwd: (cwd: string) => projects[cwd] ?? null } as never;
+    const made = createChanges({
+      db: store.db,
+      board,
+      log: () => undefined,
+      terminals: undefined,
+      allowedRoots: ["/w"],
+      scanner,
+    });
+    return { ...made, scanner };
+  }
+
+  test("a card's worktree is the board's: neither the commit nor the PR takes it", () => {
+    const { sessionCommits, sessionPrs } = built();
+    const roots = ["/w/card", "/w/plain", "/elsewhere"];
+    expect(roots.map((root) => sessionCommits.deps.isCardWorktree(root))).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(roots.map((root) => sessionPrs.deps.isCardWorktree(root))).toEqual([true, false, false]);
+  });
+
+  test("a PR goes to its board project's provider, and to none outside a project", () => {
+    const { sessionPrs } = built();
+    expect(["/w/card", "/w/plain", "/elsewhere"].map(sessionPrs.deps.projectProvider)).toEqual([
+      "azure-devops",
+      "github",
+      null,
+    ]);
+  });
+
+  test("the commit and the PR share the diffs, the commits and the host's scanner", () => {
+    const { changes, sessionCommits, sessionPrs, scanner } = built();
+    expect([
+      sessionCommits.deps.changes === changes,
+      sessionPrs.deps.changes === changes,
+      sessionPrs.deps.commits === sessionCommits,
+      sessionCommits.deps.scanner === scanner,
+      sessionPrs.deps.scanner === scanner,
+    ]).toEqual([true, true, true, true, true]);
   });
 });
