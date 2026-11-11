@@ -7,8 +7,9 @@ import {
 } from "@/components/notifications/notification-center";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
-import type { T } from "../i18n/index.ts";
-import { type AppStore, needsYou, sessionKey } from "../lib/app-store.ts";
+import type { T } from "../../i18n/index.ts";
+import { needsYou } from "../../lib/app-state.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 import {
   describeRequest,
   type InboxEntry,
@@ -16,9 +17,10 @@ import {
   inboxTarget,
   unreadCount,
   unreadRows,
-} from "../lib/inbox.ts";
-import { parseRequestLink } from "../lib/request-link.ts";
-import type { Route } from "../lib/router.ts";
+} from "../../lib/inbox.ts";
+import { parseRequestLink } from "../../lib/request-link.ts";
+import type { Route } from "../../lib/router.ts";
+import { sessionKey } from "../../lib/session-key.ts";
 
 /** Requests that are answered in full where they are shown (a question, a plan), never from a row. */
 const ASKED_IN_FULL = new Set(["AskUserQuestion", "ExitPlanMode"]);
