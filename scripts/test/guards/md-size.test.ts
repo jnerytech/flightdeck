@@ -33,9 +33,10 @@ describe("md-size", () => {
   });
 
   test("the root CLAUDE.md has a fixed limit of its own, out of the baseline: it grows by design (#427)", () => {
-    // Lines of the root CLAUDE.md wait for the owner's word.
-    expect(mdLimit("CLAUDE.md")).toBe(290);
-    expect(oversized([{ path: "CLAUDE.md", text: lines(291) }])).toEqual({ "CLAUDE.md": 291 });
+    // Every session reads it whole, so the commands and the delegation rules moved to docs/ (#1973) and it cannot grow back.
+    expect(mdLimit("CLAUDE.md")).toBe(170);
+    expect(oversized([{ path: "CLAUDE.md", text: lines(170) }])).toEqual({});
+    expect(oversized([{ path: "CLAUDE.md", text: lines(171) }])).toEqual({ "CLAUDE.md": 171 });
     const baseline = JSON.parse(readFileSync(join(ROOT, "md-size-baseline.json"), "utf8"));
     // Empty since the phase 40 spec moved its design to a file of its own (#1711): nothing is over its limit.
     expect(Object.keys(baseline)).toEqual([]);
