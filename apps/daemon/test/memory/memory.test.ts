@@ -761,3 +761,12 @@ describe("memoria: ramos do orçamento e dos nomes", () => {
     expect(readFileSync(outside, "utf8")).toBe("fora\n");
   });
 });
+
+describe("memoria: a lookup that fails", () => {
+  test("a project memory lookup that fails is dropped, and a second request made meanwhile fails too", async () => {
+    const mem = new ProjectMemory({ claudeDir: tempDir("fd-memory-") });
+    const missing = join(tempDir(), "no", "such", "project");
+    const results = await Promise.allSettled([mem.dir(missing), mem.dir(missing)]);
+    expect(results.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+  });
+});
