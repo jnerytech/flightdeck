@@ -6,6 +6,8 @@
  */
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 import {
   OPENCODE_API_TIMEOUT_MS,
   opencodeConfig,
@@ -14,6 +16,9 @@ import {
 } from "./opencode-config.ts";
 import { unexpectedSource } from "./opencode-preflight.ts";
 import { globalConfigDir, type ScopeFinding, type ScopeResult } from "./opencode-scope.ts";
+
+/** What `opencode debug config sources` lists; an answer of another shape tells nothing. */
+const SOURCES = z.array(z.object({ type: z.string().optional(), path: z.string().optional() }));
 
 export type OpenCodeUnavailable =
   | "opencode_disabled"
@@ -123,15 +128,11 @@ async function canary(
     timeoutMs: OPENCODE_API_TIMEOUT_MS,
   });
   if (result.exitCode !== 0) return null;
-  try {
-    const sources = JSON.parse(result.stdout) as Array<{ type?: string; path?: string }>;
-    if (!Array.isArray(sources)) return null;
-    if (sources.some((source) => source.path === file)) return "listed";
-    // The preflight's own rule: any other source (another spelling of the canary, another folder).
-    return unexpectedSource(sources, globalConfigDir(deps.env)) ? "mismatch" : "ok";
-  } catch {
-    return null;
-  }
+  const sources = parseJsonOr(SOURCES, result.stdout, null);
+  if (sources === null) return null;
+  if (sources.some((source) => source.path === file)) return "listed";
+  // The preflight's own rule: any other source (another spelling of the canary, another folder).
+  return unexpectedSource(sources, globalConfigDir(deps.env)) ? "mismatch" : "ok";
 }
 
 export async function discoverOpenCode(

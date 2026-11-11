@@ -13,8 +13,10 @@ import {
   type HarnessTemplateInfo,
   type SecretScanner,
 } from "@flightdeck/protocol";
+import { z } from "zod";
 import { createInside, readInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 
 /** A template's id: a folder name, lower case, no dot, no slash. */
 const ID = HARNESS_TEMPLATE_ID;
@@ -314,11 +316,7 @@ export class HarnessTemplates {
 }
 
 function titleOf(meta: string): unknown {
-  try {
-    return (JSON.parse(meta) as { title?: unknown } | null)?.title;
-  } catch {
-    return undefined;
-  }
+  return parseJsonOr(z.object({ title: z.unknown().optional() }), meta, {}).title;
 }
 
 function info(id: string, title: string, files: Array<[string, string]>): HarnessTemplateInfo {

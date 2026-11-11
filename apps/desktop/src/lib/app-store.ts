@@ -62,7 +62,7 @@ import {
   wirePersonas,
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
-import { initialQuotaState, QuotaSlice } from "../features/quota/index.ts";
+import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { RoiSlice } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
@@ -354,6 +354,7 @@ export class AppStore {
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
     t: () => this.i18n.t,
+    onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
   };
 
   constructor(
@@ -397,20 +398,12 @@ export class AppStore {
       showTerminal: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
     });
-    this.quota = new QuotaSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
-      read: (hostId) => this.hostCommand(hostId, "quota.get", {}),
-      setPauseAt: (hostId, pauseAt) => this.hostCommand(hostId, "quota.setPauseAt", { pauseAt }),
+    this.quota = wireQuota(this.kernel, {
       notify: (notice, hostId) =>
         this.inbox.notify(notice, { name: "host", host: hostId }, undefined, {
           event: "budget-quota",
           hostId,
         }),
-      t: () => this.i18n.t,
-      now: () => this.now(),
     });
     this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
