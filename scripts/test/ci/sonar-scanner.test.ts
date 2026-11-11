@@ -71,14 +71,13 @@ describe("sonar scanner download (#1883)", () => {
     expect(calls).toEqual([1]);
   });
 
-  /** The OpenPGP tool the verify script runs; a runner has it, a developer machine may not. */
-  const GPG = ["g", "pg"].join("");
-  const gpg = spawnSync(GPG, ["--version"]);
+  // gpg is a real external binary (the verify script runs it, #1883): knip.json ignores it.
+  const gpg = spawnSync("gpg", ["--version"]);
   test.skipIf(gpg.status !== 0)("the committed key file holds the pinned primary key", () => {
     const home = realTempDir("sonar-key-");
     try {
       const listed = spawnSync(
-        GPG,
+        "gpg",
         [
           "--homedir",
           home,
