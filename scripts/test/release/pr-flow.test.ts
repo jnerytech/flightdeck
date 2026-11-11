@@ -70,6 +70,10 @@ function fake(
     graphqlError?: string;
     /** GitHub ignores the head filter and lists every open PR (#1115, seen 2026-11-08). */
     ignoreHead?: boolean;
+    /** The review trailers of the branch's commits (#1707): the `Code-Review` and `Security-Review` values; default, both name "abc1234". */
+    review?: { code?: string; security?: string };
+    /** The tree of a named commit (default "head", the branch's head; "" is no commit); `head` sets the head's own tree. */
+    trees?: Record<string, string>;
   } = {},
 ) {
   const prs = opts.prs ?? [];
@@ -216,6 +220,14 @@ function fake(
           ? { code: 1, stdout: "" }
           : ok(`${JSON.stringify({ name: "@flightdeck/desktop", version })}\n`);
       }
+      // The head's tree, and the tree of a named commit (nothing printed when it is no commit, #1707).
+      if (args[0] === "rev-parse" && (args.at(-1) ?? "").endsWith("^{tree}")) {
+        return ok(`${opts.trees?.head ?? "head"}\n`);
+      }
+      if (args[0] === "log" && args.includes("--end-of-options")) {
+        const tree = opts.trees?.[args.at(-1) ?? ""] ?? "head";
+        return ok(tree ? `${tree}\n` : "");
+      }
       if (args[0] === "rev-parse" && args.at(-1) === "origin/main") {
         return opts.mainHead ? ok(`${opts.mainHead}\n`) : { code: 1, stdout: "" };
       }
@@ -225,6 +237,10 @@ function fake(
           code: (opts.pushed ?? []).includes(ref.replace("origin/", "")) ? 0 : 1,
           stdout: "",
         };
+      }
+      if (args[0] === "log" && args.some((a) => a.includes("trailers"))) {
+        const { code = "abc1234 ran", security = "abc1234 ran" } = opts.review ?? {};
+        return ok(`\x1e${args.some((a) => a.includes("key=Code-Review")) ? code : security}\n`);
       }
       if (args[0] === "log") {
         const range = args.at(-1) ?? "";
@@ -310,6 +326,65 @@ describe("pr-flow: the pure parts", () => {
       green: false,
       failing: ["SonarCloud Code Analysis"],
     });
+  });
+});
+
+describe("pr-flow: open checks the review record (#1707)", () => {
+  const open = (opts: Parameters<typeof fake>[0] = {}) =>
+    fake({
+      pushed: ["rev"],
+      subjects: { rev: ["feat(rev): x (#9)"] },
+      issues: { 9: "A change" },
+      ...opts,
+    });
+
+  test("a branch whose head has a record of both reviews opens", async () => {
+    const f = open();
+    expect(await prFlow(["open", "rev"], f.deps)).toBe(0);
+    expect(f.writes).toHaveLength(1);
+  });
+
+  test("a branch with no record is refused, and the message says which review is missing", async () => {
+    const none = open({ review: { code: "", security: "" } });
+    expect(await prFlow(["open", "rev"], none.deps)).toBe(1);
+    expect(none.writes).toEqual([]);
+    expect(none.out()).toContain("/code-review");
+    expect(none.out()).toContain("/security-review");
+    const half = open({ review: { code: "abc1234 ran", security: "" } });
+    expect(await prFlow(["open", "rev"], half.deps)).toBe(1);
+    expect(half.out()).toContain("missing /security-review");
+    expect(half.out()).not.toContain("missing /code-review");
+    expect(half.out()).toContain("--trailer");
+  });
+
+  test("a record that names an older head is refused: a later commit asks for a new review", async () => {
+    const f = open({ trees: { abc1234: "older" } });
+    expect(await prFlow(["open", "rev"], f.deps)).toBe(1);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toContain("missing /code-review and /security-review");
+  });
+
+  test("a name that is no commit (a tree sha) or not a sha never counts, and never reaches git as an option", async () => {
+    const tree = open({ trees: { abc1234: "" } });
+    expect(await prFlow(["open", "rev"], tree.deps)).toBe(1);
+    const odd = open({ review: { code: "--output=x ran", security: "abc1234 ran" } });
+    expect(await prFlow(["open", "rev"], odd.deps)).toBe(1);
+    expect(odd.out()).toContain("missing /code-review");
+    expect(odd.out()).not.toContain("missing /code-review and");
+  });
+
+  test("the coordinator's rc branch needs no record, and a worker's FLIGHTDECK_COORDINATOR=1 does not skip it", async () => {
+    const rc = open({
+      pushed: ["rc/1.2"],
+      subjects: { "rc/1.2": ["chore(release): rc (#9)"] },
+      review: { code: "", security: "" },
+    });
+    expect(await prFlow(["open", "rc/1.2"], rc.deps)).toBe(0);
+    const worker = open({
+      review: { code: "", security: "" },
+      env: { FLIGHTDECK_COORDINATOR: "1" },
+    });
+    expect(await prFlow(["open", "rev"], worker.deps)).toBe(1);
   });
 });
 

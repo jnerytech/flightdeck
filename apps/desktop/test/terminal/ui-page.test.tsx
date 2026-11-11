@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { liveScreen, registerDom } from "../dom.ts";
+import { interceptWire } from "../fake-host.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 import { fakeXterm } from "./fakes.ts";
 
@@ -35,19 +36,19 @@ async function setup(listFails = false, files = true, launch: string | null = nu
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   const { terminalId } = await store.terminals.host(hostId).open(d.project, 80, 24);
   if (listFails) {
-    const real = store.terminals.host.bind(store.terminals);
-    store.terminals.host = (id) => ({
-      ...real(id),
-      list: async () => {
-        throw new Error("recusado");
-      },
-    });
+    interceptWire(store, hostId, (type, _payload, next) =>
+      type === "terminal.list" ? Promise.reject(new Error("recusado")) : next(),
+    );
   } else if (launch) {
     // A "Claude aqui" terminal: the host's list carries the launch its session also carries.
-    const real = store.terminals.host.bind(store.terminals);
-    store.terminals.host = (id) => ({
-      ...real(id),
-      list: async () => (await real(id).list()).map((t) => ({ ...t, launchId: launch })),
+    interceptWire(store, hostId, async (type, _payload, next) => {
+      const answer = (await next()) as { terminals?: Array<object> };
+      return type === "terminal.list"
+        ? {
+            ...answer,
+            terminals: (answer.terminals ?? []).map((t) => ({ ...t, launchId: launch })),
+          }
+        : answer;
     });
   }
   const x = fakeXterm();
@@ -63,7 +64,7 @@ async function setup(listFails = false, files = true, launch: string | null = nu
       />
     </TContext.Provider>,
   );
-  return { ...d, server, store, hostId, terminalId, x, closed, copied };
+  return { ...d, server, store, hostId, terminalId, x, closed, copied, platform: mem.platform };
 }
 
 const state = (name: string) => screen.queryByText(name);
@@ -396,21 +397,18 @@ describe("terminal-ui: the terminal screen", () => {
   });
 
   test("a link in the output opens in the browser, http and https only", async () => {
-    const { x, store } = await setup();
+    const { x, platform } = await setup();
     await settle(() => state("Ao vivo"));
     const opened: string[] = [];
-    (
-      store as unknown as { platform: { openExternal(url: string): Promise<void> } }
-    ).platform.openExternal = async (url) => void opened.push(url);
+    platform.openExternal = async (url) => void opened.push(url);
     x.clickLink("https://example.com/a");
     x.clickLink("file:///etc/passwd");
     expect(opened).toEqual(["https://example.com/a"]);
   });
 
   test("a path in the output, on a host of this computer, shows the file in its folder: never opened (issue #476)", async () => {
-    const { x, store, project } = await setup(false, false);
+    const { x, platform, project } = await setup(false, false);
     await settle(() => state("Ao vivo"));
-    const platform = (store as unknown as { platform: Record<string, unknown> }).platform;
     const shown: string[] = [];
     const opened: string[] = [];
     platform.openPath = async (path: string) => void opened.push(path);
@@ -442,11 +440,10 @@ describe("terminal-ui: the terminal screen", () => {
   });
 
   test("a path:line in the terminal's folder opens in the Files viewer at that line, and Fechar closes it (#506)", async () => {
-    const { x, store, project } = await setup();
+    const { x, platform, project } = await setup();
     mkdirSync(join(project, "src"), { recursive: true });
     writeFileSync(join(project, "src", "app.ts"), "one\ntwo\nthree\n");
     await settle(() => state("Ao vivo"));
-    const platform = (store as unknown as { platform: Record<string, unknown> }).platform;
     const shown: string[] = [];
     platform.revealPath = async (path: string) => void shown.push(path);
     x.showLines("Edited src/app.ts:2");
