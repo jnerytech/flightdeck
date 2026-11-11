@@ -4,7 +4,8 @@
     ".": {
       "entry": ["scripts/*.ts"],
       "project": ["scripts/**/*.ts"],
-      "ignoreBinaries": ["gpg"]
+      "ignoreBinaries": ["gpg"],
+      "ignoreDependencies": ["@stryker-mutator/command-runner"]
     },
     "apps/daemon": {},
     "apps/desktop": { "ignore": ["src/components/ui/**"] },

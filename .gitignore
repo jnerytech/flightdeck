@@ -26,4 +26,6 @@ playwright-report/
 junit-*.xml
 .features-gen/
 test-results/
+.stryker-tmp/
+reports/mutation/
 e2e-json/
