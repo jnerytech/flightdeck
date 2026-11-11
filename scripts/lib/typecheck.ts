@@ -1,4 +1,3 @@
-import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run typecheck`: one tsc run per project, one after the other, each with its incremental
  * build info. `bun run --filter '*' typecheck` ran the three workspaces at once (about 2.7 GB on
@@ -35,21 +34,43 @@ export interface RunOptions {
 export function typecheckJobs(meminfo: string | null, override: string | undefined): number {
   const forced = Number(override);
   if (Number.isInteger(forced) && forced >= 1) return forced;
-  return 1 + (meminfo === null ? 0 : 0);
+  const kb = Number(/^MemAvailable:\s+(\d+)\s*kB/m.exec(meminfo ?? "")?.[1]);
+  return kb >= 8 * 1024 * 1024 ? 2 : 1;
 }
 
-/** Runs every command in order (all of them, so one run shows every error) and returns the first failure. */
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
+
+/**
+ * Runs every command, `limit` at a time (default one, in order), all of them so one run shows every
+ * error, and returns the first failure in plan order. The last line says each project's time and
+ * the total: where a slow typecheck spends it.
+ */
 export async function runAll(
   commands: string[][],
   run: (command: string[]) => Promise<number>,
   log: (line: string) => void,
-  _options: RunOptions = {},
+  options: RunOptions = {},
 ): Promise<number> {
-  let first = 0;
-  await inSequence(commands, async (command) => {
-    log(`typecheck ${command[2] ?? command.join(" ")}`);
-    const code = await run(command);
-    first ||= code;
-  });
-  return first;
+  const now = options.now ?? Date.now;
+  const codes: number[] = [];
+  const times: number[] = [];
+  let next = 0;
+  const worker = async () => {
+    for (let index = next++; index < commands.length; index = next++) {
+      const command = commands[index] as string[];
+      log(`typecheck ${command[2] ?? command.join(" ")}`);
+      const started = now();
+      codes[index] = await run(command); // NOSONAR: a worker's runs follow one another by design
+      times[index] = now() - started;
+    }
+  };
+  const begin = now();
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(1, options.limit ?? 1), commands.length) }, worker),
+  );
+  const label = (command: string[]) =>
+    (command[2] ?? command.join(" ")).replace(/\/tsconfig\.json$/, "");
+  const each = commands.map((command, index) => `${label(command)} ${seconds(times[index] ?? 0)}`);
+  log(`typecheck: ${each.join(", ")}, total ${seconds(now() - begin)}`);
+  return codes.find((code) => code !== 0) ?? 0;
 }

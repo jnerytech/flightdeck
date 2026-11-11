@@ -73,6 +73,8 @@ export async function runInLane(command: string[], deps: LaneDeps): Promise<numb
   deps.protect?.();
   if (deps.nested) return await deps.spawn(command).wait();
   const text = command.join(" ");
+  const now = deps.now ?? Date.now;
+  const waitingSince = now();
   let named = false;
   for (;;) {
     let tried: PlaceTry;
@@ -85,6 +87,7 @@ export async function runInLane(command: string[], deps: LaneDeps): Promise<numb
     }
     const { place, open, holders } = tried;
     if (place) {
+      if (named) deps.log(`light lane: waited ${((now() - waitingSince) / 1000).toFixed(1)}s`);
       try {
         return await deps.spawn(command).wait(); // NOSONAR: the loop ends here: the command runs once and its result is returned
       } finally {

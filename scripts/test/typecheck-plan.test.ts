@@ -61,7 +61,7 @@ describe("typecheck-plan", () => {
     expect(order).toEqual(["a", "b", "c"]);
     expect(most).toBe(1);
     expect(code).toBe(2);
-    expect(logs).toEqual(["typecheck a", "typecheck b", "typecheck c"]);
+    expect(logs.slice(0, 3)).toEqual(["typecheck a", "typecheck b", "typecheck c"]);
   });
 
   test("with a limit of two, two runs overlap, every run finishes and the first failure in plan order is the result", async () => {
