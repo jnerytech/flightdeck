@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chooseFromAccountMenu } from "./account-menu.ts";
+import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";

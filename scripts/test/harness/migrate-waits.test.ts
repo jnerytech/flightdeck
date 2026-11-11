@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { migrate } from "../../lib/migrate-esperas.ts";
+import { isTarget, migrate, waitPathFor } from "../../lib/migrate-esperas.ts";
 
 const DEF = (
   timeout: string,
@@ -58,5 +58,39 @@ describe("migrate-esperas: a file's own settle becomes the shared one", () => {
     expect(migrate('import { x } from "y";\nconsole.log(x);\n')).toBeNull();
     const done = migrate(FILE(DEF("5000", "act(() => Bun.sleep(10))"))) as string;
     expect(migrate(done)).toBeNull();
+  });
+});
+
+describe("migrate-esperas: test folders", () => {
+  test("a file at the top of the test folder imports the shared module from its own folder", () => {
+    expect(waitPathFor("hosts.test.tsx")).toBe("./wait.ts");
+  });
+
+  test("a file in a domain folder imports the shared module from the folder above", () => {
+    expect(waitPathFor("hosts/overview.test.tsx")).toBe("../wait.ts");
+  });
+
+  test("a file two folders deep climbs two folders", () => {
+    expect(waitPathFor("hosts/panels/overview.test.tsx")).toBe("../../wait.ts");
+  });
+
+  test("tests and helpers in any folder are read, and so are .ts and .tsx", () => {
+    expect([
+      isTarget("a.test.ts"),
+      isTarget("hosts/a.test.tsx"),
+      isTarget("hosts/ui-setup.ts"),
+    ]).toEqual([true, true, true]);
+  });
+
+  test("the shared module at the top of the test folder is not read, its neighbours are", () => {
+    expect([isTarget("wait.ts"), isTarget("dom.ts")]).toEqual([false, true]);
+  });
+
+  test("a wait.ts inside a domain folder is read, and files that are not TypeScript are not", () => {
+    expect([
+      isTarget("hosts/wait.ts"),
+      isTarget("fixtures/data.json"),
+      isTarget("notes.md"),
+    ]).toEqual([true, false, false]);
   });
 });

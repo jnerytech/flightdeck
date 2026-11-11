@@ -8,7 +8,7 @@ import { poll } from "../../daemon/test/support/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { Router } from "../src/lib/router.ts";
-import { chooseFromAccountMenu } from "./account-menu.ts";
+import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";

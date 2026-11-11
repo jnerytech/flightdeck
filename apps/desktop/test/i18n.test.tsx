@@ -17,7 +17,7 @@ import { ptBR } from "../src/i18n/pt-BR.ts";
 import { summaryNotifications } from "../src/lib/notify.ts";
 import { trayMenu, trayStatus } from "../src/lib/tray.ts";
 import type { TrayMenu, TrayStatus } from "../src/platform/types.ts";
-import { chooseFromAccountMenu } from "./account-menu.ts";
+import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 

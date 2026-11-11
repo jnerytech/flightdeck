@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chooseFromAccountMenu } from "./account-menu.ts";
+import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";

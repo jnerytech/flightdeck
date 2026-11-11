@@ -11,8 +11,9 @@ when in doubt. The steps below are the route; they do not replace the file.
 ## Route
 
 1. **Area and file.** The area comes from the phase spec's table. The area's test is a single
-   file: `apps/<app>/test/<area>.test.ts(x)`, `packages/protocol/test/<area>.test.ts` or
-   `scripts/test/<area>.test.ts`.
+   file in its domain's folder: `apps/<app>/test/<domain>/<name>.test.ts(x)`,
+   `packages/protocol/test/<area>.test.ts` or `scripts/test/<domain>/<name>.test.ts`, where the
+   area is `<domain>-<name>` (#1603).
 2. **Stub.** Create the module with the real signatures returning wrong values (`""`, `[]`,
    `false`, `null`), never `throw`. The stub does not go into the test commit.
 3. **Red by assertion.** Run `bun --config=bunfig.area.toml test <file>`. The failure must come
