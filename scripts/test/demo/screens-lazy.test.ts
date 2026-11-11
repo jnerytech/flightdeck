@@ -39,8 +39,9 @@ const LAZY_SCREENS = [
  * not edit this test.
  */
 const FEATURES = resolve(UI, "../features");
-/** A screen whose domain folder is not its name (GLOSSARY Domains): the Conversations screen is messaging, Connections is ssh. */
+/** A screen whose domain folder is not its name (GLOSSARY Domains): the Agent screen is agentcfg, Conversations is messaging, Connections is ssh. */
 const DOMAIN_OF: Record<string, string> = {
+  AgentPage: "agentcfg",
   ConversationsPage: "messaging",
   ConnectionsPage: "ssh",
 };
