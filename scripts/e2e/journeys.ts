@@ -102,6 +102,30 @@ export async function open(
   await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
 }
 
+/**
+ * Replaces `navigator.clipboard` in the page, now and in every document it loads next, with one
+ * that keeps the last text written to it. The runner's own clipboard needs a permission that a
+ * headless run sometimes refuses (#1768); this checks what the app handed over instead. Returns
+ * a reader: the text, or null when the app wrote nothing.
+ */
+async function captureClipboard(page: Page): Promise<() => Promise<string | null>> {
+  const install = () => {
+    const seen = window as unknown as { copiedText?: string };
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          seen.copiedText = text;
+        },
+      },
+    });
+  };
+  await page.addInitScript(install);
+  await page.evaluate(install);
+  return async () =>
+    await page.evaluate(() => (window as unknown as { copiedText?: string }).copiedText ?? null);
+}
+
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
 async function demoHostsOnline(c: Context): Promise<boolean> {
   for (const name of DEMO_ONLINE_HOSTS) {
@@ -896,19 +920,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       projectId: c.ids.project,
       projectName: c.ids.projectName,
     });
-    // The runner's clipboard needs a permission that a headless run sometimes refuses (#1768): the
-    // app's own write is caught in the page instead, so the journey checks what the app copied.
-    await c.page.evaluate(() => {
-      const seen = window as unknown as { copiedText?: string };
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: {
-          writeText: async (text: string) => {
-            seen.copiedText = text;
-          },
-        },
-      });
-    });
+    const copiedText = await captureClipboard(c.page);
     await c.page
       .getByRole("button", { name: c.t("workflowsUi.templates.open"), exact: true })
       .click();
@@ -927,11 +939,12 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await dialog
       .getByText(c.t("workflowsUi.templates.copied"), { exact: true })
       .waitFor({ timeout: WAIT });
-    const copied = await c.page.evaluate(
-      () => (window as unknown as { copiedText?: string }).copiedText ?? "",
-    );
+    const copied = await copiedText();
+    if (copied === null) {
+      throw new Error("workflow-templates: the app never handed a text to the clipboard");
+    }
     if (!copied.includes("steps")) {
-      throw new Error("workflow-templates: the clipboard has no workflow file");
+      throw new Error("workflow-templates: the text copied is not a workflow file");
     }
     await dialog
       .getByRole("button", { name: c.t("workflowsUi.templates.back"), exact: true })
