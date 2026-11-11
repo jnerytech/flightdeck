@@ -10,7 +10,7 @@ describe("channelText: a frame from the receptor", () => {
   test("a frame that is not JSON, has no text or a non-text one is skipped", () => {
     expect(channelText("{nope")).toBeNull();
     expect(channelText("{}")).toBeNull();
-    expect(channelText(new TextEncoder().encode('{"text":"bytes"}'))).toBe("bytes");
+    expect(channelText(Buffer.from('{"text":"bytes"}'))).toBe("bytes");
     expect(channelText('{"text":3}')).toBeNull();
     expect(channelText("[1]")).toBeNull();
   });

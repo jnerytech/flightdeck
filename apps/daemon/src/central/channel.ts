@@ -11,7 +11,7 @@ export const CHANNEL_INSTRUCTIONS =
 
 /** The text a receptor frame carries; `null` for a frame that is not a message (it is skipped). */
 export function channelText(data: unknown): string | null {
-  return typeof data === "string" ? (parseJsonOr(Frame, data, null)?.text ?? null) : null;
+  return parseJsonOr(Frame, String(data), null)?.text ?? null;
 }
 
 export interface ChannelOptions {
