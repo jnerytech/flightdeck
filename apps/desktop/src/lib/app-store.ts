@@ -3717,6 +3717,7 @@ export class AppStore {
 
   /** Phase 19: each secret's usage rules, kept with the vault and handed to the hosts (#1596). */
   readonly vaultRules: VaultRulesSlice;
+  /** The vault's secrets and their `.fdvault` file; `state.secrets` is the list the screens read. */
   readonly secrets: VaultSecretsSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
