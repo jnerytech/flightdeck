@@ -8,11 +8,13 @@ import type { Database } from "bun:sqlite";
 import type { CardDiff } from "@flightdeck/protocol";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { CompleteCutShort } from "../runtime/claude-sdk-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/types.ts";
 import type { NewReviewComment } from "./comments.ts";
 import {
   anchorFindings,
+  FINDINGS,
   type Finding,
   parseReview,
   REVIEW_SCHEMA,
@@ -320,12 +322,7 @@ const failed = (): CardReviewResult => ({
 });
 
 function fromRow(row: Row): Omit<CardReviewResult, "cached"> {
-  let loose: Finding[] = [];
-  try {
-    loose = row.loose ? (JSON.parse(row.loose) as Finding[]) : [];
-  } catch {
-    loose = [];
-  }
+  const loose = row.loose ? parseJsonOr(FINDINGS, row.loose, []) : [];
   return {
     state: row.state === "done" ? "done" : "failed",
     summary: row.summary ?? "",

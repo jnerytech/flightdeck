@@ -1,7 +1,9 @@
 import { access, chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, posix, resolve, win32 } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import { loadConfig, updateConfigFile } from "./config.ts";
+import { parseJsonWith } from "./json-text.ts";
 import type { Logger } from "./logger.ts";
 import { compareVersions, swapBinary } from "./update.ts";
 import { WSL_PORT_OFFSET } from "./wsl-host.ts";
@@ -55,8 +57,10 @@ const sameRoot = (deps: SetupDeps, a: string, b: string) => {
 
 /** The roots as the file has them (`loadConfig` resolves them to native paths). */
 async function storedRoots(file: string): Promise<string[]> {
-  const roots = (JSON.parse(await readFile(file, "utf8")) as { allowedRoots?: unknown })
-    .allowedRoots;
+  const roots = parseJsonWith(
+    z.object({ allowedRoots: z.unknown().optional() }),
+    await readFile(file, "utf8"),
+  ).allowedRoots;
   return Array.isArray(roots)
     ? roots.filter((root): root is string => typeof root === "string")
     : [];

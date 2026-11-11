@@ -35,7 +35,7 @@ const RESULT: RoiSummaryResult = {
 describe("tabela-larga: a wide table scrolls sideways inside its own frame", () => {
   test("the return-on-cost table sits in a named frame the keyboard can scroll", async () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
-    store.roiSummaries = async () => [{ hostId: "h1", result: RESULT }];
+    store.roiFigures.summaries = async () => [{ hostId: "h1", result: RESULT }];
     render(
       <RoiTable
         store={store}

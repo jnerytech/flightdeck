@@ -28,7 +28,16 @@ import { WorktreeChip } from "@/features/projects/index.ts";
 import { AsleepMark } from "@/features/sessions/asleep-mark";
 import { CacheTimer } from "@/features/sessions/cache-timer";
 import { CountChip, FoldAll, HostChip, ProjectHeader } from "@/features/sessions/group-header";
+import {
+  awayHost,
+  hubProjectKeys,
+  projectChoices,
+  projectName,
+  rowsInScope,
+  scopeKeys,
+} from "@/features/sessions/index.ts";
 import { SessionCard, STATE_TONES } from "@/features/sessions/session-card";
+import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "../components/feedback/inline-notice.tsx";
@@ -36,8 +45,8 @@ import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import { UNASSIGNED } from "../lib/clients.ts";
-import { projectLabel, usd } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope, scopeHosts } from "../lib/data-scope.ts";
+import { usd } from "../lib/costs.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
 import type { Density } from "../lib/density.ts";
 import {
   activeCount,
@@ -57,9 +66,8 @@ import {
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
-import { activeWorktreeFilter, rowInFilter } from "../lib/project-tree.ts";
+import { activeWorktreeFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
-import { TeleportMove } from "./TeleportMove.tsx";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;
@@ -123,15 +131,9 @@ export function SessionsHub(
   let hostScope: DataScope = activeScope(kept, state.hosts, state.hostsLoaded);
   if (visitAll) hostScope = ALL_SCOPE;
   else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
-  const scoped = hostScope.kind === "host" ? hostScope.hostId : "";
-  /** A project scope (#126 slice 4): that project's sessions, on every host it is on. */
-  const scopedProject = hostScope.kind === "project" ? hostScope.projectKey : "";
-  /** The scoped host, when it is offline (not still connecting): the hub says so and offers all. */
-  const away = scoped
-    ? scopeHosts(state.hosts, hostScope).find(
-        (h) => h.status !== "online" && h.status !== "connecting",
-      )
-    : undefined;
+  // A project scope (#126 slice 4) shows that project's sessions, on every host it is on.
+  const { host: scoped, project: scopedProject } = scopeKeys(hostScope);
+  const away = awayHost(state.hosts, hostScope);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   /** Issue #100: the session being moved to another host (the preview's dialog). */
   const [moving, setMoving] = useState<HubRow | null>(null);
@@ -209,33 +211,24 @@ export function SessionsHub(
   );
   // The hub's projects, for the Projects group of the scope menu (as Home and Costs offer theirs).
   const projectKeys = useMemo(
-    () =>
-      [...new Set([...allRows.map((row) => row.projectKey), scopedProject])].filter(
-        (key) => key !== "",
-      ),
+    () => hubProjectKeys(allRows, scopedProject),
     [allRows, scopedProject],
   );
   const projectNames = useProjectLabels(store, projectKeys);
   const projects = useMemo(
-    () =>
-      projectKeys
-        .map((key) => ({ key, label: projectNames.get(key) ?? projectLabel(key) }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
+    () => projectChoices(projectKeys, projectNames),
     [projectKeys, projectNames],
   );
   const rows = useMemo(
     () =>
-      allRows
-        .filter((row) => !scoped || row.hostId === scoped)
-        .filter((row) => !scopedProject || row.projectKey === scopedProject)
-        .filter(
-          (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
-        )
-        .filter((row) => {
-          // The branch picked in the sidebar tree keeps the sessions of that checkout.
-          if (!picked || !pickedProject) return true;
-          return rowInFilter(row, picked, pickedProject, worktrees);
-        }),
+      rowsInScope(allRows, {
+        host: scoped,
+        project: scopedProject,
+        only,
+        picked,
+        pickedProject,
+        worktrees,
+      }),
     [allRows, scoped, scopedProject, only, picked, pickedProject, worktrees],
   );
   const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
@@ -563,7 +556,7 @@ export function SessionsHub(
           <InlineNotice tone="info">
             <span>
               {t("scope.projectNoSessions", {
-                project: projectNames.get(scopedProject) ?? projectLabel(scopedProject),
+                project: projectName(scopedProject, projectNames),
               })}{" "}
             </span>
             <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>

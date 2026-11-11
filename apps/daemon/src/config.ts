@@ -5,6 +5,7 @@ import { dirname, join, posix, resolve, win32 } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { PricingConfig } from "./costs/pricing.ts";
+import { parseJsonText, parseJsonWith } from "./json-text.ts";
 import { DEFAULT_ALLOWED_NETWORKS, parseCidr } from "./networks.ts";
 import { validRegex } from "./permissions/risk.ts";
 import { BLOCK_SIZE, DEFAULT_PORT_BASE } from "./runenv/ports.ts";
@@ -269,7 +270,7 @@ export async function loadConfig(path: string = defaultConfigPath()): Promise<Co
   let raw: unknown = {};
   let exists = true;
   try {
-    raw = JSON.parse(await readFile(file, "utf8"));
+    raw = parseJsonText(await readFile(file, "utf8"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     exists = false;
@@ -317,7 +318,7 @@ async function rewriteConfigFile(
   file: string,
   update: (raw: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<void> {
-  const raw = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
+  const raw = parseJsonWith(z.record(z.string(), z.unknown()), await readFile(file, "utf8"));
   const tmp = `${file}.tmp`;
   await writeFile(tmp, `${JSON.stringify(update(raw), null, 2)}\n`, { mode: 0o600 });
   await chmod(tmp, 0o600);

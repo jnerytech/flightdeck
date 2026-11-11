@@ -81,7 +81,7 @@ function setup(
     baseDelayMs: 600_000,
   });
   store.i18n.start();
-  store.loadProjects = (async () => []) as never;
+  store.projectList.load = (async () => []) as never;
   store.refreshHub = (async () => {}) as never;
   const sent: Array<[string, unknown]> = [];
   const answers = [

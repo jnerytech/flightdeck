@@ -1,6 +1,8 @@
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 
 /**
  * A ledger of the process groups the daemon starts for OpenCode (issue #250). After a SIGKILL of
@@ -106,8 +108,8 @@ export class ProcessLedger {
 
   private async read(): Promise<LedgerEntry[]> {
     try {
-      const parsed: unknown = JSON.parse(await readFile(this.opts.file, "utf8"));
-      return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+      const parsed = parseJsonOr(z.array(z.unknown()), await readFile(this.opts.file, "utf8"), []);
+      return parsed.filter(isEntry);
     } catch {
       return [];
     }

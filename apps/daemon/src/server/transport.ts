@@ -34,6 +34,7 @@ import type {
 import type { ServerWebSocket } from "bun";
 import type { DeltaCoalescer } from "../delta-coalescer.ts";
 import type { FlightdeckError } from "../errors.ts";
+import { parseJsonText } from "../json-text.ts";
 import type { TerminalSink } from "../terminal/terminal-manager.ts";
 import { sendFrame } from "../ws-send.ts";
 
@@ -150,7 +151,7 @@ export function ackError(
 }
 
 export function decode(raw: string | Buffer): unknown {
-  return JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
+  return parseJsonText(typeof raw === "string" ? raw : raw.toString("utf8"));
 }
 
 /** The connection's end of its terminals: frames out, and how full its socket is. */

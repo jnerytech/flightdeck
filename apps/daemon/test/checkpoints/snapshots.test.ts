@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Central } from "../../src/central/central.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
@@ -269,4 +269,20 @@ describe("snapshots", () => {
     expect(rows.map((r) => r.kind)).toEqual(["before", "after"]);
     expect(git(repo, "status", "--porcelain")).toBe("?? a.txt");
   }, 20_000);
+});
+
+describe("snapshots: pruning", () => {
+  test("pruning a snapshot whose repository is gone drops the row and runs no git", async () => {
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    let now = Date.parse("2026-11-03T10:00:00.000Z");
+    const snapshots = new Snapshots({ db: store.db, now: () => now });
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "a.txt"), "1\n");
+    await snapshots.take({ cwd: repo, claudeSessionId: "s1", kind: "before" });
+    rmSync(repo, { recursive: true, force: true });
+    now += 40 * 86_400_000;
+    expect(await snapshots.prune({ perSession: 50, days: 30 })).toBe(1);
+    expect(snapshots.list("s1")).toEqual([]);
+  });
 });

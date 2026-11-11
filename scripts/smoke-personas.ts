@@ -46,6 +46,8 @@ const PACK = [
   "revisor",
   "docs",
   "frontend",
+  "ux",
+  "ui",
   "dba",
   "coordenador",
   "dev",

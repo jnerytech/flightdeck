@@ -5,6 +5,8 @@
  * the reviewed diff; a sent reviewer comment is framed by the daemon, never by the model.
  */
 import type { DiffFile } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 
 export type Severity = "blocker" | "high" | "medium" | "low";
 
@@ -87,36 +89,24 @@ export function reviewPrompt(
   return redact(parts.join("\n\n"));
 }
 
-const isFinding = (f: unknown): f is Finding => {
-  const x = f as Partial<Finding> | null;
-  return (
-    typeof x?.path === "string" &&
-    typeof x.line === "number" &&
-    Number.isInteger(x.line) &&
-    x.line >= 1 &&
-    typeof x.severity === "string" &&
-    (SEVERITIES as readonly string[]).includes(x.severity) &&
-    typeof x.body === "string" &&
-    x.body.length <= MAX_BODY
-  );
-};
+const FINDING = z.object({
+  path: z.string(),
+  line: z.number().int().min(1),
+  severity: z.enum(SEVERITIES),
+  body: z.string().max(MAX_BODY),
+});
+
+/** A list of findings as a review keeps them; a model's answer is held to MAX_FINDINGS besides. */
+export const FINDINGS = z.array(FINDING);
+
+const REVIEW = z.object({
+  summary: z.string().max(MAX_SUMMARY),
+  findings: FINDINGS.max(MAX_FINDINGS),
+});
 
 /** The answer when it matches the schema, else null. */
 export function parseReview(text: string): ReviewAnswer | null {
-  let answer: unknown;
-  try {
-    answer = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  const a = answer as { summary?: unknown; findings?: unknown } | null;
-  if (typeof a?.summary !== "string" || a.summary.length > MAX_SUMMARY) return null;
-  if (!Array.isArray(a.findings) || a.findings.length > MAX_FINDINGS) return null;
-  if (!a.findings.every(isFinding)) return null;
-  return {
-    summary: a.summary,
-    findings: a.findings.map(({ path, line, severity, body }) => ({ path, line, severity, body })),
-  };
+  return parseJsonOr(REVIEW.nullable(), text, null);
 }
 
 /** The new-side line numbers a file's hunks add or change. */

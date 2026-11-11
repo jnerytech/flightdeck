@@ -8,10 +8,10 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { ArenaStartForm } = await import("../src/ui/ArenaStartForm.tsx");
+const { ArenaStartForm } = await import("../src/features/board/arena-start-form.tsx");
 const { ActionForm } = await import("../src/ui/ActionForm.tsx");
 const { AutomationForm } = await import("../src/ui/AutomationForm.tsx");
-const { AgentMcp } = await import("../src/ui/AgentMcp.tsx");
+const { AgentMcp } = await import("../src/features/agentcfg/agent-mcp.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(20_000);

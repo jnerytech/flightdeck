@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
 import { open, stat } from "node:fs/promises";
+import { parseJsonText } from "../json-text.ts";
 
 /** What a session started in a terminal waits for, read from the end of its transcript (#1736). */
 export type Waiting = "plan" | "question";
@@ -48,7 +49,7 @@ interface Entry {
 function parse(line: string): Entry | null {
   if (!line.startsWith("{")) return null;
   try {
-    const value: unknown = JSON.parse(line);
+    const value: unknown = parseJsonText(line);
     return value !== null && typeof value === "object" ? (value as Entry) : null;
   } catch {
     return null;

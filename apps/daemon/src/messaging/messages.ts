@@ -14,7 +14,9 @@ import type {
   SendResult,
   SessionIdentity,
 } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { slug } from "../names/format.ts";
 import { ulid } from "../ulid.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
@@ -30,6 +32,7 @@ import {
   sizeError,
   validatePolicy,
 } from "./policy.ts";
+import { relayOf } from "./relay.ts";
 
 export interface MessagingOptions {
   db: Database;
@@ -167,7 +170,10 @@ export class Messaging {
     const stored = opts.db.query("SELECT policy FROM messaging_config WHERE id = 1").get() as {
       policy: string;
     } | null;
-    this.policy = stored ? validatePolicy(JSON.parse(stored.policy)).policy : DEFAULT_POLICY;
+    // A stored policy that is not JSON reads as none: the default applies, as for a new host.
+    this.policy = stored
+      ? validatePolicy(parseJsonOr(z.unknown(), stored.policy, undefined)).policy
+      : DEFAULT_POLICY;
     // What was waiting in memory when the daemon stopped cannot be delivered any more.
     const lost = opts.db
       .query("SELECT * FROM session_messages WHERE status = 'queued' AND to_host = ?")
@@ -480,7 +486,8 @@ export class Messaging {
     if (!target.local) {
       // Another host: the app carries it. Until it does, it waits here.
       record("queued", null);
-      this.emit({ type: "messages.relay", message: this.relayOf(this.row(id) as Row) });
+      const relay = relayOf(this.row(id) as Row);
+      if (relay) this.emit({ type: "messages.relay", message: relay });
       return { id, status: "queued", reason: null };
     }
     const formatted = formatSessionMessage(sender, input.text, untrusted);
@@ -712,20 +719,7 @@ export class Messaging {
          ORDER BY created_ms, rowid`,
       )
       .all(this.opts.host) as Row[];
-    return rows.map((row) => this.relayOf(row));
-  }
-
-  private relayOf(row: Row): RelayMessage {
-    return {
-      id: row.id,
-      from: JSON.parse(row.sender as string) as RelayMessage["from"],
-      toSession: row.to_session,
-      toHost: row.to_host,
-      text: row.text,
-      createdAt: row.created_at,
-      untrusted: row.untrusted === 1,
-      kind: row.kind,
-    };
+    return rows.flatMap((row) => relayOf(row) ?? []);
   }
 
   // --- notices from Flightdeck itself ---

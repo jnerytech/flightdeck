@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FlightdeckError } from "../../src/errors.ts";
@@ -8,7 +8,7 @@ import { packPersonas } from "../../src/personas/pack.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { newManager, workspace } from "../support/helpers.ts";
+import { newManager, reasonOf, tempDir, workspace } from "../support/helpers.ts";
 
 const scanner = new SecretScanner();
 const GOOD = { id: "seg", name: "Segurança", description: "Revisa", body: "Procure falhas." };
@@ -157,5 +157,29 @@ describe("recusas-personas: the store and the open sessions say why", () => {
       "personas_off",
     );
     expect((await refused(() => plain.clear({ sessionId }))).reason).toBe("persona_not_applied");
+  });
+});
+
+describe("recusas-personas: removing a project persona", () => {
+  const cleanups: Array<() => unknown> = [];
+  afterEach(async () => {
+    for (const fn of cleanups.splice(0).reverse()) await fn();
+  });
+
+  test("removing a project persona whose file cannot be removed is an error that is not 'not found'", async () => {
+    const dir = tempDir("fd-personas-");
+    const project = join(dir, "proj");
+    mkdirSync(join(project, ".flightdeck", "personas", "seg.md"), { recursive: true });
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    const personas = new Personas({
+      db: store.db,
+      allowedRoots: [dir],
+      scanner: new SecretScanner(),
+      pack: packPersonas,
+    });
+    const reason = await reasonOf(personas.remove("project", "seg", project));
+    expect(reason).not.toBeUndefined();
+    expect(reason).not.toBe("persona_not_found");
   });
 });

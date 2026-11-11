@@ -40,7 +40,7 @@ export function useProjectCards(
             name: host.name,
             projects: state.projects[host.id] ?? [],
           })),
-        keyOf: (hostId, project) => store.projectKeyOf(hostId, project),
+        keyOf: (hostId, project) => store.projectList.keyOf(hostId, project),
         rows: hubRows(state),
         cards: Object.entries(state.cards).map(([key, card]) => ({
           hostId: state.hosts.find((h) => key.startsWith(`${h.id}/`))?.id ?? "",

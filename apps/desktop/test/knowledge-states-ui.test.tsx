@@ -40,7 +40,7 @@ function setup(options: Setup = {}) {
     baseDelayMs: 600_000,
   });
   store.i18n.start();
-  store.loadProjects = (async () => []) as never;
+  store.projectList.load = (async () => []) as never;
   store.refreshHub = (async () => {}) as never;
   const sent: Array<[string, unknown]> = [];
   let reads = 0;

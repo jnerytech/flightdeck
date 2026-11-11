@@ -79,7 +79,7 @@ describe("host-tabs-ui: the tab row follows the host (issue #644)", () => {
     expect(switcher()?.getAttribute("aria-label") ?? "").toContain("beta");
     // alfa kept its own tabs.
     await act(async () => {
-      store.pickHost("ha");
+      store.hostTabs.switchHost("ha");
     });
     expect(names()).toEqual(["Sessões", "Histórico", "Projetos"]);
     expect(selected()).toEqual(["Projetos"]);
