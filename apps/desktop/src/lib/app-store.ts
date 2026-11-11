@@ -20,7 +20,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
-import { AccountSlice, initialAccountState } from "../features/account/index.ts";
+import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
   initialActivityState,
@@ -413,20 +413,7 @@ export class AppStore {
       t: () => this.i18n.t,
       now: () => this.now(),
     });
-    this.account = new AccountSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      stream: (hostId) => {
-        const conn = this.connections.get(hostId);
-        return (
-          conn && {
-            watch: (on) => conn.watchAccount(on),
-            get: () => conn.request("account.get", {}),
-          }
-        );
-      },
-      refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
-    });
+    this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = new BudgetsSlice({
       state: () => this.state,
