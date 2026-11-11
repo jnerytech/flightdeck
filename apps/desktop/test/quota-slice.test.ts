@@ -87,11 +87,11 @@ describe("quota slice: a host's plan usage", () => {
   });
 
   test("setPause keeps the host's new state, and a refusal leaves the guard as it was", async () => {
-    const s = slice({ a: reading(0.5) }, { a: "alfa" });
+    const s = slice({ a: reading(0.5), b: null }, { a: "alfa", b: "beta" });
     await s.quota.setPause("a", 0.8);
     expect(s.state().quota.a?.pauseAt).toBe(0.8);
-    await s.quota.setPause("missing", 0.7);
-    expect(s.state().quota.missing).toBeUndefined();
-    expect(s.state().quota.a?.pauseAt).toBe(0.8);
+    s.quota.updated("b", reading(0.2, 0.9));
+    await s.quota.setPause("b", 0.7);
+    expect(s.state().quota.b?.pauseAt).toBe(0.9);
   });
 });
