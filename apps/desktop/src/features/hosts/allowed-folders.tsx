@@ -3,11 +3,11 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Input } from "@/components/ui/input";
-import { hostDownReason } from "@/features/hosts/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { isLocalUrl } from "@/lib/terminal";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { hostDownReason } from "./host-down-reason.ts";
 
 /** The folders a host lets its sessions and projects use, and a way to add one (the host decides). */
 export function AllowedFolders(props: Readonly<{ store: AppStore; host: HostView }>) {

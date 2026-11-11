@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { KeepAwakePanel } = await import("../src/components/hosts/keep-awake-panel.tsx");
+const { KeepAwakePanel } = await import("../src/features/hosts/keep-awake-panel.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(20_000);

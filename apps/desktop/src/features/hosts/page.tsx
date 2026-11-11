@@ -2,13 +2,6 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { AllowedFolders } from "@/components/hosts/allowed-folders";
-import { BypassSwitch } from "@/components/hosts/bypass-switch";
-import { GithubPanel } from "@/components/hosts/github-panel";
-import { KeepAwakePanel } from "@/components/hosts/keep-awake-panel";
-import { ResumePanel } from "@/components/hosts/resume-panel";
-import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
-import { SleepSetting } from "@/components/hosts/sleep-setting";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -32,6 +25,9 @@ import { HarnessTemplatesSection } from "../../ui/HarnessTemplatesSection.tsx";
 import { MaintenanceSection } from "../../ui/MaintenanceSection.tsx";
 import { TelemetrySection } from "../../ui/TelemetrySection.tsx";
 import { UsagePanel } from "../../ui/UsagePanel.tsx";
+import { AllowedFolders } from "./allowed-folders.tsx";
+import { BypassSwitch } from "./bypass-switch.tsx";
+import { GithubPanel } from "./github-panel.tsx";
 import { HostAccount } from "./host-account.tsx";
 import { HostAutoUpdate } from "./host-auto-update.tsx";
 import { HostCompare } from "./host-compare.tsx";
@@ -45,7 +41,11 @@ import { HostResources } from "./host-resources.tsx";
 import { HostTerminal } from "./host-terminal.tsx";
 import { HostVersionLine } from "./host-version.tsx";
 import { HostWorktrees } from "./host-worktrees.tsx";
+import { KeepAwakePanel } from "./keep-awake-panel.tsx";
 import { RenameHostDialog } from "./rename-host-dialog.tsx";
+import { ResumePanel } from "./resume-panel.tsx";
+import { SimpleModePanel } from "./simple-mode-panel.tsx";
+import { SleepSetting } from "./sleep-setting.tsx";
 
 /** What the overview reads from the app: the sessions, the projects and the cards of the hosts. */
 const OVERVIEW_KEYS = [
