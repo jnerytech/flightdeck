@@ -7,16 +7,24 @@ export interface ScrollPosition {
 
 /** Remembers where a conversation was left; once the map holds `max`, the oldest are forgotten first. */
 export function rememberPosition(
-  _positions: Map<string, ScrollPosition>,
-  _key: string,
-  _position: ScrollPosition,
-  _max: number,
-): void {}
+  positions: Map<string, ScrollPosition>,
+  key: string,
+  position: ScrollPosition,
+  max: number,
+): void {
+  positions.delete(key);
+  positions.set(key, position);
+  // The oldest go first: the map keeps insertion order.
+  for (const old of positions.keys()) {
+    if (positions.size <= max) break;
+    positions.delete(old);
+  }
+}
 
 /** How many messages came after the one the reader had seen (none while they are at the end). */
 export function missedAfter(
-  _items: ReadonlyArray<{ seq: number }>,
-  _awaySeq: number | null,
+  items: ReadonlyArray<{ seq: number }>,
+  awaySeq: number | null,
 ): number {
-  return -1;
+  return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
 }

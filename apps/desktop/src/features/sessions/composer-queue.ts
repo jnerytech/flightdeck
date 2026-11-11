@@ -10,21 +10,27 @@ export interface QueueStep {
  * Messages written during a turn wait and go out, in order, as the turns end: one at a time, and
  * only once the one before it has shown up (the session worked, or its message reached the conversation).
  */
-export function queueStep(_state: {
+export function queueStep(state: {
   working: boolean;
   closed: boolean;
   hasNext: boolean;
   awaiting: number | null;
   cards: number;
 }): QueueStep {
-  return { awaiting: 0, send: true };
+  const { working, closed, hasNext, cards } = state;
+  // The turn showed up (the session worked, or its user message reached the conversation).
+  const awaiting =
+    state.awaiting !== null && (working || cards > state.awaiting) ? null : state.awaiting;
+  if (working || closed || !hasNext || awaiting !== null) return { awaiting, send: false };
+  return { awaiting: cards, send: true };
 }
 
 /** What a press on Send does: nothing to send moves the cursor, a turn in progress queues, else it sends. */
 export function submitAction(
-  _value: string,
-  _attached: number,
-  _working: boolean,
+  value: string,
+  attached: number,
+  working: boolean,
 ): "focus" | "queue" | "send" {
-  return _working ? "send" : "queue";
+  if (!value && attached === 0) return "focus";
+  return working ? "queue" : "send";
 }
