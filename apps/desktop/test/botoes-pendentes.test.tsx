@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { fakeHostStore, onWire } from "./fake-host.ts";
 import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
@@ -8,6 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
+const { RequestError } = await import("../src/lib/host-connection.ts");
 const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
 const { UpdateBanner } = await import("../src/features/appupdate/update-banner.tsx");
 const { MaintenanceSection } = await import("../src/ui/MaintenanceSection.tsx");
@@ -107,15 +109,10 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
   test("Fazer backup and Simular limpeza go busy and run once", async () => {
     const backup = slow();
     const prune = slow();
-    const store = {
-      i18n: { t },
-      formatDateTime: (iso: string) => iso,
-      hostCommand: (_host: string, command: string, ...rest: unknown[]) => {
-        if (command === "maintenance.backup") return backup.call(...rest);
-        if (command === "maintenance.prune") return prune.call(...rest);
-        return Promise.resolve(null);
-      },
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore({
+      "maintenance.backup": (payload) => backup.call(payload),
+      "maintenance.prune": (payload) => prune.call(payload),
+    });
     render(
       <TContext.Provider value={t}>
         <MaintenanceSection store={store} hostId="h" />
@@ -128,17 +125,13 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Enviar mensagem goes busy and sends once", async () => {
     const send = slow();
-    const store = {
-      i18n: { t },
-      onMessageUpdated: () => () => {},
-      hostCommand: (_host: string, command: string, ...rest: unknown[]) => {
-        if (command === "messages.send") return send.call(...rest);
-        if (command === "messages.sessions") {
-          return Promise.resolve({ sessions: [{ address: "a@h", name: "alfa" }] });
-        }
-        return Promise.resolve({ messages: [] });
+    const { store } = await fakeHostStore(
+      {
+        "messages.send": (payload) => send.call(payload),
+        "messages.sessions": () => ({ sessions: [{ address: "a@h", name: "alfa" }] }),
       },
-    } as unknown as AppStore;
+      { fallback: { messages: [] } },
+    );
     render(<SessionMessages store={store} hostId="h" sessionId="s1" />);
     await settle(() => button("Mandar para outra sessão…") !== null);
     await click(button("Mandar para outra sessão…"));
@@ -189,10 +182,9 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Atualizar com a base goes busy and updates once", async () => {
     const update = slow();
-    const store = {
-      hostRequest: (_host: string, _command: string, ...rest: unknown[]) => update.call(...rest),
-      success: () => {},
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore({
+      "card.updateFromBase": (payload) => update.call(payload),
+    });
     render(
       <TContext.Provider value={t}>
         <CardReview
@@ -204,22 +196,19 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
         />
       </TContext.Provider>,
     );
-    await expectBusyOnce("Atualizar com a base", update.calls, () =>
-      update.settle({ ok: true, data: {} }),
-    );
+    await expectBusyOnce("Atualizar com a base", update.calls, () => update.settle({}));
   });
 
   test("Enviar comentários goes busy and sends once", async () => {
     const send = slow();
-    const store = {
-      hostCommand: (_host: string, command: string, ...rest: unknown[]) =>
-        command === "pr.comments.send"
-          ? send.call(...rest)
-          : Promise.resolve({
-              comments: [{ id: "k1", author: "ana", body: "ajuste", resolved: false, path: null }],
-            }),
-      success: () => {},
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore(
+      { "pr.comments.send": (payload) => send.call(payload) },
+      {
+        fallback: {
+          comments: [{ id: "k1", author: "ana", body: "ajuste", resolved: false, path: null }],
+        },
+      },
+    );
     render(
       <TContext.Provider value={t}>
         <PrComments store={store} hostId="h" cardId="c1" moment="m" />
@@ -231,10 +220,13 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Prever goes busy and asks the host once", async () => {
     const preview = slow();
-    const store = { vaultRules: { preview: preview.call } } as unknown as AppStore;
+    const { store, secretIds } = await fakeHostStore(
+      { "vault.rules.preview": (payload) => preview.call(payload) },
+      { features: ["actions"], secrets: ["chave"] },
+    );
     render(
       <TContext.Provider value={t}>
-        <RulesPreview store={store} secretId="s1" />
+        <RulesPreview store={store} secretId={secretIds[0] ?? ""} />
       </TContext.Provider>,
     );
     await expectBusyOnce("Prever", preview.calls, () =>
@@ -244,40 +236,39 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Salvar regras goes busy and saves once, and a refusal brings the button back", async () => {
     const save = slow();
-    const store = {
-      vaultRules: { get: () => [], preview: () => Promise.resolve(null), set: save.call },
-      getState: () => ({ clientList: [] }),
-    } as unknown as AppStore;
+    const { store, secretIds } = await fakeHostStore(
+      {
+        // The host refuses on the wire, as a daemon does: the store turns it into a refusal.
+        "vault.rules.set": onWire(save.call),
+        "vault.rules.get": () => ({ rules: [] }),
+      },
+      { features: ["actions"], secrets: ["chave"] },
+    );
     render(
       <TContext.Provider value={t}>
         <RulesEditor
           store={store}
-          secret={{ id: "s1", name: "chave" } as never}
+          secret={store.getState().secrets.find((one) => one.id === secretIds[0]) as never}
           onClose={() => {}}
         />
       </TContext.Provider>,
     );
     await expectBusyOnce("Salvar regras", save.calls, () =>
-      save.settle({ ok: false, code: "invalid", message: "regra inválida" }),
+      save.settle(new RequestError("invalid", "regra inválida")),
     );
     expect(screen.queryByRole("alert")).not.toBeNull();
   });
 
   test("Exportar CSV goes busy and exports once", async () => {
     const exported = slow();
-    const state = {
-      secrets: [],
-      hosts: [{ id: "h", name: "alfa", status: "online", hostInfo: { features: ["actions"] } }],
-    };
-    const store = {
-      hostCommand: (_host: string, _command: string, payload: { format?: string }) =>
-        payload.format === "csv"
-          ? exported.call(payload)
-          : Promise.resolve({ rows: [], decisions: [] }),
-      saveFile: () => Promise.resolve(),
-      subscribe: () => () => {},
-      getState: () => state,
-    } as unknown as AppStore;
+    const { store, calls } = await fakeHostStore(
+      {
+        "vault.report": (payload: { format?: string }) =>
+          payload.format === "csv" ? exported.call(payload) : { rows: [] },
+        "vault.decisions": () => ({ decisions: [] }),
+      },
+      { features: ["actions"] },
+    );
     render(
       <TContext.Provider value={t}>
         <VaultReport store={store} />
@@ -285,5 +276,6 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     );
     await uiIdle();
     await expectBusyOnce("Exportar CSV", exported.calls, () => exported.settle({ csv: "a,b" }));
+    expect(calls.some((call) => call.type === "vault.report")).toBe(true);
   });
 });
