@@ -6,9 +6,9 @@ import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { type ChainNode, chainOf, pickable } from "../lib/deps.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { type ChainNode, chainOf, pickable } from "../../lib/deps.ts";
 
 /** The blockers as an indented list: each with its column, and what it waits for in turn. */
 function Chain(
