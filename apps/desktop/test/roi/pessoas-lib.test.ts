@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { EMPTY_PERIOD } from "../src/lib/roi.ts";
-import { humanTokens, personRows } from "../src/lib/roi-people.ts";
-import type { Person } from "../src/lib/roi-settings.ts";
+import { EMPTY_PERIOD } from "../../src/lib/roi.ts";
+import { humanTokens, personRows } from "../../src/lib/roi-people.ts";
+import type { Person } from "../../src/lib/roi-settings.ts";
 
 const person = (name: string, hostIds: string[], over: Partial<Person> = {}): Person => ({
   id: name,

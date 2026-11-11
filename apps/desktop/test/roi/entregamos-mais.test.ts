@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiPeriod } from "@flightdeck/protocol";
-import { compare, EMPTY_PERIOD, headline } from "../src/lib/roi.ts";
+import { compare, EMPTY_PERIOD, headline } from "../../src/lib/roi.ts";
 
 const period = (over: Partial<RoiPeriod>): RoiPeriod => ({ ...EMPTY_PERIOD, ...over });
 
