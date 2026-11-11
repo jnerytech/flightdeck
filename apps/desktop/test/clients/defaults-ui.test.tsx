@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { personasHost } from "./personas/ui-setup.ts";
-import { snippetsHost } from "./snippets/ui-setup.ts";
-import { settle } from "./wait.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { personasHost } from "../personas/ui-setup.ts";
+import { snippetsHost } from "../snippets/ui-setup.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -109,8 +109,8 @@ describe("clients-defaults: the persona of Claude here", () => {
     const store = newStore();
     const h = await personasHost(cleanups, store);
     addClient(store, "Acme", h.d.root, { persona });
-    const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
-    const { TContext } = await import("../src/i18n/context.tsx");
+    const { TerminalButton } = await import("../../src/ui/TerminalButton.tsx");
+    const { TContext } = await import("../../src/i18n/context.tsx");
     render(
       <TContext.Provider value={store.i18n.t}>
         <TerminalButton
