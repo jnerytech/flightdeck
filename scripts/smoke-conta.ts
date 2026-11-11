@@ -100,7 +100,7 @@ async function host(statusJson: string, exitCode: number) {
   const { manager, root } = newManager();
   const server = startServer({
     manager,
-    quota,
+    quota: { windows: quota },
     account,
     hostName: "smoke",
     bind: "127.0.0.1",

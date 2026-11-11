@@ -80,5 +80,14 @@ describe("daemon features: the list in the protocol matches the server", () => {
       ["doctor.run"],
       ["depsCheck"],
     ]);
+    const quotaOf = (opts: object) =>
+      featuresOf({ quota: opts } as unknown as ServerOptions).filter((f) => f.startsWith("quota"));
+    // `quota.history` is not announced: the app asks it of a host that has the quota.
+    expect([
+      quotaOf({}),
+      quotaOf({ windows: {} }),
+      quotaOf({ pause: {} }),
+      quotaOf({ history: {} }),
+    ]).toEqual([[], ["quota"], ["quotaPause"], []]);
   });
 });

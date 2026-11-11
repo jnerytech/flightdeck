@@ -68,7 +68,7 @@ async function connect(withAccount = true) {
   const { manager, root } = newManager();
   const server = startServer({
     manager,
-    quota,
+    quota: { windows: quota },
     ...(withAccount ? { account } : {}),
     hostName: "h",
     bind: "127.0.0.1",

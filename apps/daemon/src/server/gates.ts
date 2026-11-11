@@ -39,13 +39,10 @@ export const GATES = {
   personaSessions: "personaSessions",
   personas: "personas",
   plugins: "plugins",
-  quota: "quota",
-  quotaPause: "quotaPause",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   cardReview: "cardReview",
   releases: "releases",
-  quotaHistory: "quotaHistory",
   review: "review",
   rewinder: "rewinder",
   roi: "roi",
@@ -116,6 +113,11 @@ export const GROUP_GATES = {
   hostChecks: {
     doctor: "doctor.run",
     deps: "depsCheck",
+  },
+  quota: {
+    windows: "quota",
+    pause: "quotaPause",
+    history: "quotaHistory",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<keyof NonNullable<ServerOptions[G]>, string>;

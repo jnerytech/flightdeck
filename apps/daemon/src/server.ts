@@ -143,6 +143,16 @@ export const serverGroup =
     h as unknown as Group<K>;
 type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
 
+/** Phase 7, #1593: the quota domain's part of the server, each service optional. */
+interface QuotaServer {
+  /** The plan's windows behind `quota.get`, `quota.watch` and the statusline. */
+  windows?: Quota;
+  /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
+  pause?: { set(pauseAt: number | null): void | Promise<void> };
+  /** The quota's samples behind `quota.history` (phase 8). */
+  history?: QuotaHistory;
+}
+
 /** #1593: the host's checks (`deps/`), each service optional. */
 interface HostChecksServer {
   /** Runs the host's self-check for `doctor.run`. */
@@ -387,10 +397,8 @@ export interface ServerOptions {
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
   features?: string[];
-  /** The host's plan quota behind `quota.*` (phase 7). */
-  quota?: Quota;
-  /** Changes the guard "new cards wait from N%" (issue #1218): the config file first, then the running `Quota`. */
-  quotaPause?: { set(pauseAt: number | null): void | Promise<void> };
+  /** The host's plan quota (phase 7, #1593). */
+  quota?: QuotaServer;
   /** Issue #1343: the memory hold for new cards, `resources.pauseAt`, read and changed from the app. */
   memoryPause?: {
     pauseAt(): number | null;
@@ -418,8 +426,6 @@ export interface ServerOptions {
   bg?: BgService;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
-  /** The quota's samples behind `quota.history` (phase 8). */
-  quotaHistory?: QuotaHistory;
   /** The diff of sessions and cards behind `changes.*` (phase 11). */
   changes?: Changes;
   /** #1133: a plain session's files committed on a new branch in its own checkout. */
