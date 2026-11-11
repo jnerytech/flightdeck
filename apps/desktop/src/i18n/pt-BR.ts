@@ -21,6 +21,7 @@ import { refusals } from "./pt-BR/refusals.ts";
 import { sessions } from "./pt-BR/sessions.ts";
 import { snippets } from "./pt-BR/snippets.ts";
 import { telemetry } from "./pt-BR/telemetry.ts";
+import { terminal } from "./pt-BR/terminal.ts";
 import { vault } from "./pt-BR/vault.ts";
 import { watch } from "./pt-BR/watch.ts";
 
@@ -306,103 +307,7 @@ export const ptBR = {
     ended: "encerrada",
     error: "erro",
   },
-  liveElsewhere: {
-    title: "Já aberta em outro terminal",
-    message:
-      "Esta sessão está aberta em outro terminal. Abri-la aqui inicia uma segunda cópia que o outro não vê: cada um mostra só os próprios turnos, e os dois escrevem no mesmo histórico.",
-    view: "Ver ao vivo aqui",
-    anyway: "Abrir outra cópia mesmo assim",
-  },
-  terminalUi: {
-    sshBadge: "SSH · {name}",
-    title: "Terminal",
-    readerHint:
-      "Para um leitor de tela ler a saída, ligue Suporte a leitor de tela no terminal em Configurações.",
-    copy: "Copiar",
-    paste: "Colar",
-    state: {
-      attaching: "Conectando…",
-      live: "Ao vivo",
-      detached: "Desanexado",
-      ended: "Encerrado (código {code})",
-    },
-    reopen: "Reabrir",
-    close: "Fechar terminal",
-    closeMessage: "Desanexar deixa o processo rodando no host. Encerrar processo o interrompe.",
-    pasteTitle: "Colar {n} linhas?",
-    pasteMessage:
-      "O programa deste terminal não pediu que o texto colado venha marcado, então cada linha pode rodar como comando assim que chegar.",
-    pasteConfirm: "Colar",
-    detach: "Desanexar",
-    end: "Encerrar processo",
-    searchLabel: "Buscar no terminal",
-    searchHint: "Enter: próxima · Shift+Enter: anterior · Esc: fechar",
-    matches: "{index} de {count}",
-    noMatches: "Nenhum resultado",
-    matchCase: "Diferenciar maiúsculas e minúsculas",
-    wholeWord: "Palavra inteira",
-    useRegex: "Usar expressão regular",
-    badPattern: "Expressão regular inválida",
-    emptyPattern: "Esta expressão casa com texto vazio",
-    findPrevious: "Resultado anterior",
-    findNext: "Próximo resultado",
-    findClose: "Fechar busca",
-    selectAll: "Selecionar tudo",
-  },
-  terminal: {
-    open: "Abrir no terminal",
-    openNamed: "Abrir {name} no terminal",
-    copy: "Copiar comando",
-    copyNamed: "Copiar comando de {name}",
-  },
-  away: {
-    title: "Enquanto você esteve fora",
-    lastActive: "Última atividade {ago}",
-    dismiss: "Dispensar",
-    group: "{title} ({n})",
-    sessions: "Sessões concluídas",
-    review: "Cards em revisão",
-    prs: "Pull requests",
-    runs: "Execuções que falharam",
-    more: "e mais {n}",
-    merged: "{title}: merge feito",
-    checksFailed: "{title}: checks falhando",
-    run: "{workflow}: {reason}",
-    quota: "Cota usada: {windows}",
-    quotaLine: "{window} {pct}%",
-    unreached: "{host} não respondeu",
-  },
-  teleportUi: {
-    menu: "Mover para outro host…",
-    title: "Mover para outro host",
-    host: "Host",
-    pickHost: "Escolha um host",
-    repo: "Repositório nesse host",
-    next: "Continuar",
-    preparing: "Preparando a sessão…",
-    cancel: "Cancelar",
-    branch: "Branch:",
-    noBranch: "nenhuma (um HEAD solto)",
-    ahead: "Commits ainda fora do origin: {n}",
-    changed: "Arquivos alterados: {n}",
-    size: "Tamanho: {size}",
-    secrets:
-      "Linhas que parecem segredos: {n}. Elas vão como estão, e a varredura pode deixar passar algumas.",
-    move: "Mover",
-    back: "Voltar",
-    moving: "Movendo… {percent}%",
-    finishing: "Finalizando em {host}… Pode fechar esta janela: a mudança continua.",
-    done: "A sessão está agora em {host}. A daqui fica como estava.",
-    open: "Abrir lá",
-    close: "Fechar",
-    plainWs: {
-      one: "{hosts} se conecta sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
-      other:
-        "{hosts} se conectam sem TLS (ws:// puro). A conversa e o código da sessão passam por este app sem criptografia: mova só por uma rede em que você confia.",
-    },
-    movedToast: "A sessão foi movida para {host}.",
-    preview: "Prévia: mover uma sessão para outro host",
-  },
+  ...terminal,
   ...telemetry,
   bg: {
     region: "Sessão em segundo plano",
