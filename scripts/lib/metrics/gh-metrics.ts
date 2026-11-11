@@ -2,7 +2,7 @@
  * Issue #1949 (task 2): the `gh`-based metrics of a release snapshot, and the rework share. Pure:
  * they read the JSON `gh` printed and the commits of `git log`, never the network.
  */
-import type { LogCommit } from "./git-log.ts";
+import { isSource, type LogCommit } from "./git-log.ts";
 
 /** A span of time a windowed metric covers; `from` is null for no lower bound. */
 export interface TimeWindow {
@@ -53,6 +53,11 @@ export interface PrSize {
 const HOUR_MS = 3_600_000;
 /** A `fix` this soon after a `feat` that touched one of its files counts as rework. */
 const REWORK_MS = 48 * HOUR_MS;
+/**
+ * Closer than this, a fix is the review of its own pull request (its commits come a few minutes
+ * apart), not a rework of what was shipped: with every commit counted the share read 83% (#2019).
+ */
+const SAME_PR_MS = HOUR_MS;
 
 /** The nearest-rank percentile of the values; null for none. */
 export function percentile(values: number[], p: number): number | null {
@@ -118,16 +123,21 @@ export function mainRed(runs: CiRun[], window: TimeWindow): MainRed {
   return { periods, totalSeconds };
 }
 
-/** The share of `fix` commits with a `feat` commit up to 48 hours before it that touched one of its files. */
+/** The share of `fix` commits with a `feat` commit one to 48 hours before it that touched half or more of its source files. */
 function reworkShare(commits: LogCommit[]): number | null {
   const fixes = commits.filter((c) => /^fix(\(|:|!)/.test(c.subject));
   if (fixes.length === 0) return null;
   const feats = commits.filter((c) => /^feat(\(|:|!)/.test(c.subject));
   const reworked = fixes.filter((fix) => {
     const t = Date.parse(fix.date);
+    const mine = fix.files.filter(isSource);
+    if (mine.length === 0) return false;
     return feats.some((feat) => {
       const gap = t - Date.parse(feat.date);
-      return gap >= 0 && gap <= REWORK_MS && feat.files.some((file) => fix.files.includes(file));
+      if (gap < SAME_PR_MS || gap > REWORK_MS) return false;
+      // Half of the fix's source files in the one feat: sharing a file everyone touches is not rework.
+      const shared = mine.filter((file) => feat.files.includes(file)).length;
+      return shared * 2 >= mine.length;
     });
   });
   return reworked.length / fixes.length;

@@ -59,9 +59,7 @@ import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
 import { packPersonas } from "./personas/pack.ts";
-import { type Prepare, preparePersonas } from "./personas/prepare.ts";
-import { agentPublisher } from "./personas/publish.ts";
-import { Personas } from "./personas/store.ts";
+import { createPersonas } from "./personas/wiring.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
@@ -106,8 +104,7 @@ import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { ProjectTrust } from "./trust/project-trust.ts";
-import { trustServer } from "./trust/wiring.ts";
+import { createProjectTrust, trustServer } from "./trust/wiring.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
@@ -283,12 +280,11 @@ export async function startDaemon(
   const snippetScanner = new SecretScanner();
   // Phase 12's agent editor also writes the personas published as project agents.
   const agentcfg = new AgentConfig();
-  const personaStore = new Personas({
+  const { personaStore, prepare } = createPersonas({
     db: store.db,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
-    pack: packPersonas,
-    publisher: agentPublisher(agentcfg),
+    agents: agentcfg,
   });
   const awake: {
     pinned?: (claudeSessionId: string | null) => boolean;
@@ -303,22 +299,13 @@ export async function startDaemon(
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
 
-  // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
-  // where the person trusted it (or already worked in it before this existed). A card's worktree is
-  // read from its project's main checkout.
-  const projectTrust = new ProjectTrust(store.db, {
-    roots: () => config.allowedRoots,
-    configRootOf: (cwd) => {
-      const found = board.projectForCwd(cwd);
-      return found?.card ? found.project.path : null;
-    },
+  // A folder's trust (issue #196), a card's worktree read from its project's main checkout.
+  const { projectTrust, trustForKnowledge } = createProjectTrust({
+    db: store.db,
+    config,
+    projectForCwd: (cwd) => board.projectForCwd(cwd),
     log: (line) => logger.log(line),
   });
-  // The library's index (#76) goes to a trusted folder only, read from its trusted checkout.
-  const trustForKnowledge = async (path: string) => {
-    await projectTrust.prepare(path);
-    return projectTrust.sessionTrust(path);
-  };
   const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
   const manager = new SessionManager({
     folderLocks,
@@ -404,7 +391,6 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
     folderLocks,
     preparePersonas: prepare,
