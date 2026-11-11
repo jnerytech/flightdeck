@@ -1557,21 +1557,17 @@ export class AppStore {
     this.connections.get(hostId)?.dispose();
     this.connections.delete(hostId);
     await this.platform.secrets.delete(hostId);
-    const sessions = Object.fromEntries(
-      Object.entries(this.state.sessions).filter(([key]) => !key.startsWith(`${hostId}/`)),
-    );
-    const cards = Object.fromEntries(
-      Object.entries(this.state.cards).filter(([key]) => !key.startsWith(`${hostId}/`)),
-    );
+    const ofOthers = <T>(all: Record<string, T>) =>
+      Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith(`${hostId}/`)));
+    const { [hostId]: _gone, ...setupProbes } = this.state.setupProbes;
     this.update({
       hosts: this.state.hosts.filter((h) => h.id !== hostId),
-      sessions,
-      cards,
+      sessions: ofOthers(this.state.sessions),
+      cards: ofOthers(this.state.cards),
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
-      setupProbes: Object.fromEntries(
-        Object.entries(this.state.setupProbes).filter(([id]) => id !== hostId),
-      ),
+      setupProbes,
     });
+    this.hostUpdate.forget(hostId);
     this.persistHosts();
   }
 
@@ -3000,6 +2996,7 @@ export class AppStore {
     this.offTrayAction = null;
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
+    this.hostUpdate.dispose();
     this.backupScheduler.dispose();
     this.clientBudgets.dispose();
     if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
@@ -3296,6 +3293,7 @@ export class AppStore {
     this.updateHost(hostId, (h) => {
       // Back on the version it was updating to: the update is over.
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
+      if (done) this.hostUpdate.settled(hostId);
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
     // The setup checklist reads what this host has: its hooks, GitHub, projects.
