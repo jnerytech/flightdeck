@@ -14,6 +14,7 @@ import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import type { TopSession } from "../features/costs/page.tsx";
+import { HistoryList } from "../features/history/history-list.tsx";
 import {
   type AppState,
   type AppStore,
@@ -36,7 +37,6 @@ import { CheckpointsButton } from "./Checkpoints.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
-import { HistoryList } from "./HistoryList.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
 import { NeedsYou } from "./NeedsYou.tsx";
 import { NewSessionForm } from "./NewSessionForm.tsx";

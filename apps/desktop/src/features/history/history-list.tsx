@@ -11,13 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { cn } from "@/lib/utils";
-import type { AppStore, HistoryFilter } from "../lib/app-store.ts";
-import { usd } from "../lib/costs.ts";
-import type { Density } from "../lib/density.ts";
-import type { HubView } from "../lib/hub.ts";
-import { basename } from "../lib/paths.ts";
-import { projectLabel } from "../lib/usage-rows.ts";
-import { hasFeature } from "../lib/version.ts";
+import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
+import { usd } from "../../lib/costs.ts";
+import type { Density } from "../../lib/density.ts";
+import type { HubView } from "../../lib/hub.ts";
+import { basename } from "../../lib/paths.ts";
+import { projectLabel } from "../../lib/usage-rows.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 /** Native selects, as in the hub. */
 

@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { HistoryList } = await import("../../src/ui/HistoryList.tsx");
+const { HistoryList } = await import("../../src/features/history/history-list.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 
 afterEach(cleanup);
