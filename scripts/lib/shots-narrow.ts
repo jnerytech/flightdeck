@@ -14,6 +14,8 @@ export const NARROW_SHOTS: readonly string[] = [
   "hub",
   "inicio-kpis",
   "sessao",
+  // #1870: a session waiting for an approval; its request's folder must stay inside the window.
+  "sessao-aprovacao",
   "host",
   "projeto-blocos",
   "board",
