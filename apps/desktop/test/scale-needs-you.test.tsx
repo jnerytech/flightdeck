@@ -60,14 +60,13 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
     });
     const hidden = store as unknown as {
       state: Record<string, unknown>;
-      onEvent(hostId: string, envelope: unknown): void;
     };
     hidden.state = { ...store.getState(), ...scaleState({ hosts: 4, perHost: 50 }) };
     render(<Page store={store} />);
     const first = renders;
     renders = 0;
     for (const envelope of summaryBurst(0, 0, BURST)) {
-      act(() => hidden.onEvent("host-0", envelope));
+      act(() => store.stream.onEvent("host-0", envelope as never));
     }
     // Each summary may add or change the session's own row (a finished line): three per summary
     // at most, whatever the number of sessions.
@@ -86,13 +85,12 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
     });
     const hidden = store as unknown as {
       state: Record<string, unknown>;
-      onEvent(hostId: string, envelope: unknown): void;
     };
     hidden.state = { ...store.getState(), ...scaleState({ hosts: 1, perHost: 4 }) };
     render(<Page store={store} />);
     // The first summary starts the turn, the second ends it: the session finished.
     for (const envelope of summaryBurst(0, 0, 2)) {
-      act(() => hidden.onEvent("host-0", envelope));
+      act(() => store.stream.onEvent("host-0", envelope as never));
     }
     const finished = () =>
       [...document.querySelectorAll("button[aria-label]")]
@@ -120,18 +118,17 @@ describe("scale-needs-you: a burst of one session's summaries at 200 sessions (#
     });
     const hidden = store as unknown as {
       state: Record<string, unknown>;
-      onEvent(hostId: string, envelope: unknown): void;
     };
     hidden.state = { ...store.getState(), ...scaleState({ hosts: 4, perHost: 50 }) };
     render(<Page store={store} />);
     const rows = document.querySelectorAll("li").length;
     const [early, later] = summaryBurst(0, 0, BURST);
     renders = 0;
-    act(() => hidden.onEvent("host-0", early));
+    act(() => store.stream.onEvent("host-0", early as never));
     const sameMinute = renders;
     clock += 60_000;
     renders = 0;
-    act(() => hidden.onEvent("host-0", later));
+    act(() => store.stream.onEvent("host-0", later as never));
     // The same minute redraws the session's own row at most; the next one, each row of the list.
     expect(rows).toBeGreaterThan(40);
     expect(sameMinute).toBeLessThanOrEqual(3);
