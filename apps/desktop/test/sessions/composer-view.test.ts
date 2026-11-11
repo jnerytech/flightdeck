@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { commandItemsOf } from "../../src/features/sessions/command-menu.ts";
 import { queueStep, submitAction } from "../../src/features/sessions/composer-queue.ts";
 import {
   missedAfter,
@@ -92,5 +93,37 @@ describe("a press on Send", () => {
   test("otherwise it is sent, an image alone being enough", () => {
     expect(submitAction("hi", 0, false)).toBe("send");
     expect(submitAction("", 1, false)).toBe("send");
+  });
+});
+
+describe("the slash commands as menu items", () => {
+  test("a daemon that only names them gets plain items, the shape of the name deciding the group", () => {
+    expect(commandItemsOf(undefined, ["compact", "review"])).toEqual([
+      { key: "slash:compact", name: "/compact" },
+      { key: "slash:review", name: "/review" },
+    ]);
+    expect(commandItemsOf(undefined, undefined)).toEqual([]);
+  });
+
+  test("a daemon that describes them gets the group of each kind, and the description when it has one", () => {
+    expect(
+      commandItemsOf(
+        [
+          { name: "compact", kind: "builtin", description: "Shrink the context" },
+          { name: "fix", kind: "skill", description: "" },
+          { name: "mcp__db__q", kind: "mcp", description: "" },
+        ],
+        ["ignored"],
+      ),
+    ).toEqual([
+      {
+        key: "slash:compact",
+        name: "/compact",
+        description: "Shrink the context",
+        group: "commands",
+      },
+      { key: "slash:fix", name: "/fix", group: "skills" },
+      { key: "slash:mcp__db__q", name: "/mcp__db__q", group: "mcp" },
+    ]);
   });
 });

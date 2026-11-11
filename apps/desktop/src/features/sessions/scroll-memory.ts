@@ -22,9 +22,6 @@ export function rememberPosition(
 }
 
 /** How many messages came after the one the reader had seen (none while they are at the end). */
-export function missedAfter(
-  items: ReadonlyArray<{ seq: number }>,
-  awaySeq: number | null,
-): number {
+export function missedAfter(items: ReadonlyArray<{ seq: number }>, awaySeq: number | null): number {
   return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
 }
