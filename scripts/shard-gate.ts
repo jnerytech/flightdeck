@@ -10,7 +10,14 @@
  * - `merge <dir> <n> <lcov>`: reads each job's folder under <dir>, runs the merged coverage gate (80%), and
  *   writes the merged lcov for SonarCloud. It fails closed when a shard is missing or failed.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-check.ts";
 import {
@@ -47,13 +54,16 @@ const [command, a = "", b = "", c = ""] = argv.filter(
   (_, i) => baseAt < 0 || (i !== baseAt && i !== baseAt + 1),
 );
 
+/** The tier of every test file (#261), by path: the shards run the tier plan's groups (#1854). */
+const tiers = testTiers(
+  new Map(
+    tracked.filter((p) => /\.tsx?$/.test(p)).map((p) => [p, readFileSync(join(ROOT, p), "utf8")]),
+  ),
+);
+
 /** The PR's selection (#1761): null for the whole suite; exits when the plan cannot run. */
 function selectionFor(ref: string | undefined): Selection | undefined {
   if (ref === undefined) return undefined;
-  const sources = new Map(
-    tracked.filter((p) => /\.tsx?$/.test(p)).map((p) => [p, readFileSync(join(ROOT, p), "utf8")]),
-  );
-  const tiers = testTiers(sources);
   const plan = planRelated({
     base: ref,
     platform: process.platform,
@@ -85,6 +95,9 @@ if (command === "run") {
       write,
       spawn: spawnLogged(ROOT),
       print: (line) => console.log(line),
+      tierOf: (path) => tiers[path],
+      now: Date.now,
+      extraTargets: JSON.parse(readFileSync(join(ROOT, "fast-coverage-baseline.json"), "utf8")),
       ...(selection ? { selection } : {}),
     }),
   );
@@ -104,6 +117,24 @@ if (command === "run") {
       sources,
       print: (line) => console.log(line),
       error: (line) => console.error(line),
+      tiers,
+      // The pyramid (#1854): in the log, in the job summary when GitHub gives one, and as JSON next
+      // to the lcov, for the artifact a trend is charted from.
+      pyramid: (markdown, json) => {
+        console.log(markdown);
+        if (process.env.GITHUB_STEP_SUMMARY)
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
+        write(join(dirname(c), "pyramid.json"), json);
+      },
+      // The fast-coverage ratchet (#309) reads the unit + component shards: the job of that name
+      // only reads this verdict from the suite's output (#1854).
+      fastBaseline: JSON.parse(readFileSync(join(ROOT, "fast-coverage-baseline.json"), "utf8")),
+      fastResult: ({ ok, lines }) => {
+        for (const line of lines) (ok ? console.log : console.error)(line);
+        if (process.env.GITHUB_OUTPUT) {
+          appendFileSync(process.env.GITHUB_OUTPUT, `fast=${ok ? "pass" : "fail"}\n`);
+        }
+      },
       ...(selection ? { selection } : {}),
     }),
   );

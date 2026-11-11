@@ -10,9 +10,13 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { belowGate, COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
+import { fastCoverageVerdict } from "./fast-coverage.ts";
+import { pyramidOf, renderPyramid } from "./pyramid-table.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
 import { splitShards, type Timings, testFiles } from "./test-shards.ts";
+import type { Tier } from "./test-tiers.ts";
+import { FAST_SHARDS, TIER_GROUPS, TIER_SHARDS, tierShard, tierShardFiles } from "./tier-shards.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -24,6 +28,10 @@ export interface ShardMarker {
   exit: number;
   /** Failed tests. */
   fail: number;
+  /** The tier group and part the job ran, as its name says it: `unit + component 1/2` (#1854). */
+  tier?: string;
+  /** How long the test run took, in seconds (#1854). */
+  seconds?: number;
 }
 
 export interface ShardJob {
@@ -39,6 +47,8 @@ export interface GateInput {
   jobs: readonly ShardJob[];
   /** The source files that must be loaded and covered (check-coverage.ts). */
   sources: readonly string[];
+  /** Only these shards (1-based) are collected, as the fast-coverage ratchet reads the base's (#1854). */
+  shardsOf?: readonly number[];
   /**
    * A PR's selection (#1761): only `sources` are judged; the other loaded files stay in the merged
    * lcov for SonarCloud but are not held to the gate.
@@ -53,6 +63,8 @@ export interface GateResult {
   lcov: string;
   /** True when a shard is missing, failed or partial: the problems are about the run, not coverage. */
   closed: boolean;
+  /** The sources at the gate (80% of lines and functions) from the collected shards, sorted. */
+  covered: string[];
 }
 
 interface BunFile {
@@ -113,7 +125,7 @@ function collect(input: GateInput): { shards: Shard[]; problems: string[] } {
     }
     return job;
   };
-  const range = Array.from({ length: n }, (_, k) => k + 1);
+  const range = input.shardsOf ?? Array.from({ length: n }, (_, k) => k + 1);
   const bunJobs = range.map((i) => pick(i, "bun"));
   const istanbulJobs = range.map((i) => pick(i, "istanbul"));
   const shards: Shard[] = [];
@@ -188,7 +200,7 @@ function functionsOf(
 /** The merged verdict and lcov, or the problems that leave the gate closed. */
 export function shardGate(input: GateInput): GateResult {
   const { shards, problems: closed } = collect(input);
-  if (closed.length > 0) return { problems: closed, lcov: "", closed: true };
+  if (closed.length > 0) return { problems: closed, lcov: "", closed: true, covered: [] };
   const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))];
   const problems: string[] = [];
   const report = new Map<string, FileCoverage>();
@@ -233,7 +245,13 @@ export function shardGate(input: GateInput): GateResult {
   const all = [...ownProblems, ...checkCoverage(report, checked)].sort((a, b) =>
     a.localeCompare(b, "en"),
   );
-  return { problems: all, lcov: records.map((r) => `${r}\n`).join(""), closed: false };
+  const covered = input.sources
+    .filter((path) => {
+      const file = report.get(path);
+      return file !== undefined && !belowGate(file.functions) && !belowGate(file.lines);
+    })
+    .sort((a, b) => a.localeCompare(b, "en"));
+  return { problems: all, lcov: records.map((r) => `${r}\n`).join(""), closed: false, covered };
 }
 
 /** How one shard job runs: the bun job writes an lcov into `out`, the istanbul job its counters. */
@@ -338,6 +356,12 @@ export interface RunShardDeps {
   print: (line: string) => void;
   /** A PR's selection instead of the whole suite (#1761). */
   selection?: Selection;
+  /** A test file's tier (#261): given, the shards are the tier plan's (#1854). */
+  tierOf?: (path: string) => Tier | undefined;
+  /** The clock, in milliseconds. */
+  now?: () => number;
+  /** Sources a PR's unit + component shards instrument besides the changed ones: the fast baseline (#1854). */
+  extraTargets?: readonly string[];
 }
 
 /** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
@@ -362,14 +386,24 @@ export async function runShard(
     deps.print(`shard-gate: write the shard's output outside the checkout, not in ${out}`);
     return 2;
   }
-  const { selection } = deps;
+  const { selection, tierOf } = deps;
   const all = selection ? [...selection.tests] : testFiles([...deps.tracked]);
-  const files = splitShards(all, deps.timings, count)[index - 1] ?? [];
+  // With a tier map (#1854) the shards are the tier plan's: this one runs its group's tiers only.
+  const at = tierOf ? tierShard(index, count) : null;
+  if (tierOf && !at) {
+    deps.print(`shard-gate: ${spec} is not a shard of the tier plan (${TIER_SHARDS} shards)`);
+    return 2;
+  }
+  const files =
+    at && tierOf
+      ? (tierShardFiles(all, tierOf, deps.timings, index, count)?.files ?? [])
+      : (splitShards(all, deps.timings, count)[index - 1] ?? []);
+  const tier = at ? { tier: `${at.group.label} ${at.part}/${at.of}` } : {};
   // A bun test with no file runs the whole suite. A PR's small selection can leave a shard empty:
   // it passes with empty reports, so the merge still sees every shard (#1761).
   if (files.length === 0 && selection) {
     deps.mkdir(out);
-    const marker: ShardMarker = { shard: index, of: count, kind, files, exit: 0, fail: 0 };
+    const marker: ShardMarker = { shard: index, of: count, kind, files, exit: 0, fail: 0, ...tier };
     deps.write(join(out, "marker.json"), JSON.stringify(marker));
     deps.write(join(out, kind === "bun" ? "lcov.info" : "funcs.json"), kind === "bun" ? "" : "{}");
     deps.print(`shard ${index}/${count} ${kind}: no test file in this PR's selection`);
@@ -380,9 +414,15 @@ export async function runShard(
     return 2;
   }
   deps.mkdir(out);
-  const targets = selection ? [...selection.targets] : istanbulTargets(deps.tracked);
+  // The fast baseline is judged from these shards: instrumented, never left to Bun's per-shard counts.
+  const extra = FAST_SHARDS.includes(index) ? (deps.extraTargets ?? []) : [];
+  const targets = selection
+    ? [...new Set([...selection.targets, ...extra])]
+    : istanbulTargets(deps.tracked);
   const plan = shardRun(kind, files, out, targets);
+  const started = deps.now?.();
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
+  const ended = deps.now?.();
   deps.write(join(out, "test.log"), log);
   const marker: ShardMarker = {
     shard: index,
@@ -391,6 +431,8 @@ export async function runShard(
     files,
     exit,
     fail: failedCount(log),
+    ...tier,
+    ...(started !== undefined && ended !== undefined ? { seconds: (ended - started) / 1000 } : {}),
   };
   deps.write(join(out, "marker.json"), JSON.stringify(marker));
   for (const line of log.split("\n").filter((l) => /^\s*\d+ (pass|fail|skip)$|^Ran /.test(l))) {
@@ -414,6 +456,65 @@ export interface MergeShardsDeps {
   error: (line: string) => void;
   /** A PR's selection instead of the whole suite (#1761). */
   selection?: Selection;
+  /** The tier of every test file (#261): given with `pyramid`, the run's pyramid table is built. */
+  tiers?: Record<string, Tier>;
+  /** Gets the pyramid table as markdown and as JSON (#1854). */
+  pyramid?: (markdown: string, json: string) => void;
+  /** The sources the fast tiers covered at the gate before (fast-coverage-baseline.json). */
+  fastBaseline?: readonly string[];
+  /** Gets the fast-coverage ratchet's verdict, from the unit + component shards alone (#1854). */
+  fastResult?: (result: { ok: boolean; lines: string[] }) => void;
+}
+
+/**
+ * The fast-coverage ratchet (#309) from the unit + component shards alone (#1854): the sources they
+ * cover at the gate must still include every one in the baseline. The base of the pyramid already
+ * ran, with its own coverage, so it is not run a third time for a report.
+ */
+function fastCoverageOf(
+  count: number,
+  jobs: readonly ShardJob[],
+  deps: MergeShardsDeps,
+  tiers: Record<string, Tier>,
+  baseline: readonly string[],
+): { ok: boolean; lines: string[] } {
+  const base = TIER_GROUPS[0]?.tiers ?? [];
+  const tests = (deps.selection ? [...deps.selection.tests] : testFiles([...deps.tracked])).filter(
+    (test) => base.includes(tiers[test] ?? "unit"),
+  );
+  const fast = shardGate({
+    shards: count,
+    shardsOf: FAST_SHARDS,
+    tests,
+    jobs,
+    sources: deps.sources,
+  });
+  if (fast.closed) {
+    return {
+      ok: false,
+      lines: [
+        `fast-coverage: the unit + component shards give no verdict (${fast.problems.length} problem(s)):`,
+        ...fast.problems.map((p) => `  - ${p}`),
+      ],
+    };
+  }
+  const { dropped } = fastCoverageVerdict(fast.covered, baseline, deps.sources);
+  if (dropped.length > 0) {
+    return {
+      ok: false,
+      lines: [
+        `fast-coverage: ${dropped.length} source(s) the fast tiers covered at the gate no longer are:`,
+        ...dropped.map((path) => `  - ${path}`),
+        "Cover them again with unit or component tests (the base of the pyramid only grows).",
+      ],
+    };
+  }
+  return {
+    ok: true,
+    lines: [
+      `fast-coverage: ${fast.covered.length} of ${deps.sources.length} source(s) at the gate from the fast tiers; the ${baseline.length} listed hold`,
+    ],
+  };
 }
 
 /** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
@@ -423,6 +524,7 @@ export function mergeShards(
   lcovOut: string,
   deps: MergeShardsDeps,
 ): number {
+  const junits: Array<{ marker: ShardMarker | null; junit: string | null }> = [];
   const jobs: ShardJob[] = deps.folders(dir).map((name) => {
     const at = join(dir, name);
     let marker: ShardMarker | null = null;
@@ -434,9 +536,15 @@ export function mergeShards(
     // The istanbul job leaves its counters, the bun job its lcov; a folder with no marker still counts.
     const lcov = deps.read(join(at, "lcov.info"));
     const funcs = deps.read(join(at, "funcs.json"));
+    junits.push({ marker, junit: deps.read(join(at, "junit.xml")) });
     if (!marker) return { marker: null, data: lcov ?? funcs };
     return { marker, data: marker.kind === "istanbul" ? funcs : lcov };
   });
+  // The pyramid first: a run with no verdict still shows how long each tier took (#1854).
+  if (deps.tiers && deps.pyramid) {
+    const table = pyramidOf(deps.tiers, junits);
+    deps.pyramid(renderPyramid(table), JSON.stringify(table, null, 2));
+  }
   const result = shardGate({
     shards: count,
     tests: deps.selection ? deps.selection.tests : testFiles([...deps.tracked]),
@@ -445,6 +553,9 @@ export function mergeShards(
     ...(deps.selection ? { only: true } : {}),
   });
   if (result.lcov) deps.write(lcovOut, result.lcov);
+  if (deps.tiers && deps.fastBaseline && deps.fastResult) {
+    deps.fastResult(fastCoverageOf(count, jobs, deps, deps.tiers, deps.fastBaseline));
+  }
   if (result.problems.length === 0) {
     deps.print(
       `cobertura de ${COVERAGE_GATE}% ou mais em ${(deps.selection ? deps.selection.targets : deps.sources).length} arquivos-fonte, de ${count} shards`,

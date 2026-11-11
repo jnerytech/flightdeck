@@ -17,7 +17,7 @@ const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
-const merge = () => step("Testes (cobertura 80%, 3 shards)");
+const merge = () => step("Testes (cobertura 80%, 4 shards)");
 
 describe("ci-pyramid (#309)", () => {
   test("#1003: after the merge, the slow-test check reads each shard's JUnit times, and fails if any file does", () => {
@@ -40,7 +40,7 @@ describe("ci-pyramid (#309)", () => {
     // The base reaches the shell as a quoted variable, never expanded into the line.
     expect(merge()?.env).toEqual({ BASE: "${{ needs.quick.outputs.base }}" });
     expect(merge()?.run).toBe(
-      'bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info ${BASE:+--base "$BASE"}',
+      'bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 4 coverage/lcov.info ${BASE:+--base "$BASE"}',
     );
     // The same steps merge a full run (no base): the selection is the whole suite then.
     expect(merge()?.if).toBeUndefined();
@@ -66,10 +66,19 @@ describe("ci-pyramid (#309)", () => {
     expect(shard?.needs).toEqual(["quick"]);
     expect(shard?.strategy).toEqual({
       "fail-fast": false,
-      matrix: { shard: [1, 2, 3], kind: ["bun", "istanbul"] },
+      matrix: {
+        shard: [1, 2, 3, 4],
+        kind: ["bun", "istanbul"],
+        include: [
+          { shard: 1, tier: "unit + component", part: "1/2" },
+          { shard: 2, tier: "unit + component", part: "2/2" },
+          { shard: 3, tier: "integration", part: "1/2" },
+          { shard: 4, tier: "integration", part: "2/2" },
+        ],
+      },
     });
     expect(shard?.name).toBe(
-      "test shard ${{ matrix.shard }}/3 ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}",
+      "${{ matrix.tier }} ${{ matrix.part }} ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}",
     );
     // The shards never use the token after checkout (#828 review).
     const checkout = shard?.steps.find((s) =>
@@ -79,7 +88,7 @@ describe("ci-pyramid (#309)", () => {
     const run = shard?.steps.find((s) => (s.run ?? "").includes("shard-gate.ts run"));
     // Outside the checkout: the repo guard fails a test run that leaves a file in it.
     expect(run?.run).toBe(
-      'bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}',
+      'bun run scripts/shard-gate.ts run ${{ matrix.shard }}/4 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}',
     );
     expect(run?.env).toEqual({ BASE: "${{ needs.quick.outputs.base }}" });
     const upload = shard?.steps.find((s) =>
@@ -148,9 +157,22 @@ describe("ci-pyramid (#309)", () => {
   test("the fast-coverage ratchet runs on PRs too, so a drop fails the PR, not main (#309 d, #358)", () => {
     const job = ci.jobs["fast-coverage"];
     expect(job?.name).toBe("fast coverage (ubuntu-latest)");
-    expect(job?.needs).toEqual(["quick"]);
+    // It reads the unit + component shards' coverage from the suite's merge, not a third run of
+    // those tests (#1854): no checkout, no install, seconds instead of minutes.
+    expect(job?.needs).toEqual(["quick", "test-suite"]);
     expect(job?.if ?? "").not.toContain("pull_request");
-    expect((job?.steps ?? []).some((s) => s.run === "bun run fast-coverage")).toBe(true);
+    expect(job?.if ?? "").toContain("!cancelled()");
+    const run = (job?.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(run).toContain('test "${{ needs.test-suite.outputs.fast }}" = pass');
+    expect(run).not.toContain("bun run fast-coverage");
+    expect((job?.steps ?? []).some((s) => (s as { uses?: string }).uses)).toBe(false);
+    const merge = (ci.jobs["test-suite"]?.steps ?? []).find(
+      (s) => (s as { id?: string }).id === "merge",
+    );
+    expect(merge).toBeDefined();
+    expect(
+      (ci.jobs["test-suite"] as { outputs?: Record<string, string> } | undefined)?.outputs?.fast,
+    ).toBe("${{ steps.merge.outputs.fast }}");
   });
 
   test("the required test (ubuntu-latest) check waits for the fast-coverage ratchet and needs it green (#358)", () => {
