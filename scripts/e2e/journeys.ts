@@ -2934,7 +2934,12 @@ async function flatTabsProblem(page: Page): Promise<string | null> {
   const found = await page.evaluate(() => {
     const bar = document.querySelector<HTMLElement>(".tab-bar");
     if (!bar) return ["no tab bar"];
-    const items = [...bar.querySelectorAll<HTMLElement>(".tab-item:not([data-pinned])")];
+    // A prod host's tab and a drop target carry their own borders on purpose.
+    const items = [
+      ...bar.querySelectorAll<HTMLElement>(
+        ".tab-item:not([data-pinned]):not([data-prod='true']):not([data-drop])",
+      ),
+    ];
     const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
     const other = items.find((it) => it !== active);
     if (!active || !other) return ["need an active tab and another one"];
@@ -3012,7 +3017,7 @@ async function weightScaleProblem(page: Page): Promise<string | null> {
     const current = document.querySelector<HTMLElement>(
       "[data-slot='sidebar-body'] button[aria-current='page']",
     );
-    const rest = [...(current?.parentElement?.querySelectorAll("button") ?? [])].filter(
+    const rest = [...(current?.parentElement?.querySelectorAll(":scope > button") ?? [])].filter(
       (it) =>
         it !== current &&
         it.getAttribute("aria-current") !== "page" &&
