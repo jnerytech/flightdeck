@@ -885,7 +885,7 @@ export async function startDaemon(
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: serverGroup<"knowledge">()(knowledge),
-    ...serverPart(harness),
+    harness: serverGroup<"harness", "draft">()(harness),
     projectTrust: {
       refresh: (paths) => projectTrust.refresh(paths),
       state: (paths) => paths.map(trustState),

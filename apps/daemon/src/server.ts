@@ -131,16 +131,42 @@ const MAX_MISSED_PINGS = 4;
 /**
  * A domain's group of server options (#1593), checked both ways: every service of the group is
  * there, and none it does not know (a variable skips the excess-property check `satisfies` gives).
- * `K` names the option the group fills, so the wiring needs no import of the group's type.
+ * `K` names the option the group fills, so the wiring needs no import of the group's type;
+ * `Absent`, the services a host that does not run them leaves out.
  */
 export const serverGroup =
-  <K extends keyof ServerOptions>() =>
-  <T extends Required<Group<K>>>(
+  <K extends keyof ServerOptions, Absent extends keyof Group<K> = never>() =>
+  <T extends Required<Omit<Group<K>, Absent>> & Pick<Group<K>, Absent>>(
     h: T & Record<Exclude<keyof T, keyof Group<K>>, never>,
   ): Group<K> =>
     // A generic Required<X> is not provably an X to the compiler; at each call it is.
     h as unknown as Group<K>;
 type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
+
+/** Issue #75, #1593: the harness domain's part of the server, each service optional. */
+interface HarnessServer {
+  /** A project's stack and commands, read from its manifest files, never run. */
+  stack?: (path: string) => Promise<HarnessStack>;
+  /** What adding harness parts would add, written nowhere. */
+  preview?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    template?: TemplateMarkdown | null,
+  ) => Promise<HarnessPreview>;
+  /** Writes what the preview proposed, when `digests` still match the proposals. */
+  apply?: (
+    path: string,
+    parts: readonly PreviewPart[],
+    digests: Readonly<Record<string, string>>,
+    options: { reformat: boolean; template?: TemplateMarkdown },
+  ) => Promise<HarnessApplied>;
+  /** Slice T1: the host's harness templates, shared from projects. */
+  templates?: Pick<HarnessTemplates, "export" | "list" | "files" | "remove">;
+  /** Slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
+  draft?: (path: string) => Promise<HarnessDraft>;
+  /** Slice C1: commits what apply wrote (by its digests) on a new branch. */
+  commit?: (path: string, digests: Readonly<Record<string, string>>) => Promise<HarnessCommitted>;
+}
 
 /** Issue #76, #1593: the knowledge domain's part of the server, each service optional. */
 interface KnowledgeServer {
@@ -202,34 +228,12 @@ export interface ServerOptions {
     req: Request,
     server: { requestIP(req: Request): { address: string } | null },
   ) => string;
-  /** #75: a project's stack and commands, read from its manifest files, never run. */
-  harnessStack?: (path: string) => Promise<HarnessStack>;
+  /** #75: the project's Claude Code setup (harness); each part is announced by `host.info` on its own. */
+  harness?: HarnessServer;
   /** Issue #79: the open alerts of the repository in a folder, read with `gh`. */
   alerts?: (cwd: string) => Promise<AlertList>;
   /** Issue #76: the project's library of documents; each part is announced by `host.info` on its own. */
   knowledge?: KnowledgeServer;
-  /** #75: what adding harness parts would add, written nowhere. */
-  harnessPreview?: (
-    path: string,
-    parts: readonly PreviewPart[],
-    template?: TemplateMarkdown | null,
-  ) => Promise<HarnessPreview>;
-  /** #75: writes what the preview proposed, when `digests` still match the proposals. */
-  harnessApply?: (
-    path: string,
-    parts: readonly PreviewPart[],
-    digests: Readonly<Record<string, string>>,
-    options: { reformat: boolean; template?: TemplateMarkdown },
-  ) => Promise<HarnessApplied>;
-  /** #75, slice T1: the host's harness templates, shared from projects. */
-  harnessTemplates?: Pick<HarnessTemplates, "export" | "list" | "files" | "remove">;
-  /** #75, slice G1: drafts a CLAUDE.md with the host's model and holds it by its digest. */
-  harnessDraft?: (path: string) => Promise<HarnessDraft>;
-  /** #75, slice C1: commits what apply wrote (by its digests) on a new branch. */
-  harnessCommit?: (
-    path: string,
-    digests: Readonly<Record<string, string>>,
-  ) => Promise<HarnessCommitted>;
   projectTrust?: {
     /**
      * Reads what `state` and `set` compare with (the roots' real paths) and the git boundaries of

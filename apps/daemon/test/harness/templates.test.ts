@@ -245,9 +245,9 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
       allowedNetworks: ["0.0.0.0/0", "::/0"],
     };
     const servers = [
-      startServer({ ...base, harnessTemplates: templates, peerOf: () => "8.8.8.8" }),
+      startServer({ ...base, harness: { templates }, peerOf: () => "8.8.8.8" }),
       startServer(base),
-      startServer({ ...base, harnessTemplates: templates }),
+      startServer({ ...base, harness: { templates } }),
     ];
     const clients = servers.map((server) => new FrameClient(server.url));
     try {
@@ -297,8 +297,8 @@ describe("harness-templates: a project's Markdown harness shared as a host templ
       allowedNetworks: ["0.0.0.0/0", "::/0"],
     };
     const servers = [
-      startServer({ ...base, harnessTemplates: templates }),
-      startServer({ ...base, harnessTemplates: templates, peerOf: () => "8.8.8.8" }),
+      startServer({ ...base, harness: { templates } }),
+      startServer({ ...base, harness: { templates }, peerOf: () => "8.8.8.8" }),
       startServer(base),
     ];
     const clients = servers.map((server) => new FrameClient(server.url));

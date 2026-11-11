@@ -44,5 +44,20 @@ describe("daemon features: the list in the protocol matches the server", () => {
       knowledgeOf({ feed: fn }),
       knowledgeOf({ list: fn, status: fn, create: fn, feedSwitch: {} }),
     ]).toEqual([[], ["knowledge", "knowledgeFeed", "knowledgeStatus", "knowledgeCreate"]]);
+    const harnessOf = (opts: object) =>
+      featuresOf({ harness: opts } as unknown as ServerOptions).filter((f) =>
+        f.startsWith("harness"),
+      );
+    // Each service alone, so a swapped name between two services turns this red.
+    const services = ["stack", "preview", "apply", "templates", "draft", "commit"];
+    expect([harnessOf({}), ...services.map((s) => harnessOf({ [s]: fn }))]).toEqual([
+      [],
+      ["harnessStack"],
+      ["harnessPreview"],
+      ["harnessApply"],
+      ["harnessTemplates"],
+      ["harnessDraft"],
+      ["harnessCommit"],
+    ]);
   });
 });

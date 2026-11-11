@@ -287,7 +287,7 @@ describe("harness-preview: what the chosen harness parts would add, written nowh
       token: TOKEN,
       allowedRoots: [root],
     };
-    const server = startServer({ ...base, harnessPreview: previewHarness });
+    const server = startServer({ ...base, harness: { preview: previewHarness } });
     const off = startServer(base);
     const client = new FrameClient(server.url);
     const bare = new FrameClient(off.url);
