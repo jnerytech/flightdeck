@@ -3,8 +3,8 @@ import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { formatAgo, formatDuration } from "../i18n/format.ts";
-import type { Key } from "../i18n/index.ts";
+import { formatAgo, formatDuration } from "../../i18n/format.ts";
+import type { Key } from "../../i18n/index.ts";
 
 export interface AccountCardProps {
   hostName: string;
