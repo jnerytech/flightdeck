@@ -562,6 +562,46 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     ]);
   });
 
+  test("a dictionary split by domain (#1598) is text too: i18n/<lang>/<domain>.ts reads as en.ts and pt-BR.ts do", () => {
+    const ENX = "apps/desktop/src/i18n/en/hub.ts";
+    const PTX = "apps/desktop/src/i18n/pt-BR/hub.ts";
+    const added = new Map([
+      [
+        ENX,
+        [
+          "export const hub = {",
+          '    tokenHint: "Paste the pairing token here",',
+          '    permissionDenied: "Permission denied",',
+          '} satisfies Pick<Dictionary, "hub">;',
+        ],
+      ],
+      [PTX, ['    secretSaved: "Segredo salvo no cofre",']],
+    ]);
+    const ghp = `ghp_${"a".repeat(36)}`;
+    const leaked = new Map([[ENX, [`    example: "${ghp}",`]]]);
+    const code = new Map([[PTX, ['    run: () => Bun.spawn(["sh"]),']]]);
+    // Another language folder or a deeper path is no dictionary.
+    const other = new Map([
+      ["apps/desktop/src/i18n/en/deep/hub.ts", ['    tokenHint: "Paste the pairing token here",']],
+    ]);
+    const language = new Map([
+      ["apps/desktop/src/i18n/fr/hub.ts", ['    tokenHint: "Paste the pairing token here",']],
+    ]);
+    expect([
+      riskyFiles(added),
+      riskyFiles(leaked),
+      riskyFiles(code),
+      riskyFiles(other),
+      riskyFiles(language),
+    ]).toEqual([
+      [],
+      [{ path: ENX, why: ["secret"] }],
+      [{ path: PTX, why: ["spawn"] }],
+      [{ path: "apps/desktop/src/i18n/en/deep/hub.ts", why: ["secret"] }],
+      [{ path: "apps/desktop/src/i18n/fr/hub.ts", why: ["secret"] }],
+    ]);
+  });
+
   test("from the OpenCode review: only plain text entries are exempt; code in a dictionary is read in every area", () => {
     const code = new Map([
       [EN, ["    mode: chmodSync(file, 0o600),", '    gh: localStorage.getItem("token"),']],
