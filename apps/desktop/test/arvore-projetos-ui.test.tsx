@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Card, Project } from "@flightdeck/protocol";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -162,7 +163,7 @@ describe("arvore-projetos-ui: stay where you are, say what a node is (issue #116
       expect(button.tagName).toBe("BUTTON");
       expect(button.tabIndex).toBe(0);
     }
-    const css = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
+    const css = readStyles(new URL("../src/styles.css", import.meta.url));
     const node = css.split("@utility project-tree-node")[1]?.split("@utility")[0] ?? "";
     expect(node).toContain("&:focus-visible");
   });
