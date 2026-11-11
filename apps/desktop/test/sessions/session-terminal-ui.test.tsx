@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
+import { interceptWire } from "../fake-host.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { waiter } from "../wait.ts";
 
@@ -16,6 +17,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
+const { RequestError } = await import("../../src/lib/host-connection.ts");
 
 setDefaultTimeout(40_000);
 const settle = waiter(10_000);
@@ -161,14 +163,15 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       store.router.push({ name: "hub" });
     });
     await settle(() => tab("Terminal") === null);
-    const real = store.terminals.host.bind(store.terminals);
-    (store.terminals as unknown as { host: unknown }).host = (id: string) =>
-      Object.create(real(id), { list: { value: () => Promise.reject(new Error("offline")) } });
+    // The host's list of terminals fails on the wire while the session's page opens again.
+    const restore = interceptWire(store, hostId, (type, _payload, next) =>
+      type === "terminal.list" ? Promise.reject(new Error("offline")) : next(),
+    );
     await act(async () => {
       store.router.push({ name: "session", host: hostId, id: sessionId });
     });
     await settle(() => terminalShown());
-    (store.terminals as unknown as { host: unknown }).host = real;
+    restore();
     expect(store.sessionViews.terminalOf(`${hostId}/${sessionId}`)).toBe(
       first?.terminalId as string,
     );
@@ -178,15 +181,12 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
   test("a shell the host refuses sends the person back to the conversation, and the view stays offered", async () => {
     const { store, hostId } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
-    const real = store.hostCommand.bind(store);
-    (store as unknown as { hostCommand: unknown }).hostCommand = ((
-      host: string,
-      type: string,
-      payload: unknown,
-    ) =>
+    // The host refuses to open the shell, on the wire.
+    interceptWire(store, hostId, (type, _payload, next) =>
       type === "terminal.openSession"
-        ? Promise.resolve(null)
-        : (real as (h: string, t: string, p: unknown) => unknown)(host, type, payload)) as never;
+        ? Promise.reject(new RequestError("invalid_state", "recusado"))
+        : next(),
+    );
     await clickTab("Terminal");
     await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
     expect(terminalShown()).toBe(false);
@@ -222,19 +222,14 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
   test("a tab closed while its shell is being opened does not leave that shell running", async () => {
     const { store, hostId, ptys } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
-    const real = store.hostCommand.bind(store) as (h: string, t: string, p: unknown) => unknown;
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    (store as unknown as { hostCommand: unknown }).hostCommand = ((
-      host: string,
-      type: string,
-      payload: unknown,
-    ) =>
-      type === "terminal.openSession"
-        ? gate.then(() => real(host, type, payload))
-        : real(host, type, payload)) as never;
+    // The host takes its time to open the shell: the call waits for the gate.
+    interceptWire(store, hostId, (type, _payload, next) =>
+      type === "terminal.openSession" ? gate.then(next) : next(),
+    );
     await clickTab("Terminal");
     const area = store.workspace.areas[0];
     const sessionTab = area?.tabs.find((t) => t.router.current.name === "session");

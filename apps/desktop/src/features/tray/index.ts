@@ -4,3 +4,4 @@
  * imports from here, never a file inside.
  */
 export { TraySlice } from "./store.ts";
+export { wireTray } from "./wire.ts";
