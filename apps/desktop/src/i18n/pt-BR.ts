@@ -1265,6 +1265,10 @@ export const ptBR = {
     },
     rowDetail: {
       waitingTool: "quer rodar {tool}",
+      waiting: {
+        plan: "plano esperando sua aprovação",
+        question: "tem uma pergunta para você",
+      },
       runningTool: "rodando {tool}",
     },
     origins: {
