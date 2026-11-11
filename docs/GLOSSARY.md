@@ -166,6 +166,7 @@ test's baseline, with the issue that renames them.
 | `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
 | `automations` | automation | Triggers (time, PR comment, failing checks, labeled issue) and the action each fires |
 | `background` | background session | Claude Code's own background sessions of a host (`claude --bg`): list, stop, respawn, message, attach and start |
+| `backup` | backup | The whole-app backup file (settings, hosts, vault): saved encrypted, read from a file or Google Drive, compared with this profile and restored; the daemon's own is `maintenance` |
 | `board` | board | A project's cards, their columns, launches, PR flow, blockers and arenas |
 | `boardsync` | board sync | Two-way sync of a board with an external board (GitHub Projects, Azure Boards) |
 | `central` | terminal session | Terminal sessions seen through Claude Code's hooks: the receptor, the hooks, the wrapper |
