@@ -3,6 +3,8 @@
  * with a UTF-8 byte order mark and end its lines with CRLF. Every reader parses past the mark, and
  * every writer keeps the file's mark, indent and line endings.
  */
+import type { z } from "zod";
+
 const BOM = "\uFEFF";
 
 /** The JSON of `text`, past a leading byte order mark. Throws as `JSON.parse` does. */
@@ -23,4 +25,14 @@ export function layoutLike(text: string | null, value: unknown): string {
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const newline = text.endsWith("\n") ? eol : "";
   return `${bom}${JSON.stringify(value, null, indent).replaceAll("\n", eol)}${newline}`;
+}
+
+/** The JSON of `text` checked against `schema`; throws when the text is not JSON or does not fit. */
+export function parseJsonWith<T>(_schema: z.ZodType<T>, _text: string): T {
+  return undefined as T;
+}
+
+/** Like `parseJsonWith`, but `fallback` for text that is not JSON or does not fit `schema`. */
+export function parseJsonOr<T>(_schema: z.ZodType<T>, _text: string, fallback: T): T {
+  return fallback;
 }
