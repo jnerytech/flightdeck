@@ -5,10 +5,10 @@ import { Facts } from "@/components/layout/facts";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import type { Key, T } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { formatBytes } from "../lib/format-bytes.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { Key, T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { formatBytes } from "../../lib/format-bytes.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 export { formatBytes };
 

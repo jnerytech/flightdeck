@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { hasFeature } from "../lib/version.ts";
-import type { WebhookKind, WebhookType } from "../lib/webhook-format.ts";
-import { type WebhookTarget, WebhookTargetError } from "../lib/webhook-targets.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import type { WebhookKind, WebhookType } from "../../lib/webhook-format.ts";
+import { type WebhookTarget, WebhookTargetError } from "../../lib/webhook-targets.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const HOSTS = ["hosts"] as const;
 const KINDS: WebhookKind[] = [

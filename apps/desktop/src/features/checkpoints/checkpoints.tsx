@@ -21,11 +21,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
-import { formatDateTime } from "../i18n/format.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { type Turn, turnsOf } from "../lib/turns.ts";
-import { TerminalButton } from "./TerminalButton.tsx";
+import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { formatDateTime } from "../../i18n/format.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { type Turn, turnsOf } from "../../lib/turns.ts";
+import { TerminalButton } from "../../ui/TerminalButton.tsx";
 
 interface Target {
   store: AppStore;
