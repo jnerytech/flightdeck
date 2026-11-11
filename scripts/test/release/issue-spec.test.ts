@@ -86,6 +86,23 @@ describe("issue-spec: what check enforces", () => {
     expect(checkIssue(task.replace(/## Scope\n- a\n\n/, ""))).toEqual(["Scope: required for task"]);
   });
 
+  test("a body with Windows line endings is read like one with Unix endings", () => {
+    expect(checkIssue(FEATURE.replaceAll("\n", "\r\n"))).toEqual([]);
+    expect(checkIssue(REFACTOR.replaceAll("\n", "\r\n"))).toEqual([]);
+  });
+
+  test("a Done when line that is plain text with a backticked command counts", () => {
+    expect(
+      checkIssue(REFACTOR.replace("- `bun run typecheck` green.", "Run `bun run typecheck`.")),
+    ).toEqual([]);
+  });
+
+  test("a kind that only starts like an allowed one is refused", () => {
+    expect(checkIssue(REFACTOR.replace("Kind: refactor", "Kind: refactor-x"))).toEqual([
+      "Kind: use one of feature, bug, refactor, task",
+    ]);
+  });
+
   test("a heading inside a code fence is no section", () => {
     const body = REFACTOR.replace("## Why\nx", "## Why\n```\n## Scenarios\n```");
     expect(checkIssue(body)).toEqual([]);
