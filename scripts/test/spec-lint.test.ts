@@ -87,7 +87,9 @@ describe("spec-lint", () => {
     const problems = (area: string, file: string) =>
       lintSpec(spec({ "Tests and criteria": row(area, file) }));
     expect(problems("snippets-scopes", "apps/daemon/test/snippets/scopes.test.ts")).toEqual([]);
-    expect(problems("scopes", "apps/daemon/test/snippets/scopes.test.ts")).toEqual([]);
+    expect(problems("scopes", "apps/daemon/test/snippets/scopes.test.ts")).toHaveLength(1);
+    expect(problems("service", "apps/daemon/test/anything/service.test.ts")).toHaveLength(1);
+    expect(problems("a-b-x", "apps/daemon/test/a/b/x.test.ts")).toHaveLength(1);
     expect(problems("snippets-usage", "apps/daemon/test/snippets/scopes.test.ts")).toHaveLength(1);
   });
 
