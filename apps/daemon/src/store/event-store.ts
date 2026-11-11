@@ -314,7 +314,7 @@ export class EventStore {
         "SELECT payload FROM events WHERE session_id = ? AND type = 'session.mode' ORDER BY seq DESC LIMIT 1",
       )
       .get(sessionId) as { payload: string } | null;
-    return row ? (parseJsonOr(ModePayload, row.payload, null)?.permissionMode ?? null) : null;
+    return row ? parseJsonWith(ModePayload, row.payload).permissionMode : null;
   }
 
   eventsSince(sessionId: string, sinceSeq = 0): EventEnvelope[] {
