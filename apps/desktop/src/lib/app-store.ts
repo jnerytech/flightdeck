@@ -65,7 +65,7 @@ import {
   type PersonasSlice,
   wirePersonas,
 } from "../features/personas/index.ts";
-import { ProjectsSlice } from "../features/projects/index.ts";
+import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import {
@@ -368,6 +368,8 @@ export class AppStore {
     now: () => this.now(),
     t: () => this.i18n.t,
     onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
+    success: (text) => this.success(text),
+    fail: (error, text, retry) => this.fail(error, text, retry),
   };
 
   constructor(
@@ -531,19 +533,7 @@ export class AppStore {
       },
       settings: () => this.roi,
     });
-    this.projectList = new ProjectsSlice({
-      state: () => this.state,
-      setProjects: (projects) => this.update({ projects }),
-      quietly: async (hostId, type, payload) => {
-        const conn = this.connections.get(hostId);
-        return conn ? quiet(conn.request(type, payload)) : null;
-      },
-      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
-      refused: (hostId, { code, message, reason, params, items }) =>
-        this.fail(new RequestError(code, message, reason, params, items, hostId)),
-      success: (text) => this.success(text),
-      t: () => this.i18n.t,
-    });
+    this.projectList = wireProjects(this.kernel);
     this.prWatch = new WatchSlice({
       command: (hostId, type, payload, options) => this.hostCommand(hostId, type, payload, options),
       hosts: () => this.state.hosts,

@@ -174,4 +174,8 @@ export interface AppKernel<S extends object> {
   onlineHosts(): string[];
   /** The app's translator now (it changes with the language). */
   t(): T;
+  /** Shows a success notice. */
+  success(text: string): void;
+  /** Shows an error in the banner, with `text` in place of the error's own and an optional retry. */
+  fail(error: unknown, text?: string, retry?: () => void): void;
 }
