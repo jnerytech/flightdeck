@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { staticImports } from "../lib/bundle-reach.ts";
 
@@ -32,12 +32,18 @@ const LAZY_SCREENS = [
   "Settings",
 ];
 
-/** A lazy screen that moved into its feature folder (#1597): where Screens.tsx loads it from. */
-const MOVED: Record<string, string> = {
-  PersonasPage: "../features/personas/page.tsx",
-  SnippetsPage: "../features/snippets/page.tsx",
+/**
+ * Where Screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
+ * is `features/<name without "Page", lowercased>/page.tsx`; the rest are still `ui/<name>.tsx`.
+ * Looking at the disk means a move does not edit this test.
+ */
+const FEATURES = resolve(UI, "../features");
+const specifierOf = (name: string) => {
+  const feature = name.replace(/Page$/, "").toLowerCase();
+  return existsSync(resolve(FEATURES, feature, "page.tsx"))
+    ? `../features/${feature}/page.tsx`
+    : `./${name}.tsx`;
 };
-const specifierOf = (name: string) => MOVED[name] ?? `./${name}.tsx`;
 
 describe("screens-lazy: the secondary screens are not in the entry chunk", () => {
   const read = (file: string) => readFileSync(resolve(UI, file), "utf8");
