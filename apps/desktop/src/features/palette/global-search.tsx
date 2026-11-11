@@ -1,9 +1,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { PaletteScopeChips, PaletteSectionView } from "@/components/palette/palette-section";
 import { Input } from "@/components/ui/input";
-import type { GlobalHit } from "../features/history/index.ts";
-import type { T } from "../i18n/index.ts";
-import { type AppState, type AppStore, needsYou, type PendingItem } from "../lib/app-store.ts";
+import type { T } from "../../i18n/index.ts";
+import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";
 import {
   type PaletteItem,
   type PaletteScope,
@@ -11,10 +9,12 @@ import {
   type PaletteTarget,
   paletteScope,
   paletteSections,
-} from "../lib/palette.ts";
-import { basename } from "../lib/paths.ts";
-import { pendingText, pendingWhere } from "../lib/pending-text.ts";
-import { hasFeature } from "../lib/version.ts";
+} from "../../lib/palette.ts";
+import { basename } from "../../lib/paths.ts";
+import { pendingText, pendingWhere } from "../../lib/pending-text.ts";
+import { hasFeature } from "../../lib/version.ts";
+import type { GlobalHit } from "../history/index.ts";
+import { PaletteScopeChips, PaletteSectionView } from "./palette-section.tsx";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
 export function Snippet({ text }: Readonly<{ text: string }>) {

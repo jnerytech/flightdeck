@@ -59,7 +59,7 @@ const AgentPage = lazyScreen(() => import("../features/agentcfg/page.tsx"), "Age
 const Approvals = lazyScreen(() => import("../features/permissions/page.tsx"), "AutoApprovalsPage");
 const Automations = lazyScreen(() => import("../features/automations/page.tsx"), "AutomationsPage");
 const BoardView = lazyScreen(() => import("./BoardView.tsx"), "BoardView");
-const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
+const CardDetail = lazyScreen(() => import("../features/board/card-detail.tsx"), "CardDetail");
 const ClientsPage = lazyScreen(() => import("../features/clients/page.tsx"), "ClientsPage");
 const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "ConnectionsPage");
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");

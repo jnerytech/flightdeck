@@ -19,15 +19,15 @@ import { canMergeCardPr } from "@/lib/card-merge-pr";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import { CardConflicts } from "../features/board/card-conflicts.tsx";
-import { GateCard, RunPanel, RunTimeline } from "../features/runenv/index.ts";
-import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { projectCards } from "../lib/board.ts";
-import { opensOnChanges } from "../lib/card-next-step.ts";
-import { usd } from "../lib/costs.ts";
-import { useSessionState } from "../lib/use-store.ts";
-import { hasFeature } from "../lib/version.ts";
-import { CardDeps } from "./CardDeps.tsx";
+import { type AppStore, sessionKey } from "../../lib/app-store.ts";
+import { projectCards } from "../../lib/board.ts";
+import { opensOnChanges } from "../../lib/card-next-step.ts";
+import { usd } from "../../lib/costs.ts";
+import { useSessionState } from "../../lib/use-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { GateCard, RunPanel, RunTimeline } from "../runenv/index.ts";
+import { CardConflicts } from "./card-conflicts.tsx";
+import { CardDeps } from "./card-deps.tsx";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 

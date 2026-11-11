@@ -37,6 +37,7 @@ import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
+import { ModelOptions, StatusBadge } from "../features/sessions/index.ts";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import type { Answer } from "../lib/app-store.ts";
@@ -49,8 +50,6 @@ import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
-import { ModelOptions } from "./ModelOptions.tsx";
-import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
 /** The menu group of each kind of command the daemon names. */

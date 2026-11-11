@@ -1,6 +1,6 @@
 /**
  * The costs' public entry in the app (#1589, #1596): the spending limits of each host, the
- * clients' month limits against their spend, and the words that name them.
+ * clients' month limits against their spend, the host's budgets form, and the words that name them.
  * Another domain imports from here, never a file inside. The costs screen (`page.tsx`, with its
  * charts and tables) is left out on purpose: `ui/Screens.tsx` loads it as a lazy chunk, and
  * exporting it here would pull it into the main bundle.
@@ -16,6 +16,7 @@ export {
   projectName,
   share,
 } from "./budgets.ts";
+export { BudgetsSection } from "./budgets-section.tsx";
 export {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,

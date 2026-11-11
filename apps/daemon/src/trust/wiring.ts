@@ -1,5 +1,7 @@
+import type { Database } from "bun:sqlite";
+import type { Config } from "../config.ts";
 import { inspectProject } from "./inspect.ts";
-import type { ProjectTrust } from "./project-trust.ts";
+import { ProjectTrust } from "./project-trust.ts";
 
 /** What the `project.trust` service reads besides the trust records. */
 export interface TrustServerDeps {
@@ -30,4 +32,36 @@ export function trustServer({ projectTrust, manager }: TrustServerDeps) {
       return trustState(path);
     },
   };
+}
+
+/** What a folder's trust is built from (issue #1593). */
+export interface ProjectTrustDeps {
+  db: Database;
+  /** Read at each call: a root added from the app counts at once. */
+  config: Pick<Config, "allowedRoots">;
+  /** The board's lookup; the board is made later, so the call is bound late. */
+  projectForCwd(cwd: string): { project: { path: string }; card: object | null } | null;
+  log(line: string): void;
+}
+
+/**
+ * Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
+ * where the person trusted it (or already worked in it before this existed). A card's worktree is
+ * read from its project's main checkout.
+ */
+export function createProjectTrust({ db, config, projectForCwd, log }: ProjectTrustDeps) {
+  const projectTrust = new ProjectTrust(db, {
+    roots: () => config.allowedRoots,
+    configRootOf: (cwd) => {
+      const found = projectForCwd(cwd);
+      return found?.card ? found.project.path : null;
+    },
+    log,
+  });
+  // The library's index (#76) goes to a trusted folder only, read from its trusted checkout.
+  const trustForKnowledge = async (path: string) => {
+    await projectTrust.prepare(path);
+    return projectTrust.sessionTrust(path);
+  };
+  return { projectTrust, trustForKnowledge };
 }

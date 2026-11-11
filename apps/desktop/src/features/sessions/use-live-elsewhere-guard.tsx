@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { AppStore } from "../lib/app-store.ts";
-import { liveElsewhere } from "../lib/live-elsewhere.ts";
-import { LiveElsewhereDialog } from "./LiveElsewhereDialog.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { liveElsewhere } from "../../lib/live-elsewhere.ts";
+import { LiveElsewhereDialog } from "./live-elsewhere-dialog.tsx";
 
 /**
  * Issue #502, #1705: a second `claude` on a conversation that another one holds only after asking.

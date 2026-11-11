@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { GlobalSearch } = await import("../src/ui/GlobalSearch.tsx");
+const { GlobalSearch } = await import("../src/features/palette/index.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

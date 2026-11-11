@@ -105,16 +105,39 @@ describe("shard-gate: the merged 80% gate (#296, #1002)", () => {
     const result = gate(healthy());
     expect(result.problems).toEqual([]);
     expect(result.closed).toBe(false);
+    // The function counts are the merge of the istanbul maps (f1 in shard 1, f2 in shard 3: both
+    // called), not Bun's, which count what each shard loaded (#2019).
     expect(result.lcov).toBe(
       `${record(
         "a.ts",
-        [1, 2],
+        [2, 2],
         [
           [1, 1],
           [2, 3],
         ],
       )}\n`,
     );
+  });
+
+  test("the merged lcov never has more functions hit than found, even when Bun's counts differ between shards (#2019)", () => {
+    const jobs = healthy();
+    // Shard 2 counted 5 functions in a.ts, all called: its Bun count is not the file's.
+    jobs[1] = bun(
+      2,
+      record(
+        "a.ts",
+        [5, 5],
+        [
+          [1, 0],
+          [2, 0],
+        ],
+      ),
+    );
+    const lcov = gate(jobs).lcov;
+    const [found, hit] = ["FNF", "FNH"].map((key) =>
+      Number(new RegExp(`${key}:(\\d+)`).exec(lcov)?.[1]),
+    );
+    expect([hit, found]).toEqual([2, 2]);
   });
 
   test("a line no shard ran and a function no shard called are named as check-coverage.ts names them", () => {
