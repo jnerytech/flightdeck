@@ -21,3 +21,21 @@ export const stepUsageOf = (text: string | null): RunUsage | null =>
 
 export const reasonParamsOf = (text: string | null): Record<string, string | number> | null =>
   text ? parseJsonOr(ReasonParams, text, null) : null;
+
+/** The columns of a run row the app is shown; each degrades alone instead of hiding the run. */
+export const shownOf = (_row: {
+  budget: string;
+  usage: string;
+  inputs: string;
+  status_reason_params: string | null;
+}): {
+  budget: RunBudget;
+  usage: RunUsage;
+  inputs: Record<string, string>;
+  reasonParams: Record<string, string | number> | null;
+} => ({
+  budget: { maxTurns: -1 },
+  usage: { turns: -1, minutes: 0, costUsd: 0 },
+  inputs: {},
+  reasonParams: {},
+});

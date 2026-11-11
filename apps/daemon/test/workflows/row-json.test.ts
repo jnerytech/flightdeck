@@ -3,6 +3,7 @@ import {
   budgetOf,
   inputsOf,
   reasonParamsOf,
+  shownOf,
   runUsageOf,
   spendingOf,
   stepUsageOf,
@@ -57,5 +58,34 @@ describe("row-json: the JSON columns of a workflow run", () => {
   test("reason params that are not text or numbers by name read as none", () => {
     expect(reasonParamsOf('{"n":2,"name":"x"}')).toEqual({ n: 2, name: "x" });
     expect(reasonParamsOf('{"n":[1]}')).toBeNull();
+  });
+
+  test("what a run shows degrades field by field instead of throwing", () => {
+    expect(
+      shownOf({
+        budget: "{nope",
+        usage: '{"turns":1.5}',
+        inputs: '{"n":1}',
+        status_reason_params: '{"n":[1]}',
+      }),
+    ).toEqual({
+      budget: {},
+      usage: { turns: 0, minutes: 0, costUsd: 0 },
+      inputs: {},
+      reasonParams: null,
+    });
+    expect(
+      shownOf({
+        budget: '{"maxTurns":3}',
+        usage: '{"turns":1,"minutes":2,"costUsd":0.5,"sessions":{"s":0.5}}',
+        inputs: '{"a":"b"}',
+        status_reason_params: '{"n":2}',
+      }),
+    ).toEqual({
+      budget: { maxTurns: 3 },
+      usage: { turns: 1, minutes: 2, costUsd: 0.5 },
+      inputs: { a: "b" },
+      reasonParams: { n: 2 },
+    });
   });
 });

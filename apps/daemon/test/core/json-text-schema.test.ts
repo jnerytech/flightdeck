@@ -35,22 +35,26 @@ describe("parseJsonOr", () => {
 
 describe("parseJsonWith: an error does not echo the text it read", () => {
   const SECRET = "sk-secret-token-123";
+  const Names = z.record(z.string(), z.string());
+  const messageOf = (schema: z.ZodType, text: string): string => {
+    try {
+      parseJsonWith(schema, text);
+    } catch (error) {
+      return (error as Error).message;
+    }
+    return expect.unreachable("parseJsonWith should have thrown");
+  };
   test("a text that is not JSON throws a message without the text", () => {
-    expect(() => parseJsonWith(Auto, `{"workflow": ${SECRET}`)).toThrow(/not JSON/);
-    try {
-      parseJsonWith(Auto, `{"workflow": ${SECRET}`);
-    } catch (error) {
-      expect(String((error as Error).message).includes(SECRET)).toBe(false);
-    }
+    const message = messageOf(Auto, `{"workflow": ${SECRET}`);
+    expect(message).toContain("not JSON");
+    expect(message.includes(SECRET)).toBe(false);
   });
-  test("a value that does not fit throws its path, not the value", () => {
-    try {
-      parseJsonWith(Auto, `{"workflow":{"${SECRET}":1}}`);
-      expect.unreachable("parseJsonWith should have thrown");
-    } catch (error) {
-      const message = (error as Error).message;
-      expect(message.includes(SECRET)).toBe(false);
-      expect(message).toContain("workflow");
-    }
+  test("a value that does not fit throws without the value", () => {
+    expect(messageOf(Auto, `{"workflow":{"${SECRET}":1}}`).includes(SECRET)).toBe(false);
+  });
+  test("a key the text chose is not echoed either", () => {
+    const message = messageOf(Names, `{"${SECRET}":1}`);
+    expect(message.includes(SECRET)).toBe(false);
+    expect(message).toContain("does not fit");
   });
 });
