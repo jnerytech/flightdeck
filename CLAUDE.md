@@ -30,7 +30,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
   is touched; a SessionStart hook states the branch, the tested scopes, the slot and a red main with its claim, and after a
   compact reminds that those rules come back only with a matching file. Personal settings go to
-  `.claude/settings.local.json` (ignored).
+  `.claude/settings.local.json` (ignored). `autoCompactWindow: 220000` compacts each session natively at
+  220K context tokens (#1899).
 
 ## Commands
 
