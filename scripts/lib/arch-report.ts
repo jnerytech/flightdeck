@@ -18,6 +18,9 @@ export type ArchInputs = {
   /** Flat test files per workspace today and in test-layout-baseline.json. */
   flatCounts: Record<string, number>;
   flatBaseline: Record<string, number>;
+  /** Dead-code findings by kind today (knip) and in knip-baseline.json. */
+  knipCounts: Record<string, number>;
+  knipBaseline: Record<string, number>;
 };
 
 /** One row per ratchet figure, sorted by name. */
@@ -39,6 +42,15 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
     baseline: Object.keys(inputs.srcBaseline).length,
     today: Object.keys(inputs.srcOversized).length,
   });
+  for (const kind of new Set([
+    ...Object.keys(inputs.knipBaseline),
+    ...Object.keys(inputs.knipCounts),
+  ]))
+    rows.push({
+      ratchet: `knip ${kind}`,
+      baseline: inputs.knipBaseline[kind] ?? 0,
+      today: inputs.knipCounts[kind] ?? 0,
+    });
   for (const workspace of new Set([
     ...Object.keys(inputs.flatBaseline),
     ...Object.keys(inputs.flatCounts),

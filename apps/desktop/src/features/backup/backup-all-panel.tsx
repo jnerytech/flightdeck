@@ -13,6 +13,11 @@ import type { RestorePreview } from "@/lib/backup-bundle";
 import type { ConflictChoice } from "@/lib/vault-backup";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
+/** What a conflicting entry gets on restore: kept as it is, or replaced by the bundle's. */
+const CHOICES = [
+  ["skip", "backupAll.keep"],
+  ["overwrite", "backupAll.replace"],
+] as const satisfies ReadonlyArray<readonly [ConflictChoice, Key]>;
 const KINDS = ["settings", "personas", "snippets", "hosts", "vault"] as const;
 
 /** Issue #1241: back up everything to one encrypted file, and restore it with a preview. */
@@ -305,24 +310,17 @@ export function BackupAllPanel(props: Readonly<{ store: AppStore }>) {
                     <fieldset>
                       <legend className="sr-only">{t("backupAll.choiceLegend")}</legend>
                       <Stack gap={1}>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name={`${id}-choice`}
-                            checked={choice === "skip"}
-                            onChange={() => setChoice("skip")}
-                          />
-                          {t("backupAll.keep")}
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name={`${id}-choice`}
-                            checked={choice === "overwrite"}
-                            onChange={() => setChoice("overwrite")}
-                          />
-                          {t("backupAll.replace")}
-                        </label>
+                        {CHOICES.map(([value, label]) => (
+                          <label key={value} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`${id}-choice`}
+                              checked={choice === value}
+                              onChange={() => setChoice(value)}
+                            />
+                            {t(label)}
+                          </label>
+                        ))}
                       </Stack>
                     </fieldset>
                   </>
