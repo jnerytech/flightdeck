@@ -14,7 +14,7 @@ import { useMinLoading } from "@/hooks/use-min-loading";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../../ui/FolderPicker.tsx";
-import { RulesSection } from "../../ui/RulesSection.tsx";
+import { RulesSection } from "../permissions/index.ts";
 import { TerminalButton } from "../terminal/index.ts";
 import { AddProject } from "./add-project.tsx";
 import { HostBoardLanding } from "./board-landing.tsx";
