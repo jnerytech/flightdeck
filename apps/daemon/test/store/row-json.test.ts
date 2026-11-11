@@ -70,4 +70,21 @@ describe("event store: JSON columns that do not fit", () => {
       expect(read).toThrow(/does not fit/);
     }
   });
+
+  test("a persona snapshot written before its later fields existed reads with them empty", () => {
+    const store = newStore();
+    store.db
+      .query("UPDATE sessions SET persona = ?")
+      .run('{"id":"p1","name":"Old","append":"be careful"}');
+    expect(store.sessionPersona("s1")).toEqual({
+      id: "p1",
+      name: "Old",
+      icon: null,
+      hash: null,
+      append: "be careful",
+      model: null,
+      effort: null,
+      tools: null,
+    });
+  });
 });
