@@ -1,0 +1,13 @@
+/* The palette's rows: the one the keyboard is on is a surface with an inset ring (issue #147). */
+@utility palette-row {
+  &[aria-selected="true"] {
+    background: var(--palette-selection);
+    box-shadow: inset 0 0 0 1px var(--palette-selection-ring);
+  }
+  &:hover {
+    background: var(--accent);
+  }
+  &[aria-selected="true"]:hover {
+    background: var(--palette-selection);
+  }
+}
