@@ -2,7 +2,7 @@ import type { ProjectLoad, ProjectTrustState } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
-import { HarnessPanel } from "@/components/projects/harness-panel";
+import { HarnessPanel } from "@/features/harness/index.ts";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 

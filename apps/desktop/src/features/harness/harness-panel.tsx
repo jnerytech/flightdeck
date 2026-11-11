@@ -1,10 +1,10 @@
 import type { ProjectLoad } from "@flightdeck/protocol";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
-import { HarnessSetup, type HarnessSetupProps } from "@/components/projects/harness-setup";
-import { HarnessShare, type HarnessShareProps } from "@/components/projects/harness-share";
 import type { AppStore } from "@/lib/app-store";
 import { type HarnessItem, harnessParts } from "@/lib/harness";
+import { HarnessSetup, type HarnessSetupProps } from "./harness-setup.tsx";
+import { HarnessShare, type HarnessShareProps } from "./harness-share.tsx";
 
 type T = AppStore["i18n"]["t"];
 
