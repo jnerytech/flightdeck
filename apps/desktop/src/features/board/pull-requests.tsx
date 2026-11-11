@@ -1,6 +1,5 @@
 import { GitPullRequest } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { CardMergePr } from "@/components/card/card-merge-pr";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -13,6 +12,7 @@ import { openPullRequests } from "../../lib/pull-requests.ts";
 import type { Route } from "../../lib/router.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { CardMergePr } from "./card-merge-pr.tsx";
 import { PrRefusal } from "./pr-refusal.tsx";
 import { PrRow } from "./pr-row.tsx";
 
