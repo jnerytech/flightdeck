@@ -33,8 +33,6 @@
   "apps/daemon/src/templates/tasks.ts": 1,
   "apps/daemon/src/trace/model.ts": 1,
   "apps/daemon/src/update.ts": 1,
-  "apps/daemon/src/watch/fix.ts": 2,
-  "apps/daemon/src/watch/watch.ts": 2,
   "apps/daemon/src/workflows/findings.ts": 1,
   "apps/desktop/src/demo/boot.ts": 3,
   "apps/desktop/src/features/costs/client-budgets-store.ts": 1,
