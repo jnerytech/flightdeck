@@ -166,7 +166,7 @@ describe("account-menu-facts: the sidebar wires the menu to the app (issue #282)
     const routes: string[] = [];
     let checks = 0;
     let shortcuts = 0;
-    store.checkAppUpdate = async () => {
+    store.appUpdates.check = async () => {
       checks += 1;
     };
     render(
