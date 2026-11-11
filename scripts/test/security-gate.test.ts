@@ -581,7 +581,9 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     const leaked = new Map([[ENX, [`    example: "${ghp}",`]]]);
     const code = new Map([[PTX, ['    run: () => Bun.spawn(["sh"]),']]]);
     // Another language folder or a deeper path is no dictionary.
-    const other = new Map([["apps/desktop/src/i18n/en/deep/hub.ts", ['    tokenHint: "Paste the pairing token here",']]]);
+    const other = new Map([
+      ["apps/desktop/src/i18n/en/deep/hub.ts", ['    tokenHint: "Paste the pairing token here",']],
+    ]);
     expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code), riskyFiles(other)]).toEqual([
       [],
       [{ path: ENX, why: ["secret"] }],
