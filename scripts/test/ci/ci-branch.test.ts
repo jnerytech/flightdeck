@@ -307,6 +307,8 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     ]);
     expect(uploads("screenshots-e2e")).toEqual([
       // One of each per e2e shard (#264).
+      // The pyramid's e2e row reads this one (#1854).
+      ["e2e-json-${{ matrix.shard }}", "e2e-json/e2e.json", "always()"],
       ["relatorio-e2e-${{ matrix.shard }}", "playwright-report", "always()"],
       ["e2e-failures-${{ matrix.shard }}", "apps/desktop/screenshots/e2e-failures", "always()"],
     ]);

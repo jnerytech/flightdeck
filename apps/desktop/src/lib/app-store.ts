@@ -3,120 +3,82 @@ import type {
   ChangesUpdated,
   CommandPayload,
   CommandResults,
-  CommandType,
   EffortLevel,
-  ExternalPermissionFrame,
-  ExternalSession,
-  HelloResult,
   HistoryChanged,
   HistoryGetResult,
   HistoryListResult,
-  HistorySessionSummary,
-  HostInfoResult,
   MessageInfo,
-  PendingPermission,
-  PermissionUpdate,
-  PlainInfo,
   Project,
   ProjectDetectResult,
-  ReleaseNote,
-  RiskLevel,
   RoiSummaryResult,
-  RuleIssue,
   RunConfigInfo,
   RunState,
   SessionImage,
   SessionMeta,
-  SessionNameInfo,
   SessionRecap,
-  SessionRuntime,
-  SessionStatus,
-  SessionSummary,
   SettableMode,
   TeamsUpdatedFrame,
-  WatchInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { AccountSlice, initialAccountState } from "../features/account/index.ts";
 import {
-  AccountSlice,
-  type AccountSliceState,
-  initialAccountState,
-} from "../features/account/index.ts";
-import {
-  ActivitySlice,
-  type ActivitySliceState,
+  type ActivitySlice,
   initialActivityState,
+  wireActivity,
 } from "../features/activity/index.ts";
+import { AppUpdateSlice, initialAppUpdateState } from "../features/appupdate/index.ts";
 import {
-  AppUpdateSlice,
-  type AppUpdateState,
-  initialAppUpdateState,
-} from "../features/appupdate/index.ts";
-import {
-  BackgroundSlice,
-  type BackgroundSliceState,
+  type BackgroundSlice,
   initialBackgroundState,
+  wireBackground,
 } from "../features/background/index.ts";
 import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
   BudgetsSlice,
-  type BudgetsSliceState,
   ClientBudgetsSlice,
-  type ClientBudgetsSliceState,
   initialBudgetsState,
   initialClientBudgetsState,
 } from "../features/costs/index.ts";
+import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
-  HistorySlice,
-  type HistorySliceState,
-  initialHistoryState,
-} from "../features/history/index.ts";
-import {
-  HealthSlice,
-  type HealthSliceState,
+  type HealthSlice,
   HostRosterSlice,
   HostUpdateSlice,
   initialHealthState,
   type NewHost,
+  wireHealth,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
-import {
-  initialMessagingState,
-  MessagingSlice,
-  type MessagingSliceState,
-} from "../features/messaging/index.ts";
+import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
-  PersonasSlice,
-  type PersonasSliceState,
+  type PersonasSlice,
+  wirePersonas,
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
-import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
+import { initialQuotaState, QuotaSlice } from "../features/quota/index.ts";
 import { RoiSlice } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
+  HISTORY_LIST_LIMIT,
   initialSessionsState,
   SessionCommandsSlice,
+  SessionListsSlice,
   SessionStreamSlice,
   SessionsSlice,
-  type SessionsSliceState,
   SummariesSlice,
 } from "../features/sessions/index.ts";
-import {
-  initialSettingsState,
-  SettingsSlice,
-  type SettingsSliceState,
-} from "../features/settings/index.ts";
+import { initialSettingsState, SettingsSlice } from "../features/settings/index.ts";
 import {
   initialSnippetsState,
-  SnippetsSlice,
-  type SnippetsSliceState,
+  type SnippetsSlice,
+  wireSnippets,
 } from "../features/snippets/index.ts";
-import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
-import { type ClosingTerminal, TerminalsSlice } from "../features/terminal/index.ts";
+import { initialSshState, SshSlice } from "../features/ssh/index.ts";
+import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
   VaultApprovalsSlice,
@@ -128,9 +90,22 @@ import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { WatchSlice } from "../features/watch/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
-import { I18n, type Key, type T } from "../i18n/index.ts";
+import { I18n, type Key } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { AppLog } from "./app-log.ts";
+import type {
+  Answer,
+  AppState,
+  AppStoreOptions,
+  GateRef,
+  HistoryFilter,
+  HostView,
+  Notice,
+  PendingItem,
+  ReleaseNotesResult,
+  SidebarSession,
+} from "./app-state.ts";
+import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { AwayClock } from "./away.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
@@ -138,7 +113,7 @@ import { BoardWidth } from "./board-select.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
-import { type Client, Clients, UNASSIGNED } from "./clients.ts";
+import { Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
@@ -151,7 +126,6 @@ import {
   withFiles,
 } from "./finished.ts";
 import { googleConfig } from "./google-config.ts";
-import type { GoogleConfig } from "./google-oauth.ts";
 import { HomeCache } from "./home-cache.ts";
 import {
   type ConnectionStatus,
@@ -159,11 +133,10 @@ import {
   RequestError,
   statusLine,
 } from "./host-connection.ts";
-import type { RetryState } from "./host-offline.ts";
 import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { hubRows, takeHubHost } from "./hub.ts";
-import type { InboxEntry } from "./inbox.ts";
+import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { NotifyPreferences } from "./notify-policy.ts";
@@ -175,12 +148,9 @@ import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts
 import { parseRequestLink } from "./request-link.ts";
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
-import type { Route } from "./router.ts";
 import { sessionKey } from "./session-key.ts";
-import { sessionLabel } from "./session-label.ts";
-import type { SessionState } from "./session-state.ts";
 import { SessionViews } from "./session-views.ts";
-import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
+import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
 import {
@@ -199,270 +169,39 @@ import {
   type TeleportRunArgs,
   teleportSession,
 } from "./teleport.ts";
-import { isLocalUrl, type TerminalEnv } from "./terminal.ts";
+import { isLocalUrl } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import { type SecretMeta, Vault } from "./vault.ts";
-import { checkDelivery, type DeliveryRefusal, type VaultPolicy } from "./vault-requests.ts";
+import { Vault } from "./vault.ts";
+import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
-import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
-import { APP_VERSION, hasFeature } from "./version.ts";
+import { VaultUsageLog } from "./vault-usage.ts";
+import { hasFeature } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WhatsNew } from "./whats-new.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
-/** What the sidebar knows about a session, straight from `session.summary`. */
-export interface SidebarSession {
-  id: string;
-  name: string | null;
-  cwd: string;
-  status: SessionStatus;
-  pendingPermissions: PendingPermission[];
-  updatedAt: string;
-  /** Phase 39: set for an OpenCode session only. */
-  runtime?: SessionRuntime;
-  /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
-  trustStale?: boolean;
-  /** Issue #1478: the host marked it quiet (a running session that says nothing), since when. */
-  quietSince?: string;
-  /** Issue #1478: the last tool it called before it went quiet. */
-  quietTool?: string | null;
-}
-
-export interface HostView extends HostConfig {
-  status: ConnectionStatus;
-  info: HelloResult | null;
-  /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
-  hostInfo: HostInfoResult | null;
-  /** When `hostInfo` arrived (epoch ms), so its uptime can be aged. */
-  infoAt: number;
-  /** The last failed try and the next one, while the host is offline. */
-  retry: RetryState | null;
-  /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
-  incompatibility: string | null;
-  /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
-  daemonUpdate: { target: string; failed: string | null } | null;
-  /** The daemon's update check asked for from the app: running, or why it did not run. */
-  updateCheck: { busy: boolean; failed: string | null } | null;
-  sessions: SidebarSession[];
-}
-
-export interface Selection {
-  hostId: string;
-  sessionId: string | null;
-}
+/** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
+export type {
+  Answer,
+  AppState,
+  AppStoreOptions,
+  GateRef,
+  HistoryFilter,
+  HostView,
+  NeedsYouState,
+  Notice,
+  PendingItem,
+  ReleaseNotesResult,
+  Selection,
+  SidebarSession,
+} from "./app-state.ts";
+export { HISTORY_PAGE, needsYou } from "./app-state.ts";
+export type { HostCommandType, HostResult } from "./kernel.ts";
 
 /** How often the app writes that it is still active (issue #1344). */
 const AWAY_MARK_MS = 60_000;
-
-export interface AppState
-  extends HistorySliceState,
-    SnippetsSliceState,
-    ActivitySliceState,
-    SessionsSliceState,
-    MessagingSliceState,
-    BudgetsSliceState,
-    ClientBudgetsSliceState,
-    PersonasSliceState,
-    SshSliceState,
-    HealthSliceState,
-    BackgroundSliceState,
-    QuotaSliceState,
-    AccountSliceState,
-    SettingsSliceState {
-  hosts: HostView[];
-  /** Keyed by `sessionKey(hostId, sessionId)`. */
-  sessions: Record<string, SessionState>;
-  selected: Selection | null;
-  error: string | null;
-  /** The notifications the app sent, newest first, kept for the notification center. */
-  inbox: InboxEntry[];
-  /** Text handed to a session's message box that the box has not taken yet, by session key. */
-  composerFill: Record<string, string>;
-  /** The sessions that finished, newest first; Needs you lists those after the last look. */
-  finished: Finish[];
-  /** When the person last looked at Needs you (ISO), `null` before the first look. */
-  finishedLook: string | null;
-  /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
-  closingTerminal: ClosingTerminal | null;
-  /** The run environment of each card (phase 24), by `host/card`. */
-  runEnvs: Record<string, RunState>;
-  /** Sessions that replied while no tab showed them (phase 14), by session key. */
-  unread: Record<string, true>;
-  /** Board cards seen so far, keyed by `sessionKey(hostId, cardId)`; kept by `card.updated`. */
-  cards: Record<string, Card>;
-  /** Sessions opened outside Flightdeck, by `sessionKey(hostId, claudeSessionId)`. */
-  externals: Record<string, ExternalSession>;
-  /** Open permission requests of external sessions, by `sessionKey(hostId, requestId)`. */
-  externalRequests: Record<string, ExternalPermissionFrame>;
-  /** Name, pinned and archived, by `sessionKey(hostId, claudeSessionId)`. */
-  meta: Record<string, SessionMeta>;
-  /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
-  uiChoices: Record<string, UiMode>;
-  /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
-  setupProbes: Record<string, SetupProbe>;
-  /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
-  secrets: SecretMeta[];
-  /** Phase 16: the vault's usage log, newest first; never holds a value. */
-  vaultUsage: UsageEntry[];
-  /** Phase 17: the daemon's requests for a secret, waiting for the user; they join the queue. */
-  vaultApprovals: PendingItem[];
-  /** Phase 21: the standard session names of each host that announces `names`, by host id. */
-  names: Record<string, SessionNameInfo[]>;
-  /** Issue #1478: quiet sessions the person snoozed, by `host/session`, until this time (ms). */
-  quietSnooze: Record<string, number>;
-  /** Phase 22: the PR watch of each card that has been looked at or changed, by `sessionKey(hostId, cardId)`. */
-  watches: Record<string, WatchInfo>;
-  /** Workflow runs seen so far, by `sessionKey(hostId, runId)`; kept by `run.updated`. */
-  runs: Record<string, WorkflowRun>;
-  /** Managed and history lists of each host for the Sessões screen. */
-  hub: Record<string, { managed: SessionSummary[]; history: HistorySessionSummary[] }>;
-  /** This machine's terminals (phase 8), probed at init; `null` where none can be opened. */
-  terminalEnv: TerminalEnv | null;
-  /** Toasts still to show or still open (phase 10). */
-  notices: Notice[];
-  /** Projects of each host, loaded for the Ctrl+K palette (phase 8). */
-  projects: Record<string, Project[]>;
-  /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
-  clientList: Client[];
-  /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
-  roiRevision: number;
-  /** The checkout picked in the sidebar tree: it narrows the board and the Sessions list (issue #116). */
-  worktreeFilter: WorktreeFilter | null;
-  /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
-  clientOverrides: Record<string, string | null>;
-  /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
-  clientSelection: string;
-  /** The saved hosts are in `hosts` (init done with them); routes wait for it (phase 10). */
-  hostsLoaded: boolean;
-  /** Phase 9: the app's own update. */
-  appUpdate: AppUpdateState;
-}
-
-/** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
-export type HostCommandType = Extract<
-  CommandType,
-  | `terminal.${string}`
-  | `runenv.${string}`
-  | "roots.add"
-  | "history.get"
-  | "history.tool"
-  | "host.bypass"
-  | "logs.tail"
-  | "releases.list"
-  | "host.sleep"
-  | "session.sleep"
-  | "host.keepAwake"
-  | "host.pause"
-  | `project.trust.${string}`
-  | `project.harness.${string}`
-  | `harness.templates.${string}`
-  | "knowledge.list"
-  | "knowledge.feed"
-  | "knowledge.setFeed"
-  | "knowledge.setStatus"
-  | "knowledge.create"
-  | "host.updates.set"
-  | `ssh.${string}`
-  | `snippets.${string}`
-  | `personas.${string}`
-  | `memory.${string}`
-  | `plugins.${string}`
-  | "session.applyPersona"
-  | "session.clearPersona"
-  | `askpass.${string}`
-  | `project.${string}`
-  | `board.${string}`
-  | `card.${string}`
-  | `hooks.${string}`
-  | "service.install"
-  | `external.${string}`
-  | "session.meta.set"
-  | `workflow.${string}`
-  | "alert.list"
-  | `run.${string}`
-  | `gate.${string}`
-  | `maintenance.${string}`
-  | `resources.${string}`
-  | `worktree.${string}`
-  | `quota.${string}`
-  | `account.${string}`
-  | `usage.${string}`
-  | `rules.${string}`
-  | `costs.${string}`
-  | `telemetry.${string}`
-  | `trace.${string}`
-  | `bg.${string}`
-  | `budget.${string}`
-  | "deps.check"
-  | `changes.${string}`
-  | `review.${string}`
-  | `file.${string}`
-  | "vault.deliver"
-  | "vault.deny"
-  | "vault.approve"
-  | "vault.rules.set"
-  | "vault.rules.get"
-  | "vault.rules.preview"
-  | "messages.watch"
-  | "messaging.rules.get"
-  | "messaging.rules.set"
-  | "messages.list"
-  | `teams.${string}`
-  | `watch.${string}`
-  | "messages.sessions"
-  | "messages.send"
-  | "messages.relay"
-  | "messages.relayed"
-  | "messages.directory"
-  | "messages.peers"
-  | "vault.report"
-  | "session.summary"
-  | "webhook.send"
-  | "vault.decisions"
-  | `pr.${string}`
-  | "files.sessions"
-  | "fs.dirs"
-  | "runtime.models"
-  | "fs.files"
-  | "doctor.run"
-  | "projects.scan"
-  | "projects.clone"
-  | `github.${string}`
-  | `boardsync.${string}`
-  | "roi.summary"
-  | "activity.since"
-  | "session.files"
-  | `snapshots.${string}`
-  | `rewind.${string}`
-  | "session.fork"
-  | "ui.set"
-  | "template.list"
-  | "template.start"
-  | "task.results"
-  | "task.preview"
-  | "session.close"
-  | "session.resume"
-  | `mcp.${string}`
-  | `agentcfg.${string}`
-  | `issues.${string}`
-  | `automation.${string}`
-  | `autoapprove.${string}`
-  | `actions.${string}`
->;
-
-/** A command's answer kept apart from the error banner: the caller decides what to show. */
-export type HostResult<T> =
-  | { ok: true; data: T }
-  | {
-      ok: false;
-      code: string;
-      message: string;
-      reason?: string;
-      params?: Record<string, string | number>;
-      items?: readonly RuleIssue[];
-    };
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
@@ -477,112 +216,6 @@ function cardsIn(result: unknown): Card[] {
   return columns.flatMap((column) => column.cards);
 }
 
-/** What reading the app's release notes came to: the releases, no host that can read them, or a refusal. */
-export type ReleaseNotesResult =
-  | { kind: "ready"; releases: ReleaseNote[] }
-  | { kind: "none" }
-  | { kind: "error"; message: string };
-
-export interface AppStoreOptions {
-  /** The screen of a fresh window; a window saved before keeps its tabs. Sessions when absent. */
-  startRoute?: Route;
-  baseDelayMs?: number;
-  maxDelayMs?: number;
-  /** Least time between two wake-ups (focus, network back) that retry the offline hosts. */
-  wakeDebounceMs?: number;
-  /** How long the global search waits for each host. */
-  searchTimeoutMs?: number;
-  /** Starts the poll of the GitHub sign-in (calls `tick` now and then, returns its stop); tests drive it by hand. */
-  githubTicker?: (tick: () => void) => () => void;
-  /** Milliseconds now: the age of quota readings. */
-  now?: () => number;
-  /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
-  formatTime?: (iso: string) => string;
-  /** IANA time zone of the dates shown (the machine's when absent); tests pin one. */
-  timeZone?: string;
-  /** Timers of the tray submenu's debounce (phase 8); the real ones when absent. */
-  timers?: {
-    setTimeout(fn: () => void, ms: number): unknown;
-    clearTimeout(handle: unknown): void;
-  };
-  /** `YYYY-MM-DD` of an instant (cost periods); this machine's time zone when absent. */
-  day?: (ms: number) => string;
-  /** How long a host may take to come back on the new daemon version (2 min when absent). */
-  daemonUpdateTimeoutMs?: number;
-  /** How often the app looks for its own update while open (6 h when absent). */
-  appUpdateIntervalMs?: number;
-  /** How often the clients' month limits are looked at (phase 29); 10 minutes when absent. */
-  clientBudgetIntervalMs?: number;
-  /** Phase 16: decides a `vault.request` of the daemon; denies them all when absent. */
-  vaultPolicy?: VaultPolicy;
-  /** Phase 21: how often the app tells each daemon the others' sessions (5 s when absent). */
-  peersSyncMs?: number;
-  /** scrypt work factor (log2 N) of an exported vault; tests lower it to stay fast. */
-  vaultWorkFactor?: number;
-  /** Issue #1444: Google Drive for the scheduled backups; the build's own client id when absent. */
-  google?: { config: GoogleConfig | null; fetch?: typeof fetch };
-}
-
-/** A toast: a host's error (by code, the daemon's message as detail) or a short success. */
-export interface Notice {
-  id: number;
-  kind: "error" | "success";
-  /** The daemon's error code; "" for an app-side error or a success. */
-  code: string;
-  text: string;
-  /** Why, when the host sent a reason the app translates (see `refusalText`). */
-  reason?: string;
-  params?: Record<string, string | number>;
-  /** The host the refusal came from, when it came from one. */
-  hostId?: string;
-  /** Runs the refused action again (after the person fixed what it needed). */
-  retry?: () => void;
-  /** The refusal of a command the person gave: its toast takes the focus when the step lost it (#1546). */
-  answersCommand?: true;
-  /** A success toast's button: where the news leads (Open the card). */
-  link?: { label: string; run: () => void };
-}
-
-export interface PendingItem {
-  hostId: string;
-  hostName: string;
-  sessionId: string;
-  sessionName: string;
-  /** Issue #1545: the project of the card that asks, so two cards of one title stay apart. */
-  projectName?: string;
-  requestId: string;
-  toolName: string;
-  createdAt: string;
-  /** A request of a session opened outside Flightdeck (`sessionId` is its claudeSessionId). */
-  external?: boolean;
-  /** The tool input, long strings cut (phase 8: the tray shows a summary). */
-  input?: Record<string, unknown>;
-  /** The session's folder (phase 10: the queue's card makes paths relative to it). */
-  cwd?: string | null;
-  /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
-  gate?: GateRef;
-  /** What the gate asks and shows, so it is approved in sight of it (issue #245). */
-  gateText?: { message: string; output?: string };
-  /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
-  risk?: RiskLevel;
-  riskReason?: string;
-  /** Issue #88: the request in plain words, for the surfaces outside the window; an older daemon sends none. */
-  plain?: PlainInfo;
-  /** Phase 17: the daemon asks for a secret to run an action or a free command. */
-  vault?: true;
-  /** Phase 19: the rule lets this request be approved for the rest of the session. */
-  vaultOnce?: true;
-  /** Phase 19: what a rule made from this request matches ("Criar regra a partir disto"). */
-  vaultRule?: { secretId: string; match: Record<string, string> };
-}
-
-export interface GateRef {
-  runId: string;
-  stepId: string;
-  attempt: number;
-  cardId: string;
-}
-
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -591,151 +224,6 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
     return null;
   }
 }
-
-/** Every open permission request of every host, oldest first. */
-/** The parts of the state the requests waiting for the person are made of. */
-export type NeedsYouState = Pick<
-  AppState,
-  | "cards"
-  | "externalRequests"
-  | "externals"
-  | "hosts"
-  | "meta"
-  | "names"
-  | "personas"
-  | "runs"
-  | "vaultApprovals"
-> &
-  Partial<Pick<AppState, "projects">>;
-
-/** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
-export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
-  const requests: PendingItem[] = state.hosts.flatMap((host) => {
-    const names = state.names?.[host.id] ?? [];
-    const projects = state.projects?.[host.id];
-    const projectOf = (card: Card | undefined): { projectName?: string } => {
-      const name = card && projects?.find((p) => p.id === card.projectId)?.name;
-      return name ? { projectName: name } : {};
-    };
-    // Only a host with projects can have a card behind a session.
-    const ofSession = (id: string) =>
-      projects?.length
-        ? projectOf(
-            Object.entries(state.cards).find(
-              ([key, card]) => key.startsWith(`${host.id}/`) && card.sessionId === id,
-            )?.[1],
-          )
-        : {};
-    const label = (id: string, metaName: string | null | undefined, createdName?: string | null) =>
-      sessionLabel(
-        {
-          metaName,
-          createdName,
-          names: names.find((n) => n.sessionId === id),
-          personas: state.personas?.[host.id],
-        },
-        t,
-      );
-    return [
-      ...host.sessions.flatMap((session) =>
-        session.pendingPermissions.map((p) => ({
-          hostId: host.id,
-          hostName: host.name,
-          sessionId: session.id,
-          sessionName:
-            label(session.id, state.meta[sessionKey(host.id, session.id)]?.name, session.name) ??
-            basename(session.cwd),
-          ...ofSession(session.id),
-          requestId: p.requestId,
-          toolName: p.toolName,
-          createdAt: p.createdAt,
-          ...(p.input ? { input: p.input } : {}),
-          ...(p.risk ? { risk: p.risk } : {}),
-          ...(p.riskReason ? { riskReason: p.riskReason } : {}),
-          ...(p.plain ? { plain: p.plain } : {}),
-          cwd: session.cwd,
-        })),
-      ),
-      // Sessions opened in the terminal: the hook holds the request while the app watches.
-      ...Object.entries(state.externalRequests)
-        .filter(([key]) => key.startsWith(`${host.id}/`))
-        .map(([, request]) => {
-          const id = request.claudeSessionId;
-          const session = state.externals[sessionKey(host.id, id)];
-          const name = state.meta[sessionKey(host.id, id)]?.name;
-          return {
-            hostId: host.id,
-            hostName: host.name,
-            sessionId: id,
-            sessionName: label(id, name) ?? basename(session?.cwd ?? id),
-            requestId: request.requestId,
-            toolName: request.toolName,
-            createdAt: request.createdAt,
-            external: true,
-            input: request.input,
-            ...(request.risk ? { risk: request.risk } : {}),
-            ...(request.riskReason ? { riskReason: request.riskReason } : {}),
-            cwd: session?.cwd ?? null,
-          };
-        }),
-      // Open gates of the host's workflow runs.
-      ...Object.entries(state.runs)
-        .filter(([key]) => key.startsWith(`${host.id}/`))
-        .flatMap(([, run]) =>
-          run.steps
-            .filter((step) => step.type === "gate" && step.status === "waiting")
-            .map((step) => ({
-              hostId: host.id,
-              hostName: host.name,
-              sessionId: run.cardId,
-              sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
-              ...projectOf(state.cards[sessionKey(host.id, run.cardId)]),
-              requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
-              toolName: `gate ${step.stepId}`,
-              createdAt: step.startedAt,
-              gate: {
-                runId: run.id,
-                stepId: step.stepId,
-                attempt: step.attempt,
-                cardId: run.cardId,
-              },
-              gateText: {
-                message: step.message ?? "",
-                ...(step.output ? { output: step.output } : {}),
-              },
-            })),
-        ),
-    ];
-  });
-  const known = state.vaultApprovals.filter((item) =>
-    state.hosts.some((h) => h.id === item.hostId),
-  );
-  return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-}
-
-/** What goes with an answer to a request, besides allow or deny. */
-export interface Answer {
-  /** "Allow in this session" and "always in this project" (phase 7). */
-  updatedPermissions?: PermissionUpdate[];
-  /** Why it was denied (phase 10: the card's reason). */
-  message?: string;
-  /** The tool's input as the person changed it (the answers of AskUserQuestion). */
-  updatedInput?: Record<string, unknown>;
-  /**
-   * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
-   * screen that forgets the risk cannot approve one with a click.
-   */
-  held?: boolean;
-}
-
-/** Filters of the per-host history list. */
-export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
-
-/** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
-export const HISTORY_LIST_LIMIT = 200;
-
-/** Messages per `history.get` page in the transcript reader. */
-export const HISTORY_PAGE = 50;
 
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
@@ -776,15 +264,6 @@ function describeError(error: unknown): string {
 }
 
 /**
- * All app state in one framework-free store: hosts and their connections, session timelines and
- * the current selection. React reads it through `useSyncExternalStore`.
- */
-/** Whether two values hold the same data (the answers of a host are plain JSON). */
-function sameJson(a: unknown, b: unknown): boolean {
-  return a === b || JSON.stringify(a) === JSON.stringify(b);
-}
-
-/**
  * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
  * they are not read yet. A look from the Setup screen or a host page reads them for the checklist
  * only; the one at connect also opens the list the screens use (see `refreshSetup`).
@@ -801,6 +280,10 @@ function setupWants(
   };
 }
 
+/**
+ * All app state in one framework-free store: hosts and their connections, session timelines and
+ * the current selection. React reads it through `useSyncExternalStore`.
+ */
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -816,6 +299,8 @@ export class AppStore {
   readonly summaries: SummariesSlice;
   /** What a host tells about the Claude sessions started in a terminal (#1596). */
   readonly external: ExternalSessionsSlice;
+  /** What the Sessions screen lists from the online hosts (#1596). */
+  private readonly sessionLists: SessionListsSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
@@ -857,23 +342,23 @@ export class AppStore {
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
 
+  /** What every domain's wire file builds its slice's port from (#1596). */
+  private readonly kernel: AppKernel<AppState> = {
+    state: () => this.state,
+    update: (patch) => this.update(patch),
+    hostCommand: (hostId, type, payload, options) =>
+      this.hostCommand(hostId, type, payload, options),
+    hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+    connection: (hostId) => this.connections.get(hostId),
+    now: () => this.now(),
+  };
+
   constructor(
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.history = new HistorySlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      request: (hostId, query) =>
-        this.connections.get(hostId)?.request("history.search", { query }),
-      timeoutMs: () => options.searchTimeoutMs ?? 5000,
-    });
-    this.activity = new ActivitySlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      since: () => this.awayClock.since(),
-      request: (hostId, since) => this.hostRequest(hostId, "activity.since", { since }),
-    });
+    this.history = wireHistory(this.kernel, { searchTimeoutMs: options.searchTimeoutMs });
+    this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
     this.sessions = new SessionsSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -882,12 +367,8 @@ export class AppStore {
       t: () => this.i18n.t,
       success: (text) => this.success(text),
     });
-    this.personas = new PersonasSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.personas = wirePersonas(this.kernel, {
       storage: platform.storage,
-      list: (hostId, language) =>
-        this.hostCommand(hostId, "personas.list", { scope: "host", language }),
       language: () => this.i18n.lang,
     });
     this.ssh = new SshSlice({
@@ -902,14 +383,7 @@ export class AppStore {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
-    this.health = new HealthSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      features: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-      deps: (hostId) => this.hostRequest(hostId, "deps.check", {}),
-      doctor: (hostId) => this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION }),
-      now: () => this.now(),
-    });
+    this.health = wireHealth(this.kernel);
     this.hostUpdate = new HostUpdateSlice({
       host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
@@ -922,21 +396,7 @@ export class AppStore {
       now: () => this.now(),
       timeoutMs: options.daemonUpdateTimeoutMs,
     });
-    this.background = new BackgroundSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      list: (hostId) => this.hostCommand(hostId, "bg.list", {}),
-      stop: (hostId, id) => this.hostCommand(hostId, "bg.stop", { id }),
-      respawn: (hostId, id) => this.hostCommand(hostId, "bg.respawn", { id }),
-      message: (hostId, id, text) => this.hostCommand(hostId, "bg.message", { id, text }),
-      start: (hostId, payload) => this.hostCommand(hostId, "bg.start", payload),
-      openTerminal: (hostId, session) =>
-        this.hostCommand(hostId, "terminal.open", {
-          cwd: session.cwd,
-          command: ["claude", "attach", session.id],
-          cols: 80,
-          rows: 24,
-        }),
+    this.background = wireBackground(this.kernel, {
       showTerminal: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
     });
@@ -969,15 +429,7 @@ export class AppStore {
       },
       refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
     });
-    this.snippets = new SnippetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      storage: platform.storage,
-      list: (hostId, type) => this.hostCommand(hostId, "snippets.list", { type }),
-      get: (hostId, id) => this.hostCommand(hostId, "snippets.get", { id }),
-      render: (hostId, id, cwd) =>
-        this.hostRequest(hostId, "snippets.render", { id, context: { cwd } }),
-    });
+    this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = new BudgetsSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -1339,6 +791,12 @@ export class AppStore {
       notify: (...args) => this.inbox.notify(...args),
       feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
       feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
+    });
+    this.sessionLists = new SessionListsSlice({
+      state: () => this.state,
+      patch: (patch) => this.update(patch),
+      connection: (hostId) => this.connections.get(hostId),
+      backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
     });
     this.stream = new SessionStreamSlice({
       sessions: () => this.state.sessions,
@@ -2147,12 +1605,7 @@ export class AppStore {
     hostId: string,
     type: T,
     payload: CommandPayload<T>,
-    /** `retry: false` for a command that opens something: repeated later, unseen, it would leave it behind. */
-    options: {
-      retry?: boolean;
-      /** The person gave this command: its refusal takes the focus when the step lost it (#1546). */
-      focusRefusal?: boolean;
-    } = {},
+    options: HostCommandOptions = {},
   ): Promise<CommandResults[T] | null> {
     try {
       return await this.dispatch(hostId, type, payload);
@@ -2213,84 +1666,8 @@ export class AppStore {
    * Loads what the Sessões screen lists from every online host. Quiet: a host without history or
    * hub (older daemon) just contributes less.
    */
-  async refreshHub(): Promise<void> {
-    await Promise.all(
-      this.state.hosts
-        .filter((host) => host.status === "online")
-        .map((host) => this.refreshHost(host)),
-    );
-  }
-
-  /** The session lists of one online host, read and folded into the state when they changed. */
-  private async refreshHost(host: HostView): Promise<void> {
-    const conn = this.connections.get(host.id) as HostConnection;
-    const named = hasFeature(host.hostInfo?.features, "names", false);
-    const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
-    const [managed, history, external, standard, background] = await Promise.all([
-      quiet(conn.request("session.list", {})),
-      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-      quiet(conn.request("external.list", {})),
-      named ? quiet(conn.request("names.list", {})) : null,
-      withBackground ? quiet(conn.request("bg.list", {})) : null,
-    ]);
-    const patch: Partial<AppState> = this.changedMeta(host.id, managed, history, external);
-    // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
-    // the one the state holds stays; an empty answer is the only way a list empties.
-    const before = this.state.hub[host.id];
-    const lists = {
-      managed: managed ? managed.sessions : (before?.managed ?? []),
-      history: history ? history.sessions : (before?.history ?? []),
-    };
-    const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
-    if (!sameJson(this.state.hub[host.id], lists)) {
-      patch.hub = { ...this.state.hub, [host.id]: lists };
-    }
-    if (!sameJson(this.state.names[host.id], standardNames)) {
-      patch.names = { ...this.state.names, [host.id]: standardNames };
-    }
-    Object.assign(patch, background && this.background.changed(host.id, background));
-    if (Object.keys(patch).length > 0) this.update(patch);
-  }
-
-  /**
-   * The `meta` and `externals` of the state with what the lists say, each only when it differs from
-   * what the state holds, so a refresh that finds the same lists tells nobody (the screens compare
-   * by reference).
-   */
-  private changedMeta(
-    hostId: string,
-    managed: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
-    history: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
-    external: { sessions: ExternalSession[] } | null,
-  ): Partial<AppState> {
-    const meta = { ...this.state.meta };
-    const externals = { ...this.state.externals };
-    let metaChanged = false;
-    let externalsChanged = false;
-    const putMeta = (key: string, value: SessionMeta) => {
-      if (sameJson(meta[key], value)) return;
-      meta[key] = value;
-      metaChanged = true;
-    };
-    for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-      if (s.claudeSessionId && s.meta) putMeta(sessionKey(hostId, s.claudeSessionId), s.meta);
-    }
-    for (const s of external?.sessions ?? []) {
-      const key = sessionKey(hostId, s.claudeSessionId);
-      // A list read before a hook but answered after its frame is older than what the
-      // frame put in the state: it must not undo it.
-      const held = externals[key];
-      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
-      if (!older && !sameJson(held, s)) {
-        externals[key] = s;
-        externalsChanged = true;
-      }
-      if (s.meta) putMeta(key, s.meta);
-    }
-    return {
-      ...(metaChanged ? { meta } : {}),
-      ...(externalsChanged ? { externals } : {}),
-    };
+  refreshHub(): Promise<void> {
+    return this.sessionLists.refresh();
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */

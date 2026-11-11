@@ -31,7 +31,7 @@ const proc: ProcReader = {
   uptimeSec: async () => 10_000,
 };
 
-async function serve(withResources = true) {
+async function serve(withResources = true, peer?: string) {
   const { root } = workspace();
   const killed: number[] = [];
   const server = startServer({
@@ -64,6 +64,7 @@ async function serve(withResources = true) {
     port: 0,
     token: TOKEN,
     allowedRoots: [root],
+    ...(peer ? { allowedNetworks: ["0.0.0.0/0", "::/0"], peerOf: () => peer } : {}),
   });
   cleanups.push(() => server.stop());
   const client = new FrameClient(server.url);
@@ -106,6 +107,22 @@ describe("resources-server: over the wire (issue #154)", () => {
     });
     expect(done?.ended).toBe(true);
     expect(killed).toEqual([500]);
+  });
+
+  test("resources.endOrphan from beyond loopback and Tailscale is refused, and ends nothing (F5)", async () => {
+    const far = await serve(true, "8.8.8.8");
+    const refused = await far.client.request("resources.endOrphan", { pid: 500, startTicks: 1 });
+    expect([refused.ok, (refused.error as { reason?: string } | undefined)?.reason]).toEqual([
+      false,
+      "transport_refused",
+    ]);
+    expect(far.killed).toEqual([]);
+    const near = await serve(true, "100.64.0.7");
+    const done = await near.client.data<{ ended: boolean }>("resources.endOrphan", {
+      pid: 500,
+      startTicks: 1,
+    });
+    expect([done?.ended, near.killed]).toEqual([true, [500]]);
   });
 
   test("without the sampler the commands say the feature is off", async () => {

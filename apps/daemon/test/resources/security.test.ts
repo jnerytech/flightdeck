@@ -1,6 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   type ProcReader,
   type ProcStat,
@@ -335,18 +333,5 @@ describe("resources-security: a bounded read (F4)", () => {
       [...names.join("")].some((ch) => ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127),
     ).toBe(false);
     for (const name of names) expect(name.length).toBeLessThanOrEqual(32);
-  });
-});
-
-describe("resources-security: the request (F5, F6)", () => {
-  test("F5: ending an orphan asks for the same transport as the other host-changing commands", () => {
-    // Issue #1288: the command moved out of server.ts into the hostChanges handlers.
-    const source = readFileSync(
-      join(import.meta.dir, "../../src/server/handlers/hostChanges.ts"),
-      "utf8",
-    );
-    expect(source).toMatch(
-      /"resources\.endOrphan":[\s\S]{0,200}?requireVaultTransport\(ws\.data\.origin, "resources\.endOrphan"/,
-    );
   });
 });

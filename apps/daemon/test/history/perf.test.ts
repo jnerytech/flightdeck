@@ -33,6 +33,15 @@ function countingKeys() {
   return { keys, calls };
 }
 
+/** Project keys of a folder that is a clone of one repository: git answers, never blocks. */
+function clonedKeys() {
+  return new ProjectKeys("h", async (args) =>
+    args.includes("rev-parse")
+      ? { code: 0, stdout: `${args[args.indexOf("-C") + 1]}/.git` }
+      : { code: 0, stdout: "git@github.com:Acme/Repo.git" },
+  );
+}
+
 async function app(url: string): Promise<FrameClient> {
   const client = new FrameClient(url);
   cleanups.push(() => client.close());
@@ -179,5 +188,62 @@ describe("history-perf: the lists never block the event loop on git", () => {
     expect(data?.sessions.length).toBe(FOLDERS * 2);
     // The external sessions' keys were looked up, off the loop, when their hook events arrived.
     expect(calls.async).toBe(FOLDERS * 2);
+  });
+});
+
+describe("history-perf: a list waits for the keys of its cold folders", () => {
+  test("session.list answers its first request with the repository key of a cold folder", async () => {
+    const { manager, root } = newManager();
+    const cwd = join(root, "clone");
+    mkdirSync(cwd);
+    await manager.create({ cwd, prompt: "hi" });
+    const keys = clonedKeys();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [root],
+      central: central(keys, manager),
+      warmProjectKey: (dir) => keys.resolve(dir),
+    });
+    cleanups.push(() => server.stop());
+    const client = await app(server.url);
+    const data = await client.data<{ sessions: Array<{ projectKey?: string }> }>(
+      "session.list",
+      {},
+    );
+    expect(data?.sessions.map((s) => s.projectKey)).toEqual(["github.com/acme/repo"]);
+  });
+
+  test("history.list answers its first request with the repository key of a cold folder", async () => {
+    const root = projectsRoot();
+    writeTranscript(root, "-clone", "s-clone", [
+      userLine({ uuid: "u1", text: "hi", cwd: "/work/clone", ts: "2026-09-01T10:00:10.000Z" }),
+    ]);
+    const index = new HistoryIndexer({ db: new EventStore(":memory:").db, roots: [root] });
+    cleanups.push(() => index.stop());
+    await index.scan();
+    const keys = clonedKeys();
+    const { manager } = newManager();
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+      history: index,
+      central: central(keys, manager),
+      warmProjectKey: (dir) => keys.resolve(dir),
+    });
+    cleanups.push(() => server.stop());
+    const client = await app(server.url);
+    const page = await client.data<{ sessions: Array<{ projectKey?: string }> }>(
+      "history.list",
+      {},
+    );
+    expect(page?.sessions.map((s) => s.projectKey)).toEqual(["github.com/acme/repo"]);
   });
 });
