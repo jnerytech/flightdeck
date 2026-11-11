@@ -30,7 +30,7 @@ const TITLE = /^# Flightdeck — Phase (?:N|\d+) spec \(.+\)$/;
 const HEADER = "| Area | Test file | What must pass |";
 const AREA = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TEST_FILE =
-  /^(?:apps\/[\w-]+\/test|packages\/[\w-]+\/test|scripts\/test)\/((?:[\w-]+\/)*[\w.-]+)\.test\.tsx?$/;
+  /^(?:apps\/[\w-]+\/test|packages\/[\w-]+\/test|scripts\/test)\/((?:[\w-]+\/)?[\w.-]+)\.test\.tsx?$/;
 const SMOKE = /^scripts\/smoke-[\w-]+\.ts$/;
 const FEATURE = /^scripts\/e2e\/bdd\/features\/[\w-]+\.feature$/;
 /**
@@ -83,13 +83,8 @@ function rowProblem({ area, testFile, line }: SpecArea): string | null {
   if (!test && !SMOKE.test(testFile) && !FEATURE.test(testFile) && !RUST.test(testFile)) {
     return `line ${line}: ${testFile} is not a test file (apps/*/test, packages/*/test, scripts/test, src-tauri, a smoke or a .feature)`;
   }
-  // A test in a domain folder (#1603) names its area as the file alone or as folder-file.
-  if (
-    test &&
-    test[1] !== area &&
-    test[1]?.replaceAll("/", "-") !== area &&
-    test[1]?.split("/").pop() !== area
-  )
+  // A test one domain folder deep (#1603) names its area as folder-file.
+  if (test && test[1]?.replace("/", "-") !== area)
     return `line ${line}: the test file of \`${area}\` is ${area}.test.ts(x)`;
   if (area.endsWith("-ui") && !testFile.startsWith("apps/desktop/test/")) {
     return `line ${line}: a -ui area is tested in apps/desktop/test/`;
