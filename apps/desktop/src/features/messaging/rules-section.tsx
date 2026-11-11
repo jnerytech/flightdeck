@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import type { T } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
+import type { T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /** The fields of a selector, as the daemon's policy takes them. */
 const KINDS = ["session", "project", "team", "host"] as const;

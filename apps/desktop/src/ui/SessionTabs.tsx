@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { SessionFinish } from "../components/session/session-finish.tsx";
+import { SessionMessages } from "../features/messaging/session-messages.tsx";
 import type { AppStore } from "../lib/app-store.ts";
 import {
   offeredViews,
@@ -27,7 +28,6 @@ import type { XtermDeps } from "../lib/xterm-screen.ts";
 import { ChangesPanel } from "./ChangesPanel.tsx";
 import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
-import { SessionMessages } from "./SessionMessages.tsx";
 import { SessionTerminal } from "./SessionTerminal.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
 import { TracePanel } from "./TracePanel.tsx";
