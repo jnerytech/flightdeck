@@ -36,7 +36,7 @@ const DICTIONARY = /^apps\/desktop\/src\/i18n\//;
 const REFACTOR = /^refactor(\([^)]*\))?!?: /;
 /** An import or re-export statement, multi-line included, and a side-effect import. */
 const IMPORT =
-  /^[ \t]*(?:import|export\s*(?:\*|\{))[^;]*?\bfrom\s*["'][^"']*["'];?|^[ \t]*import\s*["'][^"']*["'];?/gm;
+  /^[ \t]*(?:import(?=[\s{*])|export\s*(?:\*|\{))[^;]*?\bfrom\s*["'][^"']*["'];?|^[ \t]*import\s*["'][^"']*["'];?/gm;
 /** A string that names a module or file by a relative path or the workspace package. */
 const PATH = /(["'])(?:\.{1,2}\/|@flightdeck\/)[^"'\n]*\1/g;
 const STRING = /"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g;
