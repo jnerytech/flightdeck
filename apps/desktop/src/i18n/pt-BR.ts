@@ -12,6 +12,7 @@ import { doctor } from "./pt-BR/doctor.ts";
 import { firstrun } from "./pt-BR/firstrun.ts";
 import { github } from "./pt-BR/github.ts";
 import { hosts } from "./pt-BR/hosts.ts";
+import { inbox } from "./pt-BR/inbox.ts";
 import { notifications } from "./pt-BR/notifications.ts";
 import { palette } from "./pt-BR/palette.ts";
 import { personas } from "./pt-BR/personas.ts";
@@ -55,17 +56,7 @@ export const ptBR = {
   ...github,
   ...board,
   ...costs,
-  toast: {
-    switchedHost: "Mudou para {host}",
-    backTo: "Voltar para {host}",
-    copied: "Copiado",
-    details: "Detalhes",
-    close: "Fechar",
-    allowRoot: "Adicionar às pastas permitidas",
-    allowRootMessage:
-      "Deixar as sessões de {host} usarem {folder}? Elas poderão ler e alterar os arquivos dela.",
-    rootAdded: "{folder} agora é uma pasta permitida de {host}.",
-  },
+  ...inbox,
   ...personas,
   ...snippets,
   ...vault,
@@ -211,29 +202,6 @@ export const ptBR = {
   ...watch,
   ...refusals,
   ...assistant,
-  inbox: {
-    bell: "Notificações",
-    bellUnread: "Notificações, {n} não lidas",
-    title: "Notificações",
-    markAll: "Marcar todas como lidas",
-    clear: "Limpar",
-    empty: "Nenhuma notificação.",
-    today: "Hoje",
-    yesterday: "Ontem",
-    earlier: "Antes",
-    unread: "não lida",
-    markRead: "Marcar como lida",
-    markUnread: "Marcar como não lida",
-    count: "{n} vezes",
-    gone: "O que isto citava não existe mais.",
-    dismiss: "Descartar",
-    asks: "Pergunta: {question}",
-    keys: "A aprova · N nega",
-    keysHigh: "Segure o botão para aprovar · N nega",
-    runs: "Quer executar: {command}",
-    edits: "Quer alterar {file}",
-    uses: "Quer usar {tool}",
-  },
   common: {
     cancel: "Cancelar",
     close: "Fechar",

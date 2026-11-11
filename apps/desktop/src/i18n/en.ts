@@ -12,6 +12,7 @@ import { doctor } from "./en/doctor.ts";
 import { firstrun } from "./en/firstrun.ts";
 import { github } from "./en/github.ts";
 import { hosts } from "./en/hosts.ts";
+import { inbox } from "./en/inbox.ts";
 import { notifications } from "./en/notifications.ts";
 import { palette } from "./en/palette.ts";
 import { personas } from "./en/personas.ts";
@@ -52,17 +53,7 @@ export const en: Dictionary = {
   ...github,
   ...board,
   ...costs,
-  toast: {
-    switchedHost: "Switched to {host}",
-    backTo: "Back to {host}",
-    copied: "Copied",
-    details: "Details",
-    close: "Close",
-    allowRoot: "Add to allowed folders",
-    allowRootMessage:
-      "Let sessions on {host} use {folder}? They will be able to read and change its files.",
-    rootAdded: "{folder} is now an allowed folder of {host}.",
-  },
+  ...inbox,
   ...personas,
   ...snippets,
   ...vault,
@@ -210,29 +201,6 @@ export const en: Dictionary = {
   ...watch,
   ...refusals,
   ...assistant,
-  inbox: {
-    bell: "Notifications",
-    bellUnread: "Notifications, {n} unread",
-    title: "Notifications",
-    markAll: "Mark all as read",
-    clear: "Clear",
-    empty: "No notifications.",
-    today: "Today",
-    yesterday: "Yesterday",
-    earlier: "Earlier",
-    unread: "unread",
-    markRead: "Mark as read",
-    markUnread: "Mark as unread",
-    count: "{n} times",
-    gone: "What this was about is gone.",
-    dismiss: "Dismiss",
-    asks: "Asks: {question}",
-    keys: "A approves · N denies",
-    keysHigh: "Hold the button to approve · N denies",
-    runs: "Wants to run: {command}",
-    edits: "Wants to change {file}",
-    uses: "Wants to use {tool}",
-  },
   common: {
     cancel: "Cancel",
     close: "Close",
