@@ -146,7 +146,7 @@ describe("regras-ui-aprovacao: Criar regra a partir disto", () => {
     expect(
       screen.queryByRole("button", { name: "Aprovar e não perguntar mais nesta sessão" }),
     ).toBeNull();
-    await act(() => store.approveVaultForSession(hostId, "r1"));
+    await act(() => store.vaultApprovals.approveForSession(hostId, "r1"));
     await stays(
       () => !daemon.commands.some((c) => c.type === "vault.approve" || c.type === "vault.deliver"),
       100,

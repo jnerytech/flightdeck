@@ -127,7 +127,7 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     const { store, hostId, push, payload, types } = await setup();
     push({ once: true });
     await settle(() => needsYou(store.getState()).length === 1);
-    await store.approveVaultForSession(hostId, "r1");
+    await store.vaultApprovals.approveForSession(hostId, "r1");
     await settle(() => types().includes("vault.deliver"));
     expect(payload("vault.approve")).toEqual({ requestId: "r1", via: "app", scope: "session" });
   });

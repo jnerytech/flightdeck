@@ -71,7 +71,7 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
     const item = needsYou(store.getState())[0];
     expect(item?.risk).toBe("high");
     expect(item?.vaultOnce).toBeUndefined();
-    await store.approveVaultForSession(hostId, "r1");
+    await store.vaultApprovals.approveForSession(hostId, "r1");
     await stays(() => !types().includes("vault.approve"), 300);
     expect(types()).not.toContain("vault.approve");
   });
@@ -80,11 +80,13 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
     const granted: unknown[] = [];
-    const hidden = store as unknown as {
-      state: { vaultApprovals: unknown[] };
-      vaultQuestions: Map<string, (answer: unknown) => void>;
-    };
-    hidden.vaultQuestions.set("v1", (answer) => granted.push(answer));
+    const hidden = store as unknown as { state: { vaultApprovals: unknown[] } };
+    const questions = (
+      store.vaultApprovals as unknown as {
+        questions: Map<string, (answer: unknown) => void>;
+      }
+    ).questions;
+    questions.set("v1", (answer) => granted.push(answer));
     hidden.state = {
       ...hidden.state,
       vaultApprovals: [
@@ -102,7 +104,7 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
         },
       ],
     };
-    await store.approveVaultForSession("h", "v1");
+    await store.vaultApprovals.approveForSession("h", "v1");
     expect(granted).toEqual([]);
   });
 

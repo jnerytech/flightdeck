@@ -111,6 +111,30 @@ describe("structure-guard (#1602)", () => {
     ]);
   });
 
+  test("a dictionary key named import is not an import statement: moving a later block keeps every text", () => {
+    const en = "apps/desktop/src/i18n/en.ts";
+    const vault = "apps/desktop/src/i18n/en/vault.ts";
+    const before = [
+      "export const en = {",
+      "  files: {",
+      '    import: "Import selected",',
+      '    reveal: "Reveal hidden lines",',
+      "  },",
+      "  vault: { hint: 'Read from \"the vault\"' },",
+      "};",
+      "",
+    ].join("\n");
+    const head = {
+      [en]: 'import { vault } from "./en/vault.ts";\nexport const en = {\n  files: {\n    import: "Import selected",\n    reveal: "Reveal hidden lines",\n  },\n  ...vault,\n};\n',
+      [vault]: "export const vault = { vault: { hint: 'Read from \"the vault\"' } };\n",
+    };
+    const changes: FileChange[] = [
+      { status: "M", path: en },
+      { status: "A", path: vault },
+    ];
+    expect(structureVerdict(pr(MOVE, { [en]: before }, head, changes)).problems).toEqual([]);
+  });
+
   test("a PR with any commit that is not a refactor is not a move, unless it has the structure label", () => {
     const changed = TEST_MOVED.replace("toBe(5)", "toBe(6)");
     const files = [{ status: "M", path: TEST }] as FileChange[];

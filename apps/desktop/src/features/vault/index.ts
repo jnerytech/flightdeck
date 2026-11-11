@@ -4,6 +4,11 @@
  * client's scope changes. Another domain imports from here, never a file inside.
  */
 export {
+  type ApprovalHost,
+  type VaultApprovalsCore,
+  VaultApprovalsSlice,
+} from "./approvals-store.ts";
+export {
   type RulesConnection,
   type RulesHost,
   type RulesRefusal,
