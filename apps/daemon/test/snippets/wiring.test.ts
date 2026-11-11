@@ -38,7 +38,7 @@ async function outcome(run: Promise<unknown>): Promise<string> {
 describe("snippets-wiring: the host's snippets, judged by its scanner and bound by its roots (#1593)", () => {
   test("a snippet holding a vault value is not saved", async () => {
     const { built } = wired();
-    const save = built.snippets.save({
+    const save = built.library.save({
       scope: "host",
       name: "deploy",
       type: "command",
@@ -50,7 +50,7 @@ describe("snippets-wiring: the host's snippets, judged by its scanner and bound 
   test("a history line holding a vault value is hidden in the import, the others offered", async () => {
     const { built, home } = wired();
     writeFileSync(join(home, ".bash_history"), `docker compose up --build api\necho ${VAULT}\n`);
-    const { candidates } = await built.snippetHistory.preview({});
+    const { candidates } = await built.history.preview({});
     const shown = candidates.map((c) => ({ command: c.command, hidden: c.hidden }));
     expect(shown).toContainEqual({ command: "docker compose up --build api", hidden: false });
     expect(shown).toContainEqual({ command: null, hidden: true });
@@ -58,7 +58,7 @@ describe("snippets-wiring: the host's snippets, judged by its scanner and bound 
 
   test("a project snippet outside the allowed roots is refused", async () => {
     const { built } = wired();
-    const save = built.snippets.save({
+    const save = built.library.save({
       scope: "project",
       projectPath: tempDir("fd-snippets-wiring-outside-"),
       name: "build",

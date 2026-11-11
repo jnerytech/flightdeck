@@ -619,7 +619,7 @@ export async function startDaemon(
     user: userInfo().username,
     sockDir: tmpdir(),
   });
-  const { snippets, snippetUse, snippetHistory } = createSnippets({
+  const snippets = createSnippets({
     db: store.db,
     config,
     scanner: snippetScanner,
@@ -990,11 +990,9 @@ export async function startDaemon(
     ...(cardReviews ? { cardReview: cardReviews } : {}),
     sessionFiles: new SessionFiles({ db: store.db }),
     ssh: serverGroup<"ssh">()(ssh.server),
-    snippets,
+    snippets: serverGroup<"snippets">()(snippets),
     personas: personaStore,
     personaSessions,
-    snippetUse,
-    snippetHistory,
     terminals,
     tasks: new TaskTracker({ dir: join(config.dataDir, "tasks") }),
     // The built-in templates and the files of `<dataDir>/templates` (phase 33).

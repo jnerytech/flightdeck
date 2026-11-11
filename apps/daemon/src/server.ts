@@ -143,6 +143,16 @@ export const serverGroup =
     h as unknown as Group<K>;
 type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
 
+/** Phase 18, #1593: the snippets domain's part of the server, each service optional. */
+interface SnippetsServer {
+  /** The snippets behind `snippets.*`. */
+  library?: Snippets;
+  /** The import from the shell history behind `snippets.importHistory`. */
+  history?: HistoryImporter;
+  /** Using a snippet behind `snippets.render` and `snippets.use`. */
+  use?: SnippetUse;
+}
+
 /** Phase 15, #1593: the ssh domain's part of the server, each service optional. */
 interface SshServer {
   /** The ssh destinos behind `ssh.*`. */
@@ -414,12 +424,8 @@ export interface ServerOptions {
   ssh?: SshServer;
   /** Where the server writes what it refuses and why a connection closed (never a secret). */
   log?: (message: string) => void;
-  /** The snippets behind `snippets.*` (phase 18). */
-  snippets?: Snippets;
-  /** The import from the shell history behind `snippets.importHistory` (phase 18). */
-  snippetHistory?: HistoryImporter;
-  /** Using a snippet behind `snippets.render` and `snippets.use` (phase 18). */
-  snippetUse?: SnippetUse;
+  /** The snippets and what the server offers of them (phase 18, #1593). */
+  snippets?: SnippetsServer;
   /** The personas behind `personas.*` (phase 20). */
   personas?: Personas;
   /** Applying a persona to an open session, behind `session.applyPersona` and `session.clearPersona` (phase 20). */

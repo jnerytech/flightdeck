@@ -634,18 +634,20 @@ export function daemon(
         : {}),
       ...(snippets
         ? {
-            snippets,
-            snippetUse: new SnippetUse({
-              snippets,
-              ...(terminals ? { terminals } : {}),
-              manager,
-              central,
-              exec: spawnExec,
-              allowedRoots: roots,
-            }),
+            snippets: {
+              library: snippets,
+              ...(snippetHistory ? { history: snippetHistory } : {}),
+              use: new SnippetUse({
+                snippets,
+                ...(terminals ? { terminals } : {}),
+                manager,
+                central,
+                exec: spawnExec,
+                allowedRoots: roots,
+              }),
+            },
           }
         : {}),
-      ...(snippetHistory ? { snippetHistory } : {}),
       ...(personaStore
         ? {
             personas: personaStore,

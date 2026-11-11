@@ -481,7 +481,7 @@ describe("snippets-escopos: pelo protocolo", () => {
   async function connect(snippets: Snippets | null, root: string) {
     const server = startServer({
       manager: newManager().manager,
-      ...(snippets ? { snippets } : {}),
+      ...(snippets ? { snippets: { library: snippets } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

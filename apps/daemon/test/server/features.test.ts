@@ -59,5 +59,15 @@ describe("daemon features: the list in the protocol matches the server", () => {
       ["harnessDraft"],
       ["harnessCommit"],
     ]);
+    const snippetsOf = (opts: object) =>
+      featuresOf({ snippets: opts } as unknown as ServerOptions).filter((f) =>
+        f.startsWith("snippet"),
+      );
+    // Only the library announces `snippets`; the group alone, `use` or `history` do not.
+    expect([
+      snippetsOf({}),
+      snippetsOf({ use: {}, history: {} }),
+      snippetsOf({ library: {} }),
+    ]).toEqual([[], [], ["snippets"]]);
   });
 });
