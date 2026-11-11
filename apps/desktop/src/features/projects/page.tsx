@@ -98,7 +98,7 @@ export function ProjectsPage(
     if (result) {
       setList(result);
       setLimit(String(result.maxParallelRuns));
-      store.rememberProjects(hostId, result.projects);
+      store.projectList.remember(hostId, result.projects);
     }
   }, [store, hostId]);
 
@@ -152,7 +152,9 @@ export function ProjectsPage(
     const state = store.getState();
     const projects = store.clientScope
       .get()
-      .filter(list?.projects ?? [], state.clientSelection, (p) => store.projectKeyOf(hostId, p));
+      .filter(list?.projects ?? [], state.clientSelection, (p) =>
+        store.projectList.keyOf(hostId, p),
+      );
     const hidden = (list?.projects.length ?? 0) > 0 && projects.length === 0;
     return (
       <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>

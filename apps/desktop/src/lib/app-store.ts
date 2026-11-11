@@ -8,7 +8,6 @@ import type {
   HistoryGetResult,
   HistoryListResult,
   MessageInfo,
-  Project,
   RunConfigInfo,
   RunState,
   SessionImage,
@@ -508,7 +507,11 @@ export class AppStore {
         knownProjects([
           ...hubRows(this.state),
           ...Object.entries(this.state.projects).flatMap(([hostId, list]) =>
-            list.map((p) => ({ hostId, cwd: p.path, projectKey: this.projectKeyOf(hostId, p) })),
+            list.map((p) => ({
+              hostId,
+              cwd: p.path,
+              projectKey: this.projectList.keyOf(hostId, p),
+            })),
           ),
         ]),
       changed: () => {
@@ -1386,24 +1389,9 @@ export class AppStore {
     }
   }
 
-  /** A host's projects into the state (quiet: a host without a board, or offline, lists none). */
-  loadProjects(hostId: string): Promise<Project[] | null> {
-    return this.projectList.load(hostId);
-  }
-
-  /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
-  rememberProjects(hostId: string, projects: Project[]): void {
-    this.projectList.remember(hostId, projects);
-  }
-
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
   setWorktreeFilter(filter: WorktreeFilter | null): void {
     this.update({ worktreeFilter: filter });
-  }
-
-  /** The key of a project of a host: the daemon's, else the one its folder would have. */
-  projectKeyOf(hostId: string, project: Project): string {
-    return this.projectList.keyOf(hostId, project);
   }
 
   /**
@@ -1422,7 +1410,7 @@ export class AppStore {
     const boards = this.state.hosts
       .filter((host) => host.status === "online")
       .map(async (host) => {
-        const projects = await this.loadProjects(host.id);
+        const projects = await this.projectList.load(host.id);
         await inSequence(projects ?? [], (project) => this.loadBoard(host.id, project.id));
       });
     const targets = this.state.hosts
@@ -1699,7 +1687,7 @@ export class AppStore {
     // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
     // one request, not two.
     if (options.connect === true && wantsProjects && projects?.ok) {
-      this.rememberProjects(hostId, projects.data.projects);
+      this.projectList.remember(hostId, projects.data.projects);
     }
     const probe = probeAfter(this.state.setupProbes[hostId], wants, { hooks, github, projects });
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });

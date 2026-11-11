@@ -262,7 +262,7 @@ describe("card-form (en): the validation note and starting a card with no criter
       const project = d.board.updateProject(card.projectId, {
         contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
       });
-      store.rememberProjects(store.getState().hosts[0]?.id ?? "", [project]);
+      store.projectList.remember(store.getState().hosts[0]?.id ?? "", [project]);
     }
     await settle(() => screen.queryByRole("button", { name: "Start" }) !== null);
     const start = () =>

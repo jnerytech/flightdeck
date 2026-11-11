@@ -174,7 +174,7 @@ describe("vigiar-config: the PR watch of each project, in Configurações", () =
     const { daemon, store } = await openSettings();
     daemon.watch.projects = [];
     await act(async () => {
-      await store.loadProjects(store.getState().hosts[0]?.id ?? "");
+      await store.projectList.load(store.getState().hosts[0]?.id ?? "");
     });
     await settle(() => screen.queryByText("Este host não tem projetos") !== null);
     expect(screen.queryByText("Este host não tem projetos")).not.toBeNull();
