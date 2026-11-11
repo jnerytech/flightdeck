@@ -1541,7 +1541,6 @@ export class AppStore {
 
   async removeHost(hostId: string): Promise<void> {
     this.hostTabs.removeHost(hostId);
-    this.hostUpdate.forget(hostId);
     this.connections.get(hostId)?.dispose();
     this.connections.delete(hostId);
     await this.platform.secrets.delete(hostId);
@@ -1555,6 +1554,7 @@ export class AppStore {
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
       setupProbes,
     });
+    this.hostUpdate.forget(hostId);
     this.persistHosts();
   }
 

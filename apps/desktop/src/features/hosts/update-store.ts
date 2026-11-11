@@ -48,6 +48,9 @@ export class HostUpdateSlice {
   private readonly autoChecks = new Map<string, number>();
   /** The "late" timer of each host's pending update: one per host, so a second click replaces it. */
   private readonly lates = new Map<string, ReturnType<typeof setTimeout>>();
+  /** The attempt each host's pending request belongs to: a newer one, a removal or a close ends it. */
+  private readonly attempts = new Map<string, number>();
+  private attemptSeq = 0;
 
   constructor(private readonly core: HostUpdateCore) {}
 
@@ -59,6 +62,8 @@ export class HostUpdateSlice {
     const target = this.core.host(hostId)?.hostInfo?.update?.version;
     if (!target || !this.core.connected(hostId)) return;
     this.settled(hostId);
+    const mine = ++this.attemptSeq;
+    this.attempts.set(hostId, mine);
     this.core.patch(hostId, { daemonUpdate: { target, failed: null } });
     const fail = (failed: string) => {
       if (this.core.host(hostId)?.daemonUpdate?.target === target)
@@ -67,9 +72,10 @@ export class HostUpdateSlice {
     try {
       await this.core.apply(hostId);
     } catch (error) {
-      fail(this.core.describeError(error));
+      if (this.attempts.get(hostId) === mine) fail(this.core.describeError(error));
       return;
     }
+    if (this.attempts.get(hostId) !== mine) return;
     this.lates.set(
       hostId,
       setTimeout(() => {
@@ -83,6 +89,7 @@ export class HostUpdateSlice {
   settled(hostId: string): void {
     clearTimeout(this.lates.get(hostId));
     this.lates.delete(hostId);
+    this.attempts.delete(hostId);
   }
 
   /** A host was removed: its timer and its last check go. */
@@ -93,7 +100,7 @@ export class HostUpdateSlice {
 
   /** The store is closing: no timer outlives it. */
   dispose(): void {
-    for (const id of [...this.lates.keys()]) this.settled(id);
+    for (const id of [...this.attempts.keys()]) this.settled(id);
     this.autoChecks.clear();
   }
 
