@@ -8,3 +8,4 @@ export {
   type AccountSliceState,
   initialAccountState,
 } from "./store.ts";
+export { wireAccount } from "./wire.ts";
