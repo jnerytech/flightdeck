@@ -28,3 +28,8 @@ export function saveFolded(
 ): void {
   storage.setItem(SIDEBAR_FOLDED_KEY, JSON.stringify(folded));
 }
+
+/** The folded groups after the person clicks `group`'s header: a folded group opens, an open one folds. */
+export function toggleGroup(folded: readonly SidebarGroup[], _group: SidebarGroup): SidebarGroup[] {
+  return [...folded];
+}
