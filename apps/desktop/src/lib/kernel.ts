@@ -1,4 +1,5 @@
 import type { CommandPayload, CommandResults, CommandType, RuleIssue } from "@flightdeck/protocol";
+import type { T } from "../i18n/index.ts";
 import type { HostConnection } from "./host-connection.ts";
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
@@ -160,4 +161,6 @@ export interface AppKernel<S extends object> {
   connection(hostId: string): HostConnection | undefined;
   /** Milliseconds now (injected in tests). */
   now(): number;
+  /** The app's translator now (it changes with the language). */
+  t(): T;
 }

@@ -51,7 +51,11 @@ import {
   wireHealth,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
-import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
+import {
+  initialMessagingState,
+  type MessagingSlice,
+  wireMessaging,
+} from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
@@ -351,6 +355,7 @@ export class AppStore {
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
+    t: () => this.i18n.t,
   };
 
   constructor(
@@ -429,13 +434,8 @@ export class AppStore {
         this.inbox.notify(notification, route, undefined, source),
       t: () => this.i18n.t,
     });
-    this.messaging = new MessagingSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
-      setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
+    this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
-      t: () => this.i18n.t,
     });
     this.settings = new SettingsSlice({
       state: () => this.state,
