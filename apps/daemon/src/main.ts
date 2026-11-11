@@ -87,8 +87,7 @@ import { serverGroup, startServer } from "./server.ts";
 import { daemonCommand } from "./service.ts";
 import { appServiceInstall } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
-import { SessionManager } from "./sessions/session-manager.ts";
-import { createSessionSettings } from "./sessions/wiring.ts";
+import { createSessionManager, createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
@@ -307,38 +306,23 @@ export async function startDaemon(
     log: (line) => logger.log(line),
   });
   const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
-  const manager = new SessionManager({
+  const manager = createSessionManager({
     folderLocks,
     store,
     runtime,
     risk,
-    onActivity: (active) => keepAwake.update(active),
-    trust: projectTrust.sessionTrust.bind(projectTrust),
-    prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
-    allowedRoots: config.allowedRoots,
-    defaultPermissionMode: config.defaultPermissionMode,
-    allowApiKey: config.allowApiKey,
-    allowBypass: () => config.allowBypassPermissions,
+    config,
+    projectTrust,
+    keepAwake,
     // A pinned session and a card's stay awake; filled in below, once the board and the meta exist.
-    keepAwake: (session) =>
-      awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
+    awake,
     baseEnv: env,
     ...present({ opencode: opencode.runtime }),
     onQuota,
-    onTurn: (sessionId, cwd, turn, runtime) => {
-      usage.record(sessionId, cwd, turn);
-      // The account card reads the Claude plan; an OpenCode turn spends none of it.
-      if (runtime === "claude") account?.turnEnded();
-    },
-    onTurnEdge: (edge) =>
-      snapshots.enqueue({
-        cwd: edge.cwd,
-        claudeSessionId: edge.claudeSessionId,
-        kind: edge.kind,
-        ...(edge.prompt !== undefined ? { prompt: edge.prompt } : {}),
-        ...(edge.turnUuid !== undefined ? { turnUuid: edge.turnUuid } : {}),
-      }),
+    usage,
+    account,
+    snapshots,
   });
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
