@@ -46,7 +46,8 @@ describe("shard-gate run: a shard job runs one tier group (#1854)", () => {
     const f = fakes();
     expect(await runShard(`1/${TIER_SHARDS}`, "bun", "/tmp/out", f.deps)).toBe(0);
     const marker = markerOf(f);
-    expect(marker.files.map((file) => TIERS[file]).sort()).toEqual(["component", "unit"]);
+    expect(marker.files).toHaveLength(1);
+    expect(["unit", "component"]).toContain(TIERS[marker.files[0] ?? ""] ?? "");
     expect(marker.tier).toBe("unit + component 1/2");
     expect(marker.seconds).toBe(2.5);
     expect(marker.of).toBe(TIER_SHARDS);

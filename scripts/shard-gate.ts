@@ -47,13 +47,16 @@ const [command, a = "", b = "", c = ""] = argv.filter(
   (_, i) => baseAt < 0 || (i !== baseAt && i !== baseAt + 1),
 );
 
+/** The tier of every test file (#261), by path: the shards run the tier plan's groups (#1854). */
+const tiers = testTiers(
+  new Map(
+    tracked.filter((p) => /\.tsx?$/.test(p)).map((p) => [p, readFileSync(join(ROOT, p), "utf8")]),
+  ),
+);
+
 /** The PR's selection (#1761): null for the whole suite; exits when the plan cannot run. */
 function selectionFor(ref: string | undefined): Selection | undefined {
   if (ref === undefined) return undefined;
-  const sources = new Map(
-    tracked.filter((p) => /\.tsx?$/.test(p)).map((p) => [p, readFileSync(join(ROOT, p), "utf8")]),
-  );
-  const tiers = testTiers(sources);
   const plan = planRelated({
     base: ref,
     platform: process.platform,
@@ -85,6 +88,8 @@ if (command === "run") {
       write,
       spawn: spawnLogged(ROOT),
       print: (line) => console.log(line),
+      tierOf: (path) => tiers[path],
+      now: Date.now,
       ...(selection ? { selection } : {}),
     }),
   );

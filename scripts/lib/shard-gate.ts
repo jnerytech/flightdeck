@@ -14,6 +14,7 @@ import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
 import { splitShards, type Timings, testFiles } from "./test-shards.ts";
 import type { Tier } from "./test-tiers.ts";
+import { TIER_SHARDS, tierShard, tierShardFiles } from "./tier-shards.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -371,14 +372,24 @@ export async function runShard(
     deps.print(`shard-gate: write the shard's output outside the checkout, not in ${out}`);
     return 2;
   }
-  const { selection } = deps;
+  const { selection, tierOf } = deps;
   const all = selection ? [...selection.tests] : testFiles([...deps.tracked]);
-  const files = splitShards(all, deps.timings, count)[index - 1] ?? [];
+  // With a tier map (#1854) the shards are the tier plan's: this one runs its group's tiers only.
+  const at = tierOf ? tierShard(index, count) : null;
+  if (tierOf && !at) {
+    deps.print(`shard-gate: ${spec} is not a shard of the tier plan (${TIER_SHARDS} shards)`);
+    return 2;
+  }
+  const files =
+    at && tierOf
+      ? (tierShardFiles(all, tierOf, deps.timings, index, count)?.files ?? [])
+      : (splitShards(all, deps.timings, count)[index - 1] ?? []);
+  const tier = at ? { tier: `${at.group.label} ${at.part}/${at.of}` } : {};
   // A bun test with no file runs the whole suite. A PR's small selection can leave a shard empty:
   // it passes with empty reports, so the merge still sees every shard (#1761).
   if (files.length === 0 && selection) {
     deps.mkdir(out);
-    const marker: ShardMarker = { shard: index, of: count, kind, files, exit: 0, fail: 0 };
+    const marker: ShardMarker = { shard: index, of: count, kind, files, exit: 0, fail: 0, ...tier };
     deps.write(join(out, "marker.json"), JSON.stringify(marker));
     deps.write(join(out, kind === "bun" ? "lcov.info" : "funcs.json"), kind === "bun" ? "" : "{}");
     deps.print(`shard ${index}/${count} ${kind}: no test file in this PR's selection`);
@@ -391,7 +402,9 @@ export async function runShard(
   deps.mkdir(out);
   const targets = selection ? [...selection.targets] : istanbulTargets(deps.tracked);
   const plan = shardRun(kind, files, out, targets);
+  const started = deps.now?.();
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
+  const ended = deps.now?.();
   deps.write(join(out, "test.log"), log);
   const marker: ShardMarker = {
     shard: index,
@@ -400,6 +413,8 @@ export async function runShard(
     files,
     exit,
     fail: failedCount(log),
+    ...tier,
+    ...(started !== undefined && ended !== undefined ? { seconds: (ended - started) / 1000 } : {}),
   };
   deps.write(join(out, "marker.json"), JSON.stringify(marker));
   for (const line of log.split("\n").filter((l) => /^\s*\d+ (pass|fail|skip)$|^Ran /.test(l))) {
