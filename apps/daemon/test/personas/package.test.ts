@@ -26,6 +26,9 @@ const SPEC_IDS = [
   "revisor",
   "docs",
   "frontend",
+  // Issue #1936: the two that judge the interface, right after the one that builds it.
+  "ux",
+  "ui",
   "dba",
   // Phase 21 coordinates its teams with this one.
   "coordenador",
@@ -42,7 +45,7 @@ async function codeOf(fn: () => unknown): Promise<string> {
   }
 }
 
-describe("personas-pacote: as onze", () => {
+describe("personas-pacote: as treze", () => {
   test("são a desenvolvedora (issue #92), as nove da spec, na ordem da tabela, e a coordenadora dos times da Fase 21, nos dois idiomas", () => {
     expect(PACK_IDS).toEqual(SPEC_IDS);
     for (const language of ["pt-BR", "en"] as const) {
@@ -114,6 +117,74 @@ describe("personas-pacote: as onze", () => {
       ]);
     }
     expect(packPersonas("pt-BR").find((p) => p.id === "arquiteto")?.permissionMode).toBe("plan");
+  });
+
+  test("a ux recomenda e não altera código: Opus em esforço alto, só lê, com severidade, heurística, evidência e confiança (#1936)", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const ux = packPersonas(language).find((p) => p.id === "ux");
+      expect([language, ux?.model, ux?.effort, ux?.tools, ux?.permissionMode]).toEqual([
+        language,
+        "claude-opus-5-5",
+        "high",
+        ["Read", "Grep", "Glob", "Bash"],
+        null,
+      ]);
+      const body = ux?.body ?? "";
+      const must =
+        language === "en"
+          ? [
+              /severity/i,
+              /heuristic/i,
+              /evidence/i,
+              /confidence/i,
+              /deterministic tools measure/i,
+              /does not replace tests with real people/i,
+              /off-token color.*ui/i,
+            ]
+          : [
+              /severidade/i,
+              /heurística/i,
+              /evidência/i,
+              /confiança/i,
+              /ferramentas determinísticas medem/i,
+              /não substitui testes com pessoas reais/i,
+              /cor fora dos tokens.*ui/i,
+            ];
+      for (const rule of must)
+        expect([language, String(rule), rule.test(body)]).toEqual([language, String(rule), true]);
+    }
+  });
+
+  test("a ui aplica correções em PRs pequenos: Sonnet em esforço alto, sem lista de ferramentas, nomeia o token esperado em cada achado (#1936)", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const ui = packPersonas(language).find((p) => p.id === "ui");
+      expect([language, ui?.model, ui?.effort, ui?.tools, ui?.permissionMode]).toEqual([
+        language,
+        "claude-sonnet-5-5",
+        "high",
+        null,
+        null,
+      ]);
+      const body = ui?.body ?? "";
+      const must =
+        language === "en"
+          ? [
+              /expected token/i,
+              /small/i,
+              /deterministic tools measure/i,
+              /ambiguous label.*ux/i,
+              /keyboard focus/i,
+            ]
+          : [
+              /token esperado/i,
+              /pequen/i,
+              /ferramentas determinísticas medem/i,
+              /rótulo ambíguo.*ux/i,
+              /foco de teclado/i,
+            ];
+      for (const rule of must)
+        expect([language, String(rule), rule.test(body)]).toEqual([language, String(rule), true]);
+    }
   });
 
   test("a desenvolvedora escreve código: teste primeiro, mudança pequena, segue o CLAUDE.md, roda as checagens e nunca faz push", () => {
@@ -205,7 +276,7 @@ describe("personas-pacote: as onze", () => {
     const first = packPersonas("pt-BR");
     (first[0] as { body: string }).body = "alterado";
     first.pop();
-    expect(packPersonas("pt-BR")).toHaveLength(11);
+    expect(packPersonas("pt-BR")).toHaveLength(13);
     expect(packPersonas("pt-BR")[0]?.body).not.toBe("alterado");
   });
 });
@@ -265,7 +336,7 @@ describe("personas-pacote: no daemon", () => {
     // One entry per id: the edited one stands in for the pack's, whatever the language.
     expect((await revisor()).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
     expect((await revisor("en")).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
-    expect((await personas.list({ scope: "host" })).personas).toHaveLength(11);
+    expect((await personas.list({ scope: "host" })).personas).toHaveLength(13);
     expect((await personas.resolve({ id: "revisor" }, {})).persona.body).toBe(
       "Revise só o que mudou.",
     );
@@ -292,7 +363,7 @@ describe("personas-pacote: no daemon", () => {
     expect((await personas.get("qa", {})).scope).toBe("pack");
     await personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
     await personas.remove("host", "minha");
-    expect((await personas.list({ scope: "host" })).personas).toHaveLength(11);
+    expect((await personas.list({ scope: "host" })).personas).toHaveLength(13);
   });
 
   test("a edição vale as regras de sempre, e a do projeto vale mais que a editada e que a do pacote", async () => {
