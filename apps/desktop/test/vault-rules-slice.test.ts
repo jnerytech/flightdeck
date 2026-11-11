@@ -6,6 +6,14 @@ import type { SecretMeta } from "../src/lib/vault.ts";
 const ALLOW = [{ id: "r1", decision: "allow" }];
 const ASK = [{ id: "r2", decision: "ask" }];
 const SECRET = { id: "s1", name: "deploy", tags: ["ci"], allowedHosts: ["a", "b"] } as SecretMeta;
+const verdict = (reason: string): VaultVerdict => ({
+  decision: "allow",
+  ruleId: null,
+  reason,
+  once: false,
+  needsHold: false,
+  limited: false,
+});
 const hosts = (...status: string[]) =>
   status.map((s, i) => ({ id: String.fromCharCode(97 + i), name: `host-${i}`, status: s }));
 
@@ -41,7 +49,7 @@ function slice(
       }
       return { ok: true, data: { rules: over.held?.[hostId] ?? [] } };
     }) as VaultRulesCore["request"],
-    preview: async (hostId) => ({ decision: "allow", reason: hostId }) as unknown as VaultVerdict,
+    preview: async (hostId) => verdict(hostId),
     fail: (error, text) => {
       events.push(`fail ${(error as Error).message} ${text ?? ""}`.trim());
     },
@@ -86,10 +94,7 @@ describe("vault rules slice: a secret's usage rules", () => {
 
   test("preview asks the first online host the secret may go to, and nothing when there is none", async () => {
     const s = slice({ status: ["offline", "online"] });
-    expect(await s.rules.preview("s1", { action: "deploy" } as never)).toEqual({
-      decision: "allow",
-      reason: "b",
-    });
+    expect(await s.rules.preview("s1", { action: "deploy" } as never)).toEqual(verdict("b"));
     expect(await s.rules.preview("unknown", {} as never)).toBeNull();
     expect(
       await slice({ status: ["offline", "offline"] }).rules.preview("s1", {} as never),
