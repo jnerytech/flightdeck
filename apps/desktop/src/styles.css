@@ -883,84 +883,6 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
-/* The row under an assistant message: shown on hover or focus (always on touch screens). */
-@utility message-actions {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.25rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  opacity: 0;
-  transition: opacity 0.15s;
-  &:focus-within {
-    opacity: 1;
-  }
-  @media (hover: none) {
-    opacity: 1;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-}
-@utility message-hover {
-  &:hover .message-actions {
-    opacity: 1;
-  }
-}
-
-/* The mode chip under the composer and its menu: a pill that opens a list of rows (name, what it does, number). */
-@utility mode-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: 9999px;
-  padding: 0 0.5rem;
-  background: transparent;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  line-height: 1.25rem;
-  cursor: pointer;
-  &:hover {
-    background: var(--color-accent);
-    color: var(--color-foreground);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 1px;
-  }
-  &[data-bypass="true"] {
-    border-color: var(--color-status-error);
-  }
-}
-@utility mode-menu {
-  min-width: 16rem;
-  max-width: min(22rem, calc(100vw - 1rem));
-}
-@utility mode-row {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-}
-@utility mode-row-name {
-  font-weight: 500;
-}
-@utility mode-row-note {
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  white-space: normal;
-}
-@utility mode-row-key {
-  margin-left: auto;
-  padding-left: 0.75rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-}
 @utility activity-line {
   display: flex;
   align-items: center;
@@ -968,12 +890,6 @@ html:not(:has([data-slot="status-bar"])) {
   padding: 0 0.5rem;
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
-}
-
-/* Assistant text: plain on the page, in a readable measure and with room between the lines. */
-@utility message-prose {
-  max-width: 48rem;
-  line-height: 1.65;
 }
 
 /* The `?` sheet of shortcuts: the box, its groups and their rows. */
