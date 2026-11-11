@@ -10,3 +10,4 @@ export {
   QuotaSlice,
   type QuotaSliceState,
 } from "./store.ts";
+export { wireQuota } from "./wire.ts";

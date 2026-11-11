@@ -62,7 +62,7 @@ import {
   wirePersonas,
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
-import { initialQuotaState, QuotaSlice } from "../features/quota/index.ts";
+import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { RoiSlice } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
@@ -74,13 +74,17 @@ import {
   SessionsSlice,
   SummariesSlice,
 } from "../features/sessions/index.ts";
-import { initialSettingsState, SettingsSlice } from "../features/settings/index.ts";
+import {
+  initialSettingsState,
+  type SettingsSlice,
+  wireSettings,
+} from "../features/settings/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
   wireSnippets,
 } from "../features/snippets/index.ts";
-import { initialSshState, SshSlice } from "../features/ssh/index.ts";
+import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
@@ -351,9 +355,11 @@ export class AppStore {
     hostCommand: (hostId, type, payload, options) =>
       this.hostCommand(hostId, type, payload, options),
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+    dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
     t: () => this.i18n.t,
+    onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
   };
 
   constructor(
@@ -374,15 +380,7 @@ export class AppStore {
       storage: platform.storage,
       language: () => this.i18n.lang,
     });
-    this.ssh = new SshSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      list: (hostId) => this.hostCommand(hostId, "ssh.list", {}),
-      peek: (hostId) => quiet(this.dispatch(hostId, "ssh.list", {})),
-      save: (hostId, payload) => this.hostCommand(hostId, "ssh.save", payload),
-      connect: (hostId, payload) => this.hostCommand(hostId, "ssh.connect", payload),
-      answer: (hostId, requestId, secret) =>
-        this.hostCommand(hostId, "askpass.answer", { requestId, secret }),
+    this.ssh = wireSsh(this.kernel, {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
@@ -397,20 +395,12 @@ export class AppStore {
       showTerminal: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
     });
-    this.quota = new QuotaSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
-      read: (hostId) => this.hostCommand(hostId, "quota.get", {}),
-      setPauseAt: (hostId, pauseAt) => this.hostCommand(hostId, "quota.setPauseAt", { pauseAt }),
+    this.quota = wireQuota(this.kernel, {
       notify: (notice, hostId) =>
         this.inbox.notify(notice, { name: "host", host: hostId }, undefined, {
           event: "budget-quota",
           hostId,
         }),
-      t: () => this.i18n.t,
-      now: () => this.now(),
     });
     this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
@@ -422,11 +412,8 @@ export class AppStore {
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
     });
-    this.settings = new SettingsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.settings = wireSettings(this.kernel, {
       platform,
-      t: () => this.i18n.t,
       onShortcut: () => this.history.openSearch(),
     });
     this.hostTabs = HostTabs.restore(
