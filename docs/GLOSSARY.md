@@ -207,6 +207,7 @@ test's baseline, with the issue that renames them.
 | `snippets` | snippet | Saved commands and prompts with `{{name}}` places, and their use |
 | `ssh` | SSH destination | SSH destinations, server keys, key delivery and the ssh runs of actions |
 | `summary` | summary | A short summary of a session built from its transcript, with no model call |
+| `tabs` | tab | The strip of open tabs: each tab's title, icon, badge, host color and the words a screen reader gets |
 | `teams` | team | A coordinator session and its workers, started together |
 | `telemetry` | telemetry | Claude Code's OTLP export, received locally: timings, never text |
 | `teleport` | teleport | Moves a session with its work to another host |
