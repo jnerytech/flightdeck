@@ -15,9 +15,9 @@ const { SessionMessages } = await import("../src/ui/SessionMessages.tsx");
 const { RunTimeline } = await import("../src/ui/RunTimeline.tsx");
 const { CardReview } = await import("../src/ui/CardReview.tsx");
 const { PrComments } = await import("../src/ui/PrComments.tsx");
-const { RulesPreview } = await import("../src/components/vault/rules-preview.tsx");
-const { RulesEditor } = await import("../src/components/vault/rules-editor.tsx");
-const { VaultReport } = await import("../src/components/vault/vault-report.tsx");
+const { RulesPreview } = await import("../src/features/vault/rules-preview.tsx");
+const { RulesEditor } = await import("../src/features/vault/rules-editor.tsx");
+const { VaultReport } = await import("../src/features/vault/vault-report.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 

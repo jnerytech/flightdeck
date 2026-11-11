@@ -3,7 +3,6 @@ import { useId, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RulesPreview } from "@/components/vault/rules-preview";
 import { useT } from "@/i18n/context";
 import { refusalText, ruleIssueText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
@@ -20,6 +19,7 @@ import {
   type RuleDraft,
   ruleOf,
 } from "@/lib/vault-rules-form";
+import { RulesPreview } from "./rules-preview.tsx";
 
 /** The field of a rule's draft that each path of the daemon's issues points at. */
 const FIELD_OF: Record<string, keyof RuleDraft> = {

@@ -10,7 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { VaultPage } = await import("../src/ui/VaultPage.tsx");
+const { VaultPage } = await import("../src/features/vault/page.tsx");
 
 setDefaultTimeout(30_000);
 

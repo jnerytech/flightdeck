@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SecretPicker } from "@/components/vault/secret-picker";
+import { SecretPicker } from "@/features/vault/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { actionIssueText, refusalText } from "@/i18n/errors";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";

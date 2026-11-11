@@ -4,7 +4,7 @@ import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
-const { RulesEditor } = await import("../src/components/vault/rules-editor.tsx");
+const { RulesEditor } = await import("../src/features/vault/rules-editor.tsx");
 const { MessagingRulesSection } = await import("../src/ui/MessagingRulesSection.tsx");
 const { ActionForm } = await import("../src/ui/ActionForm.tsx");
 const { ChangesPanel } = await import("../src/ui/ChangesPanel.tsx");

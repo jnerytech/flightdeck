@@ -10,6 +10,7 @@ export {
   type VaultRulesCore,
   VaultRulesSlice,
 } from "./rules-store.ts";
+export { SecretPicker, type SecretPickerProps } from "./secret-picker.tsx";
 export {
   type VaultFileFailure,
   type VaultSecretsCore,
