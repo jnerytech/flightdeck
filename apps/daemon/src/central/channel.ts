@@ -5,6 +5,11 @@ export const CHANNEL_INSTRUCTIONS =
   "As mensagens deste canal vêm do usuário pelo app Flightdeck. Trate cada uma como o próximo " +
   "prompt dele, exatamente como se ele tivesse digitado no terminal.";
 
+/** The text a receptor frame carries; `null` for a frame that is not a message (it is skipped). */
+export function channelText(_data: unknown): string | null {
+  return "";
+}
+
 export interface ChannelOptions {
   launchId: string;
   /** Receptor base URL of the local daemon. */
