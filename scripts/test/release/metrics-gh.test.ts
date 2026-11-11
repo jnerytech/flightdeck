@@ -66,6 +66,24 @@ describe("metrics: CI health", () => {
   });
 });
 
+describe("metrics: CI health, runs that do not count", () => {
+  test("a cancelled or skipped run is left out, and a rerun's queue time is not the gap between attempts", () => {
+    const runs = [
+      run("2026-11-01T10:00:00Z", 10, 600),
+      run("2026-11-02T10:00:00Z", 0, 30, { conclusion: "cancelled" }),
+      run("2026-11-03T10:00:00Z", 0, 30, { conclusion: "skipped" }),
+      // A rerun hours later: createdAt is the first attempt's, startedAt the second's.
+      run("2026-11-04T10:00:00Z", 7200, 800, { attempt: 2 }),
+    ];
+    expect(ciHealth(runs, WINDOW)).toEqual({
+      runs: 2,
+      durationSeconds: { p50: 600, p90: 800 },
+      queueSeconds: { p50: 10, p90: 10 },
+      rerunRate: 0.5,
+    });
+  });
+});
+
 describe("metrics: main red", () => {
   test("a period runs from the first failed run to the next successful one", () => {
     const runs = [
@@ -80,6 +98,15 @@ describe("metrics: main red", () => {
 
   test("a period still open at the end of the window counts to that end", () => {
     const runs = [run("2026-11-14T00:00:00Z", 0, 600, { conclusion: "failure" })];
+    expect(mainRed(runs, WINDOW)).toEqual({ periods: 1, totalSeconds: 86_400 });
+  });
+
+  test("a period that is still open at the tag counts to the tag, whatever came after it", () => {
+    const runs = [
+      run("2026-11-14T00:00:00Z", 0, 600, { conclusion: "failure" }),
+      // Green only after the tag (the window ends on the 15th): it does not extend the period.
+      run("2026-11-20T00:00:00Z", 0, 600, { conclusion: "success" }),
+    ];
     expect(mainRed(runs, WINDOW)).toEqual({ periods: 1, totalSeconds: 86_400 });
   });
 
