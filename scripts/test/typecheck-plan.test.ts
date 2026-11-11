@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { PROJECTS, runAll, typecheckPlan } from "../lib/typecheck.ts";
+import { PROJECTS, runAll, typecheckJobs, typecheckPlan } from "../lib/typecheck.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
@@ -62,5 +62,68 @@ describe("typecheck-plan", () => {
     expect(most).toBe(1);
     expect(code).toBe(2);
     expect(logs).toEqual(["typecheck a", "typecheck b", "typecheck c"]);
+  });
+
+  test("with a limit of two, two runs overlap, every run finishes and the first failure in plan order is the result", async () => {
+    let running = 0;
+    let most = 0;
+    const done: string[] = [];
+    const code = await runAll(
+      [
+        ["tsc", "-p", "a"],
+        ["tsc", "-p", "b"],
+        ["tsc", "-p", "c"],
+        ["tsc", "-p", "d"],
+      ],
+      async (command) => {
+        running++;
+        most = Math.max(most, running);
+        await new Promise((resolve) => setTimeout(resolve, command[2] === "a" ? 5 : 1));
+        running--;
+        done.push(command[2] ?? "");
+        return command[2] === "b" ? 2 : command[2] === "c" ? 3 : 0;
+      },
+      () => {},
+      { limit: 2 },
+    );
+    expect(most).toBe(2);
+    expect([...done].sort()).toEqual(["a", "b", "c", "d"]);
+    expect(code).toBe(2);
+  });
+
+  test("the run ends with each project's time and the total, from the clock it is given", async () => {
+    let clock = 0;
+    const logs: string[] = [];
+    await runAll(
+      [
+        ["tsc", "-p", "packages/protocol/tsconfig.json"],
+        ["tsc", "-p", "apps/desktop/tsconfig.json"],
+      ],
+      async (command) => {
+        clock += command[2]?.startsWith("apps") ? 4_200 : 600;
+        return 0;
+      },
+      (line) => logs.push(line),
+      { now: () => clock },
+    );
+    expect(logs.at(-1)).toBe("typecheck: packages/protocol 0.6s, apps/desktop 4.2s, total 4.8s");
+  });
+});
+
+describe("typecheckJobs", () => {
+  const meminfo = (gb: number) => `MemTotal: 16000000 kB\nMemAvailable: ${gb * 1024 * 1024} kB\n`;
+
+  test("two runs at once from 8 GB available, one below it or when the memory is unknown", () => {
+    expect(typecheckJobs(meminfo(8), undefined)).toBe(2);
+    expect(typecheckJobs(meminfo(12), undefined)).toBe(2);
+    expect(typecheckJobs(meminfo(7), undefined)).toBe(1);
+    expect(typecheckJobs(null, undefined)).toBe(1);
+  });
+
+  test("FLIGHTDECK_TYPECHECK_JOBS wins when it is a whole number of at least 1", () => {
+    expect(typecheckJobs(meminfo(4), "3")).toBe(3);
+    expect(typecheckJobs(meminfo(12), "1")).toBe(1);
+    expect(typecheckJobs(meminfo(12), "0")).toBe(2);
+    expect(typecheckJobs(meminfo(12), "many")).toBe(2);
   });
 });

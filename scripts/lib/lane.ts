@@ -29,6 +29,8 @@ export interface LaneDeps {
   protect?(): void;
   /** How many places are open now, at most `locks.length`; asked on every try (default: all). */
   places?: () => number;
+  /** The clock in ms, to tell how long a run waited for its place (default: Date.now). */
+  now?: () => number;
 }
 
 /**

@@ -21,11 +21,29 @@ export function typecheckPlan(projects: string[] = PROJECTS): string[][] {
   ]);
 }
 
+/** What `runAll` may be told: how many projects run at once and the clock for the timings. */
+export interface RunOptions {
+  limit?: number;
+  now?: () => number;
+}
+
+/**
+ * How many tsc runs may go at once: one, or two when the machine has at least 8 GB available (the
+ * two largest projects peak near 4 GB together). `meminfo` is /proc/meminfo, null off Linux;
+ * FLIGHTDECK_TYPECHECK_JOBS (`override`) wins when it is a whole number of at least 1.
+ */
+export function typecheckJobs(meminfo: string | null, override: string | undefined): number {
+  const forced = Number(override);
+  if (Number.isInteger(forced) && forced >= 1) return forced;
+  return 1 + (meminfo === null ? 0 : 0);
+}
+
 /** Runs every command in order (all of them, so one run shows every error) and returns the first failure. */
 export async function runAll(
   commands: string[][],
   run: (command: string[]) => Promise<number>,
   log: (line: string) => void,
+  _options: RunOptions = {},
 ): Promise<number> {
   let first = 0;
   await inSequence(commands, async (command) => {
