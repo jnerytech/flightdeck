@@ -47,6 +47,10 @@ const calls = (text: string, names: Set<string>) =>
 
 /** The tier of every test file (and every journey and smoke) among these sources, by path. */
 export function testTiers(sources: Map<string, string>): Record<string, Tier> {
+  return classify(sources, false);
+}
+
+function classify(sources: Map<string, string>, domFirst: boolean): Record<string, Tier> {
   const known = new Set(sources.keys());
   const helpers = new Map<string, { heavy: Set<string>; dom: Set<string> }>();
   const imported = (path: string, text: string) => {
@@ -101,16 +105,23 @@ export function testTiers(sources: Map<string, string>): Record<string, Tier> {
     if (!TEST_FILE.test(path)) continue;
     const text = code(sources.get(path) ?? "");
     const from = imported(path, text);
-    if (isIntegration(text) || calls(text, from.heavy)) tiers[path] = "integration";
-    else if (COMPONENT.test(text) || calls(text, from.dom)) tiers[path] = "component";
+    const heavy = isIntegration(text) || calls(text, from.heavy);
+    const dom = COMPONENT.test(text) || calls(text, from.dom);
+    if (heavy && !(domFirst && dom)) tiers[path] = "integration";
+    else if (dom) tiers[path] = "component";
     else tiers[path] = "unit";
   }
   return tiers;
 }
 
-/** The tier each test file runs in on CI's shards (#1854): testTiers' tiers, a stub for now. */
+/**
+ * The tier each test file runs in on CI's shards (#1854): testTiers' tiers, except that a test that
+ * draws the DOM runs with the component tests even when it also starts a daemon. Those UI tests
+ * failed together in the integration shard (menus not found, waits timed out) and pass next to the
+ * other DOM files; the pyramid table still counts them by testTiers.
+ */
 export function shardTiers(sources: Map<string, string>): Record<string, Tier> {
-  return testTiers(sources);
+  return classify(sources, true);
 }
 
 /** How many files each tier holds. */
