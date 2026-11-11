@@ -556,7 +556,9 @@ export function mergeShards(
   });
   if (result.lcov) deps.write(lcovOut, result.lcov);
   if (deps.tiers && deps.fastBaseline && deps.fastResult) {
-    deps.fastResult(fastCoverageOf(count, jobs, deps, deps.tiers, deps.fastBaseline));
+    deps.fastResult(
+      fastCoverageOf(count, jobs, deps, deps.shardTiers ?? deps.tiers, deps.fastBaseline),
+    );
   }
   if (result.problems.length === 0) {
     deps.print(

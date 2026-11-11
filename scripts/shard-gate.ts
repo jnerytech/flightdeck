@@ -119,6 +119,7 @@ if (command === "run") {
       print: (line) => console.log(line),
       error: (line) => console.error(line),
       tiers,
+      shardTiers: shardTierOf,
       // The pyramid (#1854): in the log, in the job summary when GitHub gives one, and as JSON next
       // to the lcov, for the artifact a trend is charted from.
       pyramid: (markdown, json) => {
