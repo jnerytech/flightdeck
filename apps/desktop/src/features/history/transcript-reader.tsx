@@ -16,7 +16,7 @@ import { basename, isInside } from "../../lib/paths.ts";
 import { messageParts } from "../../lib/tool-line.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { Markdown } from "../../ui/Markdown.tsx";
-import { useLiveElsewhereGuard } from "../../ui/use-live-elsewhere-guard.tsx";
+import { useLiveElsewhereGuard } from "../sessions/index.ts";
 
 /** Which transcript to read, and where to open it (a search hit). */
 export interface ReaderTarget {

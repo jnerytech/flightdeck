@@ -18,7 +18,7 @@ import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
 import { UpdateBanner, UpdateCard } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
-import { ResumeOfferDialog } from "@/features/sessions/index.ts";
+import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
@@ -43,7 +43,6 @@ import { preloadMarkdown } from "./Markdown.tsx";
 import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
-import { useLiveElsewhereAsk } from "./use-live-elsewhere-guard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
 type InPlace =

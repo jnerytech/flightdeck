@@ -8,7 +8,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { TerminalTarget } from "../../lib/terminal.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { useLiveElsewhereGuard } from "../../ui/use-live-elsewhere-guard.tsx";
+import { useLiveElsewhereGuard } from "../sessions/index.ts";
 
 /**
  * "Abrir no terminal" for a session, card or project: opens one on this machine, or copies the
