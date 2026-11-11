@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ExternalSession } from "@flightdeck/protocol";
 import { translator } from "../src/i18n/index.ts";
-import { type HubRow, hubRows, rowStatus } from "../src/lib/hub.ts";
+import { externalState, type HubRow, hubRows, rowStatus } from "../src/lib/hub.ts";
 
 /**
  * Issue #1736: a session started in a terminal that waits at a plan approval or a question has a
@@ -58,6 +58,23 @@ describe("hub-external-waiting: a terminal session at a prompt needs you (#1736)
       ["a", "idle", undefined],
       ["b", "running", undefined],
     ]);
+  });
+
+  test("a session that ended is over, whatever it waited at: it is not one that needs you", () => {
+    const ended = external({ status: "ended", waiting: "plan" });
+    expect(externalState(ended)).toBe("ended");
+    expect(rowsOf(ended).map((r) => [r.state, r.waiting])).toEqual([["ended", undefined]]);
+  });
+
+  test("one rule gives the state of a terminal session for the list and for its own page", () => {
+    expect(
+      [
+        external({ status: "idle", waiting: "question" }),
+        external({ status: "running", waiting: "plan" }),
+        external({ status: "unknown", waiting: null }),
+        external({ status: "awaiting_permission" }),
+      ].map(externalState),
+    ).toEqual(["needs_you", "needs_you", "idle", "needs_you"]);
   });
 
   for (const [language, plan, question] of [

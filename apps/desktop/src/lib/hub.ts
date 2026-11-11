@@ -1,4 +1,5 @@
 import type {
+  ExternalSession,
   ExternalStatus,
   HistorySessionSummary,
   SessionLine,
@@ -198,6 +199,11 @@ const EXTERNAL: Record<ExternalStatus, HubState> = {
   unknown: "idle",
   ended: "ended",
 };
+
+/** The hub state of a terminal session: what its hooks said, and a plan or a question it waits at (#1736). */
+export function externalState(session: ExternalSession): HubState {
+  return EXTERNAL[session.status];
+}
 
 /** A managed session's line state, from its status. */
 const LINE: Record<SessionStatus, SessionLine["state"]> = {
