@@ -1,0 +1,49 @@
+/*
+ * The cost chart's series (issue #179): a hue each, and a pattern from the second on, so a series
+ * reads without its colour. The pattern is the card's colour over the series' own.
+ */
+@utility chart-series-1 {
+  background-color: var(--chart-1);
+}
+
+@utility chart-series-2 {
+  background-color: var(--chart-2);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 3px,
+    color-mix(in oklch, var(--card) 55%, transparent) 3px 5px
+  );
+}
+
+@utility chart-series-3 {
+  background-color: var(--chart-3);
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--card) 60%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 5px 5px;
+}
+
+@utility chart-series-4 {
+  background-color: var(--chart-4);
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    color-mix(in oklch, var(--card) 55%, transparent) 3px 5px
+  );
+}
+
+@utility chart-series-5 {
+  background-color: var(--chart-5);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 3px,
+      color-mix(in oklch, var(--card) 50%, transparent) 3px 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 3px,
+      color-mix(in oklch, var(--card) 50%, transparent) 3px 4px
+    );
+}
