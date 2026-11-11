@@ -24,7 +24,7 @@ import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
 import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "@/lib/ask-question";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { cn } from "@/lib/utils";
-import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
+import { AlwaysAllow } from "../../features/permissions/index.ts";
 import { Markdown } from "../../ui/Markdown.tsx";
 import { ApprovalActions } from "./approval-actions.tsx";
 import { resolutionLine, savedAnswers } from "./approval-lines.ts";
