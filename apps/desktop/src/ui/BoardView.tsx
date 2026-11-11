@@ -541,7 +541,7 @@ export const BoardView = memo(function BoardView(props: {
   const elsewhere = useStartElsewhere({
     store,
     hostId,
-    sourceKey: project ? store.projectKeyOf(hostId, project) : null,
+    sourceKey: project ? store.projectList.keyOf(hostId, project) : null,
     hosts: state.hosts,
     cards: state.cards,
     t,
@@ -841,7 +841,7 @@ export const BoardView = memo(function BoardView(props: {
   holds.push(
     ...holdLines(t, hostName, {
       budgets: state.budgets[hostId] ?? [],
-      projectKey: project ? store.projectKeyOf(hostId, project) : null,
+      projectKey: project ? store.projectList.keyOf(hostId, project) : null,
       cards: all,
       memoryOver,
       // #1481: a paused host is a hold like the others: the confirm names it and the cards join the queue.

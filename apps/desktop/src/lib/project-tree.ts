@@ -128,7 +128,7 @@ export function cardInFilter(card: Card, filter: WorktreeFilter): boolean {
  * folder that are outside every worktree.
  */
 export function rowInFilter(
-  row: HubRow,
+  row: Pick<HubRow, "hostId" | "cwd">,
   filter: WorktreeFilter,
   project: Pick<Project, "path">,
   worktrees: readonly string[],

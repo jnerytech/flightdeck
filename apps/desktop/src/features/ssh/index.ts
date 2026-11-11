@@ -5,3 +5,4 @@
  */
 export { isProd, savePayload } from "./ssh.ts";
 export { initialSshState, type SshCore, SshSlice, type SshSliceState } from "./store.ts";
+export { wireSsh } from "./wire.ts";

@@ -19,7 +19,7 @@ function setup(
   });
   store.i18n.start();
   const loaded: string[] = [];
-  store.loadProjects = (async (hostId: string) => {
+  store.projectList.load = (async (hostId: string) => {
     loaded.push(hostId);
     return [];
   }) as never;

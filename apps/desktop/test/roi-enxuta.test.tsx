@@ -108,7 +108,7 @@ describe("roi-enxuta: a roi.summary refresh renders the card and the table, noth
       range.set?.("2026-10-13");
     });
     await act(async () => {
-      await store.roiSummaries("2026-10-01", "2026-10-14");
+      await store.roiFigures.summaries("2026-10-01", "2026-10-14");
     });
 
     expect(cardProbe.since(card).commits).toBeGreaterThan(0);

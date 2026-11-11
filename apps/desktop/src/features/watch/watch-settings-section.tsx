@@ -212,7 +212,7 @@ export function WatchSettingsSection(
   const t = useT();
   const { store, hostId } = props;
   useEffect(() => {
-    void store.loadProjects(hostId);
+    void store.projectList.load(hostId);
   }, [store, hostId]);
   const title = t("watchSettingsUi.title", { host: props.hostName });
   // Only a near connection may change what runs unattended: the host refuses it otherwise.

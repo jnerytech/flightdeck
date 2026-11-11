@@ -38,7 +38,7 @@ type Call = [string, string, unknown];
 function setup(options: { projects?: never[] } = {}) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  if (options.projects) store.rememberProjects("h1", options.projects);
+  if (options.projects) store.projectList.remember("h1", options.projects);
   const commands: Call[] = [];
   const background: unknown[] = [];
   const requests: Call[] = [];

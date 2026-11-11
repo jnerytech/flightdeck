@@ -141,7 +141,7 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
     // The host page loaded this host's projects on its own: ask again, so the list is not older
     // than the project added just above.
     await act(async () => {
-      await store.loadProjects(store.getState().hosts[0]?.id as string);
+      await store.projectList.load(store.getState().hosts[0]?.id as string);
     });
     await click("Aprovações automáticas");
     await settle(() => rows().length === 3);

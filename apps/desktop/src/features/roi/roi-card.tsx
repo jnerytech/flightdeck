@@ -71,8 +71,8 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   useStoreSlice(store, ["roiRevision"]);
 
   const load = useCallback(async () => {
-    const { from, to } = periodRange(choice, store.roiToday());
-    const answers = await store.roiSummaries(from, to);
+    const { from, to } = periodRange(choice, store.roiFigures.today());
+    const answers = await store.roiFigures.summaries(from, to);
     const found = answers.flatMap(({ result }) =>
       result.projects.filter((p) => p.projectKey === key),
     );
@@ -91,7 +91,7 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   }, [load]);
 
   // Cheap, and read on every render.
-  const money = store.roiMoneyOf(key);
+  const money = store.roiFigures.moneyOf(key);
 
   if (!periods) {
     return (

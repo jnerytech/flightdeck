@@ -147,7 +147,7 @@ export function CardRunForm(
     return t("cardUi.noRemote");
   };
   const lookAtRemote = async (pressed = false) => {
-    const found = await store.detectPrProvider(hostId, card.projectId, pressed);
+    const found = await store.projectList.detectProvider(hostId, card.projectId, pressed);
     if (found) setLooked({ outcome: found.outcome, host: found.host });
     return found;
   };

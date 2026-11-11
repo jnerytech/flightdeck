@@ -471,3 +471,10 @@ describe("otlp-ligar: the daemon's receiver", () => {
     expect(purges()).toBe(0);
   });
 });
+
+describe("telemetry settings: unreadable", () => {
+  test("telemetry settings that cannot be read as a file are an error", async () => {
+    const dir = tempDir("fd-telemetry-");
+    await expect(telemetryConflicts(dir)).rejects.toMatchObject({ code: "EISDIR" });
+  });
+});
