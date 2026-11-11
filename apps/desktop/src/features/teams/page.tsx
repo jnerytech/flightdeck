@@ -42,6 +42,7 @@ import {
   memberPayload,
   type NewTeamRow,
   offeredChoice,
+  rowPersona,
   type TeamConfirm,
 } from "./new-team.ts";
 import { TeamOutcome } from "./team-outcome.tsx";
@@ -101,7 +102,7 @@ function NewTeam(
   const setRow = (index: number, change: Partial<NewTeamRow>) =>
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
   const workerDefault = useSuggestedPersona(store, hostId, "dev", true);
-  const personaOf = (row: NewTeamRow) => row.persona ?? workerDefault;
+  const personaOf = (row: NewTeamRow) => rowPersona(row, workerDefault);
   const [creating, setCreating] = useState(false);
   // A second submit before the first answered would create the team twice.
   const inFlight = useRef(false);

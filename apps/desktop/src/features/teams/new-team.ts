@@ -36,6 +36,10 @@ export const offeredChoice = (value: PermissionChoice, allowBypass: boolean): Pe
 export const chosenProject = (projects: readonly { id: string }[], picked: string): string =>
   projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
 
+/** A row's persona: the one picked, else the worker default. */
+export const rowPersona = (row: NewTeamRow, workerDefault: string): string =>
+  row.persona ?? workerDefault;
+
 /** The permission modes the form will send: the coordinator's, then each worker's. */
 function modesSent(form: NewTeamForm): {
   coordinator: PermissionChoice;
@@ -58,7 +62,7 @@ export function bypassAsked(form: NewTeamForm): boolean {
 /** The `teams.create` payload: what the person left blank is not sent. */
 export function createPayload(form: NewTeamForm) {
   const { coordinator, workers } = modesSent(form);
-  const personaOf = (row: NewTeamRow) => row.persona ?? form.workerDefault;
+  const personaOf = (row: NewTeamRow) => rowPersona(row, form.workerDefault);
   const name = form.name.trim();
   return {
     projectId: form.projectId,
