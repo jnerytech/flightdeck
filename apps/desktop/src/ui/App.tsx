@@ -661,8 +661,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               store.select(hostId, null);
               go({ name: "new-session", host: hostId });
             },
-            onRemoveHost: (id) => void store.removeHost(id),
-            onRenameHost: (id, name) => store.renameHost(id, name),
+            onRemoveHost: (id) => void store.roster.remove(id),
+            onRenameHost: (id, name) => store.roster.rename(id, name),
             onOpenSearch: () => store.history.openSearch(),
             onNewTab: () => store.hostTabs.openNextInNewTab(),
             onToggleTheme: () => store.theme.toggle(),
