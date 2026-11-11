@@ -275,9 +275,37 @@ describe("metrics: the snapshot", () => {
     expect(snapshot.hotspots.last30Days.length).toBeGreaterThan(0);
   });
 
-  test("a gh list cut at its limit still gives its figures and says the older rows are not counted", async () => {
+  test("a window with more rows than gh gives is asked in day ranges, counted whole, and nothing is unavailable (#2019)", async () => {
     const { deps } = fakeGit();
-    const cut: MetricsDeps = {
+    // 1500 merged pull requests, 100 a day from 1 to 15 November: more than the 1000 gh gives at once.
+    const all = Array.from({ length: 1500 }, (_, i) => ({
+      additions: 1,
+      deletions: 1,
+      mergedAt: `2026-11-${String(1 + Math.floor(i / 100)).padStart(2, "0")}T12:00:00Z`,
+    }));
+    const asked: string[] = [];
+    const wide: MetricsDeps = {
+      ...deps,
+      gh: async (args) => {
+        if (!args.includes("pr")) return deps.gh(args);
+        const range = String(args[args.indexOf("--search") + 1]).replace("merged:", "");
+        asked.push(range);
+        const [from = "", to = ""] = range.split("..");
+        const rows = all.filter(
+          (pr) => pr.mergedAt.slice(0, 10) >= from && pr.mergedAt.slice(0, 10) <= to,
+        );
+        return { code: 0, stdout: JSON.stringify(rows.slice(0, 1000)) };
+      },
+    };
+    const snapshot = (await buildSnapshot(wide, "v0.2.0")) as Record<string, any>;
+    expect(snapshot.prSize.last30Days.merged).toBe(1500);
+    expect(snapshot.unavailable.map((u: { metric: string }) => u.metric)).not.toContain("prSize");
+    expect(asked.length).toBeGreaterThan(1);
+  });
+
+  test("a single day that still holds more than gh gives is counted and named in unavailable (#2019)", async () => {
+    const { deps } = fakeGit();
+    const wide: MetricsDeps = {
       ...deps,
       gh: async (args) =>
         args.includes("pr")
@@ -293,8 +321,7 @@ describe("metrics: the snapshot", () => {
             }
           : deps.gh(args),
     };
-    const snapshot = (await buildSnapshot(cut, "v0.2.0")) as Record<string, any>;
-    expect(snapshot.prSize.last30Days.merged).toBe(1000);
+    const snapshot = (await buildSnapshot(wide, "v0.2.0")) as Record<string, any>;
     const note = snapshot.unavailable.find((u: { metric: string }) => u.metric === "prSize");
     expect(note.reason).toContain("1000 rows");
   });
