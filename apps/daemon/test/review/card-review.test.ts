@@ -99,7 +99,7 @@ function setup(
     now: () => Date.parse("2026-11-09T12:00:00Z"),
     ...over,
   };
-  return { reviews: new CardReviews(deps), calls, added, recorded };
+  return { reviews: new CardReviews(deps), calls, added, recorded, store };
 }
 
 const reason = (e: unknown) =>
@@ -143,6 +143,18 @@ describe("card-review: a second opinion before Open PR (#1439)", () => {
     await reviews.start("c1");
     const again = await reviews.start("c1");
     expect([again.cached, again.state, calls.length]).toEqual([true, "done", 1]);
+  });
+
+  test("a stored review whose loose findings are damaged reads as none, never as a wrong shape (#1609)", async () => {
+    const { reviews, store } = setup({
+      answers: [{ text: answer([finding(1, "low")]), subtype: "success", tokens }],
+    });
+    expect((await reviews.start("c1")).loose).toHaveLength(1);
+    for (const damaged of ['{"a":1}', '[{"path":1}]', "not json"]) {
+      store.db.query("UPDATE card_reviews SET loose = ?").run(damaged);
+      const again = await reviews.start("c1");
+      expect([damaged, again.cached, again.loose]).toEqual([damaged, true, []]);
+    }
   });
 
   test("an answer that fails the schema is the diff's review, failed, and its cost counts", async () => {
