@@ -1,6 +1,6 @@
 /**
  * The light lane: a lock with two places for the commands that are light on CPU time but heavy
- * on memory (typecheck, lint). A tsc run of this repository takes up to 1.5 GB; six at once ran the
+ * on memory (typecheck, lint). One tsc run of this repository takes up to 2 GB (a typecheck may run two); six at once ran the
  * machine out of memory. A third run waits for a place. It reuses the slot's lock files
  * (`tryAcquire`/`release`), one file per place. Every effect comes in through `LaneDeps`.
  */
@@ -29,6 +29,8 @@ export interface LaneDeps {
   protect?(): void;
   /** How many places are open now, at most `locks.length`; asked on every try (default: all). */
   places?: () => number;
+  /** The clock in ms, to tell how long a run waited for its place (default: Date.now). */
+  now?: () => number;
 }
 
 /**
@@ -71,6 +73,8 @@ export async function runInLane(command: string[], deps: LaneDeps): Promise<numb
   deps.protect?.();
   if (deps.nested) return await deps.spawn(command).wait();
   const text = command.join(" ");
+  const now = deps.now ?? Date.now;
+  const waitingSince = now();
   let named = false;
   for (;;) {
     let tried: PlaceTry;
@@ -83,6 +87,7 @@ export async function runInLane(command: string[], deps: LaneDeps): Promise<numb
     }
     const { place, open, holders } = tried;
     if (place) {
+      if (named) deps.log(`light lane: waited ${((now() - waitingSince) / 1000).toFixed(1)}s`);
       try {
         return await deps.spawn(command).wait(); // NOSONAR: the loop ends here: the command runs once and its result is returned
       } finally {
