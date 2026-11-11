@@ -34,13 +34,13 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
     setAsking(null);
     setResolving(true);
     try {
-      await store.resolveHeld(hostId, cardId, roundId, action);
+      await store.prWatch.resolveHeld(hostId, cardId, roundId, action);
     } finally {
       setResolving(false);
     }
   };
   useEffect(() => {
-    void store.loadWatch(hostId, cardId);
+    void store.prWatch.load(hostId, cardId);
   }, [store, hostId, cardId]);
   const on = watch?.enabled === true;
   return (
@@ -50,7 +50,7 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
           <input
             type="checkbox"
             checked={on}
-            onChange={(e) => void store.setWatch(hostId, cardId, e.target.checked)}
+            onChange={(e) => void store.prWatch.set(hostId, cardId, e.target.checked)}
           />
           {t("watchUi.switch")}
         </label>
@@ -141,7 +141,7 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
             variant="outline"
             size="sm"
             className="self-start"
-            onClick={() => store.extendWatch(hostId, cardId, MORE_ROUNDS)}
+            onClick={() => store.prWatch.extend(hostId, cardId, MORE_ROUNDS)}
           >
             {t("watchUi.extend", { n: MORE_ROUNDS })}
           </ActionButton>
@@ -151,7 +151,7 @@ export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; 
             variant="outline"
             size="sm"
             className="self-start"
-            onClick={() => store.setWatch(hostId, cardId, true)}
+            onClick={() => store.prWatch.set(hostId, cardId, true)}
           >
             {t("watchUi.resume")}
           </ActionButton>

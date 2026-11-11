@@ -37,9 +37,11 @@ function recorder(
       choose: (c: { hostId: string; snippetId: string }) =>
         void calls.push(`snippet ${c.hostId}/${c.snippetId}`),
     },
-    openPrLink: (url: string) => {
-      calls.push(`pr ${url}`);
-      return Promise.resolve(opts.link ?? null);
+    prWatch: {
+      openLink: (url: string) => {
+        calls.push(`pr ${url}`);
+        return Promise.resolve(opts.link ?? null);
+      },
     },
     hostCommand: (host: string, type: string, payload: unknown) => {
       calls.push(`${host} ${type} ${JSON.stringify(payload)}`);

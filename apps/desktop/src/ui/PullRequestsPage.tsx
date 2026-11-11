@@ -52,7 +52,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   const watchKey = toWatch.map((row) => sessionKey(row.hostId, row.card.id)).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: `watchKey` names exactly the cards in `toWatch`
   useEffect(() => {
-    for (const row of toWatch) void store.loadWatch(row.hostId, row.card.id);
+    for (const row of toWatch) void store.prWatch.load(row.hostId, row.card.id);
   }, [store, watchKey]);
 
   const update = async (hostId: string, cardId: string, title: string) => {
