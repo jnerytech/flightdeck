@@ -117,7 +117,7 @@ import {
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
-import { TerminalsSlice } from "../features/terminal/index.ts";
+import { type ClosingTerminal, TerminalsSlice } from "../features/terminal/index.ts";
 import {
   VaultApprovalsSlice,
   VaultRulesSlice,
@@ -328,7 +328,7 @@ export interface AppState
   /** When the person last looked at Needs you (ISO), `null` before the first look. */
   finishedLook: string | null;
   /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
-  closingTerminal: { areaId: string; tabId: string } | null;
+  closingTerminal: ClosingTerminal | null;
   /** The run environment of each card (phase 24), by `host/card`. */
   runEnvs: Record<string, RunState>;
   /** Sessions that replied while no tab showed them (phase 14), by session key. */
