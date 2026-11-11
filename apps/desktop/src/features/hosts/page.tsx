@@ -24,7 +24,7 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { DaemonUpdate } from "../../ui/DaemonUpdate.tsx";
 import { MaintenanceSection } from "../../ui/MaintenanceSection.tsx";
 import { TelemetrySection } from "../../ui/TelemetrySection.tsx";
-import { UsagePanel } from "../../ui/UsagePanel.tsx";
+import { UsagePanel } from "../costs/usage-panel.tsx";
 import { AllowedFolders } from "./allowed-folders.tsx";
 import { BypassSwitch } from "./bypass-switch.tsx";
 import { GithubPanel } from "./github-panel.tsx";
