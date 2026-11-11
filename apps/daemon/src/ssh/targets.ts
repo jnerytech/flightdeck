@@ -1,7 +1,9 @@
 import type { Database } from "bun:sqlite";
-import type { SshAuth, SshOptions, SshTarget } from "@flightdeck/protocol";
+import { type SshAuth, SshOptions, type SshTarget } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonWith } from "../json-text.ts";
 import { ulid } from "../ulid.ts";
+import { PinnedKey, Tags } from "./row-json.ts";
 
 export interface SshTargetsOptions {
   db: Database;
@@ -103,7 +105,7 @@ export class SshTargets {
     const jump = this.jump(input.jump ?? null, input.id);
     const options = this.options(input.options ?? {});
     const wasOn = previous
-      ? (JSON.parse(previous.options) as SshOptions).forwardAgent === true
+      ? parseJsonWith(SshOptions, previous.options).forwardAgent === true
       : false;
     if (options.forwardAgent === true && !wasOn && input.confirm !== true) {
       throw new FlightdeckError(
@@ -150,7 +152,7 @@ export class SshTargets {
   /** The pinned server key: its fingerprint and every key (`<type> <base64>`), or none yet. */
   pinned(id: string): { fingerprint: string; keys: string[] } | null {
     const raw = this.row(id)?.host_key;
-    return raw ? (JSON.parse(raw) as { fingerprint: string; keys: string[] }) : null;
+    return raw ? parseJsonWith(PinnedKey, raw) : null;
   }
 
   pin(id: string, key: { fingerprint: string; keys: string[] }): SshTarget {
@@ -273,12 +275,10 @@ function toTarget(row: Row): SshTarget {
     auth: row.auth,
     secretRef: row.secret_ref,
     jump: row.jump,
-    options: JSON.parse(row.options) as SshOptions,
-    tags: JSON.parse(row.tags) as string[],
+    options: parseJsonWith(SshOptions, row.options),
+    tags: parseJsonWith(Tags, row.tags),
     // The column holds the fingerprint and the keys; the app only needs the fingerprint.
-    hostKey: row.host_key
-      ? (JSON.parse(row.host_key) as { fingerprint: string }).fingerprint
-      : null,
+    hostKey: row.host_key ? parseJsonWith(PinnedKey, row.host_key).fingerprint : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
