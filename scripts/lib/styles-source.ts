@@ -10,11 +10,15 @@ import { fileURLToPath } from "node:url";
 /** A whole line that imports a stylesheet by a relative path; a package import is left alone. */
 const LOCAL_IMPORT = /^@import\s+["'](\.{1,2}\/[^"']+\.css)["'];[ \t]*$/gm;
 
-function inline(file: string): string {
+function inline(file: string, chain: readonly string[]): string {
+  if (chain.includes(file))
+    throw new Error(`import cycle in the stylesheet: ${[...chain, file].join(" -> ")}`);
   const text = readFileSync(file, "utf8");
-  return text.replace(LOCAL_IMPORT, (_line, rel: string) => inline(resolve(dirname(file), rel)));
+  return text.replace(LOCAL_IMPORT, (_line, rel: string) =>
+    inline(resolve(dirname(file), rel), [...chain, file]),
+  );
 }
 
 export function readStyles(entry: string | URL): string {
-  return inline(typeof entry === "string" ? entry : fileURLToPath(entry));
+  return inline(typeof entry === "string" ? entry : fileURLToPath(entry), []);
 }
