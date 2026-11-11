@@ -26,7 +26,7 @@ const HOW = [
   "Run /code-review and /security-review on this branch (each in a subagent), fix what they find, then commit their record:",
   '  git commit --allow-empty -m "chore(review): /code-review and /security-review ran on $(git rev-parse --short HEAD) (#N)" \\',
   '    --trailer "Code-Review: $(git rev-parse --short HEAD) <summary>" --trailer "Security-Review: $(git rev-parse --short HEAD) <summary>"',
-  "and push it. A commit that changes the tree after the record asks for a new review.",
+  "and push it. A commit that changes the tree after the record asks for a new review: merge origin/main before the reviews, not after.",
 ];
 
 /** Why `pr open` refuses a branch, or null when both reviews are on record for its head. */

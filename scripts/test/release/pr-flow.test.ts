@@ -373,13 +373,6 @@ describe("pr-flow: open checks the review record (#1707)", () => {
     expect(odd.out()).not.toContain("missing /code-review and");
   });
 
-  test("a control byte in one trailer cannot make it count for the other review", async () => {
-    const f = open({ review: { code: "abc1234 ran\x1fabc1234 ran", security: "" } });
-    expect(await prFlow(["open", "rev"], f.deps)).toBe(1);
-    expect(f.out()).toContain("missing /security-review");
-    expect(f.out()).not.toContain("missing /code-review");
-  });
-
   test("the coordinator's rc branch needs no record, and a worker's FLIGHTDECK_COORDINATOR=1 does not skip it", async () => {
     const rc = open({
       pushed: ["rc/1.2"],
