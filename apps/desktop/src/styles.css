@@ -280,22 +280,6 @@ html:not(:has([data-slot="status-bar"])) {
   --column-done: oklch(0.6 0.005 270);
 }
 
-/* The area of a screen that fills what is left and holds a scroller (and what floats over it). */
-@utility pane-fill {
-  position: relative;
-  display: flex;
-  flex: 1 1 0%;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* A button that floats over the bottom end of a scroller. */
-@utility float-end {
-  position: absolute;
-  right: 1rem;
-  bottom: 0.75rem;
-}
-
 /* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
 @utility diff-follow {
   max-height: 24rem;
@@ -399,36 +383,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* The area that holds a screen, which its screens lay out against. A screen that is not a Page
-   scrolls here; a Page scrolls by itself (alone or in a split view's pane), so around one the
-   area scrolls on neither axis and never shows a second bar beside the page's own (#785). */
-@utility area-screen {
-  min-height: 0;
-  flex: 1 1 0%;
-  overflow-y: auto;
-  &:has([data-slot="page"]) {
-    overflow: hidden;
-  }
-}
-
-/* Three dots that rise in turn while Claude works. */
-@utility dots-working {
-  display: inline-flex;
-  gap: 0.2rem;
-  & i {
-    width: 0.35rem;
-    height: 0.35rem;
-    border-radius: 9999px;
-    background: currentColor;
-    animation: dots-working 1.2s ease-in-out infinite;
-  }
-  & i:nth-child(2) {
-    animation-delay: 0.15s;
-  }
-  & i:nth-child(3) {
-    animation-delay: 0.3s;
-  }
-}
 @keyframes dots-working {
   0%,
   80%,
@@ -536,15 +490,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-@utility activity-line {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.5rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-}
-
 @utility stack-tight {
   display: flex;
   flex-direction: column;
@@ -605,44 +550,10 @@ html:not(:has([data-slot="status-bar"])) {
   margin-bottom: 0.25rem;
 }
 
-/* Cards of the Projects overview and of a project page: one column, two and three as the area grows. */
-@utility card-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem;
-  @container (min-width: 28rem) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  @container (min-width: 36rem) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-@utility card-link {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-}
 @utility stack-hair {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-}
-
-/* The chip that says the hub is filtered, with its clear button. */
-@utility filter-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding-block: 0.125rem;
-  padding-right: 0.25rem;
-  padding-left: 0.75rem;
-}
-
-@utility pill {
-  padding-inline: 0.5rem;
 }
 
 /* #1132: in the compact sessions list a live row shows its state word where its time was. The
