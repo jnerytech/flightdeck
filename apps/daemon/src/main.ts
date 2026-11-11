@@ -96,7 +96,7 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import { type ServerOptions, serverGroup, startServer } from "./server.ts";
+import { serverGroup, startServer } from "./server.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -178,11 +178,6 @@ async function createRuntime(
     }),
   };
 }
-
-/** A wiring's handlers for the server's deps: a key the server lacks fails the typecheck (#1593). */
-const serverPart = <T extends object>(
-  h: T & Record<Exclude<keyof T, keyof ServerOptions>, never>,
-) => h as T;
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
 async function terminalInfo(env: Record<string, string | undefined>) {
@@ -930,7 +925,7 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    ...serverPart(hostChecks),
+    hostChecks: serverGroup<"hostChecks">()(hostChecks),
     sessionSettings: true,
     messaging,
     names,

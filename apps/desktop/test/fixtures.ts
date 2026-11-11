@@ -504,25 +504,28 @@ export function daemon(
           await Bun.spawn(["git", "init", "-q", dest]).exited;
           return { code: 0, stderr: "" };
         },
-        doctor: async (appVersion?: string) => {
-          doctorAsked.push(appVersion);
-          if (options.doctor) return options.doctor(appVersion);
-          return {
-            ok: true,
-            checks: [
-              { id: "folders" as const, status: "ok" as const, detail: roots.join(", ") },
-              {
-                id: "claude" as const,
-                status: "warn" as const,
-                detail: "claude is not on the PATH: sessions cannot start",
-                fix: "install Claude Code, then run: flightdeckd service install",
-              },
-              { id: "version" as const, status: "ok" as const, detail: "0.32.0" },
-            ],
-          };
-        },
       }
     : {};
+  // The fake self-check of a `firstRun` host (`doctor.run`).
+  const firstRunDoctor = options.firstRun
+    ? async (appVersion?: string): Promise<DoctorResult> => {
+        doctorAsked.push(appVersion);
+        if (options.doctor) return options.doctor(appVersion);
+        return {
+          ok: true,
+          checks: [
+            { id: "folders" as const, status: "ok" as const, detail: roots.join(", ") },
+            {
+              id: "claude" as const,
+              status: "warn" as const,
+              detail: "claude is not on the PATH: sessions cannot start",
+              fix: "install Claude Code, then run: flightdeckd service install",
+            },
+            { id: "version" as const, status: "ok" as const, detail: "0.32.0" },
+          ],
+        };
+      }
+    : undefined;
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -541,13 +544,23 @@ export function daemon(
           }
         : {}),
       ...firstRunOptions,
-      ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
-      ...(options.deps
+      // The host's checks (#1593): the fake self-check of a `firstRun` host, the dependencies asked.
+      ...(firstRunDoctor || options.deps
         ? {
-            deps: async () =>
-              typeof options.deps === "function" ? options.deps() : (options.deps as DepsResult),
+            hostChecks: {
+              ...(firstRunDoctor ? { doctor: firstRunDoctor } : {}),
+              ...(options.deps
+                ? {
+                    deps: async () =>
+                      typeof options.deps === "function"
+                        ? options.deps()
+                        : (options.deps as DepsResult),
+                  }
+                : {}),
+            },
           }
         : {}),
+      ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
       ...(options.simple
         ? {
             templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
