@@ -137,11 +137,11 @@ describe("log-app-ui: the app's own events reach the log", () => {
     );
     internals.fail(new Error("the host refused: token=0123456789abcdef0123456789abcdef"));
     w.mem.platform.updater.check = async () => null;
-    await w.store.checkAppUpdate();
+    await w.store.appUpdates.check();
     w.mem.platform.updater.check = async () => {
       throw new Error("no network");
     };
-    await w.store.checkAppUpdate();
+    await w.store.appUpdates.check();
     const lines = w.store.appLog.recent(20).map((l) => l.replace(/^\S+ /, ""));
     expect(lines).toContain("WARN host pc: offline");
     // A drop says why (#939).
