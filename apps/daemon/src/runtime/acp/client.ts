@@ -4,6 +4,9 @@
  * notifications and makes requests of its own (a permission question), which `requests` answers.
  * Nothing it reads or writes is logged: prompts and tool output stay out of the logs.
  */
+
+import { z } from "zod";
+import { parseJsonWith } from "../../json-text.ts";
 import { linesOf } from "../../lines.ts";
 
 /** The JSON-RPC codes this client sends or produces itself. */
@@ -121,7 +124,7 @@ export class AcpClient {
       if (line.trim() === "") continue;
       let message: unknown;
       try {
-        message = JSON.parse(line);
+        message = parseJsonWith(z.unknown(), line);
       } catch {
         this.opts.log?.("acp: ignored a line that is not JSON");
         continue;
