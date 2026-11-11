@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AssistantRequest, AssistantResult } from "@flightdeck/protocol";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
-import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
+import { fakeAssistant, memoryPlatform } from "../fixtures.ts";
 
 const REQUEST: AssistantRequest = {
   requestId: "r1",
