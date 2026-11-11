@@ -100,7 +100,7 @@ import {
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
-import { TraySlice } from "../features/tray/index.ts";
+import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
   type VaultApprovalsSlice,
   type VaultRulesSlice,
@@ -711,10 +711,9 @@ export class AppStore {
       finished: (hostId, prev, next) => this.recordFinished(hostId, prev, next),
       later: (fn, ms) => void this.later(fn, ms),
     });
-    this.tray = new TraySlice(platform, {
-      state: () => this.state,
+    this.tray = wireTray(this.kernel, {
+      platform,
       needsYou: () => needsYou(this.state, this.i18n.t),
-      t: () => this.i18n.t,
       uiHostId: () => this.uiHostId(),
       isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
       answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
