@@ -7,7 +7,9 @@
  * the model choices of a form. Another domain imports from here, never a file inside.
  */
 
+export { commandItemsOf } from "./command-menu.ts";
 export { SessionCommandsSlice } from "./commands.ts";
+export { queueStep, submitAction } from "./composer-queue.ts";
 export { ExternalSessionsSlice } from "./external.ts";
 export {
   awayHost,
@@ -21,6 +23,7 @@ export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { ModelOptions } from "./model-options.tsx";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
+export { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
 export { StatusBadge } from "./status-badge.tsx";
 export {
   initialSessionsState,
