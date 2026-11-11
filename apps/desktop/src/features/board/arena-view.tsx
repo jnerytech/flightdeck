@@ -3,9 +3,9 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { usd } from "../lib/costs.ts";
-import { DiffView } from "./DiffView.tsx";
-import { StatusBadge } from "./StatusBadge.tsx";
+import { usd } from "../../lib/costs.ts";
+import { DiffView } from "../../ui/DiffView.tsx";
+import { StatusBadge } from "../../ui/StatusBadge.tsx";
 
 /** A variant that has not stopped working cannot be chosen yet. */
 const WORKING = new Set(["starting", "running", "awaiting_permission"]);
