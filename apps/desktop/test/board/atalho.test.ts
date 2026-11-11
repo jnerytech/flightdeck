@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { boardShortcut, loadLastBoards, saveLastBoard } from "../src/lib/board-shortcut.ts";
+import { boardShortcut, loadLastBoards, saveLastBoard } from "../../src/lib/board-shortcut.ts";
 
 const memory = (seed: Record<string, string> = {}) => {
   const items = new Map(Object.entries(seed));

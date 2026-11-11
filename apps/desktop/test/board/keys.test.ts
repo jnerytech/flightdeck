@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { boardKey } from "../src/lib/board-keys.ts";
+import { boardKey } from "../../src/lib/board-keys.ts";
 
 /**
  * Issue #1198 (round 6 of #168): reaching a card in Done took a Tab press per card. The board is

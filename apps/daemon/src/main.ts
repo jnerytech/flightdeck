@@ -3,7 +3,7 @@ import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
-import { DEFAULT_MODELS, type ServiceInstallResult } from "@flightdeck/protocol";
+import type { ServiceInstallResult } from "@flightdeck/protocol";
 import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
@@ -17,9 +17,9 @@ import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
-import { HostPause } from "./board/host-pause.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
+import { createHostPause } from "./board/wiring.ts";
 import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -74,13 +74,12 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { CardReviews, reviewHold } from "./review/card-review.ts";
 import { Changes } from "./review/changes.ts";
-import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
 import { SessionCommits } from "./review/session-commit.ts";
 import { SessionFiles } from "./review/session-files.ts";
 import { SessionPrs } from "./review/session-pr.ts";
+import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import type { PlatformInfo } from "./roots.ts";
@@ -97,8 +96,7 @@ import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
-import { IdleSleeper } from "./sessions/sleeper.ts";
-import { StallWatcher } from "./sessions/stall.ts";
+import { createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
@@ -114,9 +112,8 @@ import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
 import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
-import { ulid } from "./ulid.ts";
+import { trustServer } from "./trust/wiring.ts";
 import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
@@ -296,7 +293,13 @@ export async function startDaemon(
       options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
   });
   // Issue #1404: the person's pause of new card runs, kept in the config.
-  const hostPause = new HostPause(config.pauseNewRuns);
+  const { hostPause, server: hostPauseServer } = createHostPause({
+    config,
+    configFile,
+    // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
+    // run waiting at a gate has no session but resumes after a restart).
+    running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
+  });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
@@ -671,17 +674,17 @@ export async function startDaemon(
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
-  // Idle sessions give back their process after N minutes (off by default: no timer then).
-  const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
-  // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
-  const stall = new StallWatcher({
-    host: manager,
-    minutes: config.stall.afterMinutes,
+  const sessionSettings = createSessionSettings({
+    manager,
+    config,
+    configFile,
     // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
-    ...(Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
-      ? { unitMs: Number(process.env.FLIGHTDECK_STALL_UNIT_MS) }
-      : {}),
+    stallUnitMs:
+      Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
+        ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
+        : undefined,
   });
+  const { sleeper, stall } = sessionSettings;
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -707,62 +710,27 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
-  /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
-  const trustState = (path: string) => {
-    const staleSessions = manager.staleSessions(path);
-    return { path, ...projectTrust.judged(path), ...(staleSessions > 0 ? { staleSessions } : {}) };
-  };
   // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
-  const reviewComments = new ReviewComments({ db: store.db, changes, manager, board, central });
-  const complete = runtime.complete?.bind(runtime);
   const reviewScanner = new SecretScanner(() => heldValues());
-  const cardReviews = complete
-    ? new CardReviews({
-        db: store.db,
-        card: (id) => {
-          const card = board.getCard(id);
-          return {
-            id: card.id,
-            projectId: card.projectId,
-            title: card.title,
-            description: card.description,
-            worktreePath: card.worktreePath,
-            running:
-              card.queued ||
-              ["starting", "running", "awaiting_permission"].includes(card.sessionStatus ?? ""),
-          };
-        },
-        diff: (id) => board.diff(id),
-        // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
-        // link on the way, no hard link), never a credential file, at most 20 KB.
-        spec: async (id) => {
-          const { specPath, worktreePath } = board.getCard(id);
-          if (!specPath || !worktreePath || credential(specPath)) return undefined;
-          return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
-        },
-        hold: (projectId) =>
-          reviewHold({
-            paused: hostPause.blocked() !== null,
-            quota: quota.blocked() !== null,
-            memory: memoryGate.blocked() !== null,
-            budget: board.budgetHeld(projectId),
-          }),
-        complete,
-        comments: reviewComments,
-        redact: (text) => reviewScanner.redact(text, false),
-        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
-        model: DEFAULT_MODELS.host.careful,
-        record: (cardId, worktree, tokens) =>
-          usageIndex.record({
-            at: new Date().toISOString(),
-            model: tokens.model,
-            tokens,
-            projectPath: worktree,
-            messageId: `card-review-${cardId}-${ulid()}`,
-            origin: "card",
-          }),
-      })
-    : undefined;
+  const { reviewComments, cardReviews } = createReview({
+    db: store.db,
+    changes,
+    manager,
+    board,
+    central,
+    complete: runtime.complete?.bind(runtime),
+    // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
+    // link on the way, no hard link), never a credential file, at most 20 KB.
+    spec: async (id) => {
+      const { specPath, worktreePath } = board.getCard(id);
+      if (!specPath || !worktreePath || credential(specPath)) return undefined;
+      return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
+    },
+    redact: (text) => reviewScanner.redact(text, false),
+    persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
+    gates: { hostPause, quota, memory: memoryGate },
+    usage: usageIndex,
+  });
   const hostChecks = createHostChecks({
     config,
     env,
@@ -794,55 +762,16 @@ export async function startDaemon(
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...present({ rootsPlatform: options.rootsPlatform }),
-    bypass: {
-      allowed: () => config.allowBypassPermissions,
-      set: async (allow) => {
-        config.allowBypassPermissions = allow;
-        await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
-      },
-    },
-    stall: { minutes: () => stall.minutes() },
-    sleep: {
-      minutes: () => sleeper.minutes(),
-      set: async (minutes) => {
-        sleeper.setMinutes(minutes);
-        await updateConfigFile(configFile, (raw) => ({
-          ...raw,
-          sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
-        }));
-      },
-    },
-    hostPause: {
-      // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
-      // run waiting at a gate has no session but resumes after a restart).
-      status: () => ({
-        paused: hostPause.paused(),
-        running: manager.activeSessionCount() + board.workflows.activeRuns().length,
-      }),
-      set: async (paused) => {
-        // The file first: when it cannot be written the pause stays as it was, for the client and the daemon.
-        await updateConfigFile(configFile, (raw) => ({ ...raw, pauseNewRuns: paused }));
-        config.pauseNewRuns = paused;
-        hostPause.set(paused);
-      },
-    },
+    bypass: sessionSettings.server.bypass,
+    stall: sessionSettings.server.stall,
+    sleep: sessionSettings.server.sleep,
+    hostPause: hostPauseServer,
     memoryPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: serverGroup<"knowledge">()(knowledge),
     harness: serverGroup<"harness", "draft">()(harness),
-    projectTrust: {
-      refresh: (paths) => projectTrust.refresh(paths),
-      state: (paths) => paths.map(trustState),
-      inspect: (path) => inspectProject(path),
-      set: (path, trusted) => {
-        if (trusted) projectTrust.trust(path);
-        else projectTrust.revoke(path);
-        // The live sessions that loaded the setup say again whether it is still theirs (issue #463).
-        manager.trustChanged();
-        return trustState(path);
-      },
-    },
+    projectTrust: trustServer({ projectTrust, manager }),
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,

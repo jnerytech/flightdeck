@@ -11,7 +11,6 @@ import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
 import { reapFakes } from "./fake-cli.ts";
 import { installGitEnvGuard } from "./git-env.ts";
-import { runsDesktopTests } from "./happy-dom.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { captureGlobals, installBetweenFiles } from "./isolation.ts";
 import { captureResources, type ProcReader } from "./leak-guard.ts";
@@ -70,11 +69,6 @@ const repo = installRepoGuard(join(import.meta.dir, "../.."));
 const pathBefore = process.env.PATH;
 // Everything above is in place: this is the state each test file starts from. A file that leaves a
 // timer, Date, fetch or env variable changed does not hand that to the next one (issue #274).
-// A run with desktop tests gets its DOM here, before any file loads the app store: a file with no
-// DOM of its own would load Radix and React without `document`, and the UI test after it in the same
-// process could not open a menu (#2006). The daemon and script tests ran next to the DOM already.
-if (runsDesktopTests(process.argv))
-  (await import("../../apps/desktop/test/dom-global.ts")).ensureHappyDom();
 installBetweenFiles(captureGlobals(), undefined, procWatch());
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the

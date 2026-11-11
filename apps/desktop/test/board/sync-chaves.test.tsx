@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { BoardSyncLogEntry } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { CardSyncLog } = await import("../src/features/board/board-sync.tsx");
+const { CardSyncLog } = await import("../../src/features/board/board-sync.tsx");
 
 afterEach(cleanup);
 

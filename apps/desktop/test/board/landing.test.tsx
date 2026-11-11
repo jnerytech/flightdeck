@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import type { ProjectCard } from "../src/lib/project-cards.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { translator } from "../../src/i18n/index.ts";
+import type { ProjectCard } from "../../src/lib/project-cards.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { BoardLanding } = await import("../src/features/projects/board-landing.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { BoardLanding } = await import("../../src/features/projects/board-landing.tsx");
 
 afterEach(cleanup);
 
