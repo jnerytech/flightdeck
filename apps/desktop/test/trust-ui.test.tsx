@@ -48,7 +48,7 @@ function setup(
     baseDelayMs: 600_000,
   });
   store.i18n.start();
-  store.loadProjects = (async () => []) as never;
+  store.projectList.load = (async () => []) as never;
   store.refreshHub = (async () => {}) as never;
   let state: ProjectTrustState = options.state ?? { path: "/work/api", trusted: false, via: null };
   const sent: Array<[string, unknown]> = [];

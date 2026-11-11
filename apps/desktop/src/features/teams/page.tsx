@@ -79,7 +79,7 @@ function NewTeam(
   // The host's projects are asked for when the form opens: "none" is only said once it answered.
   const [asked, setAsked] = useState(false);
   useEffect(() => {
-    void store.loadProjects(hostId).finally(() => setAsked(true));
+    void store.projectList.load(hostId).finally(() => setAsked(true));
   }, [store, hostId]);
   const [goal, setGoal] = useState("");
   const [name, setName] = useState("");
@@ -788,7 +788,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
     setStatuses(next);
   }, [store, current]);
   useEffect(() => {
-    if (current) void store.loadProjects(current);
+    if (current) void store.projectList.load(current);
     void load();
     return store.onTeamsUpdated(() => void load());
   }, [store, current, load]);

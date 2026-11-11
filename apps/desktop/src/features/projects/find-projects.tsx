@@ -43,7 +43,7 @@ export function FindProjects(
     const project = await store.hostCommand(hostId, "project.add", { path });
     if (!project) return false;
     const known = store.getState().projects[hostId] ?? [];
-    store.rememberProjects(hostId, [...known.filter((p) => p.id !== project.id), project]);
+    store.projectList.remember(hostId, [...known.filter((p) => p.id !== project.id), project]);
     return true;
   };
   const find = async () => {

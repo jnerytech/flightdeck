@@ -297,7 +297,7 @@ describe("navegacao", () => {
     const project = d.board.updateProject(card.projectId, {
       contractByColumn: { in_progress: { enforce: "confirm", checks: ["criteria"] } },
     });
-    store.rememberProjects(store.getState().hosts[0]?.id ?? "", [project]);
+    store.projectList.remember(store.getState().hosts[0]?.id ?? "", [project]);
     const second = d.board.createCard(card.projectId, { title: "Outro", description: "faça" });
     await act(async () => {
       fireEvent.keyDown(window, { key: "k", ctrlKey: true });

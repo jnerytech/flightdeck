@@ -200,7 +200,7 @@ export function HostBoardLanding(
     );
     const fresh = buildProjectCards({
       hosts: [{ id: hostId, name: hostName, projects }],
-      keyOf: (id, project) => store.projectKeyOf(id, project),
+      keyOf: (id, project) => store.projectList.keyOf(id, project),
       rows: [],
       cards: [],
       costs: {},

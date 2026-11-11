@@ -19,7 +19,7 @@ describe("teams-statuses-ui: the page reads every team's state", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
     const asked: string[] = [];
-    store.loadProjects = async () => null;
+    store.projectList.load = async () => null;
     store.hostCommand = (async (_host: string, type: string, payload: { team?: string }) => {
       asked.push(payload.team ? `${type}:${payload.team}` : type);
       if (type === "teams.list") {
@@ -76,7 +76,7 @@ describe("teams-statuses-ui: the page's own pick and the switcher", () => {
   test("a switch in the top bar ends the page's own pick: the page shows the new host", async () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
-    store.loadProjects = async () => null;
+    store.projectList.load = async () => null;
     store.hostCommand = (async (_host: string, type: string) =>
       type === "teams.list" ? { teams: [] } : null) as never;
     act(() =>
