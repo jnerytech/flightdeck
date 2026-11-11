@@ -1,6 +1,6 @@
 import { Page } from "@/components/layout/page";
-import { SubagentsSwitch } from "@/components/personas/subagents-switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SubagentsSwitch } from "@/features/personas/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { AgentContext } from "./AgentContext.tsx";
