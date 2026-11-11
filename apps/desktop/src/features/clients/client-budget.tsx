@@ -3,9 +3,9 @@ import { Field, Form, FormActions } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import type { Client } from "../lib/clients.ts";
-import { usd } from "../lib/costs.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { Client } from "../../lib/clients.ts";
+import { usd } from "../../lib/costs.ts";
 
 /** A client's month limit: what it is, what was spent against it, and a form to change it. */
 export function ClientBudget(

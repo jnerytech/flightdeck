@@ -1,5 +1,4 @@
 import { Briefcase } from "lucide-react";
-import { ClientDot } from "@/components/clients/client-dot";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,7 @@ import { switcherCounts } from "../../lib/client-switcher.ts";
 import { UNASSIGNED } from "../../lib/clients.ts";
 import { type HubRowState, hubRows } from "../../lib/hub.ts";
 import type { Route } from "../../lib/router.ts";
+import { ClientDot } from "./client-dot";
 
 const Count = ({ n }: Readonly<{ n: number }>) =>
   n > 0 ? <span className="ml-auto text-muted-foreground text-xs tabular-nums">{n}</span> : null;

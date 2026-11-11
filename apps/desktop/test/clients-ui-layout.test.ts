@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { layoutViolations, styleViolations } from "../../../scripts/lib/style-lint.ts";
 
-const DIR = resolve(import.meta.dir, "../src/components/clients");
-const files = readdirSync(DIR).filter((name) => name.endsWith(".tsx"));
+/** The client components that compose the layout primitives; the screens beside them are not held to it. */
+const files = ["assign-menu.tsx", "client-chip.tsx", "client-dot.tsx", "client-switcher.tsx"];
+const DIR = resolve(import.meta.dir, "../src/features/clients");
 
 describe("clients-ui: the client components compose the layout primitives", () => {
   test("there are components to check", () => {

@@ -4,7 +4,7 @@ import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /** The clients as text, to move to another desktop: copy them out, paste them in. */
 export function ClientsTransfer(props: Readonly<{ store: AppStore }>) {

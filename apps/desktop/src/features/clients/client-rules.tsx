@@ -5,8 +5,8 @@ import { ListRow } from "@/components/layout/list-row";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import type { Client, ClientRule, RuleInput } from "../lib/clients.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { Client, ClientRule, RuleInput } from "../../lib/clients.ts";
 
 const ruleValue = (rule: ClientRule) => (rule.kind === "remote" ? rule.pattern : rule.path);
 

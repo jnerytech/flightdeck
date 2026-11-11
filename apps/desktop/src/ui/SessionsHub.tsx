@@ -1,8 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { AssignMenu } from "@/components/clients/assign-menu";
-import { ClientChip } from "@/components/clients/client-chip";
 import { AsleepMark } from "@/components/hub/asleep-mark";
 import { CacheTimer } from "@/components/hub/cache-timer";
 import { CardGrid } from "@/components/hub/card-grid";
@@ -28,6 +26,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AssignMenu } from "@/features/clients/assign-menu.tsx";
+import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { HostsBanner } from "@/features/hosts/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";

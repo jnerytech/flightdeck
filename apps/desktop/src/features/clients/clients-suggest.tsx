@@ -3,9 +3,9 @@ import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import { applySuggestion, suggestClients } from "../lib/client-suggest.ts";
-import { UNASSIGNED } from "../lib/clients.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { applySuggestion, suggestClients } from "../../lib/client-suggest.ts";
+import { UNASSIGNED } from "../../lib/clients.ts";
 
 /** What the screen says about the projects without a client: how many, a suggestion, the pins. */
 export function ClientsSuggest(

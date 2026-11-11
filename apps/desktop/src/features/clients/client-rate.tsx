@@ -2,9 +2,9 @@ import { useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
-import type { AppStore } from "../lib/app-store.ts";
-import type { Client } from "../lib/clients.ts";
-import { RoiSettingsError } from "../lib/roi-settings.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { Client } from "../../lib/clients.ts";
+import { RoiSettingsError } from "../../lib/roi-settings.ts";
 
 /** Phase 36: the hourly rate of a client, for every project of it that has none of its own. */
 export function ClientRate(props: Readonly<{ store: AppStore; client: Client }>) {
