@@ -32,3 +32,25 @@ describe("parseJsonOr", () => {
     expect(parseJsonOr(Auto, '{"workflow":3}', { workflow: "x" })).toEqual({ workflow: "x" });
   });
 });
+
+describe("parseJsonWith: an error does not echo the text it read", () => {
+  const SECRET = "sk-secret-token-123";
+  test("a text that is not JSON throws a message without the text", () => {
+    expect(() => parseJsonWith(Auto, `{"workflow": ${SECRET}`)).toThrow(/not JSON/);
+    try {
+      parseJsonWith(Auto, `{"workflow": ${SECRET}`);
+    } catch (error) {
+      expect(String((error as Error).message).includes(SECRET)).toBe(false);
+    }
+  });
+  test("a value that does not fit throws its path, not the value", () => {
+    try {
+      parseJsonWith(Auto, `{"workflow":{"${SECRET}":1}}`);
+      expect.unreachable("parseJsonWith should have thrown");
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message.includes(SECRET)).toBe(false);
+      expect(message).toContain("workflow");
+    }
+  });
+});
