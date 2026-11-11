@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { TAB_ICONS, tabTitle } from "@/features/tabs/index.ts";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../../lib/app-store.ts";
 import { tabBadge, tabKind } from "../../lib/tab-badge.ts";
@@ -9,7 +10,7 @@ import {
   stepSwitcher,
 } from "../../lib/tab-switcher.ts";
 import { useStoreState } from "../../lib/use-store.ts";
-import { TAB_ICONS, TabBadgeGlyph, tabTitle } from "../../ui/TabBar.tsx";
+import { TabBadgeGlyph } from "../../ui/TabBar.tsx";
 
 /**
  * The Ctrl+Tab switcher. Hold Ctrl and press Tab to open it on the previous tab and to go down the
