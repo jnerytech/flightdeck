@@ -1768,6 +1768,29 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
+    // 1a. The board's lanes are computed styles, not stylesheet text (#1870): a lane has a 1 px
+    // border, its head a 1 px line under it, and the box that says no card matches the filter is
+    // at least 5rem (80 px) tall.
+    const filter = c.page.getByLabel(c.t("kanban.filter"), { exact: true });
+    await filter.fill("nada disso");
+    await c.page.locator(".column-empty").first().waitFor({ timeout: WAIT });
+    const lanes = await c.page.evaluate(() => {
+      const style = (selector: string, property: "minHeight" | "borderBottomWidth") => {
+        const el = document.querySelector(selector);
+        return el ? getComputedStyle(el)[property] : null;
+      };
+      return {
+        emptyBox: style(".column-empty", "minHeight"),
+        laneBorder: style(".board-column", "borderBottomWidth"),
+        headLine: style(".column-head", "borderBottomWidth"),
+      };
+    });
+    expect(lanes, "the board's lanes at 1280px").toEqual({
+      emptyBox: "80px",
+      laneBorder: "1px",
+      headLine: "1px",
+    });
+    await filter.fill("");
     await tile.getByRole("button", { name: title, exact: true }).click();
     const run = c.page.locator("[data-slot='card-run']");
     await run.waitFor({ timeout: WAIT });
@@ -1798,6 +1821,17 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       }, size.width);
       if (problem) throw new Error(`a linha Executar a ${size.width}px: ${problem}`);
     }
+
+    // 1b. A project's name on Home's leaderboard is a target of at least 24 px (axe target-size,
+    // #124): a computed min-height, measured here since the stylesheet text says nothing of it (#1870).
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "overview" });
+    const leader = c.page.locator(".leader-link").first();
+    await leader.waitFor({ timeout: SESSION_WAIT });
+    expect(
+      await leader.evaluate((el) => getComputedStyle(el).minHeight),
+      "a project's button on Home's leaderboard",
+    ).toBe("24px");
 
     // 2. The untrusted notice of a session: small, and its link is on the text line.
     await c.page.setViewportSize({ width: 1280, height: 800 });
