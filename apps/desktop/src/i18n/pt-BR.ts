@@ -8,6 +8,7 @@ import { changes } from "./pt-BR/changes.ts";
 import { chrome } from "./pt-BR/chrome.ts";
 import { clients } from "./pt-BR/clients.ts";
 import { costs } from "./pt-BR/costs.ts";
+import { doctor } from "./pt-BR/doctor.ts";
 import { firstrun } from "./pt-BR/firstrun.ts";
 import { github } from "./pt-BR/github.ts";
 import { hosts } from "./pt-BR/hosts.ts";
@@ -48,42 +49,7 @@ export const ptBR = {
   ...sessions,
   ...hosts,
   ...projects,
-  doctor: {
-    fix: "Como consertar: {step}",
-    check: {
-      config: "Configuração",
-      folders: "Pastas permitidas",
-      service: "Serviço",
-      daemon: "Daemon",
-      claude: "Claude Code",
-      hooks: "Hooks",
-      tailscale: "Tailscale",
-      version: "Versão",
-      templates: "Modelos",
-      mcp: "Ferramentas do time",
-
-      linger: "Iniciar no boot",
-      opencode: "OpenCode",
-    },
-    steps: {
-      config: "Rode flightdeckd setup no host para refazer a configuração.",
-      folders: "Libere uma pasta de projetos em Pastas permitidas, acima.",
-      service: "Rode flightdeckd setup no host para instalar o serviço.",
-      daemon: "Rode flightdeckd service start no host.",
-      claude: "Instale o Claude Code no host e reinicie o daemon.",
-      hooks: "Clique em Instalar na seção de hooks desta página.",
-      tailscale: "Rode flightdeckd setup no host e escolha escutar na rede Tailscale.",
-      version: "Atualize o daemon com o botão de atualização desta página.",
-      templates:
-        "Corrija ou remova os arquivos de modelo citados acima, na pasta de modelos do host.",
-      mcp: "Rode flightdeckd setup no host para pôr o daemon onde as sessões esperam.",
-
-      linger:
-        "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
-      opencode:
-        'O OpenCode é opcional. Para usar, ponha "opencode": { "enabled": true } na configuração do host e reinicie o daemon; a seção OpenCode do manual explica cada motivo.',
-    },
-  },
+  ...doctor,
   ...github,
   ...board,
   ...costs,
@@ -651,65 +617,7 @@ export const ptBR = {
     browse: "Procurar…",
     outside: "Essa pasta está fora das pastas que o host permite. Escolha uma dentro de: {roots}",
   },
-  diagnostics: {
-    title: "Diagnóstico",
-    hint: "Se algo quebrar, envie o log. As linhas são editadas: nenhum token, chave, link ou valor do cofre é gravado.",
-    openLogs: "Abrir a pasta de logs",
-    copy: "Copiar diagnóstico",
-    copied: "Diagnóstico copiado: cole na sua mensagem.",
-    words: "log logs diagnóstico suporte pasta",
-    hostCopy: "Copiar as últimas linhas de log do host",
-    hostCopied: "{n} linhas de log copiadas.",
-    hostEmpty: "O host ainda não tem linhas de log.",
-    hostHint: "O host guarda o próprio log em {path}.",
-  },
-  sleep: {
-    title: "Dormir sessões ociosas",
-    label: "Dormir sessões ociosas após",
-    hint: "Uma sessão ociosa devolve a memória depois desse tempo. Uma mensagem a acorda de onde estava. Sessões fixadas, de cards e as que você tem abertas ficam acordadas.",
-    off: "Desligado",
-    minutes: "{n} minutos",
-    hour: "1 hora",
-    hours: "{n} horas",
-    result: {
-      slept: "A sessão está dormindo. Uma mensagem a acorda.",
-      already: "A sessão já estava dormindo.",
-      not_idle: "A sessão está trabalhando ou esperando você, então fica acordada.",
-      queued: "Há uma mensagem esperando, então a sessão fica acordada.",
-      subscribed: "Alguém está com a sessão aberta, então ela fica acordada.",
-      kept_awake: "A sessão está fixada ou pertence a um card, então fica acordada.",
-    },
-  },
   ...plugins,
-  maintenance: {
-    title: "Manutenção",
-    fields: {
-      db: "Banco",
-      sessions: "Sessões",
-      events: "Eventos",
-      external: "Sessões externas",
-      lastBackup: "Último backup",
-      lastCleanup: "Última limpeza",
-    },
-    backupValue: "{when} ({size})",
-    noBackup: "nenhum ainda",
-    dryRun: " (simulação)",
-    noCleanup: "nenhuma ainda",
-    asking: "consultando…",
-    backup: "Fazer backup agora",
-    dry: "Simular",
-    clean: "Limpar",
-    message:
-      "Apagar os dados antigos deste host conforme a retenção configurada? Eventos de conversas encerradas e sessões externas antigas não voltam (a não ser por um backup).",
-    backupDone: "backup criado: {path}",
-    wouldDelete: "seriam apagados: {counts}",
-    deleted: "apagados: {counts}",
-    tables: {
-      events: "eventos",
-      permission_requests: "pedidos de permissão",
-      external_sessions: "sessões externas",
-    },
-  },
   quotaCharts: {
     window: "Janela de {label}",
     utilization: "Utilização da janela de {label}",
