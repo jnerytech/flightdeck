@@ -15,6 +15,7 @@ import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/to
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
+import { UpdateBanner, UpdateCard } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
 import { ResumeOfferDialog } from "@/features/sessions/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
@@ -42,8 +43,6 @@ import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
-import { UpdateBanner } from "./UpdateBanner.tsx";
-import { UpdateCard } from "./UpdateCard.tsx";
 import { useLiveElsewhereAsk } from "./use-live-elsewhere-guard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
@@ -400,7 +399,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const projectsKnown = projectHost === null || state.projects[projectHost] !== undefined;
   const projectHostOnline = state.hosts.some((h) => h.id === projectHost && h.status === "online");
   useEffect(() => {
-    if (projectHost && !projectsKnown && projectHostOnline) void store.loadProjects(projectHost);
+    if (projectHost && !projectsKnown && projectHostOnline)
+      void store.projectList.load(projectHost);
   }, [store, projectHost, projectsKnown, projectHostOnline]);
 
   /** Opening anything closes the layers above it: the palette (dialogs go with their screen). */
@@ -611,7 +611,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                 t={t}
                 onChoose={(hostId) => {
                   store.select(hostId, null);
-                  store.pickHost(hostId);
+                  store.hostTabs.switchHost(hostId);
                 }}
                 onAdd={() => go({ name: "add-host" })}
                 allHosts={tabScope === "all"}

@@ -1,0 +1,37 @@
+/** The notification panel's texts and the toasts that confirm a quick action move from */
+export const inbox = {
+  toast: {
+    switchedHost: "Mudou para {host}",
+    backTo: "Voltar para {host}",
+    copied: "Copiado",
+    details: "Detalhes",
+    close: "Fechar",
+    allowRoot: "Adicionar às pastas permitidas",
+    allowRootMessage:
+      "Deixar as sessões de {host} usarem {folder}? Elas poderão ler e alterar os arquivos dela.",
+    rootAdded: "{folder} agora é uma pasta permitida de {host}.",
+  },
+  inbox: {
+    bell: "Notificações",
+    bellUnread: "Notificações, {n} não lidas",
+    title: "Notificações",
+    markAll: "Marcar todas como lidas",
+    clear: "Limpar",
+    empty: "Nenhuma notificação.",
+    today: "Hoje",
+    yesterday: "Ontem",
+    earlier: "Antes",
+    unread: "não lida",
+    markRead: "Marcar como lida",
+    markUnread: "Marcar como não lida",
+    count: "{n} vezes",
+    gone: "O que isto citava não existe mais.",
+    dismiss: "Descartar",
+    asks: "Pergunta: {question}",
+    keys: "A aprova · N nega",
+    keysHigh: "Segure o botão para aprovar · N nega",
+    runs: "Quer executar: {command}",
+    edits: "Quer alterar {file}",
+    uses: "Quer usar {tool}",
+  },
+} as const;

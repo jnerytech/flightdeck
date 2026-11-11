@@ -8,3 +8,5 @@ export {
   type AppUpdateState,
   initialAppUpdateState,
 } from "./store.ts";
+export { UpdateBanner } from "./update-banner.tsx";
+export { UpdateCard } from "./update-card.tsx";

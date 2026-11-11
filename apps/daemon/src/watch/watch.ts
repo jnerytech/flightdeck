@@ -1,9 +1,11 @@
 import type { Database } from "bun:sqlite";
 import { isCheckEnvName } from "@flightdeck/protocol";
+import { z } from "zod";
 import type { Board } from "../board/board.ts";
 import { type PrCheck, type PrComment, type PrProvider, prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
+import { parseJsonOr } from "../json-text.ts";
 
 /** What a watched PR needs fixed: the reason a round of fixing starts (phase 22). */
 export interface WatchTrigger {
@@ -90,7 +92,8 @@ export function readWatchSettings(db: Database, projectId: string): WatchSetting
       "SELECT settings FROM pr_watch_project WHERE project_id = ?",
     )
     .get(projectId);
-  const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...(row ? JSON.parse(row.settings) : {}) };
+  const kept = row ? parseJsonOr(z.record(z.string(), z.unknown()), row.settings, {}) : {};
+  const stored: WatchSettings = { ...DEFAULT_SETTINGS, ...kept };
   // Issue #1361: a list stored before the rules (or by hand) keeps only the names they allow.
   const names: unknown[] = Array.isArray(stored.checkEnv) ? stored.checkEnv : [];
   // A cap stored by hand or by an older daemon is read inside the range the protocol allows.
@@ -107,13 +110,14 @@ export function readWatchSettings(db: Database, projectId: string): WatchSetting
 }
 
 /** What the last look found, to tell what got worse at the next one. */
-interface Snapshot {
+const SNAPSHOT = z.object({
   /** The failing builds, by name and build id: a new run that fails is news. */
-  failing: string[];
-  conflicts: boolean;
+  failing: z.array(z.string()),
+  conflicts: z.boolean(),
   /** Every comment seen, resolved or not. */
-  seen: string[];
-}
+  seen: z.array(z.string()),
+});
+type Snapshot = z.infer<typeof SNAPSHOT>;
 
 const EMPTY: Snapshot = { failing: [], conflicts: false, seen: [] };
 
@@ -272,7 +276,7 @@ export class PrWatcher {
         "SELECT snapshot FROM pr_watch WHERE card_id = ?",
       )
       .get(cardId);
-    return row?.snapshot ? (JSON.parse(row.snapshot) as Snapshot) : EMPTY;
+    return row?.snapshot ? parseJsonOr(SNAPSHOT, row.snapshot, EMPTY) : EMPTY;
   }
 
   private async look(cardId: string): Promise<void> {

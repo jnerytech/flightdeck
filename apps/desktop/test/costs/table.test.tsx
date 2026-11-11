@@ -30,7 +30,7 @@ const RESULT: RoiSummaryResult = {
 
 async function table() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
-  store.roiSummaries = async () => [{ hostId: "h1", result: RESULT }];
+  store.roiFigures.summaries = async () => [{ hostId: "h1", result: RESULT }];
   render(
     <RoiTable
       store={store}

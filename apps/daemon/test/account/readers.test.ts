@@ -392,3 +392,29 @@ describe("conta-leitores: accountReaders (what the daemon wires)", () => {
     expect(calls).toEqual(["/bin/claude", "closed"]);
   });
 });
+
+describe("conta-leitores: the idle prompt", () => {
+  test("the idle prompt never yields, so the CLI waits for a question that does not come", async () => {
+    let pulled: Promise<unknown> | undefined;
+    let closed = 0;
+    const result = await withIdleQuery(
+      {
+        claudePath: null,
+        query: ({ prompt }) => {
+          pulled = prompt[Symbol.asyncIterator]().next();
+          return {
+            close: () => {
+              closed += 1;
+            },
+          } as never;
+        },
+      },
+      async () => "ok",
+    );
+    expect(result).toBe("ok");
+    expect(await Promise.race([pulled, Bun.sleep(25).then(() => "still waiting")])).toBe(
+      "still waiting",
+    );
+    expect(closed).toBe(1);
+  });
+});

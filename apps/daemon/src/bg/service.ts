@@ -1,8 +1,10 @@
 import type { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import type { BgList, BgSession } from "@flightdeck/protocol";
+import { z } from "zod";
 import { runCommand } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 
 export interface BgServiceOptions {
@@ -61,13 +63,8 @@ export class BgService {
       CLI_TIMEOUT_MS,
     );
     if (result.code !== 0) return none;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(result.stdout);
-    } catch {
-      return none;
-    }
-    if (!Array.isArray(parsed)) return none;
+    const parsed = parseJsonOr(z.array(z.unknown()), result.stdout, null);
+    if (parsed === null) return none;
     const sessions: BgSession[] = [];
     for (const entry of parsed) {
       const item = (entry ?? {}) as Record<string, unknown>;

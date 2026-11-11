@@ -79,6 +79,9 @@ describe("roi slice", () => {
     store.roi.setDefaultRate(10);
     store.roi.setClientRate(client?.id ?? "", 20);
     store.roi.setClientRate(UNASSIGNED, 99);
-    expect([store.roiMoneyOf("pinned").rate, store.roiMoneyOf("loose").rate]).toEqual([20, 10]);
+    expect([
+      store.roiFigures.moneyOf("pinned").rate,
+      store.roiFigures.moneyOf("loose").rate,
+    ]).toEqual([20, 10]);
   });
 });

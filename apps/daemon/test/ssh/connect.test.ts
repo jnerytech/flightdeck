@@ -1125,3 +1125,16 @@ async function why(fn: () => unknown) {
     return { code, reason, params, message };
   }
 }
+
+describe("ssh-connect: the real ssh-agent helper", () => {
+  test("it looks for its socket on disk, and gives up after 40 looks", async () => {
+    const dir = tempDir("fd-agent-");
+    const sock = join(dir, "agent.sock");
+    writeFileSync(sock, "");
+    const slept: number[] = [];
+    const ops = processOps(undefined, undefined, async (ms) => void slept.push(ms));
+    expect(await ops.waitForSocket(sock)).toBe(true);
+    expect(await ops.waitForSocket(join(dir, "never.sock"))).toBe(false);
+    expect(slept).toHaveLength(40);
+  });
+});

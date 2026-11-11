@@ -1,4 +1,5 @@
 import type { SessionTrace, TraceNode } from "@flightdeck/protocol";
+import { parseJsonText } from "../json-text.ts";
 
 export interface TraceInput {
   claudeSessionId: string;
@@ -106,8 +107,9 @@ function lines(source: string): Json[] {
   for (const raw of source.split("\n")) {
     if (raw.trim() === "") continue;
     try {
-      const value = JSON.parse(raw);
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) out.push(value);
+      const value = parseJsonText(raw);
+      if (value !== null && typeof value === "object" && !Array.isArray(value))
+        out.push(value as Json);
     } catch {
       // Not JSON (a line cut in the middle of a write): nothing to read in it.
     }

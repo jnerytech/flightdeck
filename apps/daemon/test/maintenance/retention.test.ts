@@ -241,3 +241,18 @@ describe("retencao", () => {
     expect((await loadConfig(file)).retention.eventsDays).toBe(90);
   });
 });
+
+describe("retention: state file", () => {
+  test("a maintenance state file that is not JSON is an error, not a silent reset", async () => {
+    const dataDir = tempDir("fd-maint-");
+    const store = new EventStore(":memory:");
+    cleanups.push(() => store.close());
+    writeFileSync(join(dataDir, "maintenance.json"), "{not json");
+    const maintenance = new Maintenance({
+      db: store.db,
+      dataDir,
+      retention: { eventsDays: 30, sessionsDays: 90 } as never,
+    });
+    await expect(maintenance.lastPrune()).rejects.toThrow();
+  });
+});

@@ -1,0 +1,37 @@
+/** The notification panel's texts and the toasts that confirm a quick action move from */
+export const inbox = {
+  toast: {
+    switchedHost: "Switched to {host}",
+    backTo: "Back to {host}",
+    copied: "Copied",
+    details: "Details",
+    close: "Close",
+    allowRoot: "Add to allowed folders",
+    allowRootMessage:
+      "Let sessions on {host} use {folder}? They will be able to read and change its files.",
+    rootAdded: "{folder} is now an allowed folder of {host}.",
+  },
+  inbox: {
+    bell: "Notifications",
+    bellUnread: "Notifications, {n} unread",
+    title: "Notifications",
+    markAll: "Mark all as read",
+    clear: "Clear",
+    empty: "No notifications.",
+    today: "Today",
+    yesterday: "Yesterday",
+    earlier: "Earlier",
+    unread: "unread",
+    markRead: "Mark as read",
+    markUnread: "Mark as unread",
+    count: "{n} times",
+    gone: "What this was about is gone.",
+    dismiss: "Dismiss",
+    asks: "Asks: {question}",
+    keys: "A approves · N denies",
+    keysHigh: "Hold the button to approve · N denies",
+    runs: "Wants to run: {command}",
+    edits: "Wants to change {file}",
+    uses: "Wants to use {tool}",
+  },
+};

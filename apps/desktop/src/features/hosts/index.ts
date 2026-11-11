@@ -14,6 +14,7 @@ export {
   type HealthSliceState,
   initialHealthState,
 } from "./health-store.ts";
+export { hostNeedsAttention } from "./host-attention.ts";
 export { HostDot } from "./host-dot.tsx";
 export { hostDownReason } from "./host-down-reason.ts";
 export { draftFromLink, draftUrl, type HostDraft, HostForm } from "./host-form.tsx";

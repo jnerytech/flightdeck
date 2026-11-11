@@ -1,5 +1,7 @@
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 import { truncateUtf8 } from "./parser.ts";
 
 /** A tool call of a stored transcript with its whole input and its result (#606). */
@@ -27,15 +29,19 @@ interface Block {
   text?: unknown;
 }
 
+const LINE = z
+  .object({
+    uuid: z.unknown().optional(),
+    message: z.object({ content: z.unknown().optional() }).nullish(),
+  })
+  .nullable();
+
 /** The content blocks of a transcript line, or none when it is not JSON or has no list. */
 function blocks(line: string): { uuid: unknown; content: Block[] } {
-  try {
-    const parsed = JSON.parse(line) as { uuid?: unknown; message?: { content?: unknown } };
-    const content = parsed?.message?.content;
-    return { uuid: parsed?.uuid, content: Array.isArray(content) ? (content as Block[]) : [] };
-  } catch {
-    return { uuid: null, content: [] };
-  }
+  const parsed = parseJsonOr(LINE, line, null);
+  if (parsed === null) return { uuid: null, content: [] };
+  const content = parsed.message?.content;
+  return { uuid: parsed.uuid, content: Array.isArray(content) ? (content as Block[]) : [] };
 }
 
 /** A result's content as text: a string as is, a list's text blocks one per line, an image as `[image]`. */
