@@ -187,6 +187,32 @@ describe("personas-pacote: as treze", () => {
     }
   });
 
+  test("o frontend constrói a interface e deixa o julgamento de UX para a ux: nome sem UX, sem olhar de UX no texto, mesmo modelo e esforço (#1936)", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const frontend = packPersonas(language).find((p) => p.id === "frontend");
+      expect([language, frontend?.name, frontend?.model, frontend?.effort]).toEqual([
+        language,
+        "Frontend",
+        "claude-sonnet-5-5",
+        "medium",
+      ]);
+      const text = `${frontend?.description ?? ""}\n${frontend?.body ?? ""}`;
+      const mustNot =
+        language === "en"
+          ? [/UX eye/i, /visual consistency/i, /\bUX\b/]
+          : [/olhar de UX/i, /consistência visual/i, /\bUX\b/];
+      for (const rule of mustNot)
+        expect([language, String(rule), rule.test(text)]).toEqual([language, String(rule), false]);
+      // The build rules stay.
+      const must =
+        language === "en"
+          ? [/accessible name/i, /every state|each state/i, /design system/i]
+          : [/nome acessível/i, /todos os estados/i, /sistema de design/i];
+      for (const rule of must)
+        expect([language, String(rule), rule.test(text)]).toEqual([language, String(rule), true]);
+    }
+  });
+
   test("a desenvolvedora escreve código: teste primeiro, mudança pequena, segue o CLAUDE.md, roda as checagens e nunca faz push", () => {
     for (const language of ["pt-BR", "en"] as const) {
       const dev = packPersonas(language).find((p) => p.id === "dev");
