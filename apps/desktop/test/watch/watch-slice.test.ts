@@ -175,6 +175,30 @@ describe("PR watch (#1596)", () => {
     });
   });
 
+  test("a PR link whose card the host cannot give opens the session it knows, and a refused extra round or held round keeps nothing", async () => {
+    const lost = watching({
+      answers: {
+        "watch.byUrl": {
+          via: "card",
+          trace: { cardId: "c1" },
+          sessions: [{ claudeSessionId: "s-2" }],
+        },
+      },
+    });
+    const refused = watching();
+    await refused.slice.extend("h", "c1", 2);
+    await refused.slice.resolveHeld("h", "c1", "r1", "push");
+    expect({
+      route: await lost.slice.openLink("https://git/pr/4"),
+      refusedKept: refused.kept.size,
+      refusedNotified: refused.log.filter((l) => "notify" in (l as object)).length,
+    }).toEqual({
+      route: { name: "reader", target: { hostId: "h", claudeSessionId: "s-2" } },
+      refusedKept: 0,
+      refusedNotified: 0,
+    });
+  });
+
   test("a PR link falls back to the first session the history knows, and says so when no host knows it", async () => {
     const known = watching({
       answers: { "watch.byUrl": { via: "history", sessions: [{ claudeSessionId: "s-1" }] } },
