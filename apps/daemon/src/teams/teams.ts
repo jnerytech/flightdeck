@@ -16,6 +16,7 @@ import {
 } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { MANAGED_STATE } from "../messaging/endpoints.ts";
 import type { Messaging } from "../messaging/messages.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
@@ -28,6 +29,7 @@ import {
   type TeamBrief,
   workerInstructions,
 } from "./instructions.ts";
+import { STORED_CHECKS, STORED_MEMBERS, type StoredMember } from "./stored.ts";
 
 /** The persona of phase 20's pack a coordinator opens in by default. */
 export const COORDINATOR_PERSONA = "coordenador";
@@ -108,20 +110,6 @@ export interface TeamPatch {
     permission?: PermissionMode | null;
   };
   removeMember?: string;
-}
-
-/** What a team keeps of a member; the live session of a worker comes from its card. */
-interface StoredMember {
-  name: string;
-  role: "coordinator" | "worker";
-  persona: string | null;
-  model?: string | null;
-  /** Issue #93: the permission mode it was asked to open in. */
-  permission?: PermissionMode | null;
-  cardId: string | null;
-  sessionId: string | null;
-  /** A worker's number in the team (issue #101); absent from a team saved before. */
-  number?: number | null;
 }
 
 /** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
@@ -229,7 +217,7 @@ export class Teams {
   }
 
   private stored(row: Row): StoredMember[] {
-    return JSON.parse(row.members) as StoredMember[];
+    return parseJsonOr(STORED_MEMBERS, row.members, []);
   }
 
   /** A member as the app sees it: the worker's session is the one its card is running now. */
@@ -265,7 +253,7 @@ export class Teams {
       goal: row.goal,
       coordinator: row.coordinator,
       members: this.stored(row).map((m) => this.member(m)),
-      checks: JSON.parse(row.checks) as string[],
+      checks: parseJsonOr(STORED_CHECKS, row.checks, []),
       state: row.state,
       pausedBy: row.paused_by,
       instructionsVersion: row.instructions_version,
@@ -712,7 +700,7 @@ export class Teams {
     const team = {
       name: row.name,
       goal: this.row(row.id).goal,
-      checks: JSON.parse(this.row(row.id).checks) as string[],
+      checks: parseJsonOr(STORED_CHECKS, this.row(row.id).checks, []),
       projectId: row.project_id,
     };
     for (let i = 0; i < count; i++) {
