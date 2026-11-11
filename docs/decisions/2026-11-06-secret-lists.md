@@ -16,5 +16,5 @@ file ending in `.env` (`prod.env`) is a credential for the classifier too, as it
 OpenCode. OpenCode's globs are case-sensitive and the classifier's are not: a capitalised name is
 asked about by Flightdeck's own check, not by OpenCode's rule.
 
-`apps/daemon/test/secret-paths-drift.test.ts` fails when the classifier and the globs disagree on a
+`apps/daemon/test/permissions/secret-paths-drift.test.ts` fails when the classifier and the globs disagree on a
 hand-written list of secret paths, in both directions.

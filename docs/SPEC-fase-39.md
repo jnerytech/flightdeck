@@ -336,7 +336,7 @@ feature), `opencode_unsafe_global` (with what was found), `opencode_config_outra
 `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME` from the test environment. Discovery, the doctor's
 probe, the killer and the timers are injected. A daemon with the `fake` runtime runs no discovery; a test or smoke that
 starts a daemon with the `claude` runtime sets `opencode.enabled: false` or a missing `executablePath`.
-`apps/daemon/test/fake-opencode.ts` is a folder with `opencode` and `opencode.cmd` that forward to
+`apps/daemon/test/runtime/fake-opencode.ts` is a folder with `opencode` and `opencode.cmd` that forward to
 `fake-opencode-main.ts`: it answers `--version`, `models --standalone`, the three `api ... --standalone` calls and the ACP
 peer, from a script of fixtures, and logs what it received. Fixtures under `apps/daemon/test/fixtures/opencode-acp/` are
 recorded (scrubbed of paths, ids and the model list) or, for shapes the docs define and the shipped config cannot

@@ -14,7 +14,7 @@ import { CardPorts } from "../../src/runenv/ports.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { git, gitRepo, newBoard } from "../board-helpers.ts";
 import { newManager, tempDir } from "../helpers.ts";
-import { fakeRunHost, runConfig } from "../run-helpers.ts";
+import { fakeRunHost, runConfig } from "../runenv/helpers.ts";
 import { insertSession } from "../usage-helpers.ts";
 
 // Real git in temporary repositories: more than the default 5 s.

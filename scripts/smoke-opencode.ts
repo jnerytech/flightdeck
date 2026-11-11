@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * OpenCode smoke (phase 39): a daemon with OpenCode turned on and the fake `opencode` first on its
- * PATH (apps/daemon/test/fake-opencode.ts). Over the socket: the host lists OpenCode; an OpenCode
+ * PATH (apps/daemon/test/runtime/fake-opencode.ts). Over the socket: the host lists OpenCode; an OpenCode
  * session asks to run a command and the person allows it; the tool result and a turn with its cost
  * arrive; a text that starts with `/` reaches OpenCode with a zero-width space first; a waiting turn
  * is interrupted; the daemon restarts and the same session goes on with `session/resume`.
@@ -11,8 +11,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import type { HostInfoResult } from "@flightdeck/protocol";
 import { startDaemon } from "../apps/daemon/src/main.ts";
-import { installFakeOpenCode } from "../apps/daemon/test/fake-opencode.ts";
 import { FrameClient } from "../apps/daemon/test/history-helpers.ts";
+import { installFakeOpenCode } from "../apps/daemon/test/runtime/fake-opencode.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
