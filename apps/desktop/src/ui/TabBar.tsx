@@ -2,8 +2,6 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   ArrowRight,
-  BookOpen,
-  Bot,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -11,13 +9,10 @@ import {
   CircleAlert,
   LoaderCircle,
   type LucideIcon,
-  MessageSquare,
   MoreHorizontal,
   Pin,
   PinOff,
   Plus,
-  SquareKanban,
-  SquareTerminal,
   X,
 } from "lucide-react";
 import {
@@ -31,7 +26,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
-import { NAV_ICONS } from "@/components/nav-icons";
 import { TabOverflow } from "@/components/tabs/tab-overflow";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,32 +36,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
+import { TAB_ICONS, tabFacts, tabTitle } from "@/features/tabs/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
-import { isProd } from "../features/ssh/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { breadcrumb } from "../lib/breadcrumb.ts";
-import { hostColorVar } from "../lib/host-color.ts";
 import { revealTab } from "../lib/reveal-tab.ts";
-import {
-  badgePulses,
-  type TabBadge,
-  type TabKind,
-  tabBadge,
-  tabIdleSince,
-  tabKind,
-} from "../lib/tab-badge.ts";
+import { badgePulses, type TabBadge, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
-
-const ICONS: Record<TabKind, LucideIcon> = {
-  session: MessageSquare,
-  card: SquareKanban,
-  terminal: SquareTerminal,
-  reader: BookOpen,
-  agent: Bot,
-  screen: NAV_ICONS.sessions,
-  ...NAV_ICONS,
-};
 
 /** Past this many tabs the badges shrink to dots and the strip offers a menu of all of them. */
 const COMPACT_AT = 8;
@@ -75,66 +50,6 @@ const COMPACT_AT = 8;
 const STEP = 240;
 /** How a tab is moved from the keyboard. */
 const MOVE_KEYS = "Control+Shift+ArrowLeft Control+Shift+ArrowRight";
-
-/** What a terminal tab says about the ssh destino it was opened from, if it was. */
-const sshOf = (tab: Tab, store: AppStore) => {
-  const route = tab.router.current;
-  return route.name === "terminal"
-    ? store.ssh.terminals.get(`${route.host}/${route.terminalId}`)
-    : undefined;
-};
-
-/**
- * The title of a tab: the last step of the path its route shows in the header. A host's Overview and
- * History end in the host's name, which the row already says (it belongs to that host): they show
- * their section instead (issue #644).
- */
-const title = (tab: Tab, state: AppState, store: AppStore) => {
-  const ssh = sshOf(tab, store);
-  if (ssh) return store.i18n.t("terminalUi.sshBadge", { name: ssh.name });
-  const route = tab.router.current;
-  if (route.name === "host") return store.i18n.t("hostHome.overview");
-  if (route.name === "history") return store.i18n.t("sidebar.history");
-  return breadcrumb(route, state, store.i18n.t).at(-1)?.label ?? "";
-};
-
-// The Ctrl+Tab switcher draws the same icon and title as the strip.
-export { ICONS as TAB_ICONS, title as tabTitle };
-
-type TabFacts = {
-  t: AppStore["i18n"]["t"];
-  state: AppState;
-  store: AppStore;
-  /** The host the tab belongs to; the shared tabs belong to none. */
-  host: string | null;
-};
-
-/** What a tab of the strip shows and says: its name, kind, badge, server and the words a screen reader gets. */
-function tabFacts(tab: Tab, at: TabFacts) {
-  const { t, state, store, host } = at;
-  const label = title(tab, state, store);
-  const kind = tabKind(tab.router.current);
-  const badge = tabBadge(tab.router.current, state);
-  const pinnedLabel = badge ? [label, t(`tabs.badge.${badge}`)].join(", ") : label;
-  const ssh = sshOf(tab, store);
-  const hostName = host ? (state.hosts.find((h) => h.id === host)?.name ?? host) : undefined;
-  // A pinned tab shows no title, and a host's tab no longer carries its host's name in it: the
-  // name is set here, with the badge's words.
-  const pinnedName = tab.pinned ? pinnedLabel : undefined;
-  return {
-    label,
-    kind,
-    Icon: ICONS[kind],
-    badge,
-    cacheSince: tabIdleSince(tab.router.current, state),
-    ssh,
-    // A production server is easy to mistake for another: its tab gets a red border.
-    prod: ssh ? isProd(ssh.tags) : undefined,
-    // The host's tabs carry its color.
-    hostColor: host ? hostColorVar(host) : undefined,
-    ariaLabel: hostName ? t("tabs.named", { title: pinnedLabel, host: hostName }) : pinnedName,
-  };
-}
 
 /** The marks on a tab's wrapper: production, pinned, its host's color, the side a drag would drop on, and the classes. */
 function tabItemMarks(
@@ -283,13 +198,13 @@ export function TabBar(
     focusTab.current = tab.id;
     setAnnouncement(
       t("tabs.moved", {
-        title: title(tab, state, store),
+        title: tabTitle(tab, state, store),
         n: own.tabs.findIndex((other) => other.id === tab.id) + 1,
         total: own.tabs.length,
       }),
     );
   };
-  const activeLabel = active ? title(active, state, store) : "";
+  const activeLabel = active ? tabTitle(active, state, store) : "";
   /** Every tab of the row as the list of all tabs shows it. */
   const listRows = row.map((tab) => {
     const route = tab.router.current;
@@ -297,10 +212,10 @@ export function TabBar(
     const host = "host" in route ? route.host : undefined;
     return {
       id: tab.id,
-      title: title(tab, state, store),
+      title: tabTitle(tab, state, store),
       host: state.hosts.find((h) => h.id === host)?.name ?? "",
       ...(host && state.hosts.some((h) => h.id === host) ? { hostId: host } : {}),
-      icon: ICONS[kind],
+      icon: TAB_ICONS[kind],
       kind,
       current: selectedTab(tab),
       pinned: tab.pinned,
@@ -368,13 +283,13 @@ export function TabBar(
     // the list of all tabs across the window. No strip to scroll, no split.
     const now = row.find(selectedTab) ?? (row[0] as Tab);
     const nowHost = ownHost(now);
-    const nowTitle = title(now, state, store);
+    const nowTitle = tabTitle(now, state, store);
     // A host not loaded yet is not named by its id: the title stands alone.
     const nowHostName = state.hosts.find((h) => h.id === nowHost)?.name;
     const nowName = nowHostName
       ? t("tabs.named", { title: nowTitle, host: nowHostName })
       : nowTitle;
-    const NowIcon = ICONS[tabKind(now.router.current)];
+    const NowIcon = TAB_ICONS[tabKind(now.router.current)];
     return (
       <div className="tab-bar">
         <TabOverflow

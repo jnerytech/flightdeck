@@ -1664,6 +1664,37 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         (personaBox?.width ?? 0) >= (rowBox?.width ?? Infinity) - 1,
         (modelBox?.height ?? Infinity) < lineHeight * 1.5,
       ]).toEqual([true, true]);
+      // The row is two even columns: the persona on its own line, the model and the permission
+      // side by side with the same width, then Remove under them at the left (#1222, #1850).
+      const cells = await row.evaluate((el) =>
+        [...el.children].map((one) => {
+          const box = one.getBoundingClientRect();
+          return { left: box.left, top: box.top, width: box.width, bottom: box.bottom };
+        }),
+      );
+      const [first, second, third] = cells;
+      const remove = cells[cells.length - 1];
+      const at = rowBox?.x ?? Infinity;
+      if (!first || !second || !third || !remove)
+        throw new Error(`the worker row at ${size.width}px has ${cells.length} cells`);
+      expect(remove.left, `Remove sits at the row's left at ${size.width}px`).toBeLessThanOrEqual(
+        at + 1,
+      );
+      expect(remove.top, `Remove is under the selects at ${size.width}px`).toBeGreaterThanOrEqual(
+        second.bottom - 1,
+      );
+      expect(
+        second.top,
+        `the model is under the persona at ${size.width}px`,
+      ).toBeGreaterThanOrEqual(first.bottom - 1);
+      if (cells.length > 3) {
+        expect(
+          // The row aligns its cells at the end, so a label that wraps makes one taller: the
+          // bottoms line up, not the tops.
+          [Math.abs(third.bottom - second.bottom) <= 1, Math.abs(third.width - second.width) <= 2],
+          `the model and the permission are side by side, as wide as each other, at ${size.width}px`,
+        ).toEqual([true, true]);
+      }
     }
   },
 
@@ -2452,6 +2483,38 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       await report.scrollIntoViewIfNeeded();
       const box = await report.boundingBox();
       expect(box === null ? Infinity : box.x + box.width).toBeLessThanOrEqual(size.width + 0.5);
+      // Issue #1006, #1850: narrow (below 640 px) a member's name and badges take the row's whole
+      // width and its state and actions go under them, from the left; wide, they sit beside.
+      const head = row.locator('[data-slot="member-head"]').first();
+      const found = await head.evaluate((el) => {
+        const id = el.querySelector('[data-slot="member-id"], .member-id');
+        const end = el.querySelector('[data-slot="member-end"]');
+        const action = end?.firstElementChild;
+        if (!id || !end || !action) return null;
+        const [bar, name, tail, first] = [el, id, end, action].map((one) =>
+          one.getBoundingClientRect(),
+        );
+        return {
+          nameWidth: name?.width ?? 0,
+          rowWidth: bar?.width ?? 0,
+          under: (tail?.top ?? 0) >= (name?.bottom ?? Infinity) - 1,
+          beside: (tail?.left ?? 0) >= (name?.right ?? Infinity) - 1,
+          firstAtLeft: (first?.left ?? Infinity) <= (name?.left ?? 0) + 1,
+          sideways: el.scrollWidth > el.clientWidth + 1,
+        };
+      });
+      if (!found) throw new Error(`a team member's head at ${size.width}px is missing a part`);
+      if (size.width < 640) {
+        expect(
+          [found.nameWidth >= found.rowWidth - 1, found.under, found.firstAtLeft, found.sideways],
+          `a member's head stacks at ${size.width}px`,
+        ).toEqual([true, true, true, false]);
+      } else {
+        expect(
+          [found.beside, found.sideways],
+          `a member's head is one line at ${size.width}px`,
+        ).toEqual([true, false]);
+      }
     }
   },
 
