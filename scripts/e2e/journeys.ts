@@ -1846,6 +1846,51 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       if (problem) throw new Error(`a barra de status a ${width}px: ${problem}`);
     }
 
+    // 3b. The top bar and the status bar change at one width, 1024 px, the one `useBreakpoint()`
+    // uses (#641, #1850): at 1023 the host's name, the search's text and keys, the version and the
+    // quota window are hidden and the host's icon stands in; at 1024 the full forms show.
+    const shown = () =>
+      c.page.evaluate(() => {
+        const display = (selector: string) => {
+          const el = document.querySelector(selector);
+          return el ? getComputedStyle(el).display : null;
+        };
+        return {
+          name: display(".top-bar-host-name"),
+          chevron: display(".top-bar-host-chevron"),
+          // A host in use shows its dot and initial; with none, the server icon stands in.
+          mark: display(".top-bar-host-initial") ?? display(".top-bar-host-icon"),
+          searchText: display(".top-bar-search-text"),
+          searchKeys: display(".top-bar-search-keys"),
+          version: display(".top-bar-version"),
+          quota: display(".status-quota-window"),
+          search: document.querySelector(".top-bar-search")?.getBoundingClientRect().width ?? 0,
+        };
+      });
+    for (const width of [1023, 1024]) {
+      await c.page.setViewportSize({ width, height: 800 });
+      await c.page.locator(".top-bar-search").waitFor({ timeout: WAIT });
+      const now = await shown();
+      const compact = width < 1024;
+      const hidden = (value: string | null) => value === null || (value === "none") === compact;
+      expect(
+        {
+          hosts: [now.name, now.chevron, now.searchText, now.searchKeys, now.version].map((one) =>
+            one === null ? "missing" : one === "none" ? "hidden" : "shown",
+          ),
+          markHidden: now.mark === "none",
+          quotaFits: hidden(now.quota),
+          searchWide: now.search >= 150,
+        },
+        `the top bar at ${width}px`,
+      ).toEqual({
+        hosts: Array(5).fill(compact ? "hidden" : "shown"),
+        markHidden: !compact,
+        quotaFits: true,
+        searchWide: !compact,
+      });
+    }
+
     // 4. Settings (#641, #1850): beside its content the section list is sticky and a label sits
     // left of its control in a wide window; narrow, the list goes above the content, its links
     // wrap in a row, and the label goes above its control. Measured, not read from the stylesheet.
