@@ -34,84 +34,19 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 
 ## Commands
 
+The detail of every command (the slot, `test:related`, the tiers, `coverage:funcs`, Sonar, `handoff:check`,
+the screens and the builds) is in [docs/commands.md](docs/commands.md). What a session needs on its first day:
+
 - A red main (#1246): `bun run main-red` lists what fails and who claimed it (a green run closes the claims);
   claim before fixing: `-- claim "<cause>"` (a second claim on an owned test is refused; pr open/update warn too).
 - Test a single file: `bun --config=bunfig.area.toml test <file>`. A plain `bun test <file>`
   exits with 1 even when it passes, because of the global coverage threshold.
-- Full suite (with the 80% line and function threshold per file, #1002): `bun run slot -- bun run test`.
-- The heavy commands go through the slot: `bun run slot -- <command...>` (for example
-  `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
-  waiters take it first come, first served. `bun run slot -- --status` shows the holder (with a
-  warning past `--max-age`, 90 min by default) and each waiter in queue order with its age, folder
-  and an `ORPHAN` mark. Past 20 min a hold is LONG for the holder, its waiters and `--status`, and
-  harness:stats lists it; a run over 60 s of CI time by `scripts/test-timings.json` needs
-  `FLIGHTDECK_SLOT_HEAVY="<reason>"` (#833, #1541). A waiter whose shell is gone gives up (`FLIGHTDECK_SLOT_DETACHED=1` keeps a
-  launch detached on purpose in the queue), and `--reap` (the coordinator) stops orphan waiters by
-  process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
-  (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
-  `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
-  user while it runs. What the slot and the light lane start, and every test run (the preload),
-  runs at `oom_score_adj` 1000 on Linux, so the kernel kills a leaking test before any session.
-- Tests for what you changed: `bun run test:related [--base <ref>] [--fast]`. It takes the files
-  changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
-  test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
-  path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
-  changed source file is at 80% of its lines and functions, listing the uncovered `file:line` and the
-  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A file that a
-  changed test newly imports is held to 80% too, with the tests that import it directly, since
-  loading it puts it in the full suite's gate even outside `scripts/lib` (#762; direct imports only,
-  not what that file loads in turn). `--pr` (#309) is what a PR's
-  CI runs: every unit and component test plus the related tests, with the same changed-file gate, or
-  the whole suite when a global file changed or a test went away; `--keep-coverage <dir>` keeps the
-  lcov there. A change to `package.json`, a `bunfig` or the preload
-  prints a warning: run the full suite then. A worker session runs it with `--fast` or `--tier`
-  (#674): the guard hook refuses a plain, `--base` or `--pr` run, through the slot or not, since it
-  holds the slot 12 to 25 minutes for what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"`
-  as an env prefix of the run itself lets a real need through (#687: anywhere else in the command it
-  does not count, and a reason has at least 8 characters); `harness:stats` counts the refusals and
-  the overrides.
-- Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
-  (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
-  `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
-  gate). A PR's CI runs `--pr`: every unit and component test plus the related tests of the other
-  tiers, with 80% on the changed files. A push to main runs the same, from the commit before it
-  (#444). The e2e journeys run when the change touches what they read (the screens, the journeys,
-  the demo, the daemon). Windows is not part of a PR's or a push's run (#534): the person tests it
-  by hand. The schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo
-  80% gate (on Linux, 3 shards × Bun lines and istanbul functions, merged fail-closed by
-  `scripts/shard-gate.ts`, #296), Windows included as a signal that gates nothing (`test:shards`, 30 s per test there);
-  `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
-- Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
-  the tests that reach the files (or the ones named after --tests) and lists the functions no test
-  called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
-  A worker session runs it over at most 20 test files (#674): more is refused, by the guard hook
-  for `--tests` and by the script for the tests it picks, with the same override. The script refuses
-  for every session, the coordinator too (#725): its environment is the command's, which a worker can set.
-- Sonar: SonarCloud analyses each PR and each full run of main, never a main push (#283, #296);
-  `bun run sonar-left` lists the open findings, `STALE?` where main changed since (#1477). `// NOSONAR: <reason>` on the flagged line suppresses a reviewed false
-  positive there. `sonar-project.properties` keeps SonarCloud's coverage on exactly the files of
-  the coverage gate (`sonar-coverage.test.ts`).
-- Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
-  and `test:related` in order, then reads the required checks of HEAD on GitHub (`ci=`: push the
-  branch first; `--base <ref>` for a branch stacked on another) and the security gate (`security=`,
-  #273: a change that spawns or kills, deletes, handles a secret or a permission, or touches the
-  vault or pairing needs the `security-reviewer` agent's verdict committed after it, as a
-  `Security-Reviewed: <summary>` trailer), and prints a `HANDOFF <branch> <head> ...` stamp line; paste it in the hand-off message. The receiver runs
-  `bun run handoff:check -- --verify` in the worktree (refused when stale or not all 0, `ci` too). The full suite (`bun run slot -- bun run test`) runs at the
-  orchestrator's version gate and in CI, not in every session.
-- Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in
-  `package.json`; never `smoke:real` unless asked).
-- Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
-  `main`), the same as `-- --since auto`; `-- --since <tag or commit>` picks the start. CI runs it.
-- Screens: `bun run demo` (the fake hosts and the web entry at http://localhost:1420; `DEMO_PORT` picks
-  another, and the e2e run and `demo:shots` take a free one, so an open demo never blocks them;
-  `DEMO_BUILD=1` serves a production build through `vite preview`, as CI's e2e and prints do, #444),
-  `bun run slot -- bun run demo:shots` (prints in both themes and languages, plus axe),
-  `bun run slot -- bun run e2e` (the
-  journeys, in both languages, with `@playwright/test`: `E2E_ONLY=a,b` picks journeys, and
-  `bun run slot -- bun run e2e -- --repeat-each 5` hunts flakes; the HTML report is in `playwright-report/`).
-- Builds: `bun run slot -- bun run build:daemon`, `bun run slot -- bun run build:desktop`.
-  `cargo check` (in `apps/desktop/src-tauri`) requires the desktop build first.
+- Tests for what you changed: `bun run test:related -- --fast` (a worker session never runs a plain,
+  `--base` or `--pr` run: the guard hook refuses it, and the PR's CI runs the rest).
+- Heavy commands (the full suite, `demo:shots`, `e2e`, the smokes, the builds) go through
+  `bun run slot -- <command...>`, one exclusive lock for the machine; `bun run slot -- --status` shows the holder.
+- Before hand-off: `bun run handoff:check` (typecheck, lint, tdd:audit, test:related, then the PR's
+  checks and the security gate) prints a `HANDOFF` stamp line.
 
 ## Non-negotiable rules
 
@@ -153,8 +88,10 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   (`pr auto` retargets it). A session keeps at most 2 branches open (pushed, not merged). A release
   is a tag on a green `main`.
 - Before opening a PR, run Claude Code's built-in `/code-review` and `/security-review` skills on the
-  branch and fix what they find (user, 2026-11-10, #1670). `/code-review` runs at its default level,
-  never `max` or `ultra` unless asked. The `security-reviewer` agent and its trailer still apply.
+  branch, each inside a subagent (the Agent tool: a fork or `general-purpose`) that returns only its
+  findings, so the skill text never enters your own context; fix what they find (user, 2026-11-10,
+  #1670, #1973). `/code-review` runs at its default level, never `max` or `ultra` unless asked. The
+  `security-reviewer` agent and its trailer still apply.
 - Only the coordinator pushes `main`, `rc/*` and tags, merges by hand (`bun run pr -- merge <n>`)
   and publishes releases. The guard hook refuses the rest: pushes of main, `rc/*`, tags,
   `--tags`/`--all`/`--mirror`, a bare `--force`, a `--force-with-lease` to any branch but the one
@@ -223,68 +160,6 @@ New code and every move follow these rules; older code moves toward them one str
 - In Git Bash, the `/TN` in `schtasks /TN ...` gets rewritten as a path. Use PowerShell.
 - In stdin mode, Biome's exit code does not reflect the diagnostics.
 
-# Subagent delegation (token-saving focus)
+## More
 
-Goal: spend fewer tokens on the main model. The general rule is to **delegate reading and searching to Haiku** and **do everything else directly in the main session**.
-
-## Which subagent to use
-
-| Situation | What to do | Model |
-|---|---|---|
-| Find files, understand how something works, map where something is used | `Explore` | **always `model: haiku`** |
-| Context gathering during plan mode | `Explore` (not `Plan`) | **`model: haiku`** |
-| Architectural analysis: dependencies between modules, impact of a large refactor, comparing approaches | `Plan` | **`model: sonnet`** |
-| Small or medium edit, with the files already identified | **Do it directly**, no subagent | — |
-| Mechanical, repetitive task across many files (renaming, applying a pattern, fixing tests) | `general-purpose` | **`model: sonnet`** |
-| Long, complex task that would fill up the main context | `general-purpose` | default |
-
-Rules:
-- Every `Explore` call must pass `model: haiku` explicitly.
-- Use `general-purpose` sparingly: it starts cold, rereads files and is expensive. Only use it when sparing the main context is worth that cost.
-- **Do not delegate** when the file path is already known or a single `Read`/`Grep` is enough. Do it directly.
-- Do not reread in the main session files that `Explore` already summarized, except for the sections you are about to edit.
-- Independent search tasks: launch several `Explore` calls in parallel, in a single message.
-
-## Plan mode
-
-Rework is the biggest waste of tokens. Therefore:
-
-- For every medium or large task (more than one file, a behavior change, a non-obvious approach), enter plan mode and present the plan before editing anything.
-- Exception: a session that works autonomously (it receives its tasks by message from an orchestrator or a scheduled prompt, and the person is not at the terminal) does not enter plan mode, because leaving it needs the person's approval and the session would sit waiting. It writes the same short plan (files, approach, risks, validation) as a comment on the issue or in the PR body, and goes on.
-- Inside plan mode, context gathering goes to `Explore` with `model: haiku`, not to `Plan`.
-- Use `Plan` with `model: sonnet` only when the plan depends on real architectural analysis. Never use it just to locate files.
-- The plan must list: files to change, the chosen approach (and why, if there was an alternative), risks, and how to validate.
-- Small, obvious tasks do not need plan mode.
-
-## Explore thoroughness level
-
-Choose the level and state it in the prompt. Start with the lowest level that does the job:
-
-- **quick** — targeted lookup with a clear target: "where is X defined", "which file configures Y".
-- **medium** — understand a flow or module: "how does authentication work", "who calls this service".
-- **very thorough** — broad sweep: impact of a change across the whole codebase, varied naming conventions, code spread across several projects or layers.
-
-If a `quick` search comes back inconclusive, move up to `medium` instead of repeating the same search.
-
-## How to write the subagent prompt
-
-`Explore` and `Plan` **do not read this CLAUDE.md** or the session's git status. Everything they need to know must be in the prompt. Use this structure:
-
-```
-Goal: <what I need to find out and why — which decision this will support>
-Thoroughness: <quick | medium | very thorough>
-Project context: <stack, relevant folder structure, naming conventions>
-Where to look: <likely folders/files>
-Ignore: <legacy, generated, vendor, tests — whatever is irrelevant>
-Already known: <what has already been found, to avoid repeating it>
-Response format: list of path:line with one sentence each, at most 15 lines, no pasted code
-```
-
-The short response format is mandatory: it is what keeps the main context small.
-
-For `general-purpose`, which does read this file, focus on the goal, the definition of done and the constraints ("do not change the public API", "run module X's tests at the end"), and ask for a short report: what changed and what is still pending.
-
-## After the subagent returns
-
-- Open only the cited sections you are going to edit or that back a critical decision.
-- Do not paste the subagent's output to me; summarize what matters for the decision.
+- Subagent delegation (what goes to Haiku or Sonnet, how to brief it): [docs/subagent-delegation.md](docs/subagent-delegation.md).

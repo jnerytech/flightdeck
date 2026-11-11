@@ -113,8 +113,12 @@ describe("harness-config", () => {
     const files = [
       join(ROOT, "CLAUDE.md"),
       join(ROOT, "docs/TDD.md"),
+      join(ROOT, "docs/commands.md"),
+      join(ROOT, "docs/subagent-delegation.md"),
       ...markdownUnder(join(ROOT, ".claude")),
     ];
+    // What moved out of CLAUDE.md is still read by this test (#1973).
+    expect(files.filter((file) => !existsSync(file))).toEqual([]);
     const commands = files.flatMap((file) =>
       commandsIn(readFileSync(file, "utf8")).map((command) => ({ file, command })),
     );
@@ -127,6 +131,15 @@ describe("harness-config", () => {
       .filter(({ command }) => slotViolation(command, {}) !== null)
       .map(({ file, command }) => `${file.slice(ROOT.length + 1)}: ${command}`);
     expect(refused).toEqual([]);
+  });
+
+  test("the root instructions run the two review skills in a subagent and point to the docs that hold the commands and the delegation rules (#1973)", () => {
+    const text = readFileSync(join(ROOT, "CLAUDE.md"), "utf8");
+    const review = text.split("\n- ").find((rule) => rule.includes("`/code-review`")) ?? "";
+    expect(review).toContain("subagent");
+    expect(review).toContain("findings");
+    expect(text).toContain("docs/commands.md");
+    expect(text).toContain("docs/subagent-delegation.md");
   });
 
   test("the path rules exist, their frontmatter parses, and every paths glob matches a tracked file", () => {
