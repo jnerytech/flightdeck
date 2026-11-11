@@ -104,6 +104,14 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
  * gated by the feed but names `knowledge`, and the feed switch names `knowledgeFeed`.
  */
 const GROUPED: Record<string, Record<string, string>> = {
+  harness: {
+    stack: "harnessStack",
+    preview: "harnessPreview",
+    apply: "harnessApply",
+    templates: "harnessTemplates",
+    draft: "harnessDraft",
+    commit: "harnessCommit",
+  },
   knowledge: {
     list: "knowledge",
     feed: "knowledge",

@@ -94,6 +94,14 @@ export type GatedOption = keyof typeof GATES;
  * host may run some of a domain's services and not others.
  */
 export const GROUP_GATES = {
+  harness: {
+    stack: "harnessStack",
+    preview: "harnessPreview",
+    apply: "harnessApply",
+    templates: "harnessTemplates",
+    draft: "harnessDraft",
+    commit: "harnessCommit",
+  },
   // The index is gated by the feed but names `knowledge`, and the feed switch names `knowledgeFeed`.
   knowledge: {
     list: "knowledge",
