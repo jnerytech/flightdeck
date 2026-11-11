@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
 import { type CacheFiles, seedCache } from "../lib/tsc-cache.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 /** An in-memory cache: path to its last change in ms. */
 function memory(at: Record<string, number>) {
@@ -65,7 +65,7 @@ describe("seedCache", () => {
 
 describe("a seeded build info is safe", () => {
   test("tsc still reports a type error that the donor's sources did not have", () => {
-    const base = mkdtempSync(join(realpathSync.native(tmpdir()), "tsc-seed-"));
+    const base = realTempDir("tsc-seed-");
     const project = (dir: string, source: string) => {
       mkdirSync(join(dir, "src"), { recursive: true });
       writeFileSync(join(dir, "src/a.ts"), source);
