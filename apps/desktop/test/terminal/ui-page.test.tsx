@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AppStore } from "../src/lib/app-store.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { interceptWire } from "./fake-host.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { fakeXterm } from "./terminal-fakes.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { interceptWire } from "../fake-host.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
+import { fakeXterm } from "./fakes.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TerminalPage } = await import("../src/ui/TerminalPage.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { TerminalPage } = await import("../../src/ui/TerminalPage.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

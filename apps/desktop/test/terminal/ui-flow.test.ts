@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { TerminalAttachResult } from "@flightdeck/protocol";
-import { ACK_BYTES, TerminalSession } from "../src/lib/terminal-session.ts";
+import { ACK_BYTES, TerminalSession } from "../../src/lib/terminal-session.ts";
 
 const KB = 1024;
 const b64 = (bytes: number) => Buffer.from(new Uint8Array(bytes).fill(120)).toString("base64");

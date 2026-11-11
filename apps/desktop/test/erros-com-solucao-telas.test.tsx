@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render } = await import("@testing-library/react
 const { RulesEditor } = await import("../src/features/vault/rules-editor.tsx");
 const { MessagingRulesSection } = await import("../src/features/messaging/rules-section.tsx");
 const { ActionForm } = await import("../src/features/actions/action-form.tsx");
-const { ChangesPanel } = await import("../src/ui/ChangesPanel.tsx");
+const { ChangesPanel } = await import("../src/features/review/changes-panel.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
