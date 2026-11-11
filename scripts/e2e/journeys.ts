@@ -1899,6 +1899,78 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       const sideways = await pageScrollsSideways(c.page);
       if (sideways) throw new Error(`Settings scrolls sideways at ${width}px: ${sideways}`);
     }
+
+    // 5. The composer (#641, #1850): its box shares a line with its buttons, and in a dock under
+    // 20 rem wide (a narrow pane) it takes the line above them. The dock is forced to 300 px, since
+    // the query reads the dock's width, not the window's.
+    await c.page.setViewportSize({ width: 1280, height: 800 });
+    await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+    const dock = c.page.locator(".composer-dock").first();
+    await dock.waitFor({ timeout: WAIT });
+    const composerAt = (dockWidth: number | null) =>
+      dock.evaluate((el, set) => {
+        (el as HTMLElement).style.width = set === null ? "" : `${set}px`;
+        const card = el.querySelector("[data-slot='composer-card']");
+        const box = card?.querySelector(".composer-box");
+        if (!card || !box) return null;
+        const field = box.getBoundingClientRect();
+        const around = card.getBoundingClientRect();
+        const buttons = [...card.querySelectorAll("button")]
+          .map((one) => one.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0);
+        const found = {
+          buttons: buttons.length > 0,
+          wholeLine: field.width >= around.width * 0.8,
+          above: buttons.every((rect) => rect.top >= field.bottom - 1),
+          sharesLine: buttons.some((rect) => rect.top < field.bottom && rect.bottom > field.top),
+        };
+        (el as HTMLElement).style.width = "";
+        return found;
+      }, dockWidth);
+    expect(await composerAt(null), "the composer in a wide dock").toEqual({
+      buttons: true,
+      wholeLine: false,
+      above: false,
+      sharesLine: true,
+    });
+    expect(await composerAt(300), "the composer in a dock under 20 rem").toEqual({
+      buttons: true,
+      wholeLine: true,
+      above: true,
+      sharesLine: false,
+    });
+
+    // 6. The sidebar (#171, #567, #1850): in a short window the nav and the hosts scroll as one
+    // body between the header and the footer; only the body scrolls, the footer stays in view, and
+    // the hosts are reachable by scrolling it.
+    await c.page.setViewportSize({ width: 1280, height: 420 });
+    await open(c, { name: "home" });
+    const bodyOf = c.page.locator("[data-slot='sidebar-body']");
+    await bodyOf.waitFor({ timeout: WAIT });
+    const side = await bodyOf.evaluate((body) => {
+      const nav = body.querySelector("nav");
+      const hosts = body.querySelector("[data-slot='sidebar-hosts']");
+      const foot = document.querySelector("[data-slot='sidebar-foot']");
+      if (!nav || !hosts || !foot) return null;
+      body.scrollTop = body.scrollHeight;
+      const room = body.getBoundingClientRect();
+      return {
+        scrolls:
+          getComputedStyle(body).overflowY === "auto" && body.scrollHeight > body.clientHeight,
+        own: [getComputedStyle(nav).overflowY, getComputedStyle(hosts).overflowY],
+        hostsReached: hosts.getBoundingClientRect().bottom <= room.bottom + 1,
+        footInWindow: foot.getBoundingClientRect().bottom <= window.innerHeight + 1,
+        hostsHigh: hosts.getBoundingClientRect().height >= 96,
+      };
+    });
+    if (!side) throw new Error("the sidebar's body, nav, hosts or footer is missing");
+    expect(side, "the sidebar in a 420 px high window").toEqual({
+      scrolls: true,
+      own: ["visible", "visible"],
+      hostsReached: true,
+      footInWindow: true,
+      hostsHigh: true,
+    });
   },
 
   // Issues #1030 and #1031: at the usual window the board fills its width with all five columns
@@ -2085,6 +2157,21 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         );
         if (sideways > 0)
           throw new Error(`a página rola ${sideways}px para o lado a ${size.width}px`);
+        // Issue #641, #1850: the views keep one row that scrolls, instead of a second row.
+        const strip = await list.evaluate((el) => ({
+          overflowX: getComputedStyle(el).overflowX,
+          wraps: getComputedStyle(el).flexWrap !== "nowrap",
+          rows: new Set(
+            [...el.querySelectorAll("[role='tab']")].map((tab) =>
+              Math.round(tab.getBoundingClientRect().top),
+            ),
+          ).size,
+        }));
+        expect(strip, `the views of a session at ${size.width}px`).toEqual({
+          overflowX: "auto",
+          wraps: false,
+          rows: 1,
+        });
       }
     }
     // Alt+1..7 pick the views in the order of the tabs; the tab picked says so.

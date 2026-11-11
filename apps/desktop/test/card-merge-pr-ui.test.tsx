@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, screen, within } = await import("@testi
 const { useState } = await import("react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { CardMergePr } = await import("../src/components/card/card-merge-pr.tsx");
+const { CardMergePr } = await import("../src/features/board/card-merge-pr.tsx");
 const { canMergeCardPr } = await import("../src/lib/card-merge-pr.ts");
 
 setDefaultTimeout(30_000);
