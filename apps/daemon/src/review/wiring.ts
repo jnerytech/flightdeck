@@ -2,7 +2,10 @@ import type { Database } from "bun:sqlite";
 import { DEFAULT_MODELS } from "@flightdeck/protocol";
 import { ulid } from "../ulid.ts";
 import { type CardReviewDeps, CardReviews, reviewHold } from "./card-review.ts";
+import { Changes, type ChangesOptions } from "./changes.ts";
 import { ReviewComments, type ReviewCommentsOptions } from "./comments.ts";
+import { type SessionCommitDeps, SessionCommits } from "./session-commit.ts";
+import { SessionPrs } from "./session-pr.ts";
 
 /** A gate that holds new work: null when it lets it through. */
 interface Gate {
@@ -83,4 +86,36 @@ export function createReview(deps: ReviewDeps) {
       })
     : undefined;
   return { reviewComments, cardReviews };
+}
+
+/** What the diffs of the sessions and cards, and a plain session's commit and PR, are built from. */
+export interface ChangesDeps {
+  db: Database;
+  board: NonNullable<ChangesOptions["board"]>;
+  log: (message: string) => void;
+  /** A terminal's folder is a target of the Files viewer (#506). */
+  terminals: ChangesOptions["terminals"];
+  /** A project's checkout is one too, inside these (#797). */
+  allowedRoots: readonly string[];
+  /** The host's scanner: a session's branch and its PR go public. */
+  scanner: SessionCommitDeps["scanner"];
+}
+
+/**
+ * Issue #1593: the diff of every session and card, for the review (phase 11), and a plain
+ * session's changes committed on a new branch in its own checkout, pushed and opened as a PR
+ * (#1133). A card's worktree is the board's: it commits and opens its own PR.
+ */
+export function createChanges({ db, board, log, terminals, allowedRoots, scanner }: ChangesDeps) {
+  const changes = new Changes({ db, board, log, terminals, allowedRoots });
+  const isCardWorktree = (root: string) => board.projectForCwd(root)?.card != null;
+  const sessionCommits = new SessionCommits({ changes, scanner, isCardWorktree });
+  const sessionPrs = new SessionPrs({
+    changes,
+    commits: sessionCommits,
+    scanner,
+    isCardWorktree,
+    projectProvider: (root) => board.projectForCwd(root)?.project.prProvider ?? null,
+  });
+  return { changes, sessionCommits, sessionPrs };
 }
