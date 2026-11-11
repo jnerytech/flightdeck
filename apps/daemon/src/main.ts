@@ -121,10 +121,8 @@ import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
-import { PrFixer } from "./watch/fix.ts";
-import { PrWatch } from "./watch/service.ts";
-import { Traces } from "./watch/trace.ts";
-import { PrWatcher, readWatchSettings } from "./watch/watch.ts";
+import { readWatchSettings } from "./watch/watch.ts";
+import { createWatch } from "./watch/wiring.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
@@ -526,17 +524,19 @@ export async function startDaemon(
   const boardSync = createBoardSync({ db: store.db, board, autoApprove, gh: runGh });
   // Phase 22: the PRs of the cards are watched and fixed, inside their limits (before the
   // automations: a watched PR is the watch's alone, #77).
-  const prWatcher = new PrWatcher({
-    db: store.db,
-    board,
-    onTrigger: (trigger) => prFixer.onTrigger(trigger),
-  });
-  const prFixer = new PrFixer({
-    db: store.db,
-    board,
+  const {
     watcher: prWatcher,
+    fixer: prFixer,
+    watch: prWatch,
+  } = createWatch({
+    store,
+    board,
+    manager,
+    costs,
+    snapshots,
+    history,
+    scanner: snippetScanner,
     checks: boundedCheckRunner(),
-    onUpdate: (cardId) => prWatch.notify(cardId),
   });
   // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
   const automations = new Automations({
@@ -641,39 +641,6 @@ export async function startDaemon(
     prepare,
     quota,
   });
-  const traces = new Traces({
-    scanner: snippetScanner,
-    db: store.db,
-    board,
-    fixer: prFixer,
-    claudeSessionOf: (sessionId) => manager.get(sessionId).claudeSessionId,
-    describeSession: (sessionId) => ({
-      name: manager.get(sessionId).name,
-      request:
-        store
-          .eventsSince(sessionId, 0)
-          .map((envelope) => envelope.event)
-          .flatMap((event) => (event.type === "message.user" ? [event.text] : []))[0] ?? null,
-    }),
-    sessionCosts: (ids) => costs.sessions(ids),
-    cardCost: (cardId) => costs.card(cardId),
-    checkpoints: (claudeSessionId) => snapshots.list(claudeSessionId).length,
-    search: (query) => {
-      const seen = new Map<
-        string,
-        { claudeSessionId: string; title: string | null; cwd: string }
-      >();
-      for (const hit of history.search({ query: `"${query.replaceAll('"', "")}"`, limit: 20 })) {
-        seen.set(hit.claudeSessionId, {
-          claudeSessionId: hit.claudeSessionId,
-          title: hit.title,
-          cwd: hit.cwd,
-        });
-      }
-      return [...seen.values()];
-    },
-  });
-  const prWatch = new PrWatch({ board, watcher: prWatcher, fixer: prFixer, traces });
   prWatch.start();
   // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
   const runConfigs = new RunConfigs({ db: store.db });
