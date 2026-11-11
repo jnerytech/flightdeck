@@ -37,6 +37,7 @@ import {
   scopeKeys,
 } from "@/features/sessions/index.ts";
 import { SessionCard, STATE_TONES } from "@/features/sessions/session-card";
+import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "../components/feedback/inline-notice.tsx";
@@ -67,7 +68,6 @@ import { typing } from "../lib/keys.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import { activeWorktreeFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
-import { TeleportMove } from "./TeleportMove.tsx";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;

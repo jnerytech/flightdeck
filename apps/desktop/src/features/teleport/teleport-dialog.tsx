@@ -7,17 +7,17 @@
 import { memo, type ReactNode, useRef, useState } from "react";
 import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
-import { useT } from "../i18n/context.tsx";
-import { translateError } from "../i18n/errors.ts";
-import { formatBytes } from "../lib/format-bytes.ts";
-import { RequestError } from "../lib/host-connection.ts";
+import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { useT } from "../../i18n/context.tsx";
+import { translateError } from "../../i18n/errors.ts";
+import { formatBytes } from "../../lib/format-bytes.ts";
+import { RequestError } from "../../lib/host-connection.ts";
 import {
   plainText,
   type TeleportOutcome,
   type TeleportRunArgs,
   type TeleportSummary,
-} from "../lib/teleport.ts";
+} from "../../lib/teleport.ts";
 
 export interface TeleportDialogProps {
   /** The hosts the session can go to: online, with teleport, not its own. */
