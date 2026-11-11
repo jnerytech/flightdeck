@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { DAEMON_VERSION } from "../../daemon/src/version.ts";
 import { git } from "../../daemon/test/support/board-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -257,7 +258,7 @@ describe("pagina-host", () => {
     await waitFor(() => expect(region("Informações")).not.toBeNull());
     const status = document.querySelector("[data-slot='host-overview-status']");
     const work = document.querySelector("[data-slot='host-overview-work']");
-    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
     const rule = (name: string) => css.split(`@utility ${name} {`)[1]?.split(/\n}\n/)[0] ?? "";
     expect({
       statusFirst:

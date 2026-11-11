@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { NARROW_SHOTS } from "../../../scripts/lib/shots-narrow.ts";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -13,7 +13,7 @@ const { HomeView } = await import("../src/components/simple/home-view.tsx");
 
 afterEach(cleanup);
 
-const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../src/styles.css"));
 /** The body of one `@utility` rule, nested blocks included (up to the next top-level rule). */
 const utility = (name: string) => css.split(`@utility ${name} {`)[1]?.split(/\n}\n/)[0] ?? "";
 

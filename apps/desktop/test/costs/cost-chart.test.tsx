@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { registerDom } from "../dom.ts";
 
 registerDom();
@@ -11,7 +11,7 @@ const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);
 
-const css = readFileSync(resolve(import.meta.dir, "../../src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
 const PROJECTS = ["web", "api", "docs", "cli", "infra", "ops"];
 
 function chart() {

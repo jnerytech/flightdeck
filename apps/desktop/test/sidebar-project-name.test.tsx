@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import type { TreeProject } from "../src/lib/project-tree.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -45,7 +46,7 @@ describe("sidebar-project-name: a long project name stays on one line (issue #15
   });
 
   test("that element shrinks, is cut with an ellipsis on one line, and reads from the left", async () => {
-    const css = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
+    const css = readStyles(new URL("../src/styles.css", import.meta.url));
     const rule = css.split("@utility project-tree-label")[1]?.split("@utility")[0] ?? "";
     for (const line of [
       "min-width: 0;",

@@ -1,11 +1,11 @@
 import type { UsageSummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
-import { UsageGroupRows } from "@/components/usage/usage-group";
 import { useFormatNumber, useT } from "@/i18n/context";
-import type { AppStore } from "../lib/app-store.ts";
-import { periodRange, usd } from "../lib/costs.ts";
-import { groupByProject, type UsageHistoryTarget } from "../lib/usage-rows.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { periodRange, usd } from "../../lib/costs.ts";
+import { groupByProject, type UsageHistoryTarget } from "../../lib/usage-rows.ts";
+import { UsageGroupRows } from "./usage-group.tsx";
 
 interface Row {
   day: string;

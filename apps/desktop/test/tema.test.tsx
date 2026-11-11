@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { contrastRatio } from "../src/lib/contrast.ts";
 import { THEME_KEY, ThemeController, type ThemeEnv } from "../src/lib/theme.ts";
 import { chooseFromAccountMenu } from "./account/menu.ts";
@@ -24,7 +25,7 @@ const DESKTOP = resolve(import.meta.dir, "..");
 
 /** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
 function tokens(selector: string): Record<string, string> {
-  const css = readFileSync(resolve(DESKTOP, "src/styles.css"), "utf8");
+  const css = readStyles(resolve(DESKTOP, "src/styles.css"));
   const start = css.indexOf(`${selector} {`);
   const body = css.slice(start, css.indexOf("}", start));
   return Object.fromEntries(

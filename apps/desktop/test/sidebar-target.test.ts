@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 
-const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../src/styles.css"));
 
 /** The whole body of a named style, nested rules included. */
 function utility(name: string): string {

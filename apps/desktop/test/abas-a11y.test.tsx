@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -27,7 +27,7 @@ function declarations(css: string, selector: string): Record<string, string> {
  * `--card` does at `--surface-1`), looking in the theme first and in `:root` after it.
  */
 function tokens(selector: string): Record<string, string> {
-  const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+  const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
   const all = { ...declarations(css, ":root"), ...declarations(css, selector) };
   const resolved = (value: string, depth = 0): string => {
     const ref = /^var\((--[\w-]+)\)$/.exec(value.trim());

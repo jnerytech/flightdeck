@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { MEDIUM_QUERY } from "../src/hooks/use-breakpoint.ts";
 
-const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../src/styles.css"));
 const block = (name: string) =>
   css.match(new RegExp(`@utility ${name} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "";
 
