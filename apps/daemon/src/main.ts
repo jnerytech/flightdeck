@@ -96,12 +96,7 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import {
-  type HarnessServer,
-  type KnowledgeServer,
-  type ServerOptions,
-  startServer,
-} from "./server.ts";
+import { type ServerOptions, serverGroup, startServer } from "./server.ts";
 import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -188,18 +183,6 @@ async function createRuntime(
 const serverPart = <T extends object>(
   h: T & Record<Exclude<keyof T, keyof ServerOptions>, never>,
 ) => h as T;
-
-/**
- * A domain's group of server options (#1593), checked both ways: every service of the group is
- * there, and none it does not know (a variable skips the excess-property check `satisfies` gives).
- * `Absent` names the services the wiring may leave out, as a host that does not run them does.
- */
-const serverGroup =
-  <G extends object, Absent extends keyof G = never>() =>
-  <T extends Required<Omit<G, Absent>> & Pick<G, Absent>>(
-    h: T & Record<Exclude<keyof T, keyof G>, never>,
-  ): G =>
-    h as unknown as G;
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
 async function terminalInfo(env: Record<string, string | undefined>) {
@@ -901,8 +884,8 @@ export async function startDaemon(
     quotaPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
-    knowledge: serverGroup<KnowledgeServer>()(knowledge),
-    harness: serverGroup<HarnessServer, "draft">()(harness),
+    knowledge: serverGroup<"knowledge">()(knowledge),
+    harness: serverGroup<"harness", "draft">()(harness),
     projectTrust: {
       refresh: (paths) => projectTrust.refresh(paths),
       state: (paths) => paths.map(trustState),

@@ -128,8 +128,23 @@ import type { Worktrees } from "./worktrees/worktrees.ts";
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
+/**
+ * A domain's group of server options (#1593), checked both ways: every service of the group is
+ * there, and none it does not know (a variable skips the excess-property check `satisfies` gives).
+ * `K` names the option the group fills, so the wiring needs no import of the group's type;
+ * `Absent`, the services a host that does not run them leaves out.
+ */
+export const serverGroup =
+  <K extends keyof ServerOptions, Absent extends keyof Group<K> = never>() =>
+  <T extends Required<Omit<Group<K>, Absent>> & Pick<Group<K>, Absent>>(
+    h: T & Record<Exclude<keyof T, keyof Group<K>>, never>,
+  ): Group<K> =>
+    // A generic Required<X> is not provably an X to the compiler; at each call it is.
+    h as unknown as Group<K>;
+type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
+
 /** Issue #75, #1593: the harness domain's part of the server, each service optional. */
-export interface HarnessServer {
+interface HarnessServer {
   /** A project's stack and commands, read from its manifest files, never run. */
   stack?: (path: string) => Promise<HarnessStack>;
   /** What adding harness parts would add, written nowhere. */
@@ -154,7 +169,7 @@ export interface HarnessServer {
 }
 
 /** Issue #76, #1593: the knowledge domain's part of the server, each service optional. */
-export interface KnowledgeServer {
+interface KnowledgeServer {
   /** The library of documents of a project, read only. */
   list?: (path: string) => Promise<KnowledgeListResult>;
   /** The index of the project's current documents for a session's system prompt. */
