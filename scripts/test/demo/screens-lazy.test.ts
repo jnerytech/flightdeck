@@ -35,8 +35,9 @@ const LAZY_SCREENS = [
 /**
  * Where Screens.tsx loads a lazy screen from (#1597): a screen that moved into its feature folder
  * is `features/<name without "Page", lowercased>/page.tsx`, or in the plural folder (`HostPage` is
- * in `features/hosts`); the rest are still `ui/<name>.tsx`. Looking at the disk means a move does
- * not edit this test.
+ * in `features/hosts`); a screen that is a file of its domain, not its `page.tsx`, is named in
+ * `FILE_OF`; the rest are still `ui/<name>.tsx`. Looking at the disk means a move into a
+ * `page.tsx` does not edit this test.
  */
 const FEATURES = resolve(UI, "../features");
 /** A screen whose domain folder is not its name (GLOSSARY Domains): the Agent screen is agentcfg, Conversations is messaging, Connections is ssh, the auto-approvals screen is permissions. */
@@ -47,7 +48,12 @@ const DOMAIN_OF: Record<string, string> = {
   AutoApprovalsPage: "permissions",
 };
 
+/** A screen that is a file of its domain, not the domain's `page.tsx`: a card's detail is a board file. */
+const FILE_OF: Record<string, string> = { CardDetail: "board/card-detail.tsx" };
+
 const specifierOf = (name: string) => {
+  const file = FILE_OF[name];
+  if (file) return `../features/${file}`;
   const feature = name.replace(/Page$/, "").toLowerCase();
   const folder = [DOMAIN_OF[name] ?? feature, feature, `${feature}s`].find((dir) =>
     existsSync(resolve(FEATURES, dir, "page.tsx")),
