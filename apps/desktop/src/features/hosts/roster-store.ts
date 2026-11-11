@@ -5,11 +5,6 @@ import type { HostConfig } from "../../lib/hosts.ts";
 import { pairingErrorText } from "../../lib/pairing-text.ts";
 import { probeHost } from "../../lib/probe-host.ts";
 
-/** What the host roster needs to know of a listed host. */
-export interface RosterHost extends HostConfig {
-  name: string;
-}
-
 /** What the roster reads and does through the app's store. */
 export interface RosterCore {
   /** Host tokens, in the OS store only: never in `storage`, a log or an error. */
@@ -19,7 +14,7 @@ export interface RosterCore {
     delete(id: string): Promise<void>;
   };
   /** The hosts listed now. */
-  hosts(): RosterHost[];
+  hosts(): HostConfig[];
   /** Lists a host, offline until its connection answers. */
   list(config: HostConfig): void;
   /** Keeps the list (ids, names, URLs) in storage. */
@@ -92,21 +87,22 @@ export class HostRosterSlice {
 
   /** A new token or pairing link for a host that refused the old one; the error text, or null. */
   async pairAgain(hostId: string, input: string): Promise<string | null> {
-    const t = this.core.t();
     const host = this.core.hosts().find((h) => h.id === hostId);
-    if (!host) return t("hostOffline.pairGone");
+    if (!host) return this.core.t()("hostOffline.pairGone");
     const text = input.trim();
     let token = text;
     if (text.toLowerCase().startsWith("flightdeck://")) {
       const parsed = parsePairingLink(text);
-      if (!parsed.ok) return pairingErrorText(t, parsed.error);
+      if (!parsed.ok) return pairingErrorText(this.core.t(), parsed.error);
       token = parsed.value.token;
     }
-    if (!token) return t("hostForm.pairToken");
-    const probe = await probeHost(host.url, token, t);
+    if (!token) return this.core.t()("hostForm.pairToken");
+    const probe = await probeHost(host.url, token, this.core.t());
     if (!probe.ok) return probe.error;
     // The host may have been removed while it was tested: keep no secret for it.
-    if (!this.core.hosts().some((h) => h.id === hostId)) return t("hostOffline.pairGone");
+    if (!this.core.hosts().some((h) => h.id === hostId)) {
+      return this.core.t()("hostOffline.pairGone");
+    }
     await this.core.secrets.set(hostId, token);
     await this.reconnect(hostId);
     return null;
