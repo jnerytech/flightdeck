@@ -1,6 +1,5 @@
 import { EffortLevel, PermissionMode, PersonaAgent } from "@flightdeck/protocol";
 import { z } from "zod";
-import type { PersonaSnapshot } from "../personas/snapshot.ts";
 
 // The JSON columns of the session store, as the store writes them (#1609).
 
@@ -8,7 +7,7 @@ import type { PersonaSnapshot } from "../personas/snapshot.ts";
  * `PersonaSnapshot` as a schema, so a column is checked before a session starts from it. A row
  * from an older daemon lacks the later fields: they read as empty, and keys it does not know stay.
  */
-export const PersonaSnapshotJson: z.ZodType<PersonaSnapshot> = z.looseObject({
+export const PersonaSnapshotJson = z.looseObject({
   id: z.string(),
   name: z.string(),
   icon: z.string().nullable().default(null),
