@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
@@ -64,7 +64,7 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
       ?.closest("[data-slot='composer-card']")?.parentElement;
     expect(dock?.className).toContain("composer-dock");
     // The utility is what keeps the dock from shrinking.
-    expect(readFileSync(join(import.meta.dir, "../../src/styles.css"), "utf8")).toMatch(
+    expect(readStyles(join(import.meta.dir, "../../src/styles.css"))).toMatch(
       /@utility composer-dock \{[^}]*flex-shrink: 0/,
     );
   });

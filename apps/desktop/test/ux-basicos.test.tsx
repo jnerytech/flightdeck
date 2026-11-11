@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
@@ -12,7 +12,7 @@ const { Breadcrumb } = await import("../src/components/layout/breadcrumb.tsx");
 afterEach(cleanup);
 
 const DESKTOP = resolve(import.meta.dir, "..");
-const read = (file: string) => readFileSync(resolve(DESKTOP, file), "utf8");
+const styles = () => readStyles(resolve(DESKTOP, "src/styles.css"));
 
 /** The text from the first `marker` of the stylesheet to the end of its block. */
 function ruleAt(source: string, marker: string): string {
@@ -23,7 +23,7 @@ function ruleAt(source: string, marker: string): string {
 
 describe("ux-basicos: click feedback", () => {
   test("clickable elements show the pointer, and a disabled one does not", () => {
-    const css = read("src/styles.css");
+    const css = styles();
     const clickable = ruleAt(css, "button:not(:disabled)");
     expect(clickable).toContain('[role="tab"]');
     expect(clickable).toContain("cursor: pointer");
@@ -31,7 +31,7 @@ describe("ux-basicos: click feedback", () => {
   });
 
   test("a pressed button moves at once, in the base layer (the vendored Button stays as generated)", () => {
-    expect(ruleAt(read("src/styles.css"), "button:not(:disabled):active")).toContain(
+    expect(ruleAt(styles(), "button:not(:disabled):active")).toContain(
       "transform: translateY(1px)",
     );
   });

@@ -209,11 +209,13 @@ function shallowSame(a: object, b: object): boolean {
   );
 }
 
+type Props = Readonly<EntryRowProps>;
+
 /**
  * Same row, same look (#1191): the list builds its entries anew on every change of the state, so a
  * row compares what it shows, not the objects; at 200 sessions a summary redraws its own row only.
  */
-function sameRow(a: Readonly<EntryRowProps>, b: Readonly<EntryRowProps>): boolean {
+function sameRow(a: Props, b: Props): boolean {
   return (
     a.index === b.index &&
     a.active === b.active &&

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -17,7 +17,7 @@ const { Dialog, DialogContent, DialogFooter, DialogTitle } = await import(
 
 afterEach(cleanup);
 
-const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../src/styles.css"));
 
 describe("botao-motivo-linha: a button's reason does not make its row taller", () => {
   test("the reason hangs under the button out of the layout, and the button is still described by it", () => {

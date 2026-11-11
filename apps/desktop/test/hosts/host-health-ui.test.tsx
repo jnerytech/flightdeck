@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DepResult, DepsResult, DoctorResult } from "@flightdeck/protocol";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -412,7 +412,7 @@ describe("host-health-ui: a summary, the problems first, the rest folded (#640)"
   });
 });
 
-const css = readFileSync(join(import.meta.dir, "../../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 const utility = (name: string) => {
   const at = css.indexOf(`@utility ${name} {`);
   return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));

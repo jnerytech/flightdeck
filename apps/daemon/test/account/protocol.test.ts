@@ -5,7 +5,7 @@ import { AccountState, AccountUpdated } from "@flightdeck/protocol";
 import { Account, type AccountReaders } from "../../src/account/account.ts";
 import type { AuthStatus } from "../../src/account/readers.ts";
 import { startDaemon } from "../../src/main.ts";
-import { Quota } from "../../src/quota/quota.ts";
+import { Quota, type Timers } from "../../src/quota/quota.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, poll, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -54,7 +54,17 @@ async function connect(withAccount = true) {
       },
     }),
   };
-  const account = new Account({ quota, readers });
+  // The poll timer is a port: the fake records which polls are armed, and none ever fires.
+  const polls = new Set<unknown>();
+  const timers: Timers = {
+    set: () => {
+      const handle = {};
+      polls.add(handle);
+      return handle;
+    },
+    clear: (handle) => void polls.delete(handle),
+  };
+  const account = new Account({ quota, readers, timers });
   const { manager, root } = newManager();
   const server = startServer({
     manager,
@@ -70,7 +80,7 @@ async function connect(withAccount = true) {
   const client = new FrameClient(server.url);
   cleanups.push(() => client.close());
   await client.request("hello", { token: TOKEN, client: "t" });
-  return { client, reads, quota, account };
+  return { client, reads, quota, polls };
 }
 
 describe("conta-protocolo: account.get, account.watch and account.refresh over the socket", () => {
@@ -114,25 +124,37 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     expect(JSON.stringify(last)).toContain("seven_day");
   });
 
-  test("a closed connection stops the watch", async () => {
-    const { client, account } = await connect();
+  const WINDOW = {
+    window: "seven_day",
+    utilization: 0.3,
+    status: "allowed",
+    resetsAt: Date.now() + 86_400_000,
+  } as const;
+  const pushes = (client: { frames: Array<{ type?: string }> }) =>
+    client.frames.filter((f) => f.type === "account.updated").length;
+
+  test("a closed connection stops the polling", async () => {
+    const { client, polls } = await connect();
     await client.request("account.watch", {});
     await poll(() => client.frames.find((f) => f.type === "account.updated"), 3000);
-    expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(1);
+    expect(polls.size).toBe(1);
     client.close();
-    await poll(() => (account as unknown as { timer: unknown }).timer === null, 3000);
-    expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(0);
+    expect(await poll(() => polls.size === 0, 3000)).toBe(true);
   });
 
   test("account.unwatch stops the pushes and the polling, and is fine when nothing is watched", async () => {
-    const { client, account } = await connect();
+    const { client, quota, polls } = await connect();
     expect((await client.request("account.unwatch", {})).ok).toBe(true);
     await client.request("account.watch", {});
     await poll(() => client.frames.find((f) => f.type === "account.updated"), 3000);
-    expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(1);
+    expect(polls.size).toBe(1);
     expect((await client.request("account.unwatch", {})).ok).toBe(true);
-    expect((account as unknown as { watchers: Set<unknown> }).watchers.size).toBe(0);
-    expect((account as unknown as { timer: unknown }).timer).toBeNull();
+    expect(polls.size).toBe(0);
+    const before = pushes(client);
+    quota.record([WINDOW]);
+    // The ack of a later request comes after any push the record would have sent.
+    await client.request("account.get", {});
+    expect(pushes(client)).toBe(before);
   });
 
   test("account.refresh reads now, and a second one right after is refused with the seconds to wait", async () => {
