@@ -2,7 +2,9 @@ import type { Database } from "bun:sqlite";
 import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import { normalizeCwd } from "../history/indexer.ts";
+import { parseJsonOr, parseJsonText } from "../json-text.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
 
@@ -95,6 +97,19 @@ interface Owner {
   projectPath: string | null;
 }
 
+/** A transcript line as an object; text that is not JSON, or JSON that is no object, is no line. */
+function objectOf(line: string): Record<string, unknown> | null {
+  let value: unknown;
+  try {
+    value = parseJsonText(line);
+  } catch {
+    return null;
+  }
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const str = (value: unknown) => (typeof value === "string" ? value : null);
 /** How much of a file a pass reads before it pauses (about 25 ms of parsing). */
@@ -141,14 +156,10 @@ interface ReadLine {
 
 /** The `cwd` of a transcript line, the usage of an assistant message and its file writes. */
 function readLine(line: string): ReadLine {
-  let value: Record<string, unknown>;
-  try {
-    value = JSON.parse(line);
-  } catch {
-    return { cwd: null, at: null, usage: null, edits: [] };
-  }
-  const cwd = str(value?.cwd);
-  const message = value?.type === "assistant" ? (value.message as Record<string, unknown>) : null;
+  const value = objectOf(line);
+  if (!value) return { cwd: null, at: null, usage: null, edits: [] };
+  const cwd = str(value.cwd);
+  const message = value.type === "assistant" ? (value.message as Record<string, unknown>) : null;
   const messageId = str(message?.id);
   const model = str(message?.model);
   const at = str(value.timestamp);
@@ -448,7 +459,7 @@ export class UsageIndexer {
     );
     const folders = new Set<string>([row?.cwd ?? "", owner.projectPath ?? ""]);
     for (const [, escaped] of chunk.toString("utf8").matchAll(/"cwd":"((?:[^"\\]|\\.)*)"/g)) {
-      folders.add(JSON.parse(`"${escaped}"`) as string);
+      folders.add(parseJsonOr(z.string(), `"${escaped}"`, ""));
     }
     folders.delete("");
     await this.opts.warmKeys([...folders]);
