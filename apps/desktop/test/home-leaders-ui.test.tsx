@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { join } from "node:path";
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle, settleMaybe } from "./wait.ts";
@@ -214,10 +212,14 @@ describe("home-leaders-ui: where the tokens of the 7 days went", () => {
     }).toEqual({ tab: "true", rows: [true, true] });
   });
 
-  // axe target-size (#124 prints): a project's name is a button, at least 24 px tall.
-  test("a project's button is a target of at least 24 px", () => {
-    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
-    expect(/@utility leader-link \{[^}]*min-height: 1\.5rem/.test(css)).toBe(true);
+  // axe target-size (#124 prints): a project's name is a real button that opens its costs. Its
+  // height (at least 24 px) is a computed style, measured by the e2e `layout-medido` journey (#1870).
+  test("a project's name is a button that opens the costs of that project", async () => {
+    setup();
+    await loaded("Where the tokens went");
+    expect(
+      screen.queryAllByRole("button", { name: /^Open the costs of /u }).map((b) => b.textContent),
+    ).toEqual(["app", "web"]);
   });
 
   test("a host whose week of costs fails did not answer, even though its usage came (#363)", async () => {

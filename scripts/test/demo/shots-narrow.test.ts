@@ -11,6 +11,10 @@ describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () =>
     ]);
   });
 
+  test("#1870: the session waiting for an approval is re-measured narrow, so its folder and buttons are held inside the window by the prints, not by class names", () => {
+    expect(narrowSizes("dark", "sessao-aprovacao")).toHaveLength(3);
+  });
+
   test("a light print, or a print not in the list, is not", () => {
     expect(narrowSizes("light", "board")).toHaveLength(0);
     expect(narrowSizes("dark", "paleta")).toHaveLength(0);

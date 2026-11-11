@@ -6,9 +6,10 @@
 
 /** The line limit of a tracked Markdown file. */
 export function mdLimit(path: string): number {
-  // A fixed limit for a file that grows by design (#427): the root CLAUDE.md (290 since the PR review rule, #1670) has lines
-  // waiting for the owner's word. A down-only baseline would block them. The manuals are one file per chapter (#1711).
-  if (path === "CLAUDE.md") return 290;
+  // A fixed limit for the root CLAUDE.md, out of the down-only baseline: every session reads it whole, so the
+  // commands and the delegation rules moved to docs/commands.md and docs/subagent-delegation.md (#1973) and it cannot grow back.
+  // The manuals are one file per chapter (#1711).
+  if (path === "CLAUDE.md") return 170;
   if (/(^|\/)CLAUDE\.md$/.test(path) || /^\.claude\/(rules|agents)\//.test(path)) return 150;
   if (/(^|\/)SKILL\.md$/.test(path)) return 300;
   return 400;

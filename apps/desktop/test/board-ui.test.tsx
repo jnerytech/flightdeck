@@ -262,24 +262,14 @@ describe("board-ui", () => {
     };
     await type("Filtrar cards", "nada disso");
     const noMatch = within(lane("Backlog")).queryByText("Nenhuma correspondência");
-    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
-    const rule = (head: string) => {
-      const at = css.indexOf(head);
-      return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
-    };
-    expect({
-      ...before,
-      noMatchBox: noMatch?.classList.contains("column-empty") ?? false,
-      laneBorder: /\n {2}border: 1px solid var\(--border\);/.test(rule("@utility board-column {")),
-      headLine: /border-bottom: 1px solid/.test(rule("@utility column-head {")),
-      boxHeight: /min-height: 5rem;/.test(rule("@utility column-empty {")),
-    }).toEqual({
-      emptyListHidden: true,
-      noMatchBox: true,
-      laneBorder: true,
-      headLine: true,
-      boxHeight: true,
-    });
+    // The lane's border, the column head's line and the empty box's height are computed styles:
+    // the e2e `layout-medido` journey measures them in the browser (#1870).
+    expect({ ...before, noMatchBox: noMatch?.classList.contains("column-empty") ?? false }).toEqual(
+      {
+        emptyListHidden: true,
+        noMatchBox: true,
+      },
+    );
   });
 
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
