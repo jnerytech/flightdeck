@@ -1024,7 +1024,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const marker = `fd-${c.lang}-${Date.now()}`;
     const rows = c.page.locator(".xterm-rows");
     const screen = async () => (await rows.first().textContent()) ?? "";
-    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    const copiedText = await captureClipboard(c.page);
     await open(c, { name: "host", host: ALFA });
     await c.page
       .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
@@ -1057,8 +1057,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => copy.isEnabled(), "o Copiar ligado depois de selecionar");
     await copy.click();
     await waitFor(
-      async () => (await c.page.evaluate(() => navigator.clipboard.readText())).includes(marker),
-      "o texto selecionado na área de transferência",
+      async () => ((await copiedText()) ?? "").includes(marker),
+      "the selected text handed to the clipboard",
     );
 
     // An ESC shows as "^[" twice: the terminal's echo of the key, then cat -v printing the byte it read.
