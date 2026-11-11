@@ -7,7 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { TeamMemberRow } = await import("../../src/ui/TeamsPage.tsx");
+const { TeamMemberRow } = await import("../../src/features/teams/page.tsx");
 const { NeedsYou } = await import("../../src/ui/NeedsYou.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
