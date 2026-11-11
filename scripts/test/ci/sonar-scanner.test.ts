@@ -30,7 +30,11 @@ describe("sonar scanner download (#1883)", () => {
 
   test("the scanner zip and its signature are named from the version and the platform", () => {
     expect(
-      scannerFiles("https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/", "8.3.0.16463", "linux-x64"),
+      scannerFiles(
+        "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/",
+        "8.3.0.16463",
+        "linux-x64",
+      ),
     ).toEqual({
       name: "sonar-scanner-cli-8.3.0.16463-linux-x64.zip",
       zip: "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-8.3.0.16463-linux-x64.zip",
@@ -68,22 +72,28 @@ describe("sonar scanner download (#1883)", () => {
   });
 
   const gpg = spawnSync("gpg", ["--version"]);
-  test.skipIf(gpg.status !== 0)(
-    "the committed key file holds the pinned primary key",
-    () => {
-      const home = mkdtempSync(join(tmpdir(), "sonar-key-"));
-      try {
-        const listed = spawnSync(
-          "gpg",
-          ["--homedir", home, "--batch", "--with-colons", "--import-options", "show-only", "--import", join(ROOT, ".github/keys/sonarsource-public.asc")],
-          { encoding: "utf8" },
-        );
-        expect(keyMatches(listed.stdout, SONAR_KEY_FINGERPRINT)).toBe(true);
-      } finally {
-        rmSync(home, { recursive: true, force: true });
-      }
-    },
-  );
+  test.skipIf(gpg.status !== 0)("the committed key file holds the pinned primary key", () => {
+    const home = mkdtempSync(join(tmpdir(), "sonar-key-"));
+    try {
+      const listed = spawnSync(
+        "gpg",
+        [
+          "--homedir",
+          home,
+          "--batch",
+          "--with-colons",
+          "--import-options",
+          "show-only",
+          "--import",
+          join(ROOT, ".github/keys/sonarsource-public.asc"),
+        ],
+        { encoding: "utf8" },
+      );
+      expect(keyMatches(listed.stdout, SONAR_KEY_FINGERPRINT)).toBe(true);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
 
   test("the sonarcloud job verifies the scanner itself and hands the action the verified copy", () => {
     const ci = readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8");
