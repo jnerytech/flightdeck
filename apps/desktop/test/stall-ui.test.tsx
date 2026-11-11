@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { activityState, NOW } from "./activity-fixtures.ts";
+import { activityState, NOW } from "./activity/fixtures.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";

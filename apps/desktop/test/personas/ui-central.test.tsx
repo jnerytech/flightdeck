@@ -1,0 +1,121 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import {
+  DEFAULT_HUB_FILTER,
+  type HubRow,
+  hubGroups,
+  loadHubFilter,
+  saveHubFilter,
+} from "../../src/lib/hub.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { unfoldAll } from "../unfold.ts";
+import { settle } from "../wait.ts";
+import { personasHost } from "./ui-setup.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+
+setDefaultTimeout(30_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+const QA = { id: "qa", name: "QA / testes", icon: "flask" };
+const row = (title: string, persona: HubRow["persona"]): HubRow => ({
+  key: title,
+  hostId: "h",
+  hostName: "alfa",
+  origin: "flightdeck",
+  claudeSessionId: title,
+  sessionId: title,
+  title,
+  cwd: "/x",
+  projectKey: "p",
+  state: "idle",
+  controllable: false,
+  lastActivity: "2026-10-31T10:00:00.000Z",
+  pinned: false,
+  archived: false,
+  summary: null,
+  persona,
+});
+
+describe("personas-ui: the central", () => {
+  test("the Persona filter keeps only the sessions in that persona, and it is kept with the other filters", () => {
+    const rows = [row("com qa", QA), row("sem", null)];
+    const [only] = hubGroups(rows, { ...DEFAULT_HUB_FILTER, persona: "qa" });
+    expect(only?.rows.map((r) => r.title)).toEqual(["com qa"]);
+    const kept = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => kept.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        kept.set(k, v);
+      },
+    };
+    saveHubFilter(storage, { ...DEFAULT_HUB_FILTER, persona: "qa" });
+    expect(loadHubFilter(storage).persona).toBe("qa");
+  });
+
+  test("a session opened in a persona shows its badge in the central", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const { d, repo } = await personasHost(cleanups, store);
+    const { sessionId } = await d.start({
+      cwd: repo,
+      prompt: "oi",
+      name: "Com persona",
+      persona: { id: "qa" },
+    });
+    await poll(() => d.manager.get(sessionId).status === "idle");
+    render(<App store={store} />);
+    const item = () => screen.queryByRole("listitem", { name: "Com persona" });
+    await unfoldAll(act);
+    await settle(() => item() !== null);
+    expect(item()).not.toBeNull();
+    expect(within(item() as HTMLElement).queryByText("QA / testes")).not.toBeNull();
+  });
+
+  test("the Persona filter of the central lists the personas of its sessions and narrows the list", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const { d, repo } = await personasHost(cleanups, store);
+    const qa = await d.start({
+      cwd: repo,
+      prompt: "oi",
+      name: "Em QA",
+      persona: { id: "qa" },
+    });
+    const plain = await d.manager.create({ cwd: repo, prompt: "oi", name: "Sem papel" });
+    await poll(() => d.manager.get(qa.sessionId).status === "idle");
+    await poll(() => d.manager.get(plain.sessionId).status === "idle");
+    render(<App store={store} />);
+    const item = (name: string) => screen.queryByRole("listitem", { name });
+    await unfoldAll(act);
+    await settle(() => item("Em QA") !== null && item("Sem papel") !== null);
+    const trigger = screen.queryByRole("button", { name: /^Filtros/ });
+    expect(trigger).not.toBeNull();
+    await act(async () => {
+      fireEvent.pointerDown(trigger as HTMLElement, { button: 0 });
+      fireEvent.click(trigger as HTMLElement);
+    });
+    await settle(() => screen.queryByLabelText("Persona") !== null);
+    const field = screen.queryByLabelText("Persona") as HTMLSelectElement | null;
+    expect([...(field?.options ?? [])].map((o) => o.textContent)).toEqual([
+      "Todas as personas",
+      "QA / testes",
+    ]);
+    await act(async () => {
+      fireEvent.change(field as HTMLSelectElement, { target: { value: "qa" } });
+    });
+    await settle(() => item("Sem papel") === null);
+    expect(item("Em QA")).not.toBeNull();
+    expect(item("Sem papel")).toBeNull();
+  });
+});

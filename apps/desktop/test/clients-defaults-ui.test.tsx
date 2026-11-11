@@ -3,8 +3,8 @@ import { poll } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { personasHost } from "./personas-ui-setup.ts";
-import { snippetsHost } from "./snippets-ui-setup.ts";
+import { personasHost } from "./personas/ui-setup.ts";
+import { snippetsHost } from "./snippets/ui-setup.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
