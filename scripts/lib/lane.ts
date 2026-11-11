@@ -1,6 +1,6 @@
 /**
  * The light lane: a lock with two places for the commands that are light on CPU time but heavy
- * on memory (typecheck, lint). A tsc run of this repository takes up to 1.5 GB; six at once ran the
+ * on memory (typecheck, lint). One tsc run of this repository takes up to 2 GB (a typecheck may run two); six at once ran the
  * machine out of memory. A third run waits for a place. It reuses the slot's lock files
  * (`tryAcquire`/`release`), one file per place. Every effect comes in through `LaneDeps`.
  */

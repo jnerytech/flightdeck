@@ -1,11 +1,13 @@
 /**
- * `bun run typecheck`: one tsc run per project, one after the other, each with its incremental
- * build info. `bun run --filter '*' typecheck` ran the three workspaces at once (about 2.7 GB on
- * this repository); in sequence the peak is the largest project (about 1.5 GB), and a second run
- * with nothing changed reuses the build info (desktop: 0.45 GB and 4 s instead of 1.5 GB and 29 s).
+ * `bun run typecheck`: one tsc run per project, each with its incremental build info, one after
+ * the other or two at a time when memory allows (`typecheckJobs`). `bun run --filter '*' typecheck`
+ * ran the three workspaces at once (about 2.7 GB on this repository); one project alone peaks near
+ * 2 GB, two of the largest near 4 GB. The projects share no build output (each imports the others'
+ * sources), so their order does not matter; a second run with nothing changed reuses the build
+ * info (desktop: 4 s instead of 29 s). The run ends with each project's time (#1762).
  */
 
-/** The projects in the order they run: the protocol first, since the apps import it. */
+/** The projects, the protocol first (it is the quickest and the others import its sources). */
 export const PROJECTS = ["packages/protocol", "apps/daemon", "apps/desktop", "scripts"];
 
 /** The tsc command of each project, with its build info under the ignored node_modules/.cache. */
@@ -52,6 +54,8 @@ export async function runAll(
   options: RunOptions = {},
 ): Promise<number> {
   const now = options.now ?? Date.now;
+  const label = (command: string[]) =>
+    (command[2] ?? command.join(" ")).replace(/\/tsconfig\.json$/, "");
   const codes: number[] = [];
   const times: number[] = [];
   let next = 0;
@@ -60,7 +64,12 @@ export async function runAll(
       const command = commands[index] as string[];
       log(`typecheck ${command[2] ?? command.join(" ")}`);
       const started = now();
-      codes[index] = await run(command); // NOSONAR: a worker's runs follow one another by design
+      try {
+        codes[index] = await run(command); // NOSONAR: a worker's runs follow one another by design
+      } catch (error) {
+        codes[index] = 1;
+        log(`typecheck ${label(command)}: could not run: ${(error as Error).message}`);
+      }
       times[index] = now() - started;
     }
   };
@@ -68,8 +77,6 @@ export async function runAll(
   await Promise.all(
     Array.from({ length: Math.min(Math.max(1, options.limit ?? 1), commands.length) }, worker),
   );
-  const label = (command: string[]) =>
-    (command[2] ?? command.join(" ")).replace(/\/tsconfig\.json$/, "");
   const each = commands.map((command, index) => `${label(command)} ${seconds(times[index] ?? 0)}`);
   log(`typecheck: ${each.join(", ")}, total ${seconds(now() - begin)}`);
   return codes.find((code) => code !== 0) ?? 0;
