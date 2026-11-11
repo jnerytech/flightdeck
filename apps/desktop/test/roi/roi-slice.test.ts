@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { RoiSlice } from "../../src/features/roi/index.ts";
 import type { HostResult } from "../../src/lib/app-store.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { UNASSIGNED } from "../../src/lib/clients.ts";
 import { RoiSettings } from "../../src/lib/roi-settings.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
@@ -68,5 +70,15 @@ describe("roi slice", () => {
     });
     expect(slice.moneyOf("p-client").rate).toBe(20);
     expect(slice.moneyOf("p-none")).toMatchObject({ rate: 10, billed: null, planShareUsd: null });
+  });
+
+  test("in the app, a project pinned to a client takes the client's rate and an unassigned one the app's, never a rate typed under the Unassigned id", () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    const client = store.clients.add("Acme");
+    store.clients.setOverride("pinned", client?.id ?? "");
+    store.roi.setDefaultRate(10);
+    store.roi.setClientRate(client?.id ?? "", 20);
+    store.roi.setClientRate(UNASSIGNED, 99);
+    expect([store.roiMoneyOf("pinned").rate, store.roiMoneyOf("loose").rate]).toEqual([20, 10]);
   });
 });
