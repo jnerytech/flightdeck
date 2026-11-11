@@ -82,7 +82,7 @@ control, and 8 px between buttons.
 | Answering a request | `ApprovalActions` (`approval/approval-actions.tsx`, #182) | Approve first, then Deny, the same verbs on every screen (card, tile, run's gate). `risk` is a required prop (`RiskLevel \| undefined`): a high risk shows `HoldButton`, held for `HIGH_RISK_HOLD_MS` (`lib/hold.ts`), never a click or a key. `onApprove(held)` hands the proof of the hold to the store, which refuses an unheld high-risk allow (#245, from v0.36.5). `pending` keeps both off while an answer is on its way. A plan says "Approve the plan" / "Keep planning" through `labels`. |
 | An icon-only action | `IconActionButton`, or `IconTip` for an icon-only control | It has a name and a tooltip; never a native `title` for text a person needs. |
 | A status | `StatusDot`, `StatusText` (`components/status/`) | A shape plus a label for each state, not colour alone. |
-| A tab's badge | `TabBadgeGlyph` (in `ui/TabBar.tsx`) | A glyph named in words (`role="img"`), never a text pill. It becomes `StatusDot` once #146 lands. |
+| A tab's badge | `TabBadgeGlyph` (in `features/tabs/tab-bar.tsx`) | A glyph named in words (`role="img"`), never a text pill. It becomes `StatusDot` once #146 lands. |
 | A keyboard shortcut | `Keycap` and `ShortcutKeys` (`components/shortcuts/keycap.tsx`, #165, once merged) | The only place that draws a `<kbd>`, written for the platform: Ctrl, or ⌘ on a Mac. No shortcut on Cancel or Dismiss buttons, or on links. |
 | A list row | `ListRow`, and the list-row rule below | |
 | Empty, loading, failed | `EmptyState`, `LoadingState`, `ErrorState` (`layout/states.tsx`) | An empty state says what to do next; a failure says what happened and offers Try again. |

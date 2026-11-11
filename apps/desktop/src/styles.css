@@ -25,10 +25,15 @@
 @import "./styles/hosts.css";
 @import "./styles/teams.css";
 @import "./styles/personas.css";
+@import "./styles/layout.css";
+@import "./styles/feedback.css";
 @import "./styles/terminal.css";
 @import "./styles/costs.css";
 @import "./styles/snippets.css";
 @import "./styles/messaging.css";
+@import "./styles/summary.css";
+@import "./styles/palette.css";
+@import "./styles/shortcuts.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -350,118 +355,10 @@ html:not(:has([data-slot="status-bar"])) {
   bottom: 0.75rem;
 }
 
-/* The summary card under a session's header: the same 16 px from each side as the conversation. */
-@utility recap-slot {
-  flex-shrink: 0;
-  padding-inline: 1rem;
-  padding-top: 0.75rem;
-  /* Issue #422: in a short session area the band keeps tight, so the conversation keeps its room. */
-  &[data-short="true"] {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding-top: 0.25rem;
-  }
-  /* No summary to show (an older daemon, a session with none): no empty band either. */
-  &:empty {
-    display: none;
-  }
-}
-
-/* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
-@utility recap-head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-/* The palette's rows: the one the keyboard is on is a surface with an inset ring (issue #147). */
-@utility palette-row {
-  &[aria-selected="true"] {
-    background: var(--palette-selection);
-    box-shadow: inset 0 0 0 1px var(--palette-selection-ring);
-  }
-  &:hover {
-    background: var(--accent);
-  }
-  &[aria-selected="true"]:hover {
-    background: var(--palette-selection);
-  }
-}
-
-/* A short list that scrolls inside its panel instead of pushing the screen. */
 /* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
 @utility diff-follow {
   max-height: 24rem;
   overflow-y: auto;
-}
-
-@utility rows-scroll {
-  max-height: 10rem;
-  overflow-y: auto;
-}
-
-/* A field and its own button on one line: the field takes the width, the button keeps its size. */
-/* #1430: the shell's first Tab stop, "Skip to content". Out of sight and of the layout until it has
-   the focus, then a chip over the top-left corner of the title bar. */
-@utility skip-link {
-  position: fixed;
-  top: 0.5rem;
-  left: 0.5rem;
-  z-index: 100;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-size: 0.875rem;
-  &:not(:focus) {
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    border: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
-  }
-}
-
-@utility field-with-action {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.5rem;
-  /* #1325: a disabled action's reason is a line of the row, not hung out of the flow (#38): hung,
-     it ran past the card (#1270) or, wrapped, drew over the line under the row. The button's box
-     gives way, so the reason takes a whole line under the field and every button (Use theirs too). */
-  /* #1338's review: the field shrinks before the row wraps, so its buttons stay beside it. */
-  & > :first-child {
-    flex: 1 1 0%;
-    min-width: 0;
-  }
-  & > .action-button-box {
-    display: contents;
-  }
-  & > .action-button-box > .action-reason {
-    position: static;
-    order: 1;
-    flex-basis: 100%;
-    width: auto;
-    max-width: none;
-    margin-top: -0.25rem;
-  }
-  /* #1326: at 390 the field got less width than its button; narrow, it takes a line of its own. */
-  @media (width < 40rem) {
-    justify-content: flex-end;
-    & > :first-child {
-      flex-basis: 100%;
-    }
-  }
 }
 
 /* A toggle that sits at the start of a column, not stretched across it. */
@@ -561,57 +458,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/*
- * A wide table's frame (#641, responsive spec "Tables"): it scrolls sideways by itself, the only
- * sideways scroller a page may hold. The shadows are drawn by the background: two covers that
- * scroll with the content hide them at an end, two shadows fixed to the frame show them otherwise.
- */
-@utility table-wide {
-  max-width: 100%;
-  overflow-x: auto;
-  border-radius: var(--radius-md);
-  background-image:
-    linear-gradient(to right, var(--background) 30%, transparent),
-    linear-gradient(to left, var(--background) 30%, transparent),
-    linear-gradient(to right, color-mix(in oklab, var(--foreground) 18%, transparent), transparent),
-    linear-gradient(to left, color-mix(in oklab, var(--foreground) 18%, transparent), transparent);
-  background-position:
-    left center,
-    right center,
-    left center,
-    right center;
-  background-repeat: no-repeat;
-  background-size:
-    2.5rem 100%,
-    2.5rem 100%,
-    0.75rem 100%,
-    0.75rem 100%;
-  background-attachment: local, local, scroll, scroll;
-  /* The frame scrolls instead: a figure stays on one line, as wide as it needs. */
-  & :is(th, td) {
-    white-space: nowrap;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-}
-
-/* A disabled button and its reason: one block, the reason wrapping under it at a readable width. */
-@utility action-with-reason {
-  display: inline-flex;
-}
-
-/* The card's conversation: it takes the rest of the pane, and scrolls inside itself only. */
-@utility card-chat {
-  flex: 1 1 0;
-  /* It takes what the details pane leaves; 12 rem keeps a few messages and the composer (#641). */
-  min-height: 12rem;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-}
-
 /* The area that holds a screen, which its screens lay out against. A screen that is not a Page
    scrolls here; a Page scrolls by itself (alone or in a split view's pane), so around one the
    area scrolls on neither axis and never shows a second bar beside the page's own (#785). */
@@ -624,31 +470,11 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* The board's toolbar and its selection bar in one cell: the cell is as tall as the taller one,
-   so the bar covering the toolbar moves nothing below (#760). */
-@utility selection-stack {
-  display: grid;
-
-  /* Each keeps its own height: a bar of one row stays one row over a toolbar of three. */
-  & > * {
-    grid-area: 1 / 1;
-    align-self: start;
-  }
-}
-
 /* A column under a dragged card: it shows where the card would land. */
 @utility drop-over {
   outline: 2px dashed var(--ring);
   outline-offset: -2px;
   background-color: var(--accent);
-}
-
-/* A key of a shortcut, as printed in a list. */
-@utility keycap {
-  border: 1px solid var(--border);
-  border-radius: 0.25rem;
-  padding-inline: 0.25rem;
-  font-size: 0.75rem;
 }
 
 /* Three dots that rise in turn while Claude works. */
@@ -776,14 +602,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* The project tree beside the rail's Projects icon (#689): the sidebar's width, and it scrolls
-   when the tree is taller than the window. */
-@utility rail-flyout {
-  width: 18rem;
-  max-height: min(32rem, var(--radix-popover-content-available-height));
-  overflow-y: auto;
-}
-
 /* A vertical list of rows (the check results, the repositories found). */
 @utility check-list {
   display: flex;
@@ -824,31 +642,10 @@ html:not(:has([data-slot="status-bar"])) {
   font-size: 0.75rem;
 }
 
-/* The `?` sheet of shortcuts: the box, its groups and their rows. */
-@utility sheet-box {
-  margin: 0;
-  display: flex;
-  max-height: 80vh;
-  width: min(42rem, 92vw);
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-}
-@utility shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1.5rem;
-}
 @utility stack-tight {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-@utility shortcut-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 
 /* A line of controls, with a gap: spread to both ends, or wrapping. */
@@ -885,16 +682,6 @@ html:not(:has([data-slot="status-bar"])) {
   flex-direction: column;
   gap: 0.5rem;
 }
-/* A long page form's buttons (#731): they stay at the bottom of the page's scroller, over the
-   fields that scroll under them, so the primary is in reach without scrolling to the end. */
-@utility form-actions-sticky {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  border-top-width: 1px;
-  background-color: var(--background);
-  padding-block: 0.75rem;
-}
 /* #1271: a dialog's fields in a box of their own, so its buttons stay in view while they scroll.
    Below 640 px the dialog is a sheet that scrolls itself and keeps the buttons at its bottom: a
    second scroller there would stop them mid-sheet, so the box shows all it holds. */
@@ -914,9 +701,6 @@ html:not(:has([data-slot="status-bar"])) {
 @utility legend-tight {
   margin-bottom: 0.25rem;
 }
-@utility search-width {
-  width: 16rem;
-}
 
 /* Cards of the Projects overview and of a project page: one column, two and three as the area grows. */
 @utility card-grid {
@@ -930,14 +714,6 @@ html:not(:has([data-slot="status-bar"])) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-@utility card-button {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem;
-}
 @utility card-link {
   display: flex;
   height: 100%;
@@ -945,15 +721,6 @@ html:not(:has([data-slot="status-bar"])) {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-}
-@utility facts-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 0.75rem;
-  row-gap: 0.25rem;
-}
-@utility icon-nudge {
-  margin-top: 0.125rem;
 }
 @utility stack-hair {
   display: flex;
@@ -1085,12 +852,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* An ActionButton's disabled reason hangs under the button and adds no height to its row (issue #38). */
-@utility action-button-box {
-  position: relative;
-  display: inline-flex;
-}
-
 /* #1132: in the compact sessions list a live row shows its state word where its time was. The
    row has no free width (a 23rem list, chips, the menu), so the word gives way first, cut with an
    ellipsis (the whole word and the time are in its tooltip), and the title keeps a small minimum. */
@@ -1122,89 +883,11 @@ html:not(:has([data-slot="status-bar"])) {
   white-space: nowrap;
 }
 
-/* A form row and its help line: the reason a button is disabled sits under the first field. */
-@utility field-row-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
 @utility field-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-}
-
-@utility field-help {
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-
-/* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
-/* The collapsed rail's host: its initial, with the status dot at the corner (issue #183). */
-
-/* A project on the Projects page: its name and whole path on one line, its actions on the next (#588). */
-@utility project-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-card);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-}
-@utility project-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
-  min-width: 0;
-}
-@utility project-path {
-  min-width: 0;
-  font-size: 0.75rem;
-  color: var(--color-muted-foreground);
-  overflow-wrap: anywhere;
-}
-
-@utility header-crumbs {
-  display: flex;
-  min-width: 0;
-  /* A width of its own: the tabs start at the same x whatever the crumbs say. */
-  flex: 0 0 24rem;
-  max-width: 40%;
-  align-items: center;
-  gap: 0.5rem;
-  /* Narrow, the box is 40% of a small window: tighter gaps leave the crumbs their room (#391). */
-  @media (width < 1024px) {
-    gap: 0.25rem;
-  }
-}
-
-@utility header-tabs {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 0;
-  align-self: stretch;
-  align-items: flex-end;
-  /* Issue #488: the tabs have a row of their own; this box keeps the top bar's actions on the right,
-     and in a window under 600 px tall it holds the one area's strip, filling the row. */
-  & > .tab-bar {
-    flex: 1 1 auto;
-    background: transparent;
-  }
-}
-
-/* The drawer's top row: back and forward, clear of the close button at its right edge. */
-@utility drawer-top {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 3rem 0.5rem 0.5rem;
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* Medium and compact windows (issue #641): the words beside a value go to the tooltip and the name
@@ -1219,10 +902,6 @@ html:not(:has([data-slot="status-bar"])) {
   to {
     transform: rotate(360deg);
   }
-}
-
-@utility field-row-end {
-  align-items: flex-end;
 }
 
 /* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
@@ -1249,20 +928,6 @@ html:not(:has([data-slot="status-bar"])) {
   outline-offset: -2px;
 }
 
-/* A disabled button's reason hangs under it without adding height to the row (issue #38). */
-@utility action-reason {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1;
-  margin-top: 0.125rem;
-  width: max-content;
-  max-width: 20rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-
 /* #1063: a dialog's footer puts its last button at the dialog's right edge. Hung from the button's
    left, the reason grew past that edge and was cut; here it hangs from the button's right and grows
    inward. Only the last one: a button first in the row (the snippet dialog's Run) is at the left
@@ -1271,43 +936,6 @@ html:not(:has([data-slot="status-bar"])) {
   left: auto;
   right: 0;
   text-align: right;
-}
-
-/* A two-option choice drawn as a pill of radios (the host's default mode). */
-@utility seg-control {
-  display: inline-flex;
-  width: fit-content;
-  gap: 0.25rem;
-}
-@utility seg-option {
-  position: relative;
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  height: 2rem;
-  padding-inline: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  & input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: inherit;
-  }
-  &:has(input:checked) {
-    background: var(--color-accent);
-    border-color: var(--color-ring);
-  }
-  &:has(input:disabled) {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  &:has(input:focus-visible) {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
-  }
 }
 
 /* An icon with a dot or a count pinned to its corner. */
@@ -1323,47 +951,6 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
-/* Health's first line: the headline, the counts, when it was read and Check again (#640). */
-@utility health-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-}
-/* What is fine, folded: one line per row (#640). */
-@utility health-ok {
-  font-size: 0.875rem;
-  /* The fold's disclosure button (#670): a row-sized target (axe target-size wants 24 px) with a
-     chevron that turns when the list is open. */
-  & > button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    min-height: 2rem;
-    padding: 0.25rem 0.5rem;
-    margin-inline-start: -0.5rem;
-    border-radius: var(--radius-md);
-    color: var(--muted-foreground);
-    cursor: pointer;
-  }
-  & > button:hover {
-    background-color: var(--accent);
-    color: var(--foreground);
-  }
-  & > button:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  & > button > svg {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-    transition: rotate 150ms ease;
-  }
-  & > button[aria-expanded="true"] > svg {
-    rotate: 90deg;
-  }
-}
 /* The list owns the columns (icon | name | status | detail) and each row takes them as a subgrid,
    so every status starts at the same place whatever the name's length (#670). */
 

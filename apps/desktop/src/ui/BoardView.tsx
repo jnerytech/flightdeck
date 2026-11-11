@@ -48,6 +48,7 @@ import { QuietBadge } from "@/features/board/quiet-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
 import { RadarBadge } from "@/features/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
+import { BoardFilesPanel } from "@/features/files/index.ts";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
@@ -118,7 +119,6 @@ import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
-import { BoardFilesPanel } from "./BoardFiles.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
