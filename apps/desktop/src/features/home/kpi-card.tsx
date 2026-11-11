@@ -18,21 +18,24 @@ export function KpiCard(
   }>,
 ) {
   const id = useId();
+  const valueId = `${id}-value`;
+  const detailsId = `${id}-details`;
+  const describedBy = `${valueId} ${detailsId}`;
   return (
     // The name says what the button opens; the number and the details are its description, so they are heard.
     <button
       type="button"
       aria-label={props.openLabel}
-      aria-describedby={`${id}-value ${id}-details`}
+      aria-describedby={describedBy}
       className="kpi-card"
       onClick={props.onOpen}
     >
       <span className="kpi-title">{props.title}</span>
-      <span id={`${id}-value`} className="kpi-value">
+      <span id={valueId} className="kpi-value">
         {props.value}
       </span>
       {/* The details fill the card, so every card's sparkline sits on its bottom edge (#588). */}
-      <span id={`${id}-details`} className="kpi-details flex-1">
+      <span id={detailsId} className="kpi-details flex-1">
         {props.details}
       </span>
       <Sparkline values={props.series} label={props.seriesLabel} />

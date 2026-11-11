@@ -70,10 +70,10 @@ describe("ci-pyramid (#309)", () => {
         shard: [1, 2, 3, 4],
         kind: ["bun", "istanbul"],
         include: [
-          { shard: 1, tier: "unit + component", part: "1/2" },
-          { shard: 2, tier: "unit + component", part: "2/2" },
-          { shard: 3, tier: "integration", part: "1/2" },
-          { shard: 4, tier: "integration", part: "2/2" },
+          { shard: 1, tier: "unit + component", part: "1/3" },
+          { shard: 2, tier: "unit + component", part: "2/3" },
+          { shard: 3, tier: "unit + component", part: "3/3" },
+          { shard: 4, tier: "integration", part: "1/1" },
         ],
       },
     });

@@ -1,3 +1,4 @@
+import { account } from "./en/account.ts";
 import { agent } from "./en/agent.ts";
 import { assistant } from "./en/assistant.ts";
 import { automations } from "./en/automations.ts";
@@ -16,6 +17,7 @@ import { projects } from "./en/projects.ts";
 import { refusals } from "./en/refusals.ts";
 import { sessions } from "./en/sessions.ts";
 import { snippets } from "./en/snippets.ts";
+import { telemetry } from "./en/telemetry.ts";
 import { vault } from "./en/vault.ts";
 import type { Dictionary } from "./index.ts";
 
@@ -353,81 +355,7 @@ export const en: Dictionary = {
     },
   },
   ...notifications,
-  account: {
-    region: "Claude account of {host}",
-    title: "Claude account",
-    loading: "Reading the account…",
-    offline: "{host} is offline: the account shows again when it is back.",
-    plans: {
-      free: "Free",
-      pro: "Pro",
-      max: "Max",
-      ultra: "Ultra",
-      team: "Team",
-      enterprise: "Enterprise",
-    },
-    planHint:
-      "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
-    windows: {
-      five_hour: "5 hours",
-      seven_day: "7 days",
-      seven_day_opus: "7 days · Opus",
-      seven_day_sonnet: "7 days · Sonnet",
-    },
-    meter: "{window} of {host}",
-    meterText: "{percent}%, {reset}",
-    meterTextNoReset: "{percent}%",
-    resetsIn: "resets in {d}",
-    lastRead: "Last read {ago}",
-    noWindows: "The host reported no plan windows.",
-    stale: "Could not refresh: this is the last reading.",
-    refresh: "Refresh",
-    refreshing: "Reading…",
-    refreshLabel: "Refresh the account of {host}",
-    signedOut: {
-      title: "This host is not signed in to Claude.",
-      steps:
-        "Open this host's terminal, run this command and follow the steps there, then come back:",
-    },
-    copy: "Copy command",
-    copied: "Command copied",
-    terminal: "Open terminal",
-    apiKey: "This host uses an API key. Plan limits do not apply.",
-    provider: "This host uses {provider}. Plan limits do not apply.",
-    unknownSignIn: "This host's sign-in is not one the app knows.",
-    unavailable: "The account could not be read.",
-    retry: "Try again",
-  },
-  quota: {
-    windows: { five_hour: "5 hours", seven_day: "7 days" },
-    shortWindows: { five_hour: "5 h", seven_day: "7 days" },
-    region: "Quota of {host}",
-    meter: "{window} of {host}",
-    noReading: "no reading yet",
-    resets: "resets at {time}",
-    read: "read {ago}",
-    hotNotice: "{host}: over {pct}%: new cards wait for the quota; manual sessions go on.",
-    guard: {
-      label: "New cards wait from",
-      labelFor: "New cards wait from, on {host}",
-      off: "Never",
-      hint: "Sessions already running are never stopped.",
-      readOnly:
-        "New cards wait from {pct}%. This host cannot change it from the app: update flightdeckd.",
-      readOnlyOff: "The guard is off. This host cannot change it from the app: update flightdeckd.",
-    },
-    popover: {
-      label: "Plan quota of the hosts",
-      showRunning: "Show what is running",
-      openHost: "Open the host page",
-      openHostOf: "Open the page of {host}",
-    },
-    projection: {
-      few: "too few readings to project",
-      exhausts: "at the current pace, the {window} window runs out at {time}",
-      holds: "won't run out before {time}",
-    },
-  },
+  ...account,
   errors: {
     bad_request: "The host refused the request.",
     unauthorized:
@@ -726,50 +654,7 @@ export const en: Dictionary = {
     movedToast: "The session moved to {host}.",
     preview: "Preview: move a session to another host",
   },
-  telemetry: {
-    tab: "Time",
-    region: "Session timeline",
-    empty:
-      "No timing data for this session. It appears for sessions opened with flightdeckd claude, or after flightdeckd telemetry install.",
-    prompt: "Prompt {n}",
-    waited: "waited {wait} for you",
-    api: "API request",
-    apiError: "API error {status}",
-    apiErrorPlain: "API error",
-    failed: "failed ({error})",
-    failedPlain: "failed",
-    permission: "Permission for {tool}: {decision} {by}",
-    allowed: "allowed",
-    denied: "denied",
-    byConfig: "by settings",
-    byHook: "by a hook",
-    byYou: "by you",
-    byOther: "",
-    ms: "{n} ms",
-    seconds: "{n} s",
-    note: "The wait is estimated from the gap before the answer. The text of prompts and answers is never collected.",
-    optinTitle: "Telemetry",
-    optinAsking: "Asking…",
-    optinHint:
-      "For a plain claude (flightdeckd claude gets it by itself): writes the keys that send the time and cost of sessions to this host into settings.json, on this machine only.",
-    optinInstalled: "Installed",
-    optinAbsent: "Not installed",
-    optinOutdated: "Out of date: install again",
-    optinConflict: "settings.json has an exporter of yours ({keys}): nothing will be changed.",
-    optinInstall: "Install telemetry",
-    optinUninstall: "Remove telemetry",
-    optinInstallMessage:
-      "This edits {path}: it adds the keys that send Claude Code's telemetry to this host's daemon, on this machine only, and keeps a copy in settings.json.flightdeck-telemetry-backup. Prompts and answers are never sent.",
-    optinUninstallMessage:
-      "This removes only Flightdeck's keys from {path} and changes the receiver's token. The rest of the file stays.",
-    costsTitle: "Time per project",
-    slowest: "Slowest tools",
-    slowTool: "{tool}: {avg} on average, {max} at most ({calls})",
-    calls: { one: "{n} call", other: "{n} calls" },
-    none: "No tools measured yet.",
-    divergence: "the telemetry cost differs from the transcripts': {items}",
-    divergenceItem: "{session} (transcripts {computed}, telemetry {telemetry})",
-  },
+  ...telemetry,
   bg: {
     region: "Background session",
     state: {
@@ -1195,41 +1080,6 @@ export const en: Dictionary = {
       subscribed: "Someone has the session open, so it stays awake.",
       kept_awake: "The session is pinned or belongs to a card, so it stays awake.",
     },
-  },
-  resources: {
-    title: "Resources",
-    guard: {
-      label: "New cards wait from memory at",
-      labelFor: "New cards wait from memory at, on {host}",
-      off: "Never",
-      hint: "Only new cards wait, and start once memory frees up; sessions already running are never stopped.",
-    },
-    memory: "Memory",
-    disk: "Disk",
-    load: "Load {n}%",
-    used: "{used} of {total} used",
-    high: "High",
-    critical: "Critical",
-    kinds: { session: "Session", terminal: "Terminal" },
-    session: "Session",
-    project: "Project",
-    memoryCol: "Memory",
-    cpu: "CPU",
-    programs: "Programs",
-    unmeasured: "not measured",
-    list: "Sessions and terminals by memory",
-    empty: "No session or terminal is running.",
-    notMeasured:
-      "Per-session numbers are not measured here. Processes are only measured on Linux hosts.",
-    orphans: "Leftover processes",
-    orphansHelp:
-      "Started by this host's daemon, but no session owns them. They may be left from a session that is gone.",
-    orphanLine: "{name} · pid {pid} · {age} · {memory}",
-    end: "End",
-    endTitle: "End process",
-    endMessage: "End process {pid} ({name})? The host's daemon started it and no session owns it.",
-    endFailed: "That process could not be ended.",
-    unreadable: "This host's resources could not be read. They show when the host answers.",
   },
   ...plugins,
   maintenance: {

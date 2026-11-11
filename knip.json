@@ -1,7 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
-    ".": { "entry": ["scripts/*.ts"], "project": ["scripts/**/*.ts"] },
+    ".": {
+      "entry": ["scripts/*.ts"],
+      "project": ["scripts/**/*.ts"],
+      "ignoreBinaries": ["gpg"]
+    },
     "apps/daemon": {},
     "apps/desktop": { "ignore": ["src/components/ui/**"] },
     "packages/protocol": {}

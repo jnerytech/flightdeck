@@ -10,7 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { applyTemplate, CardTemplateField, startPersonaOf, startWorkflowOf } = await import(
-  "../src/components/board/card-template-field.tsx"
+  "../src/features/board/card-template-field.tsx"
 );
 
 afterEach(cleanup);

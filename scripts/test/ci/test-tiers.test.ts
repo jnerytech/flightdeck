@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { TIERS, type Tier, testTiers, tierCounts } from "../../lib/test-tiers.ts";
+import { shardTiers, TIERS, type Tier, testTiers, tierCounts } from "../../lib/test-tiers.ts";
 
 // repo-wide (#1108): reads every tracked source file, so CI's quick job runs it on every PR.
 
@@ -61,6 +61,20 @@ describe("test-tiers", () => {
       "scripts/e2e/journeys.e2e.ts": "e2e",
       "scripts/smoke-ops.ts": "e2e",
     });
+  });
+
+  test("on the shards a test that draws the DOM runs with the component tests, even when it also starts a daemon (#1854)", () => {
+    const shards = shardTiers(FIXTURE);
+    expect(shards["apps/x/test/with-daemon.test.tsx"]).toBe("component");
+    expect(testTiers(FIXTURE)["apps/x/test/with-daemon.test.tsx"]).toBe("integration");
+  });
+
+  test("on the shards a test with no DOM keeps its tier", () => {
+    const shards = shardTiers(FIXTURE);
+    expect(shards["apps/x/test/spawns.test.ts"]).toBe("integration");
+    expect(shards["apps/x/test/screen.test.tsx"]).toBe("component");
+    expect(shards["apps/x/test/pure.test.ts"]).toBe("unit");
+    expect(shards["scripts/e2e/journeys.e2e.ts"]).toBe("e2e");
   });
 
   test("the counts per tier", () => {

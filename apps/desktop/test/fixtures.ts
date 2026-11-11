@@ -4,6 +4,7 @@ import type {
   AssistantRequest,
   AssistantResult,
   DepsResult,
+  DoctorResult,
   KeepAwakeStatus,
   ModelOption,
 } from "@flightdeck/protocol";
@@ -28,6 +29,7 @@ import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
 import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
+import { FlightdeckError } from "../../daemon/src/errors.ts";
 import { spawnExec } from "../../daemon/src/exec.ts";
 import type { GhRunner } from "../../daemon/src/github/gh.ts";
 import { GithubService } from "../../daemon/src/github/service.ts";
@@ -103,6 +105,11 @@ export async function waitFor<T>(
  * history index reads `historyRoot` (a fake `~/.claude/projects`); call `await history.scan()` after
  * writing transcripts there.
  */
+/** What a fake daemon's handler throws to refuse a command, so the app sees an ack with this message. */
+export function daemonRefusal(message: string): Error {
+  return new FlightdeckError("invalid_state", message);
+}
+
 export function daemon(
   cleanups: Array<() => unknown>,
   options: {
@@ -178,6 +185,8 @@ export function daemon(
     personas?: boolean;
     /** The host's self-check (`doctor.run`) and project finder (`projects.scan`, `projects.clone`), over a fake git. */
     firstRun?: boolean;
+    /** Replaces the fake self-check of a `firstRun` host (needs `firstRun`): a test makes `doctor.run` refuse or wait. */
+    doctor?: (appVersion?: string) => Promise<DoctorResult>;
     /** Sign-in with GitHub and start from a repo (phase 37), through the `gh` on the PATH and a fake clone. */
     github?: boolean | { gh?: GhRunner };
     /** Board sync with an external board (phase 38), over an in-memory provider the test controls. */
@@ -484,6 +493,7 @@ export function daemon(
   /** What the fake git was asked, and the versions `doctor.run` was asked with. */
   const gitCalls: string[][] = [];
   const doctorAsked: Array<string | undefined> = [];
+  if (options.doctor && !options.firstRun) throw new Error("the doctor option needs firstRun");
   const firstRunOptions = options.firstRun
     ? {
         findProjects: true,
@@ -496,6 +506,7 @@ export function daemon(
         },
         doctor: async (appVersion?: string) => {
           doctorAsked.push(appVersion);
+          if (options.doctor) return options.doctor(appVersion);
           return {
             ok: true,
             checks: [
