@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { Vault } from "../src/lib/vault.ts";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
-import { createWebPlatform } from "../src/platform/web/index.ts";
+import { Vault } from "../../src/lib/vault.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
+import { createWebPlatform } from "../../src/platform/web/index.ts";
 
 const KEY =
   "-----BEGIN OPENSSH PRIVATE KEY-----\nTEST-KEY-BODY\n-----END OPENSSH PRIVATE KEY-----\n";

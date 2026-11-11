@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type SecretMeta, Vault } from "../src/lib/vault.ts";
+import { type SecretMeta, Vault } from "../../src/lib/vault.ts";
 
 /** The OS keyring and the app's storage, both in memory: the real keyring is never touched. */
 function fakePlatform() {

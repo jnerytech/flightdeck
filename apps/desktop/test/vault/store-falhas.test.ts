@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { memoryPlatform } from "./fixtures.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 const stores: Array<{ dispose(): void }> = [];
 afterEach(() => {
