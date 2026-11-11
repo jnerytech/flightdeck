@@ -56,7 +56,7 @@ import { TranscriptReader } from "./TranscriptReader.tsx";
  * keeps the entry chunk under its limit; scripts/test/demo/screens-lazy.test.ts lists them).
  */
 const ActionsPage = lazyScreen(() => import("./ActionsPage.tsx"), "ActionsPage");
-const AgentPage = lazyScreen(() => import("./AgentPage.tsx"), "AgentPage");
+const AgentPage = lazyScreen(() => import("../features/agentcfg/page.tsx"), "AgentPage");
 const AutoApprovalsPage = lazyScreen(() => import("./AutoApprovalsPage.tsx"), "AutoApprovalsPage");
 const AutomationsPage = lazyScreen(() => import("./AutomationsPage.tsx"), "AutomationsPage");
 const BoardView = lazyScreen(() => import("./BoardView.tsx"), "BoardView");

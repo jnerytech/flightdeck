@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useBusy } from "@/hooks/use-busy";
-import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
-import type { AppStore } from "../lib/app-store.ts";
+import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
 import {
   commandLine,
   draftFromServer,
@@ -20,9 +20,9 @@ import {
   emptyDraft,
   type McpDraft,
   serverFromDraft,
-} from "../lib/mcp-form.ts";
-import { isInside } from "../lib/paths.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+} from "../../lib/mcp-form.ts";
+import { isInside } from "../../lib/paths.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /** The protocol's names, which the screen shows as they are. */
 /** Sessions of a managed run that can still answer `mcp.status`. */

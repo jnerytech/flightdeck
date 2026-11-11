@@ -1,12 +1,12 @@
 import { Page } from "@/components/layout/page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AgentMemory } from "@/features/memory/index.ts";
 import { SubagentsSwitch } from "@/features/personas/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { hasFeature } from "../lib/version.ts";
-import { AgentContext } from "./AgentContext.tsx";
-import { AgentFiles } from "./AgentFiles.tsx";
-import { AgentMcp } from "./AgentMcp.tsx";
-import { AgentMemory } from "./AgentMemory.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { AgentContext } from "./agent-context.tsx";
+import { AgentFiles } from "./agent-files.tsx";
+import { AgentMcp } from "./agent-mcp.tsx";
 
 /** A project's agent (phase 12): its MCP servers, CLAUDE.md files, agents and skills. */
 export function AgentPage(

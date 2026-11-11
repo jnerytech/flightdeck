@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { AppStore } from "../lib/app-store.ts";
-import { getField, parseDocument, serialize, setField } from "../lib/frontmatter.ts";
-import { Markdown } from "./Markdown.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { getField, parseDocument, serialize, setField } from "../../lib/frontmatter.ts";
+import { Markdown } from "../../ui/Markdown.tsx";
 
 type Kind = AgentCfgItem["kind"];
 type Origin = AgentCfgItem["origin"];
