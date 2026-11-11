@@ -10,11 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStoreSlice } from "@/lib/use-store";
-import type { AppStore } from "../lib/app-store.ts";
-import { sessionProjectKeys } from "../lib/client-scope.ts";
-import { hubRows } from "../lib/hub.ts";
-import type { Route } from "../lib/router.ts";
-import { hasFeature } from "../lib/version.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { sessionProjectKeys } from "../../lib/client-scope.ts";
+import { hubRows } from "../../lib/hub.ts";
+import type { Route } from "../../lib/router.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {

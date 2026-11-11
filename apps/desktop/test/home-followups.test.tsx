@@ -11,7 +11,7 @@ const { emptySummary } = await import("../src/lib/client-costs.ts");
 const { HomePage } = await import("../src/ui/HomePage.tsx");
 const { CostsPage } = await import("../src/features/costs/page.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { HistoryList } = await import("../src/ui/HistoryList.tsx");
+const { HistoryList } = await import("../src/features/history/history-list.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

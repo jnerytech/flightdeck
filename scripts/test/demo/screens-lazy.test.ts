@@ -39,9 +39,12 @@ const LAZY_SCREENS = [
  * not edit this test.
  */
 const FEATURES = resolve(UI, "../features");
+/** A screen whose domain folder is not its name (GLOSSARY Domains): the Conversations screen is messaging. */
+const DOMAIN_OF: Record<string, string> = { ConversationsPage: "messaging" };
+
 const specifierOf = (name: string) => {
   const feature = name.replace(/Page$/, "").toLowerCase();
-  const folder = [feature, `${feature}s`].find((dir) =>
+  const folder = [DOMAIN_OF[name] ?? feature, feature, `${feature}s`].find((dir) =>
     existsSync(resolve(FEATURES, dir, "page.tsx")),
   );
   return folder ? `../features/${folder}/page.tsx` : `./${name}.tsx`;

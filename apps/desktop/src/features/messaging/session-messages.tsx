@@ -5,7 +5,7 @@ import { Field, NativeSelect } from "@/components/layout/form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /**
  * Phase 21: a session's messages, sent and received, and a message from it to another session

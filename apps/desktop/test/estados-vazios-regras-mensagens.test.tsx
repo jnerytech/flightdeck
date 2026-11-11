@@ -8,7 +8,7 @@ const { act, cleanup, render } = await import("@testing-library/react");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 const { RulesSection } = await import("../src/ui/RulesSection.tsx");
-const { SessionMessages } = await import("../src/ui/SessionMessages.tsx");
+const { SessionMessages } = await import("../src/features/messaging/session-messages.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 

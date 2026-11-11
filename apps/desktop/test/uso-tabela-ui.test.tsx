@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, waitFor } = await import("@testing-libr
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 const { UsagePanel } = await import("../src/ui/UsagePanel.tsx");
-const { HistoryList } = await import("../src/ui/HistoryList.tsx");
+const { HistoryList } = await import("../src/features/history/history-list.tsx");
 const { I18n } = await import("../src/i18n/index.ts");
 
 import type { AppStore } from "../src/lib/app-store.ts";
