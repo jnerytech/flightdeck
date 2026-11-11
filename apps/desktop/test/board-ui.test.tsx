@@ -694,7 +694,7 @@ describe("board-ui", () => {
     await createCard("Some junto", "faça");
     expect(Object.keys(store.getState().cards)).toHaveLength(1);
     await act(async () => {
-      await store.removeHost(store.getState().hosts[0]?.id ?? "");
+      await store.roster.remove(store.getState().hosts[0]?.id ?? "");
     });
     expect(store.getState().cards).toEqual({});
   });

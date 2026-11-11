@@ -28,7 +28,7 @@
     },
     "apps/daemon": {
       "name": "@flightdeck/daemon",
-      "version": "0.37.24",
+      "version": "0.37.25",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "0.3.312",
         "@flightdeck/protocol": "workspace:*",
@@ -43,7 +43,7 @@
     },
     "apps/desktop": {
       "name": "@flightdeck/desktop",
-      "version": "0.37.24",
+      "version": "0.37.25",
       "dependencies": {
         "@codemirror/commands": "6.11.1",
         "@codemirror/language": "6.13.1",
@@ -98,7 +98,7 @@
     },
     "packages/protocol": {
       "name": "@flightdeck/protocol",
-      "version": "0.37.24",
+      "version": "0.37.25",
       "dependencies": {
         "zod": "4.6.7",
       },

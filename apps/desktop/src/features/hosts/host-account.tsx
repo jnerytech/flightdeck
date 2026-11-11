@@ -41,7 +41,7 @@ export function HostAccount(
         });
       }}
       onCopy={() => void store.copyText(state?.loginCommand ?? "").then(setCopied)}
-      onTerminal={() => void store.openTerminal(host.id)}
+      onTerminal={() => void store.terminals.open(host.id)}
     />
   );
 }

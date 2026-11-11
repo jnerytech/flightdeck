@@ -29,8 +29,8 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
   useEffect(() => {
     if (!online || !enabled) return;
     const load = () =>
-      store
-        .terminalHost(host.id)
+      store.terminals
+        .host(host.id)
         .list()
         .then(setLive, () => setLive([]));
     void load();
@@ -80,7 +80,7 @@ export function HostTerminal(props: Readonly<{ store: AppStore; host: HostView }
               </ul>
             )}
             <div className="flex gap-2">
-              <ActionButton size="sm" onClick={() => store.openTerminal(host.id)}>
+              <ActionButton size="sm" onClick={() => store.terminals.open(host.id)}>
                 {t("hostTerminal.open")}
               </ActionButton>
               <Button variant="outline" size="sm" onClick={() => setAsking("off")}>

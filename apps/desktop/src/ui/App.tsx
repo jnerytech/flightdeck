@@ -249,13 +249,13 @@ export function runPaletteTarget(
   switch (target.kind) {
     case "terminal":
       ui.guardLive(target.hostId, target.target.claudeSessionId, () => {
-        if (store.embeddedTerminal(target.hostId)) {
-          void store.openClaudeHere(target.hostId, target.target);
-        } else void store.openInTerminal(target.hostId, target.target);
+        if (store.terminals.embedded(target.hostId)) {
+          void store.terminals.openClaude(target.hostId, target.target);
+        } else void store.terminals.openIn(target.hostId, target.target);
       });
       return;
     case "new-terminal":
-      void store.openTerminal(target.hostId);
+      void store.terminals.open(target.hostId);
       return;
     case "session-view":
       store.sessionViews.select(target.view);
@@ -661,8 +661,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               store.select(hostId, null);
               go({ name: "new-session", host: hostId });
             },
-            onRemoveHost: (id) => void store.removeHost(id),
-            onRenameHost: (id, name) => store.renameHost(id, name),
+            onRemoveHost: (id) => void store.roster.remove(id),
+            onRenameHost: (id, name) => store.roster.rename(id, name),
             onOpenSearch: () => store.history.openSearch(),
             onNewTab: () => store.hostTabs.openNextInNewTab(),
             onToggleTheme: () => store.theme.toggle(),
@@ -713,7 +713,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
           })}
           <TabSwitcherHost store={store} />
           {state.closingTerminal && (
-            <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
+            <TerminalCloseDialog onClose={(kill) => void store.terminals.finishClose(kill)} />
           )}
           <AskpassPrompt store={store} />
           {startAsk.dialog}

@@ -169,7 +169,7 @@ describe("conta-cartao-acoes: signed out", () => {
   test("Open terminal opens the host's terminal", async () => {
     const { store, host } = await mount("out");
     const opened: string[] = [];
-    store.openTerminal = async (hostId) => {
+    store.terminals.open = async (hostId) => {
       opened.push(hostId);
       return "t1";
     };

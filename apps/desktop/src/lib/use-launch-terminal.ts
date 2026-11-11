@@ -5,12 +5,12 @@ import type { AppStore } from "./app-store.ts";
 export function useLaunchTerminal(store: AppStore, hostId: string, launchId: string | null) {
   const [terminalId, setTerminalId] = useState<string | null>(null);
   // Asked only for a session with a launch: a page without one needs nothing of the host's terminal.
-  const embedded = launchId ? store.embeddedTerminal(hostId) : false;
+  const embedded = launchId ? store.terminals.embedded(hostId) : false;
   useEffect(() => {
     if (!launchId || !embedded) return;
     let alive = true;
-    store
-      .terminalHost(hostId)
+    store.terminals
+      .host(hostId)
       .list()
       .then(
         (terminals) => {
