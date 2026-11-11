@@ -1,14 +1,14 @@
 import type { TelemetryItem, TelemetryPrompt } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
-import { Bar } from "../components/layout/bar.tsx";
-import { Panel } from "../components/layout/panel.tsx";
-import { Inline, Stack } from "../components/layout/stack.tsx";
-import { EmptyState, LoadingState } from "../components/layout/states.tsx";
-import { formatDuration } from "../i18n/format.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { usd } from "../lib/costs.ts";
-import { formatMs } from "../lib/timing.ts";
+import { Bar } from "../../components/layout/bar.tsx";
+import { Panel } from "../../components/layout/panel.tsx";
+import { Inline, Stack } from "../../components/layout/stack.tsx";
+import { EmptyState, LoadingState } from "../../components/layout/states.tsx";
+import { formatDuration } from "../../i18n/format.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { usd } from "../../lib/costs.ts";
+import { formatMs } from "../../lib/timing.ts";
 
 type T = ReturnType<typeof useT>;
 
