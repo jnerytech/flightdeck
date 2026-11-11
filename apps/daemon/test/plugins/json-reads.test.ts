@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/errors.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
 import { filePins, type PluginCli, Plugins } from "../../src/plugins/plugins.ts";
 import { tempDir } from "../support/helpers.ts";
@@ -45,15 +45,14 @@ describe("plugins: JSON the plugin and the CLI hand over (#1609)", () => {
       pins: { all: async () => ({}), set: async () => {}, delete: async () => {} },
     });
     const hash = (await inspectPlugin(dir)).hash;
-    let reason: unknown;
-    let errors: unknown;
+    let refusal: FlightdeckError | undefined;
     try {
       await plugins.install({ dir, confirmHash: hash });
     } catch (error) {
-      ({ reason, params: { errors } = {} } = error as FlightdeckError);
+      refusal = error as FlightdeckError;
     }
-    expect(reason).toBe("plugin_validate_refused");
-    expect(errors).toBe("validate did not answer");
+    expect(refusal?.reason).toBe("plugin_validate_refused");
+    expect(refusal?.params).toEqual({ errors: "validate did not answer" });
   });
 
   test("a pin that lost fields reads with them empty, and a pin that is no object stays a pin", async () => {

@@ -11,7 +11,9 @@ import { basename, join, resolve } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonWith } from "../json-text.ts";
 import { isInside } from "../paths.ts";
+import { AnyJson } from "./json-reads.ts";
 
 /** Hook events that can decide for the user; a plugin listening to them gets the attention mark. */
 export const SENSITIVE_EVENTS = ["PreToolUse", "PermissionRequest"];
@@ -122,7 +124,7 @@ async function inside(reading: Reading, key: string, rel: string): Promise<strin
 
 async function readJson(reading: Reading, path: string, label: string): Promise<unknown> {
   try {
-    return JSON.parse(await readFile(path, "utf8"));
+    return parseJsonWith(AnyJson, await readFile(path, "utf8"));
   } catch {
     reading.problems.push(`${label}: not valid JSON`);
     return undefined;
