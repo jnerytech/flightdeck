@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { resolve } from "node:path";
 import { BoardColumn as BoardColumnSchema, type BoardResult } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr } from "../json-text.ts";
 import { isInside } from "../paths.ts";
@@ -9,12 +10,9 @@ import type { Card, CardRow, CardRun, Project, RunRow } from "./types.ts";
 
 /** The pinned documents of a row: a list of paths, or none when the column is empty or not one. */
 function pinnedDocsOf(stored: string | null): string[] {
-  try {
-    const parsed: unknown = JSON.parse(stored ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
-  } catch {
-    return [];
-  }
+  return parseJsonOr(z.array(z.unknown()), stored ?? "[]", []).filter(
+    (p): p is string => typeof p === "string",
+  );
 }
 
 const toRun = (row: RunRow): CardRun => ({

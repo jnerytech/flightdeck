@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { FlightdeckError } from "../../src/errors.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
@@ -77,5 +77,20 @@ describe("plugins: JSON the plugin and the CLI hand over (#1609)", () => {
     expect(await filePins(file).all()).toEqual({});
     writeFileSync(file, "not json");
     expect(await filePins(file).all()).toEqual({});
+  });
+});
+
+describe("plugins: pin changes in a row", () => {
+  test("two plugin pin changes in a row: a failed one does not stop the next", async () => {
+    const dir = tempDir("fd-pins-");
+    const path = join(dir, "pins.json");
+    mkdirSync(path);
+    const pins = filePins(path);
+    await expect(
+      pins.set("a@b", { hash: "h1", at: "2026-11-03T10:00:00Z" } as never),
+    ).rejects.toThrow();
+    rmSync(path, { recursive: true });
+    await pins.set("a@b", { hash: "h2", at: "2026-11-03T10:00:00Z" } as never);
+    expect(JSON.parse(readFileSync(path, "utf8"))["a@b"].hash).toBe("h2");
   });
 });

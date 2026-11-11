@@ -10,7 +10,6 @@ import type {
   MessageInfo,
   Project,
   ProjectDetectResult,
-  RoiSummaryResult,
   RunConfigInfo,
   RunState,
   SessionImage,
@@ -21,7 +20,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
-import { AccountSlice, initialAccountState } from "../features/account/index.ts";
+import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
   initialActivityState,
@@ -36,21 +35,27 @@ import {
 import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
-  BudgetsSlice,
+  type BudgetsSlice,
   ClientBudgetsSlice,
   initialBudgetsState,
   initialClientBudgetsState,
+  wireBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
-  HealthSlice,
+  type HealthSlice,
   HostRosterSlice,
   HostUpdateSlice,
   initialHealthState,
   type NewHost,
+  wireHealth,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
-import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
+import {
+  initialMessagingState,
+  type MessagingSlice,
+  wireMessaging,
+} from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
@@ -145,7 +150,6 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
-import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import { sessionKey } from "./session-key.ts";
 import { SessionViews } from "./session-views.ts";
@@ -175,7 +179,7 @@ import { Vault } from "./vault.ts";
 import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { VaultUsageLog } from "./vault-usage.ts";
-import { APP_VERSION, hasFeature } from "./version.ts";
+import { hasFeature } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WhatsNew } from "./whats-new.ts";
@@ -349,6 +353,8 @@ export class AppStore {
       this.hostCommand(hostId, type, payload, options),
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
+    now: () => this.now(),
+    t: () => this.i18n.t,
   };
 
   constructor(
@@ -381,14 +387,7 @@ export class AppStore {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
-    this.health = new HealthSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      features: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-      deps: (hostId) => this.hostRequest(hostId, "deps.check", {}),
-      doctor: (hostId) => this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION }),
-      now: () => this.now(),
-    });
+    this.health = wireHealth(this.kernel);
     this.hostUpdate = new HostUpdateSlice({
       host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
@@ -420,40 +419,15 @@ export class AppStore {
       t: () => this.i18n.t,
       now: () => this.now(),
     });
-    this.account = new AccountSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      stream: (hostId) => {
-        const conn = this.connections.get(hostId);
-        return (
-          conn && {
-            watch: (on) => conn.watchAccount(on),
-            get: () => conn.request("account.get", {}),
-          }
-        );
-      },
-      refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
-    });
+    this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
-    this.budgets = new BudgetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      set: (hostId, input) => this.hostCommand(hostId, "budget.set", input),
-      setQuota: (hostId, input) => this.hostCommand(hostId, "budget.setQuota", input),
-      remove: (hostId, id) => this.hostCommand(hostId, "budget.remove", { id }),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
+    this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>
         this.inbox.notify(notification, route, undefined, source),
-      t: () => this.i18n.t,
     });
-    this.messaging = new MessagingSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
-      setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
+    this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
-      t: () => this.i18n.t,
     });
     this.settings = new SettingsSlice({
       state: () => this.state,
@@ -977,11 +951,6 @@ export class AppStore {
   /** Today as `YYYY-MM-DD`, in this machine's time zone unless injected. */
   today(): string {
     return (this.options.day ?? localDay)(this.now());
-  }
-
-  /** Phase 36: the day the hosts' ROI figures end on (UTC, as a host dates a delivery). */
-  roiToday(): string {
-    return this.roiFigures.today();
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
@@ -2266,25 +2235,12 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /** Phase 36: each online host's `roi.summary` for the days given; a host that cannot answer is left out. */
-  roiSummaries(
-    from: string,
-    to: string,
-  ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    return this.roiFigures.summaries(from, to);
-  }
-
-  /** Phase 36: what the person typed that turns the work of a project into money. */
-  roiMoneyOf(projectKey: string): RoiMoney {
-    return this.roiFigures.moneyOf(projectKey);
-  }
-
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
   readonly roi: RoiSettings;
   /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
-  private readonly roiFigures: RoiSlice;
+  readonly roiFigures: RoiSlice;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;

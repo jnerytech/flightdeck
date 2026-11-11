@@ -34,6 +34,16 @@ describe("board-sync-gaps: github.ts answers", () => {
     });
   });
 
+  test("an answer that is not a JSON object is a failed call, never a thrown parse error (#1609)", async () => {
+    for (const stdout of ["not json", "[1]", '{"errors":"boom"}']) {
+      const boards = new GithubBoards({ gh: answer(stdout) });
+      expect([stdout, (await reasonOf(boards.listBoards()))?.reason]).toEqual([
+        stdout,
+        "board_sync_failed",
+      ]);
+    }
+  });
+
   test("GraphQL errors inside a successful answer are mapped like a failed call", async () => {
     const boards = new GithubBoards({
       gh: answer(

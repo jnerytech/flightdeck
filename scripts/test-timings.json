@@ -82,7 +82,6 @@
   "apps/daemon/test/core/async-paths.test.ts": 0.005,
   "apps/daemon/test/core/atomic-write.test.ts": 0.471,
   "apps/daemon/test/core/config.test.ts": 0.385,
-  "apps/daemon/test/core/coverage-0330.test.ts": 4.75,
   "apps/daemon/test/core/coverage-main-0330.test.ts": 2.205,
   "apps/daemon/test/core/fs-dirs.test.ts": 0.139,
   "apps/daemon/test/core/fs-files.test.ts": 0.081,
