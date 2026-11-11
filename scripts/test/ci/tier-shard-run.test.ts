@@ -73,3 +73,28 @@ describe("shard-gate run: a shard job runs one tier group (#1854)", () => {
     expect(markerOf(f)).toMatchObject({ shard: 4, files: [], exit: 0, tier: "integration 2/2" });
   });
 });
+
+describe("shard-gate run: the fast baseline is instrumented in a PR's unit + component shards (#1854)", () => {
+  const envOf = async (shard: number, extraTargets: string[]) => {
+    const f = fakes({ tests: ["u.test.ts", "c.test.tsx", "i1.test.ts"], targets: ["src/x.ts"] });
+    let env: Record<string, string> = {};
+    const deps = {
+      ...f.deps,
+      extraTargets,
+      spawn: async (_argv: string[], e: Record<string, string>) => {
+        env = e;
+        return { exit: 0, log: " 1 pass\n 0 fail\nRan 1 tests across 1 files." };
+      },
+    };
+    await runShard(`${shard}/${TIER_SHARDS}`, "istanbul", "/tmp/out", deps);
+    return JSON.parse(env.COVERAGE_FUNCS_FILES ?? "[]") as string[];
+  };
+
+  test("a unit + component shard instruments the changed sources and the baseline, so a settled count judges each baseline file", async () => {
+    expect(await envOf(1, ["src/base.ts"])).toEqual(["src/x.ts", "src/base.ts"]);
+  });
+
+  test("an integration shard instruments only the changed sources", async () => {
+    expect(await envOf(3, ["src/base.ts"])).toEqual(["src/x.ts"]);
+  });
+});
