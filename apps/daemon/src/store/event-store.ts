@@ -7,14 +7,16 @@ import {
   type PermissionMode,
   type PersonaAgent,
   SessionEvent,
-  type SessionPersona,
+  SessionPersona,
   type SessionRuntime,
   type SessionStatus,
   type SessionSummary,
-  type ToolInput,
+  ToolInput,
 } from "@flightdeck/protocol";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
 import type { PersonaSnapshot } from "../personas/snapshot.ts";
 import { MIGRATIONS } from "./migrations.ts";
+import { AgentsJson, ModePayload, PersonaSnapshotJson } from "./row-json.ts";
 
 export type PermissionStatus = "pending" | "allowed" | "denied" | "cancelled" | "expired";
 
@@ -82,9 +84,10 @@ const now = () => new Date().toISOString();
 
 /** What was applied to the open session, else what it was opened with. */
 function personaOf(row: SessionRow): { persona?: SessionPersona } {
-  if (row.applied_persona) return { persona: JSON.parse(row.applied_persona) as SessionPersona };
-  if (row.persona) return { persona: personaBadge(JSON.parse(row.persona) as PersonaSnapshot) };
-  return {};
+  const applied = row.applied_persona && parseJsonOr(SessionPersona, row.applied_persona, null);
+  if (applied) return { persona: applied };
+  const opened = row.persona && parseJsonOr(PersonaSnapshotJson, row.persona, null);
+  return opened ? { persona: personaBadge(opened) } : {};
 }
 
 function toSummary(row: SessionRow): SessionSummary {
@@ -114,7 +117,7 @@ function toPermission(row: PermissionRow): PermissionRecord {
     id: row.id,
     sessionId: row.session_id,
     toolName: row.tool_name,
-    input: JSON.parse(row.input) as ToolInput,
+    input: parseJsonWith(ToolInput, row.input),
     status: row.status,
     message: row.message,
     createdAt: row.created_at,
@@ -203,7 +206,7 @@ export class EventStore {
     const row = this.db.query("SELECT applied_persona FROM sessions WHERE id = ?").get(id) as {
       applied_persona: string | null;
     } | null;
-    return row?.applied_persona ? (JSON.parse(row.applied_persona) as SessionPersona) : null;
+    return row?.applied_persona ? parseJsonOr(SessionPersona, row.applied_persona, null) : null;
   }
 
   setAppliedPersona(id: string, badge: SessionPersona | null): void {
@@ -217,7 +220,7 @@ export class EventStore {
     const row = this.db.query("SELECT persona FROM sessions WHERE id = ?").get(id) as {
       persona: string | null;
     } | null;
-    return row?.persona ? (JSON.parse(row.persona) as PersonaSnapshot) : null;
+    return row?.persona ? parseJsonWith(PersonaSnapshotJson, row.persona) : null;
   }
 
   /** The subagents the session opened with; empty for one that had none. */
@@ -225,7 +228,7 @@ export class EventStore {
     const row = this.db.query("SELECT agents FROM sessions WHERE id = ?").get(id) as {
       agents: string | null;
     } | null;
-    return row?.agents ? (JSON.parse(row.agents) as Record<string, PersonaAgent>) : {};
+    return row?.agents ? parseJsonWith(AgentsJson, row.agents) : {};
   }
 
   getSession(id: string): SessionSummary | null {
@@ -311,9 +314,7 @@ export class EventStore {
         "SELECT payload FROM events WHERE session_id = ? AND type = 'session.mode' ORDER BY seq DESC LIMIT 1",
       )
       .get(sessionId) as { payload: string } | null;
-    return row
-      ? (JSON.parse(row.payload) as { permissionMode: PermissionMode }).permissionMode
-      : null;
+    return row ? (parseJsonOr(ModePayload, row.payload, null)?.permissionMode ?? null) : null;
   }
 
   eventsSince(sessionId: string, sinceSeq = 0): EventEnvelope[] {
@@ -327,7 +328,7 @@ export class EventStore {
       sessionId: row.session_id,
       seq: row.seq,
       ts: row.ts,
-      event: SessionEvent.parse(JSON.parse(row.payload)),
+      event: parseJsonWith(SessionEvent, row.payload),
     }));
   }
 
