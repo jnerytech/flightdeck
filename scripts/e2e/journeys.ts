@@ -1689,7 +1689,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       ).toBeGreaterThanOrEqual(first.bottom - 1);
       if (cells.length > 3) {
         expect(
-          [Math.abs(third.top - second.top) <= 1, Math.abs(third.width - second.width) <= 2],
+          // The row aligns its cells at the end, so a label that wraps makes one taller: the
+          // bottoms line up, not the tops.
+          [Math.abs(third.bottom - second.bottom) <= 1, Math.abs(third.width - second.width) <= 2],
           `the model and the permission are side by side, as wide as each other, at ${size.width}px`,
         ).toEqual([true, true]);
       }
