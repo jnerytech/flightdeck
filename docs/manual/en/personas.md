@@ -6,8 +6,8 @@ A **persona** is an engineering role Claude takes in a session: a name, a descri
 suggested model, effort, tools and permission mode, and the instructions of the role. The
 **Personas** screen (sidebar, for hosts that keep them) lists them by where they live:
 
-- **Pack**: thirteen come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
-  performance, code reviewer, docs, **frontend** (builds the screens, leaving the UX judgment to UX), **UX** (judges whether a person can finish a task and
+- **Pack**: fourteen come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
+  performance, code reviewer, docs, **Specifier** (turns a request into an issue: keeps your words, never changes what was asked, makes each criterion provable by a command, and runs no code), **frontend** (builds the screens, leaving the UX judgment to UX), **UX** (judges whether a person can finish a task and
   only recommends: it has no edit tool), **UI** (keeps the interface consistent with the design
   system and fixes it in small PRs), DBA, the team coordinator of phase 21 and the
   **Developer**, the one that writes the code: test first, small scoped changes, follows the

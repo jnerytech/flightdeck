@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
 import { SessionFinish } from "../components/session/session-finish.tsx";
 import { SessionMessages } from "../features/messaging/session-messages.tsx";
@@ -30,7 +31,6 @@ import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
 import { SessionTerminal } from "./SessionTerminal.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
-import { TracePanel } from "./TracePanel.tsx";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";
