@@ -2,10 +2,12 @@
  * Phase 38: GitHub Projects (v2) as a `BoardProvider`, through the host's `gh api graphql`: the
  * daemon holds no token. Query text is constant and every value goes as a variable.
  */
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
 import type { GhResult, GhRunner } from "../github/gh.ts";
 import { githubStatus } from "../github/status.ts";
 import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
+import { parseJsonOr } from "../json-text.ts";
 import type {
   BoardProvider,
   ExternalBoard,
@@ -35,6 +37,12 @@ const PULL_QUERY = `query($board: ID!, $cursor: String, $field: String!) { viewe
 
 const SET_QUERY =
   "mutation($board: ID!, $item: ID!, $field: ID!, $option: String!) { updateProjectV2ItemFieldValue(input: { projectId: $board, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) { projectV2Item { updatedAt } } }";
+
+/** What `gh api graphql` prints: the data, and the errors GitHub reports inside a successful call. */
+const GRAPHQL_ANSWER = z.object({
+  data: z.unknown().optional(),
+  errors: z.array(z.object({ message: z.string() })).optional(),
+});
 
 const refuse = (
   reason: string,
@@ -109,10 +117,10 @@ export class GithubBoards implements BoardProvider {
     const result = await this.opts.gh(args);
     if (!result) throw refuse("gh_missing", "gh is not installed on this host");
     if (result.code !== 0) throw failure(result);
-    const body = JSON.parse(result.stdout || "{}") as {
-      data?: T;
-      errors?: Array<{ message: string }>;
-    };
+    const body = parseJsonOr(GRAPHQL_ANSWER.nullable(), result.stdout || "{}", null);
+    if (body === null) {
+      throw failure({ code: 1, stdout: "", stderr: "gh did not answer with a GraphQL response" });
+    }
     if (body.errors?.length) {
       throw failure({ code: 1, stdout: "", stderr: body.errors.map((e) => e.message).join("\n") });
     }
