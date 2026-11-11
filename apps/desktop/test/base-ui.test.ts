@@ -3,10 +3,11 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { styleViolations } from "../../../scripts/lib/style-lint.ts";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { cn } from "../src/lib/utils.ts";
 
 const DESKTOP = resolve(import.meta.dir, "..");
-const css = () => readFileSync(resolve(DESKTOP, "src/styles.css"), "utf8");
+const css = () => readStyles(resolve(DESKTOP, "src/styles.css"));
 
 /** The declarations inside the first `selector { … }` block of the stylesheet. */
 function block(source: string, selector: string): string {

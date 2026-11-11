@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
@@ -10,7 +11,7 @@ const { Breadcrumb } = await import("../src/components/layout/breadcrumb.tsx");
 
 afterEach(cleanup);
 
-const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(join(import.meta.dir, "../src/styles.css"));
 const block = (name: string) => css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
 /**

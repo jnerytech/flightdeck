@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { poll } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -26,7 +27,7 @@ afterEach(async () => {
 const settle = waiter(4000);
 
 const DESKTOP = resolve(import.meta.dir, "..");
-const css = readFileSync(resolve(DESKTOP, "src/styles.css"), "utf8");
+const css = readStyles(resolve(DESKTOP, "src/styles.css"));
 
 /** The declarations inside the first `selector { … }` block of the stylesheet. */
 function block(selector: string): Record<string, string> {

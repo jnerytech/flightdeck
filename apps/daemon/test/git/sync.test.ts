@@ -187,7 +187,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(again.calls()).toEqual([]);
   });
 
-  test("board.budgetBlocked reads the cached key of a project added through the board and asks git nothing", async () => {
+  test("board.budgetHeld reads the cached key of a project added through the board and asks git nothing", async () => {
     const keys = new ProjectKeys("h");
     const asked: string[] = [];
     const { board, repo } = newBoard({
@@ -202,7 +202,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     });
     const { id } = await board.addProject({ path: repo });
     const sleeping = sleepingGit(300);
-    const blocked = (board as unknown as { budgetBlocked(id: string): boolean }).budgetBlocked(id);
+    const blocked = board.budgetHeld(id);
     expect(blocked).toBe(false);
     expect(asked).toEqual([keys.known(repo)]);
     expect(sleeping.calls()).toEqual([]);

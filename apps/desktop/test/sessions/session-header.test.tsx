@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { registerDom } from "../dom.ts";
 
 registerDom();
@@ -10,7 +11,7 @@ const { emptySession } = await import("../../src/lib/session-state.ts");
 
 afterEach(cleanup);
 
-const css = readFileSync(resolve(import.meta.dir, "../../src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
 const utility = (name: string) => {
   const start = css.indexOf(`@utility ${name} {`);
   return start < 0 ? "" : css.slice(start, css.indexOf("\n}", start));

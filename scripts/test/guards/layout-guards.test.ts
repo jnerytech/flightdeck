@@ -845,7 +845,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
       join(import.meta.dir, "../../../apps/desktop/src/ui/Areas.tsx"),
       "utf8",
     );
-    const css = readFileSync(join(import.meta.dir, "../../../apps/desktop/src/styles.css"), "utf8");
+    const css = readStyles(join(import.meta.dir, "../../../apps/desktop/src/styles.css"));
     const rule = css.split(`@utility ${PAGE_AREA} {`)[1]?.split(/\n}\n/)[0] ?? "";
     const journeys = readFileSync(join(import.meta.dir, "../../e2e/journeys.ts"), "utf8");
     expect({
@@ -1204,6 +1204,7 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
 });
 
 import { confirmGaps, type Finding } from "../../lib/layout-guards.ts";
+import { readStyles } from "../../lib/styles-source.ts";
 
 describe("layout-guards: a gap read while a toast slides in is measured again (issue #747)", () => {
   const gap: Finding = { rule: "gap", path: "li", detail: "7 px above status-bar, at least 8" };
