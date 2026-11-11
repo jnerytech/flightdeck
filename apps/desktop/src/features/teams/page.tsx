@@ -8,7 +8,6 @@ import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { AddProject } from "@/components/projects/add-project";
-import { TeamOutcome } from "@/components/teams/team-outcome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,12 +28,13 @@ import {
 } from "@/features/personas/index.ts";
 import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
-import type { AppStore } from "../lib/app-store.ts";
-import type { Route } from "../lib/router.ts";
-import { sessionLabel } from "../lib/session-label.ts";
-import { useDraft } from "../lib/use-draft.ts";
-import { hasFeature } from "../lib/version.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { Route } from "../../lib/router.ts";
+import { sessionLabel } from "../../lib/session-label.ts";
+import { useDraft } from "../../lib/use-draft.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { TeamOutcome } from "./team-outcome.tsx";
 
 /**
  * Issue #93: what a host takes for a team member's permission mode. A host that does not announce
