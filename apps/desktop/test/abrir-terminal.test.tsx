@@ -287,7 +287,7 @@ describe("abrir-terminal", () => {
     await store.init();
     const hostId = await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     await poll(() => store.getState().hosts[0]?.hostInfo, 3000);
-    await store.openInTerminal(hostId, { cwd: d.project, claudeSessionId: null });
+    await store.terminals.openIn(hostId, { cwd: d.project, claudeSessionId: null });
     expect(store.getState().error ?? "").toContain(
       "Terminal não abriu: Error: wt.exe não encontrado. Use Copiar comando e cole no seu terminal.",
     );

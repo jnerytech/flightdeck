@@ -33,10 +33,10 @@ async function setup(listFails = false, files = true, launch: string | null = nu
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
-  const { terminalId } = await store.terminalHost(hostId).open(d.project, 80, 24);
+  const { terminalId } = await store.terminals.host(hostId).open(d.project, 80, 24);
   if (listFails) {
-    const real = store.terminalHost.bind(store);
-    store.terminalHost = (id) => ({
+    const real = store.terminals.host.bind(store.terminals);
+    store.terminals.host = (id) => ({
       ...real(id),
       list: async () => {
         throw new Error("recusado");
@@ -44,8 +44,8 @@ async function setup(listFails = false, files = true, launch: string | null = nu
     });
   } else if (launch) {
     // A "Claude aqui" terminal: the host's list carries the launch its session also carries.
-    const real = store.terminalHost.bind(store);
-    store.terminalHost = (id) => ({
+    const real = store.terminals.host.bind(store.terminals);
+    store.terminals.host = (id) => ({
       ...real(id),
       list: async () => (await real(id).list()).map((t) => ({ ...t, launchId: launch })),
     });

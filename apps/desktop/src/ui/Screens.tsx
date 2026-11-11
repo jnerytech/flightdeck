@@ -245,7 +245,7 @@ function ManagedSession(
       claudeSessionId={claudeId}
       // This page's message box takes a review handed over from Changes.
       reviewToComposer
-      {...tabsFor(host, opencode, sessionId, store.embeddedTerminal(hostId))}
+      {...tabsFor(host, opencode, sessionId, store.terminals.embedded(hostId))}
     >
       <SessionView
         t={store.i18n.t}
@@ -711,7 +711,7 @@ function externalScreen(
       key={`${route.host}/${route.claudeSessionId}`}
       viewKey={`${route.host}/${route.claudeSessionId}`}
       // Issue #107: the PTY the session was started from, when there is one.
-      {...(store.embeddedTerminal(route.host)
+      {...(store.terminals.embedded(route.host)
         ? {
             terminal: {
               launch: state.externals[`${route.host}/${route.claudeSessionId}`]?.launchId ?? null,

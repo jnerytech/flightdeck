@@ -21,7 +21,7 @@ export { HostOfflineBanner } from "./host-offline-banner.tsx";
 export { HostVersionTip, hostVersionText } from "./host-version.tsx";
 export { HostsBanner } from "./hosts-banner.tsx";
 export { RenameHostDialog } from "./rename-host-dialog.tsx";
-export { HostRosterSlice, type NewHost, type RosterCore } from "./roster-store.ts";
+export { HostRosterSlice, type NewHost } from "./roster-store.ts";
 export {
   type HostUpdateCore,
   type HostUpdatePatch,
