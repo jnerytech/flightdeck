@@ -7,6 +7,9 @@ import { TIER_SHARDS } from "../../lib/tier-shards.ts";
 const TIERS: Record<string, Tier> = {
   "u.test.ts": "unit",
   "c.test.tsx": "component",
+  "u3.test.ts": "unit",
+  "u4.test.ts": "unit",
+  "u5.test.ts": "unit",
   "i1.test.ts": "integration",
   "i2.test.ts": "integration",
 };
@@ -46,8 +49,8 @@ describe("shard-gate run: a shard job runs one tier group (#1854)", () => {
     const f = fakes();
     expect(await runShard(`1/${TIER_SHARDS}`, "bun", "/tmp/out", f.deps)).toBe(0);
     const marker = markerOf(f);
-    expect(marker.files).toHaveLength(1);
-    expect(["unit", "component"]).toContain(TIERS[marker.files[0] ?? ""] ?? "");
+    expect(marker.files.length).toBeGreaterThan(0);
+    for (const file of marker.files) expect(["unit", "component"]).toContain(TIERS[file] ?? "");
     expect(marker.tier).toBe("unit + component 1/3");
     expect(marker.seconds).toBe(2.5);
     expect(marker.of).toBe(TIER_SHARDS);
@@ -74,9 +77,12 @@ describe("shard-gate run: a shard job runs one tier group (#1854)", () => {
   });
 });
 
+// Three base shards: each needs a test of its own to run (and so to instrument anything).
+const BASE = ["u.test.ts", "c.test.tsx", "u3.test.ts", "u4.test.ts", "u5.test.ts"];
+
 describe("shard-gate run: the fast baseline is instrumented in a PR's unit + component shards (#1854)", () => {
   const envOf = async (shard: number, extraTargets: string[]) => {
-    const f = fakes({ tests: ["u.test.ts", "c.test.tsx", "i1.test.ts"], targets: ["src/x.ts"] });
+    const f = fakes({ tests: [...BASE, "i1.test.ts"], targets: ["src/x.ts"] });
     let env: Record<string, string> = {};
     const deps = {
       ...f.deps,

@@ -50,16 +50,16 @@ describe("tier shards: the suite's shards are named by tier, in pyramid order (#
 
   test("each shard runs only its own tiers, and together they run every test file once", () => {
     const ran = Array.from({ length: TIER_SHARDS }, (_, k) => filesOf(k + 1));
-    const light = [...(ran[0] ?? []), ...(ran[1] ?? [])];
+    const light = ran.slice(0, 3).flat();
     expect(light.map((f) => TIERS[f]).every((t) => t === "unit" || t === "component")).toBe(true);
-    const heavy = [...(ran[2] ?? []), ...(ran[3] ?? [])];
+    const heavy = ran.slice(3).flat();
     expect(heavy.map((f) => TIERS[f]).every((t) => t === "integration")).toBe(true);
     expect(ran.flat().sort()).toEqual([...FILES].sort());
   });
 
   test("a test file whose tier is unknown runs with the unit tests, never in no shard", () => {
     const unknown = (path: string) => (path === "b/int-1.test.ts" ? undefined : TIERS[path]);
-    const light = [...filesOf(1, unknown), ...filesOf(2, unknown)];
+    const light = [1, 2, 3].flatMap((k) => filesOf(k, unknown));
     expect(light).toContain("b/int-1.test.ts");
     const all = Array.from({ length: TIER_SHARDS }, (_, k) => filesOf(k + 1, unknown)).flat();
     expect(all.sort()).toEqual([...FILES].sort());
@@ -67,7 +67,7 @@ describe("tier shards: the suite's shards are named by tier, in pyramid order (#
 
   test("a selection with no file of a tier leaves that tier's shards empty, not failing", () => {
     const only = FILES.filter((f) => TIERS[f] === "unit");
-    const empty = tierShardFiles(only, tierOf, TIMINGS, 3, TIER_SHARDS);
+    const empty = tierShardFiles(only, tierOf, TIMINGS, 4, TIER_SHARDS);
     expect(empty?.files).toEqual([]);
     expect(empty?.group.label).toBe("integration");
   });

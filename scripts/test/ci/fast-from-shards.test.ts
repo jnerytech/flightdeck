@@ -9,6 +9,7 @@ import type { Tier } from "../../lib/test-tiers.ts";
 const TIERS: Record<string, Tier> = {
   "u.test.ts": "unit",
   "c.test.tsx": "component",
+  "u2.test.ts": "unit",
   "i1.test.ts": "integration",
   "i2.test.ts": "integration",
 };
@@ -28,8 +29,8 @@ interface Cover {
 const SHARDS: Array<{ files: string[]; covers: Cover }> = [
   { files: ["u.test.ts"], covers: { "src/a.ts": true, "src/b.ts": false } },
   { files: ["c.test.tsx"], covers: { "src/a.ts": true, "src/b.ts": false } },
-  { files: ["i1.test.ts"], covers: { "src/a.ts": false, "src/b.ts": true } },
-  { files: ["i2.test.ts"], covers: { "src/a.ts": false, "src/b.ts": true } },
+  { files: ["u2.test.ts"], covers: { "src/a.ts": true, "src/b.ts": false } },
+  { files: ["i1.test.ts", "i2.test.ts"], covers: { "src/a.ts": false, "src/b.ts": true } },
 ];
 
 function run(baseline: string[], drop?: { shard: number; kind: "bun" | "istanbul" }) {
