@@ -1,21 +1,21 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig } from "../../daemon/src/config.ts";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { CLIENTS_KEY } from "../src/lib/clients.ts";
-import type { TrayMenu } from "../src/platform/types.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { loadConfig } from "../../../daemon/src/config.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { CLIENTS_KEY } from "../../src/lib/clients.ts";
+import type { TrayMenu } from "../../src/platform/types.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 
