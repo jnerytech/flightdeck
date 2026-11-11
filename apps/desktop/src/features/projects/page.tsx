@@ -15,7 +15,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../../ui/FolderPicker.tsx";
 import { RulesSection } from "../../ui/RulesSection.tsx";
-import { TerminalButton } from "../../ui/TerminalButton.tsx";
+import { TerminalButton } from "../terminal/index.ts";
 import { AddProject } from "./add-project.tsx";
 import { HostBoardLanding } from "./board-landing.tsx";
 import { FindProjects } from "./find-projects.tsx";

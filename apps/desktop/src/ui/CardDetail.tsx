@@ -20,6 +20,7 @@ import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { CardConflicts } from "../features/board/card-conflicts.tsx";
+import { GateCard, RunPanel, RunTimeline } from "../features/runenv/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
 import { opensOnChanges } from "../lib/card-next-step.ts";
@@ -27,8 +28,6 @@ import { usd } from "../lib/costs.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { CardDeps } from "./CardDeps.tsx";
-import { RunPanel } from "./RunPanel.tsx";
-import { GateCard, RunTimeline } from "./RunTimeline.tsx";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards", "projects"] as const;
 

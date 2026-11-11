@@ -17,7 +17,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
+const { TerminalButton } = await import("../src/features/terminal/terminal-button.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

@@ -1,0 +1,125 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { resolve } from "node:path";
+import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+
+registerDom();
+const { act, cleanup, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const axe = (await import("axe-core")).default;
+const { contrastRatio } = await import("../../src/lib/contrast.ts");
+
+/** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
+function declarations(css: string, selector: string): Record<string, string> {
+  const start = css.indexOf(`${selector} {`);
+  const body = css.slice(start, css.indexOf("}", start));
+  return Object.fromEntries(
+    [...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1] as string, m[2] as string]),
+  );
+}
+
+/**
+ * The tokens of a theme with every `var(--other)` resolved (a token may point at another, as
+ * `--card` does at `--surface-1`), looking in the theme first and in `:root` after it.
+ */
+function tokens(selector: string): Record<string, string> {
+  const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
+  const all = { ...declarations(css, ":root"), ...declarations(css, selector) };
+  const resolved = (value: string, depth = 0): string => {
+    const ref = /^var\((--[\w-]+)\)$/.exec(value.trim());
+    return ref && depth < 5 ? resolved(all[ref[1] as string] ?? value, depth + 1) : value;
+  };
+  return Object.fromEntries(
+    Object.entries(declarations(css, selector)).map(([name, value]) => [name, resolved(value)]),
+  );
+}
+
+setDefaultTimeout(30_000);
+afterEach(cleanup);
+
+/** The rules the prints' axe failed on the tab bars: a tablist holds tabs only. */
+async function violations(): Promise<string[]> {
+  const result = await axe.run(document.body, {
+    runOnly: ["aria-required-children", "aria-required-parent", "nested-interactive"],
+  });
+  return blocking(result.violations as AxeViolation[]).map((v) => describeViolation("abas", v));
+}
+
+describe("abas: acessibilidade da barra de abas", () => {
+  test("a tab bar with pinned, active and other tabs holds only tabs in its tablist", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      store.tabs.open({ name: "costs" });
+      store.tabs.pin(store.tabs.activeId, true);
+    });
+    expect(await violations()).toEqual([]);
+  });
+
+  test("a close button next to every tab, inside the tablist's presentation wrappers, is axe-clean", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.hostTabs.open({ name: "history", host: "ha" });
+      store.hostTabs.open({ name: "projects", host: "ha" });
+      store.hostTabs.open({ name: "auto-approvals", host: "ha" });
+    });
+    // The shared Sessões is pinned and has no ×; each of the host's three tabs has its own.
+    expect(screen.queryAllByLabelText(/^Fechar aba /)).toHaveLength(3);
+    expect(await violations()).toEqual([]);
+  });
+
+  test("so do both tab bars of a split window", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      store.workspace.toggleSplit();
+    });
+    expect(await violations()).toEqual([]);
+  });
+
+  test("the badge glyphs read at 4.5:1 or more in both themes: needs-you is drawn in its status color", async () => {
+    for (const selector of [":root", ".dark"]) {
+      const t = tokens(selector);
+      expect(
+        contrastRatio(t["--background"] ?? "", t["--status-needs-you"] ?? ""),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(t["--muted-foreground"] ?? "", t["--muted"] ?? ""),
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            id: "h",
+            name: "pc",
+            status: "online",
+            sessions: [
+              {
+                id: "s1",
+                cwd: "/p",
+                status: "idle",
+                pendingPermissions: [
+                  { requestId: "r", toolName: "Bash", createdAt: "2026-10-30T12:00:00Z" },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+    const badge = document.querySelector('[data-badge="needs-you"]');
+    expect(badge?.className).toContain("text-status-needs-you");
+    expect(badge?.className).not.toContain("text-white");
+  });
+});

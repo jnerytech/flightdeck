@@ -1,0 +1,31 @@
+/* A key of a shortcut, as printed in a list. */
+@utility keycap {
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+}
+
+/* The `?` sheet of shortcuts: the box, its groups and their rows. */
+@utility sheet-box {
+  margin: 0;
+  display: flex;
+  max-height: 80vh;
+  width: min(42rem, 92vw);
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+@utility shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.5rem;
+}
+
+@utility shortcut-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
