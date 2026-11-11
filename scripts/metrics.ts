@@ -29,6 +29,10 @@ const snapshot = await buildSnapshot(
       const ran = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28 }); // NOSONAR: git from the PATH of the developer or the CI runner
       return { code: ran.status ?? 1, stdout: ran.stdout ?? "" };
     },
+    gh: async (ghArgs) => {
+      const ran = spawnSync("gh", ghArgs, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28 }); // NOSONAR: gh from the PATH of the developer or the CI runner
+      return { code: ran.status ?? 1, stdout: ran.stdout ?? "", stderr: ran.stderr ?? "" };
+    },
     arch: async (): Promise<RatchetRow[] | null> => {
       const dir = mkdtempSync(join(tmpdir(), "flightdeck-metrics-"));
       const file = join(dir, "arch.json");

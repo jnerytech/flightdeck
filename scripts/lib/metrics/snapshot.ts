@@ -1,5 +1,16 @@
 /** Issue #1949: the engineering metrics snapshot of a release, written by `bun run metrics`. */
 import {
+  type CiHealth,
+  type CiRun,
+  ciHealth,
+  type MainRed,
+  type MergedPr,
+  mainRed,
+  type PrSize,
+  prSize,
+  type TimeWindow,
+} from "./gh-metrics.ts";
+import {
   type CoupledPair,
   changeCounts,
   coupling,
@@ -73,9 +84,9 @@ export interface Snapshot {
   coupling: Windowed<CoupledPair[]>;
   ratchets: RatchetRow[] | null;
   coverage: null;
-  ciHealth: null;
-  prSize: null;
-  mainRed: null;
+  ciHealth: Windowed<CiHealth> | null;
+  prSize: Windowed<PrSize> | null;
+  mainRed: Windowed<MainRed> | null;
   unavailable: Unavailable[];
 }
 
@@ -116,14 +127,63 @@ async function windowMetrics(
   tag: string,
   window: { name: string; revision: string[] },
   unavailable: Unavailable[],
-): Promise<{ hotspots: Hotspot[]; coupling: CoupledPair[] } | null> {
+): Promise<{ hotspots: Hotspot[]; coupling: CoupledPair[]; commits: LogCommit[] } | null> {
   const log = await deps.git(["log", "--no-merges", LOG_FORMAT, "--name-only", ...window.revision]);
-  if (log.code === 0) return gitMetrics(deps, tag, parseLog(log.stdout));
+  if (log.code === 0) {
+    const commits = parseLog(log.stdout);
+    return { ...(await gitMetrics(deps, tag, commits)), commits };
+  }
   for (const metric of ["hotspots", "coupling"]) {
     unavailable.push({ metric, reason: `git log failed for ${window.name}` });
   }
   return null;
 }
+
+/** The JSON list `gh` printed, or why there is none. */
+async function ghList<T>(
+  deps: MetricsDeps,
+  args: string[],
+  valid: (row: Record<string, unknown>) => boolean,
+): Promise<{ rows: T[] } | { reason: string }> {
+  const answer = await deps.gh(args);
+  const what = `gh ${args.slice(0, 2).join(" ")}`;
+  if (answer.code !== 0) {
+    const detail = (answer.stderr ?? "").trim().split("\n")[0] ?? "";
+    return { reason: `${what} failed${detail ? `: ${detail.slice(0, 200)}` : ""}` };
+  }
+  let rows: unknown;
+  try {
+    rows = JSON.parse(answer.stdout);
+  } catch {
+    return { reason: `${what} printed no JSON` };
+  }
+  const ok =
+    Array.isArray(rows) &&
+    rows.every((row) => row !== null && typeof row === "object" && valid(row));
+  return ok ? { rows: rows as T[] } : { reason: `${what} printed an unexpected shape` };
+}
+
+const RUN_FIELDS = "createdAt,startedAt,updatedAt,attempt,status,conclusion";
+const isRun = (row: Record<string, unknown>) =>
+  typeof row.createdAt === "string" &&
+  typeof row.startedAt === "string" &&
+  typeof row.updatedAt === "string" &&
+  typeof row.attempt === "number" &&
+  typeof row.status === "string" &&
+  typeof row.conclusion === "string";
+const isMergedPr = (row: Record<string, unknown>) =>
+  typeof row.additions === "number" &&
+  typeof row.deletions === "number" &&
+  typeof row.mergedAt === "string";
+
+/** A metric over both windows. */
+const windowed = <T>(
+  windows: { sinceRelease: TimeWindow | null; last30Days: TimeWindow },
+  of: (window: TimeWindow) => T,
+): Windowed<T> => ({
+  sinceRelease: windows.sinceRelease ? of(windows.sinceRelease) : null,
+  last30Days: of(windows.last30Days),
+});
 
 /** A tag name as git writes one: it never starts with `-`, so git cannot read it as an option. */
 const TAG_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
@@ -160,8 +220,27 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
   const ratchets = await deps.arch().catch(() => null);
   if (ratchets === null)
     unavailable.push({ metric: "ratchets", reason: "arch-report.ts wrote no report" });
-  for (const metric of ["coverage", "ciHealth", "prSize", "mainRed"]) {
-    unavailable.push({ metric, reason: LATER_TASK });
+  unavailable.push({ metric: "coverage", reason: LATER_TASK });
+
+  const to = new Date(tagDate);
+  const windows: { sinceRelease: TimeWindow | null; last30Days: TimeWindow } = {
+    sinceRelease: previousTagDate ? { from: new Date(previousTagDate), to } : null,
+    last30Days: { from: new Date(since), to },
+  };
+  const runsOf = ["run", "list", "--workflow", "CI", "--limit", "500", "--json", RUN_FIELDS];
+  const ci = await ghList<CiRun>(deps, [...runsOf, "--event", "pull_request"], isRun);
+  const main = await ghList<CiRun>(deps, [...runsOf, "--branch", "main", "--event", "push"], isRun);
+  const prs = await ghList<MergedPr>(
+    deps,
+    ["pr", "list", "--state", "merged", "--limit", "500", "--json", "additions,deletions,mergedAt"],
+    isMergedPr,
+  );
+  for (const [metric, read] of [
+    ["ciHealth", ci],
+    ["mainRed", main],
+    ["prSize", prs],
+  ] as const) {
+    if ("reason" in read) unavailable.push({ metric, reason: read.reason });
   }
 
   return {
@@ -181,9 +260,17 @@ export async function buildSnapshot(deps: MetricsDeps, tag: string): Promise<Sna
     },
     ratchets,
     coverage: null,
-    ciHealth: null,
-    prSize: null,
-    mainRed: null,
+    ciHealth: "rows" in ci ? windowed(windows, (w) => ciHealth(ci.rows, w)) : null,
+    prSize:
+      "rows" in prs
+        ? {
+            sinceRelease: windows.sinceRelease
+              ? prSize(prs.rows, sinceRelease?.commits ?? [], windows.sinceRelease)
+              : null,
+            last30Days: prSize(prs.rows, last30Days?.commits ?? [], windows.last30Days),
+          }
+        : null,
+    mainRed: "rows" in main ? windowed(windows, (w) => mainRed(main.rows, w)) : null,
     unavailable,
   };
 }
