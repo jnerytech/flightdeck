@@ -12,14 +12,12 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { formatBytes } from "../../lib/format-bytes.ts";
 import { type Selection, select } from "../../lib/review.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
-import { DiffView } from "../../ui/DiffView.tsx";
-import { FileSessions } from "../../ui/FileSessions.tsx";
+import { DiffView } from "./diff-view.tsx";
+import { FileSessions } from "./file-sessions.tsx";
 import { ReviewList } from "./review-list.tsx";
 
 // CodeMirror is ~800 KB of source and only opens with a file: it loads when an editor is opened.
-const FileEditor = lazy(() =>
-  import("../../ui/FileEditor.tsx").then((m) => ({ default: m.FileEditor })),
-);
+const FileEditor = lazy(() => import("./file-editor.tsx").then((m) => ({ default: m.FileEditor })));
 
 /** What the host offers to take back a revert: the file and when the offer ends. */
 interface Undo {

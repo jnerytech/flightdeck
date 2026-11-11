@@ -6,7 +6,7 @@ registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
-const { FileEditor } = await import("../src/ui/FileEditor.tsx");
+const { FileEditor } = await import("../src/features/review/file-editor.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 
