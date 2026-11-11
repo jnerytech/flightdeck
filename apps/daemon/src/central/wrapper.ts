@@ -471,8 +471,10 @@ export function isWindowsShim(path: string, platform: NodeJS.Platform): boolean 
 /**
  * Interactive claude takes `--agents` as inline JSON only, and a Windows command line holds
  * about 32 K characters (quotes get escaped, so the JSON can grow); past this the agents are dropped.
+ * The pack alone is about 21 000 characters (14 personas, issue #1961); the rest is room for the
+ * person's own, with about 4 000 left for the escaped quotes and the other arguments.
  */
-export const INLINE_AGENTS_MAX = 20_000;
+export const INLINE_AGENTS_MAX = 28_000;
 
 /** The project's personas as agents, from the daemon of this host; `null` when it cannot be reached. */
 async function fetchAgents(

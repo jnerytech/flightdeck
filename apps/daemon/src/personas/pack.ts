@@ -10,6 +10,7 @@ import enPerformance from "./pack/en/performance.md" with { type: "text" };
 import enQa from "./pack/en/qa.md" with { type: "text" };
 import enRevisor from "./pack/en/revisor.md" with { type: "text" };
 import enSeguranca from "./pack/en/seguranca.md" with { type: "text" };
+import enSpecifier from "./pack/en/specifier.md" with { type: "text" };
 import enSre from "./pack/en/sre.md" with { type: "text" };
 import enUi from "./pack/en/ui.md" with { type: "text" };
 import enUx from "./pack/en/ux.md" with { type: "text" };
@@ -23,6 +24,7 @@ import ptPerformance from "./pack/pt-BR/performance.md" with { type: "text" };
 import ptQa from "./pack/pt-BR/qa.md" with { type: "text" };
 import ptRevisor from "./pack/pt-BR/revisor.md" with { type: "text" };
 import ptSeguranca from "./pack/pt-BR/seguranca.md" with { type: "text" };
+import ptSpecifier from "./pack/pt-BR/specifier.md" with { type: "text" };
 import ptSre from "./pack/pt-BR/sre.md" with { type: "text" };
 import ptUi from "./pack/pt-BR/ui.md" with { type: "text" };
 import ptUx from "./pack/pt-BR/ux.md" with { type: "text" };
@@ -42,6 +44,7 @@ const SOURCES: Record<Language, string[]> = {
     ptPerformance,
     ptRevisor,
     ptDocs,
+    ptSpecifier,
     ptFrontend,
     ptUx,
     ptUi,
@@ -57,6 +60,7 @@ const SOURCES: Record<Language, string[]> = {
     enPerformance,
     enRevisor,
     enDocs,
+    enSpecifier,
     enFrontend,
     enUx,
     enUi,
@@ -66,7 +70,7 @@ const SOURCES: Record<Language, string[]> = {
   ],
 };
 
-/** The ids of the personas that come ready: the spec's nine in its order, then phase 21's coordinator and the developer (issue #92), and the ux and ui personas after frontend (issue #1936). */
+/** The ids of the personas that come ready: the spec's nine in its order, then phase 21's coordinator and the developer (issue #92), the ux and ui personas after frontend (issue #1936), and the specifier after docs (issue #1961). */
 export const PACK_IDS = [
   "arquiteto",
   "seguranca",
@@ -75,6 +79,7 @@ export const PACK_IDS = [
   "performance",
   "revisor",
   "docs",
+  "specifier",
   "frontend",
   "ux",
   "ui",
