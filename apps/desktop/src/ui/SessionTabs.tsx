@@ -13,6 +13,7 @@ import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
 import { SessionFinish } from "../components/session/session-finish.tsx";
 import { SessionMessages } from "../features/messaging/session-messages.tsx";
+import { ChangesPanel } from "../features/review/index.ts";
 import { TempoPanel } from "../features/telemetry/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import {
@@ -27,7 +28,6 @@ import {
 } from "../lib/session-views.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import type { XtermDeps } from "../lib/xterm-screen.ts";
-import { ChangesPanel } from "./ChangesPanel.tsx";
 import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
 import { SessionTerminal } from "./SessionTerminal.tsx";
