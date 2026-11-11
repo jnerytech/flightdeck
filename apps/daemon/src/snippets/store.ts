@@ -2,13 +2,10 @@ import type { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  type Snippet,
-  type SnippetFileInfo,
-  SnippetInput,
-  type SnippetVar,
-} from "@flightdeck/protocol";
+import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonOr } from "../json-text.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { ulid } from "../ulid.ts";
 import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./model.ts";
@@ -311,8 +308,8 @@ export class Snippets {
       type: row.type,
       run: row.type === "command" ? row.body : null,
       text: row.type === "prompt" ? row.body : null,
-      vars: JSON.parse(row.vars) as Record<string, SnippetVar>,
-      tags: JSON.parse(row.tags) as string[],
+      vars: parseJsonOr(z.record(z.string(), SnippetVar), row.vars, {}),
+      tags: parseJsonOr(z.array(z.string()), row.tags, []),
     };
     return this.view(
       {
