@@ -149,8 +149,12 @@ describe("rowOffers", () => {
   });
 
   test("the move needs the preview on and a host that can do it", () => {
-    expect(rowOffers(idle, { teleportPreview: false, canTeleport: () => true }).teleport).toBe(false);
-    expect(rowOffers(idle, { teleportPreview: true, canTeleport: () => false }).teleport).toBe(false);
+    expect(rowOffers(idle, { teleportPreview: false, canTeleport: () => true }).teleport).toBe(
+      false,
+    );
+    expect(rowOffers(idle, { teleportPreview: true, canTeleport: () => false }).teleport).toBe(
+      false,
+    );
   });
 });
 
