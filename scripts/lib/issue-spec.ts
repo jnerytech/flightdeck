@@ -45,7 +45,7 @@ function sectionsOf(body: string): Map<string, string> {
   const close = () => {
     if (name !== null && !found.has(name)) found.set(name, text.join("\n"));
   };
-  for (const line of body.split("\n").slice(1)) {
+  for (const line of body.split(/\r?\n/).slice(1)) {
     if (/^\s*```/.test(line)) fenced = !fenced;
     const heading = fenced ? null : /^## (.+?)\s*$/.exec(line);
     if (heading) {
@@ -60,12 +60,12 @@ function sectionsOf(body: string): Map<string, string> {
 
 /** The items of a list: its `- ` or `1. ` lines, without the marker. */
 const itemsOf = (text: string) =>
-  text.split("\n").flatMap((line) => /^\s*(?:[-*]|\d+\.)\s+(.*)$/.exec(line)?.[1] ?? []);
+  text.split(/\r?\n/).flatMap((line) => /^\s*(?:[-*]|\d+\.)\s+(.*)$/.exec(line)?.[1] ?? []);
 
 /** The kind from the first line, plus the problems of that line. */
 function headerOf(body: string): { kind: Kind | null; problems: string[] } {
-  const first = body.split("\n")[0] ?? "";
-  const kind = /^Kind: (\w+)/.exec(first)?.[1] as Kind | undefined;
+  const first = body.split(/\r?\n/)[0] ?? "";
+  const kind = /^Kind: (\w+)(?= ·|\s*$)/.exec(first)?.[1] as Kind | undefined;
   if (!kind || !KINDS.includes(kind)) {
     return { kind: null, problems: [`Kind: use one of ${KINDS.join(", ")}`] };
   }
@@ -84,7 +84,7 @@ function contentProblem(name: string, text: string): string {
   if (name === "Tasks" && !items.some((i) => /^\[[ xX]\] /.test(i))) {
     return 'Tasks: write at least one "- [ ]" item';
   }
-  if (name === "Done when" && !items.some((i) => /`[^`]+`/.test(i))) {
+  if (name === "Done when" && !/`[^`\n]+`/.test(text)) {
     return "Done when: name a command that proves it";
   }
   return "";
