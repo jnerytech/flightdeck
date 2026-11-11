@@ -127,8 +127,20 @@ export function boardOptions({
     db,
     manager,
     // Named one by one: a deps object built elsewhere cannot slip another board option through.
-    ...present({ preparePersonas, folderLocks, quota, budgets, memory, pause, checkLoop }),
-    ...present({ projectKeys, cardCost, idle, suspendApproval, log }),
+    ...present({
+      preparePersonas,
+      folderLocks,
+      quota,
+      budgets,
+      memory,
+      pause,
+      checkLoop,
+      projectKeys,
+      cardCost,
+      idle,
+      suspendApproval,
+      log,
+    }),
     // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
     specTemplateRoot: async (cwd, own) =>
       templateRootOf(await trustForKnowledge(cwd), own ? cwd : undefined),
