@@ -72,7 +72,7 @@ function fake(
     ignoreHead?: boolean;
     /** The review trailers of the branch's commits (#1707): the `Code-Review` and `Security-Review` values; default, both name "abc1234". */
     review?: { code?: string; security?: string };
-    /** The tree of a commit, by name (default "head"): the branch's head has "head". */
+    /** The tree of a named commit (default "head", the branch's head; "" is no commit); `head` sets the head's own tree. */
     trees?: Record<string, string>;
   } = {},
 ) {
@@ -220,9 +220,13 @@ function fake(
           ? { code: 1, stdout: "" }
           : ok(`${JSON.stringify({ name: "@flightdeck/desktop", version })}\n`);
       }
+      // The head's tree, and the tree of a named commit (nothing printed when it is no commit, #1707).
       if (args[0] === "rev-parse" && (args.at(-1) ?? "").endsWith("^{tree}")) {
-        const name = (args.at(-1) ?? "").replace(/^origin\//, "").replace("^{tree}", "");
-        return ok(`${opts.trees?.[name] ?? "head"}\n`);
+        return ok(`${opts.trees?.head ?? "head"}\n`);
+      }
+      if (args[0] === "log" && args.includes("--end-of-options")) {
+        const tree = opts.trees?.[args.at(-1) ?? ""] ?? "head";
+        return ok(tree ? `${tree}\n` : "");
       }
       if (args[0] === "rev-parse" && args.at(-1) === "origin/main") {
         return opts.mainHead ? ok(`${opts.mainHead}\n`) : { code: 1, stdout: "" };
@@ -236,7 +240,7 @@ function fake(
       }
       if (args[0] === "log" && args.some((a) => a.includes("trailers"))) {
         const { code = "abc1234 ran", security = "abc1234 ran" } = opts.review ?? {};
-        return ok(`\x1e${code}\x1f${security}\n`);
+        return ok(`\x1e${args.some((a) => a.includes("key=Code-Review")) ? code : security}\n`);
       }
       if (args[0] === "log") {
         const range = args.at(-1) ?? "";
@@ -360,15 +364,34 @@ describe("pr-flow: open checks the review record (#1707)", () => {
     expect(f.out()).toContain("missing /code-review and /security-review");
   });
 
-  test("a name that is not a sha never reaches git, and the coordinator's rc PR needs no record", async () => {
+  test("a name that is no commit (a tree sha) or not a sha never counts, and never reaches git as an option", async () => {
+    const tree = open({ trees: { abc1234: "" } });
+    expect(await prFlow(["open", "rev"], tree.deps)).toBe(1);
     const odd = open({ review: { code: "--output=x ran", security: "abc1234 ran" } });
     expect(await prFlow(["open", "rev"], odd.deps)).toBe(1);
     expect(odd.out()).toContain("missing /code-review");
-    const coordinator = open({
+    expect(odd.out()).not.toContain("missing /code-review and");
+  });
+
+  test("a control byte in one trailer cannot make it count for the other review", async () => {
+    const f = open({ review: { code: "abc1234 ran\x1fabc1234 ran", security: "" } });
+    expect(await prFlow(["open", "rev"], f.deps)).toBe(1);
+    expect(f.out()).toContain("missing /security-review");
+    expect(f.out()).not.toContain("missing /code-review");
+  });
+
+  test("the coordinator's rc branch needs no record, and a worker's FLIGHTDECK_COORDINATOR=1 does not skip it", async () => {
+    const rc = open({
+      pushed: ["rc/1.2"],
+      subjects: { "rc/1.2": ["chore(release): rc (#9)"] },
+      review: { code: "", security: "" },
+    });
+    expect(await prFlow(["open", "rc/1.2"], rc.deps)).toBe(0);
+    const worker = open({
       review: { code: "", security: "" },
       env: { FLIGHTDECK_COORDINATOR: "1" },
     });
-    expect(await prFlow(["open", "rev"], coordinator.deps)).toBe(0);
+    expect(await prFlow(["open", "rev"], worker.deps)).toBe(1);
   });
 });
 
