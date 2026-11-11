@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { RoiPeople } = await import("../src/components/roi/roi-people.tsx");
+const { RoiPeople } = await import("../src/features/roi/roi-people.tsx");
 
 afterEach(cleanup);
 const settle = waiter(5000);

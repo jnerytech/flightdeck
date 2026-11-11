@@ -15,8 +15,8 @@ const { useStoreSlice } = await import("../src/lib/use-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { RoiCard } = await import("../src/components/roi/roi-card.tsx");
-const { RoiTable } = await import("../src/components/roi/roi-table.tsx");
+const { RoiCard } = await import("../src/features/roi/roi-card.tsx");
+const { RoiTable } = await import("../src/features/roi/roi-table.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
