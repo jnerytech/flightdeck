@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/i18n/context";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /** "Sessões que mexeram aqui": which sessions wrote a file, from the transcripts the host indexed. */
 export function FileSessions(

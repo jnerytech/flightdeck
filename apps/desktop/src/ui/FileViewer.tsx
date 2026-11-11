@@ -9,10 +9,10 @@ import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
+import { DiffView } from "../features/review/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { languageFor, loadLanguage } from "../lib/file-language.ts";
 import { useFollow } from "../lib/use-follow.ts";
-import { DiffView } from "./DiffView.tsx";
 
 /** Token colors from the theme's tokens, so both themes keep their contrast. */
 const TOKENS = HighlightStyle.define([
