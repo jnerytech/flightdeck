@@ -17,9 +17,9 @@ import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
 import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
-import { HostPause } from "./board/host-pause.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
+import { createHostPause } from "./board/wiring.ts";
 import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -96,8 +96,7 @@ import { daemonCommand, type ServiceContext } from "./service.ts";
 import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
-import { IdleSleeper } from "./sessions/sleeper.ts";
-import { StallWatcher } from "./sessions/stall.ts";
+import { createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
 import { createSsh } from "./ssh/wiring.ts";
@@ -113,8 +112,8 @@ import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
 import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
+import { trustServer } from "./trust/wiring.ts";
 import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
@@ -294,7 +293,13 @@ export async function startDaemon(
       options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
   });
   // Issue #1404: the person's pause of new card runs, kept in the config.
-  const hostPause = new HostPause(config.pauseNewRuns);
+  const { hostPause, server: hostPauseServer } = createHostPause({
+    config,
+    configFile,
+    // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
+    // run waiting at a gate has no session but resumes after a restart).
+    running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
+  });
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
@@ -669,17 +674,17 @@ export async function startDaemon(
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
-  // Idle sessions give back their process after N minutes (off by default: no timer then).
-  const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
-  // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
-  const stall = new StallWatcher({
-    host: manager,
-    minutes: config.stall.afterMinutes,
+  const sessionSettings = createSessionSettings({
+    manager,
+    config,
+    configFile,
     // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
-    ...(Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
-      ? { unitMs: Number(process.env.FLIGHTDECK_STALL_UNIT_MS) }
-      : {}),
+    stallUnitMs:
+      Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
+        ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
+        : undefined,
   });
+  const { sleeper, stall } = sessionSettings;
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -705,11 +710,6 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
-  /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
-  const trustState = (path: string) => {
-    const staleSessions = manager.staleSessions(path);
-    return { path, ...projectTrust.judged(path), ...(staleSessions > 0 ? { staleSessions } : {}) };
-  };
   // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
   const reviewScanner = new SecretScanner(() => heldValues());
   const { reviewComments, cardReviews } = createReview({
@@ -762,55 +762,16 @@ export async function startDaemon(
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...present({ rootsPlatform: options.rootsPlatform }),
-    bypass: {
-      allowed: () => config.allowBypassPermissions,
-      set: async (allow) => {
-        config.allowBypassPermissions = allow;
-        await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
-      },
-    },
-    stall: { minutes: () => stall.minutes() },
-    sleep: {
-      minutes: () => sleeper.minutes(),
-      set: async (minutes) => {
-        sleeper.setMinutes(minutes);
-        await updateConfigFile(configFile, (raw) => ({
-          ...raw,
-          sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
-        }));
-      },
-    },
-    hostPause: {
-      // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
-      // run waiting at a gate has no session but resumes after a restart).
-      status: () => ({
-        paused: hostPause.paused(),
-        running: manager.activeSessionCount() + board.workflows.activeRuns().length,
-      }),
-      set: async (paused) => {
-        // The file first: when it cannot be written the pause stays as it was, for the client and the daemon.
-        await updateConfigFile(configFile, (raw) => ({ ...raw, pauseNewRuns: paused }));
-        config.pauseNewRuns = paused;
-        hostPause.set(paused);
-      },
-    },
+    bypass: sessionSettings.server.bypass,
+    stall: sessionSettings.server.stall,
+    sleep: sessionSettings.server.sleep,
+    hostPause: hostPauseServer,
     memoryPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: serverGroup<"knowledge">()(knowledge),
     harness: serverGroup<"harness", "draft">()(harness),
-    projectTrust: {
-      refresh: (paths) => projectTrust.refresh(paths),
-      state: (paths) => paths.map(trustState),
-      inspect: (path) => inspectProject(path),
-      set: (path, trusted) => {
-        if (trusted) projectTrust.trust(path);
-        else projectTrust.revoke(path);
-        // The live sessions that loaded the setup say again whether it is still theirs (issue #463).
-        manager.trustChanged();
-        return trustState(path);
-      },
-    },
+    projectTrust: trustServer({ projectTrust, manager }),
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
