@@ -70,14 +70,20 @@ import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts"
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import {
-  ExternalSessionsSlice,
+  type ExternalSessionsSlice,
   HISTORY_LIST_LIMIT,
   initialSessionsState,
-  SessionCommandsSlice,
-  SessionListsSlice,
-  SessionStreamSlice,
-  SessionsSlice,
-  SummariesSlice,
+  type SessionCommandsSlice,
+  type SessionListsSlice,
+  type SessionStreamSlice,
+  type SessionsSlice,
+  type SummariesSlice,
+  wireExternalSessions,
+  wireSessionCommands,
+  wireSessionLists,
+  wireSessionStream,
+  wireSessions,
+  wireSummaries,
 } from "../features/sessions/index.ts";
 import {
   initialSettingsState,
@@ -378,14 +384,7 @@ export class AppStore {
   ) {
     this.history = wireHistory(this.kernel, { searchTimeoutMs: options.searchTimeoutMs });
     this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
-    this.sessions = new SessionsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      storage: platform.storage,
-      connection: (hostId) => this.connections.get(hostId),
-      t: () => this.i18n.t,
-      success: (text) => this.success(text),
-    });
+    this.sessions = wireSessions(this.kernel, { storage: platform.storage });
     this.personas = wirePersonas(this.kernel, {
       storage: platform.storage,
       language: () => this.i18n.lang,
@@ -678,10 +677,7 @@ export class AppStore {
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });
-    this.commands = new SessionCommandsSlice({
-      connection: (hostId) => this.connections.get(hostId),
-      selected: () => this.state.selected,
-      fail: (error, text, retry) => this.fail(error, text, retry),
+    this.commands = wireSessionCommands(this.kernel, {
       opened: (hostId, sessionId) => {
         this.select(hostId, sessionId);
         // A new session opens, wherever it was created from (phase 10).
@@ -701,42 +697,26 @@ export class AppStore {
       fail: (error, text) => this.fail(error, text),
       t: () => this.i18n.t,
     });
-    this.external = new ExternalSessionsSlice({
-      state: () => this.state,
-      patch: (patch) => this.update(patch),
+    this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
       isFocused: () => this.platform.isFocused(),
-      t: () => this.i18n.t,
       notify: (...args) => this.inbox.notify(...args),
       feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
       feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
     });
-    this.sessionLists = new SessionListsSlice({
-      state: () => this.state,
-      patch: (patch) => this.update(patch),
-      connection: (hostId) => this.connections.get(hostId),
+    this.sessionLists = wireSessionLists(this.kernel, {
       backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
     });
-    this.stream = new SessionStreamSlice({
-      sessions: () => this.state.sessions,
-      setSessions: (sessions) => this.update({ sessions }),
+    this.stream = wireSessionStream(this.kernel, {
       summary: (hostId, event) => this.summaries.apply(hostId, [event]),
-      resync: (hostId, sessionId) => this.connections.get(hostId)?.resync(sessionId),
     });
-    this.summaries = new SummariesSlice({
-      hosts: () => this.state.hosts,
-      markUnread: (keys) =>
-        this.update({
-          unread: { ...this.state.unread, ...Object.fromEntries(keys.map((key) => [key, true])) },
-        }),
+    this.summaries = wireSummaries(this.kernel, {
       setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
       shown: () => this.shownSessions(),
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
       isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
       isFocused: () => this.platform.isFocused(),
       prefs: () => this.notifyPrefs.value,
-      now: () => this.now(),
-      t: () => this.i18n.t,
       notify: (...args) => this.inbox.notify(...args),
       feed: (host, prev, next) => this.webhookFeed.managed(host, prev, next),
       finished: (hostId, prev, next) => this.recordFinished(hostId, prev, next),
