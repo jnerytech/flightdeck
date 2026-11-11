@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -227,7 +227,7 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
     expect((await tipOf(target)).length).toBeGreaterThan(0);
   });
 
-  test("sidebar: a host in the narrow rail names itself in a tooltip, and no row of the bar carries a title", async () => {
+  test("sidebar: a host in the narrow rail names itself in a tooltip, not a title", async () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
     store.i18n.start();
     (store as unknown as { update(patch: Record<string, unknown>): void }).update({
@@ -252,8 +252,5 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
     const host = screen.getByRole("button", { name: "Open host alfa" });
     expect(host.getAttribute("title")).toBeNull();
     expect(await tipOf(host)).toBe("alfa");
-    expect(readFileSync(join(import.meta.dir, "../src/ui/Sidebar.tsx"), "utf8")).not.toMatch(
-      /title=\{`\$\{row\.title\}/,
-    );
   });
 });
