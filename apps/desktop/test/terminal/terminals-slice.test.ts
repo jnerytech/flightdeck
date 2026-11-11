@@ -125,14 +125,22 @@ describe("terminals (#1596)", () => {
   test("a host's terminal commands go out with their flow control and unwrap the list", async () => {
     const { slice, sent } = terminals();
     const host = slice.host("h");
+    await host.open("/work", 120, 40);
     await host.attach("t-1");
     await host.write("t-1", "ls\r");
+    await host.ack("t-1", 10);
+    await host.resize("t-1", 100, 30);
+    await host.close("t-1", true);
     const list = await host.list();
     expect({ list, sent }).toEqual({
       list: [terminal("t-1")],
       sent: [
+        { type: "terminal.open", payload: { cwd: "/work", cols: 120, rows: 40 } },
         { type: "terminal.attach", payload: { terminalId: "t-1", flow: true } },
         { type: "terminal.write", payload: { terminalId: "t-1", data: "ls\r" } },
+        { type: "terminal.ack", payload: { terminalId: "t-1", bytes: 10 } },
+        { type: "terminal.resize", payload: { terminalId: "t-1", cols: 100, rows: 30 } },
+        { type: "terminal.close", payload: { terminalId: "t-1", kill: true } },
         { type: "terminal.list", payload: {} },
       ],
     });
