@@ -5,8 +5,8 @@ import { layoutViolations } from "./style-lint.ts";
 /** How many raw layout utilities each screen may still hold: the count per file, only ever down. */
 export type LayoutBaseline = Record<string, number>;
 
-/** Every `.tsx` under `dir` with its count of raw layout utilities (files with none left out), keyed relative to `root`. */
-export function screenCounts(dir: string, root: string): LayoutBaseline {
+/** Every `.tsx` under `dirs` with its count of raw layout utilities (files with none left out), keyed relative to `root`. */
+export function screenCounts(dirs: string | string[], root: string): LayoutBaseline {
   const counts: LayoutBaseline = {};
   const walk = (current: string) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
@@ -18,7 +18,7 @@ export function screenCounts(dir: string, root: string): LayoutBaseline {
       }
     }
   };
-  walk(dir);
+  for (const dir of [dirs].flat()) walk(dir);
   return counts;
 }
 
