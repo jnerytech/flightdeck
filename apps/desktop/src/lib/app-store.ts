@@ -24,7 +24,11 @@ import {
   initialActivityState,
   wireActivity,
 } from "../features/activity/index.ts";
-import { AppUpdateSlice, initialAppUpdateState } from "../features/appupdate/index.ts";
+import {
+  type AppUpdateSlice,
+  initialAppUpdateState,
+  wireAppUpdates,
+} from "../features/appupdate/index.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -572,15 +576,11 @@ export class AppStore {
     this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
-    this.appUpdates = new AppUpdateSlice({
+    this.appUpdates = wireAppUpdates(this.kernel, {
       updater: () => this.platform.updater,
-      state: () => this.state.appUpdate,
-      setState: (appUpdate) => this.update({ appUpdate }),
-      switches: () => this.state.settings,
       intervalMs: () => this.options.appUpdateIntervalMs,
       log: (level, source, message) => this.appLog.log(level, source, message),
       quitNow: () => this.platform.quitNow(),
-      t: () => this.i18n.t,
     });
     this.terminals = new TerminalsSlice({
       hosts: () => this.state.hosts,
