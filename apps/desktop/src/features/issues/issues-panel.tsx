@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { useMinLoading } from "@/hooks/use-min-loading";
-import type { AppStore } from "../lib/app-store.ts";
-import { filterIssues, issueLabel, issueNumber } from "../lib/issues.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { filterIssues, issueLabel, issueNumber } from "../../lib/issues.ts";
 
 /** The external-author seal: third-party content, so no automatic approval on the card. */
 export function ExternalSeal({ t }: Readonly<{ t: AppStore["i18n"]["t"] }>) {
