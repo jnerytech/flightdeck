@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { Vault } from "../src/lib/vault.ts";
-import { exportVault, fromFdvault, previewImport, toFdvault } from "../src/lib/vault-backup.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { Vault } from "../../src/lib/vault.ts";
+import { exportVault, fromFdvault, previewImport, toFdvault } from "../../src/lib/vault-backup.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { VaultPage } = await import("../src/features/vault/page.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { VaultPage } = await import("../../src/features/vault/page.tsx");
 
 setDefaultTimeout(30_000);
 

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { SecretMeta } from "../src/lib/vault.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import type { SecretMeta } from "../../src/lib/vault.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SecretPicker } = await import("../src/features/vault/secret-picker.tsx");
+const { SecretPicker } = await import("../../src/features/vault/secret-picker.tsx");
 
 afterEach(cleanup);
 
