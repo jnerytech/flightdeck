@@ -1,0 +1,1250 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { registerDom } from "../../../apps/desktop/test/dom.ts";
+import {
+  compareToBaseline,
+  findingKey,
+  GAPS,
+  layoutFindings,
+  pinnedProblem,
+  RESPONSIVE,
+  RESPONSIVE_RULES,
+  SPACING,
+  SPACING_RULES,
+} from "../../lib/layout-guards.ts";
+
+registerDom();
+
+/**
+ * happy-dom has no layout: a test says where each box is with `data-rect="left,top,right,bottom"`
+ * and how much it scrolls with `data-sw` (scrollWidth) and `data-cw` (clientWidth).
+ */
+const proto = window.Element.prototype as unknown as Record<string, unknown>;
+const htmlProto = window.HTMLElement.prototype as unknown as Record<string, unknown>;
+const saved = new Map<string, PropertyDescriptor | undefined>();
+const NAMES = ["getBoundingClientRect", "scrollWidth", "clientWidth"];
+
+beforeEach(() => {
+  for (const name of NAMES) saved.set(name, Object.getOwnPropertyDescriptor(proto, name));
+  const num = (el: Element, attr: string, fallback: number) =>
+    Number(el.getAttribute(attr) ?? fallback);
+  Object.defineProperty(proto, "getBoundingClientRect", {
+    configurable: true,
+    value(this: Element) {
+      const [left = 0, top = 0, right = 0, bottom = 0] = (this.getAttribute("data-rect") ?? "")
+        .split(",")
+        .map(Number);
+      return {
+        left,
+        top,
+        right,
+        bottom,
+        width: right - left,
+        height: bottom - top,
+        x: left,
+        y: top,
+      };
+    },
+  });
+  Object.defineProperty(proto, "scrollWidth", {
+    configurable: true,
+    get(this: Element) {
+      return num(this, "data-sw", num(this, "data-cw", 0));
+    },
+  });
+  Object.defineProperty(proto, "clientWidth", {
+    configurable: true,
+    get(this: Element) {
+      return num(this, "data-cw", 0);
+    },
+  });
+  // happy-dom defines these on HTMLElement, which sits above Element: both are shadowed.
+  for (const [name, attr] of [
+    ["scrollTop", "data-st"],
+    ["clientHeight", "data-ch"],
+    ["scrollHeight", "data-sh"],
+  ] as const) {
+    for (const holder of [proto, htmlProto]) {
+      saved.set(
+        `${holder === proto ? "E" : "H"}:${name}`,
+        Object.getOwnPropertyDescriptor(holder, name),
+      );
+      Object.defineProperty(holder, name, {
+        configurable: true,
+        get(this: Element) {
+          return num(this, attr, 0);
+        },
+      });
+    }
+  }
+  // The widths too (#588): the text-spill rule reads both on a block, where happy-dom answers 0.
+  for (const [name, read] of [
+    ["clientWidth", (el: Element) => num(el, "data-cw", 0)],
+    ["scrollWidth", (el: Element) => num(el, "data-sw", num(el, "data-cw", 0))],
+  ] as const) {
+    saved.set(`H:${name}`, Object.getOwnPropertyDescriptor(htmlProto, name));
+    Object.defineProperty(htmlProto, name, {
+      configurable: true,
+      get(this: Element) {
+        return read(this);
+      },
+    });
+  }
+  window.innerWidth = 1000;
+  window.innerHeight = 700;
+});
+
+afterEach(() => {
+  for (const [key, descriptor] of saved) {
+    const holder = key.startsWith("H:") ? htmlProto : proto;
+    const name = key.replace(/^[EH]:/, "");
+    if (descriptor) Object.defineProperty(holder, name, descriptor);
+    else delete holder[name];
+  }
+  saved.clear();
+  document.body.innerHTML = "";
+  document.documentElement.removeAttribute("data-sw");
+  document.documentElement.removeAttribute("data-cw");
+});
+
+const page = (html: string) => {
+  document.body.innerHTML = html;
+};
+const rules = () => layoutFindings().map((f) => `${f.rule}: ${f.path}`);
+
+describe("layout-guards: what the page function finds, named by data-slot path", () => {
+  test("the page scrolls sideways, and the widest element is the culprit", () => {
+    document.documentElement.setAttribute("data-sw", "2000");
+    document.documentElement.setAttribute("data-cw", "1000");
+    page(
+      '<div data-slot="sidebar" data-rect="0,0,300,700"><ul data-slot="sidebar-hosts" data-rect="0,0,2000,50"></ul></div>',
+    );
+    expect(rules()).toContain("sideways: sidebar > sidebar-hosts");
+  });
+
+  test("a box cut by an ancestor that clips is found, and one under a scrolling ancestor is not", () => {
+    page(`
+      <main data-slot="main" style="overflow-x:hidden;overflow-y:hidden" data-rect="0,0,500,500">
+        <div data-slot="card" data-rect="400,10,700,40"></div>
+      </main>
+      <div data-slot="strip" style="overflow-x:auto" data-rect="0,0,500,500">
+        <div data-slot="tabs" data-rect="400,10,900,40"></div>
+      </div>`);
+    expect(rules()).toEqual(["clipped: main > card"]);
+  });
+
+  test("a fixed overlay and a screen-reader-only box are not clipped boxes", () => {
+    page(`
+      <main data-slot="main" style="overflow-x:hidden;overflow-y:hidden" data-rect="0,0,500,500">
+        <div data-slot="toast" style="position:fixed" data-rect="400,10,900,40"></div>
+        <span style="position:absolute;width:1px;height:1px" data-rect="498,0,499,1">skip</span>
+      </main>`);
+    expect(rules()).toEqual([]);
+  });
+
+  test("a region with content squeezed under 8 px is collapsed; an empty one, or one that is not shown, is not", () => {
+    page(`
+      <div data-slot="sidebar" data-rect="0,0,300,700">
+        <ul data-slot="sidebar-hosts" data-rect="0,100,300,100"><li>alfa</li></ul>
+        <ul data-slot="sidebar-pinned" data-rect="0,100,300,100"></ul>
+        <ul data-slot="sidebar-gone" style="display:none" data-rect="0,100,300,100"><li>x</li></ul>
+      </div>`);
+    expect(rules()).toEqual(["collapsed: sidebar > sidebar-hosts"]);
+  });
+
+  test("text cut to under 48 px with an ellipsis is over-truncated", () => {
+    page(
+      '<nav data-slot="breadcrumb"><span data-slot="crumb" style="overflow:hidden;text-overflow:ellipsis" data-sw="120" data-cw="30" data-rect="0,0,30,20">long name</span></nav>',
+    );
+    expect(rules()).toEqual(["truncated: breadcrumb > crumb"]);
+  });
+
+  test("an alert that is below the screen is not fully visible", () => {
+    page('<div role="alert" data-slot="notice" data-rect="10,650,400,740">careful</div>');
+    expect(rules()).toEqual(["attention: notice"]);
+  });
+
+  test("an alert cut by any edge of the screen is found, with its box; one fully inside is not", () => {
+    const edge = (rect: string) => {
+      page(`<div data-attention data-slot="notice" data-rect="${rect}">careful</div>`);
+      return layoutFindings().map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+    };
+    // The page is 1000 x 700 (beforeEach): left, top, right, bottom.
+    expect(edge("-5,100,300,140")).toEqual(["attention: notice (box -5,100 to 300,140)"]);
+    expect(edge("10,-3,300,40")).toEqual(["attention: notice (box 10,-3 to 300,40)"]);
+    expect(edge("700,100,1010,140")).toEqual(["attention: notice (box 700,100 to 1010,140)"]);
+    expect(edge("10,100,300,140")).toEqual([]);
+  });
+
+  test("a bar that grew past its limit is found", () => {
+    page('<div class="tab-bar" data-rect="0,0,1000,90"></div>');
+    expect(
+      layoutFindings({ bars: [{ selector: ".tab-bar", maxHeight: 48 }] }).map((f) => f.rule),
+    ).toEqual(["growth"]);
+  });
+
+  test("key regions: small is a finding, missing is one only when required, fine is none", () => {
+    page(`
+      <div data-slot="approval-card" data-rect="0,0,400,20"></div>
+      <div data-slot="board-columns" data-rect="0,0,900,300"></div>`);
+    const found = layoutFindings({
+      regions: [
+        { slot: "approval-card", minHeight: 60 },
+        { slot: "board-columns", minHeight: 100 },
+        { slot: "form-actions", minHeight: 20, required: true },
+        { slot: "sidebar-hosts", minHeight: 20 },
+      ],
+    });
+    expect(found.map((f) => `${f.rule}: ${f.path}`)).toEqual([
+      "region-small: approval-card",
+      "region-missing: form-actions",
+    ]);
+  });
+
+  test("a gap under the floor between two floating boxes that share columns is a finding, named by the upper one (#581)", () => {
+    page(`
+      <ol data-sonner-toaster><li data-sonner-toast data-rect="900,700,1260,760"></li></ol>
+      <section data-slot="update-card" data-rect="940,764,1260,860"></section>
+      <section data-slot="status-bar" data-rect="0,876,1280,900"></section>
+      <div data-slot="far-left" data-rect="0,860,200,875"></div>`);
+    const gaps = [
+      { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
+      { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
+      { above: '[data-slot="far-left"]', below: '[data-slot="update-card"]', min: 8 },
+    ];
+    expect(layoutFindings({ gaps }).map((f) => `${f.rule}: ${f.path} (${f.detail})`)).toEqual([
+      "gap: li (4 px above update-card, at least 8)",
+    ]);
+  });
+
+  test("a box that overlaps the one it must sit above is a gap finding too; one that is gone is not", () => {
+    page(`
+      <li data-sonner-toast data-rect="900,800,1260,890"></li>
+      <section data-slot="status-bar" data-rect="0,876,1280,900"></section>
+      <li data-sonner-toast style="display: none" data-rect="900,890,1260,900"></li>`);
+    expect(
+      layoutFindings({
+        gaps: [{ above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 }],
+      }).map((f) => `${f.rule}: ${f.detail}`),
+    ).toEqual(["gap: -14 px above status-bar, at least 8"]);
+  });
+
+  test("the floating boxes the guards keep apart: the toasts, the update card and the status bar (#581)", () => {
+    expect(GAPS).toEqual([
+      { above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 },
+      { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
+      { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
+    ]);
+  });
+
+  test("a region that scrolls as one: a second scroller inside it is a finding, a single one is not (#567)", () => {
+    const split = () =>
+      layoutFindings({ single: ["sidebar"] })
+        .filter((f) => f.rule === "scroll-split")
+        .map((f) => `${f.path}: ${f.detail}`);
+    page(`
+      <aside data-slot="sidebar" data-rect="0,0,240,600" style="overflow-y: auto">
+        <nav data-slot="sidebar-nav" data-rect="0,40,240,300" style="overflow-y: auto"></nav>
+        <div data-slot="sidebar-hosts" data-rect="0,300,240,500" style="overflow-y: scroll"></div>
+        <div data-slot="sidebar-foot" data-rect="0,500,240,600" style="overflow-y: hidden"></div>
+      </aside>`);
+    expect(split()).toEqual([
+      "sidebar: 3 scroll areas (sidebar, sidebar > sidebar-nav, sidebar > sidebar-hosts)",
+    ]);
+    page(`
+      <aside data-slot="sidebar" data-rect="0,0,240,600" style="overflow-y: hidden">
+        <div data-slot="sidebar-body" data-rect="0,40,240,500" style="overflow-y: auto"></div>
+      </aside>`);
+    expect(split()).toEqual([]);
+  });
+
+  // #785: the user saw two scrollbars on the Host page. A Page scrolls by itself, so the area that
+  // holds it must not scroll too, or any overflow of the page shows a second bar beside its own.
+  test("an area that holds a Page and scrolls itself is a finding; one that holds another screen may scroll", () => {
+    const around = () =>
+      layoutFindings({ pageArea: "area-screen" })
+        .filter((f) => f.rule === "scroll-split")
+        .map((f) => `${f.path}: ${f.detail}`);
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-y: auto">
+        <section data-slot="page" data-rect="0,0,800,600"></section>
+      </div>`);
+    const auto = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-x: auto">
+        <section data-slot="page" data-rect="0,0,800,600"></section>
+      </div>`);
+    const sideways = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow: hidden">
+        <section data-slot="page" data-rect="0,0,800,600"></section>
+      </div>`);
+    const hidden = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-y: auto">
+        <div data-rect="0,0,800,600" style="overflow: hidden">
+          <section data-slot="page" data-rect="0,0,400,600"></section>
+        </div>
+      </div>`);
+    const split = around();
+    page(`
+      <div data-slot="area-screen" data-rect="0,0,800,600" style="overflow-y: auto">
+        <div data-slot="terminal" data-rect="0,0,800,600"></div>
+      </div>`);
+    expect({ auto, sideways, hidden, split, other: around() }).toEqual({
+      auto: ["area-screen: scrolls around a page that scrolls by itself"],
+      sideways: ["area-screen: scrolls around a page that scrolls by itself"],
+      hidden: [],
+      split: ["area-screen: scrolls around a page that scrolls by itself"],
+      other: [],
+    });
+  });
+
+  const spacing = () =>
+    layoutFindings({ spacing: SPACING })
+      .filter((f) => SPACING_RULES.includes(f.rule))
+      .map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+
+  test("spacing (#588): the page body's blocks sit at least 8 px apart, stacked or side by side", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,1000,800">
+        <div data-slot="links" data-rect="0,0,1000,100"></div>
+        <div data-slot="config" data-rect="0,103,1000,300"></div>
+        <div data-slot="left" data-rect="0,320,495,500"></div>
+        <div data-slot="right" data-rect="500,320,1000,500"></div>
+        <div data-slot="after" data-rect="0,524,1000,600"></div>
+        <div data-slot="gone" style="display: none" data-rect="0,600,1000,601"></div>
+      </div>`);
+    expect(spacing()).toEqual([
+      "block-gap: page-body > config (3 px under links, at least 8)",
+      "block-gap: page-body > right (5 px beside left, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): sibling cards keep 8 px between them; a card and its own content are not siblings", () => {
+    page(`
+      <div data-slot="grid" data-rect="0,0,1000,400">
+        <div data-slot="card" data-rect="0,0,330,100"><div data-slot="card-content" data-rect="16,16,314,84"></div></div>
+        <div data-slot="card" data-rect="334,0,664,100"></div>
+        <div data-slot="card" data-rect="0,112,330,200"></div>
+      </div>`);
+    expect(spacing()).toEqual(["card-gap: grid > card[2] (4 px beside card[1], at least 8)"]);
+  });
+
+  // The older form, `clip: rect(0 0 0 0)`, is checked in Chrome only: happy-dom does not compute `clip`.
+  test("spacing and narrow (#641): what is hidden for screen readers only (a clipped 1 px box) is no finding", () => {
+    page(`
+      <table data-slot="resources-table" data-rect="0,0,300,200">
+        <thead style="position: absolute; clip-path: inset(50%)" data-rect="0,0,1,1">
+          <tr><th data-rect="0,0,1,1" data-sw="58" data-cw="1">Requests</th></tr>
+        </thead>
+      </table>
+      <div style="position: absolute; clip-path: inset(50%)" data-rect="0,0,1,1">
+        <span data-slot="caption" data-rect="0,0,1,1" data-sw="90" data-cw="1">A caption</span>
+      </div>
+      <div data-slot="card" data-rect="0,300,300,400">
+        <span data-slot="label" style="clip-path: inset(50%)" data-rect="0,300,1,301">flush, but hidden</span>
+      </div>
+      <pre data-slot="seen" data-rect="0,500,300,520" data-sw="400" data-cw="300">a line that spills</pre>`);
+    expect(spacing()).toEqual(["text-spill: seen (100 px past its box)"]);
+  });
+
+  test("spacing (#588): text in a card keeps 8 px of padding, and text that spills its own box is a finding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <p data-slot="title" data-rect="24,24,376,44">Hooks</p>
+        <code data-slot="hook-command" data-rect="4,60,396,80">bun run a-very-long-command</code>
+        <span data-slot="cut" style="overflow-x: hidden" data-rect="24,90,376,110" data-sw="500" data-cw="352">x</span>
+        <pre data-slot="spill" data-rect="24,120,376,140" data-sw="600" data-cw="352">long line</pre>
+      </div>`);
+    expect(spacing()).toEqual([
+      "text-spill: card > spill (248 px past its box)",
+      "card-padding: card > hook-command (4 px from the card's left edge, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): chips in a row keep 4 px between them, and a row under another its own gap", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,60">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="128,0,200,20">c</span>
+        <span data-slot="badge" data-rect="0,30,60,50">d</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): two boxes that overlap are a finding, by how far they run into each other", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="50,0,110,20">b</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (-10 px over badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): each finding names its element by number, so two tight pairs in a row or two tiles stay two findings", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="140,0,200,20">c</span>
+        <span data-slot="badge" data-rect="202,0,260,20">d</span>
+      </div>
+      <ul data-rect="0,40,800,200">
+        <li data-rect="0,40,390,200"><div data-slot="session-tile" data-rect="0,40,390,200">
+          <span data-rect="8,48,382,60" data-sw="500" data-cw="374">first line</span>
+        </div></li>
+        <li data-rect="400,40,790,200"><div data-slot="session-tile" data-rect="400,40,790,200">
+          <span data-rect="408,48,782,60">short</span>
+          <span data-rect="408,62,782,74" data-sw="600" data-cw="374">second line</span>
+        </div></li>
+      </ul>`);
+    expect(spacing()).toEqual([
+      "text-spill: session-tile[1] > span (126 px past its box)",
+      "text-spill: session-tile[2] > span[2] (226 px past its box)",
+      "chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)",
+      "chip-gap: chips > badge[4] (2 px beside badge[3], at least 4)",
+    ]);
+  });
+
+  test("spacing (#588): card padding counts from where an element's text starts, inside its own padding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <header data-slot="card-header" style="padding: 12px 24px" data-rect="0,0,400,48">Project configuration</header>
+        <p data-slot="flush" data-rect="0,60,400,80">edge to edge</p>
+      </div>`);
+    expect(spacing()).toEqual([
+      "card-padding: card > flush (0 px from the card's left edge, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): the rules are heuristic, judged against a baseline; with none they fail nothing", () => {
+    const tight = { rule: "block-gap" as const, path: "page-body > config", detail: "3 px" };
+    expect(judge("dark en projeto", [tight], null).failures).toEqual([]);
+    expect(judge("dark en projeto", [tight], {}).failures).toEqual([
+      "dark en projeto: block-gap page-body > config (3 px)",
+    ]);
+    // None of them is in the contract: with no baseline, a finding of each rule fails nothing.
+    const each = SPACING_RULES.map((rule) => ({ rule, path: "page-body > x", detail: "1 px" }));
+    expect(judge("dark en projeto", each, null).failures).toEqual([]);
+  });
+
+  const narrow = () =>
+    layoutFindings({ responsive: RESPONSIVE })
+      .filter((f) => RESPONSIVE_RULES.includes(f.rule))
+      .map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+
+  test("narrow (#641): a page that scrolls sideways, and the outermost box past the right of its parent, by how far", () => {
+    document.documentElement.setAttribute("data-sw", "720");
+    document.documentElement.setAttribute("data-cw", "640");
+    try {
+      page(`
+        <div data-slot="page-body" data-rect="0,0,640,800">
+          <div data-slot="card" data-rect="16,16,624,200">
+            <div data-slot="table" data-rect="16,40,700,180">
+              <div data-slot="row" data-rect="16,40,720,60">a row</div>
+            </div>
+          </div>
+          <div data-slot="code" style="overflow-x: auto" data-rect="16,220,624,300">
+            <pre data-rect="16,220,900,300">a long line that scrolls in its own box</pre>
+          </div>
+          <div data-slot="menu" style="position: fixed" data-rect="500,0,800,100">a popover</div>
+          <ul data-rect="16,320,624,420">
+            <li style="display: contents"><div data-slot="tile" data-rect="16,320,320,420">a tile</div></li>
+          </ul>
+        </div>`);
+      expect(narrow()).toEqual([
+        "overflow-x: page-body > card > table > row (the page scrolls 80 px sideways; this ends at 720)",
+        "overflow-x: page-body > card > table (76 px past the right of card)",
+      ]);
+    } finally {
+      document.documentElement.removeAttribute("data-sw");
+      document.documentElement.removeAttribute("data-cw");
+    }
+  });
+
+  // #1270: a disabled button's reason hangs out of the flow (position: absolute), so the parent
+  // check above skips it; it must still end inside the box that draws its edge (a bordered panel).
+  test("narrow (#1270): out-of-flow text past the edge of the box around it, by how far; a dot or a popover is not", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <section data-slot="details" style="border-right-width: 1px; border-right-style: solid" data-rect="16,16,600,300">
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save</button>
+              <span class="action-reason" style="position: absolute" data-rect="480,82,700,96">Type the path to save it.</span>
+            </span>
+          </div>
+          <div data-rect="32,120,584,160">
+            <span style="position: relative" data-rect="32,120,120,160">
+              <span class="action-reason" style="position: absolute" data-rect="32,162,300,176">Type the hours.</span>
+            </span>
+            <span class="dot" style="position: absolute" data-rect="590,120,604,134"></span>
+          </div>
+        </section>
+        <div data-slot="menu" style="position: fixed" data-rect="500,0,800,100">a popover</div>
+      </div>`);
+    expect(narrow()).toEqual([
+      "overflow-x: page-body > details > span.action-reason (100 px past the right of details)",
+    ]);
+  });
+
+  // #1325: the reason adds no height to its row (#38), so one that wraps, or a row with text right
+  // under it, draws over that text. Only a disabled button's reason: a tooltip or a menu floats on
+  // purpose, and a reason that ends above the next line, or touches it by 2 px, covers nothing.
+  test("narrow (#1325): a disabled button's reason drawn over other text, by how much; a reason clear of it or a tooltip is not", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,640,800">
+        <section data-slot="details" data-rect="16,16,600,400">
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save spec file</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,82,584,110">Type the spec file's path to save it.</span>
+            </span>
+          </div>
+          <p data-rect="32,100,584,116">No spec file at docs/specs/login.md</p>
+          <div data-rect="32,200,584,240">
+            <span style="position: relative" data-rect="480,200,584,240">
+              <button data-rect="480,200,584,240">Save hours</button>
+              <span class="action-reason" style="position: absolute" data-rect="400,242,584,256">Type the hours.</span>
+            </span>
+          </div>
+          <p data-rect="32,254,584,270">Estimated hours of this card</p>
+          <span data-slot="tooltip-content" style="position: absolute" data-rect="32,300,300,330">A tooltip</span>
+          <p data-rect="32,310,584,326">Under the tooltip</p>
+        </section>
+      </div>`);
+    expect(narrow()).toEqual([
+      "reason-over: page-body > details > span.action-reason (over page-body > details > p[1], 284x10 px)",
+    ]);
+  });
+
+  // #1338's review: a reason in a dialog or a full-window sheet floats over the page with it, so the
+  // page's text behind the modal is not under it; the dialog's own text is. A tooltip drawn over a
+  // reason is a floating layer too. And text is judged by its own lines: a paragraph's box can reach
+  // under a reason where its short last line does not.
+  test("narrow (#1325): a reason in a dialog meets only the dialog's text, a tooltip over a reason is not counted, and a text's lines count, not its box", () => {
+    const proto = Range.prototype as unknown as {
+      selectNodeContents(node: Node): void;
+      getClientRects(): unknown;
+    };
+    const select = proto.selectNodeContents;
+    const rects = proto.getClientRects;
+    // The harness has no layout: a text's lines come from its element's data-lines ("l,t,r,b;…").
+    proto.selectNodeContents = function (this: { node?: Node }, node: Node) {
+      this.node = node;
+    };
+    proto.getClientRects = function (this: { node?: Node }) {
+      const spec = this.node?.parentElement?.getAttribute("data-lines");
+      return (spec ? spec.split(";") : []).map((line) => {
+        const [left = 0, top = 0, right = 0, bottom = 0] = line.split(",").map(Number);
+        return { left, top, right, bottom, width: right - left, height: bottom - top };
+      });
+    };
+    try {
+      page(`
+        <div data-slot="page-body" data-rect="0,0,640,800">
+          <p data-rect="0,700,640,760">The page's own text, behind the dialog</p>
+          <div data-rect="32,40,584,80">
+            <span style="position: relative" data-rect="480,40,584,80">
+              <button data-rect="480,40,584,80">Save hours</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,82,584,110">Type the hours to save them.</span>
+            </span>
+          </div>
+          <span data-slot="tooltip-content" style="position: absolute" data-rect="300,80,584,112">A tooltip over the reason</span>
+          <div data-rect="32,300,584,340">
+            <span style="position: relative" data-rect="480,300,584,340">
+              <button data-rect="480,300,584,340">Save spec file</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,342,584,370">Type the path to save it.</span>
+            </span>
+          </div>
+          <p data-rect="32,330,584,380" data-lines="32,330,584,341;32,341,200,357">A paragraph whose short last line ends before the reason</p>
+          <p data-rect="32,360,584,380" data-lines="32,360,584,376">A line right under the reason</p>
+        </div>
+        <div data-slot="dialog-content" style="position: fixed" data-rect="0,600,640,800">
+          <div data-rect="24,700,616,740">
+            <span style="position: relative" data-rect="500,700,616,740">
+              <button data-rect="500,700,616,740">Save</button>
+              <span class="action-reason" style="position: absolute" data-rect="300,742,616,770">Name the action to save it.</span>
+            </span>
+          </div>
+          <p data-rect="24,760,616,776">The dialog's own text</p>
+        </div>`);
+      expect(narrow()).toEqual([
+        "reason-over: page-body > span.action-reason (over page-body > p[3], 284x10 px)",
+        "reason-over: dialog-content > span.action-reason (over dialog-content > p, 316x10 px)",
+      ]);
+    } finally {
+      proto.selectNodeContents = select;
+      proto.getClientRects = rects;
+    }
+  });
+
+  test("narrow (#641): a box that scrolls inside another that scrolls is two scrollbars; one with nothing to hide is not", () => {
+    page(`
+      <div data-slot="scroll-area-viewport" style="overflow-y: auto" data-rect="0,0,640,800" data-ch="800" data-sh="1600">
+        <div data-slot="timeline" style="overflow-y: auto" data-rect="0,100,640,500" data-ch="400" data-sh="900">x</div>
+        <div data-slot="list" style="overflow-y: auto" data-rect="0,520,640,800" data-ch="280" data-sh="280">y</div>
+      </div>
+      <div data-slot="side" style="overflow-y: auto" data-rect="640,0,800,800" data-ch="800" data-sh="1200">z</div>`);
+    expect(narrow()).toEqual([
+      "nested-scroll: scroll-area-viewport > timeline (hides 500 px, inside scroll-area-viewport, which hides 800)",
+    ]);
+    // The page itself scrolling is the outer scrollbar too.
+    document.documentElement.setAttribute("data-sh", "1000");
+    document.documentElement.setAttribute("data-ch", "800");
+    try {
+      page(
+        '<div data-slot="timeline" style="overflow-y: auto" data-rect="0,100,640,500" data-ch="400" data-sh="900">x</div>',
+      );
+      expect(narrow()).toEqual([
+        "nested-scroll: timeline (hides 500 px, inside the page, which hides 200)",
+      ]);
+    } finally {
+      document.documentElement.removeAttribute("data-sh");
+      document.documentElement.removeAttribute("data-ch");
+    }
+  });
+
+  // #1271: below 640 px a dialog is a full-screen sheet. A form's buttons rest on the sheet's bottom
+  // edge, and at the end of the sheet's scroll no field is left under them. New action kept its
+  // fields in a 70vh box of their own, so the buttons stopped mid-sheet over the next field.
+  test("narrow (#1271): a sheet's form buttons stop short of its bottom, or sit over a field at the end of its scroll", () => {
+    page(`
+      <div data-slot="dialog-content" style="position: fixed; overflow-y: auto" data-rect="0,0,1000,700" data-ch="700" data-sh="700">
+        <form data-rect="0,56,1000,700">
+          <div data-slot="fields" style="overflow-y: auto" data-rect="24,56,976,640" data-ch="584" data-sh="900">
+            <input aria-label="Action name" data-rect="24,80,976,116">
+            <input aria-label="Parameters" data-rect="24,650,976,690">
+          </div>
+          <div data-rect="24,560,976,596"><div data-slot="form-actions" data-rect="24,560,976,596"><button data-rect="800,560,976,596">Save</button></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([
+      "sheet-actions: dialog-content > form-actions (ends 104 px above the sheet's bottom)",
+    ]);
+    // On the bottom, but the sheet has nothing left to scroll: the last field stays under them. A
+    // field inside a scroller of its own (above) is that box's to show, not the buttons'.
+    page(`
+      <div data-slot="dialog-content" style="position: fixed; overflow-y: auto" data-rect="0,0,1000,700" data-ch="700" data-sh="700">
+        <form data-rect="0,56,1000,700">
+          <input aria-label="Action name" data-rect="24,80,976,116">
+          <input aria-label="Parameters" data-rect="24,650,976,686">
+          <div data-rect="0,640,1000,700"><div data-slot="form-actions" data-rect="24,656,976,692"><button data-rect="800,656,976,692">Save</button></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([
+      "sheet-actions: dialog-content > input[2] (under dialog-content > form-actions)",
+    ]);
+    // Fixed: the buttons rest on the bottom, and the last field scrolls up clear of them (the sheet
+    // hides 300 px, so at the end of its scroll the field at 900 is at 600, above the buttons at 640).
+    page(`
+      <div data-slot="dialog-content" style="position: fixed; overflow-y: auto" data-rect="0,0,1000,700" data-ch="700" data-sh="1000">
+        <form data-rect="0,56,1000,1000">
+          <input aria-label="Action name" data-rect="24,80,976,116">
+          <input aria-label="Parameters" data-rect="24,900,976,936">
+          <div data-rect="0,640,1000,700"><div data-slot="form-actions" data-rect="24,656,976,692"><button data-rect="800,656,976,692">Save</button></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([]);
+    // A dialog that is not a sheet (a wide window) keeps its buttons where its form ends.
+    page(`
+      <div data-slot="dialog-content" style="position: fixed" data-rect="200,100,800,500">
+        <form data-rect="224,124,776,476">
+          <input aria-label="Action name" data-rect="224,140,776,176">
+          <div data-rect="224,300,776,336"><div data-slot="form-actions" data-rect="224,300,776,336"></div></div>
+        </form>
+      </div>`);
+    expect(narrow()).toEqual([]);
+  });
+
+  test("narrow (#641): a page header that starts under the tab row, and a title cut short, are findings", () => {
+    page(`
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
+      <section data-slot="page" data-rect="0,32,640,800">
+        <div data-slot="page-header" data-rect="0,32,640,100">
+          <h1 data-slot="page-title" data-rect="24,48,400,76" data-sw="520" data-cw="376">A very long project name</h1>
+        </div>
+      </section>`);
+    expect(narrow()).toEqual([
+      "header-clipped: page > page-header (starts 8 px under the tab row)",
+      "header-clipped: page > page-header > page-title (cut: 376 px of 520)",
+    ]);
+    page(`
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
+      <section data-slot="page" data-rect="0,40,640,800">
+        <div data-slot="page-header" data-rect="0,40,640,100">
+          <h1 data-slot="page-title" data-rect="24,56,400,84" data-sw="376" data-cw="376">Short</h1>
+        </div>
+      </section>`);
+    expect(narrow()).toEqual([]);
+  });
+
+  test("#677: the narrow findings go through a ratchet: none fail with no baseline, each counts against one", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,300,100">
+        <div data-slot="table" data-rect="0,0,380,80">a table</div>
+        <div style="clip-path: inset(50%)" data-rect="0,0,500,20">a caption for screen readers</div>
+      </div>`);
+    const found = layoutFindings({ responsive: RESPONSIVE }).filter((f) =>
+      RESPONSIVE_RULES.includes(f.rule),
+    );
+    const ratchet = (baseline: Record<string, CountEntry> | null) => ({
+      baseline,
+      seen: {} as Ratchet["seen"],
+      occurrences: {} as Record<string, string>,
+      gone: [] as string[],
+    });
+    expect(ratchetScreen("dark en 640x800 card", found, ratchet(null))).toEqual([]);
+    // The clipped caption, wider than its card, is not a finding: only the table is.
+    expect(ratchetScreen("dark en 640x800 card", found, ratchet({}))).toEqual([
+      "dark en 640x800 card: overflow-x card > table, 1 where the baseline has 0: card > table (80 px past the right of card)",
+    ]);
+  });
+
+  test("#677: the old clip: rect(0 0 0 0) form hides for screen readers only too", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,300,100">
+        <span data-slot="caption" data-old-clip data-rect="0,0,1,1" data-sw="90" data-cw="1">a caption</span>
+      </div>`);
+    // happy-dom does not compute `clip`: this element's computed style answers as Chrome does.
+    const real = window.getComputedStyle;
+    window.getComputedStyle = ((el: Element) => {
+      const style = real(el);
+      if (!el.hasAttribute("data-old-clip")) return style;
+      return new Proxy(style, {
+        get: (target, key) =>
+          key === "getPropertyValue"
+            ? (name: string) =>
+                name === "clip" ? "rect(0px, 0px, 0px, 0px)" : target.getPropertyValue(name)
+            : Reflect.get(target, key),
+      });
+    }) as typeof window.getComputedStyle;
+    try {
+      expect(spacing()).toEqual([]);
+    } finally {
+      window.getComputedStyle = real;
+    }
+  });
+
+  test("#677: a header is checked against the app tab rows over it (split panes), not an in-page tablist", () => {
+    page(`
+      <div role="tablist" data-rect="0,40,640,80">settings tabs</div>
+      <div class="tab-strip" role="tablist" data-rect="0,0,320,40"></div>
+      <div class="tab-strip" role="tablist" data-rect="320,0,640,48"></div>
+      <section data-slot="page" data-rect="320,40,640,800">
+        <div data-slot="page-header" data-rect="320,40,640,100"></div>
+      </section>`);
+    expect(narrow()).toEqual([
+      "header-clipped: page > page-header (starts 8 px under the tab row)",
+    ]);
+  });
+
+  test("an element with no slot is named by its tag and first class", () => {
+    page(
+      '<main data-slot="main"><div class="flex min-h-0" data-rect="0,0,100,0"><b>x</b></div></main>',
+    );
+    expect(rules()).toEqual(["collapsed: main > div.flex"]);
+  });
+});
+
+describe("layout-guards: the baseline keeps heuristic findings quiet and only lets them go down", () => {
+  const finding = (path: string, detail = "x") => ({ rule: "clipped" as const, path, detail });
+
+  test("the key is the rule, the screen and the path: no text, no pixels", () => {
+    expect(findingKey("board@720", finding("main > card", "12 px of text"))).toBe(
+      "clipped|board@720|main > card",
+    );
+  });
+
+  test("a finding that is not in the baseline is new, and one the baseline holds that is gone is fixed", () => {
+    const baseline = { "clipped|board@720|main > old": true as const };
+    const result = compareToBaseline("board@720", [finding("main > card")], baseline);
+    expect(result.fresh.map((f) => f.path)).toEqual(["main > card"]);
+    expect(result.fixed).toEqual(["clipped|board@720|main > old"]);
+    expect(compareToBaseline("board@720", [finding("main > old")], baseline).fresh).toEqual([]);
+  });
+
+  test("the baseline of another screen is not this screen's", () => {
+    const baseline = { "clipped|hub@720|main > old": true as const };
+    expect(compareToBaseline("board@720", [], baseline).fixed).toEqual([]);
+  });
+});
+
+import { judge, loadBaseline } from "../../lib/layout-guards.ts";
+
+describe("layout-guards: what the findings mean for the build", () => {
+  const clipped = { rule: "clipped" as const, path: "main > card", detail: "cut" };
+  const small = { rule: "region-small" as const, path: "approval-card", detail: "400 x 20 px" };
+
+  test("a gap finding fails with no baseline too: it is the contract (#581)", () => {
+    const gap = { rule: "gap" as const, path: "li", detail: "4 px above status-bar, at least 8" };
+    expect(judge("hub@1280", [gap], null).failures).toEqual([
+      "hub@1280: gap li (4 px above status-bar, at least 8)",
+    ]);
+  });
+
+  test("a region split into several scroll areas fails with no baseline too: it is the contract (#567)", () => {
+    const split = { rule: "scroll-split" as const, path: "sidebar", detail: "2 scroll areas" };
+    expect(judge("home@1280x600", [split], null).failures).toEqual([
+      "home@1280x600: scroll-split sidebar (2 scroll areas)",
+    ]);
+  });
+
+  test("a key region that is small fails with no baseline too: it is the contract", () => {
+    expect(judge("needs-you@1280", [small], null).failures).toEqual([
+      "needs-you@1280: region-small approval-card (400 x 20 px)",
+    ]);
+  });
+
+  test("heuristic findings fail nothing until there is a baseline, then only the new ones", () => {
+    expect(judge("board@720", [clipped], null).failures).toEqual([]);
+    expect(judge("board@720", [clipped], {}).failures).toEqual([
+      "board@720: clipped main > card (cut)",
+    ]);
+    expect(
+      judge("board@720", [clipped], { "clipped|board@720|main > card": true }).failures,
+    ).toEqual([]);
+  });
+
+  test("a baseline entry whose finding is gone comes back as fixed, for the baseline to go down", () => {
+    expect(judge("board@720", [], { "clipped|board@720|main > card": true }).fixed).toEqual([
+      "clipped|board@720|main > card",
+    ]);
+  });
+
+  test("the baseline file is read as its keys; no file is no baseline", () => {
+    expect(loadBaseline(() => null)).toBeNull();
+    expect(loadBaseline(() => '{"clipped|a@1|x":"main > card"}')).toEqual({
+      "clipped|a@1|x": true,
+    });
+  });
+});
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { KEY_REGIONS, PAGE_AREA, SINGLE_SCROLL } from "../../lib/layout-guards.ts";
+
+describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
+  const sources = [
+    "components/approval/approval-card.tsx",
+    "ui/Sidebar.tsx",
+    "ui/BoardView.tsx",
+    "components/layout/form.tsx",
+  ].map((file) => readFileSync(join(import.meta.dir, "../../../apps/desktop/src", file), "utf8"));
+
+  test("each key region is named in the page it belongs to", () => {
+    for (const { slot } of KEY_REGIONS) {
+      expect(sources.some((text) => text.includes(`data-slot="${slot}"`))).toBe(true);
+    }
+  });
+
+  // #785: the area around a screen scrolls only for a screen that is not a Page.
+  test("the area that holds a screen is named, and stops scrolling when the screen is a Page", () => {
+    const areas = readFileSync(
+      join(import.meta.dir, "../../../apps/desktop/src/ui/Areas.tsx"),
+      "utf8",
+    );
+    const css = readFileSync(join(import.meta.dir, "../../../apps/desktop/src/styles.css"), "utf8");
+    const rule = css.split(`@utility ${PAGE_AREA} {`)[1]?.split(/\n}\n/)[0] ?? "";
+    const journeys = readFileSync(join(import.meta.dir, "../../e2e/journeys.ts"), "utf8");
+    expect({
+      named:
+        areas.includes(`data-slot="${PAGE_AREA}"`) &&
+        areas.includes(`className="@container ${PAGE_AREA}"`),
+      scrolls: rule.includes("overflow-y: auto"),
+      notAroundPage: /&:has\(\[data-slot="page"\]\) \{\s*overflow: hidden;/.test(rule),
+      guarded: journeys.includes("pageArea: PAGE_AREA"),
+    }).toEqual({ named: true, scrolls: true, notAroundPage: true, guarded: true });
+  });
+
+  test("each region that scrolls as one is named in the shell (#567)", () => {
+    const shell = readFileSync(
+      join(import.meta.dir, "../../../apps/desktop/src/components/layout/app-shell.tsx"),
+      "utf8",
+    );
+    for (const slot of SINGLE_SCROLL) {
+      expect([slot, shell.includes(`data-slot="${slot}"`)]).toEqual([slot, true]);
+    }
+  });
+});
+
+import { GAP_BOXES, waitForStable } from "../../lib/layout-guards.ts";
+
+describe("layout-guards: a layout that settles late is waited for, not guessed with a fixed wait", () => {
+  /** The page height the next frames will report, one entry per frame. */
+  function heights(values: number[]) {
+    let at = 0;
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      get: () => values[Math.min(at++, values.length - 1)] ?? 0,
+    });
+    return () => at;
+  }
+  afterEach(() => {
+    Reflect.deleteProperty(document.documentElement, "scrollHeight");
+  });
+
+  test("it resolves once the height held for three frames in a row, and says how many", async () => {
+    heights([100, 100, 120, 130, 130, 130, 130, 130]);
+    const settled = await waitForStable({ frames: 3, maxMs: 2000 });
+    expect(settled).toEqual({ stable: true, frames: 3 });
+  });
+
+  test("a page that keeps growing is given up on at the time limit, and says it did not settle", async () => {
+    let n = 0;
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      get: () => 100 + n++,
+    });
+    const settled = await waitForStable({ frames: 3, maxMs: 120 });
+    expect(settled.stable).toBe(false);
+  });
+
+  /** A toast over the status bar (top at 800) whose bottom edge reads the next value on each read. */
+  function slidingToast(bottoms: number[]) {
+    document.body.innerHTML = `
+      <div data-sonner-toast data-rect="1500,700,1900,780">saved</div>
+      <div data-slot="status-bar" data-rect="0,800,1920,824"></div>`;
+    const toast = document.querySelector("[data-sonner-toast]") as Element;
+    let at = 0;
+    Object.defineProperty(toast, "getBoundingClientRect", {
+      configurable: true,
+      value: () => {
+        const bottom = bottoms[Math.min(at++, bottoms.length - 1)] ?? 0;
+        return { left: 1500, right: 1900, top: bottom - 80, bottom, width: 400, height: 80 };
+      },
+    });
+  }
+  const gapFindings = () =>
+    layoutFindings({ gaps: GAPS })
+      .filter((f) => f.rule === "gap")
+      .map((f) => `${f.path}: ${f.detail}`);
+
+  test("issue #655: a toast still sliding in is waited for: one that reads 7 px and settles at 8 is no finding", async () => {
+    heights([100]);
+    slidingToast([793, 792.5, 792, 792, 792, 792, 792]);
+    const settled = await waitForStable({ frames: 3, maxMs: 2000, boxes: GAP_BOXES });
+    expect(settled.stable).toBe(true);
+    expect(gapFindings()).toEqual([]);
+  });
+
+  test("issue #655: the gap rule allows half a pixel of rounding, and no more", () => {
+    slidingToast([792.4]);
+    expect(gapFindings()).toEqual([]);
+    slidingToast([792.6]);
+    expect(gapFindings()).toEqual(["div: 7 px above status-bar, at least 8"]);
+  });
+});
+
+describe("layout-guards: where a session opens (issues #173 and #456)", () => {
+  /** A timeline 300 px tall at 100..400 that scrolls `st` of `sh`, with an optional request card. */
+  const session = (st: number, sh: number, card?: string) => {
+    document.body.innerHTML = `<div data-slot="timeline" data-rect="0,100,800,400" data-st="${st}" data-ch="300" data-sh="${sh}">${
+      card ? `<div data-request-id="r1" data-rect="${card}"></div>` : ""
+    }</div>`;
+    return pinnedProblem();
+  };
+
+  test("a conversation at its end, with its request whole, is fine", () => {
+    expect(session(200, 500, "0,250,800,390")).toBeNull();
+  });
+
+  test("a conversation that stops short of its end, with no request to explain it, is a problem", () => {
+    expect(session(100, 500)).toBe("the timeline is not at its end (400 of 500)");
+  });
+
+  test("a request taller than the window stops the view at its top: that is not a problem", () => {
+    // 340 px of card in a 300 px window: the end is 40 px further, the card's top is at the edge.
+    expect(session(160, 500, "0,100,800,440")).toBeNull();
+  });
+
+  test("a request that fits, with the view short of the end, is still a problem", () => {
+    expect(session(100, 500, "0,150,800,300")).toBe("the timeline is not at its end (400 of 500)");
+  });
+
+  test("a request whose top is cut above the window is a problem", () => {
+    expect(session(200, 500, "0,60,800,300")).toBe(
+      "the request card (60..300) is cut by the timeline (100..400)",
+    );
+  });
+
+  test("a request that fits but is cut at the bottom is a problem", () => {
+    expect(session(200, 500, "0,250,800,450")).toBe(
+      "the request card (250..450) is cut by the timeline (100..400)",
+    );
+  });
+
+  test("no timeline is named as such", () => {
+    document.body.innerHTML = "";
+    expect(pinnedProblem()).toBe("no timeline");
+  });
+});
+
+import {
+  type CountEntry,
+  loadCounts,
+  type Ratchet,
+  ratchetScreen,
+} from "../../lib/layout-guards.ts";
+
+describe("layout-guards: one screen against a ratchet of counts, as demo:shots runs it (#641)", () => {
+  const S = "dark en 640x800 board";
+  const wide = (path: string, group: string, detail: string) => ({
+    rule: "overflow-x" as const,
+    path,
+    group,
+    detail,
+  });
+  const fresh = (baseline: Record<string, CountEntry> | null) => ({
+    baseline,
+    seen: {} as Ratchet["seen"],
+    occurrences: {} as Record<string, string>,
+    gone: [] as string[],
+  });
+
+  test("a key counts its findings under the path with no numbers: one more than the baseline fails, naming each", () => {
+    const ratchet = fresh({
+      [`overflow-x|${S}|tab-strip > tab`]: 1,
+      [`overflow-x|${S}|page > old`]: 2,
+      [`overflow-x|${S}|page > two`]: 2,
+    });
+    const failures = ratchetScreen(
+      S,
+      [
+        wide("tab-strip > tab[1]", "tab-strip > tab", "16 px past the right of tab-strip"),
+        wide("tab-strip > tab[2]", "tab-strip > tab", "112 px past the right of tab-strip"),
+        wide("page > two[1]", "page > two", "3 px past the right of page"),
+      ],
+      ratchet,
+    );
+    expect(failures).toEqual([
+      `${S}: overflow-x tab-strip > tab, 2 where the baseline has 1: tab-strip > tab[1] (16 px past the right of tab-strip); tab-strip > tab[2] (112 px past the right of tab-strip)`,
+    ]);
+    expect(ratchet.seen).toEqual({
+      [`overflow-x|${S}|tab-strip > tab`]: { count: 2 },
+      [`overflow-x|${S}|page > two`]: { count: 1 },
+    });
+    expect(ratchet.occurrences).toEqual({
+      [`overflow-x|${S}|tab-strip > tab[1]`]: "16 px past the right of tab-strip",
+      [`overflow-x|${S}|tab-strip > tab[2]`]: "112 px past the right of tab-strip",
+      [`overflow-x|${S}|page > two[1]`]: "3 px past the right of page",
+    });
+    // Fewer than the baseline: the file must come down with the fix.
+    expect(ratchet.gone).toEqual([
+      `overflow-x|${S}|page > old: 0 where the baseline has 2: remove it`,
+      `overflow-x|${S}|page > two: 1 where the baseline has 2: lower it`,
+    ]);
+  });
+
+  test("with no baseline a heuristic finding fails nothing, and a contract finding fails anyway", () => {
+    const ratchet = fresh(null);
+    const gap = { rule: "gap" as const, path: "toast", detail: "3 px above status-bar" };
+    expect(ratchetScreen(S, [wide("page > a[1]", "page > a", "9 px"), gap], ratchet)).toEqual([
+      `${S}: gap toast (3 px above status-bar)`,
+    ]);
+    expect(ratchet.gone).toEqual([]);
+  });
+
+  test("the spacing and narrow rules carry the path with no numbers, so the count survives a button added above", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+      </div>`);
+    const found = layoutFindings({ spacing: SPACING }).filter((f) => f.rule === "chip-gap");
+    expect(found.map((f) => `${f.path} / ${f.group}`)).toEqual([
+      "chips > badge[2] / chips > badge",
+    ]);
+  });
+
+  test("#677: a baseline of counts loads as counts; an entry that is not a count, or bad JSON, is refused by file name", () => {
+    expect(loadCounts(() => null, "spacing-baseline.json")).toBeNull();
+    expect(loadCounts(() => '{"a|s|p": 3}', "spacing-baseline.json")).toEqual({ "a|s|p": 3 });
+    // #637: a count with the worst px past the rule's limit.
+    const read = (text: string) => {
+      try {
+        return loadCounts(() => text, "responsive-baseline.json");
+      } catch (error) {
+        return String(error);
+      }
+    };
+    expect(read('{"a|s|p": {"count": 2, "worst": 76}}')).toEqual({
+      "a|s|p": { count: 2, worst: 76 },
+    });
+    expect(() =>
+      loadCounts(() => '{"a|s|p": {"count": 2, "worst": "far"}}', "responsive-baseline.json"),
+    ).toThrow("responsive-baseline.json: a|s|p is not a count of findings");
+    expect(() =>
+      loadCounts(() => '{"b|s|p": "1406 px past its box"}', "spacing-baseline.json"),
+    ).toThrow("spacing-baseline.json: b|s|p is not a count of findings");
+    expect(() => loadCounts(() => "{ nope", "responsive-baseline.json")).toThrow(
+      "responsive-baseline.json is not valid JSON",
+    );
+  });
+
+  test("#637: a key whose worst px past its limit grows by more than 2 fails, with both values", () => {
+    const over = (path: string, excess: number) => ({
+      rule: "overflow-x" as const,
+      path,
+      group: "card > table",
+      detail: `${excess} px past the right of card`,
+      excess,
+    });
+    const key = `overflow-x|${S}|card > table`;
+    const worse = fresh({ [key]: { count: 2, worst: 76 } });
+    expect(
+      ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 79)], worse),
+    ).toEqual([
+      `${S}: overflow-x card > table, worst 79 px past its limit where the baseline has 76: card > table[2] (79 px past the right of card)`,
+    ]);
+    expect(worse.seen).toEqual({ [key]: { count: 2, worst: 79 } });
+    const close = fresh({ [key]: { count: 2, worst: 76 } });
+    expect(
+      ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 78)], close),
+    ).toEqual([]);
+  });
+
+  test("#724: a worst that dropped by more than 2 px is for the baseline to lower, like a count", () => {
+    const over = (path: string, excess: number) => ({
+      rule: "overflow-x" as const,
+      path,
+      group: "card > table",
+      detail: `${excess} px past the right of card`,
+      excess,
+    });
+    const key = `overflow-x|${S}|card > table`;
+    const better = fresh({ [key]: { count: 2, worst: 76 } });
+    expect(
+      ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 70)], better),
+    ).toEqual([]);
+    expect(better.gone).toEqual([`${key}: worst 70 px where the baseline has 76: lower it`]);
+    // Within the rendering tolerance, the baseline stays.
+    const close = fresh({ [key]: { count: 2, worst: 76 } });
+    ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 74)], close);
+    expect(close.gone).toEqual([]);
+    // A plain count, or a key with no px (nested-scroll), has no worst to lower.
+    const plain = fresh({ [key]: 2 });
+    ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 10)], plain);
+    expect(plain.gone).toEqual([]);
+  });
+
+  test("#724: a negative or fractional count, a negative or infinite worst, or a baseline that is not an object is refused by file name", () => {
+    const read = (text: string) => {
+      try {
+        return loadCounts(() => text, "responsive-baseline.json");
+      } catch (error) {
+        return String(error);
+      }
+    };
+    for (const text of [
+      '{"a|s|p": -1}',
+      '{"a|s|p": 1.5}',
+      '{"a|s|p": {"count": -1}}',
+      '{"a|s|p": {"count": 2, "worst": -5}}',
+      '{"a|s|p": {"count": 2, "worst": 1e999}}',
+    ]) {
+      expect(read(text)).toBe("Error: responsive-baseline.json: a|s|p is not a count of findings");
+    }
+    for (const text of ["null", "[1]", "3"]) {
+      expect(read(text)).toBe("Error: responsive-baseline.json is not an object of counts");
+    }
+    expect(read('{"a|s|p": {"count": 0, "worst": 0}}')).toEqual({
+      "a|s|p": { count: 0, worst: 0 },
+    });
+  });
+
+  test("#637: each spacing and narrow finding says how many px it is past its rule's limit", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,1000,800">
+        <div data-slot="links" data-rect="0,0,1000,100"></div>
+        <div data-slot="config" data-rect="0,103,1000,300"></div>
+      </div>
+      <div data-slot="card" data-rect="0,400,400,600">
+        <code data-slot="hook-command" data-rect="4,420,396,440">bun run a-very-long-command</code>
+        <pre data-slot="spill" data-rect="24,460,376,480" data-sw="600" data-cw="352">long line</pre>
+      </div>`);
+    const excess = (f: { rule: string; excess?: number }) => `${f.rule} ${f.excess}`;
+    expect(
+      layoutFindings({ spacing: SPACING })
+        .filter((f) => SPACING_RULES.includes(f.rule))
+        .map(excess),
+    ).toEqual(["text-spill 248", "block-gap 5", "card-padding 4"]);
+    page(`
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
+      <section data-slot="page" data-rect="0,32,640,800">
+        <div data-slot="page-header" data-rect="0,32,640,100">
+          <h1 data-slot="page-title" data-rect="24,48,400,76" data-sw="520" data-cw="376">A long name</h1>
+        </div>
+        <div data-slot="card" data-rect="16,120,600,300">
+          <div data-slot="table" data-rect="16,140,676,280">a table</div>
+        </div>
+        <div data-slot="timeline" style="overflow-y: auto" data-rect="0,320,640,500" data-ch="180" data-sh="680">x</div>
+      </section>`);
+    // The page itself scrolls, so the timeline is a second scrollbar.
+    document.documentElement.setAttribute("data-sh", "1000");
+    document.documentElement.setAttribute("data-ch", "800");
+    try {
+      expect(
+        layoutFindings({ responsive: RESPONSIVE })
+          .filter((f) => RESPONSIVE_RULES.includes(f.rule))
+          .map(excess),
+        // #703 review: what a nested scroll hides grows with the demo's data, so it is counted only.
+      ).toEqual([
+        "overflow-x 76",
+        "nested-scroll undefined",
+        "header-clipped 8",
+        "header-clipped 144",
+      ]);
+    } finally {
+      document.documentElement.removeAttribute("data-sh");
+      document.documentElement.removeAttribute("data-ch");
+    }
+  });
+});
+
+import { confirmGaps, type Finding } from "../../lib/layout-guards.ts";
+
+describe("layout-guards: a gap read while a toast slides in is measured again (issue #747)", () => {
+  const gap: Finding = { rule: "gap", path: "li", detail: "7 px above status-bar, at least 8" };
+  const other: Finding = { rule: "overflow-x", path: "area-screen", detail: "wide" };
+
+  /** A measure that answers the given lists in order, then the last one for good; and a settle that counts. */
+  function rig(answers: Finding[][]) {
+    let reads = 0;
+    let settles = 0;
+    return {
+      measure: async () => answers[Math.min(reads++, answers.length - 1)] ?? [],
+      settle: async () => {
+        settles++;
+      },
+      reads: () => reads,
+      settles: () => settles,
+    };
+  }
+
+  test("a gap that is gone once the boxes hold still is no finding", async () => {
+    const r = rig([[gap], []]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([]);
+    expect(r.settles()).toBe(1);
+  });
+
+  test("a gap that stays through every re-measure is reported, after three settles", async () => {
+    const r = rig([[gap]]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([gap]);
+    expect(r.settles()).toBe(3);
+    expect(r.reads()).toBe(4);
+  });
+
+  test("findings that are not gaps are returned at once, with no settle and no second read", async () => {
+    const r = rig([[other]]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([other]);
+    expect(r.settles()).toBe(0);
+    expect(r.reads()).toBe(1);
+  });
+
+  test("the last read is the answer: a gap that was steady and moves off is not kept", async () => {
+    const r = rig([[gap, other], [gap, other], [other]]);
+    expect(await confirmGaps(r.measure, r.settle)).toEqual([other]);
+  });
+});

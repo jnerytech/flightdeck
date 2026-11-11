@@ -1,0 +1,176 @@
+import { describe, expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  blockDetail,
+  checkoutRoot,
+  commandViolation,
+  generatedViolation,
+} from "../../lib/claude-hooks.ts";
+import { realTempDir } from "../temp-dir.ts";
+
+describe("claude-hooks", () => {
+  test("staging everything at once is blocked, with or without options before add", () => {
+    for (const command of [
+      "git add -A",
+      "git add .",
+      "git add --all",
+      "git add -u",
+      "git add --update",
+      "git add -vA",
+      "git -C ../flightdeck-fase11 add -A",
+      "git -c core.autocrlf=false add .",
+      "cd ../flightdeck-fase11 && git add -A && git commit -m wip",
+    ]) {
+      expect(commandViolation(command) ?? "").toContain("is blocked");
+    }
+  });
+
+  test("staging explicit paths passes", () => {
+    for (const command of [
+      "git add apps/daemon/src/x.ts",
+      "git add -- ./scripts/lib/a.ts docs/TDD.md",
+      "git -C ../flightdeck-fase11 add apps/desktop/src/ui/Board.tsx",
+      "git status --short && git add .gitignore",
+    ]) {
+      expect(commandViolation(command)).toBeNull();
+    }
+  });
+
+  test("#759: commit -a behind a quoted git option value, or as a quoted subcommand, is blocked", () => {
+    for (const command of [
+      'git -c user.name="A B" commit -a -m wip',
+      "git -c 'core.editor=vim -f' commit -am wip",
+      'git "commit" --all -m wip',
+    ]) {
+      expect(commandViolation(command) ?? "").toContain("is blocked");
+    }
+    expect(commandViolation('git -c alias.c="commit -a" status')).toBeNull();
+  });
+
+  test("commit -a is blocked wherever the flag sits", () => {
+    for (const command of [
+      "git commit -a -m wip",
+      "git commit -am wip",
+      'git commit -m "wip" -a',
+      "git commit --all -m wip",
+      "git -C ../x commit -am wip",
+    ]) {
+      expect(commandViolation(command) ?? "").toContain("is blocked");
+    }
+  });
+
+  test("git stash is blocked except list and show: refs/stash is shared across worktrees", () => {
+    for (const command of [
+      "git stash",
+      "git stash -u",
+      "git stash push -m wip",
+      "git stash save wip",
+      "git stash pop",
+      "git stash apply stash@{0}",
+      "git stash drop",
+      "git stash clear",
+      "git stash branch tmp",
+      "cd ../flightdeck-rc0364 && git stash pop",
+      "git -C ../flightdeck-rc0364 stash pop",
+    ]) {
+      const reason = commandViolation(command) ?? "";
+      expect(`${command} -> ${reason.includes("is blocked")}`).toBe(`${command} -> true`);
+      expect(reason).toContain("refs/stash is shared across worktrees");
+      expect(reason).toContain("git apply, or a WIP commit on your branch");
+    }
+    for (const command of [
+      "git stash list",
+      "git stash show -p stash@{0}",
+      'git commit -m "no git stash here"',
+    ]) {
+      expect(commandViolation(command)).toBeNull();
+    }
+  });
+
+  test("text inside quotes or a heredoc is not a command", () => {
+    for (const command of [
+      'git commit -m "docs: never use git add . here"',
+      "git commit -m 'git add -A is blocked'",
+      'echo "git add -A" > notes.txt',
+      "git commit -F - <<'EOF'\nchore: explain that git add -A and git commit -a are blocked\nEOF",
+      'git commit -m "feat(a): x -a y"',
+    ]) {
+      expect(commandViolation(command)).toBeNull();
+    }
+  });
+
+  test("generated files are blocked by path relative to their checkout", () => {
+    for (const rel of [
+      "bun.lock",
+      "coverage/lcov.info",
+      "dist/flightdeckd-linux-x64",
+      "node_modules/x/index.js",
+      "apps/desktop/src-tauri/target/debug/x",
+      "apps/desktop/src-tauri/gen/schemas/x.json",
+    ]) {
+      expect(generatedViolation(rel) ?? "").toContain("is generated");
+    }
+    for (const rel of ["apps/daemon/src/server.ts", "docs/coverage.md", "scripts/dist.ts"]) {
+      expect(generatedViolation(rel)).toBeNull();
+    }
+  });
+
+  test("checkoutRoot finds the main checkout or a worktree of the same repository", () => {
+    const base = realTempDir("fd-hooks-");
+    const main = join(base, "flightdeck");
+    const worktree = join(base, "flightdeck-fase11");
+    const other = join(base, "other");
+    mkdirSync(join(main, ".git", "worktrees", "flightdeck-fase11"), { recursive: true });
+    mkdirSync(join(worktree, "apps"), { recursive: true });
+    writeFileSync(
+      join(worktree, ".git"),
+      `gitdir: ${join(main, ".git", "worktrees", "flightdeck-fase11")}\n`,
+    );
+    mkdirSync(join(other, ".git"), { recursive: true });
+
+    expect(checkoutRoot(join(main, "apps", "x.ts"), main)).toBe(main);
+    expect(checkoutRoot("apps/x.ts", main)).toBe(main);
+    expect(checkoutRoot(join(worktree, "apps", "new-dir", "x.ts"), main)).toBe(worktree);
+    expect(checkoutRoot(join(main, "x.ts"), worktree)).toBe(main);
+    expect(checkoutRoot(join(other, "x.ts"), main)).toBeNull();
+    expect(checkoutRoot(join(base, "loose.ts"), main)).toBeNull();
+    expect(checkoutRoot(join(main, "x.ts"), base)).toBeNull();
+  });
+
+  test("checkoutRoot ignores a .git file that names no gitdir", () => {
+    const base = realTempDir("fd-hooks-");
+    const main = join(base, "flightdeck");
+    const broken = join(base, "broken");
+    mkdirSync(join(main, ".git"), { recursive: true });
+    mkdirSync(broken, { recursive: true });
+    writeFileSync(join(broken, ".git"), "not a gitdir line\n");
+    expect(checkoutRoot(join(broken, "x.ts"), main)).toBeNull();
+  });
+});
+
+describe("the guard logs what each refusal was for (#1541)", () => {
+  test("the reason's first line, printable, secrets hidden, at most 160 characters", () => {
+    const long = `bun run test:related holds the slot ${"x".repeat(300)}`;
+    expect([
+      blockDetail("first line\nsecond line"),
+      blockDetail(`run \u001b[2Jit with GH_TOKEN=ghp_${"c".repeat(30)}`),
+      blockDetail(long).length,
+      blockDetail(long).startsWith("bun run test:related holds the slot"),
+    ]).toEqual(["first line", "run [2Jit with GH_TOKEN=***", 160, true]);
+    // From the security review: credential headers an echoed command may carry.
+    expect(blockDetail('curl -H "Cookie: sid=abc123" -H "X-Api-Key: k-999" x')).toBe(
+      'curl -H "Cookie: ***" -H "X-Api-Key: ***" x',
+    );
+    // A header's whole value, to its closing quote or the end of the line, and the other auth headers.
+    expect([
+      blockDetail('curl -H "Cookie: sid=a1; csrf=b2" x'),
+      blockDetail("curl -H 'Set-Cookie: s=1; Path=/' -H 'X-Auth-Token: t 2' x"),
+      blockDetail("X-Amz-Security-Token: abc def"),
+    ]).toEqual([
+      'curl -H "Cookie: ***" x',
+      "curl -H 'Set-Cookie: ***' -H 'X-Auth-Token: ***' x",
+      "X-Amz-Security-Token: ***",
+    ]);
+  });
+});

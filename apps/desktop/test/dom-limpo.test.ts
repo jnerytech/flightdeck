@@ -13,7 +13,7 @@ describe("dom: the browser storage does not carry over from one test file to the
   });
 
   test("a file that assigned window.innerWidth does not freeze the viewport for the next one", () => {
-    // scripts/test/layout-guards.test.ts does this and runs right before layout.test.tsx in CI:
+    // scripts/test/guards/layout-guards.test.ts does this and runs right before layout.test.tsx in CI:
     // happy-dom's setViewport then no longer reaches matchMedia, so a narrow window never shows.
     (window as unknown as { innerWidth: number }).innerWidth = 1000;
     registerDom();

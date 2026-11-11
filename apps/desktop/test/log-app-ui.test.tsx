@@ -235,9 +235,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
     await store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
     await store.secrets.add({ name: "deploy", type: "token", value: VAULT_VALUE });
     // The scanner learns the vault's values after the list is read again.
-    await settle(() =>
-      (store as unknown as { scanValues(): string[] }).scanValues().includes(VAULT_VALUE),
-    );
+    await settle(() => store.scan.values().includes(VAULT_VALUE));
     store.appLog.log("error", "host", `refused ${HOST_TOKEN} and ${VAULT_VALUE}`);
     const everything = `${written.join("\n")}\n${store.appLog.recent(50).join("\n")}`;
     expect(everything).not.toContain(HOST_TOKEN);
@@ -296,20 +294,16 @@ describe("log-cobertura-app: the host's log path, the vault cache and the Settin
 
   test("a vault that cannot be read leaves the log running with what it had", async () => {
     const w = setup();
-    const store = w.store as unknown as {
-      vaultValuesForScan(): Promise<string[]>;
-      secrets: { add(input: { name: string; type: string; value: string }): Promise<unknown> };
-      scanValues(): string[];
-    };
+    const store = w.store;
     await store.secrets.add({ name: "a", type: "token", value: "Vx9fakevaultvalue0123456789" });
-    await settle(() => store.scanValues().includes("Vx9fakevaultvalue0123456789"));
-    expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
-    store.vaultValuesForScan = async () => {
+    await settle(() => store.scan.values().includes("Vx9fakevaultvalue0123456789"));
+    expect(store.scan.values()).toContain("Vx9fakevaultvalue0123456789");
+    store.scan.vaultValues = async () => {
       throw new Error("keychain locked");
     };
     await store.secrets.add({ name: "b", type: "token", value: "another-value-123456" });
     // The refresh failed: the answer is that nothing changes, and `secrets.add` is done when it returns.
     await uiIdle();
-    expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
+    expect(store.scan.values()).toContain("Vx9fakevaultvalue0123456789");
   });
 });

@@ -2,7 +2,7 @@
 
 - **Why.** SonarCloud's S2871 failed #224, #308 and #311 on one night, each for a `.sort()` with no
   compare function, and nothing caught it before CI once the local Sonar copy was gone (#283).
-- **The rule.** `scripts/test/sort-compare.test.ts` scans every file Sonar analyses as main code
+- **The rule.** `scripts/test/guards/sort-compare.test.ts` scans every file Sonar analyses as main code
   (`sonar-project.properties`: tracked code under `apps/`, `packages/` and `scripts/`, minus the
   test inclusions and the exclusions) and fails on each `.sort()` or `.toSorted()` with no compare
   function, as `file:line`. Use `byCodeUnit` from `@flightdeck/protocol` for strings in code order,

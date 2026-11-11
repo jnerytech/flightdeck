@@ -12,6 +12,7 @@ import { draftUrl, type HostDraft, HostForm, HostOfflineBanner } from "@/feature
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
+import { ActivityBoard } from "../features/activity/board.tsx";
 import type { TopSession } from "../features/costs/page.tsx";
 import {
   type AppState,
@@ -31,7 +32,6 @@ import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
-import { ActivityBoard } from "./ActivityBoard.tsx";
 import { CheckpointsButton } from "./Checkpoints.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
@@ -53,7 +53,7 @@ import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
- * keeps the entry chunk under its limit; scripts/test/screens-lazy.test.ts lists them).
+ * keeps the entry chunk under its limit; scripts/test/demo/screens-lazy.test.ts lists them).
  */
 const ActionsPage = lazyScreen(() => import("./ActionsPage.tsx"), "ActionsPage");
 const AgentPage = lazyScreen(() => import("./AgentPage.tsx"), "AgentPage");

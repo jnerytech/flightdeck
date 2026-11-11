@@ -9,7 +9,7 @@
   `timeout (5000 ms) waiting for: <label or the check's source>`.
 - `scripts/migrate-esperas.ts` (tested in `scripts/lib/migrate-esperas.ts`) swapped the own
   `settle` of 132 desktop test files for the shared one. `wait-baseline.json` and
-  `scripts/test/wait-ratchet.test.ts` count the test files' own waits (8 left, in odd shapes) and
+  `scripts/test/guards/wait-ratchet.test.ts` count the test files' own waits (8 left, in odd shapes) and
   only let the number go down.
 - This replaces the old rule "helpers that throw a timeout count as an error": a wait that times
   out is a failure of the wait, with its own message.
