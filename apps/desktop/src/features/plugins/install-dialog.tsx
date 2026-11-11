@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { InventoryView } from "./inventory-view";
+import { InventoryView } from "./inventory-view.tsx";
 
 export type InstallSource = { plugin: string } | { dir: string };
 

@@ -6,9 +6,6 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { InstallDialog, type InstallSource } from "@/components/plugins/install-dialog";
-import { InventoryView } from "@/components/plugins/inventory-view";
-import { UpdateDialog } from "@/components/plugins/update-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,10 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import type { AppStore } from "../lib/app-store.ts";
-import { hasFeature } from "../lib/version.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { FolderPicker } from "./FolderPicker.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { FolderPicker } from "../../ui/FolderPicker.tsx";
+import { InstallDialog, type InstallSource } from "./install-dialog.tsx";
+import { InventoryView } from "./inventory-view.tsx";
+import { UpdateDialog } from "./update-dialog.tsx";
 
 const PLUGINSPAGE_KEYS = ["hosts"] as const;
 
