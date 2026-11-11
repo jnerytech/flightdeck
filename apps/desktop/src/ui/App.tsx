@@ -17,12 +17,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
 import { UpdateBanner, UpdateCard } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
-import { ResumeOfferDialog } from "@/features/sessions/index.ts";
+import { NotificationBell } from "@/features/inbox/index.ts";
+import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
+import { TerminalCloseDialog } from "../features/terminal/index.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
@@ -38,12 +40,9 @@ import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { preloadMarkdown } from "./Markdown.tsx";
-import { NotificationBell } from "./NotificationBell.tsx";
 import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
-import { TerminalCloseDialog } from "./TerminalPage.tsx";
-import { useLiveElsewhereAsk } from "./use-live-elsewhere-guard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
 type InPlace =

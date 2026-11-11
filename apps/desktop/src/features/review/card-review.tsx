@@ -1,0 +1,176 @@
+import type { Card, ChangesResult } from "@flightdeck/protocol";
+import { useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
+import { ActionButton } from "@/components/feedback/action-button";
+import { Field } from "@/components/layout/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n/context";
+import { translateError } from "@/i18n/errors";
+import type { AppStore } from "../../lib/app-store.ts";
+
+type Mode = "merge" | "squash";
+
+/**
+ * A card's place against its base (phase 11): how far ahead and behind it is, "Atualizar com a
+ * base" and, for a card without a PR, "Merge e arquivar". A refusal (a conflict, a busy card)
+ * stays on screen with the host's words, because it lists the files.
+ */
+export function CardReview(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    changes: ChangesResult;
+    refresh(): Promise<void>;
+  }>,
+) {
+  const t = useT();
+  const { store, hostId, card, changes } = props;
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [merging, setMerging] = useState(false);
+  const [mode, setMode] = useState<Mode>("merge");
+  /** The commit message the person confirmed (issue #162); empty keeps the host's default. */
+  const [message, setMessage] = useState("");
+  const base = changes.base ?? "";
+  const ahead = changes.position?.ahead ?? 0;
+  const behind = changes.position?.behind ?? 0;
+
+  const refused = (result: {
+    code: string;
+    message: string;
+    reason?: string;
+    params?: Record<string, string | number>;
+  }) => {
+    const { title, detail } = translateError(result.code, result.message, t, result);
+    setRefusal(detail ? `${title} ${detail}` : title);
+  };
+
+  const update = async () => {
+    setRefusal(null);
+    const result = await store.hostRequest(hostId, "card.updateFromBase", { cardId: card.id });
+    if (!result.ok) return refused(result);
+    store.success(t("cardReview.updated"));
+    await props.refresh();
+  };
+
+  const merge = async () => {
+    setMerging(false);
+    setRefusal(null);
+    const result = await store.hostRequest(hostId, "card.mergeLocal", {
+      cardId: card.id,
+      mode,
+      confirm: true,
+      ...(message.trim() ? { message: message.trim() } : {}),
+    });
+    if (!result.ok) return refused(result);
+    store.success(t("cardReview.merged", { base }));
+    await props.refresh();
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <output aria-label={t("cardReview.positionLabel")} className="text-sm tabular-nums">
+          {t("cardReview.position", { ahead, behind, base })}
+        </output>
+        <ActionButton variant="outline" size="sm" disabled={behind === 0} onClick={() => update()}>
+          {t("cardReview.updateFromBase")}
+        </ActionButton>
+        {!card.prUrl && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={ahead === 0}
+            onClick={() => setMerging(true)}
+          >
+            {t("cardReview.merge")}
+          </Button>
+        )}
+      </div>
+      {refusal && (
+        <div
+          role="alert"
+          className="rounded-md border border-status-error/40 px-3 py-2 text-sm text-status-error"
+        >
+          {refusal}
+        </div>
+      )}
+      <AlertDialog
+        open={merging}
+        onOpenChange={(open) => {
+          if (open) return;
+          // A message written for this diff is not kept for the next merge.
+          setMerging(false);
+          setMessage("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cardReview.merge")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cardReview.mergeMessage", { base })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="font-medium">{t("cardReview.modeLabel")}</legend>
+            {(["merge", "squash"] as const).map((value) => (
+              <label key={value} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="merge-mode"
+                  checked={mode === value}
+                  onChange={() => setMode(value)}
+                />
+                {t(value === "merge" ? "cardReview.modeMerge" : "cardReview.modeSquash")}
+              </label>
+            ))}
+          </fieldset>
+          <Field label={t("cardReview.commitMessage")}>
+            {(control) => (
+              <AssistField
+                binding={{
+                  controller: store.assistant,
+                  kind: "commit.message",
+                  fieldHostId: hostId,
+                  source: { kind: "card", cardId: card.id },
+                  openSettings: store.openAssistantSettings,
+                }}
+                value={message}
+                onChange={setMessage}
+                t={t}
+              >
+                {(assist) => (
+                  <Textarea
+                    {...control}
+                    {...assist}
+                    className="w-full"
+                    placeholder={t("cardReview.commitMessageHint")}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                  />
+                )}
+              </AssistField>
+            )}
+          </Field>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void merge()}>
+              {t("cardReview.merge")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

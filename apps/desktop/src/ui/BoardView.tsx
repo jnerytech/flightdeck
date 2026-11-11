@@ -48,6 +48,7 @@ import { QuietBadge } from "@/features/board/quiet-badge";
 import { quietBadge } from "@/features/board/quiet-badge-view";
 import { RadarBadge } from "@/features/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
+import { BoardFilesPanel } from "@/features/files/index.ts";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
 import { AddProject, WorktreeChip } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
@@ -62,8 +63,10 @@ import { cn } from "@/lib/utils";
 import { BulkRunDialog } from "../features/board/bulk-run-dialog.tsx";
 import { CardStartDialog } from "../features/board/card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "../features/board/card-template-field.tsx";
+import { BoardColumnEmpty } from "../features/board/column-empty.tsx";
 import { DeleteCardDialog } from "../features/board/delete-card-dialog.tsx";
 import { NewCardDialog } from "../features/board/new-card-dialog.tsx";
+import { ExternalSeal, IssuesPanel } from "../features/issues/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import {
@@ -116,9 +119,6 @@ import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
-import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
-import { BoardFilesPanel } from "./BoardFiles.tsx";
-import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {

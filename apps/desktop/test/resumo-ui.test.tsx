@@ -9,7 +9,7 @@ import { stays, waiter } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { RecapPanel } = await import("../src/ui/RecapPanel.tsx");
+const { RecapPanel } = await import("../src/features/summary/recap-panel.tsx");
 const { SessionPane } = await import("../src/components/session/parts.tsx");
 const { ExternalView } = await import("../src/ui/ExternalView.tsx");
 const { App } = await import("../src/ui/App.tsx");

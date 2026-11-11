@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { TranscriptReader } = await import("../src/ui/TranscriptReader.tsx");
+const { TranscriptReader } = await import("../src/features/history/transcript-reader.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 

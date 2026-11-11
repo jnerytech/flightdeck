@@ -11,7 +11,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { HostsBanner } = await import("../src/features/hosts/hosts-banner.tsx");
-const { DiffView } = await import("../src/ui/DiffView.tsx");
+const { DiffView } = await import("../src/features/review/diff-view.tsx");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];

@@ -186,7 +186,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { UpdateBanner } = await import("../src/features/appupdate/update-banner.tsx");
     const { Notices } = await import("../src/components/feedback/notices.tsx");
     const { AskpassPrompt } = await import("../src/features/ssh/askpass-prompt.tsx");
-    const { QuotaPanel } = await import("../src/ui/QuotaPanel.tsx");
+    const { QuotaPanel } = await import("../src/features/quota/quota-panel.tsx");
     const { TeamsPage } = await import("../src/features/teams/page.tsx");
     const { PluginsPage } = await import("../src/features/plugins/page.tsx");
     const { PersonasPage } = await import("../src/features/personas/page.tsx");
@@ -202,7 +202,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { VaultReport } = await import("../src/features/vault/vault-report.tsx");
     const { VaultPage } = await import("../src/features/vault/page.tsx");
     const { BoardView } = await import("../src/ui/BoardView.tsx");
-    const { CardDetail } = await import("../src/ui/CardDetail.tsx");
+    const { CardDetail } = await import("../src/features/board/card-detail.tsx");
     const { BgPanel } = await import("../src/features/background/bg-panel.tsx");
     const memo = Symbol.for("react.memo");
     for (const screen of [

@@ -7,7 +7,7 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { CardReview } = await import("../src/ui/CardReview.tsx");
+const { CardReview } = await import("../src/features/review/card-review.tsx");
 const { PrDescriptionDialog } = await import("../src/features/watch/pr-description-dialog.tsx");
 const { AssistantController } = await import("../src/lib/assistant.ts");
 const { AppStore } = await import("../src/lib/app-store.ts");

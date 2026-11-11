@@ -1,0 +1,68 @@
+@utility member-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14rem;
+  align-items: center;
+  gap: 0.5rem;
+  /* A narrow window stacks the row: the name and badges get the whole width (#1006). */
+  @media (width < 40rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@utility member-id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+@utility member-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  /* Under the name on a narrow window: the actions start at the left and wrap (#1006). */
+  @media (width < 40rem) {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+/* The persona picker keeps one width on the shared field row (#101). */
+@utility persona-field {
+  width: 14rem;
+}
+
+/* A team's actions and its message to everyone, under the members on the same 8 px step. */
+@utility team-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+
+@utility team-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Issue #93: a worker row of the new-team form, in the same columns in every row. The form is at
+   most about 560 px wide, so the row is two even columns at every width (#1222): the persona on its
+   own line, then model and permissions side by side (model and Remove on a host with no permission
+   modes), and Remove at the left. Fixed 7 and 10 rem columns wrapped the model's label even at 1280. */
+@utility worker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 0.5rem;
+  & > :first-child {
+    grid-column: 1 / -1;
+  }
+  & > :last-child {
+    justify-self: start;
+  }
+}

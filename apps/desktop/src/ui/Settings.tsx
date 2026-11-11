@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
+import { BudgetsSection } from "@/features/costs/index.ts";
 import { WatchSettingsSection } from "@/features/watch/watch-settings-section.tsx";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppUpdateState } from "../features/appupdate/index.ts";
 import { MessagingRulesSection } from "../features/messaging/rules-section.tsx";
 import type { Settings as SettingsState } from "../features/settings/index.ts";
+import { WebhooksSection } from "../features/webhook/index.ts";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import type { CacheTtl } from "../lib/cache-timer.ts";
@@ -23,8 +25,6 @@ import type { TabOrder } from "../lib/tab-switcher.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../lib/terminal-view.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { hasFeature } from "../lib/version.ts";
-import { BudgetsSection } from "./BudgetsSection.tsx";
-import { WebhooksSection } from "./WebhooksSection.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
 function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {

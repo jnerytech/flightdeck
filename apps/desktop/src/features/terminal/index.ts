@@ -3,5 +3,9 @@
  * the tab, "Claude aqui", the person's own terminal, the listeners that follow the output and the
  * close that asks detach or end. Another domain imports from here, never a file inside.
  */
+
+export { TerminalCloseDialog, TerminalPage } from "./page.tsx";
+export { SessionTerminal } from "./session-terminal.tsx";
 export { type ClosingTerminal, type TerminalListener, TerminalsSlice } from "./store.ts";
+export { TerminalButton } from "./terminal-button.tsx";
 export { wireTerminals } from "./wire.ts";

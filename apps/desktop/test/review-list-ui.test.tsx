@@ -7,7 +7,7 @@ const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { ReviewList } = await import("../src/ui/ReviewList.tsx");
+const { ReviewList } = await import("../src/features/review/review-list.tsx");
 
 afterEach(cleanup);
 

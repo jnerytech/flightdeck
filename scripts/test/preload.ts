@@ -69,6 +69,12 @@ const repo = installRepoGuard(join(import.meta.dir, "../.."));
 const pathBefore = process.env.PATH;
 // Everything above is in place: this is the state each test file starts from. A file that leaves a
 // timer, Date, fetch or env variable changed does not hand that to the next one (issue #274).
+// Every run gets its DOM here, before any file loads the app store: a file with no DOM of its own
+// would load Radix and React without `document` (Radix keeps a no-op layout effect for good), and
+// the UI test after it in the same process could not open a menu (#2006). `bun test` hands the
+// preload only the FIRST path of its arguments, so no run can say whether a later file is a UI one;
+// the daemon and script tests already ran next to the DOM in every shard that holds a UI file.
+(await import("../../apps/desktop/test/dom-global.ts")).ensureHappyDom();
 installBetweenFiles(captureGlobals(), undefined, procWatch());
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the

@@ -3,14 +3,14 @@ import { AppStore } from "../../src/lib/app-store.ts";
 import { terminalKeyAction } from "../../src/lib/terminal-view.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
-import { fakeXterm } from "../terminal-fakes.ts";
+import { fakeXterm } from "../terminal/fakes.ts";
 import { waiter } from "../wait.ts";
 import { snippetsHost } from "./ui-setup.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TerminalPage } = await import("../../src/ui/TerminalPage.tsx");
+const { TerminalPage } = await import("../../src/features/terminal/page.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
