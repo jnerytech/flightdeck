@@ -56,9 +56,9 @@ import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
 import { adoptTitles } from "./names/track.ts";
-import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
-import { RiskClassifier } from "./permissions/risk.ts";
+import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
+import { createPermissions } from "./permissions/wiring.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
@@ -270,27 +270,14 @@ export async function startDaemon(
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
   const snapshots = new Snapshots({ db: store.db });
-  // Phase 13: one classifier for managed and terminal sessions, with the config's extra rules.
-  const risk = new RiskClassifier({
-    allowedRoots: config.allowedRoots,
-    home: userHome(env),
-    extraHigh: config.risk.extraHigh,
-  });
-  // Phase 13: the projects' automatic approval, through the board (defined below) and the costs.
-  const autoApprove = new AutoApprover({
+  // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
+  // below) and the costs.
+  const { risk, autoApprove } = createPermissions({
     db: store.db,
     runtime,
-    dataDir: config.dataDir,
-    context: (cwd) => {
-      const found = board.projectForCwd(cwd);
-      if (!found) return null;
-      const { project, card } = found;
-      return {
-        projectId: project.id,
-        settings: project.autoApprove,
-        ...(card ? { description: card.description, cardId: card.id } : {}),
-      };
-    },
+    config,
+    home: userHome(env),
+    projectForCwd: (cwd) => board.projectForCwd(cwd),
     usage: { record: (entry) => usageIndex.record(entry) },
   });
   // The vault joins this scanner when it exists (phase 16).
