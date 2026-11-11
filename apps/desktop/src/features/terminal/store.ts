@@ -26,16 +26,16 @@ export interface TerminalListener {
 }
 
 /** The terminal commands of one host. */
-export interface TerminalCommands extends TerminalHost {
+interface TerminalCommands extends TerminalHost {
   open(cwd: string, cols: number, rows: number): Promise<{ terminalId: string }>;
   list(): Promise<TerminalInfo[]>;
 }
 
 /** A terminal frame a host sent: output, the end of the process, or a gap to read again. */
-export type TerminalFrame = TerminalData | TerminalExited | TerminalResync;
+type TerminalFrame = TerminalData | TerminalExited | TerminalResync;
 
 /** What the terminals need to know of a host. */
-export interface TerminalsHost {
+interface TerminalsHost {
   id: string;
   url: string;
   status: string;
@@ -50,7 +50,7 @@ export interface ClosingTerminal {
 }
 
 /** What the terminals read and ask through the app's store. */
-export interface TerminalsCore {
+interface TerminalsCore {
   hosts(): TerminalsHost[];
   terminalEnv(): TerminalEnv | null;
   /** A terminal command of a host; a refusal throws, the caller decides what the person sees. */
