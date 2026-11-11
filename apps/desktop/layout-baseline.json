@@ -110,6 +110,7 @@
   "src/features/sessions/group-header.tsx": 8,
   "src/features/sessions/resume-offer-dialog.tsx": 13,
   "src/features/sessions/session-card.tsx": 11,
+  "src/features/settings/page.tsx": 3,
   "src/features/snippets/file-import.tsx": 14,
   "src/features/snippets/history-import.tsx": 13,
   "src/features/snippets/page.tsx": 17,
@@ -152,7 +153,6 @@
   "src/ui/SessionsHub.tsx": 25,
   "src/ui/SessionTabs.tsx": 5,
   "src/ui/SessionView.tsx": 3,
-  "src/ui/Settings.tsx": 3,
   "src/ui/Sidebar.tsx": 30,
   "src/ui/ToolCall.tsx": 8
 }
