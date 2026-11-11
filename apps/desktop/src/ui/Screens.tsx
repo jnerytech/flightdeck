@@ -6,6 +6,7 @@ import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
+import { TranscriptReader } from "@/features/history/index.ts";
 import { draftUrl, type HostDraft, HostForm, HostOfflineBanner } from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
@@ -48,7 +49,6 @@ import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { SetupPage } from "./SetupPage.tsx";
 import { StartScreen } from "./StartScreen.tsx";
-import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`
@@ -59,7 +59,7 @@ const AgentPage = lazyScreen(() => import("../features/agentcfg/page.tsx"), "Age
 const Approvals = lazyScreen(() => import("../features/permissions/page.tsx"), "AutoApprovalsPage");
 const Automations = lazyScreen(() => import("../features/automations/page.tsx"), "AutomationsPage");
 const BoardView = lazyScreen(() => import("./BoardView.tsx"), "BoardView");
-const CardDetail = lazyScreen(() => import("./CardDetail.tsx"), "CardDetail");
+const CardDetail = lazyScreen(() => import("../features/board/card-detail.tsx"), "CardDetail");
 const ClientsPage = lazyScreen(() => import("../features/clients/page.tsx"), "ClientsPage");
 const ConnectionsPage = lazyScreen(() => import("../features/ssh/page.tsx"), "ConnectionsPage");
 const Messaging = lazyScreen(() => import("../features/messaging/page.tsx"), "ConversationsPage");

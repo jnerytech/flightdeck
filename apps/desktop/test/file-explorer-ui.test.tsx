@@ -6,7 +6,7 @@ import { uiIdle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { FileExplorer } = await import("../src/ui/FileExplorer.tsx");
+const { FileExplorer } = await import("../src/features/files/file-explorer.tsx");
 const { SessionTabs } = await import("../src/ui/SessionTabs.tsx");
 const { SessionViews } = await import("../src/lib/session-views.ts");
 const { TContext } = await import("../src/i18n/context.tsx");

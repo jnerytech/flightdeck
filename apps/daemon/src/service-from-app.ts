@@ -4,9 +4,13 @@
  * the daemon that asked keeps running, and a handover that failed would leave the host offline
  * with no way back from the app. The app never runs sudo; it shows the linger line to copy.
  */
+import { resolve } from "node:path";
+import type { ServiceInstallResult } from "@flightdeck/protocol";
+import { updateConfigFile } from "./config.ts";
 import { FlightdeckError } from "./errors.ts";
 import { lingerState } from "./linger.ts";
 import { installService, resolveServiceClaude, type ServiceContext } from "./service.ts";
+import { stableBinPath } from "./update.ts";
 
 /** What the app is told after the install. */
 export interface AppServiceResult {
@@ -87,4 +91,35 @@ export async function installServiceFromApp(
     lingerOff: linger === "off",
     user: ctx.user,
   };
+}
+
+/**
+ * #1200: `service.install` for a daemon run as its stable binary (the file a service starts);
+ * undefined for any other, so a daemon run from source (the demo, the journeys) never offers it.
+ * The service gets `--config` only when this daemon was started with one, as an absolute path.
+ */
+export function appServiceInstall(
+  config: string | null,
+  configFile: string,
+  ctxOf: (dryRun: boolean) => ServiceContext,
+  self: string[],
+): ((confirm: boolean) => Promise<ServiceInstallResult>) | undefined {
+  const base = ctxOf(false);
+  if (!appCanInstallService(self, stableBinPath(base.home, base.platform), base.platform)) {
+    return undefined;
+  }
+  return (confirm) =>
+    installServiceFromApp(
+      {
+        ctx: { ...base, command: self },
+        config: config ? resolve(config) : null,
+        recordClaude: async (executablePath) => {
+          await updateConfigFile(configFile, (raw) => ({
+            ...raw,
+            claude: { ...(raw.claude as object), executablePath },
+          }));
+        },
+      },
+      confirm,
+    );
 }

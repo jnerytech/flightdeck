@@ -2,7 +2,9 @@ import { mkdir, open } from "node:fs/promises";
 import { connect } from "node:net";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
+import type { Config } from "./config.ts";
 import { EXIT_ALREADY_RUNNING } from "./lock.ts";
+import { present } from "./present.ts";
 
 /** One WSL distro whose daemon the Windows daemon keeps running (config section `wsl`). */
 export interface WslItem {
@@ -118,4 +120,13 @@ export class WslSupervisor {
     if (this.stopping) return;
     slot.timer = setTimeout(() => void this.spawn(slot), delayMs);
   }
+}
+
+/** The supervisor of the WSL distributions the config lists, if any. */
+export function createWsl(config: Config, options: { wslCommand?: (item: WslItem) => string[] }) {
+  if (config.wsl.length === 0) return null;
+  return new WslSupervisor(config.wsl, {
+    logDir: join(config.dataDir, "logs"),
+    ...present({ command: options.wslCommand }),
+  });
 }

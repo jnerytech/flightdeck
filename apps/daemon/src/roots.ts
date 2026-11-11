@@ -1,7 +1,8 @@
 import { realpath, stat } from "node:fs/promises";
 import { posix, resolve, win32 } from "node:path";
-import { userHome } from "./config.ts";
+import { type Config, userHome } from "./config.ts";
 import { FlightdeckError } from "./errors.ts";
+import type { Logger } from "./logger.ts";
 import { isInside } from "./paths.ts";
 
 async function realFolder(path: string): Promise<string | null> {
@@ -116,4 +117,12 @@ export async function addAllowedRoot(
     await persist?.(roots);
   }
   return [...roots];
+}
+
+/** Without an allowed root no session can be created: the log says so at the start. */
+export function warnIfNoRoots(config: Config, logger: Logger): void {
+  if (config.allowedRoots.length > 0) return;
+  logger.error(
+    'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
+  );
 }
