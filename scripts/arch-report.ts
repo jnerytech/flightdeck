@@ -37,7 +37,10 @@ const rows = ratchetRows({
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
   srcOversized: oversizedSources(
-    tracked.filter(isMeasured).map((path) => ({ path, text: read(path) ?? "" })),
+    tracked.filter(isMeasured).flatMap((path) => {
+      const text = read(path); // a tracked file deleted in the working copy is skipped
+      return text === null ? [] : [{ path, text }];
+    }),
   ),
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),
@@ -47,9 +50,13 @@ const table = formatTable(rows);
 console.log(table);
 if (process.env.GITHUB_STEP_SUMMARY)
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Structure ratchets\n\n${table}\n`);
-const out = process.argv[process.argv.indexOf("--json") + 1];
-if (process.argv.includes("--json") && out)
-  writeFileSync(out, `${JSON.stringify(rows, null, 2)}\n`);
+const jsonAt = process.argv.indexOf("--json");
+const out = jsonAt >= 0 ? process.argv[jsonAt + 1] : undefined;
+if (jsonAt >= 0 && (!out || out.startsWith("--"))) {
+  console.error("arch-report: --json needs a file path");
+  process.exit(2);
+}
+if (out) writeFileSync(out, `${JSON.stringify(rows, null, 2)}\n`);
 const up = growing(rows);
 if (up.length > 0) {
   console.error(`arch-report: ${up.map((r) => r.ratchet).join(", ")} above the baseline (#1610)`);

@@ -24,8 +24,9 @@ export type ArchInputs = {
 export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
   const rows: RatchetRow[] = [];
   if (inputs.knownBase !== null || inputs.knownHead !== null) {
-    const base = ruleCounts(inputs.knownBase);
     const head = ruleCounts(inputs.knownHead);
+    // no file on main yet (arch-ratchet.ts agrees): today is the first baseline
+    const base = inputs.knownBase === null ? head : ruleCounts(inputs.knownBase);
     for (const rule of new Set([...Object.keys(base), ...Object.keys(head)]))
       rows.push({
         ratchet: `depcruise ${rule}`,
