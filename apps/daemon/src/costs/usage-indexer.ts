@@ -4,7 +4,7 @@ import { basename, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import { normalizeCwd } from "../history/indexer.ts";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr, parseJsonText } from "../json-text.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
 
@@ -97,8 +97,18 @@ interface Owner {
   projectPath: string | null;
 }
 
-/** A transcript line: an object, whatever its keys; JSON that is anything else is no line. */
-const Line = z.record(z.string(), z.unknown()).nullable();
+/** A transcript line as an object; text that is not JSON, or JSON that is no object, is no line. */
+function objectOf(line: string): Record<string, unknown> | null {
+  let value: unknown;
+  try {
+    value = parseJsonText(line);
+  } catch {
+    return null;
+  }
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
 const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const str = (value: unknown) => (typeof value === "string" ? value : null);
@@ -146,7 +156,7 @@ interface ReadLine {
 
 /** The `cwd` of a transcript line, the usage of an assistant message and its file writes. */
 function readLine(line: string): ReadLine {
-  const value = parseJsonOr(Line, line, null);
+  const value = objectOf(line);
   if (!value) return { cwd: null, at: null, usage: null, edits: [] };
   const cwd = str(value.cwd);
   const message = value.type === "assistant" ? (value.message as Record<string, unknown>) : null;
