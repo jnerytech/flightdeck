@@ -67,6 +67,7 @@ import {
   type BackgroundSliceState,
   initialBackgroundState,
 } from "../features/background/index.ts";
+import { BackupSlice } from "../features/backup/index.ts";
 import {
   BudgetsSlice,
   type BudgetsSliceState,
@@ -128,10 +129,8 @@ import type {
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { AwayClock } from "./away.ts";
-import type { RestorePreview, RestoreResult } from "./backup-bundle.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
-import { BACKUP_NAME } from "./backup-target.ts";
 import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
@@ -148,7 +147,6 @@ import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { DensityController } from "./density.ts";
-import { DriveError } from "./drive-target.ts";
 import {
   type Finish,
   finishOutcome,
@@ -423,16 +421,6 @@ export interface AppUpdateState {
 }
 
 /** How often the app looks for its own update while open. */
-/** What the restore picker reads at most (PICKED_FILE_MAX_BYTES in src-tauri/src/lib.rs, #1241). */
-const BACKUP_FILE_MAX_BYTES = 1024 * 1024;
-/** What a backup or a read says besides a BackupError code: a cancelled dialog, or any other failure. */
-/** A Drive call that failed, as the restore tells it: the sign-in is gone, or Drive could not be read. */
-function driveCode(error: unknown): "drive-auth" | "drive-failed" {
-  return error instanceof DriveError && error.kind === "auth" ? "drive-auth" : "drive-failed";
-}
-
-type BackupOutcomeCode = "cancelled" | "too-big" | "unexpected" | "drive-auth" | "drive-failed";
-
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
 
 /** How long the app waits for changes to settle before it sends scoped rules again. */
@@ -1254,6 +1242,27 @@ export class AppStore {
       google: options.google ?? { config: googleConfig() },
       ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
     });
+    this.backup = new BackupSlice({
+      createText: async (passphrase, confirmation) => {
+        const { createBackup } = await import("./backup-bundle.ts");
+        return createBackup(platform, passphrase, confirmation, {
+          ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
+        });
+      },
+      saveFile: (name, text) => platform.saveFile(name, text),
+      pickFile: () => platform.vault.pickFile(),
+      previewText: async (text, passphrase) => {
+        const { previewRestore } = await import("./backup-bundle.ts");
+        return previewRestore(platform, text, passphrase);
+      },
+      applyPreview: async (preview, onConflict) => {
+        const { applyRestore } = await import("./backup-bundle.ts");
+        return applyRestore(platform, preview, onConflict);
+      },
+      driveNames: () => this.backupScheduler.driveBackups(),
+      driveText: (name) => this.backupScheduler.driveBackupText(name),
+      fail: (error) => this.fail(error),
+    });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
@@ -1352,6 +1361,8 @@ export class AppStore {
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
   readonly backupScheduler: BackupScheduler;
+  /** The whole-app backup file: save, read, compare and restore (#1596). */
+  readonly backup: BackupSlice;
   /** Issue #1344: when the app was last active, read before this start writes its own. */
   private readonly awayClock: AwayClock;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
@@ -3893,104 +3904,6 @@ export class AppStore {
     const result = await applyImport(this.vault, preview, onConflict);
     this.update({ secrets: this.vault.list() });
     return result;
-  }
-
-  /** Issue #1241: saves the whole backup as one encrypted file; the reason when refused or cancelled. */
-  async backupEverything(
-    passphrase: string,
-    confirmation: string,
-  ): Promise<{ ok: true } | { ok: false; code: BackupErrorCode | BackupOutcomeCode }> {
-    try {
-      const { createBackup } = await import("./backup-bundle.ts");
-      const text = await createBackup(this.platform, passphrase, confirmation, {
-        ...(this.options.vaultWorkFactor !== undefined && {
-          workFactor: this.options.vaultWorkFactor,
-        }),
-      });
-      // The armored text is ASCII, so its length is its size. A file the restore cannot pick again
-      // is no backup: refuse it now, with the reason, instead of saving it.
-      if (text.length > BACKUP_FILE_MAX_BYTES) return { ok: false, code: "too-big" };
-      const saved = await this.platform.saveFile("flightdeck-backup.fdbackup", text);
-      return saved ? { ok: true } : { ok: false, code: "cancelled" };
-    } catch (error) {
-      if (error instanceof BackupError) return { ok: false, code: error.code };
-      this.fail(error);
-      return { ok: false, code: "unexpected" };
-    }
-  }
-
-  /** Issue #1241: reads a backup file the person picks and compares it with this profile; changes nothing. */
-  async previewBackup(
-    passphrase: string,
-  ): Promise<
-    { ok: true; preview: RestorePreview } | { ok: false; code: BackupErrorCode | BackupOutcomeCode }
-  > {
-    try {
-      const file = await this.platform.vault.pickFile();
-      if (!file) return { ok: false, code: "cancelled" };
-      const { previewRestore } = await import("./backup-bundle.ts");
-      return { ok: true, preview: await previewRestore(this.platform, file.text, passphrase) };
-    } catch (error) {
-      if (error instanceof BackupError) return { ok: false, code: error.code };
-      this.fail(error);
-      return { ok: false, code: "unexpected" };
-    }
-  }
-
-  /** Issue #1462: the backups on Google Drive, newest first. */
-  async listDriveBackups(): Promise<
-    { ok: true; names: string[] } | { ok: false; code: "drive-auth" | "drive-failed" }
-  > {
-    try {
-      const names = (await this.backupScheduler.driveBackups())
-        .filter((name) => BACKUP_NAME.test(name))
-        .sort((a, b) => b.localeCompare(a));
-      return { ok: true, names };
-    } catch (error) {
-      return { ok: false, code: driveCode(error) };
-    }
-  }
-
-  /** Issue #1462: reads one backup from Google Drive into the same preview as a file. */
-  async previewDriveBackup(
-    name: string,
-    passphrase: string,
-  ): Promise<
-    { ok: true; preview: RestorePreview } | { ok: false; code: BackupErrorCode | BackupOutcomeCode }
-  > {
-    let text: string;
-    try {
-      text = await this.backupScheduler.driveBackupText(name);
-    } catch (error) {
-      return { ok: false, code: driveCode(error) };
-    }
-    if (text.length > BACKUP_FILE_MAX_BYTES) return { ok: false, code: "too-big" };
-    try {
-      const { previewRestore } = await import("./backup-bundle.ts");
-      return { ok: true, preview: await previewRestore(this.platform, text, passphrase) };
-    } catch (error) {
-      if (error instanceof BackupError) return { ok: false, code: error.code };
-      this.fail(error);
-      return { ok: false, code: "unexpected" };
-    }
-  }
-
-  /**
-   * Issue #1241: applies a preview all or nothing. The app reads the restored settings and hosts
-   * when it starts again, so the person is told to reopen it.
-   */
-  async restoreBackup(
-    preview: RestorePreview,
-    onConflict: ConflictChoice,
-  ): Promise<{ ok: true; result: RestoreResult } | { ok: false }> {
-    try {
-      const { applyRestore } = await import("./backup-bundle.ts");
-      return { ok: true, result: await applyRestore(this.platform, preview, onConflict) };
-    } catch (error) {
-      // A restore that failed put everything back; a preview already used says it is unreadable.
-      if (!(error instanceof BackupError)) this.fail(error);
-      return { ok: false };
-    }
   }
 
   /**

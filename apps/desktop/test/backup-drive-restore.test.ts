@@ -65,7 +65,7 @@ describe("restore from Google Drive (#1462)", () => {
     put(NAME(9), "x");
     put("notes.txt", "x");
     put(NAME(5), "x");
-    expect(await store.listDriveBackups()).toEqual({
+    expect(await store.backup.driveList()).toEqual({
       ok: true,
       names: [NAME(9), NAME(5), NAME(2)],
     });
@@ -74,11 +74,11 @@ describe("restore from Google Drive (#1462)", () => {
   test("reads one backup into the preview that a file gives, and the restore applies it", async () => {
     const { store, platform, put, bundle } = await setup();
     put(NAME(3), bundle);
-    const read = await store.previewDriveBackup(NAME(3), PASS);
+    const read = await store.backup.previewDrive(NAME(3), PASS);
     expect(read.ok).toBe(true);
     if (!read.ok) return;
     expect(read.preview.settings.added).toEqual(["theme"]);
-    const restored = await store.restoreBackup(read.preview, "skip");
+    const restored = await store.backup.restore(read.preview, "skip");
     expect(restored.ok).toBe(true);
     expect(platform.storage.getItem("flightdeck.theme")).toBe("dark");
   });
@@ -86,7 +86,7 @@ describe("restore from Google Drive (#1462)", () => {
   test("a wrong passphrase is unreadable and changes nothing", async () => {
     const { store, platform, put, bundle } = await setup();
     put(NAME(3), bundle);
-    expect(await store.previewDriveBackup(NAME(3), "not the passphrase")).toEqual({
+    expect(await store.backup.previewDrive(NAME(3), "not the passphrase")).toEqual({
       ok: false,
       code: "unreadable",
     });
@@ -96,8 +96,8 @@ describe("restore from Google Drive (#1462)", () => {
   test("a backup that is not on Drive, or is too big, is a failure and not a preview", async () => {
     const { store, put } = await setup();
     put(NAME(4), "a".repeat(1024 * 1024 + 1));
-    expect(await store.previewDriveBackup(NAME(4), PASS)).toEqual({ ok: false, code: "too-big" });
-    expect(await store.previewDriveBackup(NAME(8), PASS)).toEqual({
+    expect(await store.backup.previewDrive(NAME(4), PASS)).toEqual({ ok: false, code: "too-big" });
+    expect(await store.backup.previewDrive(NAME(8), PASS)).toEqual({
       ok: false,
       code: "drive-failed",
     });
@@ -105,23 +105,23 @@ describe("restore from Google Drive (#1462)", () => {
 
   test("signed out, or revoked, is drive-auth; no Drive in the build is drive-auth too", async () => {
     const out = await setup({ signedIn: false });
-    expect(await out.store.listDriveBackups()).toEqual({ ok: false, code: "drive-auth" });
-    expect(await out.store.previewDriveBackup(NAME(3), PASS)).toEqual({
+    expect(await out.store.backup.driveList()).toEqual({ ok: false, code: "drive-auth" });
+    expect(await out.store.backup.previewDrive(NAME(3), PASS)).toEqual({
       ok: false,
       code: "drive-auth",
     });
     const none = await setup({ clientId: null, signedIn: false });
-    expect(await none.store.listDriveBackups()).toEqual({ ok: false, code: "drive-auth" });
+    expect(await none.store.backup.driveList()).toEqual({ ok: false, code: "drive-auth" });
     const revoked = await setup();
     revoked.google.oauth.refreshTokens.clear();
     revoked.google.drive.accept.clear();
-    expect(await revoked.store.listDriveBackups()).toEqual({ ok: false, code: "drive-auth" });
+    expect(await revoked.store.backup.driveList()).toEqual({ ok: false, code: "drive-auth" });
   });
 
   test("a Drive that cannot be reached is drive-failed", async () => {
     const { store, google } = await setup();
     google.oauth.offline = true;
     google.drive.accept.clear();
-    expect(await store.listDriveBackups()).toEqual({ ok: false, code: "drive-failed" });
+    expect(await store.backup.driveList()).toEqual({ ok: false, code: "drive-failed" });
   });
 });

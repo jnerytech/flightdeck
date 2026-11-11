@@ -4,11 +4,11 @@ import { AssistField } from "@/components/assistant/assist-field";
 import { Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { type AppPersona, personaInput } from "@/features/personas";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { MODELS } from "./model-select";
+import { type AppPersona, personaInput } from "./global-personas.ts";
+import { MODELS } from "./model-select.tsx";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;

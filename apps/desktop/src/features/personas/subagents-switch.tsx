@@ -2,6 +2,7 @@ import type { PersonaSubagentsMode } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { cn } from "@/lib/utils";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -33,7 +34,7 @@ export function SubagentsSwitch(
       <label htmlFor={`${id}-subagents`}>{t("personas.subagents.label")}</label>
       <select
         id={`${id}-subagents`}
-        className={`${SELECT} self-start`}
+        className={cn(SELECT, "self-start")}
         value={mode ?? "all"}
         disabled={mode === null}
         onChange={(e) => void change(e.target.value as PersonaSubagentsMode)}
