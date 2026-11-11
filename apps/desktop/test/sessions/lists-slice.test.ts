@@ -83,11 +83,11 @@ describe("the session lists slice", () => {
   test("a second look that finds the same lists tells nobody", async () => {
     const answers = {
       h1: {
-        "session.list": { sessions: [managed("m1")] },
-        "history.list": { sessions: [] },
-        "external.list": { sessions: [] },
-        "names.list": { names: [] },
-        "bg.list": { sessions: [] },
+        "session.list": { sessions: [managed("m1", { name: "api work" })] },
+        "history.list": { sessions: [{ claudeSessionId: "c-old", meta: { pinned: true } }] },
+        "external.list": { sessions: [external("e1", "2026-11-11T10:00:00Z", { name: "term" })] },
+        "names.list": { names: [{ name: "refactor" }] },
+        "bg.list": { sessions: [{ id: "b1" }] },
       },
     };
     const { slice, patches } = lists([host("h1")], answers);
