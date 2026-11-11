@@ -37,7 +37,7 @@ async function setup(options: ConstructorParameters<typeof AppStore>[1] = {}) {
     allowedHosts: [hostId],
   });
   const outcomes: VaultOutcome[] = [];
-  store.onVaultOutcome((outcome) => outcomes.push(outcome));
+  store.vaultApprovals.onOutcome((outcome) => outcomes.push(outcome));
   return { store, daemon, hostId, meta, outcomes };
 }
 
@@ -87,7 +87,7 @@ describe("cofre-store", () => {
   test("stopping the outcome listener stops the calls", async () => {
     const { store, daemon, meta } = await setup();
     const seen: VaultOutcome[] = [];
-    const off = store.onVaultOutcome((outcome) => seen.push(outcome));
+    const off = store.vaultApprovals.onOutcome((outcome) => seen.push(outcome));
     off();
     daemon.push({ ...FRAME, secretId: meta.id });
     await Bun.sleep(150);
@@ -96,7 +96,7 @@ describe("cofre-store", () => {
   test("a listener that stops listening gets no more outcomes", async () => {
     const { store, daemon, meta, outcomes } = await setup();
     const late: VaultOutcome[] = [];
-    const stop = store.onVaultOutcome((outcome) => late.push(outcome));
+    const stop = store.vaultApprovals.onOutcome((outcome) => late.push(outcome));
     stop();
     daemon.push({ ...FRAME, secretId: meta.id });
     await settle(() => outcomes.length > 0);
