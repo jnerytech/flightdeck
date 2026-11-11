@@ -7,6 +7,7 @@ import {
   PermissionMode,
   SessionPersona,
 } from "@flightdeck/protocol";
+import { parseJsonOr } from "../json-text.ts";
 import { type Tail, tailOfFile, type Waiting, waitingIn } from "./waiting.ts";
 
 // What the daemon keeps is what goes on the wire.
@@ -66,6 +67,12 @@ function nextStatus(event: string, payload: HookPayload): ExternalStatus | null 
   return payload.notification_type === "permission_prompt" ? "awaiting_permission" : null;
 }
 
+/** The persona stored in a column, as the `persona` field of a session; none when it does not fit. */
+const personaOf = (stored: string | null | undefined): { persona?: SessionPersona } => {
+  const persona = stored ? parseJsonOr(SessionPersona, stored, null) : null;
+  return persona ? { persona } : {};
+};
+
 const toSession = (row: Row, waiting: Waiting | null): ExternalSession => ({
   claudeSessionId: row.claude_session_id,
   cwd: row.cwd,
@@ -80,9 +87,7 @@ const toSession = (row: Row, waiting: Waiting | null): ExternalSession => ({
   lastEventAt: row.last_event_at,
   endedAt: row.ended_at,
   // What was applied to the open session, else what it was opened with.
-  ...(row.persona_applied || row.persona_open
-    ? { persona: JSON.parse((row.persona_applied ?? row.persona_open) as string) as SessionPersona }
-    : {}),
+  ...personaOf(row.persona_applied ?? row.persona_open),
   ...(row.permission_mode ? { permissionMode: row.permission_mode } : {}),
   // A session that has ended or asks for a permission is not told apart by its transcript's end (#1736).
   ...(waiting && row.status !== "ended" && row.status !== "awaiting_permission" ? { waiting } : {}),
@@ -258,7 +263,7 @@ export class ExternalSessions {
         "SELECT persona_applied FROM external_sessions WHERE claude_session_id = ?",
       )
       .get(claudeSessionId);
-    return row?.persona_applied ? (JSON.parse(row.persona_applied) as SessionPersona) : null;
+    return personaOf(row?.persona_applied).persona ?? null;
   }
 
   /** Ends sessions with no event and no transcript change for `staleAfterS`. */

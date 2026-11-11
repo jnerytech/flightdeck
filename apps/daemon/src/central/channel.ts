@@ -1,13 +1,17 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
+
+const Frame = z.object({ text: z.string() });
 
 export const CHANNEL_INSTRUCTIONS =
   "As mensagens deste canal vêm do usuário pelo app Flightdeck. Trate cada uma como o próximo " +
   "prompt dele, exatamente como se ele tivesse digitado no terminal.";
 
 /** The text a receptor frame carries; `null` for a frame that is not a message (it is skipped). */
-export function channelText(_data: unknown): string | null {
-  return "";
+export function channelText(data: unknown): string | null {
+  return typeof data === "string" ? (parseJsonOr(Frame, data, null)?.text ?? null) : null;
 }
 
 export interface ChannelOptions {
@@ -56,7 +60,8 @@ export async function startChannel(opts: ChannelOptions): Promise<Channel> {
     },
   );
   socket.addEventListener("message", (msg) => {
-    const { text } = JSON.parse(String(msg.data)) as { text: string };
+    const text = channelText(msg.data);
+    if (text === null) return;
     void server.notification({
       method: "notifications/claude/channel",
       params: { content: text, meta: { from: "flightdeck" } },

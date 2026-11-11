@@ -2,14 +2,19 @@ import { mkdir, readdir, readFile, rm, rmdir, writeFile } from "node:fs/promises
 import { join, win32 } from "node:path";
 import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import type { Config } from "../config.ts";
 import type { Exec } from "../exec.ts";
 import { spawnExec } from "../exec.ts";
+import { parseJsonOr } from "../json-text.ts";
 import type { Logger } from "../logger.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
+
+/** What the daemon publishes about the receiver it runs: where it listens. */
+const Published = z.object({ url: z.string() });
 
 /** The launch id an app terminal asks `flightdeckd claude` to use. */
 export const TERMINAL_LAUNCH_VAR = "FLIGHTDECK_TERMINAL_LAUNCH_ID";
@@ -50,8 +55,8 @@ async function telemetryTarget(config: Config): Promise<TelemetryTarget | null> 
   const token = config.telemetry.token;
   if (!token) return null;
   try {
-    const { url } = JSON.parse(await readFile(file, "utf8")) as { url?: unknown };
-    return typeof url === "string" ? { url, token } : null;
+    const url = parseJsonOr(Published, await readFile(file, "utf8"), null)?.url;
+    return url === undefined ? null : { url, token };
   } catch {
     return null;
   }
@@ -70,12 +75,8 @@ export async function liveReceptor(dataDir: string, timeoutMs: number): Promise<
   const text = await readFile(file, "utf8").catch(() => null);
   if (text === null) return null;
   // A file the daemon is writing right now is no receptor yet.
-  let url: string;
-  try {
-    ({ url } = JSON.parse(text) as { url: string });
-  } catch {
-    return null;
-  }
+  const url = parseJsonOr(Published, text, null)?.url;
+  if (url === undefined) return null;
   const healthy = await fetch(`${url}/health`, { signal: AbortSignal.timeout(timeoutMs) }).then(
     (response) => response.ok,
     () => false,
