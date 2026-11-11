@@ -1,4 +1,6 @@
-import { type Config, claudeSettingsPath, updateConfigFile } from "../config.ts";
+import { stat } from "node:fs/promises";
+import { type Config, claudeSettingsPath, updateConfigFile, userHome } from "../config.ts";
+import { stableBinPath } from "../update.ts";
 import { claudeSettingsEnv } from "./claude-settings-env.ts";
 import { terminalEnabled } from "./policy.ts";
 import { bunPty, type PtyFactory } from "./pty.ts";
@@ -49,5 +51,19 @@ export function createTerminals({
         ...raw,
         terminal: { ...(raw.terminal as object | undefined), enabled },
       })),
+  };
+}
+
+/** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
+export async function terminalInfo(env: Record<string, string | undefined>) {
+  const stable = stableBinPath(userHome(env), process.platform);
+  return {
+    flightdeckdPath: (await stat(stable).then(
+      () => true,
+      () => false,
+    ))
+      ? stable
+      : null,
+    wslDistro: env.WSL_DISTRO_NAME || null,
   };
 }
