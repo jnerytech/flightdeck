@@ -35,7 +35,7 @@ import {
   wireBackground,
 } from "../features/background/index.ts";
 import { BackupSlice } from "../features/backup/index.ts";
-import { ClientScopeSlice } from "../features/clients/index.ts";
+import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
   type ClientBudgetsSlice,
@@ -482,9 +482,7 @@ export class AppStore {
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
     this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
-    this.clientScope = new ClientScopeSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.clientScope = wireClientScope(this.kernel, {
       storage: platform.storage,
       clients: () => this.clients,
       projects: () =>

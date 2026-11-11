@@ -3,3 +3,4 @@
  * work screens and the client of each project. Another domain imports from here, never a file inside.
  */
 export { ClientScopeSlice } from "./scope-store.ts";
+export { wireClientScope } from "./wire.ts";
