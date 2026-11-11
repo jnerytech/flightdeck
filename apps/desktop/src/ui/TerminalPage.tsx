@@ -106,7 +106,7 @@ export function TerminalPage(
     void (async () => {
       const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
       if (!alive || !parent) return;
-      const host = store.terminalHost(hostId);
+      const host = store.terminals.host(hostId);
       // The terminal's folder, for the relative paths of its output: known once the list answers.
       let folder: Promise<string | null> = Promise.resolve(null);
       const xterm = createXtermScreen(deps, {
@@ -146,7 +146,7 @@ export function TerminalPage(
       observer.observe(parent);
       stops.push(
         () => observer.disconnect(),
-        store.followTerminal(hostId, terminalId, {
+        store.terminals.follow(hostId, terminalId, {
           data: (base64) => current.data(base64),
           exited: (code) => current.exited(code),
           resync: () => void current.reopen(),

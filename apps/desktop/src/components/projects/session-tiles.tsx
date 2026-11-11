@@ -243,7 +243,7 @@ export function SessionTiles(
 ) {
   const { store, hostId } = props;
   const { t } = store.i18n;
-  const [layout, setLayout] = useState<TileLayout>(() => store.tileLayout());
+  const [layout, setLayout] = useState<TileLayout>(() => store.viewPrefs.tileLayout());
   const project = {
     hostId,
     projectKey: props.projectKey,
@@ -284,7 +284,7 @@ export function SessionTiles(
                   checked={layout === option}
                   onChange={() => {
                     setLayout(option);
-                    store.setTileLayout(option);
+                    store.viewPrefs.setTileLayout(option);
                   }}
                 />
                 <LayoutIcon layout={option} />

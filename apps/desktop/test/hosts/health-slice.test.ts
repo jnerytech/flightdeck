@@ -5,7 +5,7 @@ import {
   type HealthCore,
   HealthSlice,
   initialHealthState,
-} from "../src/features/hosts/index.ts";
+} from "../../src/features/hosts/index.ts";
 
 const DEPS = { items: [] } as DepsResult;
 const DOCTOR = { checks: [] } as unknown as DoctorResult;

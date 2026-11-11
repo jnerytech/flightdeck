@@ -47,9 +47,9 @@ export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; proje
   const t = useT();
   const [choice, setChoice] = useState<Choice>("month");
   // Issue #178: folded to its headline unless the person opened it (the choice is kept).
-  const [open, setOpen] = useState(() => store.roiOpen());
+  const [open, setOpen] = useState(() => store.viewPrefs.roiOpen());
   const flip = () => {
-    store.saveRoiOpen(!open);
+    store.viewPrefs.saveRoiOpen(!open);
     setOpen(!open);
   };
   const [periods, setPeriods] = useState<{ current: RoiPeriod; previous: RoiPeriod } | null>(null);

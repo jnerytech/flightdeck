@@ -25,8 +25,8 @@ export function TerminalButton(
 ) {
   const t = useT();
   const { store, hostId, target, name } = props;
-  const launch = store.terminalLaunch(hostId, target);
-  const embedded = store.embeddedTerminal(hostId);
+  const launch = store.terminals.launch(hostId, target);
+  const embedded = store.terminals.embedded(hostId);
   // The persona chosen, else the default of the client the folder belongs to (phase 29).
   const [picked, setPicked] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
@@ -48,7 +48,8 @@ export function TerminalButton(
   let here: string;
   if (resume) here = name ? t("claudeHere.resumeNamed", { name }) : t("claudeHere.resume");
   else here = name ? t("claudeHere.openNamed", { name }) : t("claudeHere.open");
-  const open = () => guarded(() => store.openClaudeHere(hostId, target, persona || undefined));
+  const open = () =>
+    guarded(() => store.terminals.openClaude(hostId, target, persona || undefined));
   return (
     <>
       {/* Issue #177 (B10): with personas, the persona is asked for when the terminal is opened;
@@ -90,7 +91,7 @@ export function TerminalButton(
       {launch && (
         <IconActionButton
           label={label}
-          onClick={() => guarded(() => store.openInTerminal(hostId, target))}
+          onClick={() => guarded(() => store.terminals.openIn(hostId, target))}
         >
           {launch.kind === "spawn" ? (
             <ExternalLink aria-hidden="true" />

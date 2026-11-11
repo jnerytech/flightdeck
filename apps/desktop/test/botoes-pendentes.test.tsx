@@ -64,12 +64,14 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     const here = slow();
     const open = slow();
     const store = {
-      terminalLaunch: () => ({ kind: "spawn" }),
-      embeddedTerminal: () => true,
+      terminals: {
+        launch: () => ({ kind: "spawn" }),
+        embedded: () => true,
+        openClaude: here.call,
+        openIn: open.call,
+      },
       getState: () => ({ hosts: [] }),
       clientScope: () => ({ defaultPersona: () => "" }),
-      openClaudeHere: here.call,
-      openInTerminal: open.call,
     } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>
@@ -94,8 +96,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     };
     const store = {
       i18n: { t },
-      installAppUpdate: install.call,
-      dismissAppUpdate: () => {},
+      appUpdates: { install: install.call, dismiss: () => {} },
       subscribe: () => () => {},
       getState: () => state,
     } as unknown as AppStore;

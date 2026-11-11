@@ -62,7 +62,7 @@ export const UpdateCard = memo(function UpdateCard(props: { store: AppStore }) {
           size="icon"
           className="size-7"
           aria-label={t("update.cardClose")}
-          onClick={() => store.dismissAppUpdate()}
+          onClick={() => store.appUpdates.dismiss()}
         >
           <X aria-hidden="true" />
         </Button>
@@ -79,7 +79,7 @@ export const UpdateCard = memo(function UpdateCard(props: { store: AppStore }) {
       >
         {t("update.cardNotes")}
       </a>
-      <ActionButton className="w-full" onClick={() => store.installAppUpdate()}>
+      <ActionButton className="w-full" onClick={() => store.appUpdates.install()}>
         {t("update.cardUpdate")}
       </ActionButton>
     </section>

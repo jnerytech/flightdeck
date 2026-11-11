@@ -23,10 +23,12 @@ function recorder(
 ) {
   const calls: string[] = [];
   const store = {
-    embeddedTerminal: () => opts.embedded ?? false,
-    openClaudeHere: (host: string) => void calls.push(`claude-here ${host}`),
-    openInTerminal: (host: string) => void calls.push(`terminal ${host}`),
-    openTerminal: (host: string) => void calls.push(`new-terminal ${host}`),
+    terminals: {
+      embedded: () => opts.embedded ?? false,
+      openClaude: (host: string) => void calls.push(`claude-here ${host}`),
+      openIn: (host: string) => void calls.push(`terminal ${host}`),
+      open: (host: string) => void calls.push(`new-terminal ${host}`),
+    },
     theme: { toggle: () => void calls.push("theme") },
     toggleUiMode: () => void calls.push("ui-mode"),
     i18n: { setLang: (lang: string) => void calls.push(`lang ${lang}`) },

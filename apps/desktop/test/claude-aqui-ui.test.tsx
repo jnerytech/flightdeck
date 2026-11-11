@@ -118,9 +118,12 @@ describe("claude-aqui: no app", () => {
 
   test("a Claude aqui tab has Ver como sessão, which opens the session of the same launch", async () => {
     const { store, hostId, root } = await setup();
-    const terminalId = await store.openClaudeHere(hostId, { cwd: root, claudeSessionId: null });
+    const terminalId = await store.terminals.openClaude(hostId, {
+      cwd: root,
+      claudeSessionId: null,
+    });
     expect(terminalId).not.toBeNull();
-    const [info] = await store.terminalHost(hostId).list();
+    const [info] = await store.terminals.host(hostId).list();
     expect(info?.launchId).toBeTruthy();
     render(<App store={store} />);
     await act(async () => inject(store, hostId, external("claude-1", info?.launchId as string)));
@@ -137,8 +140,11 @@ describe("claude-aqui: no app", () => {
 
   test("the session of a Claude aqui terminal has Ver terminal, which opens its tab", async () => {
     const { store, hostId, root } = await setup();
-    const terminalId = await store.openClaudeHere(hostId, { cwd: root, claudeSessionId: null });
-    const [info] = await store.terminalHost(hostId).list();
+    const terminalId = await store.terminals.openClaude(hostId, {
+      cwd: root,
+      claudeSessionId: null,
+    });
+    const [info] = await store.terminals.host(hostId).list();
     render(<App store={store} />);
     await act(async () => {
       inject(store, hostId, external("claude-1", info?.launchId as string));
@@ -185,7 +191,7 @@ describe("claude-aqui: no app", () => {
     const action = screen.queryByRole("option", { name: "Abrir no terminal" });
     expect(action).not.toBeNull();
     // A host that is reconnecting is not online for the terminal: the action would copy a command.
-    await waitFor(() => expect(store.embeddedTerminal(hostId)).toBe(true));
+    await waitFor(() => expect(store.terminals.embedded(hostId)).toBe(true));
     await act(async () => {
       if (action) fireEvent.click(action);
     });

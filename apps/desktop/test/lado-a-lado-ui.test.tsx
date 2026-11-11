@@ -127,7 +127,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     });
     expect(tiles()).toHaveLength(2);
     expect(screen.getByText("+3 not shown")).toBeTruthy();
-    expect(store.tileLayout()).toBe("2");
+    expect(store.viewPrefs.tileLayout()).toBe("2");
     await act(async () => {
       fireEvent.click(within(group).getByRole("radio", { name: "2×3 grid" }));
     });

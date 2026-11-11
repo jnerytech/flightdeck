@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { PendingPermission } from "@flightdeck/protocol";
-import { translator } from "../src/i18n/index.ts";
-import { externalRequestNotification, summaryNotifications } from "../src/lib/notify.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { externalRequestNotification, summaryNotifications } from "../../src/lib/notify.ts";
 
 const en = translator("en");
 const names = { subject: "Sessão A", host: "wsl", group: "h1/s1" };

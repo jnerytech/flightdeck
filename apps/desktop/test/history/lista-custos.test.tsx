@@ -30,8 +30,7 @@ function fakeStore(opts: { sessions: unknown[]; features?: string[]; view?: "car
   const store = {
     i18n,
     getState: () => ({ hosts: [{ id: "h", hostInfo: { features: opts.features } }] }),
-    hubView: () => opts.view ?? "cards",
-    saveHubView: () => {},
+    viewPrefs: { hubView: () => opts.view ?? "cards", saveHubView: () => {} },
     historyList: () => Promise.resolve({ sessions: opts.sessions, automatedCount: 0 }),
     hostCommand: (_h: string, command: string, args: unknown) => {
       asked.push({ command, args });

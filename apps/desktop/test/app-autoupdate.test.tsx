@@ -201,7 +201,7 @@ for (const [lang, dict] of [
       const mem = setup(lang, { available: "9.9.0" });
       const store = await start(mem);
       expect(await seen(() => mem.calls.includes("download"))).toBe(true);
-      await act(() => store.checkAppUpdate());
+      await act(() => store.appUpdates.check());
       expect(mem.calls).toEqual(["check", "download", "check"]);
     });
 

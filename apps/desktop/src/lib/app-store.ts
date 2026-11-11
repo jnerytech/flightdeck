@@ -39,17 +39,11 @@ import type {
   SettableMode,
   TeamInfo,
   TeamsUpdatedFrame,
-  TerminalInfo,
   WatchInfo,
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import {
-  EPHEMERAL_EVENTS,
-  FEATURE_RESUME_OFFER,
-  inSequence,
-  parsePairingLink,
-} from "@flightdeck/protocol";
+import { EPHEMERAL_EVENTS, FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import {
   AccountSlice,
   type AccountSliceState,
@@ -60,6 +54,11 @@ import {
   type ActivitySliceState,
   initialActivityState,
 } from "../features/activity/index.ts";
+import {
+  AppUpdateSlice,
+  type AppUpdateState,
+  initialAppUpdateState,
+} from "../features/appupdate/index.ts";
 import {
   BackgroundSlice,
   type BackgroundSliceState,
@@ -82,8 +81,10 @@ import {
 import {
   HealthSlice,
   type HealthSliceState,
+  HostRosterSlice,
   HostUpdateSlice,
   initialHealthState,
+  type NewHost,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
 import {
@@ -113,17 +114,18 @@ import {
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
+import { type ClosingTerminal, TerminalsSlice } from "../features/terminal/index.ts";
 import {
   VaultApprovalsSlice,
   VaultRulesSlice,
   VaultScanSlice,
   VaultSecretsSlice,
 } from "../features/vault/index.ts";
+import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
 import type {
-  AppUpdate,
   Platform,
   TrayAction,
   TrayMenu,
@@ -136,7 +138,6 @@ import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { AwayClock } from "./away.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
-import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
 import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
@@ -161,24 +162,11 @@ import {
   RequestError,
   statusLine,
 } from "./host-connection.ts";
-import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
 import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import {
-  type HubFilter,
-  type HubView,
-  hubRows,
-  loadHubFilter,
-  loadHubOpen,
-  loadHubView,
-  saveHubFilter,
-  saveHubOpen,
-  saveHubView,
-  takeHubHost,
-} from "./hub.ts";
+import { hubRows, takeHubHost } from "./hub.ts";
 import type { InboxEntry } from "./inbox.ts";
-import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
@@ -188,9 +176,7 @@ import {
   summaryNotifications,
 } from "./notify.ts";
 import { decide, NotifyPreferences, type NotifySource } from "./notify-policy.ts";
-import { pairingErrorText } from "./pairing-text.ts";
 import { basename, isInside } from "./paths.ts";
-import { probeHost } from "./probe-host.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
@@ -211,7 +197,6 @@ import { SessionViews } from "./session-views.ts";
 import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
-import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
   effectiveMode,
   loadChoices,
@@ -228,26 +213,10 @@ import {
   type TeleportRunArgs,
   teleportSession,
 } from "./teleport.ts";
-import {
-  isLocalUrl,
-  type TerminalEnv,
-  type TerminalLaunch,
-  type TerminalTarget,
-  terminalLaunch,
-} from "./terminal.ts";
-import type { TerminalHost } from "./terminal-session.ts";
+import { isLocalUrl, type TerminalEnv } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
-import {
-  loadTreeFolded,
-  loadTreeOpened,
-  loadTreePinned,
-  saveTreeFolded,
-  saveTreeOpened,
-  saveTreePinned,
-} from "./tree-fold.ts";
 import { type SecretMeta, Vault } from "./vault.ts";
 import { checkDelivery, type DeliveryRefusal, type VaultPolicy } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
@@ -331,7 +300,7 @@ export interface AppState
   /** When the person last looked at Needs you (ISO), `null` before the first look. */
   finishedLook: string | null;
   /** A terminal tab whose close waits for the user to say detach or end (phase 14). */
-  closingTerminal: { areaId: string; tabId: string } | null;
+  closingTerminal: ClosingTerminal | null;
   /** The run environment of each card (phase 24), by `host/card`. */
   runEnvs: Record<string, RunState>;
   /** Sessions that replied while no tab showed them (phase 14), by session key. */
@@ -386,35 +355,7 @@ export interface AppState
   appUpdate: AppUpdateState;
 }
 
-export interface AppUpdateState {
-  /** A newer version on offer (hidden again by "Depois"). */
-  offer: AppUpdate | null;
-  /** The last check found nothing newer. */
-  upToDate: boolean;
-  /** Why the last check or install failed. */
-  error: string | null;
-  /** Issue #280: the version downloaded in the background, ready to install on a restart. */
-  ready: string | null;
-}
-
-/** How often the app looks for its own update while open. */
-const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
-
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
-/** What a host's terminals say to the one following them. */
-export interface TerminalListener {
-  data(base64: string): void;
-  exited(exitCode: number): void;
-  resync(): void;
-  offline(): void;
-}
-
-/** The terminal commands of one host. */
-export interface TerminalCommands extends TerminalHost {
-  open(cwd: string, cols: number, rows: number): Promise<{ terminalId: string }>;
-  list(): Promise<TerminalInfo[]>;
-}
-
 export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
@@ -657,9 +598,6 @@ export interface GateRef {
   cardId: string;
 }
 
-/** Where the Activity board keeps whether it shows its Idle column. */
-const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
-
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -814,8 +752,6 @@ export const HISTORY_LIST_LIMIT = 200;
 /** Messages per `history.get` page in the transcript reader. */
 export const HISTORY_PAGE = 50;
 
-/** Where the return on cost card's open or folded state is kept. */
-const ROI_OPEN_KEY = "flightdeck.roiOpen";
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
@@ -906,7 +842,6 @@ export class AppStore {
   private readonly connections = new Map<string, HostConnection>();
   /** Sessions followed without being open (the project page's tiles), with how many follow each. */
   private readonly watched = new Map<string, number>();
-  private updateTimer: ReturnType<typeof setInterval> | null = null;
   private tray: TrayStatus | null = null;
   private noticeSeq = 0;
   /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
@@ -921,14 +856,12 @@ export class AppStore {
   >();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
-  private readonly terminalListeners = new Map<string, Set<TerminalListener>>();
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
   /** The tray submenu last sent, and the debounce that will send the next one (phase 8). */
   private trayMenuSent = JSON.stringify(trayMenu([]));
   private trayMenuTimer: unknown = null;
   private offTrayAction: (() => void) | null = null;
   private offQuit: (() => void) | null = null;
-  private quitting = false;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   private stopWake: (() => void) | null = null;
@@ -1246,6 +1179,75 @@ export class AppStore {
     this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
+    this.appUpdates = new AppUpdateSlice({
+      updater: () => this.platform.updater,
+      state: () => this.state.appUpdate,
+      setState: (appUpdate) => this.update({ appUpdate }),
+      switches: () => this.state.settings,
+      intervalMs: () => this.options.appUpdateIntervalMs,
+      log: (level, source, message) => this.appLog.log(level, source, message),
+      quitNow: () => this.platform.quitNow(),
+      t: () => this.i18n.t,
+    });
+    this.terminals = new TerminalsSlice({
+      hosts: () => this.state.hosts,
+      terminalEnv: () => this.state.terminalEnv,
+      dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
+      open: (hostId, payload) => this.hostCommand(hostId, "terminal.open", payload),
+      close: (hostId, terminalId, kill) =>
+        this.hostCommand(hostId, "terminal.close", { terminalId, kill }),
+      showTab: (hostId, terminalId) =>
+        this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
+      closing: () => this.state.closingTerminal,
+      setClosing: (closingTerminal) => this.update({ closingTerminal }),
+      closingTab: (closing) => {
+        // The area is the current host's, or another host's first one (a tab of the all-hosts row).
+        const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
+          (candidate) => candidate.id === closing.areaId,
+        );
+        const route = area?.tabs.find((tab) => tab.id === closing.tabId)?.router.current;
+        if (!area || route?.name !== "terminal") return null;
+        return {
+          hostId: route.host,
+          terminalId: route.terminalId,
+          closeTab: () => area.close(closing.tabId),
+        };
+      },
+      copyText: (text) => this.copyText(text),
+      spawn: (program, args) => this.platform.terminal.open(program, args),
+      spawnFailed: (error) =>
+        this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) })),
+    });
+    this.viewPrefs = new ViewPrefsSlice({ storage: platform.storage });
+    this.roster = new HostRosterSlice({
+      secrets: platform.secrets,
+      hosts: () => this.state.hosts,
+      list: (config) => this.update({ hosts: [...this.state.hosts, newHostView(config)] }),
+      persist: () => this.persistHosts(),
+      connect: (config, token) => this.connect(config, token),
+      stop: (hostId) => this.connections.get(hostId)?.dispose(),
+      detach: (hostId) => {
+        this.hostTabs.removeHost(hostId);
+        this.connections.get(hostId)?.dispose();
+        this.connections.delete(hostId);
+      },
+      forget: (hostId) => {
+        const ofOthers = <T>(all: Record<string, T>) =>
+          Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith(`${hostId}/`)));
+        const { [hostId]: _gone, ...setupProbes } = this.state.setupProbes;
+        this.update({
+          hosts: this.state.hosts.filter((h) => h.id !== hostId),
+          sessions: ofOthers(this.state.sessions),
+          cards: ofOthers(this.state.cards),
+          selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
+          setupProbes,
+        });
+        this.hostUpdate.forget(hostId);
+      },
+      setName: (hostId, name) => this.updateHost(hostId, (h) => ({ ...h, name })),
+      rememberToken: (token) => this.scan.rememberToken(token),
+      t: () => this.i18n.t,
+    });
     this.inbox = new InboxSlice({
       storage: platform.storage,
       entries: () => this.state.inbox,
@@ -1337,7 +1339,7 @@ export class AppStore {
       finished: [],
       finishedLook: null,
       hostsLoaded: false,
-      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
+      appUpdate: initialAppUpdateState(),
       ...initialSettingsState(platform),
     };
   }
@@ -1379,6 +1381,14 @@ export class AppStore {
   readonly notifyPrefs: NotifyPreferences;
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
+  /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
+  readonly appUpdates: AppUpdateSlice;
+  /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
+  readonly roster: HostRosterSlice;
+  /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
+  readonly terminals: TerminalsSlice;
+  /** How the person left the windows: widths, folds, hub view and filter, tile layout (#1596). */
+  readonly viewPrefs: ViewPrefsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
@@ -1450,24 +1460,6 @@ export class AppStore {
       : formatWhen(iso, this.now(), this.i18n.lang, this.options.timeZone);
   }
 
-  /** The list column's width, kept across starts (phase 10). */
-  listWidth(): number {
-    return loadListWidth(this.platform.storage);
-  }
-
-  setListWidth(width: number): void {
-    this.platform.storage.setItem(LIST_WIDTH_KEY, String(width));
-  }
-
-  /** The hub's saved filters (phase 10). */
-  hubFilter(): HubFilter {
-    return loadHubFilter(this.platform.storage);
-  }
-
-  saveHubFilter(filter: HubFilter): void {
-    saveHubFilter(this.platform.storage, filter);
-  }
-
   /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
   private readonly latencies = new Map<string, number | null>();
   private readonly latencyListeners = new Set<() => void>();
@@ -1484,32 +1476,6 @@ export class AppStore {
     if (this.getLatency(hostId) === latencyMs) return;
     this.latencies.set(hostId, latencyMs);
     for (const listener of [...this.latencyListeners]) listener(); // NOSONAR: a listener may subscribe or unsubscribe while it runs: this pass goes over a copy
-  }
-
-  /** How the hub draws its sessions: lines or cards. */
-  hubOpen(): Record<string, boolean> {
-    return loadHubOpen(this.platform.storage);
-  }
-
-  saveHubOpen(open: Record<string, boolean | undefined>): void {
-    saveHubOpen(this.platform.storage, open);
-  }
-
-  hubView(): HubView {
-    return loadHubView(this.platform.storage);
-  }
-
-  saveHubView(view: HubView): void {
-    saveHubView(this.platform.storage, view);
-  }
-
-  /** Whether the return on cost card opens unfolded (issue #178): folded unless the person opened it. */
-  roiOpen(): boolean {
-    return this.platform.storage.getItem(ROI_OPEN_KEY) === "true";
-  }
-
-  saveRoiOpen(open: boolean): void {
-    this.platform.storage.setItem(ROI_OPEN_KEY, String(open));
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -1540,16 +1506,9 @@ export class AppStore {
       ...initialHealthState(),
     });
     await this.settings.load();
-    const { notifyUpdates, autoUpdate } = this.state.settings;
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
     this.clientBudgets.start(this.options.clientBudgetIntervalMs);
-    if (this.platform.updater.supported && (notifyUpdates || autoUpdate)) {
-      void this.checkAppUpdate();
-      this.updateTimer = setInterval(() => {
-        const { notifyUpdates, autoUpdate } = this.state.settings;
-        if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
-      }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
-    }
+    this.appUpdates.start();
     // Issue #1344: the time the app is active, for the next start's "While you were away".
     this.awayClock.mark();
     if (this.awayTimer) clearInterval(this.awayTimer);
@@ -1560,7 +1519,7 @@ export class AppStore {
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
     this.offQuit?.();
-    this.offQuit = this.platform.onQuitRequested(() => void this.quitWithUpdate());
+    this.offQuit = this.platform.onQuitRequested(() => void this.appUpdates.quit());
     await inSequence(loadHosts(this.platform.storage), async (config) => {
       // A host added while init ran (#1718) is already listed and connecting.
       if (this.state.hosts.some((host) => host.id === config.id)) return;
@@ -1581,76 +1540,9 @@ export class AppStore {
     }
   }
 
-  async addHost(input: { name: string; url: string; token: string }): Promise<string> {
-    const config: HostConfig = { id: crypto.randomUUID(), name: input.name, url: input.url };
-    await this.platform.secrets.set(config.id, input.token);
-    this.update({
-      hosts: [...this.state.hosts, newHostView(config)],
-    });
-    this.persistHosts();
-    this.connect(config, input.token);
-    return config.id;
-  }
-
-  /** Tests the connection (`hello` + `host.info`) and saves the host only if it answers. */
-  async testAndAddHost(input: {
-    name: string;
-    url: string;
-    token: string;
-  }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
-    this.scan.rememberToken(input.token);
-    const probe = await probeHost(input.url, input.token, this.i18n.t);
-    if (!probe.ok) return probe;
-    return { ok: true, hostId: await this.addHost(input) };
-  }
-
-  async removeHost(hostId: string): Promise<void> {
-    this.hostTabs.removeHost(hostId);
-    this.connections.get(hostId)?.dispose();
-    this.connections.delete(hostId);
-    await this.platform.secrets.delete(hostId);
-    const ofOthers = <T>(all: Record<string, T>) =>
-      Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith(`${hostId}/`)));
-    const { [hostId]: _gone, ...setupProbes } = this.state.setupProbes;
-    this.update({
-      hosts: this.state.hosts.filter((h) => h.id !== hostId),
-      sessions: ofOthers(this.state.sessions),
-      cards: ofOthers(this.state.cards),
-      selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
-      setupProbes,
-    });
-    this.hostUpdate.forget(hostId);
-    this.persistHosts();
-  }
-
-  /** Saves the app-side display name (trimmed); the error says why a name is refused. */
-  renameHost(hostId: string, name: string): HostNameError | null {
-    const error = hostNameError(name, this.state.hosts, hostId);
-    if (error) return error;
-    this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
-    this.persistHosts();
-    return null;
-  }
-
-  /** A new token or pairing link for a host that refused the old one; the error text, or null. */
-  async pairAgain(hostId: string, input: string): Promise<string | null> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!host) return this.i18n.t("hostOffline.pairGone");
-    const text = input.trim();
-    let token = text;
-    if (text.toLowerCase().startsWith("flightdeck://")) {
-      const parsed = parsePairingLink(text);
-      if (!parsed.ok) return pairingErrorText(this.i18n.t, parsed.error);
-      token = parsed.value.token;
-    }
-    if (!token) return this.i18n.t("hostForm.pairToken");
-    const probe = await probeHost(host.url, token, this.i18n.t);
-    if (!probe.ok) return probe.error;
-    // The host may have been removed while it was tested: keep no secret for it.
-    if (!this.state.hosts.some((h) => h.id === hostId)) return this.i18n.t("hostOffline.pairGone");
-    await this.platform.secrets.set(hostId, token);
-    await this.reconnectHost(hostId);
-    return null;
+  /** Adds a host and connects; the roster does the work (kept here: most screens' tests start from it). */
+  addHost(input: NewHost): Promise<string> {
+    return this.roster.add(input);
   }
 
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
@@ -1658,14 +1550,6 @@ export class AppStore {
     if (this.options.githubTicker) return this.options.githubTicker(tick);
     const timer = setInterval(tick, 1500);
     return () => clearInterval(timer);
-  }
-
-  /** Drops the connection and opens a new one right away. */
-  async reconnectHost(hostId: string): Promise<void> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    const token = await this.platform.secrets.get(hostId);
-    this.connections.get(hostId)?.dispose();
-    if (host && token) this.connect(host, token);
   }
 
   /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
@@ -1923,51 +1807,6 @@ export class AppStore {
     if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
   }
 
-  /** The sidebar groups the user folded; kept across starts. */
-  sidebarFolded(): SidebarGroup[] {
-    return loadFolded(this.platform.storage);
-  }
-
-  setSidebarFolded(folded: readonly SidebarGroup[]): void {
-    saveFolded(this.platform.storage, folded);
-  }
-
-  /** The projects folded in the sidebar's tree (`hostId/projectId`); kept across starts. */
-  treeFolded(): string[] {
-    return loadTreeFolded(this.platform.storage);
-  }
-
-  setTreeFolded(folded: readonly string[]): void {
-    saveTreeFolded(this.platform.storage, folded);
-  }
-
-  /** The projects the person unfolded against the default fold; kept across starts. */
-  treeOpened(): string[] {
-    return loadTreeOpened(this.platform.storage);
-  }
-
-  setTreeOpened(opened: readonly string[]): void {
-    saveTreeOpened(this.platform.storage, opened);
-  }
-
-  /** The projects pinned to the top of the sidebar's tree on this computer. */
-  treePinned(): string[] {
-    return loadTreePinned(this.platform.storage);
-  }
-
-  setTreePinned(pinned: readonly string[]): void {
-    saveTreePinned(this.platform.storage, pinned);
-  }
-
-  /** Whether the Activity board shows its Idle column; kept across starts. */
-  activityIdle(): boolean {
-    return this.platform.storage.getItem(ACTIVITY_IDLE_KEY) === "true";
-  }
-
-  setActivityIdle(on: boolean): void {
-    this.platform.storage.setItem(ACTIVITY_IDLE_KEY, String(on));
-  }
-
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -2051,16 +1890,6 @@ export class AppStore {
     return true;
   }
 
-  /** The board last opened on a host, kept between runs (#669); `null` when none. */
-  lastBoard(hostId: string): string | null {
-    return loadLastBoards(this.platform.storage)[hostId] ?? null;
-  }
-
-  /** Keeps the board just opened on a host, for the sidebar's Board item (#669). */
-  rememberBoard(hostId: string, projectId: string): void {
-    saveLastBoard(this.platform.storage, hostId, projectId);
-  }
-
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
   setUiChoice(hostId: string, mode: UiMode | null): void {
     saveChoice(this.platform.storage, hostId, mode);
@@ -2073,15 +1902,6 @@ export class AppStore {
     if (!ui) return false;
     this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
     return true;
-  }
-
-  /** The layout of the tiles on the project page; kept across starts (issue #94). */
-  tileLayout(): TileLayout {
-    return loadTileLayout(this.platform.storage);
-  }
-
-  setTileLayout(layout: TileLayout): void {
-    saveTileLayout(this.platform.storage, layout);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
@@ -2217,21 +2037,6 @@ export class AppStore {
       }
     }
     area.close(tabId);
-  }
-
-  /** Ends the pending close of a terminal tab: `kill` ends the process, false detaches, null keeps it. */
-  async finishCloseTerminal(kill: boolean | null): Promise<void> {
-    const pending = this.state.closingTerminal;
-    this.update({ closingTerminal: null });
-    if (!pending || kill === null) return;
-    // The area is the current host's, or another host's first one (a tab of the all-hosts row).
-    const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
-      (candidate) => candidate.id === pending.areaId,
-    );
-    const route = area?.tabs.find((tab) => tab.id === pending.tabId)?.router.current;
-    if (!area || route?.name !== "terminal") return;
-    await this.hostCommand(route.host, "terminal.close", { terminalId: route.terminalId, kill });
-    area.close(pending.tabId);
   }
 
   /** A host's indexed sessions; errors go to the banner and give `null`. */
@@ -2489,63 +2294,6 @@ export class AppStore {
     };
   }
 
-  /** The commands of a host's terminals, as `TerminalSession` drives them (phase 14). */
-  terminalHost(hostId: string): TerminalCommands {
-    const request = <T extends Extract<CommandType, `terminal.${string}`>>(
-      type: T,
-      payload: CommandPayload<T>,
-    ): Promise<CommandResults[T]> => this.dispatch(hostId, type, payload);
-    return {
-      open: async (cwd, cols, rows) => request("terminal.open", { cwd, cols, rows }),
-      attach: (terminalId) => request("terminal.attach", { terminalId, flow: true }),
-      ack: (terminalId, bytes) => request("terminal.ack", { terminalId, bytes }),
-      write: (terminalId, data) => request("terminal.write", { terminalId, data }),
-      resize: (terminalId, cols, rows) => request("terminal.resize", { terminalId, cols, rows }),
-      close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),
-      list: async () => (await request("terminal.list", {})).terminals,
-    };
-  }
-
-  /** Opens a terminal on the host (in `cwd`, its first allowed folder by default) in a new tab. */
-  async openTerminal(hostId: string, cwd?: string): Promise<string | null> {
-    const folder = cwd ?? this.state.hosts.find((h) => h.id === hostId)?.info?.allowedRoots[0];
-    if (!folder) return null;
-    const opened = await this.hostCommand(hostId, "terminal.open", {
-      cwd: folder,
-      cols: 80,
-      rows: 24,
-    });
-    if (!opened) return null;
-    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
-    return opened.terminalId;
-  }
-
-  /** "Claude aqui": `flightdeckd claude` (resuming `claudeSessionId` when given) in a terminal tab. */
-  async openClaudeHere(
-    hostId: string,
-    target: TerminalTarget,
-    persona?: string,
-  ): Promise<string | null> {
-    const opened = await this.hostCommand(hostId, "terminal.open", {
-      cwd: target.cwd,
-      cols: 80,
-      rows: 24,
-      claude: {
-        ...(target.claudeSessionId ? { resume: target.claudeSessionId } : {}),
-        ...(persona ? { persona } : {}),
-      },
-    });
-    if (!opened) return null;
-    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
-    return opened.terminalId;
-  }
-
-  /** Whether the host opens terminals inside the app (phase 14) right now. */
-  embeddedTerminal(hostId: string): boolean {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
-  }
-
   /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
   /**
    * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
@@ -2587,18 +2335,6 @@ export class AppStore {
     if (conn) await this.loadHostInfo(hostId, conn);
   }
 
-  /** Calls `listener` with the output, exit, resync and loss of the host of a terminal. */
-  followTerminal(hostId: string, terminalId: string, listener: TerminalListener): () => void {
-    const key = `${hostId}|${terminalId}`;
-    const listeners = this.terminalListeners.get(key) ?? new Set();
-    this.terminalListeners.set(key, listeners);
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) this.terminalListeners.delete(key);
-    };
-  }
-
   /** Runs `fn` after `ms` (the store's timers, which tests drive); returns the function that cancels. */
   later(fn: () => void, ms: number): () => void {
     const timers = this.options.timers ?? REAL_TIMERS;
@@ -2610,24 +2346,6 @@ export class AppStore {
   onHistoryChanged(listener: (hostId: string, change: HistoryChanged) => void): () => void {
     this.historyListeners.add(listener);
     return () => this.historyListeners.delete(listener);
-  }
-
-  /** How "Abrir no terminal" opens `target` on this host; `null` for an unknown host. */
-  terminalLaunch(hostId: string, target: TerminalTarget): TerminalLaunch | null {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return host ? terminalLaunch(host, target, this.state.terminalEnv) : null;
-  }
-
-  /** Opens a terminal on this machine, or copies the command for a host elsewhere. */
-  async openInTerminal(hostId: string, target: TerminalTarget): Promise<void> {
-    const launch = this.terminalLaunch(hostId, target);
-    if (launch?.kind === "copy") await this.copyText(launch.text);
-    if (launch?.kind !== "spawn") return;
-    try {
-      await this.platform.terminal.open(launch.program, launch.args);
-    } catch (error) {
-      this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) }));
-    }
   }
 
   /** Saves a file through the system dialog; errors go to the banner. */
@@ -2921,92 +2639,12 @@ export class AppStore {
     this.offQuit?.();
     this.offQuit = null;
     this.offTrayAction = null;
-    if (this.updateTimer) clearInterval(this.updateTimer);
-    this.updateTimer = null;
+    this.appUpdates.dispose();
     this.hostUpdate.dispose();
     this.backupScheduler.dispose();
     this.clientBudgets.dispose();
     this.vaultRules.dispose();
     this.theme.stop();
-  }
-
-  /** Asks the updater for a newer app version. */
-  async checkAppUpdate(): Promise<void> {
-    try {
-      const offer = await this.platform.updater.check();
-      this.appLog.log(
-        "info",
-        "update",
-        offer === null ? "up to date" : `version ${offer.version} is available`,
-      );
-      this.setAppUpdate({ offer, upToDate: offer === null, error: null });
-      if (offer && this.state.settings.autoUpdate) await this.downloadAppUpdate(offer.version);
-    } catch (error) {
-      this.appLog.log(
-        "error",
-        "update",
-        `the check failed: ${(error as Error).message ?? String(error)}`,
-      );
-      this.setAppUpdate({
-        error: this.i18n.t("messages.updateCheckFailed", {
-          error: (error as Error).message ?? String(error),
-        }),
-      });
-    }
-  }
-
-  /**
-   * Issue #280: downloads the version on offer in the background, once; the banner then offers to
-   * restart into it. A failure says why and is tried again at the next check.
-   */
-  private async downloadAppUpdate(version: string): Promise<void> {
-    if (this.state.appUpdate.ready === version) return;
-    try {
-      await this.platform.updater.download();
-      this.setAppUpdate({ ready: version });
-    } catch (error) {
-      this.setAppUpdate({
-        error: this.i18n.t("messages.updateDownloadFailed", {
-          error: (error as Error).message ?? String(error),
-        }),
-      });
-    }
-  }
-
-  /** Installs the offered version; the app restarts. A failure installs nothing and says why. */
-  async installAppUpdate(): Promise<void> {
-    try {
-      await this.platform.updater.install();
-    } catch (error) {
-      this.setAppUpdate({
-        error: this.i18n.t("messages.updateInstallFailed", {
-          error: (error as Error).message ?? String(error),
-        }),
-      });
-    }
-  }
-
-  /**
-   * Issue #402: the tray's Quit. A version downloaded in the background installs on the way out
-   * (no restart), so the next start is on it; then the app asks the shell to exit, also when the
-   * install failed.
-   */
-  private async quitWithUpdate(): Promise<void> {
-    // A second Quit while the first installs waits for it: the same bytes are never installed twice.
-    if (this.quitting) return;
-    this.quitting = true;
-    try {
-      if (this.state.appUpdate.ready) await this.platform.updater.installDownloaded();
-    } catch {
-      // Quitting wins: the update is offered again at the next start.
-    } finally {
-      await this.platform.quitNow();
-    }
-  }
-
-  /** "Depois": the banner goes until the next check. */
-  dismissAppUpdate(): void {
-    this.setAppUpdate({ offer: null });
   }
 
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
@@ -3042,10 +2680,6 @@ export class AppStore {
     this.select(hostId, sessionId);
     this.router.push({ name: "session", host: hostId, id: sessionId });
   };
-
-  private setAppUpdate(patch: Partial<AppUpdateState>): void {
-    this.update({ appUpdate: { ...this.state.appUpdate, ...patch } });
-  }
 
   // -- internals ------------------------------------------------------------
 
@@ -3116,14 +2750,7 @@ export class AppStore {
       onQuotaUpdated: (state) => this.quota.updated(config.id, state),
       onAccountUpdated: (state) => this.account.updated(config.id, state),
       onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
-      onTerminal: (frame) => {
-        for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
-          []) {
-          if (frame.type === "terminal.data") listener.data(frame.data);
-          else if (frame.type === "terminal.exited") listener.exited(frame.exitCode);
-          else listener.resync();
-        }
-      },
+      onTerminal: (frame) => this.terminals.deliver(config.id, frame),
       onChangesUpdated: (update) => {
         for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
           listener(update);
@@ -3172,15 +2799,8 @@ export class AppStore {
         () => {},
       );
     }
-    if (status !== "online") this.tellTerminalsOffline(hostId);
+    if (status !== "online") this.terminals.tellOffline(hostId);
     if (status === "connecting") this.dropPartialText(hostId);
-  }
-
-  /** The terminals of the host are told it is gone. */
-  private tellTerminalsOffline(hostId: string): void {
-    for (const [key, listeners] of this.terminalListeners) {
-      if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
-    }
   }
 
   /** Partial text from before the drop will never be completed by a delta; drop it. */

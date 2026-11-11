@@ -163,6 +163,7 @@ test's baseline, with the issue that renames them.
 | `actions` | action | Declared commands with places for vault secrets, their trust and their runs |
 | `activity` | activity | What happened on the host since a time, read from what the daemon already keeps |
 | `agentcfg` | agent | A project's Claude Code configuration: MCP servers, CLAUDE.md, agents and skills |
+| `appupdate` | app update | The app's own signed update: the check, the download in the background, the install, and the one on quit |
 | `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
 | `automations` | automation | Triggers (time, PR comment, failing checks, labeled issue) and the action each fires |
 | `background` | background session | Claude Code's own background sessions of a host (`claude --bg`): list, stop, respawn, message, attach and start |
@@ -211,6 +212,7 @@ test's baseline, with the issue that renames them.
 | `trust` | trusted | What a project's own files would load, read without running, and its trust |
 | `updates` | update | Checks, verifies and applies the daemon's signed updates |
 | `vault` | vault | Secrets in the OS store, their usage rules, windows and requests |
+| `viewprefs` | view preferences | How the person left the windows on this computer: list width, sidebar and tree folds, hub view and filter, tile layout, the board last opened |
 | `watch` | watch and fix | The rounds that watch a PR and fix what got worse |
 | `webhook` | webhook | Posts the app's events to a webhook URL, kept as a secret |
 | `workflows` | workflow | A card's steps (agent, check, gate), their engine and findings |

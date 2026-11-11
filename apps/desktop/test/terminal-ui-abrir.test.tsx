@@ -69,7 +69,7 @@ describe("terminal-ui: abrir um terminal", () => {
       release = resolve;
     });
     let opened = 0;
-    store.openTerminal = async () => {
+    store.terminals.open = async () => {
       opened++;
       await gate;
       return null;
@@ -91,7 +91,7 @@ describe("terminal-ui: abrir um terminal", () => {
 
   test("the host page lists the live terminals, and Abrir opens one in a new tab", async () => {
     const { store, hostId, root } = await setup();
-    const { terminalId } = await store.terminalHost(hostId).open(root, 80, 24);
+    const { terminalId } = await store.terminals.host(hostId).open(root, 80, 24);
     await act(async () => {
       store.router.push({ name: "hub" });
     });
@@ -128,7 +128,7 @@ describe("terminal-ui: abrir um terminal", () => {
 
   test("Desligar terminais asks, ends them and offers Ligar terminais again", async () => {
     const { store, hostId, root, ptys } = await setup();
-    await store.terminalHost(hostId).open(root, 80, 24);
+    await store.terminals.host(hostId).open(root, 80, 24);
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Desligar terminais" })).not.toBeNull(),
     );
@@ -178,10 +178,10 @@ describe("terminal-ui: abrir um terminal", () => {
       }
     };
     await waitFor(() => expect(screen.queryByText("Nenhum terminal aberto.")).not.toBeNull());
-    const { terminalId } = await store.terminalHost(hostId).open(root, 80, 24);
+    const { terminalId } = await store.terminals.host(hostId).open(root, 80, 24);
     await until(() => row() !== null);
     expect(row()).not.toBeNull();
-    await store.terminalHost(hostId).close(terminalId, true);
+    await store.terminals.host(hostId).close(terminalId, true);
     await until(() => row() === null);
     expect(row()).toBeNull();
   });
@@ -206,7 +206,7 @@ describe("terminal-ui: abrir um terminal", () => {
   test("a list the host refuses (terminals turned off elsewhere) shows none", async () => {
     const { store, hostId, root } = await setup();
     const row = () => screen.queryByRole("button", { name: `Abrir o terminal em ${root}` });
-    await store.terminalHost(hostId).open(root, 80, 24);
+    await store.terminals.host(hostId).open(root, 80, 24);
     for (let i = 0; i < 20 && row() === null; i++) {
       await act(async () => {
         await Bun.sleep(200);
