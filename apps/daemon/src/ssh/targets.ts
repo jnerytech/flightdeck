@@ -1,9 +1,9 @@
 import type { Database } from "bun:sqlite";
-import { type SshAuth, SshOptions, type SshTarget } from "@flightdeck/protocol";
+import type { SshAuth, SshOptions, SshTarget } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonWith } from "../json-text.ts";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
 import { ulid } from "../ulid.ts";
-import { PinnedKey, Tags } from "./row-json.ts";
+import { PinnedKey, StoredOptions, Tags, WasForwardAgent } from "./row-json.ts";
 
 export interface SshTargetsOptions {
   db: Database;
@@ -105,7 +105,7 @@ export class SshTargets {
     const jump = this.jump(input.jump ?? null, input.id);
     const options = this.options(input.options ?? {});
     const wasOn = previous
-      ? parseJsonWith(SshOptions, previous.options).forwardAgent === true
+      ? parseJsonOr(WasForwardAgent, previous.options, { forwardAgent: false }).forwardAgent
       : false;
     if (options.forwardAgent === true && !wasOn && input.confirm !== true) {
       throw new FlightdeckError(
@@ -152,7 +152,7 @@ export class SshTargets {
   /** The pinned server key: its fingerprint and every key (`<type> <base64>`), or none yet. */
   pinned(id: string): { fingerprint: string; keys: string[] } | null {
     const raw = this.row(id)?.host_key;
-    return raw ? parseJsonWith(PinnedKey, raw) : null;
+    return raw === undefined || raw === null ? null : parseJsonWith(PinnedKey, raw);
   }
 
   pin(id: string, key: { fingerprint: string; keys: string[] }): SshTarget {
@@ -275,7 +275,7 @@ function toTarget(row: Row): SshTarget {
     auth: row.auth,
     secretRef: row.secret_ref,
     jump: row.jump,
-    options: parseJsonWith(SshOptions, row.options),
+    options: parseJsonWith(StoredOptions, row.options),
     tags: parseJsonWith(Tags, row.tags),
     // The column holds the fingerprint and the keys; the app only needs the fingerprint.
     hostKey: row.host_key ? parseJsonWith(PinnedKey, row.host_key).fingerprint : null,

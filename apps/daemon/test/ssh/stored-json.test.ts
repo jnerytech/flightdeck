@@ -33,10 +33,12 @@ describe("ssh: the JSON columns of a destination are checked when read (#1609)",
   test("the error for a damaged column names no part of its text", () => {
     const { targets, target, damage } = setup();
     damage("host_key", "LEAKMARK-not-json");
-    const message = messageOf(() => targets.pinned(target.id));
-    expect(message).toBe("text is not JSON");
+    expect(messageOf(() => targets.pinned(target.id))).toBe("text is not JSON");
+    damage("host_key", "null");
     damage("options", '{"forwardAgent": "LEAKMARK"}');
-    expect(messageOf(() => targets.get(target.id))).not.toContain("LEAKMARK");
+    expect(messageOf(() => targets.get(target.id))).toBe(
+      "JSON does not fit (1 problem(s): invalid_type)",
+    );
   });
 
   test("options and tags that do not fit are an error too, not a value of the wrong type", () => {
@@ -46,5 +48,31 @@ describe("ssh: the JSON columns of a destination are checked when read (#1609)",
     damage("tags", "[]");
     damage("options", '{"forwardAgent": "yes"}');
     expect(messageOf(() => targets.get(target.id))).toContain("does not fit");
+  });
+
+  test("a pin with no key, or an empty fingerprint, is an error: it would trust any server", () => {
+    const { targets, target, damage } = setup();
+    damage("host_key", JSON.stringify({ fingerprint: "SHA256:abc", keys: [] }));
+    expect(messageOf(() => targets.pinned(target.id))).toContain("does not fit");
+    damage("host_key", JSON.stringify({ fingerprint: "", keys: ["ssh-ed25519 AAAA"] }));
+    expect(messageOf(() => targets.pinned(target.id))).toContain("does not fit");
+  });
+
+  test("an option a newer daemon stored is ignored on read, not a failure to load the destination", () => {
+    const { targets, target, damage } = setup();
+    damage("options", '{"compression": true, "serverAliveCountMax": 3}');
+    expect(targets.get(target.id)?.options).toEqual({ compression: true });
+  });
+
+  test("a damaged option column can be repaired by saving, and ForwardAgent still asks for confirm", () => {
+    const { targets, target, damage } = setup();
+    damage("options", '{"forwardAgent": "yes"}');
+    const edit = { id: target.id, name: "vps", host: "vps.example.com", user: "deploy" };
+    expect(messageOf(() => targets.save({ ...edit, options: { forwardAgent: true } }))).toContain(
+      "confirm",
+    );
+    expect(targets.save({ ...edit, options: { compression: true } }).options).toEqual({
+      compression: true,
+    });
   });
 });
