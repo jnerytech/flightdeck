@@ -32,7 +32,6 @@ function recorder(
     theme: { toggle: () => void calls.push("theme") },
     toggleUiMode: () => void calls.push("ui-mode"),
     i18n: { setLang: (lang: string) => void calls.push(`lang ${lang}`) },
-    setClientSelection: (id: string) => void calls.push(`client ${id}`),
     snippets: {
       choose: (c: { hostId: string; snippetId: string }) =>
         void calls.push(`snippet ${c.hostId}/${c.snippetId}`),
@@ -53,7 +52,10 @@ function recorder(
       return Promise.resolve("s1");
     },
     newSessionPrefs: { value: opts.prefs ?? { mode: "default", model: "", folders: {} } },
-    clientScope: () => ({ defaultPersona: () => opts.persona ?? "" }),
+    clientScope: {
+      get: () => ({ defaultPersona: () => opts.persona ?? "" }),
+      select: (id: string) => void calls.push(`client ${id}`),
+    },
     personas: { ref: () => opts.ref ?? null },
     getState: () => ({ cards: {}, projects: {} }),
   } as unknown as Store;

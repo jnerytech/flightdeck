@@ -64,6 +64,7 @@ import {
   initialBackgroundState,
 } from "../features/background/index.ts";
 import { BackupSlice } from "../features/backup/index.ts";
+import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
   BudgetsSlice,
   type BudgetsSliceState,
@@ -134,7 +135,7 @@ import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
-import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
+import { loadSelection } from "./client-scope.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
@@ -1091,7 +1092,7 @@ export class AppStore {
       secrets: () => this.vault.list(),
       hosts: () => this.state.hosts,
       clients: () => this.state.clientList,
-      projectKeysOf: (clientId) => this.clientScope().projectKeysOf(clientId),
+      projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
       secretsChanged: () => this.update({ secrets: this.vault.list() }),
       request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
       preview: (hostId, payload) => this.hostCommand(hostId, "vault.rules.preview", payload),
@@ -1101,7 +1102,24 @@ export class AppStore {
     });
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
-    this.clients = new Clients(platform, { onChange: () => this.syncClients() });
+    this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
+    this.clientScope = new ClientScopeSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      storage: platform.storage,
+      clients: () => this.clients,
+      projects: () =>
+        knownProjects([
+          ...hubRows(this.state),
+          ...Object.entries(this.state.projects).flatMap(([hostId, list]) =>
+            list.map((p) => ({ hostId, cwd: p.path, projectKey: this.projectKeyOf(hostId, p) })),
+          ),
+        ]),
+      changed: () => {
+        this.vaultRules.scopeChanged();
+        this.clientBudgets.onLimitsChanged();
+      },
+    });
     this.clientBudgets = new ClientBudgetsSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -1112,7 +1130,7 @@ export class AppStore {
           .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
           .map((h) => h.id),
       today: () => this.today(),
-      scope: () => this.clientScope(),
+      scope: () => this.clientScope.get(),
       clients: () => this.state.clientList,
       summary: (hostId, filter) => this.hostCommand(hostId, "costs.summary", filter),
       feed: (name, clientId, percent, limit) =>
@@ -1133,7 +1151,7 @@ export class AppStore {
         this.sessionRecap(hostId, claudeSessionId, extra),
     });
     this.webhookFeed = new WebhookFeed(this.webhooks, (hostId, cwd) => {
-      const clientId = cwd ? this.clientScope().clientOfFolder(hostId, cwd) : UNASSIGNED;
+      const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
       return clientId === UNASSIGNED ? null : clientId;
     });
     this.prWatch = new WatchSlice({
@@ -3251,7 +3269,7 @@ export class AppStore {
 
   /** Phase 36: what the person typed that turns the work of a project into money. */
   roiMoneyOf(projectKey: string): RoiMoney {
-    const clientId = this.clientScope().clientOf(projectKey);
+    const clientId = this.clientScope.get().clientOf(projectKey);
     const settings = this.roi.data();
     return {
       rate: this.roi.rateFor(projectKey, clientId === UNASSIGNED ? null : clientId),
@@ -3269,67 +3287,8 @@ export class AppStore {
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;
-  private scopeMemo: { state: AppState; scope: ClientScope } | null = null;
-
-  /** A client was changed: the screens read the new list, and a selection that is gone is all. */
-  private syncClients(): void {
-    const clientList = this.clients.list();
-    const kept = this.state.clientSelection;
-    const valid =
-      kept === ALL_CLIENTS ||
-      (clientList.length > 0 && (kept === UNASSIGNED || clientList.some((c) => c.id === kept)));
-    if (!valid) saveSelection(this.platform.storage, ALL_CLIENTS);
-    this.update({
-      clientList,
-      clientOverrides: this.clients.overrides(),
-      clientSelection: valid ? kept : ALL_CLIENTS,
-    });
-    this.vaultRules.scopeChanged();
-    this.clientBudgets.onLimitsChanged();
-  }
-
-  /** What the work screens show: all clients, Unassigned or one client; a name nobody has is refused. */
-  setClientSelection(selection: string): void {
-    const { clientList } = this.state;
-    const valid =
-      selection === ALL_CLIENTS ||
-      (clientList.length > 0 &&
-        (selection === UNASSIGNED || clientList.some((c) => c.id === selection)));
-    if (!valid) return;
-    saveSelection(this.platform.storage, selection);
-    this.update({ clientSelection: selection });
-  }
-
-  /** The shortcut: the next client in the switcher's order (all, each client, Unassigned), then all again. */
-  nextClient(): void {
-    const { clientList, clientSelection } = this.state;
-    if (clientList.length === 0) return;
-    const order = [ALL_CLIENTS, ...clientList.map((c) => c.id), UNASSIGNED];
-    const at = order.indexOf(clientSelection);
-    this.setClientSelection(order[(at + 1) % order.length] ?? ALL_CLIENTS);
-  }
-
-  /** Which client each project belongs to, from the rows and projects the app has now. */
-  clientScope(): ClientScope {
-    if (this.scopeMemo?.state === this.state) return this.scopeMemo.scope;
-    const { hosts, projects, clientList, clientOverrides } = this.state;
-    const known = knownProjects([
-      ...hubRows(this.state),
-      ...Object.entries(projects).flatMap(([hostId, list]) =>
-        list.map((p) => ({ hostId, cwd: p.path, projectKey: this.projectKeyOf(hostId, p) })),
-      ),
-    ]);
-    const scope = new ClientScope(
-      { clients: clientList, overrides: clientOverrides },
-      known,
-      hosts.map((h) => ({
-        id: h.id,
-        names: h.hostInfo?.hostName ? [h.name, h.hostInfo.hostName] : [h.name],
-      })),
-    );
-    this.scopeMemo = { state: this.state, scope };
-    return scope;
-  }
+  /** Which client the person works for: the selection of the work screens and each project's client (#1596). */
+  readonly clientScope: ClientScopeSlice;
   /** Phase 16: what was asked of the vault, kept in `storage`. */
   readonly usage: VaultUsageLog;
 

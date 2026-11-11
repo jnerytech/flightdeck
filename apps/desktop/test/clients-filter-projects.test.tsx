@@ -71,17 +71,17 @@ describe("clients-filter: the Board picker", () => {
   test("lists every project of the host, then only the selected client's", async () => {
     const { store } = await setup();
     expect(shown()).toHaveLength(2);
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await settle(() => shown().length === 1);
     expect(shown()).toEqual(["Abrir board de acme-api"]);
-    await act(async () => store.setClientSelection("beta"));
+    await act(async () => store.clientScope.select("beta"));
     await settle(() => button("Abrir board de beta-app") !== null);
     expect(shown()).toEqual(["Abrir board de beta-app"]);
   });
 
   test("a client with no project on the host says so, and does not offer to add one", async () => {
     const { store } = await setup();
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     await settle(() => screen.queryByText("Nenhum projeto deste cliente neste host.") !== null);
     expect(shown()).toEqual([]);
     expect(screen.queryByText("Nenhum projeto deste cliente neste host.")).not.toBeNull();
@@ -90,7 +90,7 @@ describe("clients-filter: the Board picker", () => {
 
   test("the host's own Projects screen keeps listing all of them", async () => {
     const { store, hostId } = await setup();
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await act(async () => store.router.push({ name: "projects", host: hostId }));
     await settle(() => button("Abrir board de beta-app") !== null);
     expect(shown()).toHaveLength(2);

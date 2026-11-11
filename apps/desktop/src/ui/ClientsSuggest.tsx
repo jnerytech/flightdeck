@@ -17,7 +17,7 @@ export function ClientsSuggest(
   const { store, state } = props;
   const { t } = store.i18n;
   const [asked, setAsked] = useState(false);
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const data = { clients: state.clientList, overrides: state.clientOverrides };
   const suggestions = suggestClients(scope.knownProjects, data);
   const unassigned = scope.knownProjects.filter((p) => scope.clientOf(p.key) === UNASSIGNED).length;
