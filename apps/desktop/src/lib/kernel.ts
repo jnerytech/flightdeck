@@ -158,4 +158,6 @@ export interface AppKernel<S extends object> {
   ): Promise<HostResult<CommandResults[C]>>;
   /** A host's open connection, if it has one. */
   connection(hostId: string): HostConnection | undefined;
+  /** Milliseconds now (injected in tests). */
+  now(): number;
 }
