@@ -110,6 +110,31 @@ describe("typecheck-plan", () => {
   });
 });
 
+describe("a run that cannot start", () => {
+  test("counts as a failure, says why, and the other projects still finish", async () => {
+    const done: string[] = [];
+    const logs: string[] = [];
+    const code = await runAll(
+      [
+        ["tsc", "-p", "a"],
+        ["tsc", "-p", "b"],
+        ["tsc", "-p", "c"],
+      ],
+      async (command) => {
+        if (command[2] === "a") throw new Error("spawn tsc ENOENT");
+        done.push(command[2] ?? "");
+        return 0;
+      },
+      (line) => logs.push(line),
+      { limit: 2 },
+    );
+    expect(code).toBe(1);
+    expect(done.sort()).toEqual(["b", "c"]);
+    expect(logs).toContain("typecheck a: could not run: spawn tsc ENOENT");
+    expect(logs.at(-1)).toContain("total");
+  });
+});
+
 describe("no project is checked less", () => {
   test.each(PROJECTS)(
     "a type error in %s fails the run, in sequence and two at a time",

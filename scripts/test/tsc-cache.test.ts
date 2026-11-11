@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+
+const ROOT = resolve(import.meta.dir, "../..");
+
 import { type CacheFiles, seedCache } from "../lib/tsc-cache.ts";
 
 /** An in-memory cache: path to its last change in ms. */
@@ -75,18 +78,14 @@ describe("a seeded build info is safe", () => {
       spawnSync(
         process.execPath,
         [
-          "x",
-          "tsc",
+          join(ROOT, "node_modules/typescript/bin/tsc"),
           "-p",
           "tsconfig.json",
           "--incremental",
           "--tsBuildInfoFile",
           "cache/p.tsbuildinfo",
         ],
-        {
-          cwd: dir,
-          encoding: "utf8",
-        },
+        { cwd: dir, encoding: "utf8" },
       );
     try {
       const donor = join(base, "donor");
