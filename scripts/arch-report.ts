@@ -35,6 +35,9 @@ function runKnip(): string {
     encoding: "utf8",
     maxBuffer: 1 << 28,
   }); // NOSONAR: bun itself, fixed arguments
+  if (proc.error || proc.signal)
+    throw new Error(`knip did not run: ${proc.error?.message ?? `killed by ${proc.signal}`}`);
+  if (!proc.stdout) throw new Error(`knip printed no report: ${proc.stderr.slice(0, 500)}`);
   return proc.stdout;
 }
 
