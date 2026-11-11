@@ -221,6 +221,28 @@ describe("metrics: the snapshot", () => {
     expect(names).toEqual(expect.arrayContaining(["coverage", "ciHealth", "prSize", "mainRed"]));
   });
 
+  test("a git log that fails makes the git metrics null and named in unavailable, the ratchets still written", async () => {
+    const { deps } = fakeGit();
+    const failing: MetricsDeps = {
+      ...deps,
+      git: async (args) =>
+        args[0] === "log" && args[1] === "--no-merges" ? { code: 128, stdout: "" } : deps.git(args),
+    };
+    const snapshot = (await buildSnapshot(failing, "v0.2.0")) as Record<string, any>;
+    expect(snapshot.hotspots).toEqual({ sinceRelease: null, last30Days: null });
+    expect(snapshot.coupling).toEqual({ sinceRelease: null, last30Days: null });
+    const names = snapshot.unavailable.map((u: { metric: string }) => u.metric);
+    expect(names).toEqual(expect.arrayContaining(["hotspots", "coupling"]));
+    expect(snapshot.ratchets).not.toBeNull();
+  });
+
+  test("a tag that could be read as a git option is refused before git is asked anything", async () => {
+    const { deps, calls } = fakeGit();
+    await expect(buildSnapshot(deps, "-n1")).rejects.toThrow("tag");
+    await expect(buildSnapshot(deps, "v1 --all")).rejects.toThrow("tag");
+    expect(calls).toEqual([]);
+  });
+
   test("an unknown tag is refused", async () => {
     const { deps } = fakeGit();
     const failing: MetricsDeps = {
