@@ -517,8 +517,8 @@ function historySplit(props: ScreenProps, route: HistoryRoute, detail: ReactNode
       }
       onClose={() => go({ name: "history", host: hostId })}
       labels={{ resize: t("hub.resize"), back: t("hub.back") }}
-      initialWidth={store.listWidth()}
-      onResize={(width) => store.setListWidth(width)}
+      initialWidth={store.viewPrefs.listWidth()}
+      onResize={(width) => store.viewPrefs.setListWidth(width)}
     />
   );
 }
@@ -598,8 +598,8 @@ function sessionsSplit(props: ScreenProps, route: Route, detail: ReactNode): Rea
       empty={sessionsEmpty(props)}
       onClose={() => go({ name: "hub" })}
       labels={{ resize: t("hub.resize"), back: t("hub.back") }}
-      initialWidth={store.listWidth()}
-      onResize={(width) => store.setListWidth(width)}
+      initialWidth={store.viewPrefs.listWidth()}
+      onResize={(width) => store.viewPrefs.setListWidth(width)}
     />
   );
 }

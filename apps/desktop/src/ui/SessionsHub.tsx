@@ -90,8 +90,8 @@ export function SessionsHub(
 ) {
   const { store, state } = props;
   const { t } = store.i18n;
-  const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
-  const [view, setView] = useState<HubView>(() => store.hubView());
+  const [filter, setFilter] = useState<HubFilter>(() => store.viewPrefs.hubFilter());
+  const [view, setView] = useState<HubView>(() => store.viewPrefs.hubView());
   // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
   // a session changes the route but not the list); a different project from the route replaces it.
   const [only, setOnly] = useState(props.project ?? null);
@@ -243,12 +243,12 @@ export function SessionsHub(
   const [limit, setLimit] = useState(HUB_ROW_CAP);
   // Each project: open when it has live sessions (or a search is on), its history behind a count.
   const [openState, setOpenState] = useState<Record<string, boolean | undefined>>(() =>
-    store.hubOpen(),
+    store.viewPrefs.hubOpen(),
   );
   /** What the person opened or folded is remembered, per project. */
   const setOpen = (next: Record<string, boolean | undefined>) => {
     setOpenState(next);
-    store.saveHubOpen(next);
+    store.viewPrefs.saveHubOpen(next);
   };
   const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
   // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
@@ -318,7 +318,7 @@ export function SessionsHub(
   const set = (patch: Partial<HubFilter>) => {
     const next = { ...filter, ...patch };
     setFilter(next);
-    store.saveHubFilter(next);
+    store.viewPrefs.saveHubFilter(next);
   };
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
@@ -442,7 +442,7 @@ export function SessionsHub(
         cardsLabel={t("hub.viewCards")}
         onChange={(next) => {
           setView(next);
-          store.saveHubView(next);
+          store.viewPrefs.saveHubView(next);
         }}
       />
       <Input

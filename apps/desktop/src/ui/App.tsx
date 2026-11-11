@@ -527,7 +527,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
           hostId,
           projectIds: projects.map((p) => p.id),
           worktree: activeWorktreeFilter(store.getState()),
-          remembered: store.lastBoard(hostId),
+          remembered: store.viewPrefs.lastBoard(hostId),
         });
         go(
           projectId

@@ -42,7 +42,7 @@ export function ActivityBoard(
   const state = useStoreSlice(store, ACTIVITY_KEYS);
   const { t } = store.i18n;
   const [filter, setFilter] = useState<ActivityFilter>(NO_ACTIVITY_FILTER);
-  const [showIdle, setShowIdle] = useState(() => store.activityIdle());
+  const [showIdle, setShowIdle] = useState(() => store.viewPrefs.activityIdle());
   // The screen stays open for hours: the ages and the Done window follow the clock.
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
@@ -121,7 +121,7 @@ export function ActivityBoard(
               checked={showIdle}
               onChange={(e) => {
                 setShowIdle(e.target.checked);
-                store.setActivityIdle(e.target.checked);
+                store.viewPrefs.setActivityIdle(e.target.checked);
               }}
             />
             {t("activityBoard.showIdle")}

@@ -124,6 +124,7 @@ import {
   VaultScanSlice,
   VaultSecretsSlice,
 } from "../features/vault/index.ts";
+import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -140,7 +141,6 @@ import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { AwayClock } from "./away.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
-import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
 import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
@@ -169,20 +169,8 @@ import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
 import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
-import {
-  type HubFilter,
-  type HubView,
-  hubRows,
-  loadHubFilter,
-  loadHubOpen,
-  loadHubView,
-  saveHubFilter,
-  saveHubOpen,
-  saveHubView,
-  takeHubHost,
-} from "./hub.ts";
+import { hubRows, takeHubHost } from "./hub.ts";
 import type { InboxEntry } from "./inbox.ts";
-import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
@@ -215,7 +203,6 @@ import { SessionViews } from "./session-views.ts";
 import { probeAfter, type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { ShellPrefs } from "./shell-prefs.ts";
 import { SidebarFoldController } from "./sidebar-fold.ts";
-import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
   effectiveMode,
   loadChoices,
@@ -235,16 +222,7 @@ import {
 import { isLocalUrl, type TerminalEnv } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
-import {
-  loadTreeFolded,
-  loadTreeOpened,
-  loadTreePinned,
-  saveTreeFolded,
-  saveTreeOpened,
-  saveTreePinned,
-} from "./tree-fold.ts";
 import { type SecretMeta, Vault } from "./vault.ts";
 import { checkDelivery, type DeliveryRefusal, type VaultPolicy } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
@@ -626,9 +604,6 @@ export interface GateRef {
   cardId: string;
 }
 
-/** Where the Activity board keeps whether it shows its Idle column. */
-const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
-
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -783,8 +758,6 @@ export const HISTORY_LIST_LIMIT = 200;
 /** Messages per `history.get` page in the transcript reader. */
 export const HISTORY_PAGE = 50;
 
-/** Where the return on cost card's open or folded state is kept. */
-const ROI_OPEN_KEY = "flightdeck.roiOpen";
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
@@ -1251,6 +1224,7 @@ export class AppStore {
       spawnFailed: (error) =>
         this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) })),
     });
+    this.viewPrefs = new ViewPrefsSlice({ storage: platform.storage });
     this.inbox = new InboxSlice({
       storage: platform.storage,
       entries: () => this.state.inbox,
@@ -1388,6 +1362,8 @@ export class AppStore {
   readonly appUpdates: AppUpdateSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
   readonly terminals: TerminalsSlice;
+  /** How the person left the windows: widths, folds, hub view and filter, tile layout (#1596). */
+  readonly viewPrefs: ViewPrefsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
@@ -1459,24 +1435,6 @@ export class AppStore {
       : formatWhen(iso, this.now(), this.i18n.lang, this.options.timeZone);
   }
 
-  /** The list column's width, kept across starts (phase 10). */
-  listWidth(): number {
-    return loadListWidth(this.platform.storage);
-  }
-
-  setListWidth(width: number): void {
-    this.platform.storage.setItem(LIST_WIDTH_KEY, String(width));
-  }
-
-  /** The hub's saved filters (phase 10). */
-  hubFilter(): HubFilter {
-    return loadHubFilter(this.platform.storage);
-  }
-
-  saveHubFilter(filter: HubFilter): void {
-    saveHubFilter(this.platform.storage, filter);
-  }
-
   /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
   private readonly latencies = new Map<string, number | null>();
   private readonly latencyListeners = new Set<() => void>();
@@ -1493,32 +1451,6 @@ export class AppStore {
     if (this.getLatency(hostId) === latencyMs) return;
     this.latencies.set(hostId, latencyMs);
     for (const listener of [...this.latencyListeners]) listener(); // NOSONAR: a listener may subscribe or unsubscribe while it runs: this pass goes over a copy
-  }
-
-  /** How the hub draws its sessions: lines or cards. */
-  hubOpen(): Record<string, boolean> {
-    return loadHubOpen(this.platform.storage);
-  }
-
-  saveHubOpen(open: Record<string, boolean | undefined>): void {
-    saveHubOpen(this.platform.storage, open);
-  }
-
-  hubView(): HubView {
-    return loadHubView(this.platform.storage);
-  }
-
-  saveHubView(view: HubView): void {
-    saveHubView(this.platform.storage, view);
-  }
-
-  /** Whether the return on cost card opens unfolded (issue #178): folded unless the person opened it. */
-  roiOpen(): boolean {
-    return this.platform.storage.getItem(ROI_OPEN_KEY) === "true";
-  }
-
-  saveRoiOpen(open: boolean): void {
-    this.platform.storage.setItem(ROI_OPEN_KEY, String(open));
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -1925,51 +1857,6 @@ export class AppStore {
     if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
   }
 
-  /** The sidebar groups the user folded; kept across starts. */
-  sidebarFolded(): SidebarGroup[] {
-    return loadFolded(this.platform.storage);
-  }
-
-  setSidebarFolded(folded: readonly SidebarGroup[]): void {
-    saveFolded(this.platform.storage, folded);
-  }
-
-  /** The projects folded in the sidebar's tree (`hostId/projectId`); kept across starts. */
-  treeFolded(): string[] {
-    return loadTreeFolded(this.platform.storage);
-  }
-
-  setTreeFolded(folded: readonly string[]): void {
-    saveTreeFolded(this.platform.storage, folded);
-  }
-
-  /** The projects the person unfolded against the default fold; kept across starts. */
-  treeOpened(): string[] {
-    return loadTreeOpened(this.platform.storage);
-  }
-
-  setTreeOpened(opened: readonly string[]): void {
-    saveTreeOpened(this.platform.storage, opened);
-  }
-
-  /** The projects pinned to the top of the sidebar's tree on this computer. */
-  treePinned(): string[] {
-    return loadTreePinned(this.platform.storage);
-  }
-
-  setTreePinned(pinned: readonly string[]): void {
-    saveTreePinned(this.platform.storage, pinned);
-  }
-
-  /** Whether the Activity board shows its Idle column; kept across starts. */
-  activityIdle(): boolean {
-    return this.platform.storage.getItem(ACTIVITY_IDLE_KEY) === "true";
-  }
-
-  setActivityIdle(on: boolean): void {
-    this.platform.storage.setItem(ACTIVITY_IDLE_KEY, String(on));
-  }
-
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -2053,16 +1940,6 @@ export class AppStore {
     return true;
   }
 
-  /** The board last opened on a host, kept between runs (#669); `null` when none. */
-  lastBoard(hostId: string): string | null {
-    return loadLastBoards(this.platform.storage)[hostId] ?? null;
-  }
-
-  /** Keeps the board just opened on a host, for the sidebar's Board item (#669). */
-  rememberBoard(hostId: string, projectId: string): void {
-    saveLastBoard(this.platform.storage, hostId, projectId);
-  }
-
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
   setUiChoice(hostId: string, mode: UiMode | null): void {
     saveChoice(this.platform.storage, hostId, mode);
@@ -2075,15 +1952,6 @@ export class AppStore {
     if (!ui) return false;
     this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
     return true;
-  }
-
-  /** The layout of the tiles on the project page; kept across starts (issue #94). */
-  tileLayout(): TileLayout {
-    return loadTileLayout(this.platform.storage);
-  }
-
-  setTileLayout(layout: TileLayout): void {
-    saveTileLayout(this.platform.storage, layout);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
