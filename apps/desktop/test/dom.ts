@@ -4,26 +4,7 @@
 
 import { afterAll, afterEach } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-
-// Keep Bun's networking primitives: the UI tests talk to a real in-process daemon. Daemon tests
-// run in the same process after these files (Bun's file order differs between Linux and
-// Windows), so what the daemon passes to Bun's fetch, streams and spawn stays Bun's too:
-// happy-dom's AbortSignal, Blob or URL are not accepted there.
-const keep = {
-  WebSocket: globalThis.WebSocket,
-  fetch: globalThis.fetch,
-  Request: globalThis.Request,
-  Response: globalThis.Response,
-  Headers: globalThis.Headers,
-  AbortController: globalThis.AbortController,
-  AbortSignal: globalThis.AbortSignal,
-  Blob: globalThis.Blob,
-  File: globalThis.File,
-  FormData: globalThis.FormData,
-  URL: globalThis.URL,
-  TransformStream: globalThis.TransformStream,
-  WritableStream: globalThis.WritableStream,
-};
+import { ensureHappyDom } from "./dom-global.ts";
 
 type Members = Record<PropertyKey, PropertyDescriptor>;
 
@@ -112,8 +93,7 @@ export function registerDom(): void {
     globalThis.localStorage?.clear();
     globalThis.sessionStorage?.clear();
   } else {
-    GlobalRegistrator.register();
-    Object.assign(globalThis, keep);
+    ensureHappyDom();
   }
   const snapshot = snapshotPrototypes();
   afterAll(() => restorePrototypes(snapshot));
