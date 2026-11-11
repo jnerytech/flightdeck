@@ -10,6 +10,7 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN } from "./lib/arch-ratchet.ts";
 import { formatTable, growing, ratchetRows } from "./lib/arch-report.ts";
+import { rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
 import { flatTestCounts } from "./lib/test-layout.ts";
@@ -47,22 +48,24 @@ const mergeBase = ["origin/main", "main"]
 const tracked = (git(["ls-files", "apps", "packages", "scripts"]) ?? "")
   .split("\n")
   .filter(Boolean);
+// every tracked TypeScript source file under a package's src; one deleted in the working copy is skipped
+const sources = tracked
+  .filter((path) => /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/.test(path))
+  .flatMap((path) => {
+    const text = read(path);
+    return text === null ? [] : [{ path, text }];
+  });
 const rows = ratchetRows({
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
-  srcOversized: oversizedSources(
-    tracked.filter(isMeasured).flatMap((path) => {
-      const text = read(path); // a tracked file deleted in the working copy is skipped
-      return text === null ? [] : [{ path, text }];
-    }),
-  ),
+  srcOversized: oversizedSources(sources.filter(({ path }) => isMeasured(path))),
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),
   flatBaseline: json("test-layout-baseline.json"),
   knipCounts: knipCounts(runKnip()),
   knipBaseline: json("knip-baseline.json"),
-  jsonParseCounts: {},
-  jsonParseBaseline: {},
+  jsonParseCounts: rawJsonParseCounts(sources),
+  jsonParseBaseline: json("json-parse-baseline.json"),
 });
 const table = formatTable(rows);
 console.log(table);
