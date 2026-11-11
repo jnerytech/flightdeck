@@ -1,6 +1,7 @@
 import { inSequence } from "@flightdeck/protocol";
 import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "./branch-pr.ts";
 import { type PrRun, prRunFrom, pushWaitPass } from "./claude-hooks.ts";
+import { reviewProblem } from "./review-record.ts";
 import { heavyReasonGiven } from "./slot-heavy.ts";
 /**
  * `bun run pr -- <open|next|update|merge> …` (issue #260, GitHub Flow): one PR per branch to main,
@@ -271,6 +272,14 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
   if (others.length > 0) {
     deps.log(otherPrsMessage(branch, others));
     return 1;
+  }
+  // #1707: a session's PR needs the record of both reviews on its head; the coordinator's (rc, release) does not.
+  if (deps.env.FLIGHTDECK_COORDINATOR !== "1") {
+    const problem = await reviewProblem(branch, base, deps.git);
+    if (problem) {
+      deps.log(problem);
+      return 1;
+    }
   }
   const log = await deps.git(["log", "--format=%s", `origin/${base}..origin/${branch}`]);
   const subjects = log.stdout.split("\n").filter(Boolean);
