@@ -158,7 +158,7 @@ describe("notify-prefs-store: the preferences decide what is sent (issue #149)",
   test("the sound plays once for each notification that is sent, and not for a muted one", () => {
     const w = world();
     let plays = 0;
-    w.store.soundPlayer = () => void plays++;
+    w.store.inbox.soundPlayer = () => void plays++;
     w.store.notifyPrefs.setSound({ mode: "system" });
     w.summary("s", "idle");
     w.summary("s", "running", ["r1"]);
@@ -292,7 +292,7 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
 describe("notify-prefs-store: the test notification (issue #149)", () => {
   test("delivered when the system shows it", async () => {
     const w = world();
-    expect(await w.store.sendTestNotification()).toBe("delivered");
+    expect(await w.store.inbox.sendTest()).toBe("delivered");
     expect(w.titles()).toEqual(["Test notification"]);
   });
 
@@ -304,7 +304,7 @@ describe("notify-prefs-store: the test notification (issue #149)", () => {
     };
     api.permission = "denied";
     api.requestPermission = async () => "denied";
-    expect(await w.store.sendTestNotification()).toBe("blocked");
+    expect(await w.store.inbox.sendTest()).toBe("blocked");
     expect(w.titles()).toEqual([]);
   });
 
@@ -324,11 +324,11 @@ describe("notify-prefs-store: mark as unread (issue #149, shared with #137)", ()
     w.summary("s", "running", ["r1"]);
     w.summary("s", "idle");
     const ids = w.store.getState().inbox.map((e) => e.id);
-    w.store.inboxMarkAllRead();
+    w.store.inbox.markAllRead();
     expect(w.store.getState().inbox.every((e) => e.read)).toBe(true);
-    w.store.inboxMarkUnread(ids[0] as string);
+    w.store.inbox.markUnread(ids[0] as string);
     expect(w.store.getState().inbox.filter((e) => !e.read)).toHaveLength(1);
-    w.store.inboxMarkUnread(ids);
+    w.store.inbox.markUnread(ids);
     expect(w.store.getState().inbox.every((e) => !e.read)).toBe(true);
   });
 });
