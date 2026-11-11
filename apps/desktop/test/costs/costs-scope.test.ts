@@ -61,8 +61,8 @@ describe("costs-scope: the scope a route asks for", () => {
 
 describe("costs-scope: the scoped host with no numbers to show", () => {
   test("an offline scoped host that reports nothing is the away host", () => {
-    const known = [host("a"), host("b", "offline")];
-    expect(awayHost(scoped("b"), known, [host("a")])).toBe(known[1] ?? null);
+    const away = host("b", "offline");
+    expect(awayHost(scoped("b"), [host("a"), away], [host("a")])).toBe(away);
   });
 
   test("a host still connecting is not away yet", () => {
