@@ -12,8 +12,8 @@ import { TwoPane } from "@/components/layout/two-pane";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { AppStore } from "../lib/app-store.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /** The file being edited; `hash` is `null` for one that does not exist yet. */
 interface Opened {

@@ -1,4 +1,6 @@
 {
+  "src/features/agentcfg/agent-files.tsx": 25,
+  "src/features/agentcfg/agent-mcp.tsx": 11,
   "src/features/appupdate/update-banner.tsx": 4,
   "src/features/backup/backup-all-panel.tsx": 8,
   "src/features/backup/backup-schedule-panel.tsx": 4,
@@ -112,8 +114,6 @@
   "src/features/workflows/workflow-templates.tsx": 5,
   "src/ui/ActionForm.tsx": 8,
   "src/ui/ActionsPage.tsx": 21,
-  "src/ui/AgentFiles.tsx": 25,
-  "src/ui/AgentMcp.tsx": 11,
   "src/ui/AlwaysAllow.tsx": 6,
   "src/ui/App.tsx": 3,
   "src/ui/Areas.tsx": 4,

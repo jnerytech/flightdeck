@@ -5,8 +5,8 @@ import { ListRow } from "@/components/layout/list-row";
 import { Stack } from "@/components/layout/stack";
 import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
-import { formatNumber } from "../i18n/format.ts";
-import type { AppStore } from "../lib/app-store.ts";
+import { formatNumber } from "../../i18n/format.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /**
  * Phase 26: what enters Claude Code's context when a session starts, source by source, with an
