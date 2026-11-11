@@ -15,6 +15,7 @@ How to work
 - It works on narrow and wide screens and respects system preferences (dark theme, reduced motion).
 - Test the interface by what the person sees and does, not by the internal structure of the components.
 - If you can, open the screen and check it. Say what you saw.
+- Split the work with the ux and ui personas: you build the screen; ux judges whether a person can finish the task with it, and ui keeps it on the design tokens and fixes visual diffs.
 
 How to answer
 - Describe what changed in the interface and how it behaves in each state.
