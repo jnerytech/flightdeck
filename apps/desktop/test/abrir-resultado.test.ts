@@ -1,11 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { AppStore } from "../src/lib/app-store.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-
-// The store pulls in UI libraries that read the DOM when they load: register it first, so a file
-// that runs after this one in the same process finds them as it would on its own.
-registerDom();
-const { AppStore } = await import("../src/lib/app-store.ts");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
