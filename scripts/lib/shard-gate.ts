@@ -443,6 +443,10 @@ export interface MergeShardsDeps {
   tiers?: Record<string, Tier>;
   /** Gets the pyramid table as markdown and as JSON (#1854). */
   pyramid?: (markdown: string, json: string) => void;
+  /** The sources the fast tiers covered at the gate before (fast-coverage-baseline.json). */
+  fastBaseline?: readonly string[];
+  /** Gets the fast-coverage ratchet's verdict, from the unit + component shards alone (#1854). */
+  fastResult?: (result: { ok: boolean; lines: string[] }) => void;
 }
 
 /** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
