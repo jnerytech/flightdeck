@@ -63,6 +63,7 @@ import { cn } from "@/lib/utils";
 import { BulkRunDialog } from "../features/board/bulk-run-dialog.tsx";
 import { CardStartDialog } from "../features/board/card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "../features/board/card-template-field.tsx";
+import { BoardColumnEmpty } from "../features/board/column-empty.tsx";
 import { DeleteCardDialog } from "../features/board/delete-card-dialog.tsx";
 import { NewCardDialog } from "../features/board/new-card-dialog.tsx";
 import { ExternalSeal, IssuesPanel } from "../features/issues/index.ts";
@@ -118,7 +119,6 @@ import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
 import { hasFeature } from "../lib/version.ts";
-import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {

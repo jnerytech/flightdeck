@@ -8,9 +8,9 @@ import type { Key } from "../../i18n/index.ts";
 import { issueLabel, issueUrl } from "../../lib/issues.ts";
 import type { SessionState } from "../../lib/session-state.ts";
 import { SessionView } from "../../ui/SessionView.tsx";
-import { StatusBadge } from "../../ui/StatusBadge.tsx";
 import { ExternalSeal } from "../issues/index.ts";
 import { CardReview, ChangesPanel, PrComments } from "../review/index.ts";
+import { StatusBadge } from "../sessions/index.ts";
 import { TerminalButton } from "../terminal/index.ts";
 import { CardSecondOpinion } from "./card-second-opinion.tsx";
 
