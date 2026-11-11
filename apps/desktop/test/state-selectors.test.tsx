@@ -151,7 +151,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { UpdateBanner } = await import("../src/ui/UpdateBanner.tsx");
     const { Notices } = await import("../src/components/feedback/notices.tsx");
     const { TeamsPage } = await import("../src/ui/TeamsPage.tsx");
-    const { PersonasPage } = await import("../src/ui/PersonasPage.tsx");
+    const { PersonasPage } = await import("../src/features/personas/page.tsx");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     const screens: Array<[string, ReturnType<typeof counted>, (s: Store) => ReactNode]> = [
@@ -189,7 +189,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { QuotaPanel } = await import("../src/ui/QuotaPanel.tsx");
     const { TeamsPage } = await import("../src/ui/TeamsPage.tsx");
     const { PluginsPage } = await import("../src/ui/PluginsPage.tsx");
-    const { PersonasPage } = await import("../src/ui/PersonasPage.tsx");
+    const { PersonasPage } = await import("../src/features/personas/page.tsx");
     const { SnippetsPage } = await import("../src/features/snippets/page.tsx");
     const { CostsPage } = await import("../src/ui/CostsPage.tsx");
     const { ConnectionsPage } = await import("../src/ui/ConnectionsPage.tsx");

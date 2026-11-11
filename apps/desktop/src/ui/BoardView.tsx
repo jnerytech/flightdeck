@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { useSuggestedPersona } from "@/features/personas/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
 import { useStartAsk } from "@/hooks/use-start-ask";
@@ -63,7 +64,6 @@ import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "../components/board/card-template-field.tsx";
 import { DeleteCardDialog } from "../components/board/delete-card-dialog.tsx";
 import { NewCardDialog } from "../components/board/new-card-dialog.tsx";
-import { useSuggestedPersona } from "../components/personas/persona-picker.tsx";
 import { formatDuration } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";

@@ -77,6 +77,22 @@ describe("spec-lint", () => {
     expect(problems[3]).toContain("a -ui area is tested in apps/desktop/test/");
   });
 
+  test("a test file in a domain folder names its area as the folder and the file joined by a dash (#1603)", () => {
+    const row = (area: string, file: string) =>
+      [
+        "| Area | Test file | What must pass |",
+        "| --- | --- | --- |",
+        `| \`${area}\` | \`${file}\` | x |`,
+      ].join("\n");
+    const problems = (area: string, file: string) =>
+      lintSpec(spec({ "Tests and criteria": row(area, file) }));
+    expect(problems("snippets-scopes", "apps/daemon/test/snippets/scopes.test.ts")).toEqual([]);
+    expect(problems("scopes", "apps/daemon/test/snippets/scopes.test.ts")).toHaveLength(1);
+    expect(problems("service", "apps/daemon/test/anything/service.test.ts")).toHaveLength(1);
+    expect(problems("a-b-x", "apps/daemon/test/a/b/x.test.ts")).toHaveLength(1);
+    expect(problems("snippets-usage", "apps/daemon/test/snippets/scopes.test.ts")).toHaveLength(1);
+  });
+
   test("each Feature in the acceptance scenarios names the .feature file that runs it", () => {
     const gherkin = "```gherkin\nFeature: Sync\n\n  Scenario: a\n    Given x\n```";
     expect(lintSpec(spec({ "Acceptance scenarios": gherkin }))).toEqual([

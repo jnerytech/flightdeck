@@ -8,7 +8,7 @@ const SOURCES = new Map([
   ],
   ["scripts/test/wait-ratchet.test.ts", "const baseline = read('wait-baseline.json');"],
   ["scripts/test/other.test.ts", 'expect(x).toBe("docsy")'],
-  ["apps/daemon/test/memoria.test.ts", 'write(join(home, ".claude"), "CLAUDE.md", "docs")'],
+  ["apps/daemon/test/memory/memory.test.ts", 'write(join(home, ".claude"), "CLAUDE.md", "docs")'],
   ["apps/desktop/test/layout-ratchet.test.ts", 'resolve(DESKTOP, "layout-baseline.json")'],
   ["scripts/lib/reader.ts", 'readFileSync(".claude/settings.json")'],
 ]);
