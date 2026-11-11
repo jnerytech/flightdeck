@@ -48,7 +48,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.hostChecks?.doctor, "doctor.run"),
     ...when(opts.serviceInstall, FEATURE_SERVICE_INSTALL),
     ...when(opts.keepAwake, "keepAwake"),
-    ...when(opts.quotaPause, "quotaPause"),
+    ...when(opts.quota?.pause, "quotaPause"),
     ...when(opts.memoryPause, "memoryPause"),
     ...when(opts.hostPause, "hostPause"),
     // Issue #1478: a running session that says nothing is marked quiet (`quietSince`).
@@ -88,7 +88,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.releases, "releases"),
     ...when(opts.resources, "resources"),
     ...when(opts.worktrees, "worktrees"),
-    ...when(opts.quota, "quota"),
+    ...when(opts.quota?.windows, "quota"),
     ...when(opts.account, "account"),
     // Project rules live in the board's projects.
     ...when(opts.board, "rules"),

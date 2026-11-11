@@ -232,7 +232,7 @@ describe("cota", () => {
     });
     const server = startServer({
       manager,
-      quota,
+      quota: { windows: quota },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
@@ -278,7 +278,7 @@ describe("cota", () => {
       const { manager, root } = newManager();
       const server = startServer({
         manager,
-        ...(withQuota ? { quota } : {}),
+        ...(withQuota ? { quota: { windows: quota } } : {}),
         hostName: "h",
         bind: "127.0.0.1",
         port: 0,

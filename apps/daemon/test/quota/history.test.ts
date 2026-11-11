@@ -151,7 +151,7 @@ describe("cota-historico", () => {
     const { manager, root } = newManager();
     const server = startServer({
       manager,
-      quotaHistory: history,
+      quota: { history },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

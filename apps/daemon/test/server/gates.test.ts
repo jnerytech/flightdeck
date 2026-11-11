@@ -49,13 +49,10 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   personaSessions: "personaSessions",
   personas: "personas",
   plugins: "plugins",
-  quota: "quota",
-  quotaPause: "quotaPause",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   cardReview: "cardReview",
   releases: "releases",
-  quotaHistory: "quotaHistory",
   review: "review",
   rewinder: "rewinder",
   roi: "roi",
@@ -127,6 +124,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     doctor: "doctor.run",
     deps: "depsCheck",
   },
+  quota: {
+    windows: "quota",
+    pause: "quotaPause",
+    history: "quotaHistory",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -175,6 +177,7 @@ describe("server-gates", () => {
       ssh: {},
       snippets: {},
       hostChecks: {},
+      quota: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
