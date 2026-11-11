@@ -854,7 +854,6 @@
   "scripts/test/demo/theme-contrast.test.ts": 0.014,
   "scripts/test/demo/visual.test.ts": 0.029,
   "scripts/test/guards/blocking-audit-ratchet.test.ts": 0.001,
-  "scripts/test/guards/blocking-key-ratchet.test.ts": 0,
   "scripts/test/guards/bundle-budget.test.ts": 0,
   "scripts/test/guards/bundle-reach.test.ts": 0.014,
   "scripts/test/guards/fixed-port-ratchet.test.ts": 0.04,

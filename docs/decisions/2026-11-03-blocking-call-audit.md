@@ -9,7 +9,8 @@ Ranked by frequency × cost on Windows. "Closed" means a ratchet or an earlier f
    commands (`tray_set_menu`, `tray_set_status`, `focus_main`, `set_close_to_tray`) and the
    state-only `vault_remove_file` stay sync. `scripts/lib/blocking-audit-ratchet.ts` pins that list.
 2. **Sync project key in `session.list`, `history.list`, `messages.*`, `teams.*`** (closed by
-   `history-perf`; ratchet in `blocking-key-ratchet`).
+   `history-perf`; since #1850 its tests check that the first `session.list` and `history.list`
+   carry a cold folder's repository key, and the `blocking-key-ratchet` source count is gone).
 3. **`keys.keyFor` callbacks in `main.ts`** (closed, audited). Four remain: the usage indexer,
    the board's budget gate, the actions' project rule and the name tracker. Each folder is warmed
    first (`warmKeys` of the indexer, `Board.warmProjectKeys` and `registerProject`, `warm` of the
