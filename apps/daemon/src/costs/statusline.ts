@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { type Ack, PROTOCOL_VERSION, parseServerMessage } from "@flightdeck/protocol";
+import { z } from "zod";
 import { Config } from "../config.ts";
+import { parseJsonOr, parseJsonWith } from "../json-text.ts";
 import { daemonUrl } from "../mcp.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { Costs } from "./costs.ts";
@@ -49,12 +51,14 @@ export function statuslineText(data: StatuslineData): string {
   return parts.join(" · ");
 }
 
+/** What Claude Code sends on stdin; only the session id is used, and a wrong one reads as none. */
+const Stdin = z.looseObject({ session_id: z.string().optional().catch(undefined) });
+
 /** The config as it is on disk; `null` when there is none or it does not parse. Never writes. */
 export async function readConfig(file: string): Promise<Config | null> {
   const text = await readFile(file, "utf8").catch(() => null);
   if (text === null) return null;
-  const parsed = Config.safeParse(JSON.parse(text));
-  return parsed.success ? parsed.data : null;
+  return parseJsonOr(Config.nullable(), text, null);
 }
 
 /** `hello`, then `statusline.get`, over one WebSocket that `close` ends. */
@@ -100,9 +104,8 @@ export async function runStatusline(opts: {
   const work = (async () => {
     const config = await readConfig(opts.configFile);
     if (!config) return "";
-    const input = JSON.parse((await new Response(opts.stdin).text()) || "{}");
-    const id = typeof input.session_id === "string" ? input.session_id : undefined;
-    const asked = ask(daemonUrl(config), config.token, id);
+    const input = parseJsonWith(Stdin, (await new Response(opts.stdin).text()) || "{}");
+    const asked = ask(daemonUrl(config), config.token, input.session_id);
     close = asked.close;
     return statuslineText(await asked.data);
   })().catch(() => "");
