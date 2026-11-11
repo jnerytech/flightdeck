@@ -27,7 +27,7 @@ function setup(open: boolean) {
       ],
     },
   };
-  store.roiSummaries = (async () => [answer]) as never;
+  store.roiFigures.summaries = (async () => [answer]) as never;
   render(
     <TContext.Provider value={store.i18n.t}>
       <RoiCard
