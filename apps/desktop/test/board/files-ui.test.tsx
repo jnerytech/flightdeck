@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { FileListing } from "@flightdeck/protocol";
-import { NARROW_SHOTS } from "../../../scripts/lib/shots-narrow.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle, settleMaybe, stays } from "./wait.ts";
+import { NARROW_SHOTS } from "../../../../scripts/lib/shots-narrow.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle, settleMaybe, stays } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { BoardView } = await import("../../src/ui/BoardView.tsx");
 // The app gives its screens the language through this context (App.tsx); the panel reads it.
-const { TContext } = await import("../src/i18n/context.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

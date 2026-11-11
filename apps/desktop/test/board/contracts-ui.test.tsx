@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { BoardView } = await import("../../src/ui/BoardView.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -446,8 +446,8 @@ describe("board-contracts-ui: the project's contracts, force and the recorded no
   });
 
   test("the host's refusal reads as what the card lacks, in Portuguese too", async () => {
-    const { translateError } = await import("../src/i18n/errors.ts");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { translateError } = await import("../../src/i18n/errors.ts");
+    const { translator } = await import("../../src/i18n/index.ts");
     const why = { reason: "card_contract_unmet", params: { column: "review", needs: "pr" } };
     expect(translateError("contract_unmet", "raw", translator("en"), why).title).toBe(
       "This card isn't ready for In review: it lacks a PR link.",
@@ -573,8 +573,8 @@ describe("board-contracts-ui: a column that asks for a spec", () => {
   });
 
   test("the host's refusal names the spec in both languages", async () => {
-    const { translateError } = await import("../src/i18n/errors.ts");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { translateError } = await import("../../src/i18n/errors.ts");
+    const { translator } = await import("../../src/i18n/index.ts");
     const why = { reason: "card_contract_unmet", params: { column: "review", needs: "spec" } };
     expect(translateError("contract_unmet", "raw", translator("en"), why).title).toBe(
       "This card isn't ready for In review: it lacks a spec.",

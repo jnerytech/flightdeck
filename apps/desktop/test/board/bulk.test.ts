@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
+import { translator } from "../../src/i18n/index.ts";
 import {
   bulkRunOutcome,
   bulkSkipReason,
@@ -16,7 +16,7 @@ import {
   startQuotaLines,
   updateMany,
   updateSummary,
-} from "../src/lib/board-bulk.ts";
+} from "../../src/lib/board-bulk.ts";
 
 /**
  * #1354 (docs/decisions/2026-11-09-board-bulk-actions.md): Start N and Stop N act on the selection.

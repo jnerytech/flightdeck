@@ -6,7 +6,7 @@ import {
   dragNeeds,
   missingFor,
   startNeeds,
-} from "../src/lib/board-contracts.ts";
+} from "../../src/lib/board-contracts.ts";
 
 const card = (over: Partial<Card> = {}) =>
   ({

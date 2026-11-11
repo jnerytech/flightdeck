@@ -1,22 +1,22 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { must } from "../../daemon/test/support/helpers.ts";
-import { chooseFromCardMenu } from "./card-menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { must } from "../../../daemon/test/support/helpers.ts";
+import { chooseFromCardMenu } from "../card-menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Real git under the in-process daemon: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -564,7 +564,7 @@ describe("board-ui", () => {
     await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
     const after = details() ?? null;
     const log = screen.queryByRole("log", { name: "Conversa do card" });
-    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+    const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
     const at = css.indexOf("@utility card-info {");
     const rule = at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
     expect({
