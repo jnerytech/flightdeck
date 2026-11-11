@@ -1,0 +1,332 @@
+import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
+import { useEffect, useId, useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
+import { Form, FormActions } from "@/components/layout/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
+import { useT } from "@/i18n/context";
+import type { AppStore } from "@/lib/app-store";
+import { type AppPersona, personaInput } from "./global-personas.ts";
+import { MODELS } from "./model-select.tsx";
+
+const SELECT = "h-9 rounded-md border bg-transparent px-2";
+const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+const MODES = ["default", "acceptEdits", "plan", "dontAsk", "auto"] as const;
+
+type Place = "host" | "app" | "project";
+
+/** The models the select offers: the aliases and the ids the pack's personas use. */
+const KNOWN_MODELS: readonly string[] = [
+  ...MODELS,
+  "claude-opus-5-5",
+  "claude-sonnet-5-5",
+  "claude-haiku-5-5",
+  "claude-fable-5-1",
+];
+const OTHER = "__other__";
+
+/** The tools the checkboxes offer; a persona's own extra ones are kept among them too. */
+const KNOWN_TOOLS: readonly string[] = [
+  "Read",
+  "Grep",
+  "Glob",
+  "Bash",
+  "Edit",
+  "Write",
+  "NotebookEdit",
+  "WebFetch",
+  "WebSearch",
+  "Task",
+  "TodoWrite",
+  "mcp__flightdeck",
+];
+const KNOWN_TOOL_SET: ReadonlySet<string> = new Set(KNOWN_TOOLS);
+
+/** Where a persona lives: the app, a project, or (the default) the host. */
+function placeOf(scope: string | undefined): Place {
+  if (scope === "app" || scope === "project") return scope;
+  return "host";
+}
+
+/**
+ * Phase 20: creates or edits a persona, with a preview of what a session opened in it gets. A
+ * pack persona edited here becomes the host's version of it; the id never changes.
+ */
+export function PersonaEditor(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The chosen project's path; "" for none. */
+    project: string;
+    persona: AppPersona | null;
+    onSaved(): void;
+    onClose(): void;
+    /** Opens Settings, section Assistant (the wand found no provider). */
+    onOpenSettings(): void;
+  }>,
+) {
+  const t = useT();
+  const id = useId();
+  const saving = useBusy();
+  const { store, hostId, project, persona } = props;
+  const [pid, setPid] = useState(persona?.id ?? "");
+  const [name, setName] = useState(persona?.name ?? "");
+  const [description, setDescription] = useState(persona?.description ?? "");
+  const [icon, setIcon] = useState(persona?.icon ?? "");
+  const [model, setModel] = useState(persona?.model ?? "");
+  // A model the list does not know opens on "Other…" with it typed.
+  const [other, setOther] = useState(
+    Boolean(persona?.model) && !KNOWN_MODELS.includes(persona?.model ?? ""),
+  );
+  const [effort, setEffort] = useState<string>(persona?.effort ?? "");
+  const [tools, setTools] = useState<string[]>(persona?.tools ?? []);
+  const [mode, setMode] = useState<string>(persona?.permissionMode ?? "");
+  const [body, setBody] = useState(persona?.body ?? "");
+  const [place, setPlace] = useState<Place>(placeOf(persona?.scope));
+  const [error, setError] = useState<string | null>(null);
+
+  const input: PersonaInput = personaInput({
+    id: pid.trim(),
+    name: name.trim(),
+    description: description.trim(),
+    icon: icon.trim() || null,
+    model: model.trim() || null,
+    effort: (effort || null) as AppPersona["effort"],
+    tools: tools.length > 0 ? tools : null,
+    permissionMode: (mode || null) as AppPersona["permissionMode"],
+    body,
+  });
+  const ready =
+    pid.trim() !== "" && name.trim() !== "" && description.trim() !== "" && body.trim() !== "";
+
+  const refused = (code: string, message: string) =>
+    setError(code === "persona_secret" ? t("personas.editor.secret") : message);
+
+  const save = async () => {
+    setError(null);
+    if (place === "app") {
+      try {
+        store.personas.global.save(input);
+        return props.onSaved();
+      } catch (error_) {
+        if (!(error_ instanceof PersonaModelError)) throw error_;
+        return refused(error_.code, error_.message);
+      }
+    }
+    const result = await store.hostRequest(hostId, "personas.save", {
+      scope: place === "project" ? "project" : "host",
+      ...(place === "project" ? { projectPath: project } : {}),
+      persona: input,
+    });
+    if (result.ok) props.onSaved();
+    else refused(result.code, result.message);
+  };
+
+  const field = (key: string, label: string, control: (fid: string) => React.ReactNode) => (
+    <div className="flex flex-col gap-1 text-sm">
+      <label htmlFor={`${id}-${key}`}>{label}</label>
+      {control(`${id}-${key}`)}
+    </div>
+  );
+  const toolList = tools;
+  const toolChoices = [...KNOWN_TOOLS, ...tools.filter((tool) => !KNOWN_TOOL_SET.has(tool))];
+  // The form opens where the person is: its first field takes the focus and it scrolls into view.
+  const first = persona === null ? "id" : "name";
+  useEffect(() => {
+    const field = document.getElementById(`${id}-${first}`);
+    field?.focus();
+    field?.closest("form")?.scrollIntoView?.({ block: "nearest" });
+  }, [id, first]);
+
+  return (
+    <Form
+      variant="panel"
+      onSubmit={() => {
+        if (ready) saving.run(save);
+      }}
+    >
+      {field("id", t("personas.editor.id"), (fid) => (
+        <Input
+          id={fid}
+          value={pid}
+          disabled={persona !== null}
+          onChange={(e) => setPid(e.target.value)}
+        />
+      ))}
+      {field("name", t("personas.editor.name"), (fid) => (
+        <Input id={fid} value={name} onChange={(e) => setName(e.target.value)} />
+      ))}
+      {field("description", t("personas.editor.description"), (fid) => (
+        <AssistField
+          binding={{
+            controller: store.assistant,
+            kind: "persona.description",
+            fieldHostId: hostId,
+            ...(name.trim() ? { context: { name } } : {}),
+            openSettings: props.onOpenSettings,
+          }}
+          value={description}
+          onChange={setDescription}
+          t={t}
+        >
+          {(assist) => (
+            <Input
+              id={fid}
+              {...assist}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          )}
+        </AssistField>
+      ))}
+      {field("icon", t("personas.editor.icon"), (fid) => (
+        <Input id={fid} value={icon} onChange={(e) => setIcon(e.target.value)} />
+      ))}
+      {field("model", t("personas.editor.model"), (fid) => (
+        <select
+          id={fid}
+          className={SELECT}
+          value={other ? OTHER : model}
+          onChange={(e) => {
+            const choice = e.target.value;
+            setOther(choice === OTHER);
+            setModel(choice === OTHER ? "" : choice);
+          }}
+        >
+          <option value="">{t("personas.editor.none")}</option>
+          {KNOWN_MODELS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+          <option value={OTHER}>{t("personas.editor.otherModel")}</option>
+        </select>
+      ))}
+      {other &&
+        field("model-other", t("personas.editor.otherModelLabel"), (fid) => (
+          <Input id={fid} value={model} onChange={(e) => setModel(e.target.value)} />
+        ))}
+      {field("effort", t("personas.editor.effort"), (fid) => (
+        <select
+          id={fid}
+          className={SELECT}
+          value={effort}
+          onChange={(e) => setEffort(e.target.value)}
+        >
+          <option value="">{t("personas.editor.none")}</option>
+          {EFFORTS.map((e) => (
+            <option key={e} value={e}>
+              {e}
+            </option>
+          ))}
+        </select>
+      ))}
+      {/* Issue #237: one checkbox per tool, so each click adds or removes that tool only (a
+          native multi-select dropped the others on a plain click). */}
+      <fieldset className="flex flex-col gap-1 text-sm">
+        <legend>{t("personas.editor.tools")}</legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {toolChoices.map((tool) => (
+            <label key={tool} className="hit-inline gap-2">
+              <input
+                type="checkbox"
+                className="hit-control"
+                checked={tools.includes(tool)}
+                onChange={(e) =>
+                  setTools(
+                    toolChoices.filter((choice) =>
+                      choice === tool ? e.target.checked : tools.includes(choice),
+                    ),
+                  )
+                }
+              />
+              {tool}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {field("mode", t("personas.editor.mode"), (fid) => (
+        <select id={fid} className={SELECT} value={mode} onChange={(e) => setMode(e.target.value)}>
+          <option value="">{t("personas.editor.none")}</option>
+          {MODES.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      ))}
+      {field("body", t("personas.editor.body"), (fid) => (
+        <AssistField
+          binding={{
+            controller: store.assistant,
+            kind: "persona.instructions",
+            fieldHostId: hostId,
+            context: {
+              ...(name.trim() ? { name } : {}),
+              ...(description.trim() ? { description } : {}),
+            },
+            openSettings: props.onOpenSettings,
+          }}
+          value={body}
+          onChange={setBody}
+          t={t}
+        >
+          {(assist) => (
+            <Textarea
+              id={fid}
+              {...assist}
+              rows={6}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+            />
+          )}
+        </AssistField>
+      ))}
+      {persona === null &&
+        field("place", t("personas.editor.place"), (fid) => (
+          <select
+            id={fid}
+            className={SELECT}
+            value={place}
+            onChange={(e) => setPlace(e.target.value as Place)}
+          >
+            <option value="host">{t("personas.editor.placeOption.host")}</option>
+            <option value="app">{t("personas.editor.placeOption.app")}</option>
+            {project && <option value="project">{t("personas.editor.placeOption.project")}</option>}
+          </select>
+        ))}
+      <section
+        aria-label={t("personas.editor.preview")}
+        className="flex flex-col gap-1 rounded-md bg-muted/40 p-3 text-sm"
+      >
+        <p className="font-medium">{t("personas.editor.appended")}</p>
+        <p className="whitespace-pre-wrap font-mono text-xs">{body}</p>
+        <p>
+          {t("personas.editor.modelLine", {
+            model: model.trim() || t("personas.editor.sessionDefault"),
+            effort: effort || t("personas.editor.sessionDefault"),
+          })}
+        </p>
+        <p>
+          {toolList.length > 0
+            ? t("personas.editor.toolsOnly", { tools: toolList.join(", ") })
+            : t("personas.editor.toolsAll")}
+        </p>
+        {mode && <p>{t("personas.editor.modeLine", { mode })}</p>}
+      </section>
+      {error && (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
+      <FormActions
+        submit={t("personas.editor.save")}
+        busy={saving.busy}
+        disabled={!ready}
+        cancel={t("common.cancel")}
+        onCancel={props.onClose}
+      />
+    </Form>
+  );
+}
