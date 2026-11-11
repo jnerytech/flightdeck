@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
-import { KnowledgeCreate } from "./knowledge-create";
-import { KnowledgeFeedSwitch } from "./knowledge-feed-switch";
+import { KnowledgeCreate } from "./knowledge-create.tsx";
+import { KnowledgeFeedSwitch } from "./knowledge-feed-switch.tsx";
 
 type Status = KnowledgeEntry["status"];
 const STATUSES: readonly Status[] = ["valid", "transitional", "obsolete", "unclassified"];
