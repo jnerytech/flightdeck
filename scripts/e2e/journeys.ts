@@ -2924,6 +2924,111 @@ async function activeTabProblem(page: Page): Promise<string | null> {
   return problems.length ? problems.join("; ") : null;
 }
 
+/**
+ * The tabs are flat, as in VS Code (#488, #1850): a tab has a thin line on its right and no box of
+ * its own, the active one has the content's background and full-contrast text while the others
+ * are dimmer, and the bar's lower line is a shadow painted under the tabs, not a border.
+ * Measured on the rendered bar, not read from the stylesheet.
+ */
+async function flatTabsProblem(page: Page): Promise<string | null> {
+  const found = await page.evaluate(() => {
+    const bar = document.querySelector<HTMLElement>(".tab-bar");
+    if (!bar) return ["no tab bar"];
+    const items = [...bar.querySelectorAll<HTMLElement>(".tab-item:not([data-pinned])")];
+    const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
+    const other = items.find((it) => it !== active);
+    if (!active || !other) return ["need an active tab and another one"];
+    // What a token resolves to on this page: a probe painted with it, read back as a colour.
+    const token = (property: "background-color" | "color", value: string) => {
+      const probe = document.createElement("span");
+      probe.style.setProperty(property, value);
+      document.body.append(probe);
+      const resolved = getComputedStyle(probe).getPropertyValue(property);
+      probe.remove();
+      return resolved;
+    };
+    const found: string[] = [];
+    const flat = (el: HTMLElement) => {
+      const css = getComputedStyle(el);
+      const box = [css.borderTopWidth, css.borderBottomWidth, css.borderLeftWidth].join(" ");
+      const round = [css.borderTopLeftRadius, css.borderTopRightRadius].join(" ");
+      return `${css.borderRightWidth} ${box} ${round}`;
+    };
+    for (const [name, el] of [
+      ["active", active],
+      ["other", other],
+    ] as const) {
+      if (flat(el) !== "1px 0px 0px 0px 0px 0px")
+        found.push(`the ${name} tab has a box (${flat(el)}), not only a line on its right`);
+    }
+    const look = (el: HTMLElement) => {
+      const css = getComputedStyle(el);
+      return `${css.backgroundColor} ${css.color}`;
+    };
+    const joined = `${token("background-color", "var(--color-background)")} ${token("color", "var(--color-foreground)")}`;
+    if (look(active) !== joined)
+      found.push(`the active tab is ${look(active)}, not the content's ${joined}`);
+    const dim = token("color", "var(--color-muted-foreground)");
+    if (getComputedStyle(other).color !== dim)
+      found.push(`an inactive tab is ${getComputedStyle(other).color}, not the dimmer ${dim}`);
+    const barCss = getComputedStyle(bar);
+    if (!barCss.boxShadow.includes("inset") || barCss.borderBottomWidth !== "0px")
+      found.push(`the bar's lower line is not a shadow under the tabs (${barCss.boxShadow})`);
+    return found;
+  });
+  return found.length ? found.join("; ") : null;
+}
+
+/**
+ * One weight scale (#1850): 600 for titles and primary buttons, 500 for filters, pills and the
+ * other buttons, 400 for the rest; in the sidebar the items are plain text and only the page you
+ * are on is label weight. Measured on the rendered page; the buttons are probes, so the rule is
+ * checked whatever screen is open.
+ */
+async function weightScaleProblem(page: Page): Promise<string | null> {
+  const found = await page.evaluate(() => {
+    const weight = (el: Element) => getComputedStyle(el).fontWeight;
+    const found: string[] = [];
+    const scale = getComputedStyle(document.documentElement);
+    const tokens = ["--weight-strong", "--weight-label", "--weight-text"].map((name) =>
+      scale.getPropertyValue(name).trim(),
+    );
+    if (tokens.join(" ") !== "600 500 400") found.push(`the weight scale is ${tokens.join(" ")}`);
+    for (const [variant, expected] of [
+      ["default", "600"],
+      ["destructive", "600"],
+      ["outline", "500"],
+      ["secondary", "500"],
+      ["ghost", "500"],
+    ] as const) {
+      const probe = document.createElement("button");
+      probe.dataset.slot = "button";
+      probe.dataset.variant = variant;
+      document.body.append(probe);
+      if (weight(probe) !== expected)
+        found.push(`a ${variant} button is ${weight(probe)}, not ${expected}`);
+      probe.remove();
+    }
+    const current = document.querySelector<HTMLElement>(
+      "[data-slot='sidebar-body'] button[aria-current='page']",
+    );
+    const rest = [...(current?.parentElement?.querySelectorAll("button") ?? [])].filter(
+      (it) =>
+        it !== current &&
+        it.getAttribute("aria-current") !== "page" &&
+        !it.matches("[data-slot='button']"),
+    );
+    if (!current || rest.length === 0) return [...found, "the sidebar lists no page and others"];
+    if (weight(current) !== "500")
+      found.push(`the sidebar's current page is ${weight(current)}, not 500`);
+    for (const item of rest)
+      if (weight(item) !== "400")
+        found.push(`a sidebar item (${item.textContent?.trim()}) is ${weight(item)}, not 400`);
+    return found;
+  });
+  return found.length ? found.join("; ") : null;
+}
+
 /** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
 const crowdedWindow = (c: Context, first: Route, count = 12) =>
   JSON.stringify({
@@ -3118,6 +3223,10 @@ export async function layoutAbas(c: Context, problems: string[]) {
   await openCrowded(c, { name: "hub" }, 2);
   const activeTab = await activeTabProblem(c.page);
   if (activeTab) problems.push(`${c.lang} 1280x800 aba ativa: ${activeTab}`);
+  const flatTabs = await flatTabsProblem(c.page);
+  if (flatTabs) problems.push(`${c.lang} 1280x800 abas planas: ${flatTabs}`);
+  const weights = await weightScaleProblem(c.page);
+  if (weights) problems.push(`${c.lang} 1280x800 escala de peso: ${weights}`);
   // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than
   // "Settings"); since #488 it has a row of its own over the area.
   const lefts: number[] = [];
