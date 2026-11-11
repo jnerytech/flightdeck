@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { overBaseline } from "../../lib/layout-ratchet.ts";
 import { flatTestCounts } from "../../lib/test-layout.ts";
@@ -48,10 +48,9 @@ describe("test-layout (#1610)", () => {
       cwd: ROOT,
       encoding: "utf8",
     }).stdout.split("\n");
+    expect(paths.length).toBeGreaterThan(500);
     const counts = flatTestCounts(paths);
-    expect(counts["apps/desktop/test"]).toBeGreaterThan(0);
-    const file = join(ROOT, "test-layout-baseline.json");
-    const baseline = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
+    const baseline = JSON.parse(readFileSync(join(ROOT, "test-layout-baseline.json"), "utf8"));
     expect(overBaseline(counts, baseline)).toEqual([]);
   });
 });
