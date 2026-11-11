@@ -1,7 +1,5 @@
 import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { AssistantSettings } from "@/components/assistant/assistant-settings";
-import { BackupAllPanel } from "@/components/backup/backup-all-panel";
-import { BackupSchedulePanel } from "@/components/backup/backup-schedule-panel";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -11,6 +9,8 @@ import { DiagnosticsPanel } from "@/components/settings/diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WatchSettingsSection } from "@/components/watch/watch-settings-section";
+import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
+import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppUpdateState } from "../features/appupdate/index.ts";
 import type { Settings as SettingsState } from "../features/settings/index.ts";

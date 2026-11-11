@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
-const { BackupAllPanel } = await import("../../src/components/backup/backup-all-panel.tsx");
+const { BackupAllPanel } = await import("../../src/features/backup/backup-all-panel.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
