@@ -28,11 +28,15 @@ export function layoutLike(text: string | null, value: unknown): string {
 }
 
 /** The JSON of `text` checked against `schema`; throws when the text is not JSON or does not fit. */
-export function parseJsonWith<T>(_schema: z.ZodType<T>, _text: string): T {
-  return undefined as T;
+export function parseJsonWith<T>(schema: z.ZodType<T>, text: string): T {
+  return schema.parse(parseJsonText(text));
 }
 
 /** Like `parseJsonWith`, but `fallback` for text that is not JSON or does not fit `schema`. */
-export function parseJsonOr<T>(_schema: z.ZodType<T>, _text: string, fallback: T): T {
-  return fallback;
+export function parseJsonOr<T>(schema: z.ZodType<T>, text: string, fallback: T): T {
+  try {
+    return parseJsonWith(schema, text);
+  } catch {
+    return fallback;
+  }
 }

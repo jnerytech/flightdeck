@@ -21,7 +21,9 @@ describe("parseJsonWith", () => {
 
 describe("parseJsonOr", () => {
   test("returns the value when the text fits the schema", () => {
-    expect(parseJsonOr(Auto, '{"workflow":"build"}', { workflow: null })).toEqual({ workflow: "build" });
+    expect(parseJsonOr(Auto, '{"workflow":"build"}', { workflow: null })).toEqual({
+      workflow: "build",
+    });
   });
   test("returns the fallback when the text is not JSON", () => {
     expect(parseJsonOr(Auto, "{nope", { workflow: null })).toEqual({ workflow: null });

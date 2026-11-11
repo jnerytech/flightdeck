@@ -41,4 +41,14 @@ describe("row-json: a card row whose JSON columns do not fit", () => {
     const read = board.listProjects().find((p) => p.id === project.id);
     expect([read?.personaByColumn, read?.contractByColumn]).toEqual([{}, {}]);
   });
+
+  test("a per-column map keeps the columns it knows and drops a key that is no column", async () => {
+    const { board, store, repo } = newBoard();
+    const project = await board.addProject({ path: repo });
+    store.db
+      .query("UPDATE projects SET persona_by_column = ? WHERE id = ?")
+      .run('{"review":"p1","legacy_col":"p2"}', project.id);
+    const read = board.listProjects().find((p) => p.id === project.id);
+    expect(read?.personaByColumn).toEqual({ review: "p1" });
+  });
 });

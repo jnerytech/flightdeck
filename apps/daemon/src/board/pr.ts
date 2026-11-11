@@ -3,6 +3,7 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
+import { parseChecks, parsePrUrl } from "./gh-json.ts";
 import { azureDetails, githubDetails, type PrDetails } from "./pr-details.ts";
 import type { ChecksState, PrProviderKind, PrState } from "./types.ts";
 
@@ -504,7 +505,7 @@ export class GithubCli extends CliProvider implements PrProvider {
         { what: "gh pr checks", output: result.stderr.trim() },
       );
     }
-    const rows = JSON.parse(result.stdout) as Array<{ name: string; bucket: string; link: string }>;
+    const rows = parseChecks(result.stdout);
     const { mergeable } = await this.json<{ mergeable: string }>(
       "gh",
       ["pr", "view", prUrl, "--json", "mergeable"],
@@ -545,8 +546,7 @@ export class GithubCli extends CliProvider implements PrProvider {
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
     const result = await this.call("gh", ["pr", "view", head, "--json", "url"], cwd);
-    if (result.code !== 0) return null;
-    return (JSON.parse(result.stdout) as { url: string }).url;
+    return result.code === 0 ? parsePrUrl(result.stdout) : null;
   }
 }
 
