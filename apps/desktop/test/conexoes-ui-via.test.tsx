@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { type SshDaemonOptions, sshDaemon, sshTarget } from "./ssh-daemon.ts";
+import { type SshDaemonOptions, sshDaemon, sshTarget } from "./ssh/daemon.ts";
 import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();

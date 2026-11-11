@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { SshHostKeyCheck } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sshDaemon, sshTarget } from "./ssh-daemon.ts";
+import { sshDaemon, sshTarget } from "./ssh/daemon.ts";
 import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();

@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { git } from "../../daemon/test/support/board-helpers.ts";
-import { chooseFromAccountMenu } from "./account-menu.ts";
+import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";

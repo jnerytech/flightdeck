@@ -1,0 +1,42 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import type { Snippet } from "@flightdeck/protocol";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import type { AppStore } from "../../src/lib/app-store.ts";
+import { daemon as makeDaemon, TOKEN } from "../fixtures.ts";
+
+/** A real daemon with snippets and a git project "repo" on its board; `file` is its versioned snippets.yaml. */
+export async function snippetsHost(
+  cleanups: Array<() => unknown>,
+  store: AppStore,
+  options: Parameters<typeof makeDaemon>[1] = { snippets: true, terminals: true },
+) {
+  const d = makeDaemon(cleanups, options);
+  const repo = join(d.root, "repo");
+  mkdirSync(repo);
+  git(repo, "init", "-q", "-b", "main");
+  writeFileSync(join(repo, "README.md"), "# repo\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-q", "-m", "inicial");
+  const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  // Seeding needs the connection: wait until the host is online.
+  const deadline = Date.now() + 5000;
+  while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
+    await Bun.sleep(10);
+  }
+  const project = await store.hostCommand(hostId, "project.add", { path: repo });
+  // The daemon registers the folder in its real form (on Windows a temp folder given by its short
+  // 8.3 name comes back long, and the drive letter may change case): the screens list that one, so
+  // the tests that pick the project by its path use it too.
+  const registered = project?.path ?? repo;
+  const save = async (input: Record<string, unknown>): Promise<Snippet> =>
+    (await store.hostCommand(hostId, "snippets.save", {
+      scope: "host",
+      ...input,
+    } as never)) as Snippet;
+  const writeFile = (text: string) => {
+    mkdirSync(join(repo, ".flightdeck"), { recursive: true });
+    writeFileSync(join(repo, ".flightdeck", "snippets.yaml"), text);
+  };
+  return { d, hostId, repo: registered, save, writeFile };
+}

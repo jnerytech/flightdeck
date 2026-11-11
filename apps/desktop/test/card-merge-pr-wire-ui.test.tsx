@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { personasHost } from "./personas-ui-setup.ts";
+import { personasHost } from "./personas/ui-setup.ts";
 import { settle, settleMaybe } from "./wait.ts";
 
 registerDom();

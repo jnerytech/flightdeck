@@ -1,0 +1,184 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settle } from "../wait.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { SessionView } = await import("../../src/ui/SessionView.tsx");
+const { emptySession } = await import("../../src/lib/session-state.ts");
+
+afterEach(cleanup);
+
+/** A promise the test settles by hand. */
+function gate() {
+  let open: () => void = () => {};
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, open };
+}
+
+const press = async (name: string | RegExp) => {
+  const button = screen.queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+};
+const busy = (name: string | RegExp) =>
+  screen.queryByRole("button", { name })?.getAttribute("aria-busy");
+
+function actions(over: Record<string, () => Promise<void>> = {}) {
+  const calls: string[] = [];
+  const base = {
+    send: async (text: string) => void calls.push(`send:${text}`),
+    interrupt: async () => void calls.push("interrupt"),
+    close: async () => void calls.push("close"),
+    resume: async () => void calls.push("resume"),
+    respond: async () => {},
+  };
+  return { calls, actions: { ...base, ...over } as typeof base };
+}
+
+describe("sessao-clique: the session screen answers a click", () => {
+  test("Parar is busy while the interrupt works, and a second click does nothing", async () => {
+    const work = gate();
+    const a = actions({ interrupt: () => work.promise });
+    let interrupts = 0;
+    const counted = {
+      ...a.actions,
+      interrupt: () => {
+        interrupts++;
+        return work.promise;
+      },
+    };
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "running" }}
+        actions={counted}
+      />,
+    );
+    await press("Parar o turno");
+    expect(busy(/Parar o turno/)).toBe("true");
+    await press(/Parar o turno/);
+    expect(interrupts).toBe(1);
+    work.open();
+    await settle(() => busy(/Parar o turno/) === null);
+    expect(busy(/Parar o turno/)).toBeNull();
+  });
+
+  test("Retomar is busy while the session resumes", async () => {
+    const work = gate();
+    const a = actions({ resume: () => work.promise });
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "ended" }}
+        actions={a.actions}
+      />,
+    );
+    await press("Retomar");
+    expect(busy(/Retomar/)).toBe("true");
+    work.open();
+    await settle(() => busy(/Retomar/) === null);
+    expect(busy(/Retomar/)).toBeNull();
+  });
+
+  test("Encerrar is busy from the confirmation until the session is closed", async () => {
+    const work = gate();
+    const a = actions({ close: () => work.promise });
+    render(
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
+    );
+    await press("Encerrar");
+    await press("Encerrar sessão");
+    await settle(() => busy(/Encerrar/) === "true");
+    expect(busy(/Encerrar/)).toBe("true");
+    work.open();
+    await settle(() => busy(/Encerrar/) === null);
+    expect(busy(/Encerrar/)).toBeNull();
+  });
+
+  test("Enter with an empty box is not dead: it puts the cursor in the box", async () => {
+    const a = actions();
+    render(
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
+    );
+    (document.body as HTMLElement).focus();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByLabelText("Mensagem"), { key: "Enter" });
+    });
+    expect(document.activeElement).toBe(screen.queryByLabelText("Mensagem"));
+    expect(a.calls).toEqual([]);
+  });
+
+  test("Enviar sends the text and empties the box", async () => {
+    const a = actions();
+    render(
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
+    );
+    await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Mensagem") as HTMLElement, {
+        target: { value: "  oi  " },
+      });
+    });
+    await press("Enviar");
+    expect(a.calls).toEqual(["send:oi"]);
+    expect((screen.queryByLabelText("Mensagem") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  test("the header keeps the buttons in one row aligned at the bottom, and the persona controls in a row of their own", async () => {
+    const a = actions();
+    render(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "idle" }}
+        actions={a.actions}
+        terminal={<button type="button">Terminal</button>}
+        persona={<div data-testid="persona">Aplicar persona</div>}
+      />,
+    );
+    const controls = document.querySelector("[data-slot='session-controls']");
+    const extra = document.querySelector("[data-slot='session-extra']");
+    expect(controls?.className ?? "").toContain("items-end");
+    expect(controls?.textContent ?? "").toContain("Terminal");
+    expect(controls?.textContent ?? "").toContain("Encerrar");
+    expect(controls?.textContent ?? "").not.toContain("Parar");
+    expect(controls?.querySelector("[data-testid='persona']")).toBeNull();
+    expect(extra?.querySelector("[data-testid='persona']")).not.toBeNull();
+  });
+
+  test("while a turn runs Enviar becomes Parar, with a live status; Esc in the box stops it too", async () => {
+    const a = actions();
+    const { rerender } = render(
+      <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={a.actions} />,
+    );
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "oi" } });
+    expect(screen.queryByRole("button", { name: "Enviar" })).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "" } });
+    expect(screen.queryByRole("button", { name: "Parar o turno" })).toBeNull();
+    rerender(
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "running" }}
+        actions={a.actions}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
+    const status = screen.queryByRole("status", { name: "Trabalhando…" });
+    expect(status).not.toBeNull();
+    expect(status?.getAttribute("aria-live")).toBe("polite");
+    await act(async () => {
+      fireEvent.keyDown(screen.queryByLabelText("Mensagem") as HTMLElement, { key: "Escape" });
+    });
+    expect(a.calls).toEqual(["interrupt"]);
+    await press("Parar o turno");
+    expect(a.calls).toEqual(["interrupt", "interrupt"]);
+    expect(document.querySelector("[data-slot='session-controls']")?.textContent).not.toContain(
+      "Parar",
+    );
+  });
+});

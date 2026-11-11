@@ -3,7 +3,7 @@ import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
-import { personasHost } from "./personas-ui-setup.ts";
+import { personasHost } from "./personas/ui-setup.ts";
 import { settle, uiIdle } from "./wait.ts";
 
 registerDom();

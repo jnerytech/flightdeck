@@ -3,7 +3,7 @@ import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
-import { snippetsHost } from "./snippets-ui-setup.ts";
+import { snippetsHost } from "./snippets/ui-setup.ts";
 import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
