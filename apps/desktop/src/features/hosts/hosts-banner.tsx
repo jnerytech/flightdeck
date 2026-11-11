@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { T } from "@/i18n/index";
 import type { HostView } from "@/lib/app-store";
 import { hostsBanner } from "@/lib/host-status";
-import { HostStatusBadge } from "./host-status-badge";
+import { HostStatusBadge } from "./host-status-badge.tsx";
 
 /**
  * The list's strip for hosts that are not online: one compact line ("2 hosts com problema") that

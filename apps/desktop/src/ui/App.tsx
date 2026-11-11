@@ -17,6 +17,7 @@ import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/to
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
+import { draftFromLink } from "@/features/hosts/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
@@ -35,7 +36,6 @@ import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
-import { draftFromLink } from "./HostForm.tsx";
 import { preloadMarkdown } from "./Markdown.tsx";
 import { NotificationBell } from "./NotificationBell.tsx";
 import { ShortcutsSheet } from "./ShortcutsSheet.tsx";

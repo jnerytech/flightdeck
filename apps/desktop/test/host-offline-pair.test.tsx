@@ -7,7 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
-const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+const { HostOfflineBanner } = await import("../src/features/hosts/host-offline-banner.tsx");
 
 afterEach(() => cleanup());
 

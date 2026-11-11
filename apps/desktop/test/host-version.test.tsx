@@ -8,9 +8,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { HostVersionLine, HostVersionTip } = await import(
-  "../src/components/hosts/host-version.tsx"
-);
+const { HostVersionLine, HostVersionTip } = await import("../src/features/hosts/host-version.tsx");
 
 afterEach(() => cleanup());
 

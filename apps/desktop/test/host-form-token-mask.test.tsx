@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { HostForm } = await import("../src/ui/HostForm.tsx");
+const { HostForm } = await import("../src/features/hosts/host-form.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

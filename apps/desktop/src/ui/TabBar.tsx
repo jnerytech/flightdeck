@@ -31,7 +31,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
-import { HostDot } from "@/components/hosts/host-dot";
 import { CacheTimer } from "@/components/hub/cache-timer";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { TabOverflow } from "@/components/tabs/tab-overflow";
@@ -42,6 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HostDot } from "@/features/hosts/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
 import { isProd } from "../features/ssh/index.ts";

@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
-import { HostDot } from "@/components/hosts/host-dot";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HostDot } from "@/features/hosts/index.ts";
 import type { Key, T } from "@/i18n/index";
 import { hostDotView } from "@/lib/host-status";
 import type { Theme } from "@/lib/theme";

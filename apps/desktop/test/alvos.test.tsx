@@ -10,7 +10,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { HostsBanner } = await import("../src/components/hosts/hosts-banner.tsx");
+const { HostsBanner } = await import("../src/features/hosts/hosts-banner.tsx");
 const { DiffView } = await import("../src/ui/DiffView.tsx");
 
 setDefaultTimeout(20_000);

@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, screen, within, waitFor } = await impor
   "@testing-library/react"
 );
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { HostOverview } = await import("../src/components/hosts/host-overview.tsx");
+const { HostOverview } = await import("../src/features/hosts/host-overview.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);

@@ -13,7 +13,7 @@ const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { HostAccount } = await import("../src/ui/HostAccount.tsx");
+const { HostAccount } = await import("../src/features/hosts/host-account.tsx");
 
 setDefaultTimeout(20_000);
 

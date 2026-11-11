@@ -3,9 +3,9 @@ import { type KeyboardEvent, type ReactElement, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { HostDot } from "@/features/hosts/index.ts";
 import type { T } from "@/i18n/index";
 import { cn } from "@/lib/utils";
-import { HostDot } from "../hosts/host-dot.tsx";
 
 /** One tab as the list of all tabs shows it. */
 export interface TabRow {
