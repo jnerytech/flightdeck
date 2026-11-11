@@ -38,6 +38,11 @@ const write = (path: string, text: string) => {
 const argv = process.argv.slice(2).filter((arg) => arg !== "--");
 const baseAt = argv.indexOf("--base");
 const base = baseAt >= 0 ? argv[baseAt + 1] : undefined;
+// A `--base` with no ref is a mistake, never a silent run of the whole suite (#1761 review).
+if (baseAt >= 0 && !base) {
+  console.error("shard-gate: --base needs a ref");
+  process.exit(2);
+}
 const [command, a = "", b = "", c = ""] = argv.filter(
   (_, i) => baseAt < 0 || (i !== baseAt && i !== baseAt + 1),
 );
