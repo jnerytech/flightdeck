@@ -4,7 +4,6 @@
  * (`page.tsx`) and the editor are left out on purpose: `ui/Screens.tsx` loads the page as a lazy
  * chunk, and exporting it here would pull it into the main bundle.
  */
-
 export { type AppPersona, GlobalPersonas, personaInput } from "./global-personas.ts";
 export { ModelSelect } from "./model-select.tsx";
 export { type PermissionChoice, PermissionSelect } from "./permission-select.tsx";
