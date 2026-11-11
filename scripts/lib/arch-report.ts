@@ -21,6 +21,9 @@ export type ArchInputs = {
   /** Dead-code findings by kind today (knip) and in knip-baseline.json. */
   knipCounts: Record<string, number>;
   knipBaseline: Record<string, number>;
+  /** Raw `JSON.parse` calls per source file today and in json-parse-baseline.json. */
+  jsonParseCounts: Record<string, number>;
+  jsonParseBaseline: Record<string, number>;
 };
 
 /** One row per ratchet figure, sorted by name. */
