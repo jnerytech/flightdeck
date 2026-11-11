@@ -230,7 +230,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
 
   test("Prever goes busy and asks the host once", async () => {
     const preview = slow();
-    const store = { previewVaultUse: preview.call } as unknown as AppStore;
+    const store = { vaultRules: { preview: preview.call } } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>
         <RulesPreview store={store} secretId="s1" />
@@ -244,10 +244,8 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
   test("Salvar regras goes busy and saves once, and a refusal brings the button back", async () => {
     const save = slow();
     const store = {
-      vaultRules: () => [],
+      vaultRules: { get: () => [], preview: () => Promise.resolve(null), set: save.call },
       getState: () => ({ clientList: [] }),
-      previewVaultUse: () => Promise.resolve(null),
-      setVaultRules: save.call,
     } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>

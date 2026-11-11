@@ -41,7 +41,6 @@ import type {
   TeamsUpdatedFrame,
   TerminalInfo,
   VaultRequestFrame,
-  VaultVerdict,
   WatchInfo,
   WatchSettings,
   WorkflowRun,
@@ -114,6 +113,7 @@ import {
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
+import { VaultRulesSlice } from "../features/vault/index.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
@@ -136,13 +136,6 @@ import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
 import { ALL_CLIENTS, ClientScope, loadSelection, saveSelection } from "./client-scope.ts";
-import {
-  effectiveRules,
-  isGeneratedRule,
-  SCOPE_RULE_PREFIX,
-  scopingClient,
-  stripGenerated,
-} from "./client-vault.ts";
 import { type Client, Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
@@ -422,9 +415,6 @@ export interface AppUpdateState {
 
 /** How often the app looks for its own update while open. */
 const APP_UPDATE_INTERVAL_MS = 6 * 3_600_000;
-
-/** How long the app waits for changes to settle before it sends scoped rules again. */
-const VAULT_SCOPE_DELAY_MS = 300;
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
 /** What a host's terminals say to the one following them. */
@@ -1165,7 +1155,19 @@ export class AppStore {
       this.clearShownUnread();
     });
     this.vault = new Vault(platform);
-    this.rules = new VaultRules(platform.storage);
+    this.vaultRules = new VaultRulesSlice({
+      rules: new VaultRules(platform.storage),
+      secrets: () => this.vault.list(),
+      hosts: () => this.state.hosts,
+      clients: () => this.state.clientList,
+      projectKeysOf: (clientId) => this.clientScope().projectKeysOf(clientId),
+      secretsChanged: () => this.update({ secrets: this.vault.list() }),
+      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+      preview: (hostId, payload) => this.hostCommand(hostId, "vault.rules.preview", payload),
+      fail: (error, text) => this.fail(error, text),
+      success: (text) => this.success(text),
+      t: () => this.i18n.t,
+    });
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
@@ -3029,8 +3031,7 @@ export class AppStore {
     this.hostUpdate.dispose();
     this.backupScheduler.dispose();
     this.clientBudgets.dispose();
-    if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
-    this.vaultScopeTimer = null;
+    this.vaultRules.dispose();
     this.theme.stop();
   }
 
@@ -3352,7 +3353,7 @@ export class AppStore {
       this.startPeersSync();
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
-    if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
+    if (hasFeature(hostInfo?.features, "actions", false)) this.vaultRules.onConnect(hostId, conn);
     void this.health.check(hostId);
     // Not awaited, as the health check: a reload of the host's info never waits on the offer.
     if (hasFeature(hostInfo?.features, FEATURE_RESUME_OFFER, false))
@@ -3708,8 +3709,8 @@ export class AppStore {
   /** Phase 16: the vault, whose values live in the system keyring. */
   readonly vault: Vault;
 
-  /** Phase 19: each secret's usage rules, kept with the vault. */
-  private readonly rules: VaultRules;
+  /** Phase 19: each secret's usage rules, kept with the vault and handed to the hosts (#1596). */
+  readonly vaultRules: VaultRulesSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
@@ -3771,7 +3772,7 @@ export class AppStore {
       clientOverrides: this.clients.overrides(),
       clientSelection: valid ? kept : ALL_CLIENTS,
     });
-    this.scheduleVaultScope();
+    this.vaultRules.scopeChanged();
     this.clientBudgets.onLimitsChanged();
   }
 
@@ -4250,230 +4251,6 @@ export class AppStore {
     this.peersTimer ??= setInterval(sync, this.options.peersSyncMs ?? 5000);
   }
 
-  /** Phase 19: a secret's usage rules, in order. */
-  vaultRules(secretId: string): unknown[] {
-    return this.rules.get(secretId);
-  }
-
-  /**
-   * Phase 19: replaces a secret's rules. The connected hosts check them (the ceiling) and keep a
-   * copy; a refusal comes back with the daemon's reason and nothing is saved.
-   */
-  async setVaultRules(
-    secretId: string,
-    rules: unknown[],
-  ): Promise<{ ok: true } | Extract<HostResult<never>, { ok: false }>> {
-    const secret = this.vault.list().find((s) => s.id === secretId);
-    const accepted: string[] = [];
-    let refusal: Extract<HostResult<never>, { ok: false }> | null = null;
-    for (const host of this.state.hosts) {
-      if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
-      const result =
-        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.hostRequest(
-          host.id,
-          "vault.rules.set",
-          {
-            secretId,
-            tags: secret.tags,
-            rules: this.effectiveVaultRules(secret, rules),
-          },
-        );
-      if (!result.ok) {
-        refusal = result;
-        break;
-      }
-      accepted.push(host.id);
-    }
-    if (refusal && secret) {
-      // The hosts that took the refused set go back to the saved one: none keeps rules the
-      // app did not save (they could be looser).
-      const saved = this.rules.get(secretId);
-      await inSequence(accepted, async (hostId) => {
-        await this.hostRequest(hostId, "vault.rules.set", {
-          secretId,
-          tags: secret.tags,
-          rules: this.effectiveVaultRules(secret, saved),
-        });
-      });
-      return refusal;
-    }
-    this.rules.set(secretId, rules);
-    for (const hostId of accepted) {
-      this.vaultScopeSent.set(
-        `${hostId}/${secretId}`,
-        JSON.stringify(this.effectiveVaultRules(secret as SecretMeta, rules)),
-      );
-    }
-    // The screens that judge the rules (the clients' check) read them again.
-    this.update({ secrets: this.vault.list() });
-    return { ok: true };
-  }
-
-  /** Rules the daemon is sent for a secret: its own, with its client's scope in front (phase 29). */
-  private effectiveVaultRules(secret: SecretMeta, own: unknown[]): unknown[] {
-    const scope = this.clientScope();
-    return effectiveRules(secret, own, this.state.clientList, (id) => scope.projectKeysOf(id));
-  }
-
-  /** A secret's rules as a host holds them, without the ones a client generated; null when it does not answer. */
-  async readHostVaultRules(hostId: string, secretId: string): Promise<unknown[] | null> {
-    const result = await this.hostRequest(hostId, "vault.rules.get", { secretId });
-    return result.ok ? stripGenerated(result.data.rules) : null;
-  }
-
-  /** What was last sent of each secret to each host (`hostId/secretId`), as text. */
-  private readonly vaultScopeSent = new Map<string, string>();
-  private vaultScopeTimer: ReturnType<typeof setTimeout> | null = null;
-  /** The send going on, or the last one: the next look waits for it, so two never overlap. */
-  private vaultScopeRun: Promise<void> = Promise.resolve();
-  /** Sends not finished yet: what they carry is not in `vaultScopeSent` until the host answers. */
-  private vaultScopeBusy = 0;
-
-  /** Looks again, soon, at what scoped secrets are sent: one look for a burst of changes. */
-  private scheduleVaultScope(): void {
-    const scoped = this.state.clientList.some((c) => c.defaults.vaultScope);
-    // Nothing was sent and none is going: scope off needs nothing. A send still unanswered is
-    // not nothing: turning the scope off meanwhile must still send the own rules back.
-    if (!scoped && this.vaultScopeSent.size === 0 && this.vaultScopeBusy === 0) return;
-    if (this.vaultScopeTimer) clearTimeout(this.vaultScopeTimer);
-    this.vaultScopeTimer = setTimeout(() => {
-      this.vaultScopeTimer = null;
-      this.vaultScopeBusy++;
-      this.vaultScopeRun = this.vaultScopeRun
-        .then(() => this.pushVaultScopes())
-        .finally(() => {
-          this.vaultScopeBusy--;
-        });
-    }, VAULT_SCOPE_DELAY_MS);
-  }
-
-  /**
-   * Sends one host the rules of one secret when the scope changed what it holds. Returns the name of
-   * the client whose projects changed while it stays scoped (so a widening is said), else null.
-   */
-  private async pushScopeTo(
-    host: HostView,
-    secret: SecretMeta,
-    rules: unknown[],
-    text: string,
-  ): Promise<string | null> {
-    const key = `${host.id}/${secret.id}`;
-    const before = this.vaultScopeSent.get(key);
-    const scoped = text.includes(SCOPE_RULE_PREFIX);
-    // Nothing of this secret was sent by the scope, and none is now: leave it alone.
-    if (before === undefined ? !scoped : before === text) return null;
-    const result = await this.hostRequest(host.id, "vault.rules.set", {
-      secretId: secret.id,
-      tags: secret.tags,
-      rules,
-    });
-    if (!result.ok) {
-      // Not held in its client on that host: said, not left to be found out.
-      const client = scopingClient(secret, this.state.clientList);
-      this.fail(
-        new Error(result.code),
-        this.i18n.t("clients.scopeRefused", {
-          host: host.name,
-          name: client?.name ?? "",
-          secret: secret.name,
-          message: result.message,
-        }),
-      );
-      return null;
-    }
-    this.vaultScopeSent.set(key, text);
-    if (!scoped || !before?.includes(SCOPE_RULE_PREFIX)) return null;
-    const client = this.state.clientList.find((c) => text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`));
-    return client?.name ?? null;
-  }
-
-  /**
-   * Sends the hosts what changed in the rules of scoped secrets: a client's projects came or went,
-   * or scope was turned on or off (the own rules go back). A change in the projects of a client
-   * that stays scoped says so, so a widening is never silent.
-   */
-  private async pushVaultScopes(): Promise<void> {
-    const changed = new Set<string>();
-    await inSequence(this.vault.list(), async (secret) => {
-      const own = this.rules.get(secret.id);
-      const rules = this.effectiveVaultRules(secret, own);
-      const text = JSON.stringify(rules);
-      await inSequence(this.state.hosts, async (host) => {
-        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) return;
-        const widened = await this.pushScopeTo(host, secret, rules, text);
-        if (widened) changed.add(widened);
-      });
-    });
-    for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
-  }
-
-  /** On connect: the host gets the rules of the secrets it may receive, and of no other. */
-  private sendVaultRules(hostId: string, conn: HostConnection): void {
-    const all = this.rules.all();
-    for (const secret of this.vault.list()) {
-      const own = all[secret.id];
-      if (!own || !secret.allowedHosts.includes(hostId)) continue;
-      const rules = this.effectiveVaultRules(secret, own);
-      this.vaultScopeSent.set(`${hostId}/${secret.id}`, JSON.stringify(rules));
-      void this.sendScopedRules(hostId, conn, secret, rules).catch((error: unknown) =>
-        this.fail(error),
-      );
-    }
-  }
-
-  /**
-   * Sends a secret's rules to a host on connect. For a scoped secret the host is asked first what
-   * it holds: this app is the only writer of the generated rules, so a host that holds rules but
-   * none of them marked had them replaced by someone else (said, then sent again), and marked
-   * ones that differ are the client's projects having changed while the host was away.
-   */
-  private async sendScopedRules(
-    hostId: string,
-    conn: HostConnection,
-    secret: SecretMeta,
-    rules: unknown[],
-  ): Promise<void> {
-    const generated = rules.filter(isGeneratedRule);
-    const client = generated.length > 0 ? scopingClient(secret, this.state.clientList) : null;
-    if (client) {
-      const held = await conn
-        .request("vault.rules.get", { secretId: secret.id })
-        .then((answer) => answer.rules)
-        .catch(() => []);
-      const marked = held.filter(isGeneratedRule);
-      if (held.length > 0 && marked.length === 0) {
-        const host = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-        this.fail(
-          new Error("scope"),
-          this.i18n.t("clients.scopeVanished", { name: client.name, secret: secret.name, host }),
-        );
-      } else if (marked.length > 0 && JSON.stringify(marked) !== JSON.stringify(generated)) {
-        this.success(this.i18n.t("clients.scopeChanged", { name: client.name }));
-      }
-    }
-    await conn.request("vault.rules.set", { secretId: secret.id, tags: secret.tags, rules });
-  }
-
-  /**
-   * Phase 19: what the saved rules decide for a use ("what happens if…"), asked of a connected
-   * host the secret may go to; null when there is none.
-   */
-  async previewVaultUse(
-    secretId: string,
-    use: Omit<CommandPayload<"vault.rules.preview">, "secretId" | "tags">,
-  ): Promise<VaultVerdict | null> {
-    const secret = this.vault.list().find((s) => s.id === secretId);
-    const host = this.state.hosts.find(
-      (h) => h.status === "online" && secret?.allowedHosts.includes(h.id),
-    );
-    if (!secret || !host) return null;
-    return this.hostCommand(host.id, "vault.rules.preview", {
-      secretId,
-      ...use,
-      tags: secret.tags,
-    });
-  }
-
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
   approveVaultForSession(hostId: string, requestId: string): Promise<void> {
     // Only where the rule allows it and no hold is needed: the session approval has no button to
@@ -4671,7 +4448,7 @@ export class AppStore {
       this.syncTitle();
     }
     if (patch.hosts) this.clientBudgets.onHostsChanged();
-    if (patch.hub || patch.projects) this.scheduleVaultScope();
+    if (patch.hub || patch.projects) this.vaultRules.scopeChanged();
     if (patch.hosts || patch.externalRequests || patch.externals || patch.runs || patch.cards) {
       this.scheduleTrayMenu();
     }

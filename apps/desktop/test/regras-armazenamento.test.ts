@@ -43,18 +43,18 @@ async function setup(platform = memoryPlatform().platform) {
 describe("regras-armazenamento: the app keeps each secret's rules and hands them to the daemon", () => {
   test("saving sends the rules with the secret's tags to the host and keeps them for the next start", async () => {
     const { store, here, sent, platform } = await setup();
-    expect(await store.setVaultRules(here.id, ALLOW)).toEqual({ ok: true });
+    expect(await store.vaultRules.set(here.id, ALLOW)).toEqual({ ok: true });
     expect(sent()).toEqual([{ secretId: here.id, tags: ["staging"], rules: ALLOW }]);
-    expect(store.vaultRules(here.id)).toEqual(ALLOW);
+    expect(store.vaultRules.get(here.id)).toEqual(ALLOW);
     const again = new AppStore(platform, { baseDelayMs: 60_000 });
     cleanups.push(() => again.dispose());
-    expect(again.vaultRules(here.id)).toEqual(ALLOW);
+    expect(again.vaultRules.get(here.id)).toEqual(ALLOW);
   });
 
   test("on connect, the rules of each secret allowed for that host go to it, and no other secret's", async () => {
     const { store, daemon, here, elsewhere, sent, platform } = await setup();
-    await store.setVaultRules(here.id, ALLOW);
-    await store.setVaultRules(elsewhere.id, ALLOW);
+    await store.vaultRules.set(here.id, ALLOW);
+    await store.vaultRules.set(elsewhere.id, ALLOW);
     store.dispose();
     daemon.commands.length = 0;
     // The app starts again on the same storage and connects to the same daemon.
@@ -68,7 +68,7 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
 
   test("rules a host refuses on connect show as a notice with its reason", async () => {
     const { store, daemon, here, platform } = await setup();
-    await store.setVaultRules(here.id, ALLOW);
+    await store.vaultRules.set(here.id, ALLOW);
     store.dispose();
     daemon.refuse.set("vault.rules.set", "regra inválida");
     const again = new AppStore(platform, { baseDelayMs: 60_000 });
@@ -81,7 +81,7 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
   test("what the daemon refuses comes back with its reason, and the rules are not saved", async () => {
     const { store, daemon, here } = await setup();
     daemon.refuse.set("vault.rules.set", "allow para run_with_secret nunca é permitido");
-    const result = await store.setVaultRules(here.id, [
+    const result = await store.vaultRules.set(here.id, [
       { match: { purpose: "run_with_secret" }, decision: "allow" },
     ]);
     expect(result).toEqual({
@@ -89,12 +89,12 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
       code: "bad_request",
       message: "allow para run_with_secret nunca é permitido",
     });
-    expect(store.vaultRules(here.id)).toEqual([]);
+    expect(store.vaultRules.get(here.id)).toEqual([]);
   });
 
   test("when a second host refuses, the first gets the saved rules back, so no host keeps rules the app did not save", async () => {
     const { store, daemon, here } = await setup();
-    await store.setVaultRules(here.id, ALLOW);
+    await store.vaultRules.set(here.id, ALLOW);
     const other = legacyDaemon(cleanups);
     other.features.push("actions");
     const otherId = await store.addHost({ name: "pi", url: other.url, token: TOKEN });
@@ -103,7 +103,7 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     other.refuse.set("vault.rules.set", "regra inválida");
     daemon.commands.length = 0;
     const looser = [{ id: "r1", match: {}, decision: "allow" }];
-    expect(await store.setVaultRules(here.id, looser)).toEqual({
+    expect(await store.vaultRules.set(here.id, looser)).toEqual({
       ok: false,
       code: "bad_request",
       message: "regra inválida",
@@ -113,6 +113,6 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
       { secretId: here.id, tags: ["staging"], rules: looser },
       { secretId: here.id, tags: ["staging"], rules: ALLOW },
     ]);
-    expect(store.vaultRules(here.id)).toEqual(ALLOW);
+    expect(store.vaultRules.get(here.id)).toEqual(ALLOW);
   });
 });

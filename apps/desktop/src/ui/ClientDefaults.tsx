@@ -33,7 +33,7 @@ export function ClientDefaults(
   const tagged = saved ? state.secrets.filter((s) => s.tags.includes(saved)) : [];
   const preview = tagged.map((secret) => ({
     secret,
-    rules: generatedScopeRules(client, projects, store.vaultRules(secret.id)),
+    rules: generatedScopeRules(client, projects, store.vaultRules.get(secret.id)),
   }));
   const holdingHosts = [
     ...new Set(
@@ -46,7 +46,7 @@ export function ClientDefaults(
   const findings = vaultFindings({
     client,
     secrets: state.secrets,
-    rulesOf: (id) => store.vaultRules(id),
+    rulesOf: (id) => store.vaultRules.get(id),
     scope,
     holdingHosts,
   });
