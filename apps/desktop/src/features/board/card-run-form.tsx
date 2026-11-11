@@ -1,7 +1,7 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { CardStartDialog } from "@/components/board/card-start-dialog";
+import { CardStartDialog } from "./card-start-dialog.tsx";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";

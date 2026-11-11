@@ -2,7 +2,7 @@ import { type Card, specPathProblem, type ValidationTemplate } from "@flightdeck
 import { useEffect, useState } from "react";
 import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
-import { CardSpec } from "@/components/card/card-spec";
+import { CardSpec } from "./card-spec.tsx";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";

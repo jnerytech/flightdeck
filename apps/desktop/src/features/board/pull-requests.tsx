@@ -1,6 +1,6 @@
 import { GitPullRequest } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { CardMergePr } from "@/components/card/card-merge-pr";
+import { CardMergePr } from "./card-merge-pr.tsx";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Page } from "@/components/layout/page";
 import { Inline, Stack } from "@/components/layout/stack";

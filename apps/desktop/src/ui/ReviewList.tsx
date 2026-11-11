@@ -1,7 +1,7 @@
 import type { ReviewComment } from "@flightdeck/protocol";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { FindingSeverity } from "@/components/card/finding-severity";
+import { FindingSeverity } from "@/features/board/finding-severity";
 import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

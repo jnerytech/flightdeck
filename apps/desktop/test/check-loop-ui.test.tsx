@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { CheckLoopPanel } = await import("../src/components/card/check-loop-panel.tsx");
+const { CheckLoopPanel } = await import("../src/features/board/check-loop-panel.tsx");
 const { checkLoopLine } = await import("../src/lib/check-loop.ts");
 
 setDefaultTimeout(30_000);
