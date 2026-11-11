@@ -6,7 +6,6 @@ import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { HostBoardLanding } from "@/components/projects/board-landing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +17,7 @@ import { FolderPicker } from "../../ui/FolderPicker.tsx";
 import { RulesSection } from "../../ui/RulesSection.tsx";
 import { TerminalButton } from "../../ui/TerminalButton.tsx";
 import { AddProject } from "./add-project.tsx";
+import { HostBoardLanding } from "./board-landing.tsx";
 import { FindProjects } from "./find-projects.tsx";
 import { StartFromGithub } from "./start-from-github.tsx";
 
