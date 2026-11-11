@@ -200,7 +200,7 @@ describe("knowledge-status: over the protocol (#76)", () => {
     const ctx = newManager();
     const server = startServer({
       manager: ctx.manager,
-      ...(withIt ? { knowledgeStatus: setKnowledgeStatus } : {}),
+      ...(withIt ? { knowledge: { status: setKnowledgeStatus } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

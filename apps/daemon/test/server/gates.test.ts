@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/errors.ts";
-import { GATES, type GatedOption, need } from "../../src/server/gates.ts";
+import {
+  GATES,
+  type GatedGroup,
+  type GatedOption,
+  GROUP_GATES,
+  need,
+  needIn,
+} from "../../src/server/gates.ts";
 import type { ServerOptions } from "../../src/server.ts";
 
 /**
@@ -83,19 +90,38 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
-  // The knowledge gates moved out of the switch with the knowledge domain (issue #1288): the
-  // index is gated by `knowledgeFeed` but names `knowledge`, and the feed switch names `knowledgeFeed`.
-  knowledge: "knowledge",
-  knowledgeFeed: "knowledge",
-  knowledgeStatus: "knowledgeStatus",
-  knowledgeCreate: "knowledgeCreate",
-  knowledgeFeedSwitch: "knowledgeFeed",
   // The teleport gates moved out of the switch with the teleport domain (issue #1288): the three
   // services name one feature.
   teleport: "teleport",
   teleportInbox: "teleport",
   teleportImport: "teleport",
 };
+
+/**
+ * The options grouped by domain (#1593), each service with the feature its flat option named. The
+ * knowledge gates moved out of the switch with the knowledge domain (issue #1288): the index is
+ * gated by the feed but names `knowledge`, and the feed switch names `knowledgeFeed`.
+ */
+const GROUPED: Record<string, Record<string, string>> = {
+  knowledge: {
+    list: "knowledge",
+    feed: "knowledge",
+    status: "knowledgeStatus",
+    create: "knowledgeCreate",
+    feedSwitch: "knowledgeFeed",
+  },
+};
+
+/** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
+function groupOutcome(opts: ServerOptions, group: string, key: string): unknown {
+  try {
+    return needIn(opts, group as GatedGroup, key as keyof (typeof GROUP_GATES)[GatedGroup]);
+  } catch (error) {
+    return error instanceof FlightdeckError
+      ? { reason: error.reason, feature: error.params?.feature }
+      : String(error);
+  }
+}
 
 /** What `need` answers for an option: the service, or the refusal's reason and feature. */
 function outcome(opts: ServerOptions, key: GatedOption): unknown {
@@ -121,5 +147,26 @@ describe("server-gates", () => {
     );
     const board = { name: "board" };
     expect(outcome({ board } as unknown as ServerOptions, "board")).toBe(board);
+  });
+
+  test("a grouped service names the same feature as its flat option did, and one the host runs is returned", () => {
+    expect(JSON.parse(JSON.stringify(GROUP_GATES))).toEqual(GROUPED);
+    const off = {} as ServerOptions;
+    const offIn = { knowledge: {} } as ServerOptions;
+    const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
+      Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
+    );
+    const refused = (opts: ServerOptions) =>
+      named.map(([group, key]) => [group, key, groupOutcome(opts, group, key)]);
+    const expected = named.map(([group, key, feature]) => [
+      group,
+      key,
+      { reason: "feature_off", feature },
+    ]);
+    expect([refused(off), refused(offIn)]).toEqual([expected, expected]);
+    const list = async () => ({ entries: [] });
+    expect(
+      groupOutcome({ knowledge: { list } } as unknown as ServerOptions, "knowledge", "list"),
+    ).toBe(list);
   });
 });
