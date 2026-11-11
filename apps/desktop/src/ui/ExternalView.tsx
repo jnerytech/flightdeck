@@ -9,13 +9,13 @@ import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { BgPanel } from "../features/background/bg-panel.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
+import { TerminalButton } from "../features/terminal/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../lib/app-store.ts";
 import { externalState } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import { hasFeature } from "../lib/version.ts";
 import { RecapPanel } from "./RecapPanel.tsx";
-import { TerminalButton } from "./TerminalButton.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**

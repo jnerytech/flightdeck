@@ -10,7 +10,7 @@ import { fakeXterm } from "./fakes.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TerminalPage } = await import("../../src/ui/TerminalPage.tsx");
+const { TerminalPage } = await import("../../src/features/terminal/page.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

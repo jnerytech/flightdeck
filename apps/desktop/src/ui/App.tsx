@@ -23,6 +23,7 @@ import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
+import { TerminalCloseDialog } from "../features/terminal/index.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
@@ -42,7 +43,6 @@ import { NotificationBell } from "./NotificationBell.tsx";
 import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
-import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { useLiveElsewhereAsk } from "./use-live-elsewhere-guard.tsx";
 
 /** The palette's targets that act in place instead of opening a screen. */
