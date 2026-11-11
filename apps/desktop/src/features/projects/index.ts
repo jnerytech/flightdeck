@@ -8,4 +8,5 @@ export { ProjectCardTile } from "./project-card-tile.tsx";
 export { ProjectTree } from "./project-tree.tsx";
 export { RailFlyout } from "./rail-flyout.tsx";
 export { ProjectsSlice } from "./store.ts";
+export { wireProjects } from "./wire.ts";
 export { WorktreeChip } from "./worktree-chip.tsx";
