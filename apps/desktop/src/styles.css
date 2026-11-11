@@ -31,6 +31,9 @@
 @import "./styles/costs.css";
 @import "./styles/snippets.css";
 @import "./styles/messaging.css";
+@import "./styles/summary.css";
+@import "./styles/palette.css";
+@import "./styles/shortcuts.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -352,55 +355,9 @@ html:not(:has([data-slot="status-bar"])) {
   bottom: 0.75rem;
 }
 
-/* The summary card under a session's header: the same 16 px from each side as the conversation. */
-@utility recap-slot {
-  flex-shrink: 0;
-  padding-inline: 1rem;
-  padding-top: 0.75rem;
-  /* Issue #422: in a short session area the band keeps tight, so the conversation keeps its room. */
-  &[data-short="true"] {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding-top: 0.25rem;
-  }
-  /* No summary to show (an older daemon, a session with none): no empty band either. */
-  &:empty {
-    display: none;
-  }
-}
-
-/* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
-@utility recap-head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-/* The palette's rows: the one the keyboard is on is a surface with an inset ring (issue #147). */
-@utility palette-row {
-  &[aria-selected="true"] {
-    background: var(--palette-selection);
-    box-shadow: inset 0 0 0 1px var(--palette-selection-ring);
-  }
-  &:hover {
-    background: var(--accent);
-  }
-  &[aria-selected="true"]:hover {
-    background: var(--palette-selection);
-  }
-}
-
-/* A short list that scrolls inside its panel instead of pushing the screen. */
 /* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
 @utility diff-follow {
   max-height: 24rem;
-  overflow-y: auto;
-}
-
-@utility rows-scroll {
-  max-height: 10rem;
   overflow-y: auto;
 }
 
@@ -518,14 +475,6 @@ html:not(:has([data-slot="status-bar"])) {
   outline: 2px dashed var(--ring);
   outline-offset: -2px;
   background-color: var(--accent);
-}
-
-/* A key of a shortcut, as printed in a list. */
-@utility keycap {
-  border: 1px solid var(--border);
-  border-radius: 0.25rem;
-  padding-inline: 0.25rem;
-  font-size: 0.75rem;
 }
 
 /* Three dots that rise in turn while Claude works. */
@@ -693,31 +642,10 @@ html:not(:has([data-slot="status-bar"])) {
   font-size: 0.75rem;
 }
 
-/* The `?` sheet of shortcuts: the box, its groups and their rows. */
-@utility sheet-box {
-  margin: 0;
-  display: flex;
-  max-height: 80vh;
-  width: min(42rem, 92vw);
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-}
-@utility shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1.5rem;
-}
 @utility stack-tight {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-@utility shortcut-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 
 /* A line of controls, with a gap: spread to both ends, or wrapping. */
@@ -1010,43 +938,6 @@ html:not(:has([data-slot="status-bar"])) {
   text-align: right;
 }
 
-/* A two-option choice drawn as a pill of radios (the host's default mode). */
-@utility seg-control {
-  display: inline-flex;
-  width: fit-content;
-  gap: 0.25rem;
-}
-@utility seg-option {
-  position: relative;
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  height: 2rem;
-  padding-inline: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  & input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: inherit;
-  }
-  &:has(input:checked) {
-    background: var(--color-accent);
-    border-color: var(--color-ring);
-  }
-  &:has(input:disabled) {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  &:has(input:focus-visible) {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
-  }
-}
-
 /* An icon with a dot or a count pinned to its corner. */
 @utility icon-mark {
   position: relative;
@@ -1060,47 +951,6 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
-/* Health's first line: the headline, the counts, when it was read and Check again (#640). */
-@utility health-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-}
-/* What is fine, folded: one line per row (#640). */
-@utility health-ok {
-  font-size: 0.875rem;
-  /* The fold's disclosure button (#670): a row-sized target (axe target-size wants 24 px) with a
-     chevron that turns when the list is open. */
-  & > button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    min-height: 2rem;
-    padding: 0.25rem 0.5rem;
-    margin-inline-start: -0.5rem;
-    border-radius: var(--radius-md);
-    color: var(--muted-foreground);
-    cursor: pointer;
-  }
-  & > button:hover {
-    background-color: var(--accent);
-    color: var(--foreground);
-  }
-  & > button:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  & > button > svg {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-    transition: rotate 150ms ease;
-  }
-  & > button[aria-expanded="true"] > svg {
-    rotate: 90deg;
-  }
-}
 /* The list owns the columns (icon | name | status | detail) and each row takes them as a subgrid,
    so every status starts at the same place whatever the name's length (#670). */
 

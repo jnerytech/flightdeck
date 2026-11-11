@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { RoiPeople } = await import("../src/features/roi/roi-people.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { RoiPeople } = await import("../../src/features/roi/roi-people.tsx");
 
 afterEach(cleanup);
 const settle = waiter(5000);

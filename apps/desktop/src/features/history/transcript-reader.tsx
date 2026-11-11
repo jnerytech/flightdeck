@@ -9,14 +9,14 @@ import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import type { AppStore } from "../lib/app-store.ts";
-import { awaitingApproval } from "../lib/awaiting-approval.ts";
-import { toolLoader } from "../lib/history-tool.ts";
-import { basename, isInside } from "../lib/paths.ts";
-import { messageParts } from "../lib/tool-line.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { Markdown } from "./Markdown.tsx";
-import { useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { awaitingApproval } from "../../lib/awaiting-approval.ts";
+import { toolLoader } from "../../lib/history-tool.ts";
+import { basename, isInside } from "../../lib/paths.ts";
+import { messageParts } from "../../lib/tool-line.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { Markdown } from "../../ui/Markdown.tsx";
+import { useLiveElsewhereGuard } from "../../ui/use-live-elsewhere-guard.tsx";
 
 /** Which transcript to read, and where to open it (a search hit). */
 export interface ReaderTarget {
