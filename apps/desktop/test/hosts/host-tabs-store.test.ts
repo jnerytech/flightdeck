@@ -133,7 +133,7 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     (store as unknown as { hostCommand: () => Promise<unknown> }).hostCommand = async () => ({});
     store.closeTab(group?.tabs as never, tab?.id ?? "");
     expect(store.getState().closingTerminal?.tabId).toBe(tab?.id);
-    await store.finishCloseTerminal(false);
+    await store.terminals.finishClose(false);
     const after = store.hostTabs.groups().find((g) => g.hostId === "ha");
     expect(after?.tabs.tabs.some((other) => other.id === tab?.id)).toBe(false);
   });

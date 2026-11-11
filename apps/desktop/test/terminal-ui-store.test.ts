@@ -31,12 +31,12 @@ function listener() {
 }
 
 describe("terminal-ui: the store follows a host's terminal", () => {
-  test("terminalHost opens, attaches and writes; followTerminal gets the output and the exit", async () => {
+  test("terminals.host opens, attaches and writes; terminals.follow gets the output and the exit", async () => {
     const { store, hostId, project, ptys } = await setup();
-    const host = store.terminalHost(hostId);
+    const host = store.terminals.host(hostId);
     const { terminalId } = await host.open(project, 80, 24);
     const { seen, handlers } = listener();
-    const stop = store.followTerminal(hostId, terminalId, handlers);
+    const stop = store.terminals.follow(hostId, terminalId, handlers);
     const attached = await host.attach(terminalId);
     expect(attached.terminalId).toBe(terminalId);
     await host.write(terminalId, "oi\r");
@@ -50,12 +50,12 @@ describe("terminal-ui: the store follows a host's terminal", () => {
     stop();
   });
 
-  test("terminalHost attaches asking for flow control, and an ack lets the held output through", async () => {
+  test("terminals.host attaches asking for flow control, and an ack lets the held output through", async () => {
     const { store, hostId, project, ptys } = await setup();
-    const host = store.terminalHost(hostId);
+    const host = store.terminals.host(hostId);
     const { terminalId } = await host.open(project, 80, 24);
     let received = 0;
-    const stop = store.followTerminal(hostId, terminalId, {
+    const stop = store.terminals.follow(hostId, terminalId, {
       data: (base64) => {
         received += atob(base64).length;
       },
@@ -78,13 +78,13 @@ describe("terminal-ui: the store follows a host's terminal", () => {
 
   test("a stopped follower hears nothing more; losing the host tells the live ones", async () => {
     const { store, hostId, project, server, ptys } = await setup();
-    const host = store.terminalHost(hostId);
+    const host = store.terminals.host(hostId);
     const { terminalId } = await host.open(project, 80, 24);
     await host.attach(terminalId);
     const stopped = listener();
-    store.followTerminal(hostId, terminalId, stopped.handlers)();
+    store.terminals.follow(hostId, terminalId, stopped.handlers)();
     const live = listener();
-    store.followTerminal(hostId, terminalId, live.handlers);
+    store.terminals.follow(hostId, terminalId, live.handlers);
     ptys.spawned[0]?.emit("x");
     await waitFor(() => live.seen.includes("data:x")).catch(() => null);
     expect(live.seen).toContain("data:x");
@@ -97,8 +97,8 @@ describe("terminal-ui: the store follows a host's terminal", () => {
   test("the terminals of a host that is not connected refuse", async () => {
     const { store } = await setup();
     expect(
-      await store
-        .terminalHost("ghost")
+      await store.terminals
+        .host("ghost")
         .list()
         .catch(() => "refused"),
     ).toBe("refused");

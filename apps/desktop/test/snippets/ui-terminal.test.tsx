@@ -27,7 +27,7 @@ async function setup() {
   const status = await h.save({ name: "status", type: "command", run: "git status" });
   await h.save({ name: "explicar", type: "prompt", text: "Explique." });
   const eco = store.snippets.global.save({ name: "eco", type: "command", run: "echo oi" });
-  const { terminalId } = await store.terminalHost(h.hostId).open(h.d.project, 80, 24);
+  const { terminalId } = await store.terminals.host(h.hostId).open(h.d.project, 80, 24);
   const x = fakeXterm();
   render(
     <TContext.Provider value={store.i18n.t}>

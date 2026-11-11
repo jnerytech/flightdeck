@@ -39,7 +39,6 @@ import type {
   SettableMode,
   TeamInfo,
   TeamsUpdatedFrame,
-  TerminalInfo,
   WatchInfo,
   WatchSettings,
   WorkflowRun,
@@ -118,6 +117,7 @@ import {
   type SnippetsSliceState,
 } from "../features/snippets/index.ts";
 import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/index.ts";
+import { TerminalsSlice } from "../features/terminal/index.ts";
 import {
   VaultApprovalsSlice,
   VaultRulesSlice,
@@ -232,14 +232,7 @@ import {
   type TeleportRunArgs,
   teleportSession,
 } from "./teleport.ts";
-import {
-  isLocalUrl,
-  type TerminalEnv,
-  type TerminalLaunch,
-  type TerminalTarget,
-  terminalLaunch,
-} from "./terminal.ts";
-import type { TerminalHost } from "./terminal-session.ts";
+import { isLocalUrl, type TerminalEnv } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
@@ -391,20 +384,6 @@ export interface AppState
 }
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
-/** What a host's terminals say to the one following them. */
-export interface TerminalListener {
-  data(base64: string): void;
-  exited(exitCode: number): void;
-  resync(): void;
-  offline(): void;
-}
-
-/** The terminal commands of one host. */
-export interface TerminalCommands extends TerminalHost {
-  open(cwd: string, cols: number, rows: number): Promise<{ terminalId: string }>;
-  list(): Promise<TerminalInfo[]>;
-}
-
 export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
@@ -910,7 +889,6 @@ export class AppStore {
   >();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
-  private readonly terminalListeners = new Map<string, Set<TerminalListener>>();
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
   /** The tray submenu last sent, and the debounce that will send the next one (phase 8). */
   private trayMenuSent = JSON.stringify(trayMenu([]));
@@ -1244,6 +1222,35 @@ export class AppStore {
       quitNow: () => this.platform.quitNow(),
       t: () => this.i18n.t,
     });
+    this.terminals = new TerminalsSlice({
+      hosts: () => this.state.hosts,
+      terminalEnv: () => this.state.terminalEnv,
+      dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
+      open: (hostId, payload) => this.hostCommand(hostId, "terminal.open", payload),
+      close: (hostId, terminalId, kill) =>
+        this.hostCommand(hostId, "terminal.close", { terminalId, kill }),
+      showTab: (hostId, terminalId) =>
+        this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
+      closing: () => this.state.closingTerminal,
+      setClosing: (closingTerminal) => this.update({ closingTerminal }),
+      closingTab: (closing) => {
+        // The area is the current host's, or another host's first one (a tab of the all-hosts row).
+        const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
+          (candidate) => candidate.id === closing.areaId,
+        );
+        const route = area?.tabs.find((tab) => tab.id === closing.tabId)?.router.current;
+        if (!area || route?.name !== "terminal") return null;
+        return {
+          hostId: route.host,
+          terminalId: route.terminalId,
+          closeTab: () => area.close(closing.tabId),
+        };
+      },
+      copyText: (text) => this.copyText(text),
+      spawn: (program, args) => this.platform.terminal.open(program, args),
+      spawnFailed: (error) =>
+        this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) })),
+    });
     this.inbox = new InboxSlice({
       storage: platform.storage,
       entries: () => this.state.inbox,
@@ -1379,6 +1386,8 @@ export class AppStore {
   readonly inbox: InboxSlice;
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
+  /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
+  readonly terminals: TerminalsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
@@ -2212,21 +2221,6 @@ export class AppStore {
     area.close(tabId);
   }
 
-  /** Ends the pending close of a terminal tab: `kill` ends the process, false detaches, null keeps it. */
-  async finishCloseTerminal(kill: boolean | null): Promise<void> {
-    const pending = this.state.closingTerminal;
-    this.update({ closingTerminal: null });
-    if (!pending || kill === null) return;
-    // The area is the current host's, or another host's first one (a tab of the all-hosts row).
-    const area = [...this.workspace.areas, ...this.hostTabs.groups().map((g) => g.tabs)].find(
-      (candidate) => candidate.id === pending.areaId,
-    );
-    const route = area?.tabs.find((tab) => tab.id === pending.tabId)?.router.current;
-    if (!area || route?.name !== "terminal") return;
-    await this.hostCommand(route.host, "terminal.close", { terminalId: route.terminalId, kill });
-    area.close(pending.tabId);
-  }
-
   /** A host's indexed sessions; errors go to the banner and give `null`. */
   async historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
     try {
@@ -2482,63 +2476,6 @@ export class AppStore {
     };
   }
 
-  /** The commands of a host's terminals, as `TerminalSession` drives them (phase 14). */
-  terminalHost(hostId: string): TerminalCommands {
-    const request = <T extends Extract<CommandType, `terminal.${string}`>>(
-      type: T,
-      payload: CommandPayload<T>,
-    ): Promise<CommandResults[T]> => this.dispatch(hostId, type, payload);
-    return {
-      open: async (cwd, cols, rows) => request("terminal.open", { cwd, cols, rows }),
-      attach: (terminalId) => request("terminal.attach", { terminalId, flow: true }),
-      ack: (terminalId, bytes) => request("terminal.ack", { terminalId, bytes }),
-      write: (terminalId, data) => request("terminal.write", { terminalId, data }),
-      resize: (terminalId, cols, rows) => request("terminal.resize", { terminalId, cols, rows }),
-      close: (terminalId, kill) => request("terminal.close", { terminalId, kill }),
-      list: async () => (await request("terminal.list", {})).terminals,
-    };
-  }
-
-  /** Opens a terminal on the host (in `cwd`, its first allowed folder by default) in a new tab. */
-  async openTerminal(hostId: string, cwd?: string): Promise<string | null> {
-    const folder = cwd ?? this.state.hosts.find((h) => h.id === hostId)?.info?.allowedRoots[0];
-    if (!folder) return null;
-    const opened = await this.hostCommand(hostId, "terminal.open", {
-      cwd: folder,
-      cols: 80,
-      rows: 24,
-    });
-    if (!opened) return null;
-    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
-    return opened.terminalId;
-  }
-
-  /** "Claude aqui": `flightdeckd claude` (resuming `claudeSessionId` when given) in a terminal tab. */
-  async openClaudeHere(
-    hostId: string,
-    target: TerminalTarget,
-    persona?: string,
-  ): Promise<string | null> {
-    const opened = await this.hostCommand(hostId, "terminal.open", {
-      cwd: target.cwd,
-      cols: 80,
-      rows: 24,
-      claude: {
-        ...(target.claudeSessionId ? { resume: target.claudeSessionId } : {}),
-        ...(persona ? { persona } : {}),
-      },
-    });
-    if (!opened) return null;
-    this.hostTabs.open({ name: "terminal", host: hostId, terminalId: opened.terminalId });
-    return opened.terminalId;
-  }
-
-  /** Whether the host opens terminals inside the app (phase 14) right now. */
-  embeddedTerminal(hostId: string): boolean {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
-  }
-
   /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
   /**
    * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
@@ -2580,18 +2517,6 @@ export class AppStore {
     if (conn) await this.loadHostInfo(hostId, conn);
   }
 
-  /** Calls `listener` with the output, exit, resync and loss of the host of a terminal. */
-  followTerminal(hostId: string, terminalId: string, listener: TerminalListener): () => void {
-    const key = `${hostId}|${terminalId}`;
-    const listeners = this.terminalListeners.get(key) ?? new Set();
-    this.terminalListeners.set(key, listeners);
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) this.terminalListeners.delete(key);
-    };
-  }
-
   /** Runs `fn` after `ms` (the store's timers, which tests drive); returns the function that cancels. */
   later(fn: () => void, ms: number): () => void {
     const timers = this.options.timers ?? REAL_TIMERS;
@@ -2603,24 +2528,6 @@ export class AppStore {
   onHistoryChanged(listener: (hostId: string, change: HistoryChanged) => void): () => void {
     this.historyListeners.add(listener);
     return () => this.historyListeners.delete(listener);
-  }
-
-  /** How "Abrir no terminal" opens `target` on this host; `null` for an unknown host. */
-  terminalLaunch(hostId: string, target: TerminalTarget): TerminalLaunch | null {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return host ? terminalLaunch(host, target, this.state.terminalEnv) : null;
-  }
-
-  /** Opens a terminal on this machine, or copies the command for a host elsewhere. */
-  async openInTerminal(hostId: string, target: TerminalTarget): Promise<void> {
-    const launch = this.terminalLaunch(hostId, target);
-    if (launch?.kind === "copy") await this.copyText(launch.text);
-    if (launch?.kind !== "spawn") return;
-    try {
-      await this.platform.terminal.open(launch.program, launch.args);
-    } catch (error) {
-      this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) }));
-    }
   }
 
   /** Saves a file through the system dialog; errors go to the banner. */
@@ -3025,14 +2932,7 @@ export class AppStore {
       onQuotaUpdated: (state) => this.quota.updated(config.id, state),
       onAccountUpdated: (state) => this.account.updated(config.id, state),
       onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
-      onTerminal: (frame) => {
-        for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
-          []) {
-          if (frame.type === "terminal.data") listener.data(frame.data);
-          else if (frame.type === "terminal.exited") listener.exited(frame.exitCode);
-          else listener.resync();
-        }
-      },
+      onTerminal: (frame) => this.terminals.deliver(config.id, frame),
       onChangesUpdated: (update) => {
         for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
           listener(update);
@@ -3081,15 +2981,8 @@ export class AppStore {
         () => {},
       );
     }
-    if (status !== "online") this.tellTerminalsOffline(hostId);
+    if (status !== "online") this.terminals.tellOffline(hostId);
     if (status === "connecting") this.dropPartialText(hostId);
-  }
-
-  /** The terminals of the host are told it is gone. */
-  private tellTerminalsOffline(hostId: string): void {
-    for (const [key, listeners] of this.terminalListeners) {
-      if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
-    }
   }
 
   /** Partial text from before the drop will never be completed by a delta; drop it. */
