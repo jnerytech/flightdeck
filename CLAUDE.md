@@ -211,7 +211,7 @@ New code and every move follow these rules; older code moves toward them one str
 - Size is a signal: a source file past about 800 lines likely holds two responsibilities; one under
   about 50 lines that only forwards calls is likely a shallow module. Split or merge accordingly.
 - Fitness functions (#1610): `bun run arch` prints one table of the ratchets (dependency-cruiser, source size,
-  flat tests, knip dead code, raw JSON.parse), baseline against today; a figure above its baseline fails, so baselines only go down.
+  flat tests, knip dead code, raw JSON.parse, test shape: the integration and e2e share of the test files), baseline against today; a figure above its baseline fails, so baselines only go down.
 - Moves are strangler-fig steps (Fowler, Feathers), like the board.ts split (#1523): one move per
   PR, structure only, behavior unchanged, tests green before and after. Never mix a move with a
   behavior change in one commit (Beck: make the change easy, then make the easy change).

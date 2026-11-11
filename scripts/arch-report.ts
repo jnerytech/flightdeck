@@ -9,11 +9,12 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { KNOWN } from "./lib/arch-ratchet.ts";
-import { formatTable, growing, ratchetRows } from "./lib/arch-report.ts";
+import { formatTable, growing, ratchetRows, shapeShares } from "./lib/arch-report.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
 import { flatTestCounts } from "./lib/test-layout.ts";
+import { testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const git = (args: string[]): string | null => {
@@ -55,6 +56,18 @@ const sources = tracked
     const text = read(path);
     return text === null ? [] : [{ path, text }];
   });
+// The tier of each test file is computed from its content (#261); the shape counts files per tier.
+// Every tracked TypeScript file, as `bun run test:tiers` reads them, so the two agree.
+const allTs = (git(["ls-files", "*.ts", "*.tsx"]) ?? "")
+  .split("\n")
+  .filter(Boolean)
+  .flatMap((path) => {
+    const text = read(path);
+    return text === null ? [] : [[path, text] as const];
+  });
+const filesByTier: Record<string, number> = {};
+for (const tier of Object.values(testTiers(new Map(allTs))))
+  filesByTier[tier] = (filesByTier[tier] ?? 0) + 1;
 const rows = ratchetRows({
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
@@ -66,6 +79,8 @@ const rows = ratchetRows({
   knipBaseline: json("knip-baseline.json"),
   jsonParseCounts: rawJsonParseCounts(sources),
   jsonParseBaseline: json("json-parse-baseline.json"),
+  shapeShares: shapeShares(filesByTier),
+  shapeBaseline: json("test-shape-baseline.json"),
 });
 const table = formatTable(rows);
 console.log(table);

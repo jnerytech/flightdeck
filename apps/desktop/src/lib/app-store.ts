@@ -95,10 +95,13 @@ import {
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
 import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
+import { RoiSlice } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
+  HISTORY_LIST_LIMIT,
   initialSessionsState,
   SessionCommandsSlice,
+  SessionListsSlice,
   SessionStreamSlice,
   SessionsSlice,
   type SessionsSliceState,
@@ -730,9 +733,6 @@ export interface Answer {
 /** Filters of the per-host history list. */
 export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
 
-/** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
-export const HISTORY_LIST_LIMIT = 200;
-
 /** Messages per `history.get` page in the transcript reader. */
 export const HISTORY_PAGE = 50;
 
@@ -775,15 +775,6 @@ function describeError(error: unknown): string {
 }
 
 /**
- * All app state in one framework-free store: hosts and their connections, session timelines and
- * the current selection. React reads it through `useSyncExternalStore`.
- */
-/** Whether two values hold the same data (the answers of a host are plain JSON). */
-function sameJson(a: unknown, b: unknown): boolean {
-  return a === b || JSON.stringify(a) === JSON.stringify(b);
-}
-
-/**
  * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
  * they are not read yet. A look from the Setup screen or a host page reads them for the checklist
  * only; the one at connect also opens the list the screens use (see `refreshSetup`).
@@ -800,6 +791,10 @@ function setupWants(
   };
 }
 
+/**
+ * All app state in one framework-free store: hosts and their connections, session timelines and
+ * the current selection. React reads it through `useSyncExternalStore`.
+ */
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -815,6 +810,8 @@ export class AppStore {
   readonly summaries: SummariesSlice;
   /** What a host tells about the Claude sessions started in a terminal (#1596). */
   readonly external: ExternalSessionsSlice;
+  /** What the Sessions screen lists from the online hosts (#1596). */
+  private readonly sessionLists: SessionListsSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
@@ -1124,6 +1121,16 @@ export class AppStore {
       const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
       return clientId === UNASSIGNED ? null : clientId;
     });
+    this.roiFigures = new RoiSlice({
+      hosts: () => this.state.hosts,
+      now: () => this.now(),
+      summary: (hostId, range) => this.hostRequest(hostId, "roi.summary", range),
+      clientOf: (projectKey) => {
+        const clientId = this.clientScope.get().clientOf(projectKey);
+        return clientId === UNASSIGNED ? null : clientId;
+      },
+      settings: () => this.roi,
+    });
     this.projectList = new ProjectsSlice({
       state: () => this.state,
       setProjects: (projects) => this.update({ projects }),
@@ -1329,6 +1336,12 @@ export class AppStore {
       feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
       feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
     });
+    this.sessionLists = new SessionListsSlice({
+      state: () => this.state,
+      patch: (patch) => this.update(patch),
+      connection: (hostId) => this.connections.get(hostId),
+      backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
+    });
     this.stream = new SessionStreamSlice({
       sessions: () => this.state.sessions,
       setSessions: (sessions) => this.update({ sessions }),
@@ -1505,13 +1518,9 @@ export class AppStore {
     return (this.options.day ?? localDay)(this.now());
   }
 
-  /**
-   * Phase 36: the day the hosts' ROI figures end on. A host dates a delivery by its UTC day, so
-   * the range ends on today's UTC day: west of Greenwich, late in the evening, the local day is
-   * still yesterday and today's work would fall outside it.
-   */
+  /** Phase 36: the day the hosts' ROI figures end on (UTC, as a host dates a delivery). */
   roiToday(): string {
-    return new Date(this.now()).toISOString().slice(0, 10);
+    return this.roiFigures.today();
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
@@ -2206,84 +2215,8 @@ export class AppStore {
    * Loads what the Sessões screen lists from every online host. Quiet: a host without history or
    * hub (older daemon) just contributes less.
    */
-  async refreshHub(): Promise<void> {
-    await Promise.all(
-      this.state.hosts
-        .filter((host) => host.status === "online")
-        .map((host) => this.refreshHost(host)),
-    );
-  }
-
-  /** The session lists of one online host, read and folded into the state when they changed. */
-  private async refreshHost(host: HostView): Promise<void> {
-    const conn = this.connections.get(host.id) as HostConnection;
-    const named = hasFeature(host.hostInfo?.features, "names", false);
-    const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
-    const [managed, history, external, standard, background] = await Promise.all([
-      quiet(conn.request("session.list", {})),
-      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-      quiet(conn.request("external.list", {})),
-      named ? quiet(conn.request("names.list", {})) : null,
-      withBackground ? quiet(conn.request("bg.list", {})) : null,
-    ]);
-    const patch: Partial<AppState> = this.changedMeta(host.id, managed, history, external);
-    // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
-    // the one the state holds stays; an empty answer is the only way a list empties.
-    const before = this.state.hub[host.id];
-    const lists = {
-      managed: managed ? managed.sessions : (before?.managed ?? []),
-      history: history ? history.sessions : (before?.history ?? []),
-    };
-    const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
-    if (!sameJson(this.state.hub[host.id], lists)) {
-      patch.hub = { ...this.state.hub, [host.id]: lists };
-    }
-    if (!sameJson(this.state.names[host.id], standardNames)) {
-      patch.names = { ...this.state.names, [host.id]: standardNames };
-    }
-    Object.assign(patch, background && this.background.changed(host.id, background));
-    if (Object.keys(patch).length > 0) this.update(patch);
-  }
-
-  /**
-   * The `meta` and `externals` of the state with what the lists say, each only when it differs from
-   * what the state holds, so a refresh that finds the same lists tells nobody (the screens compare
-   * by reference).
-   */
-  private changedMeta(
-    hostId: string,
-    managed: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
-    history: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
-    external: { sessions: ExternalSession[] } | null,
-  ): Partial<AppState> {
-    const meta = { ...this.state.meta };
-    const externals = { ...this.state.externals };
-    let metaChanged = false;
-    let externalsChanged = false;
-    const putMeta = (key: string, value: SessionMeta) => {
-      if (sameJson(meta[key], value)) return;
-      meta[key] = value;
-      metaChanged = true;
-    };
-    for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-      if (s.claudeSessionId && s.meta) putMeta(sessionKey(hostId, s.claudeSessionId), s.meta);
-    }
-    for (const s of external?.sessions ?? []) {
-      const key = sessionKey(hostId, s.claudeSessionId);
-      // A list read before a hook but answered after its frame is older than what the
-      // frame put in the state: it must not undo it.
-      const held = externals[key];
-      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
-      if (!older && !sameJson(held, s)) {
-        externals[key] = s;
-        externalsChanged = true;
-      }
-      if (s.meta) putMeta(key, s.meta);
-    }
-    return {
-      ...(metaChanged ? { meta } : {}),
-      ...(externalsChanged ? { externals } : {}),
-    };
+  refreshHub(): Promise<void> {
+    return this.sessionLists.refresh();
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
@@ -2877,45 +2810,25 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /**
-   * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
-   * that cannot be reached, is left out; the card says how many answered.
-   */
-  async roiSummaries(
+  /** Phase 36: each online host's `roi.summary` for the days given; a host that cannot answer is left out. */
+  roiSummaries(
     from: string,
     to: string,
   ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    const hosts = this.getState().hosts.filter(
-      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "roi", false),
-    );
-    const answers = await Promise.all(
-      hosts.map(async (host) => ({
-        hostId: host.id,
-        asked: await this.hostRequest(host.id, "roi.summary", { from, to }),
-      })),
-    );
-    return answers.flatMap(({ hostId, asked }) =>
-      asked.ok ? [{ hostId, result: asked.data }] : [],
-    );
+    return this.roiFigures.summaries(from, to);
   }
 
   /** Phase 36: what the person typed that turns the work of a project into money. */
   roiMoneyOf(projectKey: string): RoiMoney {
-    const clientId = this.clientScope.get().clientOf(projectKey);
-    const settings = this.roi.data();
-    return {
-      rate: this.roi.rateFor(projectKey, clientId === UNASSIGNED ? null : clientId),
-      billed: null,
-      planShareUsd: null,
-      countReview: settings.countReview,
-      reviewCapSeconds: settings.reviewCapMinutes * 60,
-    };
+    return this.roiFigures.moneyOf(projectKey);
   }
 
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
   readonly roi: RoiSettings;
+  /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
+  private readonly roiFigures: RoiSlice;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;

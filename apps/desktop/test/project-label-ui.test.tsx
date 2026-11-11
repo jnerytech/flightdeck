@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
-const { HomePage } = await import("../src/ui/HomePage.tsx");
+const { HomePage } = await import("../src/features/home/page.tsx");
 const { CostsPage } = await import("../src/features/costs/page.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

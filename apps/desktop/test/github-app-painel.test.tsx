@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, jest, setDefaultTimeout, test } from "bun:test";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { en } from "../src/i18n/en.ts";
@@ -202,20 +202,26 @@ describe("github-app: the sign-in poll", () => {
     expect(page.ticks).toHaveLength(0);
   });
 
-  test("with no ticker given the store polls every 1.5 s", () => {
+  test("with no ticker given the store polls every 1.5 s, until the stop it returned is called", () => {
+    jest.useFakeTimers();
     const store = new AppStore(memoryPlatform(false, "en").platform);
-    const timers: number[] = [];
-    const real = globalThis.setInterval;
-    globalThis.setInterval = ((fn: () => void, ms: number) => {
-      timers.push(ms);
-      return real(fn, 1_000_000);
-    }) as typeof setInterval;
     try {
-      store.githubTicker(() => {})();
+      let ticks = 0;
+      const stop = store.githubTicker(() => {
+        ticks += 1;
+      });
+      jest.advanceTimersByTime(1499);
+      expect(ticks).toBe(0);
+      jest.advanceTimersByTime(1);
+      expect(ticks).toBe(1);
+      jest.advanceTimersByTime(3000);
+      expect(ticks).toBe(3);
+      stop();
+      jest.advanceTimersByTime(6000);
+      expect(ticks).toBe(3);
     } finally {
-      globalThis.setInterval = real;
+      jest.useRealTimers();
       store.dispose();
     }
-    expect(timers).toEqual([1500]);
   });
 });

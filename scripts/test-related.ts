@@ -14,13 +14,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { COVERAGE_GATE } from "./lib/coverage-check.ts";
+import { localPyramid } from "./lib/pyramid-table.ts";
 import { checkChanged, wholeSuiteCheck } from "./lib/related-coverage.ts";
 import { keepCoverageProblem, listSelection, planRelated } from "./lib/test-related.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { type Tier, testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 
-function liveTiers(): Record<string, string> {
+function liveTiers(): Record<string, Tier> {
   const listed = spawnSync("git", ["ls-files", "*.ts", "*.tsx"], { cwd: ROOT, encoding: "utf8" }); // NOSONAR: git comes from the PATH of the developer running the script
   const paths = listed.stdout.split("\n").filter(Boolean);
   return testTiers(new Map(paths.map((p) => [p, readFileSync(resolve(ROOT, p), "utf8")])));
@@ -35,7 +36,8 @@ const tiers = tierFlag >= 0 ? (args[tierFlag + 1] ?? "").split(",").filter(Boole
 // The tiers are computed from the code on every call (lib/test-tiers.ts), never read from a file.
 // --pr (#309): the PR's check on CI.
 const pyramid = args.includes("--pr");
-const tierMap: Record<string, string> = tiers || pyramid ? liveTiers() : {};
+// The tiers also give the table a run ends with (#1854), so they are read on every run.
+const tierMap = liveTiers();
 const keepFlag = args.indexOf("--keep-coverage");
 const keep = keepFlag >= 0 ? args[keepFlag + 1] : undefined;
 // The kept folder stays inside the repository, and is never another flag.
@@ -50,6 +52,7 @@ if (keepFlag >= 0) {
 const coverageDir = keep ? resolve(ROOT, keep) : mkdtempSync(join(tmpdir(), "test-related-"));
 // A report left by an earlier run must never stand in for this one's.
 if (keep) rmSync(join(coverageDir, "lcov.info"), { force: true });
+const junitPath = process.env.FLIGHTDECK_JUNIT ?? join(coverageDir, "junit.xml");
 const plan = planRelated({
   coverageDir,
   fast,
@@ -58,8 +61,8 @@ const plan = planRelated({
   pyramid,
   // CI has the machine to itself: no machine-wide slot there.
   slot: !process.env.CI,
-  // CI keeps each test's time for the slow-test check (#1003).
-  ...(process.env.FLIGHTDECK_JUNIT ? { junit: process.env.FLIGHTDECK_JUNIT } : {}),
+  // CI keeps each test's time for the slow-test check (#1003); a local run keeps it for its table.
+  junit: junitPath,
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {
@@ -99,6 +102,13 @@ const proc = Bun.spawn([cmd === "bun" ? process.execPath : cmd, ...rest], {
   stdio: ["inherit", "inherit", "inherit"],
 });
 let code = await proc.exited;
+// #1854: the per-tier table of what ran, from the run's own JUnit file.
+try {
+  const table = localPyramid(tierMap, readFileSync(junitPath, "utf8"));
+  if (table) console.log(`\n${table}`);
+} catch {
+  // A run that wrote no report prints no table.
+}
 
 // #996: Bun's coverage threshold fails a whole-suite run with exit code 1 and no word on why.
 const wholeVerdict = check(code);

@@ -6,7 +6,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
-const { UsagePanel } = await import("../src/ui/UsagePanel.tsx");
+const { UsagePanel } = await import("../src/features/costs/usage-panel.tsx");
 const { HistoryList } = await import("../src/features/history/history-list.tsx");
 const { I18n } = await import("../src/i18n/index.ts");
 
