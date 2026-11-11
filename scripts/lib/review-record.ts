@@ -15,7 +15,8 @@ const SHA = /^[0-9a-f]{7,40}$/;
 /** The sha each value of a review trailer names (its first word), in `git log --format=%x1e<trailers>` output. */
 export function parseReviewLog(log: string): string[] {
   return log
-    .split(/[\x1e\x1d]/)
+    .replaceAll("\x1d", "\x1e")
+    .split("\x1e")
     .map((value) => value.trim().split(/\s+/)[0] ?? "")
     .filter((word) => SHA.test(word));
 }
