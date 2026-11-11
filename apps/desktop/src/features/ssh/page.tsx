@@ -1,8 +1,6 @@
 import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { ImportPanel } from "@/components/connections/import-panel";
-import { TargetForm } from "@/components/connections/target-form";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -21,11 +19,13 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { useStoreSlice } from "@/lib/use-store";
-import { savePayload } from "../features/ssh/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import type { Route } from "../lib/router.ts";
-import { hasFeature } from "../lib/version.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { Route } from "../../lib/router.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { ImportPanel } from "./import-panel";
+import { savePayload } from "./index.ts";
+import { TargetForm } from "./target-form";
 
 /** The "via" filter's value for a destino that this host opens itself. */
 const LOCAL = "-";

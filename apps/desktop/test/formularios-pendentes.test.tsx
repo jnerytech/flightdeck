@@ -14,7 +14,7 @@ const { NewSecretForm } = await import("../src/features/vault/new-secret-form.ts
 const { PersonaEditor } = await import("../src/features/personas/persona-editor.tsx");
 const { SnippetEditor } = await import("../src/features/snippets/snippet-editor.tsx");
 const { ActionForm } = await import("../src/ui/ActionForm.tsx");
-const { TargetForm } = await import("../src/components/connections/target-form.tsx");
+const { TargetForm } = await import("../src/features/ssh/target-form.tsx");
 
 import type { AppStore } from "../src/lib/app-store.ts";
 
