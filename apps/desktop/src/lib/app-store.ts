@@ -8,7 +8,6 @@ import type {
   EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
-  ExternalUpdated,
   HelloResult,
   HistoryChanged,
   HistoryGetResult,
@@ -98,6 +97,7 @@ import {
 } from "../features/personas/index.ts";
 import { initialQuotaState, QuotaSlice, type QuotaSliceState } from "../features/quota/index.ts";
 import {
+  ExternalSessionsSlice,
   initialSessionsState,
   SessionCommandsSlice,
   SessionsSlice,
@@ -165,14 +165,13 @@ import { hubRows, takeHubHost } from "./hub.ts";
 import type { InboxEntry } from "./inbox.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { externalRequestNotification } from "./notify.ts";
 import { NotifyPreferences } from "./notify-policy.ts";
 import { basename, isInside } from "./paths.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
-import { parseRequestLink, requestLink } from "./request-link.ts";
+import { parseRequestLink } from "./request-link.ts";
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
@@ -827,6 +826,8 @@ export class AppStore {
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
+  /** What a host tells about the Claude sessions started in a terminal (#1596). */
+  readonly external: ExternalSessionsSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -1315,6 +1316,16 @@ export class AppStore {
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
       fail: (error, text) => this.fail(error, text),
       t: () => this.i18n.t,
+    });
+    this.external = new ExternalSessionsSlice({
+      state: () => this.state,
+      patch: (patch) => this.update(patch),
+      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
+      isFocused: () => this.platform.isFocused(),
+      t: () => this.i18n.t,
+      notify: (...args) => this.inbox.notify(...args),
+      feedSession: (host, prev, next) => this.webhookFeed.externalSession(host, prev, next),
+      feedPermission: (host, frame, cwd) => this.webhookFeed.externalPermission(host, frame, cwd),
     });
     this.summaries = new SummariesSlice({
       hosts: () => this.state.hosts,
@@ -2642,7 +2653,7 @@ export class AppStore {
       onEvent: (envelope) => this.onEvent(config.id, envelope),
       onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
-      onExternal: (frame) => this.onExternal(config.id, frame),
+      onExternal: (frame) => this.external.onExternal(config.id, frame),
       onVaultRequest: (request) => void this.vaultApprovals.onRequest(config, request),
       onVaultUsed: (used) => {
         this.usage.recordUsed(config.id, used);
@@ -2888,83 +2899,6 @@ export class AppStore {
     const unread = { ...this.state.unread };
     for (const key of shown) delete unread[key];
     this.update({ unread });
-  }
-
-  /** External sessions follow `external.updated`; requests stay in the queue while open. */
-  private onExternal(hostId: string, frame: ExternalUpdated | ExternalPermissionFrame): void {
-    if (frame.type === "external.updated") {
-      const key = sessionKey(hostId, frame.session.claudeSessionId);
-      const known = this.state.hosts.find((h) => h.id === hostId);
-      if (known) {
-        this.webhookFeed.externalSession(
-          { id: hostId, name: known.name },
-          this.state.externals[key],
-          frame.session,
-        );
-      }
-      this.update({
-        externals: { ...this.state.externals, [key]: frame.session },
-        // The name and pin of a terminal session ride on its frames (phase 10).
-        ...(frame.session.meta ? { meta: { ...this.state.meta, [key]: frame.session.meta } } : {}),
-      });
-      return;
-    }
-    const key = sessionKey(hostId, frame.requestId);
-    const { [key]: _closed, ...open } = this.state.externalRequests;
-    if (frame.state === "closed") {
-      this.update({ externalRequests: open });
-      return;
-    }
-    this.update({ externalRequests: { ...open, [key]: frame } });
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    this.webhookFeed.externalPermission(
-      { id: hostId, name: host?.name ?? hostId },
-      frame,
-      this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
-    );
-    if (!this.platform.isFocused()) {
-      this.inbox.notify(
-        externalRequestNotification(
-          {
-            hostId,
-            hostName: host?.name ?? hostId,
-            subject: this.externalTitle(hostId, frame.claudeSessionId),
-            claudeSessionId: frame.claudeSessionId,
-            toolName: frame.toolName,
-            input: frame.input,
-            link: requestLink(hostId, frame.requestId),
-          },
-          this.i18n.t,
-        ),
-        undefined,
-        undefined,
-        {
-          event: "needs-you",
-          hostId,
-          session: sessionKey(hostId, frame.claudeSessionId),
-          ...this.projectOf(
-            hostId,
-            this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd,
-          ),
-        },
-      );
-    }
-  }
-
-  private projectOf(hostId: string, cwd: string | null | undefined): { project?: string } {
-    const project = this.sessionProject(hostId, cwd);
-    return project ? { project } : {};
-  }
-
-  /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
-  private externalTitle(hostId: string, claudeSessionId: string): string {
-    const key = sessionKey(hostId, claudeSessionId);
-    const cwd = this.state.externals[key]?.cwd;
-    return (
-      this.state.meta[key]?.name ??
-      this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
-      (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
-    );
   }
 
   /**
