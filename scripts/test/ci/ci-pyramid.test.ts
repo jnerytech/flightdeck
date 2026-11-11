@@ -157,9 +157,20 @@ describe("ci-pyramid (#309)", () => {
   test("the fast-coverage ratchet runs on PRs too, so a drop fails the PR, not main (#309 d, #358)", () => {
     const job = ci.jobs["fast-coverage"];
     expect(job?.name).toBe("fast coverage (ubuntu-latest)");
-    expect(job?.needs).toEqual(["quick"]);
+    // It reads the unit + component shards' coverage from the suite's merge, not a third run of
+    // those tests (#1854): no checkout, no install, seconds instead of minutes.
+    expect(job?.needs).toEqual(["quick", "test-suite"]);
     expect(job?.if ?? "").not.toContain("pull_request");
-    expect((job?.steps ?? []).some((s) => s.run === "bun run fast-coverage")).toBe(true);
+    expect(job?.if ?? "").toContain("!cancelled()");
+    const run = (job?.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(run).toContain('test "${{ needs.test-suite.outputs.fast }}" = pass');
+    expect(run).not.toContain("bun run fast-coverage");
+    expect((job?.steps ?? []).some((s) => (s as { uses?: string }).uses)).toBe(false);
+    const merge = (ci.jobs["test-suite"]?.steps ?? []).find((s) => s.id === "merge");
+    expect(merge).toBeDefined();
+    expect(
+      (ci.jobs["test-suite"] as { outputs?: Record<string, string> } | undefined)?.outputs?.fast,
+    ).toBe("${{ steps.merge.outputs.fast }}");
   });
 
   test("the required test (ubuntu-latest) check waits for the fast-coverage ratchet and needs it green (#358)", () => {

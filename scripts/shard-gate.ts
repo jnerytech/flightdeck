@@ -125,6 +125,15 @@ if (command === "run") {
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
         write(join(dirname(c), "pyramid.json"), json);
       },
+      // The fast-coverage ratchet (#309) reads the unit + component shards: the job of that name
+      // only reads this verdict from the suite's output (#1854).
+      fastBaseline: JSON.parse(readFileSync(join(ROOT, "fast-coverage-baseline.json"), "utf8")),
+      fastResult: ({ ok, lines }) => {
+        for (const line of lines) (ok ? console.log : console.error)(line);
+        if (process.env.GITHUB_OUTPUT) {
+          appendFileSync(process.env.GITHUB_OUTPUT, `fast=${ok ? "pass" : "fail"}\n`);
+        }
+      },
       ...(selection ? { selection } : {}),
     }),
   );

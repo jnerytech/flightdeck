@@ -10,12 +10,13 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { belowGate, COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
 import type { FunctionCoverage } from "./coverage-funcs.ts";
+import { fastCoverageVerdict } from "./fast-coverage.ts";
 import { pyramidOf, renderPyramid } from "./pyramid-table.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
 import { splitShards, type Timings, testFiles } from "./test-shards.ts";
 import type { Tier } from "./test-tiers.ts";
-import { TIER_SHARDS, tierShard, tierShardFiles } from "./tier-shards.ts";
+import { FAST_SHARDS, TIER_GROUPS, TIER_SHARDS, tierShard, tierShardFiles } from "./tier-shards.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -46,6 +47,8 @@ export interface GateInput {
   jobs: readonly ShardJob[];
   /** The source files that must be loaded and covered (check-coverage.ts). */
   sources: readonly string[];
+  /** Only these shards (1-based) are collected, as the fast-coverage ratchet reads the base's (#1854). */
+  shardsOf?: readonly number[];
   /**
    * A PR's selection (#1761): only `sources` are judged; the other loaded files stay in the merged
    * lcov for SonarCloud but are not held to the gate.
@@ -60,6 +63,8 @@ export interface GateResult {
   lcov: string;
   /** True when a shard is missing, failed or partial: the problems are about the run, not coverage. */
   closed: boolean;
+  /** The sources at the gate (80% of lines and functions) from the collected shards, sorted. */
+  covered: string[];
 }
 
 interface BunFile {
@@ -120,7 +125,7 @@ function collect(input: GateInput): { shards: Shard[]; problems: string[] } {
     }
     return job;
   };
-  const range = Array.from({ length: n }, (_, k) => k + 1);
+  const range = input.shardsOf ?? Array.from({ length: n }, (_, k) => k + 1);
   const bunJobs = range.map((i) => pick(i, "bun"));
   const istanbulJobs = range.map((i) => pick(i, "istanbul"));
   const shards: Shard[] = [];
@@ -195,7 +200,7 @@ function functionsOf(
 /** The merged verdict and lcov, or the problems that leave the gate closed. */
 export function shardGate(input: GateInput): GateResult {
   const { shards, problems: closed } = collect(input);
-  if (closed.length > 0) return { problems: closed, lcov: "", closed: true };
+  if (closed.length > 0) return { problems: closed, lcov: "", closed: true, covered: [] };
   const paths = [...new Set(shards.flatMap((s) => [...s.lcov.keys()]))];
   const problems: string[] = [];
   const report = new Map<string, FileCoverage>();
@@ -240,7 +245,13 @@ export function shardGate(input: GateInput): GateResult {
   const all = [...ownProblems, ...checkCoverage(report, checked)].sort((a, b) =>
     a.localeCompare(b, "en"),
   );
-  return { problems: all, lcov: records.map((r) => `${r}\n`).join(""), closed: false };
+  const covered = input.sources
+    .filter((path) => {
+      const file = report.get(path);
+      return file !== undefined && !belowGate(file.functions) && !belowGate(file.lines);
+    })
+    .sort((a, b) => a.localeCompare(b, "en"));
+  return { problems: all, lcov: records.map((r) => `${r}\n`).join(""), closed: false, covered };
 }
 
 /** How one shard job runs: the bun job writes an lcov into `out`, the istanbul job its counters. */
@@ -449,6 +460,57 @@ export interface MergeShardsDeps {
   fastResult?: (result: { ok: boolean; lines: string[] }) => void;
 }
 
+/**
+ * The fast-coverage ratchet (#309) from the unit + component shards alone (#1854): the sources they
+ * cover at the gate must still include every one in the baseline. The base of the pyramid already
+ * ran, with its own coverage, so it is not run a third time for a report.
+ */
+function fastCoverageOf(
+  count: number,
+  jobs: readonly ShardJob[],
+  deps: MergeShardsDeps,
+  tiers: Record<string, Tier>,
+  baseline: readonly string[],
+): { ok: boolean; lines: string[] } {
+  const base = TIER_GROUPS[0]?.tiers ?? [];
+  const tests = (deps.selection ? [...deps.selection.tests] : testFiles([...deps.tracked])).filter(
+    (test) => base.includes(tiers[test] ?? "unit"),
+  );
+  const fast = shardGate({
+    shards: count,
+    shardsOf: FAST_SHARDS,
+    tests,
+    jobs,
+    sources: deps.sources,
+  });
+  if (fast.closed) {
+    return {
+      ok: false,
+      lines: [
+        `fast-coverage: the unit + component shards give no verdict (${fast.problems.length} problem(s)):`,
+        ...fast.problems.map((p) => `  - ${p}`),
+      ],
+    };
+  }
+  const { dropped } = fastCoverageVerdict(fast.covered, baseline, deps.sources);
+  if (dropped.length > 0) {
+    return {
+      ok: false,
+      lines: [
+        `fast-coverage: ${dropped.length} source(s) the fast tiers covered at the gate no longer are:`,
+        ...dropped.map((path) => `  - ${path}`),
+        "Cover them again with unit or component tests (the base of the pyramid only grows).",
+      ],
+    };
+  }
+  return {
+    ok: true,
+    lines: [
+      `fast-coverage: ${fast.covered.length} of ${deps.sources.length} source(s) at the gate from the fast tiers; the ${baseline.length} listed hold`,
+    ],
+  };
+}
+
 /** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
 export function mergeShards(
   dir: string,
@@ -485,6 +547,9 @@ export function mergeShards(
     ...(deps.selection ? { only: true } : {}),
   });
   if (result.lcov) deps.write(lcovOut, result.lcov);
+  if (deps.tiers && deps.fastBaseline && deps.fastResult) {
+    deps.fastResult(fastCoverageOf(count, jobs, deps, deps.tiers, deps.fastBaseline));
+  }
   if (result.problems.length === 0) {
     deps.print(
       `cobertura de ${COVERAGE_GATE}% ou mais em ${(deps.selection ? deps.selection.targets : deps.sources).length} arquivos-fonte, de ${count} shards`,

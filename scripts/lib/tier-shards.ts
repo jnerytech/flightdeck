@@ -22,6 +22,12 @@ export const TIER_GROUPS: readonly TierGroup[] = [
 /** The shard count of the whole plan: the shards `shard-gate` numbers 1 to this. */
 export const TIER_SHARDS = TIER_GROUPS.reduce((sum, group) => sum + group.shards, 0);
 
+/** The shard numbers (1-based) of the base of the pyramid: the first group's. */
+export const FAST_SHARDS: readonly number[] = Array.from(
+  { length: TIER_GROUPS[0]?.shards ?? 0 },
+  (_, k) => k + 1,
+);
+
 /** Which group, and which part of it, shard `index` of `count` is; null off the plan. */
 export function tierShard(
   index: number,
