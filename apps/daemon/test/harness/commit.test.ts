@@ -204,8 +204,8 @@ describe("harness-commit: the setup is committed on a new branch, nothing else m
       allowedNetworks: ["0.0.0.0/0", "::/0"],
     };
     const servers = [
-      startServer({ ...base, harnessCommit: commit }),
-      startServer({ ...base, harnessCommit: commit, peerOf: () => "8.8.8.8" }),
+      startServer({ ...base, harness: { commit } }),
+      startServer({ ...base, harness: { commit }, peerOf: () => "8.8.8.8" }),
       startServer(base),
     ];
     const clients = servers.map((server) => new FrameClient(server.url));

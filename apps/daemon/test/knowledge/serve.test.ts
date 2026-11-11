@@ -93,7 +93,7 @@ describe("knowledge-serve: over the protocol (#76)", () => {
     const ctx = newManager();
     const server = startServer({
       manager: ctx.manager,
-      ...(knowledgeFeed ? { knowledgeFeed } : {}),
+      ...(knowledgeFeed ? { knowledge: { feed: knowledgeFeed } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

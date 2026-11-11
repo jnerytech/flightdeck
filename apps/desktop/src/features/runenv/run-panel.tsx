@@ -4,8 +4,8 @@ import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
+import { type AppStore, sessionKey } from "../../lib/app-store.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const LIVE = new Set(["setup", "running"]);
 

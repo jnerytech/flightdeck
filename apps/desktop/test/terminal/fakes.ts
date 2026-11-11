@@ -3,7 +3,7 @@ import type {
   XtermLink,
   XtermLinkProvider,
   XtermTerminal,
-} from "../src/lib/xterm-screen.ts";
+} from "../../src/lib/xterm-screen.ts";
 
 /** An xterm the tests drive: what it was given to draw, and the hands to type and press keys. */
 export function fakeXterm() {

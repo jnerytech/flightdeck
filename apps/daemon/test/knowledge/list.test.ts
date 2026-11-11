@@ -139,7 +139,7 @@ describe("knowledge-list: over the protocol (#76)", () => {
     await put(ctx.project, "docs/adr/a.md", front("valid", "# Served\n"));
     const server = startServer({
       manager: ctx.manager,
-      knowledge: (path) => listKnowledge(path),
+      knowledge: { list: (path) => listKnowledge(path) },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

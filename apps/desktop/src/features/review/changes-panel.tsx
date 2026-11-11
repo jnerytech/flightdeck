@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import type { AppStore } from "../lib/app-store.ts";
-import { formatBytes } from "../lib/format-bytes.ts";
-import { type Selection, select } from "../lib/review.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { DiffView } from "./DiffView.tsx";
-import { FileSessions } from "./FileSessions.tsx";
-import { ReviewList } from "./ReviewList.tsx";
+import type { AppStore } from "../../lib/app-store.ts";
+import { formatBytes } from "../../lib/format-bytes.ts";
+import { type Selection, select } from "../../lib/review.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { DiffView } from "../../ui/DiffView.tsx";
+import { FileSessions } from "../../ui/FileSessions.tsx";
+import { ReviewList } from "./review-list.tsx";
 
 // CodeMirror is ~800 KB of source and only opens with a file: it loads when an editor is opened.
-const FileEditor = lazy(() => import("./FileEditor.tsx").then((m) => ({ default: m.FileEditor })));
+const FileEditor = lazy(() =>
+  import("../../ui/FileEditor.tsx").then((m) => ({ default: m.FileEditor })),
+);
 
 /** What the host offers to take back a revert: the file and when the offer ends. */
 interface Undo {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { AppStore } from "../src/lib/app-store.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {

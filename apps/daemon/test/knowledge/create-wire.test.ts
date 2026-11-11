@@ -19,7 +19,7 @@ async function serve(withCreate = true) {
   mkdirSync(project, { recursive: true });
   const server = startServer({
     manager: newManager().manager,
-    ...(withCreate ? { knowledgeCreate: createKnowledgeDoc } : {}),
+    ...(withCreate ? { knowledge: { create: createKnowledgeDoc } } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

@@ -5,7 +5,7 @@ import { uiIdle } from "./wait.ts";
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ChangesPanel } = await import("../src/ui/ChangesPanel.tsx");
+const { ChangesPanel } = await import("../src/features/review/changes-panel.tsx");
 const { DiffView } = await import("../src/ui/DiffView.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");

@@ -19,8 +19,7 @@ async function markdownOf(
   template: string | undefined,
 ): Promise<TemplateMarkdown | null> {
   if (template === undefined) return null;
-  const templates = server.opts.harnessTemplates;
-  if (!templates) throw featureOff("harnessTemplates");
+  const templates = server.needIn("harness", "templates");
   return templates.files(template);
 }
 
@@ -100,14 +99,12 @@ export const projectHandlers = {
     return trust.state([path])[0] ?? done;
   },
   "project.harness.stack": async (payload, { server }) => {
-    const stack = server.opts.harnessStack;
-    if (!stack) throw featureOff("harnessStack");
+    const stack = server.needIn("harness", "stack");
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await stack(path);
   },
   "project.harness.preview": async (payload, { ws, server }) => {
-    const preview = server.opts.harnessPreview;
-    if (!preview) throw featureOff("harnessPreview");
+    const preview = server.needIn("harness", "preview");
     const { parts, template } = payload;
     // A template's files come back whole, and T1a keeps them off a far connection: near only.
     if (template !== undefined) {
@@ -117,8 +114,7 @@ export const projectHandlers = {
     return await preview(path, parts, await markdownOf(server, template));
   },
   "project.harness.export": async (payload, { ws, server }) => {
-    const templates = server.opts.harnessTemplates;
-    if (!templates) throw featureOff("harnessTemplates");
+    const templates = server.needIn("harness", "templates");
     // It reads a project's instructions into a store any project of the host can use: near only.
     requireVaultTransport(ws.data.origin, "project.harness.export", server.opts.log);
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
@@ -126,16 +122,14 @@ export const projectHandlers = {
     return await templates.export(path, id, title);
   },
   "project.harness.draft": async (payload, { ws, server }) => {
-    const draft = server.opts.harnessDraft;
-    if (!draft) throw featureOff("harnessDraft");
+    const draft = server.needIn("harness", "draft");
     // A model call on the plan, whose text a later apply may write: a near connection only.
     requireVaultTransport(ws.data.origin, "project.harness.draft", server.opts.log);
     const path = await resolveAllowedCwd(payload.path, server.opts.allowedRoots);
     return await draft(path);
   },
   "project.harness.commit": async (payload, { ws, server }) => {
-    const commit = server.opts.harnessCommit;
-    if (!commit) throw featureOff("harnessCommit");
+    const commit = server.needIn("harness", "commit");
     // A branch made in the person's repository, one push from public: near only, and confirmed.
     requireVaultTransport(ws.data.origin, "project.harness.commit", server.opts.log);
     if (payload.confirm !== true) {
@@ -149,8 +143,7 @@ export const projectHandlers = {
     return await commit(path, payload.digests);
   },
   "project.harness.apply": async (payload, { ws, server }) => {
-    const apply = server.opts.harnessApply;
-    if (!apply) throw featureOff("harnessApply");
+    const apply = server.needIn("harness", "apply");
     // A hook written here runs its command in every session of a trusted project: a near
     // connection only, like project.trust.set, and only once the person confirmed.
     requireVaultTransport(ws.data.origin, "project.harness.apply", server.opts.log);
@@ -171,13 +164,11 @@ export const projectHandlers = {
     });
   },
   "harness.templates.list": async (_payload, { server }) => {
-    const templates = server.opts.harnessTemplates;
-    if (!templates) throw featureOff("harnessTemplates");
+    const templates = server.needIn("harness", "templates");
     return { templates: await templates.list() };
   },
   "harness.templates.delete": async (payload, { ws, server }) => {
-    const templates = server.opts.harnessTemplates;
-    if (!templates) throw featureOff("harnessTemplates");
+    const templates = server.needIn("harness", "templates");
     // It deletes files on the host: a near connection, and only once the person confirmed.
     requireVaultTransport(ws.data.origin, "harness.templates.delete", server.opts.log);
     if (payload.confirm !== true) {
