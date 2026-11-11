@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   type ClientBudgetsCore,
   ClientBudgetsSlice,
-} from "../src/features/costs/client-budgets-store.ts";
+} from "../../src/features/costs/client-budgets-store.ts";
 
 /** The intervals that were started and not yet cleared, by the id `setInterval` returned. */
 const live = new Set<number>();

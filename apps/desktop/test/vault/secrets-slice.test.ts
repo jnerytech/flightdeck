@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { type VaultSecretsCore, VaultSecretsSlice } from "../src/features/vault/index.ts";
-import type { SecretMeta } from "../src/lib/vault.ts";
+import { type VaultSecretsCore, VaultSecretsSlice } from "../../src/features/vault/index.ts";
+import type { SecretMeta } from "../../src/lib/vault.ts";
 
 const META = {
   id: "s1",

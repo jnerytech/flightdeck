@@ -3,8 +3,8 @@ import {
   AppUpdateSlice,
   type AppUpdateState,
   initialAppUpdateState,
-} from "../src/features/appupdate/index.ts";
-import type { AppUpdate } from "../src/platform/types.ts";
+} from "../../src/features/appupdate/index.ts";
+import type { AppUpdate } from "../../src/platform/types.ts";
 
 const OFFER: AppUpdate = { version: "9.9.0", notes: "" };
 
