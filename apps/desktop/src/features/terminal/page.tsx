@@ -38,7 +38,7 @@ import {
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first path opened.
 const FileViewer = lazy(() =>
-  import("../../ui/FileViewer.tsx").then((m) => ({ default: m.FileViewer })),
+  import("../files/file-viewer.tsx").then((m) => ({ default: m.FileViewer })),
 );
 
 export function TerminalPage(
