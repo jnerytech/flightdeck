@@ -775,10 +775,6 @@ function describeError(error: unknown): string {
 }
 
 /**
- * All app state in one framework-free store: hosts and their connections, session timelines and
- * the current selection. React reads it through `useSyncExternalStore`.
- */
-/**
  * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
  * they are not read yet. A look from the Setup screen or a host page reads them for the checklist
  * only; the one at connect also opens the list the screens use (see `refreshSetup`).
@@ -795,6 +791,10 @@ function setupWants(
   };
 }
 
+/**
+ * All app state in one framework-free store: hosts and their connections, session timelines and
+ * the current selection. React reads it through `useSyncExternalStore`.
+ */
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -810,6 +810,7 @@ export class AppStore {
   readonly summaries: SummariesSlice;
   /** What a host tells about the Claude sessions started in a terminal (#1596). */
   readonly external: ExternalSessionsSlice;
+  /** What the Sessions screen lists from the online hosts (#1596). */
   private readonly sessionLists: SessionListsSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
