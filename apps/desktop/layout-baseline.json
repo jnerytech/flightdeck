@@ -1,4 +1,6 @@
 {
+  "src/features/actions/action-form.tsx": 8,
+  "src/features/actions/page.tsx": 21,
   "src/features/agentcfg/agent-files.tsx": 25,
   "src/features/agentcfg/agent-mcp.tsx": 11,
   "src/features/appupdate/update-banner.tsx": 4,
@@ -114,8 +116,6 @@
   "src/features/workflows/alert-picker.tsx": 3,
   "src/features/workflows/page.tsx": 12,
   "src/features/workflows/workflow-templates.tsx": 5,
-  "src/ui/ActionForm.tsx": 8,
-  "src/ui/ActionsPage.tsx": 21,
   "src/ui/AlwaysAllow.tsx": 6,
   "src/ui/App.tsx": 3,
   "src/ui/Areas.tsx": 4,
