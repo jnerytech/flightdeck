@@ -6,7 +6,7 @@ registerDom();
 const { cleanup, render } = await import("@testing-library/react");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
-const { AlwaysAllow } = await import("../src/ui/AlwaysAllow.tsx");
+const { AlwaysAllow } = await import("../src/features/permissions/always-allow.tsx");
 const { translateError } = await import("../src/i18n/errors.ts");
 
 afterEach(cleanup);

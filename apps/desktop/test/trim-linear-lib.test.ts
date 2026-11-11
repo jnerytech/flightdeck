@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { defaultRule } from "../src/features/permissions/always-allow.tsx";
 import { modelName } from "../src/lib/model-menu.ts";
 import { projectCwd, projectLabel } from "../src/lib/usage-rows.ts";
-import { defaultRule } from "../src/ui/AlwaysAllow.tsx";
 
 /**
  * Issue #363 (Sonar S8786): a folder, a model id or a rule's file is cut at its end in one pass.
