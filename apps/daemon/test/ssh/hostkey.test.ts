@@ -183,8 +183,7 @@ describe("ssh-hostkey", () => {
     const { root } = workspace();
     const server = startServer({
       manager: newManager().manager,
-      ssh: targets,
-      sshHostKeys: keys,
+      ssh: { targets, hostKeys: keys },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

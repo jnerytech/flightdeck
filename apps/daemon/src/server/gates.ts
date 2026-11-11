@@ -12,7 +12,6 @@ export const GATES = {
   activity: "activity",
   actions: "actions",
   agentcfg: "agentcfg",
-  askpass: "askpass",
   autoApprove: "autoApprove",
   automations: "automations",
   bg: "bg",
@@ -55,10 +54,6 @@ export const GATES = {
   snippetHistory: "snippetHistory",
   snippetUse: "snippetUse",
   snippets: "snippets",
-  ssh: "ssh",
-  sshConnect: "sshConnect",
-  sshHostKeys: "sshHostKeys",
-  sshImport: "sshImport",
   summary: "summary",
   teams: "teams",
   telemetry: "telemetry",
@@ -109,6 +104,13 @@ export const GROUP_GATES = {
     status: "knowledgeStatus",
     create: "knowledgeCreate",
     feedSwitch: "knowledgeFeed",
+  },
+  ssh: {
+    targets: "ssh",
+    import: "sshImport",
+    hostKeys: "sshHostKeys",
+    connect: "sshConnect",
+    askpass: "askpass",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<keyof NonNullable<ServerOptions[G]>, string>;

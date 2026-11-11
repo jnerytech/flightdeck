@@ -989,7 +989,7 @@ export async function startDaemon(
     review: reviewComments,
     ...(cardReviews ? { cardReview: cardReviews } : {}),
     sessionFiles: new SessionFiles({ db: store.db }),
-    ...serverPart(ssh.server),
+    ssh: serverGroup<"ssh">()(ssh.server),
     snippets,
     personas: personaStore,
     personaSessions,

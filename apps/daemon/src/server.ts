@@ -143,6 +143,20 @@ export const serverGroup =
     h as unknown as Group<K>;
 type Group<K extends keyof ServerOptions> = NonNullable<ServerOptions[K]>;
 
+/** Phase 15, #1593: the ssh domain's part of the server, each service optional. */
+interface SshServer {
+  /** The ssh destinos behind `ssh.*`. */
+  targets?: SshTargets;
+  /** The read-only import of `~/.ssh/config` behind `ssh.import.*`. */
+  import?: SshImporter;
+  /** The server keys of the ssh destinos behind `ssh.hostkey.*`. */
+  hostKeys?: HostKeys;
+  /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test`. */
+  connect?: SshConnector;
+  /** The ssh password and passphrase requests behind `askpass.*`. */
+  askpass?: AskpassBroker;
+}
+
 /** Issue #75, #1593: the harness domain's part of the server, each service optional. */
 interface HarnessServer {
   /** A project's stack and commands, read from its manifest files, never run. */
@@ -396,18 +410,10 @@ export interface ServerOptions {
   sessionCommits?: SessionCommits;
   /** #1133: a plain session's branch pushed and its PR opened. */
   sessionPrs?: SessionPrs;
-  /** The ssh destinos behind `ssh.*` (phase 15). */
-  ssh?: SshTargets;
-  /** The read-only import of `~/.ssh/config` behind `ssh.import.*` (phase 15). */
-  sshImport?: SshImporter;
-  /** The server keys of the ssh destinos behind `ssh.hostkey.*` (phase 15). */
-  sshHostKeys?: HostKeys;
-  /** Opening a ssh destino in a terminal, behind `ssh.connect` and `ssh.test` (phase 15). */
-  sshConnect?: SshConnector;
+  /** The ssh destinos and what the server offers of them (phase 15, #1593). */
+  ssh?: SshServer;
   /** Where the server writes what it refuses and why a connection closed (never a secret). */
   log?: (message: string) => void;
-  /** The ssh password and passphrase requests behind `askpass.*` (phase 15). */
-  askpass?: AskpassBroker;
   /** The snippets behind `snippets.*` (phase 18). */
   snippets?: Snippets;
   /** The import from the shell history behind `snippets.importHistory` (phase 18). */
