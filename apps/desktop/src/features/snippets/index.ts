@@ -21,3 +21,4 @@ export {
   SnippetsSlice,
   type SnippetsSliceState,
 } from "./store.ts";
+export { wireSnippets } from "./wire.ts";
