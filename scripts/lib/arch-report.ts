@@ -4,6 +4,7 @@
  * fail on growth; this reads their baselines and prints them together, for the terminal, the CI
  * job summary and a JSON file to follow the trend.
  */
+import { ruleCounts } from "./arch-ratchet.ts";
 
 export type RatchetRow = { ratchet: string; baseline: number; today: number };
 
@@ -20,16 +21,47 @@ export type ArchInputs = {
 };
 
 /** One row per ratchet figure, sorted by name. */
-export function ratchetRows(_inputs: ArchInputs): RatchetRow[] {
-  return [{ ratchet: "stub", baseline: -1, today: -1 }];
+export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
+  const rows: RatchetRow[] = [];
+  if (inputs.knownBase !== null || inputs.knownHead !== null) {
+    const base = ruleCounts(inputs.knownBase);
+    const head = ruleCounts(inputs.knownHead);
+    for (const rule of new Set([...Object.keys(base), ...Object.keys(head)]))
+      rows.push({
+        ratchet: `depcruise ${rule}`,
+        baseline: base[rule] ?? 0,
+        today: head[rule] ?? 0,
+      });
+  }
+  rows.push({
+    ratchet: "src-size files over the limit",
+    baseline: Object.keys(inputs.srcBaseline).length,
+    today: Object.keys(inputs.srcOversized).length,
+  });
+  for (const workspace of new Set([
+    ...Object.keys(inputs.flatBaseline),
+    ...Object.keys(inputs.flatCounts),
+  ]))
+    rows.push({
+      ratchet: `test-layout ${workspace}`,
+      baseline: inputs.flatBaseline[workspace] ?? 0,
+      today: inputs.flatCounts[workspace] ?? 0,
+    });
+  return rows.sort((a, b) => (a.ratchet < b.ratchet ? -1 : Number(a.ratchet > b.ratchet)));
 }
 
 /** The rows whose count is above its baseline. */
-export function growing(_rows: RatchetRow[]): RatchetRow[] {
-  return [];
+export function growing(rows: RatchetRow[]): RatchetRow[] {
+  return rows.filter((row) => row.today > row.baseline);
 }
 
 /** A markdown table of the rows, with a status column (`ok`, `down` or `UP`). */
-export function formatTable(_rows: RatchetRow[]): string {
-  return "";
+export function formatTable(rows: RatchetRow[]): string {
+  const status = (row: RatchetRow) =>
+    row.today > row.baseline ? "UP" : row.today < row.baseline ? "down" : "ok";
+  return [
+    "| Ratchet | Baseline | Today | Status |",
+    "| --- | ---: | ---: | --- |",
+    ...rows.map((row) => `| ${row.ratchet} | ${row.baseline} | ${row.today} | ${status(row)} |`),
+  ].join("\n");
 }
