@@ -122,7 +122,7 @@ jobs:
   test-shard:
     name: test shard ${{ matrix.shard }}/3 ${{ matrix.kind }} (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
     needs: [quick]
-    if: needs.quick.outputs.base == '' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -152,8 +152,11 @@ jobs:
           git config --global user.email "ci@flightdeck.invalid"
 
       # Outside the checkout: the repo guard fails a test run that leaves a file in it.
+      # A PR or a push to main (a base): its selection, split the same way (#1761).
       - name: Shard ${{ matrix.shard }}/3 (${{ matrix.kind }})
-        run: bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard"
+        env:
+          BASE: ${{ needs.quick.outputs.base }}
+        run: bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}
 
       - name: Relatório do shard
         if: always()
@@ -194,45 +197,13 @@ jobs:
 
       # Typecheck, lint and the TDD audit ran in the quick job (#272).
       # The test pyramid (#309): a PR runs every unit and component test plus the tests of the other
-      # tiers that reach a changed file, and every changed source file must be at the 80% gate of lines and
-      # functions from them. The coverage report stays in coverage/ for SonarCloud.
-      # A push to main does the same from the commit it came after (#444).
-      - name: Testes da seleção (pirâmide)
-        id: related
-        if: needs.quick.outputs.base != ''
-        env:
-          BASE: ${{ needs.quick.outputs.base }}
-          FLIGHTDECK_JUNIT: ${{ runner.temp }}/junit.xml
-        run: bun run test:related -- --pr --base "$BASE" --keep-coverage coverage
-
-      # #1493: the changed test files again under istanbul, as the full run's istanbul shards run
-      # them, so an istanbul-only red (#1492) shows here. A failed test fails it; no coverage gate.
-      - name: Changed tests under istanbul (#1493)
-        if: always() && needs.quick.outputs.base != ''
-        env:
-          BASE: ${{ needs.quick.outputs.base }}
-        run: bun run scripts/istanbul-changed.ts "$BASE" "$RUNNER_TEMP/istanbul"
-
-      # #1003: a test over 5 s or a test file over 60 s fails the PR, from the run above's own times.
-      - name: Testes lentos (#1003)
-        if: always() && needs.quick.outputs.base != ''
-        env:
-          TESTS_OUTCOME: ${{ steps.related.outcome }}
-        run: bun run scripts/slow-tests.ts "$RUNNER_TEMP/junit.xml"
-
-      - name: Tempos dos testes (JUnit)
-        if: always() && needs.quick.outputs.base != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: junit-pr
-          path: ${{ runner.temp }}/junit.xml
-          if-no-files-found: ignore
-          retention-days: 7
-
-      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 80% gate,
-      # merged from the shard jobs (#296). A missing report reaches the merge, which names it.
+      # tiers that reach a changed file, and every changed source file must be at the 80% gate of
+      # lines and functions from them. The shards run that selection (#1761) and this merge judges
+      # it, as it judges the whole suite of a schedule or a dispatch (#296): a shard missing,
+      # failed or short of the selection's test files gives no verdict. A push to main selects from
+      # the commit it came after (#444). The merged lcov stays in coverage/ for SonarCloud.
+      # A missing report reaches the merge, which names it.
       - name: Relatórios dos shards
-        if: needs.quick.outputs.base == ''
         continue-on-error: true
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -240,8 +211,22 @@ jobs:
           path: ${{ runner.temp }}/shards
 
       - name: Testes (cobertura 80%, 3 shards)
-        if: needs.quick.outputs.base == ''
-        run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info
+        id: merge
+        env:
+          BASE: ${{ needs.quick.outputs.base }}
+        run: bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info ${BASE:+--base "$BASE"}
+
+      # #1003: a test over 5 s or a test file over 60 s fails the PR, from each Bun shard's own times.
+      - name: Testes lentos (#1003)
+        if: always() && needs.quick.outputs.base != ''
+        env:
+          TESTS_OUTCOME: ${{ steps.merge.outcome }}
+        run: |
+          status=0
+          for report in "$RUNNER_TEMP"/shards/shard-*-bun/junit.xml; do
+            bun run scripts/slow-tests.ts "$report" || status=1
+          done
+          exit $status
 
       # SonarCloud reads it in its own job.
       - name: Relatório lcov para o SonarCloud
