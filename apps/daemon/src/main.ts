@@ -14,10 +14,9 @@ import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
-import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
-import { createHostPause } from "./board/wiring.ts";
+import { createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -389,6 +388,12 @@ export async function startDaemon(
     log: (m) => logger.log(m),
     history,
   });
+  const checkLoop = createCheckLoop({
+    db: store.db,
+    trust: projectTrust,
+    readSettings: readWatchSettings,
+    runner: boundedCheckRunner(),
+  });
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
     folderLocks,
@@ -404,12 +409,7 @@ export async function startDaemon(
     pause: hostPause,
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
-    checkLoop: {
-      // From the database alone: the board reads them while it starts, before the watcher exists.
-      settings: (projectId) => readWatchSettings(store.db, projectId),
-      isTrusted: (path) => projectTrust.isTrustedFolder(path),
-      runner: boundedCheckRunner(),
-    },
+    checkLoop: checkLoop.board,
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
     scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
@@ -730,12 +730,7 @@ export async function startDaemon(
     teams,
     watch: prWatch,
     // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
-    checkLoop: new CheckLoopSwitch({
-      board,
-      settings: (projectId) => prWatcher.settings(projectId),
-      isTrusted: (path) => projectTrust.isTrustedFolder(path),
-      modeOf: (card) => cardMode(card, manager),
-    }),
+    checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
     vault,
     log: logger.log.bind(logger),
     actions,
