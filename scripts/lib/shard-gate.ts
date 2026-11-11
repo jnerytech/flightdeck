@@ -13,6 +13,7 @@ import type { FunctionCoverage } from "./coverage-funcs.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";
 import { TEST_FILE } from "./test-related.ts";
 import { splitShards, type Timings, testFiles } from "./test-shards.ts";
+import type { Tier } from "./test-tiers.ts";
 
 /** What each shard job writes next to its data. */
 export interface ShardMarker {
@@ -24,6 +25,10 @@ export interface ShardMarker {
   exit: number;
   /** Failed tests. */
   fail: number;
+  /** The tier group and part the job ran, as its name says it: `unit + component 1/2` (#1854). */
+  tier?: string;
+  /** How long the test run took, in seconds (#1854). */
+  seconds?: number;
 }
 
 export interface ShardJob {
@@ -338,6 +343,10 @@ export interface RunShardDeps {
   print: (line: string) => void;
   /** A PR's selection instead of the whole suite (#1761). */
   selection?: Selection;
+  /** A test file's tier (#261): given, the shards are the tier plan's (#1854). */
+  tierOf?: (path: string) => Tier | undefined;
+  /** The clock, in milliseconds. */
+  now?: () => number;
 }
 
 /** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
