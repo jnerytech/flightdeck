@@ -1,7 +1,6 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { memo, useEffect, useState, useSyncExternalStore } from "react";
-import { DayChart } from "@/components/costs/day-chart";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -20,10 +19,10 @@ import { useFormatNumber, useT } from "@/i18n/context";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
-import { ALL_CLIENTS } from "../lib/client-scope.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
+import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import {
   ALL_HOSTS,
   daysBetween,
@@ -32,12 +31,13 @@ import {
   periodRange,
   projectLabel,
   usd,
-} from "../lib/costs.ts";
-import { exportCosts } from "../lib/costs-export.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
-import { basename } from "../lib/paths.ts";
-import { hasFeature } from "../lib/version.ts";
+} from "../../lib/costs.ts";
+import { exportCosts } from "../../lib/costs-export.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
+import { basename } from "../../lib/paths.ts";
+import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
+import { DayChart } from "./day-chart.tsx";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
 

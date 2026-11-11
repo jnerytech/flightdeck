@@ -58,7 +58,7 @@
   "apps/desktop/src/components/approval/hold-button.tsx",
   "apps/desktop/src/components/approval/question-form.tsx",
   "apps/desktop/src/components/clients/client-dot.tsx",
-  "apps/desktop/src/components/costs/day-chart.tsx",
+  "apps/desktop/src/features/costs/day-chart.tsx",
   "apps/desktop/src/components/feedback/action-button.tsx",
   "apps/desktop/src/components/feedback/busy.tsx",
   "apps/desktop/src/components/feedback/dialog-content.tsx",
