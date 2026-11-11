@@ -77,7 +77,11 @@ import {
   SessionsSlice,
   SummariesSlice,
 } from "../features/sessions/index.ts";
-import { initialSettingsState, SettingsSlice } from "../features/settings/index.ts";
+import {
+  initialSettingsState,
+  type SettingsSlice,
+  wireSettings,
+} from "../features/settings/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
@@ -412,11 +416,8 @@ export class AppStore {
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
     });
-    this.settings = new SettingsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.settings = wireSettings(this.kernel, {
       platform,
-      t: () => this.i18n.t,
       onShortcut: () => this.history.openSearch(),
     });
     this.hostTabs = HostTabs.restore(

@@ -15,3 +15,4 @@ export {
   type SettingsSliceState,
   TELEPORT_PREVIEW_KEY,
 } from "./store.ts";
+export { wireSettings } from "./wire.ts";
