@@ -9,7 +9,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { UntrustedNotice } = await import("../src/components/projects/untrusted-notice.tsx");
+const { UntrustedNotice } = await import("../src/features/trust/untrusted-notice.tsx");
 const { ShortArea, SessionPane } = await import("../src/components/session/parts.tsx");
 
 afterEach(() => cleanup());
