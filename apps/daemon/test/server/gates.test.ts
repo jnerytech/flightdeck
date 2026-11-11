@@ -161,7 +161,7 @@ describe("server-gates", () => {
   test("a grouped service names the same feature as its flat option did, and one the host runs is returned", () => {
     expect(JSON.parse(JSON.stringify(GROUP_GATES))).toEqual(GROUPED);
     const off = {} as ServerOptions;
-    const offIn = { knowledge: {} } as ServerOptions;
+    const offIn = { knowledge: {}, harness: {} } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
     );
@@ -177,5 +177,9 @@ describe("server-gates", () => {
     expect(
       groupOutcome({ knowledge: { list } } as unknown as ServerOptions, "knowledge", "list"),
     ).toBe(list);
+    const stack = async () => ({ commands: [] });
+    expect(
+      groupOutcome({ harness: { stack } } as unknown as ServerOptions, "harness", "stack"),
+    ).toBe(stack);
   });
 });
