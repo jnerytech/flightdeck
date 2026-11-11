@@ -324,3 +324,12 @@ async function rewriteConfigFile(
   await chmod(tmp, 0o600);
   await rename(tmp, file);
 }
+
+/** Current token in the config file, or `null` while it is unreadable or invalid. */
+export async function readToken(file: string): Promise<string | null> {
+  try {
+    return (await loadConfig(file)).token;
+  } catch {
+    return null;
+  }
+}

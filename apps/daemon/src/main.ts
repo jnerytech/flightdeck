@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
-import { stat } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
-import { join, resolve } from "node:path";
-import type { ServiceInstallResult } from "@flightdeck/protocol";
+import { join } from "node:path";
 import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
@@ -16,10 +14,9 @@ import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
-import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
-import { createHostPause } from "./board/wiring.ts";
+import { createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -30,11 +27,11 @@ import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import { type CliDeps, COMMANDS } from "./cli/commands.ts";
 import {
-  type Config,
   claudeSettingsPath,
   loadConfig,
   RELEASES_URL,
   type RuntimeKind,
+  readToken,
   updateConfigFile,
   userHome,
 } from "./config.ts";
@@ -58,9 +55,9 @@ import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
 import { adoptTitles } from "./names/track.ts";
-import { AutoApprover, historyExcludes } from "./permissions/auto-approve.ts";
-import { RiskClassifier } from "./permissions/risk.ts";
+import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
+import { createPermissions } from "./permissions/wiring.ts";
 import { packPersonas } from "./personas/pack.ts";
 import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
@@ -82,15 +79,15 @@ import { SessionPrs } from "./review/session-pr.ts";
 import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
-import type { PlatformInfo } from "./roots.ts";
+import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { serverGroup, startServer } from "./server.ts";
-import { daemonCommand, type ServiceContext } from "./service.ts";
-import { appCanInstallService, installServiceFromApp } from "./service-from-app.ts";
+import { daemonCommand } from "./service.ts";
+import { appServiceInstall } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
 import { createSessionSettings } from "./sessions/wiring.ts";
@@ -107,11 +104,10 @@ import { TeleportInbox } from "./teleport/receive.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
-import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
+import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
 import { trustServer } from "./trust/wiring.ts";
-import { stableBinPath } from "./update.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
@@ -122,7 +118,7 @@ import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
-import { type WslItem, WslSupervisor } from "./wsl.ts";
+import { createWsl, type WslItem } from "./wsl.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
 export { type CliDeps, HOOK_CONNECT_TIMEOUT_MS } from "./cli/commands.ts";
@@ -165,37 +161,6 @@ async function createRuntime(
       query: query as unknown as Parameters<typeof accountReaders>[0]["query"],
     }),
   };
-}
-
-/** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-async function terminalInfo(env: Record<string, string | undefined>) {
-  const stable = stableBinPath(userHome(env), process.platform);
-  return {
-    flightdeckdPath: (await stat(stable).then(
-      () => true,
-      () => false,
-    ))
-      ? stable
-      : null,
-    wslDistro: env.WSL_DISTRO_NAME || null,
-  };
-}
-
-/** The supervisor of the WSL distributions the config lists, if any. */
-function createWsl(config: Config, options: { wslCommand?: (item: WslItem) => string[] }) {
-  if (config.wsl.length === 0) return null;
-  return new WslSupervisor(config.wsl, {
-    logDir: join(config.dataDir, "logs"),
-    ...present({ command: options.wslCommand }),
-  });
-}
-
-/** Without an allowed root no session can be created: the log says so at the start. */
-function warnIfNoRoots(config: Config, logger: Logger): void {
-  if (config.allowedRoots.length > 0) return;
-  logger.error(
-    'warning: allowedRoots is empty; no session can be created (run "flightdeckd setup")',
-  );
 }
 
 /** Loads the config, opens the store and starts serving. The token is never logged. */
@@ -304,27 +269,14 @@ export async function startDaemon(
   const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
   const snapshots = new Snapshots({ db: store.db });
-  // Phase 13: one classifier for managed and terminal sessions, with the config's extra rules.
-  const risk = new RiskClassifier({
-    allowedRoots: config.allowedRoots,
-    home: userHome(env),
-    extraHigh: config.risk.extraHigh,
-  });
-  // Phase 13: the projects' automatic approval, through the board (defined below) and the costs.
-  const autoApprove = new AutoApprover({
+  // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
+  // below) and the costs.
+  const { risk, autoApprove } = createPermissions({
     db: store.db,
     runtime,
-    dataDir: config.dataDir,
-    context: (cwd) => {
-      const found = board.projectForCwd(cwd);
-      if (!found) return null;
-      const { project, card } = found;
-      return {
-        projectId: project.id,
-        settings: project.autoApprove,
-        ...(card ? { description: card.description, cardId: card.id } : {}),
-      };
-    },
+    config,
+    home: userHome(env),
+    projectForCwd: (cwd) => board.projectForCwd(cwd),
     usage: { record: (entry) => usageIndex.record(entry) },
   });
   // The vault joins this scanner when it exists (phase 16).
@@ -446,6 +398,12 @@ export async function startDaemon(
     log: (m) => logger.log(m),
     history,
   });
+  const checkLoop = createCheckLoop({
+    db: store.db,
+    trust: projectTrust,
+    readSettings: readWatchSettings,
+    runner: boundedCheckRunner(),
+  });
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
     folderLocks,
@@ -461,12 +419,7 @@ export async function startDaemon(
     pause: hostPause,
     // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
     // below is ready by then) and the project's trust, through the bounded runner.
-    checkLoop: {
-      // From the database alone: the board reads them while it starts, before the watcher exists.
-      settings: (projectId) => readWatchSettings(store.db, projectId),
-      isTrusted: (path) => projectTrust.isTrustedFolder(path),
-      runner: boundedCheckRunner(),
-    },
+    checkLoop: checkLoop.board,
     // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
     scanner: new SecretScanner(() => heldValues()),
     allowedRoots: config.allowedRoots,
@@ -787,12 +740,7 @@ export async function startDaemon(
     teams,
     watch: prWatch,
     // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
-    checkLoop: new CheckLoopSwitch({
-      board,
-      settings: (projectId) => prWatcher.settings(projectId),
-      isTrusted: (path) => projectTrust.isTrustedFolder(path),
-      modeOf: (card) => cardMode(card, manager),
-    }),
+    checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
     vault,
     log: logger.log.bind(logger),
     actions,
@@ -977,46 +925,6 @@ export async function startDaemon(
       return stopped;
     },
   };
-}
-
-/** Current token in the config file, or `null` while it is unreadable or invalid. */
-async function readToken(file: string): Promise<string | null> {
-  try {
-    return (await loadConfig(file)).token;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * #1200: `service.install` for a daemon run as its stable binary (the file a service starts);
- * undefined for any other, so a daemon run from source (the demo, the journeys) never offers it.
- * The service gets `--config` only when this daemon was started with one, as an absolute path.
- */
-function appServiceInstall(
-  config: string | null,
-  configFile: string,
-  ctxOf: (dryRun: boolean) => ServiceContext,
-  self: string[],
-): ((confirm: boolean) => Promise<ServiceInstallResult>) | undefined {
-  const base = ctxOf(false);
-  if (!appCanInstallService(self, stableBinPath(base.home, base.platform), base.platform)) {
-    return undefined;
-  }
-  return (confirm) =>
-    installServiceFromApp(
-      {
-        ctx: { ...base, command: self },
-        config: config ? resolve(config) : null,
-        recordClaude: async (executablePath) => {
-          await updateConfigFile(configFile, (raw) => ({
-            ...raw,
-            claude: { ...(raw.claude as object), executablePath },
-          }));
-        },
-      },
-      confirm,
-    );
 }
 
 /** CLI entry: starts the daemon and wires SIGINT/SIGTERM to a clean stop. */

@@ -36,13 +36,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
-import { TAB_ICONS, tabFacts, tabTitle } from "@/features/tabs/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import { revealTab } from "../lib/reveal-tab.ts";
-import { badgePulses, type TabBadge, tabKind } from "../lib/tab-badge.ts";
-import type { Tab, Tabs } from "../lib/tabs.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { revealTab } from "../../lib/reveal-tab.ts";
+import { badgePulses, type TabBadge, tabKind } from "../../lib/tab-badge.ts";
+import type { Tab, Tabs } from "../../lib/tabs.ts";
+import { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
 
 /** Past this many tabs the badges shrink to dots and the strip offers a menu of all of them. */
 const COMPACT_AT = 8;
