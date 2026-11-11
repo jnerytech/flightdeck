@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
 const { HomePage } = await import("../src/ui/HomePage.tsx");
-const { CostsPage } = await import("../src/ui/CostsPage.tsx");
+const { CostsPage } = await import("../src/features/costs/page.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

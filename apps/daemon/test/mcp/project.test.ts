@@ -1,0 +1,308 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { MASK, McpConfig } from "../../src/agentcfg/mcp.ts";
+import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
+import { startServer } from "../../src/server.ts";
+import { newBoard } from "../board-helpers.ts";
+import { newManager, poll, tempDir } from "../helpers.ts";
+import { FrameClient } from "../history-helpers.ts";
+
+const TOKEN = "mcp-token-0123456789abcdef";
+const ECO = resolve(import.meta.dir, "../fixtures/mcp/eco-server.ts");
+const MUDO = resolve(import.meta.dir, "../fixtures/mcp/mudo-server.ts");
+const json = (path: string) => JSON.parse(readFileSync(path, "utf8"));
+const sha = (path: string) =>
+  new Bun.CryptoHasher("sha256").update(readFileSync(path)).digest("hex");
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+/** A project with .mcp.json and settings.local.json, and a user ~/.claude.json elsewhere. */
+function setup(timeoutMs?: number) {
+  const project = tempDir("fd-mcp-");
+  const marker = join(project, "subiu.txt");
+  writeFileSync(
+    join(project, ".mcp.json"),
+    JSON.stringify({
+      outra: "chave preservada",
+      mcpServers: {
+        eco: { command: process.execPath, args: [ECO], env: { TOKEN: "segredo" } },
+        marcador: {
+          command: process.execPath,
+          args: ["-e", `require("fs").writeFileSync(${JSON.stringify(marker)}, "x")`],
+        },
+        mudo: { command: process.execPath, args: [MUDO] },
+      },
+    }),
+  );
+  mkdirSync(join(project, ".claude"));
+  writeFileSync(
+    join(project, ".claude", "settings.local.json"),
+    JSON.stringify({ permissions: { allow: ["Read"] }, disabledMcpjsonServers: ["mudo"] }),
+  );
+  const userConfigPath = join(tempDir("fd-user-"), ".claude.json");
+  writeFileSync(
+    userConfigPath,
+    JSON.stringify({
+      mcpServers: {
+        remoto: {
+          type: "http",
+          url: "https://mcp.example.com",
+          headers: { Authorization: "Bearer abc" },
+        },
+      },
+      projects: { [project]: { mcpServers: { local: { command: "python", args: ["srv.py"] } } } },
+    }),
+  );
+  const config = new McpConfig({ userConfigPath, ...(timeoutMs ? { timeoutMs } : {}) });
+  return { project, marker, userConfigPath, config };
+}
+
+/** A local HTTP MCP server with one tool and no resources; records the Authorization it got. */
+function httpServer() {
+  const seen: string[] = [];
+  const server = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    async fetch(request) {
+      seen.push(request.headers.get("authorization") ?? "");
+      const mcp = new McpServer({ name: "remota", version: "1.0.0" });
+      mcp.registerTool("remota", { description: "nada" }, async () => ({ content: [] }));
+      const transport = new WebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+      await mcp.connect(transport);
+      return transport.handleRequest(request);
+    },
+  });
+  cleanups.push(() => server.stop(true));
+  return { url: `http://127.0.0.1:${server.port}/mcp`, seen };
+}
+
+/** A daemon on the board's manager, with or without the project's MCP config. */
+async function daemon(mcp?: McpConfig) {
+  const { board, manager, repo } = newBoard();
+  const { id: projectId } = await board.addProject({ path: repo });
+  const server = startServer({
+    manager,
+    board,
+    ...(mcp ? { mcp } : {}),
+    hostName: "h",
+    bind: "127.0.0.1",
+    port: 0,
+    token: TOKEN,
+    allowedRoots: [],
+  });
+  cleanups.push(() => server.stop());
+  const client = new FrameClient(server.url);
+  cleanups.push(() => client.close());
+  await client.request("hello", { token: TOKEN, client: "t" });
+  return { client, projectId, repo };
+}
+
+async function code(promise: Promise<unknown> | (() => unknown)): Promise<string> {
+  try {
+    await (typeof promise === "function" ? promise() : promise);
+    return "ok";
+  } catch (error) {
+    return (error as { code?: string }).code ?? (error as Error).message;
+  }
+}
+
+describe("mcp-projeto", () => {
+  test("lista com origem e só leitura; segredos mascarados; abrir a lista não sobe servidor", async () => {
+    const { config, project, marker } = setup();
+    const list = await config.list(project);
+    expect(list.map((s) => [s.name, s.origin, s.readOnly, s.enabled])).toEqual([
+      ["eco", "project", false, true],
+      ["marcador", "project", false, true],
+      ["mudo", "project", false, false],
+      ["remoto", "user", true, true],
+      ["local", "user-project", true, true],
+    ]);
+    expect(list[0]).toMatchObject({ transport: "stdio", env: { TOKEN: MASK } });
+    expect(list[3]).toMatchObject({
+      transport: "http",
+      url: "https://mcp.example.com",
+      headers: { Authorization: MASK },
+    });
+    expect(existsSync(marker)).toBe(false);
+  });
+
+  test("salvar e remover mesclam no .mcp.json preservando o resto; o ~/.claude.json nunca muda", async () => {
+    const { config, project, userConfigPath } = setup();
+    const user = sha(userConfigPath);
+    expect(
+      await code(() => config.save(project, { name: "novo", command: "bun", args: ["x"] }, false)),
+    ).toBe("invalid_state");
+    await config.save(
+      project,
+      { name: "novo", command: "bun", args: ["x"], env: { A: "1" } },
+      true,
+    );
+    const saved = json(join(project, ".mcp.json"));
+    expect(saved.outra).toBe("chave preservada");
+    expect(saved.mcpServers.novo).toEqual({ command: "bun", args: ["x"], env: { A: "1" } });
+    // The other servers keep their real secrets.
+    expect(saved.mcpServers.eco.env).toEqual({ TOKEN: "segredo" });
+    await config.remove(project, "marcador", true);
+    expect(Object.keys(json(join(project, ".mcp.json")).mcpServers)).toEqual([
+      "eco",
+      "mudo",
+      "novo",
+    ]);
+    expect(sha(userConfigPath)).toBe(user);
+  });
+
+  test("editar com o valor mascarado é recusado: o segredo tem de ser digitado de novo; servidor do usuário é só leitura", async () => {
+    const { config, project } = setup();
+    expect(
+      await code(() =>
+        config.save(project, { name: "eco", command: "x", env: { TOKEN: MASK } }, true),
+      ),
+    ).toBe("invalid_state");
+    expect(await code(() => config.remove(project, "remoto", true))).toBe("invalid_state");
+    expect(await code(() => config.save(project, { name: "remoto", url: "https://x" }, true))).toBe(
+      "invalid_state",
+    );
+    expect(await code(() => config.toggle(project, "nao-existe", true, true))).toBe("not_found");
+  });
+
+  test("testar sem confirm também mostra o que rodaria para os servidores do ~/.claude.json", async () => {
+    const { config, project } = setup();
+    const preview = (name: string) =>
+      config.test(project, name, false).catch((error: { code?: string }) => error.code);
+    expect(await preview("remoto")).toEqual({ preview: { url: "https://mcp.example.com" } });
+    expect(await preview("local")).toEqual({ preview: { command: "python", args: ["srv.py"] } });
+    expect(await preview("nao-existe")).toBe("not_found");
+  });
+
+  test("ligar e desligar pela lista do settings.local.json, preservando o resto", async () => {
+    const { config, project } = setup();
+    const file = join(project, ".claude", "settings.local.json");
+    await config.toggle(project, "mudo", true, true);
+    await config.toggle(project, "eco", false, true);
+    expect(json(file)).toEqual({
+      permissions: { allow: ["Read"] },
+      disabledMcpjsonServers: ["eco"],
+      enabledMcpjsonServers: ["mudo"],
+    });
+    expect((await config.list(project)).find((s) => s.name === "eco")?.enabled).toBe(false);
+  });
+
+  test("testar: sem confirm só mostra o comando exato; com confirm lista as ferramentas; respeita o timeout", async () => {
+    const { config, project, marker, userConfigPath } = setup();
+    expect(await config.test(project, "marcador", false)).toEqual({
+      preview: {
+        command: process.execPath,
+        args: ["-e", `require("fs").writeFileSync(${JSON.stringify(marker)}, "x")`],
+      },
+    });
+    expect(existsSync(marker)).toBe(false);
+    expect(await config.test(project, "eco", true)).toEqual({
+      tools: ["eco"],
+      resources: ["nota"],
+    });
+    // A short limit only for the server that never answers: a real one needs time to start.
+    const quick = new McpConfig({ userConfigPath, timeoutMs: 300 });
+    const timedOut = await quick.test(project, "mudo", true).then(
+      () => "respondeu",
+      (error: Error) => error.message,
+    );
+    expect(timedOut).toBe("the server mudo did not answer in 0.3 s");
+  });
+
+  test("testar um servidor http: manda os headers reais e lista as ferramentas; sem recursos, lista vazia", async () => {
+    const { config, project } = setup();
+    const { url, seen } = httpServer();
+    const web = {
+      name: "web",
+      type: "http" as const,
+      url,
+      headers: { Authorization: "Bearer real" },
+    };
+    await config.save(project, web, true);
+    expect(await config.test(project, "web", false)).toEqual({ preview: { url } });
+    const tested = await config.test(project, "web", true).catch((error: Error) => error.message);
+    expect(tested).toEqual({ tools: ["remota"], resources: [] });
+    expect(seen).toContain("Bearer real");
+  });
+
+  test("sessão gerenciada viva: liga e desliga na hora pelo runtime", async () => {
+    const runtime = new FakeRuntime({ delayMs: 1 });
+    const { manager, project } = newManager({ runtime });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
+    await poll(() => manager.get(sessionId).status === "idle", 3000);
+    await manager.toggleMcpServer(sessionId, "eco", false);
+    expect(runtime.mcpToggles).toEqual([{ name: "eco", enabled: false }]);
+    expect(await code(manager.toggleMcpServer("nao-existe", "eco", true))).toBe("invalid_state");
+  });
+
+  test("protocolo: mcp.list e mcp.test (prévia) por projeto", async () => {
+    const { board, manager, repo } = newBoard();
+    const projectId = await board.addProject({ path: repo });
+    writeFileSync(
+      join(repo, ".mcp.json"),
+      JSON.stringify({ mcpServers: { eco: { command: process.execPath, args: [ECO] } } }),
+    );
+    const server = startServer({
+      manager,
+      board,
+      mcp: new McpConfig({ userConfigPath: join(tempDir(), ".claude.json") }),
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: TOKEN,
+      allowedRoots: [],
+    });
+    cleanups.push(() => server.stop());
+    const client = new FrameClient(server.url);
+    cleanups.push(() => client.close());
+    await client.request("hello", { token: TOKEN, client: "t" });
+    const listed = await client.data<{ servers: Array<{ name: string }> }>("mcp.list", {
+      projectId: projectId.id,
+    });
+    expect(listed?.servers.map((s) => s.name)).toEqual(["eco"]);
+    expect(await client.data("mcp.test", { projectId: projectId.id, name: "eco" })).toEqual({
+      preview: { command: process.execPath, args: [ECO] },
+    });
+  });
+
+  test("protocolo: salvar, ligar e remover pedem confirm; sessão que não está viva é recusada", async () => {
+    const userConfigPath = join(tempDir(), ".claude.json");
+    const { client, projectId, repo } = await daemon(new McpConfig({ userConfigPath }));
+    const names = (data: { servers: Array<{ name: string; enabled: boolean }> } | null) =>
+      data?.servers.map((s) => [s.name, s.enabled]);
+    const server = { name: "novo", command: "bun", args: ["x"] };
+    expect(await client.request("mcp.save", { projectId, server })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+    expect(names(await client.data("mcp.save", { projectId, server, confirm: true }))).toEqual([
+      ["novo", true],
+    ]);
+    const off = { projectId, name: "novo", enabled: false, confirm: true };
+    expect(names(await client.data("mcp.toggle", off))).toEqual([["novo", false]]);
+    expect(
+      await client.request("mcp.toggle", { ...off, enabled: true, sessionId: "nao-existe" }),
+    ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
+    expect(
+      names(await client.data("mcp.remove", { projectId, name: "novo", confirm: true })),
+    ).toEqual([]);
+    expect(json(join(repo, ".mcp.json")).mcpServers).toEqual({});
+  });
+
+  test("protocolo: daemon sem a config de MCP responde invalid_state", async () => {
+    const { client, projectId } = await daemon();
+    expect(await client.request("mcp.list", { projectId })).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state" },
+    });
+  });
+});

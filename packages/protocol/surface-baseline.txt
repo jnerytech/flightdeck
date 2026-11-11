@@ -4919,6 +4919,9 @@ ExternalSession.summary.state="waiting"
 ExternalSession.summary.tool
 ExternalSession.summary?
 ExternalSession.transcriptPath
+ExternalSession.waiting?
+ExternalSession.waiting|0="plan"
+ExternalSession.waiting|0="question"
 ExternalStatus="awaiting_permission"
 ExternalStatus="ended"
 ExternalStatus="idle"
@@ -4966,6 +4969,9 @@ ExternalUpdated.session.summary.state="waiting"
 ExternalUpdated.session.summary.tool
 ExternalUpdated.session.summary?
 ExternalUpdated.session.transcriptPath
+ExternalUpdated.session.waiting?
+ExternalUpdated.session.waiting|0="plan"
+ExternalUpdated.session.waiting|0="question"
 ExternalUpdated.type
 ExternalUpdated.type=="external.updated"
 FileSearchPayload.limit?
@@ -7568,6 +7574,9 @@ ServerMessage[type=external.updated].session.summary.state="waiting"
 ServerMessage[type=external.updated].session.summary.tool
 ServerMessage[type=external.updated].session.summary?
 ServerMessage[type=external.updated].session.transcriptPath
+ServerMessage[type=external.updated].session.waiting?
+ServerMessage[type=external.updated].session.waiting|0="plan"
+ServerMessage[type=external.updated].session.waiting|0="question"
 ServerMessage[type=external.updated].type
 ServerMessage[type=external.updated].type=="external.updated"
 ServerMessage[type=history.changed].claudeSessionId

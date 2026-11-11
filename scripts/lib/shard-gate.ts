@@ -39,6 +39,11 @@ export interface GateInput {
   jobs: readonly ShardJob[];
   /** The source files that must be loaded and covered (check-coverage.ts). */
   sources: readonly string[];
+  /**
+   * A PR's selection (#1761): only `sources` are judged; the other loaded files stay in the merged
+   * lcov for SonarCloud but are not held to the gate.
+   */
+  only?: boolean;
 }
 
 export interface GateResult {
@@ -216,11 +221,16 @@ export function shardGate(input: GateInput): GateResult {
       ].join("\n"),
     );
   }
+  // A PR judges its changed sources only; every other loaded file stays in the lcov (#1761).
+  const judged = input.only ? new Set(input.sources) : null;
+  const ownProblems = judged
+    ? problems.filter((p) => judged.has(p.slice(0, p.indexOf(":"))))
+    : problems;
   const unsettled = new Set(problems.map((p) => p.slice(0, p.indexOf(":"))));
-  const checked = [...new Set([...input.sources, ...report.keys()])].filter(
+  const checked = [...new Set([...input.sources, ...(judged ? [] : report.keys())])].filter(
     (p) => !unsettled.has(p),
   );
-  const all = [...problems, ...checkCoverage(report, checked)].sort((a, b) =>
+  const all = [...ownProblems, ...checkCoverage(report, checked)].sort((a, b) =>
     a.localeCompare(b, "en"),
   );
   return { problems: all, lcov: records.map((r) => `${r}\n`).join(""), closed: false };
@@ -295,6 +305,28 @@ export function spawnLogged(
   };
 }
 
+/** A PR's selection (#1761): the test files its shards split, and the changed sources they must cover. */
+export interface Selection {
+  tests: readonly string[];
+  targets: readonly string[];
+}
+
+/**
+ * The selection of `test:related --pr`'s plan, or null when the whole suite runs (a global file
+ * changed or a test went away), or the plan's own problem when it cannot run (#1761).
+ */
+export function selectionOf(plan: {
+  code: number;
+  output: string;
+  command: string[] | null;
+  files?: string[] | "all";
+  targets?: string[];
+}): Selection | null | { problem: string } {
+  if (plan.files === "all") return null;
+  if (plan.command === null && plan.code !== 0) return { problem: plan.output };
+  return { tests: plan.files ?? [], targets: plan.targets ?? [] };
+}
+
 /** What `runShard` touches: the checkout, its tracked files and timings, and the effects. */
 export interface RunShardDeps {
   root: string;
@@ -304,6 +336,8 @@ export interface RunShardDeps {
   write: (path: string, text: string) => void;
   spawn: (argv: string[], env: Record<string, string>) => Promise<{ exit: number; log: string }>;
   print: (line: string) => void;
+  /** A PR's selection instead of the whole suite (#1761). */
+  selection?: Selection;
 }
 
 /** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
@@ -328,14 +362,26 @@ export async function runShard(
     deps.print(`shard-gate: write the shard's output outside the checkout, not in ${out}`);
     return 2;
   }
-  const files = splitShards(testFiles([...deps.tracked]), deps.timings, count)[index - 1] ?? [];
-  // A bun test with no file runs the whole suite.
+  const { selection } = deps;
+  const all = selection ? [...selection.tests] : testFiles([...deps.tracked]);
+  const files = splitShards(all, deps.timings, count)[index - 1] ?? [];
+  // A bun test with no file runs the whole suite. A PR's small selection can leave a shard empty:
+  // it passes with empty reports, so the merge still sees every shard (#1761).
+  if (files.length === 0 && selection) {
+    deps.mkdir(out);
+    const marker: ShardMarker = { shard: index, of: count, kind, files, exit: 0, fail: 0 };
+    deps.write(join(out, "marker.json"), JSON.stringify(marker));
+    deps.write(join(out, kind === "bun" ? "lcov.info" : "funcs.json"), kind === "bun" ? "" : "{}");
+    deps.print(`shard ${index}/${count} ${kind}: no test file in this PR's selection`);
+    return 0;
+  }
   if (files.length === 0) {
     deps.print(`shard-gate: shard ${index}/${count} has no test files`);
     return 2;
   }
   deps.mkdir(out);
-  const plan = shardRun(kind, files, out, istanbulTargets(deps.tracked));
+  const targets = selection ? [...selection.targets] : istanbulTargets(deps.tracked);
+  const plan = shardRun(kind, files, out, targets);
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
   deps.write(join(out, "test.log"), log);
   const marker: ShardMarker = {
@@ -366,6 +412,8 @@ export interface MergeShardsDeps {
   sources: readonly string[];
   print: (line: string) => void;
   error: (line: string) => void;
+  /** A PR's selection instead of the whole suite (#1761). */
+  selection?: Selection;
 }
 
 /** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
@@ -391,14 +439,15 @@ export function mergeShards(
   });
   const result = shardGate({
     shards: count,
-    tests: testFiles([...deps.tracked]),
+    tests: deps.selection ? deps.selection.tests : testFiles([...deps.tracked]),
     jobs,
-    sources: deps.sources,
+    sources: deps.selection ? deps.selection.targets : deps.sources,
+    ...(deps.selection ? { only: true } : {}),
   });
   if (result.lcov) deps.write(lcovOut, result.lcov);
   if (result.problems.length === 0) {
     deps.print(
-      `cobertura de ${COVERAGE_GATE}% ou mais em ${deps.sources.length} arquivos-fonte, de ${count} shards`,
+      `cobertura de ${COVERAGE_GATE}% ou mais em ${(deps.selection ? deps.selection.targets : deps.sources).length} arquivos-fonte, de ${count} shards`,
     );
     return 0;
   }

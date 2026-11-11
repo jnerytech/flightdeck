@@ -17,64 +17,51 @@ const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
-const related = () => step("Testes da seleção (pirâmide)");
+const merge = () => step("Testes (cobertura 80%, 3 shards)");
 
 describe("ci-pyramid (#309)", () => {
-  test("#1003: after the PR's run, the slow-test check reads its JUnit times, and the report is kept", () => {
+  test("#1003: after the merge, the slow-test check reads each shard's JUnit times, and fails if any file does", () => {
     const check = step("Testes lentos (#1003)");
     expect(check?.if).toBe("always() && needs.quick.outputs.base != ''");
-    expect(check?.run).toBe('bun run scripts/slow-tests.ts "$RUNNER_TEMP/junit.xml"');
-    // A report missing after a passing test step is a failure, not a pass (#1022 review).
-    expect(check?.env).toEqual({ TESTS_OUTCOME: "${{ steps.related.outcome }}" });
-    expect((related() as { id?: string } | undefined)?.id).toBe("related");
-    const kept = steps.find((s) => s.name === "Tempos dos testes (JUnit)") as
-      | (Step & { with?: Record<string, string> })
-      | undefined;
-    expect(kept?.if).toBe("always() && needs.quick.outputs.base != ''");
-    expect(kept?.with?.path).toBe("${{ runner.temp }}/junit.xml");
+    // A report missing after a passing merge is a failure, not a pass (#1022 review).
+    expect(check?.env).toEqual({ TESTS_OUTCOME: "${{ steps.merge.outcome }}" });
+    expect(check?.run).toContain("for report in");
+    expect(check?.run).toContain('"$RUNNER_TEMP"/shards/shard-*-bun/junit.xml');
+    expect(check?.run).toContain('bun run scripts/slow-tests.ts "$report" || status=1');
+    expect(check?.run).toContain("exit $status");
+    expect((merge() as { id?: string } | undefined)?.id).toBe("merge");
   });
 
   test("the full suite runs every 3 hours on a schedule, so a red only it sees shows within 3 h (#444)", () => {
     expect(ci.on.schedule).toEqual([{ cron: "17 */3 * * *" }]);
   });
 
-  test("a PR and a push to main run the fast tiers plus the related tests from the plan's base, gated per changed file, and keep the lcov for SonarCloud (#309, #444)", () => {
-    const related = step("Testes da seleção (pirâmide)");
-    expect(related?.if).toBe("needs.quick.outputs.base != ''");
+  test("a PR and a push to main shard the fast tiers plus the related tests from the plan's base, merged and gated per changed file, and keep the lcov for SonarCloud (#309, #444, #1761)", () => {
     // The base reaches the shell as a quoted variable, never expanded into the line.
-    expect(related?.env).toEqual({
-      BASE: "${{ needs.quick.outputs.base }}",
-      // #1003: the same run keeps each test's time, for the slow-test check below.
-      FLIGHTDECK_JUNIT: "${{ runner.temp }}/junit.xml",
-    });
-    expect(related?.run).toBe(
-      'bun run test:related -- --pr --base "$BASE" --keep-coverage coverage',
+    expect(merge()?.env).toEqual({ BASE: "${{ needs.quick.outputs.base }}" });
+    expect(merge()?.run).toBe(
+      'bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info ${BASE:+--base "$BASE"}',
     );
-  });
-
-  test("the schedule and a run by hand run the whole suite with the 80% gate, merged from three shards (#444, #296)", () => {
-    // Each shard job leaves its report as an artifact; a missing one must reach the merge, which
-    // fails closed and names it, so the download goes on without it.
+    // The same steps merge a full run (no base): the selection is the whole suite then.
+    expect(merge()?.if).toBeUndefined();
     const download = step("Relatórios dos shards");
-    expect(download?.if).toBe("needs.quick.outputs.base == ''");
+    expect(download?.if).toBeUndefined();
     expect((download as { "continue-on-error"?: boolean })?.["continue-on-error"]).toBe(true);
     expect((download as { with?: Record<string, string> })?.with).toEqual({
       pattern: "shard-*",
       path: "${{ runner.temp }}/shards",
     });
-    const full = step("Testes (cobertura 80%, 3 shards)");
-    expect(full?.if).toBe("needs.quick.outputs.base == ''");
-    expect(full?.run).toBe(
-      'bun run scripts/shard-gate.ts merge "$RUNNER_TEMP/shards" 3 coverage/lcov.info',
-    );
+    // The single-runner steps of before are gone: the shards run the tests, istanbul included.
+    expect(steps.map((s) => s.name)).not.toContain("Testes da seleção (pirâmide)");
+    expect(steps.map((s) => s.name)).not.toContain("Changed tests under istanbul (#1493)");
   });
 
-  test("each shard runs twice, Bun's coverage and istanbul's functions, only when the whole suite runs (#296)", () => {
+  test("each shard runs twice, Bun's coverage and istanbul's functions, on a PR, a push and a full run (#296, #1761)", () => {
     const shard = ci.jobs["test-shard"] as
       | { if?: string; name?: string; needs?: string[]; strategy?: unknown; steps: Step[] }
       | undefined;
     expect(shard?.if).toBe(
-      "needs.quick.outputs.base == '' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')",
+      "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'",
     );
     expect(shard?.needs).toEqual(["quick"]);
     expect(shard?.strategy).toEqual({
@@ -92,8 +79,9 @@ describe("ci-pyramid (#309)", () => {
     const run = shard?.steps.find((s) => (s.run ?? "").includes("shard-gate.ts run"));
     // Outside the checkout: the repo guard fails a test run that leaves a file in it.
     expect(run?.run).toBe(
-      'bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard"',
+      'bun run scripts/shard-gate.ts run ${{ matrix.shard }}/3 ${{ matrix.kind }} "$RUNNER_TEMP/shard" ${BASE:+--base "$BASE"}',
     );
+    expect(run?.env).toEqual({ BASE: "${{ needs.quick.outputs.base }}" });
     const upload = shard?.steps.find((s) =>
       ((s as { uses?: string }).uses ?? "").startsWith("actions/upload-artifact@"),
     ) as { if?: string; with?: Record<string, unknown> } | undefined;

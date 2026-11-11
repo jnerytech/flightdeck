@@ -5,7 +5,7 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { cleanup, render } = await import("@testing-library/react");
-const { DayChart } = await import("../src/components/costs/day-chart.tsx");
+const { DayChart } = await import("../src/features/costs/day-chart.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 

@@ -6,7 +6,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { DayChart } = await import("../src/components/costs/day-chart.tsx");
+const { DayChart } = await import("../src/features/costs/day-chart.tsx");
 const { ModelPicker } = await import("../src/components/assistant/model-picker.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
