@@ -188,7 +188,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { AskpassPrompt } = await import("../src/components/connections/askpass-prompt.tsx");
     const { QuotaPanel } = await import("../src/ui/QuotaPanel.tsx");
     const { TeamsPage } = await import("../src/ui/TeamsPage.tsx");
-    const { PluginsPage } = await import("../src/ui/PluginsPage.tsx");
+    const { PluginsPage } = await import("../src/features/plugins/page.tsx");
     const { PersonasPage } = await import("../src/features/personas/page.tsx");
     const { SnippetsPage } = await import("../src/features/snippets/page.tsx");
     const { CostsPage } = await import("../src/features/costs/page.tsx");
