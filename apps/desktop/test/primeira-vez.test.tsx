@@ -171,7 +171,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
 
   test("a new token brings the same host online, without adding another", async () => {
     const { store, hostId } = await refused();
-    expect(await store.pairAgain(hostId, TOKEN)).toBeNull();
+    expect(await store.roster.pairAgain(hostId, TOKEN)).toBeNull();
     await rtlWaitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"), {
       timeout: 4000,
     });
@@ -181,17 +181,17 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
   test("a pasted pairing link works too, and a token the host refuses says so and changes nothing", async () => {
     const { store, hostId, url, mem } = await refused();
     const port = new URL(url.replace("ws://", "http://")).port;
-    expect(await store.pairAgain(hostId, "still-wrong")).toBe(
+    expect(await store.roster.pairAgain(hostId, "still-wrong")).toBe(
       store.i18n.t("hostForm.probeRefused"),
     );
     expect(store.getState().hosts[0]?.status).toBe("unauthorized");
     // A refused token is not kept: the stored secret is still the old one.
     expect(mem.tokens.get(hostId)).toBe("wrong-token");
-    expect(await store.pairAgain(hostId, "flightdeck://pc:1")).toBe(
+    expect(await store.roster.pairAgain(hostId, "flightdeck://pc:1")).toBe(
       store.i18n.t("hostForm.pairToken"),
     );
     expect(
-      await store.pairAgain(hostId, `flightdeck://127.0.0.1:${port}?token=${TOKEN}&name=pc`),
+      await store.roster.pairAgain(hostId, `flightdeck://127.0.0.1:${port}?token=${TOKEN}&name=pc`),
     ).toBeNull();
   });
 
@@ -251,9 +251,9 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
 
   test("an unknown host is an error, and a host removed during the probe keeps no secret", async () => {
     const { store, hostId, mem } = await refused();
-    expect(await store.pairAgain("nope", TOKEN)).toBe(store.i18n.t("hostOffline.pairGone"));
-    const pending = store.pairAgain(hostId, TOKEN);
-    await store.removeHost(hostId);
+    expect(await store.roster.pairAgain("nope", TOKEN)).toBe(store.i18n.t("hostOffline.pairGone"));
+    const pending = store.roster.pairAgain(hostId, TOKEN);
+    await store.roster.remove(hostId);
     expect(await pending).toBe(store.i18n.t("hostOffline.pairGone"));
     expect(mem.tokens.has(hostId)).toBe(false);
   });

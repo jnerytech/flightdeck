@@ -388,7 +388,7 @@ function AddHost(
   const [error, setError] = useState<string | null>(null);
   const submit = async (draft: HostDraft) => {
     setError(null);
-    const result = await props.store.testAndAddHost({
+    const result = await props.store.roster.testAndAdd({
       name: draft.name,
       url: draftUrl(draft),
       token: draft.token,
@@ -686,7 +686,7 @@ function hostWaitScreen(props: ScreenProps): ReactNode {
       <ScreenState>
         <HostOfflineBanner
           host={waitHost}
-          onReconnect={() => void store.reconnectHost(waitHost.id)}
+          onReconnect={() => void store.roster.reconnect(waitHost.id)}
         />
       </ScreenState>
     );
@@ -767,9 +767,9 @@ function hostScreen(props: ScreenProps, host: HostInfo): ReactNode {
             },
           }
         : {})}
-      onRename={(name) => store.renameHost(host.id, name)}
-      onReconnect={() => void store.reconnectHost(host.id)}
-      onPairAgain={(input) => store.pairAgain(host.id, input)}
+      onRename={(name) => store.roster.rename(host.id, name)}
+      onReconnect={() => void store.roster.reconnect(host.id)}
+      onPairAgain={(input) => store.roster.pairAgain(host.id, input)}
       onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
       onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
       onOpenSession={(row) => go(rowRoute(row))}
@@ -784,7 +784,7 @@ function hostScreen(props: ScreenProps, host: HostInfo): ReactNode {
       onNewSession={() => go({ name: "new-session", host: host.id })}
       onRemove={() => {
         go({ name: "hub" });
-        void store.removeHost(host.id);
+        void store.roster.remove(host.id);
       }}
     />
   );

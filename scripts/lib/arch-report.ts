@@ -21,7 +21,12 @@ export type ArchInputs = {
   /** Dead-code findings by kind today (knip) and in knip-baseline.json. */
   knipCounts: Record<string, number>;
   knipBaseline: Record<string, number>;
+  /** Raw `JSON.parse` calls per source file today and in json-parse-baseline.json. */
+  jsonParseCounts: Record<string, number>;
+  jsonParseBaseline: Record<string, number>;
 };
+
+const sum = (counts: Record<string, number>) => Object.values(counts).reduce((a, b) => a + b, 0);
 
 /** One row per ratchet figure, sorted by name. */
 export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
@@ -41,6 +46,11 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
     ratchet: "src-size files over the limit",
     baseline: Object.keys(inputs.srcBaseline).length,
     today: Object.keys(inputs.srcOversized).length,
+  });
+  rows.push({
+    ratchet: "json-parse raw calls",
+    baseline: sum(inputs.jsonParseBaseline),
+    today: sum(inputs.jsonParseCounts),
   });
   for (const kind of new Set([
     ...Object.keys(inputs.knipBaseline),

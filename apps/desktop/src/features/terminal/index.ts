@@ -3,12 +3,4 @@
  * the tab, "Claude aqui", the person's own terminal, the listeners that follow the output and the
  * close that asks detach or end. Another domain imports from here, never a file inside.
  */
-export {
-  type ClosingTerminal,
-  type TerminalCommands,
-  type TerminalFrame,
-  type TerminalListener,
-  type TerminalsCore,
-  type TerminalsHost,
-  TerminalsSlice,
-} from "./store.ts";
+export { type ClosingTerminal, type TerminalListener, TerminalsSlice } from "./store.ts";

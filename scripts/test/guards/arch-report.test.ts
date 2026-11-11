@@ -17,6 +17,8 @@ const inputs = (over: Partial<ArchInputs> = {}): ArchInputs => ({
   flatBaseline: { "apps/desktop/test": 680, "packages/protocol/test": 23 },
   knipCounts: { exports: 150, types: 100, files: 15 },
   knipBaseline: { exports: 160, types: 100, files: 15 },
+  jsonParseCounts: { "apps/daemon/src/a.ts": 2, "apps/desktop/src/lib/b.ts": 1 },
+  jsonParseBaseline: { "apps/daemon/src/a.ts": 3, "apps/desktop/src/lib/b.ts": 1, "apps/x.ts": 4 },
   ...over,
 });
 
@@ -25,6 +27,7 @@ describe("arch-report (#1610)", () => {
     expect(ratchetRows(inputs())).toEqual([
       { ratchet: "depcruise domain-index-only", baseline: 10, today: 10 },
       { ratchet: "depcruise no-cycles", baseline: 4, today: 3 },
+      { ratchet: "json-parse raw calls", baseline: 8, today: 3 },
       { ratchet: "knip exports", baseline: 160, today: 150 },
       { ratchet: "knip files", baseline: 15, today: 15 },
       { ratchet: "knip types", baseline: 100, today: 100 },
