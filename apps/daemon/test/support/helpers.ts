@@ -125,3 +125,10 @@ export const BASELINE_FEATURES: readonly string[] = [
   "resume-offer",
   "session.images",
 ];
+
+/** The reason (or error code) a call that is expected to fail ends in; undefined when it succeeds. */
+export const reasonOf = async (run: Promise<unknown>) =>
+  run.then(
+    () => undefined,
+    (error: { reason?: string; code?: string }) => error.reason ?? error.code,
+  );
