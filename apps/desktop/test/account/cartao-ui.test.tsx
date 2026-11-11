@@ -8,7 +8,7 @@ const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
-const { AccountCard } = await import("../../src/ui/AccountCard.tsx");
+const { AccountCard } = await import("../../src/features/account/account-card.tsx");
 
 afterEach(cleanup);
 

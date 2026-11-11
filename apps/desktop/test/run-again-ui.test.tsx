@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, screen } = await import("@testing-libra
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { RunAgain } = await import("../src/features/board/run-again.tsx");
-const { RunTimeline } = await import("../src/ui/RunTimeline.tsx");
+const { RunTimeline } = await import("../src/features/runenv/run-timeline.tsx");
 const { runAgain } = await import("../src/lib/runs.ts");
 
 setDefaultTimeout(30_000);

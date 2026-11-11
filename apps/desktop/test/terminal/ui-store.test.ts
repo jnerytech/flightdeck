@@ -1,0 +1,106 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+async function setup() {
+  const d = makeDaemon(cleanups, { terminals: true });
+  const server = d.listen();
+  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10, maxDelayMs: 20 });
+  cleanups.push(() => store.dispose());
+  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
+  return { ...d, server, store, hostId };
+}
+
+function listener() {
+  const seen: string[] = [];
+  return {
+    seen,
+    handlers: {
+      data: (base64: string) => void seen.push(`data:${atob(base64)}`),
+      exited: (code: number) => void seen.push(`exited:${code}`),
+      resync: () => void seen.push("resync"),
+      offline: () => void seen.push("offline"),
+    },
+  };
+}
+
+describe("terminal-ui: the store follows a host's terminal", () => {
+  test("terminals.host opens, attaches and writes; terminals.follow gets the output and the exit", async () => {
+    const { store, hostId, project, ptys } = await setup();
+    const host = store.terminals.host(hostId);
+    const { terminalId } = await host.open(project, 80, 24);
+    const { seen, handlers } = listener();
+    const stop = store.terminals.follow(hostId, terminalId, handlers);
+    const attached = await host.attach(terminalId);
+    expect(attached.terminalId).toBe(terminalId);
+    await host.write(terminalId, "oi\r");
+    await waitFor(() => seen.includes("data:oi\r")).catch(() => null);
+    expect(seen).toContain("data:oi\r");
+    await host.resize(terminalId, 100, 30);
+    expect(ptys.spawned[0]?.resized).toEqual([[100, 30]]);
+    ptys.spawned[0]?.exit(2);
+    await waitFor(() => seen.includes("exited:2")).catch(() => null);
+    expect(seen).toContain("exited:2");
+    stop();
+  });
+
+  test("terminals.host attaches asking for flow control, and an ack lets the held output through", async () => {
+    const { store, hostId, project, ptys } = await setup();
+    const host = store.terminals.host(hostId);
+    const { terminalId } = await host.open(project, 80, 24);
+    let received = 0;
+    const stop = store.terminals.follow(hostId, terminalId, {
+      data: (base64) => {
+        received += atob(base64).length;
+      },
+      exited: () => {},
+      resync: () => {},
+      offline: () => {},
+    });
+    expect((await host.attach(terminalId)).flow).toBe(true);
+    const burst = "x".repeat(100 * 1024);
+    for (let i = 0; i < 8; i++) ptys.spawned[0]?.emit(burst);
+    await waitFor(() => received >= 480 * 1024);
+    await Bun.sleep(100);
+    const held = received;
+    expect(held).toBeLessThanOrEqual(512 * 1024 + 16 * 1024);
+    await host.ack(terminalId, held);
+    await waitFor(() => received === 8 * burst.length);
+    expect(received).toBe(8 * burst.length);
+    stop();
+  });
+
+  test("a stopped follower hears nothing more; losing the host tells the live ones", async () => {
+    const { store, hostId, project, server, ptys } = await setup();
+    const host = store.terminals.host(hostId);
+    const { terminalId } = await host.open(project, 80, 24);
+    await host.attach(terminalId);
+    const stopped = listener();
+    store.terminals.follow(hostId, terminalId, stopped.handlers)();
+    const live = listener();
+    store.terminals.follow(hostId, terminalId, live.handlers);
+    ptys.spawned[0]?.emit("x");
+    await waitFor(() => live.seen.includes("data:x")).catch(() => null);
+    expect(live.seen).toContain("data:x");
+    expect(stopped.seen).toEqual([]);
+    void server.stop();
+    await waitFor(() => live.seen.includes("offline")).catch(() => null);
+    expect(live.seen).toContain("offline");
+  });
+
+  test("the terminals of a host that is not connected refuse", async () => {
+    const { store } = await setup();
+    expect(
+      await store.terminals
+        .host("ghost")
+        .list()
+        .catch(() => "refused"),
+    ).toBe("refused");
+  });
+});

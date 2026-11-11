@@ -20,6 +20,18 @@
 @import "./styles/shell.css";
 @import "./styles/session.css";
 @import "./styles/projects.css";
+@import "./styles/board.css";
+@import "./styles/settings.css";
+@import "./styles/hosts.css";
+@import "./styles/teams.css";
+@import "./styles/personas.css";
+@import "./styles/terminal.css";
+@import "./styles/costs.css";
+@import "./styles/snippets.css";
+@import "./styles/messaging.css";
+@import "./styles/summary.css";
+@import "./styles/palette.css";
+@import "./styles/shortcuts.css";
 
 /* The theme is the `dark` class on <html> (lib/theme.ts), not the media query. */
 @custom-variant dark (&:is(.dark *));
@@ -341,62 +353,9 @@ html:not(:has([data-slot="status-bar"])) {
   bottom: 0.75rem;
 }
 
-/* The summary card under a session's header: the same 16 px from each side as the conversation. */
-@utility recap-slot {
-  flex-shrink: 0;
-  padding-inline: 1rem;
-  padding-top: 0.75rem;
-  /* Issue #422: in a short session area the band keeps tight, so the conversation keeps its room. */
-  &[data-short="true"] {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding-top: 0.25rem;
-  }
-  /* No summary to show (an older daemon, a session with none): no empty band either. */
-  &:empty {
-    display: none;
-  }
-}
-
-/* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
-@utility recap-head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-/* The palette's rows: the one the keyboard is on is a surface with an inset ring (issue #147). */
-@utility palette-row {
-  &[aria-selected="true"] {
-    background: var(--palette-selection);
-    box-shadow: inset 0 0 0 1px var(--palette-selection-ring);
-  }
-  &:hover {
-    background: var(--accent);
-  }
-  &[aria-selected="true"]:hover {
-    background: var(--palette-selection);
-  }
-}
-
-/* A short list that scrolls inside its panel instead of pushing the screen. */
 /* The file viewer's diff (issue #506): a bounded box that scrolls, so it can follow the newest hunk. */
-/* A file a terminal printed, open in the Files viewer under the terminal (#506). */
-@utility terminal-file {
-  max-height: 45vh;
-  overflow-y: auto;
-  border-top-width: 1px;
-  padding-top: 0.5rem;
-}
 @utility diff-follow {
   max-height: 24rem;
-  overflow-y: auto;
-}
-
-@utility rows-scroll {
-  max-height: 10rem;
   overflow-y: auto;
 }
 
@@ -460,52 +419,6 @@ html:not(:has([data-slot="status-bar"])) {
       flex-basis: 100%;
     }
   }
-}
-
-/*
- * The cost chart's series (issue #179): a hue each, and a pattern from the second on, so a series
- * reads without its colour. The pattern is the card's colour over the series' own.
- */
-@utility chart-series-1 {
-  background-color: var(--chart-1);
-}
-@utility chart-series-2 {
-  background-color: var(--chart-2);
-  background-image: repeating-linear-gradient(
-    45deg,
-    transparent 0 3px,
-    color-mix(in oklch, var(--card) 55%, transparent) 3px 5px
-  );
-}
-@utility chart-series-3 {
-  background-color: var(--chart-3);
-  background-image: radial-gradient(
-    color-mix(in oklch, var(--card) 60%, transparent) 1px,
-    transparent 1.5px
-  );
-  background-size: 5px 5px;
-}
-@utility chart-series-4 {
-  background-color: var(--chart-4);
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent 0 3px,
-    color-mix(in oklch, var(--card) 55%, transparent) 3px 5px
-  );
-}
-@utility chart-series-5 {
-  background-color: var(--chart-5);
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      transparent 0 3px,
-      color-mix(in oklch, var(--card) 50%, transparent) 3px 4px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      transparent 0 3px,
-      color-mix(in oklch, var(--card) 50%, transparent) 3px 4px
-    );
 }
 
 /* A toggle that sits at the start of a column, not stretched across it. */
@@ -668,26 +581,6 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* The Host page's Overview (#785): the host's status and its work, side by side once the area is
-   64rem wide. Each column is the container its cards lay out against, so a grid of project cards
-   fits half the width. */
-@utility host-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: 1rem;
-  @container (width >= 64rem) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-@utility host-overview-column {
-  container-type: inline-size;
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 /* The board's toolbar and its selection bar in one cell: the cell is as tall as the taller one,
    so the bar covering the toolbar moves nothing below (#760). */
 @utility selection-stack {
@@ -700,196 +593,11 @@ html:not(:has([data-slot="status-bar"])) {
   }
 }
 
-/* The board's body on its fill page: the columns row below takes what is left of the height (#641). */
-@utility board-body {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 0%;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-/* The columns and, beside them, the files of the picked worktree (#117). A narrow board
-   (`data-narrow`, under 900 px) shows one or the other: the panel then takes the whole row. */
-@utility board-split {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 0%;
-  gap: 0.75rem;
-  & > [data-slot="board-columns"] {
-    min-width: 0;
-  }
-}
-
-/* The files panel: a side column with its own scroll. */
-@utility board-files {
-  display: flex;
-  min-height: 0;
-  width: clamp(16rem, 28%, 26rem);
-  flex: 0 0 auto;
-  flex-direction: column;
-  gap: 0.5rem;
-  overflow-y: auto;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--card);
-  padding: 0.75rem;
-  [data-narrow] > & {
-    width: auto;
-    flex: 1 1 0%;
-  }
-}
-
-/* The files panel's search modes (#827): a bare group of pressed buttons over the one field. */
-@utility file-search-by {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  min-inline-size: 0;
-  margin: 0;
-  border: 0;
-  padding: 0;
-}
-/* A search match in the files panel (#117): its place wraps instead of pushing the panel sideways. */
-@utility file-hit {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-@utility file-hit-place {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.75rem;
-  overflow-wrap: anywhere;
-  text-align: left;
-}
-@utility file-hit-open {
-  min-height: 1.5rem;
-  border-radius: var(--radius-sm);
-  padding: 0.125rem 0.5rem;
-  &:hover {
-    background: var(--accent);
-    color: var(--accent-foreground);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 1px;
-  }
-}
-@utility file-hit-line {
-  padding-left: 0.5rem;
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 /* A column under a dragged card: it shows where the card would land. */
-/* A board column: a thin top line and a faint tint of the column's own tone. */
-@utility board-column {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-height: 8rem;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  --column-tone: var(--column-backlog);
-  /* A quiet border around the lane, and its status on top (#114, Orca's lane). */
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--column-tone);
-  background: color-mix(in oklab, var(--column-tone) 8%, var(--background));
-  &[data-column="in_progress"] {
-    --column-tone: var(--column-progress);
-  }
-  &[data-column="waiting"] {
-    --column-tone: var(--column-waiting);
-  }
-  &[data-column="review"] {
-    --column-tone: var(--column-review);
-  }
-  &[data-column="done"] {
-    --column-tone: var(--column-done);
-  }
-  & [data-slot="column-icon"] {
-    width: 0.875rem;
-    height: 0.875rem;
-    flex-shrink: 0;
-    color: var(--column-tone);
-  }
-}
-
-/* The empty box of a column: dashed, quiet, and still a button that adds a card. */
-@utility column-empty {
-  display: grid;
-  place-items: center;
-  min-height: 5rem;
-  padding: 0.75rem;
-  border: 1px dashed var(--border);
-  border-radius: 0.375rem;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  /* The Empty box adds a card; the same box for "no matches" is only a note. */
-  &:is(button):hover {
-    background: color-mix(in oklch, var(--accent) 40%, transparent);
-  }
-}
-
-/* A column's head: icon, name, count, and the + pushed to the end. */
-@utility column-head {
-  /* A line under the head, across the lane, between the status and its cards (#114). */
-  margin-inline: -0.5rem;
-  padding: 0 0.75rem 0.5rem;
-  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
-  & > button {
-    margin-inline-start: auto;
-  }
-}
-
-@utility column-title {
-  font-size: 0.75rem;
-  font-weight: 500;
-  /* Five columns share a 1280 px window (#1030): a long name gives way, the count and the + stay. */
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The count of a column, a small pill. */
-@utility column-count {
-  min-width: 1rem;
-  height: 1rem;
-  padding-inline: 0.25rem;
-  font-variant-numeric: tabular-nums;
-}
-
 @utility drop-over {
   outline: 2px dashed var(--ring);
   outline-offset: -2px;
   background-color: var(--accent);
-}
-
-/* What a dragged card would lack in a column that asks something (issue #78): a quiet dashed edge
-   and a line of words, so it is not only a colour. The drop highlight is stronger and wins. */
-@utility column-needs {
-  &:not(.drop-over) {
-    outline: 1px dashed var(--color-muted-foreground);
-    outline-offset: -1px;
-  }
-}
-@utility column-hint {
-  margin: 0;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-}
-
-/* A key of a shortcut, as printed in a list. */
-@utility keycap {
-  border: 1px solid var(--border);
-  border-radius: 0.25rem;
-  padding-inline: 0.25rem;
-  font-size: 0.75rem;
 }
 
 /* Three dots that rise in turn while Claude works. */
@@ -1025,25 +733,6 @@ html:not(:has([data-slot="status-bar"])) {
   overflow-y: auto;
 }
 
-/* The popover that asks for a terminal's persona before it opens (issue #177). */
-@utility terminal-ask {
-  display: flex;
-  width: 18rem;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-/* The terminal's find bar: the box, where the match is, and the buttons in one row. */
-@utility terminal-find {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-/* A find option (#476): a ghost button, so pressed it takes the shared pressed look (#812). */
-@utility terminal-find-toggle {
-  font-family: var(--font-mono, monospace);
-}
-
 /* A vertical list of rows (the check results, the repositories found). */
 @utility check-list {
   display: flex;
@@ -1075,84 +764,6 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
-/* The row under an assistant message: shown on hover or focus (always on touch screens). */
-@utility message-actions {
-  min-width: 0;
-  border: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.25rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  opacity: 0;
-  transition: opacity 0.15s;
-  &:focus-within {
-    opacity: 1;
-  }
-  @media (hover: none) {
-    opacity: 1;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-}
-@utility message-hover {
-  &:hover .message-actions {
-    opacity: 1;
-  }
-}
-
-/* The mode chip under the composer and its menu: a pill that opens a list of rows (name, what it does, number). */
-@utility mode-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: 9999px;
-  padding: 0 0.5rem;
-  background: transparent;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  line-height: 1.25rem;
-  cursor: pointer;
-  &:hover {
-    background: var(--color-accent);
-    color: var(--color-foreground);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 1px;
-  }
-  &[data-bypass="true"] {
-    border-color: var(--color-status-error);
-  }
-}
-@utility mode-menu {
-  min-width: 16rem;
-  max-width: min(22rem, calc(100vw - 1rem));
-}
-@utility mode-row {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-}
-@utility mode-row-name {
-  font-weight: 500;
-}
-@utility mode-row-note {
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-  white-space: normal;
-}
-@utility mode-row-key {
-  margin-left: auto;
-  padding-left: 0.75rem;
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-}
 @utility activity-line {
   display: flex;
   align-items: center;
@@ -1162,37 +773,10 @@ html:not(:has([data-slot="status-bar"])) {
   font-size: 0.75rem;
 }
 
-/* Assistant text: plain on the page, in a readable measure and with room between the lines. */
-@utility message-prose {
-  max-width: 48rem;
-  line-height: 1.65;
-}
-
-/* The `?` sheet of shortcuts: the box, its groups and their rows. */
-@utility sheet-box {
-  margin: 0;
-  display: flex;
-  max-height: 80vh;
-  width: min(42rem, 92vw);
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-}
-@utility shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 1.5rem;
-}
 @utility stack-tight {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-@utility shortcut-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 
 /* A line of controls, with a gap: spread to both ends, or wrapping. */
@@ -1217,68 +801,6 @@ html:not(:has([data-slot="status-bar"])) {
   flex-direction: column;
   gap: 0.25rem;
   padding-left: 2rem;
-}
-@utility member-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 14rem;
-  align-items: center;
-  gap: 0.5rem;
-  /* A narrow window stacks the row: the name and badges get the whole width (#1006). */
-  @media (width < 40rem) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@utility member-id {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-@utility member-end {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  /* Under the name on a narrow window: the actions start at the left and wrap (#1006). */
-  @media (width < 40rem) {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-}
-/* The persona picker keeps one width on the shared field row (#101). */
-@utility persona-field {
-  width: 14rem;
-}
-/* A team's actions and its message to everyone, under the members on the same 8 px step. */
-@utility team-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-top: 1px solid var(--color-border);
-  padding-top: 0.75rem;
-}
-@utility team-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-/* Issue #93: a worker row of the new-team form, in the same columns in every row. The form is at
-   most about 560 px wide, so the row is two even columns at every width (#1222): the persona on its
-   own line, then model and permissions side by side (model and Remove on a host with no permission
-   modes), and Remove at the left. Fixed 7 and 10 rem columns wrapped the model's label even at 1280. */
-@utility worker-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: end;
-  gap: 0.5rem;
-  & > :first-child {
-    grid-column: 1 / -1;
-  }
-  & > :last-child {
-    justify-self: start;
-  }
 }
 @utility row-end-wrap {
   display: flex;
@@ -1520,36 +1042,6 @@ html:not(:has([data-slot="status-bar"])) {
   min-width: min(9rem, 40%);
 }
 
-/* The / menu: a popover above the message box, so it takes no room in the page and scrolls inside. */
-@utility prompt-menu {
-  position: absolute;
-  inset-inline: 1rem;
-  bottom: 100%;
-  z-index: 20;
-  display: flex;
-  max-height: 40vh;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-popover);
-  color: var(--color-popover-foreground);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
-}
-@utility prompt-menu-option {
-  display: block;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  padding: 0.25rem 0.5rem;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  &:hover,
-  &[aria-selected="true"] {
-    background: var(--color-muted);
-  }
-}
-
 /* A breadcrumb step with a long name shortens with an ellipsis; its title says the whole name. */
 @utility crumb-name {
   max-width: 12rem;
@@ -1579,55 +1071,7 @@ html:not(:has([data-slot="status-bar"])) {
 
 /* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
 /* The collapsed rail's host: its initial, with the status dot at the corner (issue #183). */
-@utility rail-host {
-  position: relative;
-  display: flex;
-  width: 2rem;
-  height: 2rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  &:hover {
-    background: var(--color-sidebar-accent);
-  }
-}
-@utility rail-host-initial {
-  display: flex;
-  width: 1.5rem;
-  height: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  background: var(--color-sidebar-accent);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-@utility rail-host-status {
-  position: absolute;
-  right: 0.125rem;
-  bottom: 0.125rem;
-  border-radius: 9999px;
-  background: var(--color-sidebar);
-  padding: 0.125rem;
-}
 
-/* A select in a Settings row: one width for all of them, so the rows line up. */
-@utility setting-select {
-  width: 11rem;
-}
-/* A setting's row (#588): one label column for every row, so the controls line up. */
-/* A setting: its label above its control when narrow, the two side by side from 30 rem (#641). */
-@utility setting-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-  @container (width >= 30rem) {
-    grid-template-columns: 12rem minmax(0, 1fr);
-    gap: 1rem;
-  }
-}
 /* A project on the Projects page: its name and whole path on one line, its actions on the next (#588). */
 @utility project-row {
   display: flex;
@@ -1651,61 +1095,6 @@ html:not(:has([data-slot="status-bar"])) {
   font-size: 0.75rem;
   color: var(--color-muted-foreground);
   overflow-wrap: anywhere;
-}
-/* A message on Conversations: who sent it to whom, its text and the session to open (#588). */
-@utility message-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-card);
-  padding: 0.75rem;
-  font-size: 0.875rem;
-  overflow-wrap: anywhere;
-}
-@utility message-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-/* A persona of the library: its name and description, its actions beside them (#588). */
-@utility persona-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 0.75rem;
-}
-/* Its own frame: two utilities that both set display resolve by Tailwind's order, not the class order. */
-@utility persona-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.25rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 0.75rem;
-  & > [data-slot="persona-actions"] {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-}
-@utility persona-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-/* The help under a checkbox, indented to its words (the box and the 8 px gap). */
-@utility setting-hint {
-  display: block;
-  padding-left: calc(13px + 0.5rem);
-  font-size: 0.75rem;
-  color: var(--color-muted-foreground);
 }
 
 @utility header-crumbs {
@@ -1746,18 +1135,6 @@ html:not(:has([data-slot="status-bar"])) {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* The host page header's mark for a daemon on another version than the app's (issue #281). */
-@utility host-version-differs {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--color-status-needs-you);
-  & > svg {
-    width: 0.875rem;
-    height: 0.875rem;
-  }
-}
-
 /* Medium and compact windows (issue #641): the words beside a value go to the tooltip and the name
    of the button; the icons and values stay, so the items never run into each other. */
 [data-slot="status-bar"]:not([data-breakpoint="wide"])
@@ -1774,60 +1151,6 @@ html:not(:has([data-slot="status-bar"])) {
 
 @utility field-row-end {
   align-items: flex-end;
-}
-
-/* Settings: a rail of the sections (and a search) beside the sections themselves. */
-/* Narrow, the section list sits above the content; from a 48 rem area it is a column beside it (#641). */
-@utility settings-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
-  @container (width >= 48rem) {
-    grid-template-columns: 13rem minmax(0, 1fr);
-  }
-}
-
-@utility settings-side {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  @container (width >= 48rem) {
-    position: sticky;
-    top: 0;
-  }
-}
-
-@utility settings-rail {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.125rem;
-  & [aria-current="true"] {
-    background: var(--color-accent);
-    color: var(--color-accent-foreground);
-  }
-  @container (width >= 48rem) {
-    flex-direction: column;
-    flex-wrap: nowrap;
-  }
-}
-
-/* Its own container: a setting lays itself out by the room the content has, not the window. */
-@utility settings-sections {
-  display: flex;
-  max-width: 42rem;
-  flex-direction: column;
-  gap: 1.25rem;
-  container-type: inline-size;
-}
-
-@utility settings-section {
-  &:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 4px;
-    border-radius: 0.5rem;
-  }
 }
 
 /* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
@@ -1878,51 +1201,6 @@ html:not(:has([data-slot="status-bar"])) {
   text-align: right;
 }
 
-/* A two-option choice drawn as a pill of radios (the host's default mode). */
-@utility seg-control {
-  display: inline-flex;
-  width: fit-content;
-  gap: 0.25rem;
-}
-@utility seg-option {
-  position: relative;
-  display: inline-flex;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  height: 2rem;
-  padding-inline: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  & input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: inherit;
-  }
-  &:has(input:checked) {
-    background: var(--color-accent);
-    border-color: var(--color-ring);
-  }
-  &:has(input:disabled) {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  &:has(input:focus-visible) {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
-  }
-}
-@utility host-mode-badge {
-  flex-shrink: 0;
-  border-radius: 9999px;
-  background: var(--color-muted);
-  padding-inline: 0.375rem;
-  font-size: 0.6875rem;
-  color: var(--color-muted-foreground);
-}
-
 /* An icon with a dot or a count pinned to its corner. */
 @utility icon-mark {
   position: relative;
@@ -1936,206 +1214,8 @@ html:not(:has([data-slot="status-bar"])) {
   gap: 0.5rem;
 }
 
-/* The host's dependencies: a list of rows, each one an icon, a name, its state and what it needs. */
-@utility dep-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-@utility dep-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-}
-@utility dep-line {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  & svg {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-  }
-}
-@utility dep-found {
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-  overflow-wrap: anywhere;
-}
-/* Add a host: the fields to fill by hand, folded under their summary (#1199). The summary is a
-   row-sized target (axe target-size wants 24 px: 0.375 rem of padding each side of a line) with
-   a visible focus; the fields sit one step below it. */
-@utility host-fold {
-  & > summary {
-    /* The list item keeps the browser's triangle, which says it opens and shuts. */
-    display: list-item;
-    list-style-position: inside;
-    padding-block: 0.375rem;
-    font-size: 0.875rem;
-    color: var(--muted-foreground);
-    cursor: pointer;
-  }
-  & > summary:hover {
-    color: var(--foreground);
-  }
-  & > summary:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  & > :not(summary) {
-    margin-block-start: 0.5rem;
-  }
-}
-/* Health's first line: the headline, the counts, when it was read and Check again (#640). */
-@utility health-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-}
-/* What is fine, folded: one line per row (#640). */
-@utility health-ok {
-  font-size: 0.875rem;
-  /* The fold's disclosure button (#670): a row-sized target (axe target-size wants 24 px) with a
-     chevron that turns when the list is open. */
-  & > button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    min-height: 2rem;
-    padding: 0.25rem 0.5rem;
-    margin-inline-start: -0.5rem;
-    border-radius: var(--radius-md);
-    color: var(--muted-foreground);
-    cursor: pointer;
-  }
-  & > button:hover {
-    background-color: var(--accent);
-    color: var(--foreground);
-  }
-  & > button:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  & > button > svg {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-    transition: rotate 150ms ease;
-  }
-  & > button[aria-expanded="true"] > svg {
-    rotate: 90deg;
-  }
-}
 /* The list owns the columns (icon | name | status | detail) and each row takes them as a subgrid,
    so every status starts at the same place whatever the name's length (#670). */
-@utility dep-compact-list {
-  display: grid;
-  grid-template-columns: 1rem max-content max-content minmax(0, 1fr);
-  column-gap: 0.75rem;
-  list-style: none;
-  padding: 0;
-  margin: 0.5rem 0 0;
-}
-@utility dep-compact {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: center;
-  padding: 0.25rem 0;
-  border-top: 1px solid var(--border);
-  & svg {
-    width: 1rem;
-    height: 1rem;
-  }
-  /* A webview without subgrid (Chromium before 117): fixed columns, the name truncated. */
-  @supports not (grid-template-columns: subgrid) {
-    grid-template-columns: 1rem minmax(0, 14rem) 11rem minmax(0, 1fr);
-    column-gap: 0.75rem;
-    & > span:nth-of-type(1) {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-}
-@utility dep-compact-found {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-}
-@utility dep-fix {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  overflow-wrap: anywhere;
-}
-
-/* The hosts of the sidebar's Machines group: a column of dots in the rail, a list with a row each. */
-@utility rail-hosts {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding-top: 0.75rem;
-}
-@utility host-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-@utility host-row {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-/* The Setup screen's steps: a circle with a check or its number, a title and a sentence, one action. */
-@utility setup-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  background: var(--color-card);
-  padding: 0.75rem;
-}
-@utility setup-mark {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 9999px;
-  border: 1px solid var(--color-border);
-}
-@utility setup-mark-done {
-  border-color: var(--color-foreground);
-  background: var(--color-foreground);
-  color: var(--color-background);
-}
-@utility setup-mark-todo {
-  color: var(--color-muted-foreground);
-  font-size: 0.75rem;
-}
-@utility setup-step-text {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 0%;
-  flex-direction: column;
-  gap: 0.25rem;
-}
 
 /* Issue #160: a field and its wand button side by side; the field takes the room. */
 @utility assist-field {
@@ -2145,49 +1225,5 @@ html:not(:has([data-slot="status-bar"])) {
   & > :first-child {
     min-width: 0;
     flex: 1 1 0%;
-  }
-}
-
-/* Issue #490: the update card in the bottom-right corner, above the status bar when there is one. */
-@utility update-card {
-  position: fixed;
-  right: 0.75rem;
-  bottom: var(--corner-bottom);
-  z-index: 40;
-  display: flex;
-  width: min(20rem, calc(100vw - 1.5rem));
-  flex-direction: column;
-  gap: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-popover);
-  color: var(--color-popover-foreground);
-  padding: 0.75rem 0.75rem 0.875rem 1rem;
-  font-size: 0.875rem;
-  box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
-}
-@utility update-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-@utility update-card-title {
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-@utility update-card-note {
-  color: var(--color-muted-foreground);
-}
-@utility update-card-link {
-  width: fit-content;
-  /* The card's own text color, underlined: the brand color fails contrast on the dark card (#581, axe). */
-  color: var(--color-popover-foreground);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  border-radius: 2px;
-  &:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
   }
 }

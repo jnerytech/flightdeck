@@ -6,16 +6,21 @@ import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
+import { TranscriptReader } from "@/features/history/index.ts";
 import { draftUrl, type HostDraft, HostForm, HostOfflineBanner } from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
+import { RecapPanel } from "@/features/summary/index.ts";
 import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { ActivityBoard } from "../features/activity/board.tsx";
+import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { NeedsYou } from "../features/needs-you/page.tsx";
+import { QuotaPanel } from "../features/quota/index.ts";
+import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
 import {
   type AppState,
   type AppStore,
@@ -34,22 +39,16 @@ import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
-import { CheckpointsButton } from "./Checkpoints.tsx";
 import { ExternalView } from "./ExternalView.tsx";
 import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
 import { NewSessionForm } from "./NewSessionForm.tsx";
-import { QuotaPanel } from "./QuotaPanel.tsx";
-import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { SetupPage } from "./SetupPage.tsx";
 import { StartScreen } from "./StartScreen.tsx";
-import { TerminalButton } from "./TerminalButton.tsx";
-import { TerminalPage } from "./TerminalPage.tsx";
-import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`

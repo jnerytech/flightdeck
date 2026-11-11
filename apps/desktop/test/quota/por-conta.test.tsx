@@ -6,7 +6,7 @@ import { waiter } from "../wait.ts";
 registerDom();
 const { cleanup, render, screen } = await import("@testing-library/react");
 const { quotaGroups } = await import("../../src/lib/quota.ts");
-const { QuotaPanel } = await import("../../src/ui/QuotaPanel.tsx");
+const { QuotaPanel } = await import("../../src/features/quota/quota-panel.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);

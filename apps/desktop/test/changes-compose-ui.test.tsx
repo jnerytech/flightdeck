@@ -7,7 +7,7 @@ import { registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { TContext } = await import("../src/i18n/context.tsx");
-const { ChangesPanel } = await import("../src/ui/ChangesPanel.tsx");
+const { ChangesPanel } = await import("../src/features/review/changes-panel.tsx");
 
 afterEach(() => cleanup());
 
