@@ -5,6 +5,11 @@
  */
 import type { Database } from "bun:sqlite";
 import type { ActivitySinceResult, QuotaWindow } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
+
+/** The values a stored refusal reason fills into its message. */
+const REASON_PARAMS = z.record(z.string(), z.union([z.string(), z.number()]));
 
 export const DEFAULT_ACTIVITY_LIMIT = 20;
 
@@ -127,8 +132,7 @@ export function activitySince(
       at: string;
     }): ActivitySinceResult["failedRuns"]["items"][number] => ({
       ...row,
-      reasonParams:
-        params === null ? null : (JSON.parse(params) as Record<string, string | number>),
+      reasonParams: params === null ? null : parseJsonOr(REASON_PARAMS, params, null),
     }),
   );
   return {

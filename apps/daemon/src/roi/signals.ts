@@ -4,6 +4,9 @@
  * (approximate: a person may add it too); issues closed come from the host's `gh`, kept for an
  * hour because each answer is a network call. Neither blocks the event loop.
  */
+
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 import { whichOnPath } from "../which.ts";
 
 export type IssuesResult =
@@ -87,13 +90,9 @@ export class RoiSignals {
     if (answer.code !== 0) {
       return { error: /gh auth login/.test(answer.stderr) ? "gh_logged_out" : "gh_failed" };
     }
-    try {
-      const list: unknown = JSON.parse(answer.stdout);
-      if (!Array.isArray(list)) return { error: "gh_failed" };
-      this.kept.set(key, { at: this.now(), count: list.length });
-      return { count: list.length };
-    } catch {
-      return { error: "gh_failed" };
-    }
+    const list = parseJsonOr(z.array(z.unknown()), answer.stdout, null);
+    if (list === null) return { error: "gh_failed" };
+    this.kept.set(key, { at: this.now(), count: list.length });
+    return { count: list.length };
   }
 }

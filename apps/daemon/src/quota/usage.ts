@@ -1,5 +1,10 @@
 import type { Database } from "bun:sqlite";
 import type { SessionEventOf, UsageRow, UsageSummary } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
+
+/** The cost a stored turn result carries; a payload without one costs nothing. */
+const TURN_COST = z.object({ costUsd: z.number().optional() });
 
 export interface UsageLedgerOptions {
   db: Database;
@@ -56,7 +61,7 @@ export class UsageLedger {
         "SELECT payload FROM events WHERE session_id = ? AND type = 'turn.result' ORDER BY seq DESC LIMIT 1",
       )
       .get(sessionId);
-    const previous = last ? ((JSON.parse(last.payload).costUsd as number | undefined) ?? 0) : 0;
+    const previous = last ? (parseJsonOr(TURN_COST, last.payload, {}).costUsd ?? 0) : 0;
     const cost = Math.max(0, (turn.costUsd ?? previous) - previous);
     const day = this.day(this.now());
     const key = this.opts.projectKey(cwd);

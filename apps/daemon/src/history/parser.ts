@@ -3,6 +3,7 @@
  * The format is internal and changes between versions: anything unexpected is kept raw.
  */
 import { createHash } from "node:crypto";
+import { parseJsonText } from "../json-text.ts";
 
 export type HistoryKind = "message" | "tool_result" | "summary" | "system" | "raw";
 export type HistoryRole = "user" | "assistant" | "system" | "summary";
@@ -146,7 +147,7 @@ function normalize(line: Line, raw: string): HistoryRecord {
 export function parseLine(line: string): HistoryRecord | null {
   let value: unknown;
   try {
-    value = JSON.parse(line);
+    value = parseJsonText(line);
   } catch {
     return null;
   }
