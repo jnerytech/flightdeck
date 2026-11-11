@@ -438,6 +438,10 @@ export interface MergeShardsDeps {
   error: (line: string) => void;
   /** A PR's selection instead of the whole suite (#1761). */
   selection?: Selection;
+  /** The tier of every test file (#261): given with `pyramid`, the run's pyramid table is built. */
+  tiers?: Record<string, Tier>;
+  /** Gets the pyramid table as markdown and as JSON (#1854). */
+  pyramid?: (markdown: string, json: string) => void;
 }
 
 /** `merge <dir> <n> <lcov>`: the merged gate over each job's folder; the exit code. */
