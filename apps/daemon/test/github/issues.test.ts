@@ -151,3 +151,41 @@ describe("github-gh: the real runner", () => {
     }
   });
 });
+
+describe("github-issues: what gh printed is checked before it is used (#1609)", () => {
+  const LEAK = "ghp_NOT_A_REAL_TOKEN";
+  const signedIn = (stdout: string, args: string[]) =>
+    fakeGh([SIGNED_IN, { args: ["api", "user"], stdout: "octocat\n" }, { args, stdout }]);
+
+  test("a list that is not JSON is refused as issues_failed, and the message keeps gh's text out", async () => {
+    signedIn(`${LEAK} {`, ["issue", "list"]);
+    const error = await new Github({ gh: runGh }).issues("acme/app").catch((e: unknown) => e);
+    expect(error).toMatchObject({ reason: "issues_failed" });
+    expect(String((error as Error).message)).not.toContain(LEAK);
+  });
+
+  test("a list with an issue that has no title is refused as issues_failed", async () => {
+    signedIn(JSON.stringify([ghIssue(1), { ...ghIssue(2), title: undefined }]), ["issue", "list"]);
+    await expect(new Github({ gh: runGh }).issues("acme/app")).rejects.toMatchObject({
+      reason: "issues_failed",
+    });
+  });
+
+  test("an issue that is not JSON, or has no number, is refused as issues_failed", async () => {
+    signedIn("<html>", ["issue", "view"]);
+    await expect(new Github({ gh: runGh }).issue("acme/app", "3")).rejects.toMatchObject({
+      reason: "issues_failed",
+    });
+    cleanups.splice(0).forEach((fn) => void fn());
+    signedIn(JSON.stringify({ ...ghIssue(3), number: undefined }), ["issue", "view"]);
+    await expect(new Github({ gh: runGh }).issue("acme/app", "3")).rejects.toMatchObject({
+      reason: "issues_failed",
+    });
+  });
+
+  test("an empty list and a null body and author still read", async () => {
+    signedIn(JSON.stringify([ghIssue(5, { body: null, author: null })]), ["issue", "list"]);
+    const [issue] = await new Github({ gh: runGh }).issues("acme/app");
+    expect([issue?.body, issue?.author]).toEqual(["", ""]);
+  });
+});

@@ -3,6 +3,7 @@
  * DevOps. Both are looked up on the PATH of the moment, so the tests put fakes there.
  */
 import type { Issue } from "@flightdeck/protocol";
+import { z } from "zod";
 import { cli, cliJson, cliOk } from "../board/pr.ts";
 import { FlightdeckError } from "../errors.ts";
 
@@ -41,16 +42,18 @@ export interface IssueProvider {
 export const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 export const GH_FIELDS = "number,title,body,url,author,labels,createdAt,authorAssociation";
 
-export interface GhIssue {
-  number: number;
-  title: string;
-  body: string | null;
-  url: string;
-  author?: { login?: string } | null;
-  labels?: Array<{ name: string }>;
-  createdAt: string;
-  authorAssociation?: string;
-}
+/** One issue as `gh issue list|view --json GH_FIELDS` prints it. */
+export const GhIssueRow = z.object({
+  number: z.number(),
+  title: z.string(),
+  body: z.string().nullish(),
+  url: z.string(),
+  author: z.object({ login: z.string().optional() }).nullish(),
+  labels: z.array(z.object({ name: z.string() })).optional(),
+  createdAt: z.string(),
+  authorAssociation: z.string().optional(),
+});
+export type GhIssue = z.infer<typeof GhIssueRow>;
 
 export class GithubIssues implements IssueProvider {
   constructor(readonly repo: string) {}

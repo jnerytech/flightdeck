@@ -1,4 +1,6 @@
 import type { AlertsUnavailable, RepoAlert } from "@flightdeck/protocol";
+import { z } from "zod";
+import { parseJsonOr } from "../json-text.ts";
 import type { GhResult } from "./gh.ts";
 
 /** Runs `gh` in the project's folder, so `{owner}` and `{repo}` come from its own remote; `null` when `gh` is missing. */
@@ -173,13 +175,8 @@ async function readSource(gh: GhIn, cwd: string, source: (typeof SOURCES)[number
   if (result.timedOut) return { unavailable: "failed" };
   if (result.code !== 0) return { unavailable: reasonOf(result.stderr) };
   if (result.stdout.length > RESPONSE_MAX) return { unavailable: "failed" };
-  let list: unknown;
-  try {
-    list = JSON.parse(result.stdout);
-  } catch {
-    return { unavailable: "failed" };
-  }
-  if (!Array.isArray(list)) return { unavailable: "failed" };
+  const list = parseJsonOr(z.array(z.unknown()), result.stdout, null);
+  if (list === null) return { unavailable: "failed" };
   return { alerts: list.map(source.read).filter((alert) => alert !== null) };
 }
 
