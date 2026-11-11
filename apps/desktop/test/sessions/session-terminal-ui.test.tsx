@@ -59,7 +59,7 @@ const clickTab = async (name: string) => {
 };
 const terminalShown = () => screen.queryByRole("heading", { name: "Terminal" }) !== null;
 const live = async (store: TheStore, hostId: string) =>
-  (await store.terminalHost(hostId).list()).filter((t) => t.exitCode === null);
+  (await store.terminals.host(hostId).list()).filter((t) => t.exitCode === null);
 const press = async (init: KeyboardEventInit) => {
   await act(async () => {
     fireEvent.keyDown(document.body, init);
@@ -161,14 +161,14 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       store.router.push({ name: "hub" });
     });
     await settle(() => tab("Terminal") === null);
-    const real = store.terminalHost.bind(store);
-    (store as unknown as { terminalHost: unknown }).terminalHost = (id: string) =>
+    const real = store.terminals.host.bind(store.terminals);
+    (store.terminals as unknown as { host: unknown }).host = (id: string) =>
       Object.create(real(id), { list: { value: () => Promise.reject(new Error("offline")) } });
     await act(async () => {
       store.router.push({ name: "session", host: hostId, id: sessionId });
     });
     await settle(() => terminalShown());
-    (store as unknown as { terminalHost: unknown }).terminalHost = real;
+    (store.terminals as unknown as { host: unknown }).host = real;
     expect(store.sessionViews.terminalOf(`${hostId}/${sessionId}`)).toBe(
       first?.terminalId as string,
     );
@@ -250,7 +250,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     const { store, hostId, project } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
     // The host keeps ten shells at most.
-    for (let i = 0; i < 10; i++) await store.terminalHost(hostId).open(project, 80, 24);
+    for (let i = 0; i < 10; i++) await store.terminals.host(hostId).open(project, 80, 24);
     await clickTab("Terminal");
     await settle(() => tab("Conversa")?.getAttribute("aria-selected") === "true");
     await settle(() => store.getState().notices.length > 0);
@@ -331,8 +331,8 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }),
     );
     await settle(() => store.getState().hosts[0]?.hostInfo != null);
-    await store.openClaudeHere(hostId, { cwd: d.root, claudeSessionId: null });
-    const [started] = await store.terminalHost(hostId).list();
+    await store.terminals.openClaude(hostId, { cwd: d.root, claudeSessionId: null });
+    const [started] = await store.terminals.host(hostId).list();
     const external: ExternalSession = {
       claudeSessionId: "claude-1",
       cwd: "/repo",

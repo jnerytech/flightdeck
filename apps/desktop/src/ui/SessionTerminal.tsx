@@ -38,8 +38,8 @@ export function SessionTerminal(
     let alive = true;
     void (async () => {
       const kept = store.sessionViews.terminalOf(viewKey);
-      const listed = await store
-        .terminalHost(hostId)
+      const listed = await store.terminals
+        .host(hostId)
         .list()
         .catch(() => null);
       // A host that cannot say which shells are live is not a reason for a second one.

@@ -232,14 +232,14 @@ export function TranscriptReader(
                   {copied && (
                     <span className="text-muted-foreground text-xs">{t("reader.copied")}</span>
                   )}
-                  {store.embeddedTerminal(target.hostId) && (
+                  {store.terminals.embedded(target.hostId) && (
                     <Button
                       variant="outline"
                       size="sm"
                       disabled={blocked}
                       onClick={() =>
                         live.guarded(() =>
-                          store.openClaudeHere(target.hostId, {
+                          store.terminals.openClaude(target.hostId, {
                             cwd: session.cwd,
                             claudeSessionId: target.claudeSessionId,
                           }),

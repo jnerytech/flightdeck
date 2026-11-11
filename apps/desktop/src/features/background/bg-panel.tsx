@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import { Inline, Stack } from "../components/layout/stack.tsx";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { usd } from "../lib/costs.ts";
-import { hasFeature } from "../lib/version.ts";
+import { Inline, Stack } from "../../components/layout/stack.tsx";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { usd } from "../../lib/costs.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 const BGPANEL_KEYS = ["background", "hosts"] as const;
 
