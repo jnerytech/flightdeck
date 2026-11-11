@@ -91,10 +91,13 @@ import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.t
 import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
-  VaultApprovalsSlice,
-  VaultRulesSlice,
+  type VaultApprovalsSlice,
+  type VaultRulesSlice,
   VaultScanSlice,
-  VaultSecretsSlice,
+  type VaultSecretsSlice,
+  wireVaultApprovals,
+  wireVaultRules,
+  wireVaultSecrets,
 } from "../features/vault/index.ts";
 import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { WatchSlice } from "../features/watch/index.ts";
@@ -449,42 +452,30 @@ export class AppStore {
       this.clearShownUnread();
     });
     this.vault = new Vault(platform);
-    this.vaultApprovals = new VaultApprovalsSlice({
+    this.vaultApprovals = wireVaultApprovals(this.kernel, {
       vault: this.vault,
-      pending: () => this.state.vaultApprovals,
-      setPending: (items) => this.update({ vaultApprovals: items }),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name ?? null,
-      dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
       optionsPolicy: () => this.options.vaultPolicy,
-      now: () => (this.options.now ?? Date.now)(),
       notify: (title, body) => this.inbox.notify({ title, body, event: "needs-you" }),
       recorded: (outcome) => {
         this.usage.recordOutcome(outcome);
         this.keepUsage();
       },
-      t: () => this.i18n.t,
     });
-    this.secrets = new VaultSecretsSlice({
+    this.secrets = wireVaultSecrets(this.kernel, {
       vault: this.vault,
-      secretsChanged: () => this.update({ secrets: this.vault.list() }),
       workFactor: () => this.options.vaultWorkFactor,
       saveFile: (name, text) => this.platform.saveFile(name, text),
       pickFile: () => this.platform.vault.pickFile(),
       fail: (error) => this.fail(error),
     });
     this.scan = new VaultScanSlice({ vault: this.vault });
-    this.vaultRules = new VaultRulesSlice({
+    this.vaultRules = wireVaultRules(this.kernel, {
       rules: new VaultRules(platform.storage),
       secrets: () => this.vault.list(),
-      hosts: () => this.state.hosts,
       clients: () => this.state.clientList,
       projectKeysOf: (clientId) => this.clientScope.get().projectKeysOf(clientId),
-      secretsChanged: () => this.update({ secrets: this.vault.list() }),
-      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
-      preview: (hostId, payload) => this.hostCommand(hostId, "vault.rules.preview", payload),
       fail: (error, text) => this.fail(error, text),
       success: (text) => this.success(text),
-      t: () => this.i18n.t,
     });
     this.homeCache = new HomeCache(platform.storage);
     this.whatsNew = new WhatsNew(platform.storage);
