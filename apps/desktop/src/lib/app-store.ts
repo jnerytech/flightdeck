@@ -57,7 +57,7 @@ import {
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
-import { InboxSlice } from "../features/inbox/index.ts";
+import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import {
   initialMessagingState,
   type MessagingSlice,
@@ -641,18 +641,13 @@ export class AppStore {
       rememberToken: (token) => this.scan.rememberToken(token),
       t: () => this.i18n.t,
     });
-    this.inbox = new InboxSlice({
+    this.inbox = wireInbox(this.kernel, {
       storage: platform.storage,
-      entries: () => this.state.inbox,
-      setEntries: (entries) => this.update({ inbox: entries }),
       prefs: () => this.notifyPrefs.value,
       soundFile: () => this.notifyPrefs.soundFile(),
       waiting: () => needsYou(this.state).map((i) => `${i.hostId}/${i.requestId}`),
-      hostOnline: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.status === "online",
-      now: () => this.now(),
       show: (notification) => this.platform.notify(notification),
       setBadge: (count) => this.platform.setBadge?.(count),
-      t: () => this.i18n.t,
     });
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
