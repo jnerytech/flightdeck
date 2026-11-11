@@ -46,8 +46,8 @@ export interface InboxCore {
  * requests were answered since they were sent.
  */
 export class InboxSlice {
-  /** The requests waiting now, and every one this run has seen waiting (`host/request`). */
-  private waiting = new Set<string>();
+  /** The requests that waited at the last look, and every one this run has seen waiting (`host/request`). */
+  private waitingBefore = new Set<string>();
   private readonly everWaiting = new Set<string>();
   /** What the taskbar badge shows now, so it is only told when the count changes. */
   private badgeShown = 0;
@@ -95,12 +95,12 @@ export class InboxSlice {
   /** Remembers what waits, so a request that stops waiting is known to have been answered. */
   rememberWaiting(): void {
     const now = new Set(this.core.waiting());
-    let changed = now.size !== this.waiting.size;
+    let changed = now.size !== this.waitingBefore.size;
     for (const key of now) {
       this.everWaiting.add(key);
-      if (!this.waiting.has(key)) changed = true;
+      if (!this.waitingBefore.has(key)) changed = true;
     }
-    this.waiting = now;
+    this.waitingBefore = now;
     // The bell hides an answered request, so its count and the taskbar badge change with it.
     if (changed) this.syncBadge();
   }
@@ -111,7 +111,7 @@ export class InboxSlice {
    */
   requestAnswered(hostId: string, requestId: string): boolean {
     const key = `${hostId}/${requestId}`;
-    if (!this.everWaiting.has(key) || this.waiting.has(key)) return false;
+    if (!this.everWaiting.has(key) || this.waitingBefore.has(key)) return false;
     return this.core.hostOnline(hostId);
   }
 
