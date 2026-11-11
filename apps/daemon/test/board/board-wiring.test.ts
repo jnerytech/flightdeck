@@ -19,8 +19,22 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-const cardCost = (cardId: string) => (cardId === "c1" ? 2 : null);
-const suspendApproval = () => {};
+/** Each passed-through dep, as a value told apart by identity. */
+const passed = {
+  manager: {},
+  preparePersonas: () => {},
+  folderLocks: {},
+  quota: {},
+  budgets: {},
+  memory: {},
+  pause: {},
+  checkLoop: {},
+  projectKeys: {},
+  cardCost: () => null,
+  idle: () => {},
+  suspendApproval: () => {},
+  log: () => {},
+};
 
 function built(prPollIntervalMs = 0) {
   const store = new EventStore(":memory:");
@@ -28,11 +42,11 @@ function built(prPollIntervalMs = 0) {
   const dir = tempDir("board-wiring-");
   dirs.push(dir);
   const configFile = join(dir, "config.json");
-  writeFileSync(configFile, JSON.stringify({ maxParallelRuns: 2 }));
+  writeFileSync(configFile, JSON.stringify({ maxParallelRuns: 2, hostName: "pi" }));
   const vault: string[] = [];
   const options = boardOptions({
+    ...(passed as never as Record<keyof typeof passed, never>),
     db: store.db,
-    manager: {} as never,
     config: { allowedRoots: ["/w"], maxParallelRuns: 3, board: { prPollIntervalMs } },
     configFile,
     trustForKnowledge: async (cwd) =>
@@ -40,8 +54,6 @@ function built(prPollIntervalMs = 0) {
         ? { trusted: true, ...(cwd.endsWith("-wt") ? { configRoot: "/w/trusted" } : {}) }
         : { trusted: false, configRoot: "/w/other" },
     vaultValues: () => vault,
-    cardCost,
-    suspendApproval,
   });
   return { options, vault, configFile, db: store.db };
 }
@@ -69,7 +81,10 @@ describe("board-wiring: the board the daemon builds (#1593)", () => {
   test("the parallel runs changed from the app are kept in the config file", async () => {
     const { options, configFile } = built();
     await options.onSettingsChange?.({ maxParallelRuns: 5 });
-    expect(JSON.parse(readFileSync(configFile, "utf8")).maxParallelRuns).toBe(5);
+    expect(JSON.parse(readFileSync(configFile, "utf8"))).toEqual({
+      maxParallelRuns: 5,
+      hostName: "pi",
+    });
   });
 
   test("the host's settings and the database reach the board", () => {
@@ -77,11 +92,13 @@ describe("board-wiring: the board the daemon builds (#1593)", () => {
     const polled = built(9000).options;
     expect([
       off.db === db,
-      off.cardCost === cardCost && off.suspendApproval === suspendApproval,
+      Object.entries(passed)
+        .filter(([key, value]) => off[key as keyof typeof off] !== value)
+        .map(([key]) => key),
       off.allowedRoots,
       off.maxParallelRuns,
       "prPollIntervalMs" in off,
       polled.prPollIntervalMs,
-    ]).toEqual([true, true, ["/w"], 3, false, 9000]);
+    ]).toEqual([true, [], ["/w"], 3, false, 9000]);
   });
 });
