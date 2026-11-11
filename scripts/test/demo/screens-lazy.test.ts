@@ -47,7 +47,12 @@ const DOMAIN_OF: Record<string, string> = {
   AutoApprovalsPage: "permissions",
 };
 
+/** A screen that is a file of its domain, not the domain's `page.tsx`: a card's detail is a board file. */
+const FILE_OF: Record<string, string> = { CardDetail: "board/card-detail.tsx" };
+
 const specifierOf = (name: string) => {
+  const file = FILE_OF[name];
+  if (file) return `../features/${file}`;
   const feature = name.replace(/Page$/, "").toLowerCase();
   const folder = [DOMAIN_OF[name] ?? feature, feature, `${feature}s`].find((dir) =>
     existsSync(resolve(FEATURES, dir, "page.tsx")),
