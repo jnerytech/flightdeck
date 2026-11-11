@@ -198,7 +198,8 @@ describe("ci-paths: the rules", () => {
   });
 
   test("the selection's base: the PR's target, the commit a push came after, none for a full run (#444)", () => {
-    expect(selectionBase("pull_request", "main", "")).toBe("origin/main");
+    const target = "fedcba9876543210fedcba9876543210fedcba98";
+    expect(selectionBase("pull_request", "main", "", () => target)).toBe(target);
     expect(selectionBase("push", "", "0123456789abcdef0123456789abcdef01234567")).toBe(
       "0123456789abcdef0123456789abcdef01234567",
     );
@@ -208,7 +209,21 @@ describe("ci-paths: the rules", () => {
     expect(selectionBase("push", "", "")).toBe("");
     expect(selectionBase("schedule", "", "abc")).toBe("");
     expect(selectionBase("workflow_dispatch", "", "")).toBe("");
-    expect(selectionBase("pull_request", "", "")).toBe("");
+    expect(selectionBase("pull_request", "", "", () => target)).toBe("");
+  });
+
+  test("a PR's base is the target's commit, so every shard picks the same tests while main moves", () => {
+    const sha = "89abcdef0123456789abcdef0123456789abcdef";
+    const asked: string[] = [];
+    const revParse = (ref: string) => {
+      asked.push(ref);
+      return ref === "origin/main" ? `${sha}\n` : null;
+    };
+    expect(selectionBase("pull_request", "main", "", revParse)).toBe(sha);
+    expect(asked).toEqual(["origin/main"]);
+    // A target git cannot resolve gives no base: the whole suite runs, never a guess.
+    expect(selectionBase("pull_request", "gone", "", revParse)).toBe("");
+    expect(selectionBase("pull_request", "main", "", () => "not a commit")).toBe("");
   });
 
   test("every file the demo seed imports plans the journeys, so a change the journeys run cannot skip them (#410 review)", () => {
