@@ -97,6 +97,7 @@ if (command === "run") {
       print: (line) => console.log(line),
       tierOf: (path) => tiers[path],
       now: Date.now,
+      extraTargets: JSON.parse(readFileSync(join(ROOT, "fast-coverage-baseline.json"), "utf8")),
       ...(selection ? { selection } : {}),
     }),
   );

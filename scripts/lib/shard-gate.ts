@@ -360,6 +360,8 @@ export interface RunShardDeps {
   tierOf?: (path: string) => Tier | undefined;
   /** The clock, in milliseconds. */
   now?: () => number;
+  /** Sources a PR's unit + component shards instrument besides the changed ones: the fast baseline (#1854). */
+  extraTargets?: readonly string[];
 }
 
 /** `run <i>/<n> <bun|istanbul> <out>`: one shard job, its log and its marker; the exit code. */
@@ -412,7 +414,11 @@ export async function runShard(
     return 2;
   }
   deps.mkdir(out);
-  const targets = selection ? [...selection.targets] : istanbulTargets(deps.tracked);
+  // The fast baseline is judged from these shards: instrumented, never left to Bun's per-shard counts.
+  const extra = FAST_SHARDS.includes(index) ? (deps.extraTargets ?? []) : [];
+  const targets = selection
+    ? [...new Set([...selection.targets, ...extra])]
+    : istanbulTargets(deps.tracked);
   const plan = shardRun(kind, files, out, targets);
   const started = deps.now?.();
   const { exit, log } = await deps.spawn(plan.argv, plan.env);
