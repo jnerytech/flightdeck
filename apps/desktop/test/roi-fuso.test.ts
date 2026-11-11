@@ -10,7 +10,7 @@ describe("roi-fuso: the hosts count ROI days in UTC", () => {
       day: () => "2026-10-13",
     });
     expect(store.today()).toBe("2026-10-13");
-    expect(store.roiToday()).toBe("2026-10-14");
+    expect(store.roiFigures.today()).toBe("2026-10-14");
     store.dispose();
   });
 });

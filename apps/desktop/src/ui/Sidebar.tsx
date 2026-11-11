@@ -1,4 +1,3 @@
-import type { DepsResult } from "@flightdeck/protocol";
 import {
   ChevronDown,
   ChevronRight,
@@ -30,7 +29,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
-import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/index.ts";
+import {
+  HostVersionTip,
+  hostNeedsAttention,
+  hostVersionText,
+  RenameHostDialog,
+} from "@/features/hosts/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
@@ -943,17 +947,6 @@ export function Sidebar(
         />
       )}
     </div>
-  );
-}
-
-/** A machine the person should look at: not connected, a required dependency missing, or its key forwarded. */
-function hostNeedsAttention(host: HostView, deps: DepsResult | undefined): boolean {
-  return (
-    host.status === "offline" ||
-    host.status === "unauthorized" ||
-    host.status === "incompatible" ||
-    requiredMissing(deps) ||
-    host.hostInfo?.apiKeySanitized === false
   );
 }
 

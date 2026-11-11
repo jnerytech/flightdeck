@@ -44,7 +44,7 @@ function setup(language: "en" | "pt-BR" = "en") {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   (store as unknown as { update(p: object): void }).update({ hosts: [host] });
-  store.loadProjects = (async () => {}) as never;
+  store.projectList.load = (async () => {}) as never;
   const sent: Array<[string, string, unknown]> = [];
   let teams = [team("t-closed", "old-crew", "closed"), team("t-open", "live-crew", "active")];
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {

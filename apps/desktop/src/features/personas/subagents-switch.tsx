@@ -17,7 +17,7 @@ export function SubagentsSwitch(
   const { store, hostId, projectId } = props;
   const [mode, setMode] = useState<PersonaSubagentsMode | null>(null);
   useEffect(() => {
-    void store.loadProjects(hostId).then((projects) => {
+    void store.projectList.load(hostId).then((projects) => {
       const project = projects?.find((p) => p.id === projectId);
       if (project) setMode(project.personaSubagents);
     });

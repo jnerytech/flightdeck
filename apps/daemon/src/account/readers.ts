@@ -1,5 +1,7 @@
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
 import type { Exec } from "../exec.ts";
+import { parseJsonOr } from "../json-text.ts";
 import type { QuotaReading } from "../runtime/types.ts";
 import type { AccountReaders } from "./account.ts";
 
@@ -101,12 +103,7 @@ export async function authStatus(deps: {
     deps.exec([deps.claudePath, "auth", "status", "--json"]),
     deps.timeoutMs ?? READ_TIMEOUT_MS,
   );
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stdout);
-  } catch {
-    return null;
-  }
+  const parsed = parseJsonOr(z.unknown(), stdout, null);
   const raw = record(parsed);
   if (raw === null) return null;
   return {

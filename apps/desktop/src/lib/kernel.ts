@@ -1,4 +1,5 @@
 import type { CommandPayload, CommandResults, CommandType, RuleIssue } from "@flightdeck/protocol";
+import type { T } from "../i18n/index.ts";
 import type { HostConnection } from "./host-connection.ts";
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
@@ -156,8 +157,21 @@ export interface AppKernel<S extends object> {
     type: C,
     payload: CommandPayload<C>,
   ): Promise<HostResult<CommandResults[C]>>;
+  /**
+   * Sends a command to a host and gives its result; the cards and runs in it reach the app. A
+   * refusal or an offline host throws, with no banner: the caller decides what it shows.
+   */
+  dispatch<C extends HostCommandType>(
+    hostId: string,
+    type: C,
+    payload: CommandPayload<C>,
+  ): Promise<CommandResults[C]>;
   /** A host's open connection, if it has one. */
   connection(hostId: string): HostConnection | undefined;
   /** Milliseconds now (injected in tests). */
   now(): number;
+  /** The hosts the app is connected to right now, by id. */
+  onlineHosts(): string[];
+  /** The app's translator now (it changes with the language). */
+  t(): T;
 }

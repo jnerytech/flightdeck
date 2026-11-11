@@ -8,9 +8,6 @@ import type {
   HistoryGetResult,
   HistoryListResult,
   MessageInfo,
-  Project,
-  ProjectDetectResult,
-  RoiSummaryResult,
   RunConfigInfo,
   RunState,
   SessionImage,
@@ -21,7 +18,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
-import { AccountSlice, initialAccountState } from "../features/account/index.ts";
+import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
   initialActivityState,
@@ -36,22 +33,28 @@ import {
 import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
-  BudgetsSlice,
+  type BudgetsSlice,
   ClientBudgetsSlice,
   initialBudgetsState,
   initialClientBudgetsState,
+  wireBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
   type HealthSlice,
   HostRosterSlice,
-  HostUpdateSlice,
+  type HostUpdateSlice,
   initialHealthState,
   type NewHost,
   wireHealth,
+  wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
-import { initialMessagingState, MessagingSlice } from "../features/messaging/index.ts";
+import {
+  initialMessagingState,
+  type MessagingSlice,
+  wireMessaging,
+} from "../features/messaging/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
@@ -59,7 +62,7 @@ import {
   wirePersonas,
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
-import { initialQuotaState, QuotaSlice } from "../features/quota/index.ts";
+import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { RoiSlice } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
@@ -71,13 +74,17 @@ import {
   SessionsSlice,
   SummariesSlice,
 } from "../features/sessions/index.ts";
-import { initialSettingsState, SettingsSlice } from "../features/settings/index.ts";
+import {
+  initialSettingsState,
+  type SettingsSlice,
+  wireSettings,
+} from "../features/settings/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
   wireSnippets,
 } from "../features/snippets/index.ts";
-import { initialSshState, SshSlice } from "../features/ssh/index.ts";
+import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TerminalsSlice } from "../features/terminal/index.ts";
 import { TraySlice } from "../features/tray/index.ts";
 import {
@@ -146,7 +153,6 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
-import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import { sessionKey } from "./session-key.ts";
 import { SessionViews } from "./session-views.ts";
@@ -349,8 +355,11 @@ export class AppStore {
     hostCommand: (hostId, type, payload, options) =>
       this.hostCommand(hostId, type, payload, options),
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+    dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
     connection: (hostId) => this.connections.get(hostId),
     now: () => this.now(),
+    t: () => this.i18n.t,
+    onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
   };
 
   constructor(
@@ -371,90 +380,40 @@ export class AppStore {
       storage: platform.storage,
       language: () => this.i18n.lang,
     });
-    this.ssh = new SshSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      list: (hostId) => this.hostCommand(hostId, "ssh.list", {}),
-      peek: (hostId) => quiet(this.dispatch(hostId, "ssh.list", {})),
-      save: (hostId, payload) => this.hostCommand(hostId, "ssh.save", payload),
-      connect: (hostId, payload) => this.hostCommand(hostId, "ssh.connect", payload),
-      answer: (hostId, requestId, secret) =>
-        this.hostCommand(hostId, "askpass.answer", { requestId, secret }),
+    this.ssh = wireSsh(this.kernel, {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
     this.health = wireHealth(this.kernel);
-    this.hostUpdate = new HostUpdateSlice({
-      host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
+    this.hostUpdate = wireHostUpdate(this.kernel, {
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
-      connected: (hostId) => this.connections.has(hostId),
-      apply: (hostId) =>
-        this.openConnection(hostId).request("daemon.update.apply", { confirm: true }),
-      check: (hostId) => this.openConnection(hostId).request("daemon.update.check", {}),
+      open: (hostId) => this.openConnection(hostId),
       describeError,
-      t: () => this.i18n.t,
-      now: () => this.now(),
       timeoutMs: options.daemonUpdateTimeoutMs,
     });
     this.background = wireBackground(this.kernel, {
       showTerminal: (hostId, terminalId) =>
         this.hostTabs.open({ name: "terminal", host: hostId, terminalId }),
     });
-    this.quota = new QuotaSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
-      read: (hostId) => this.hostCommand(hostId, "quota.get", {}),
-      setPauseAt: (hostId, pauseAt) => this.hostCommand(hostId, "quota.setPauseAt", { pauseAt }),
+    this.quota = wireQuota(this.kernel, {
       notify: (notice, hostId) =>
         this.inbox.notify(notice, { name: "host", host: hostId }, undefined, {
           event: "budget-quota",
           hostId,
         }),
-      t: () => this.i18n.t,
-      now: () => this.now(),
     });
-    this.account = new AccountSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      stream: (hostId) => {
-        const conn = this.connections.get(hostId);
-        return (
-          conn && {
-            watch: (on) => conn.watchAccount(on),
-            get: () => conn.request("account.get", {}),
-          }
-        );
-      },
-      refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
-    });
+    this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
-    this.budgets = new BudgetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      set: (hostId, input) => this.hostCommand(hostId, "budget.set", input),
-      setQuota: (hostId, input) => this.hostCommand(hostId, "budget.setQuota", input),
-      remove: (hostId, id) => this.hostCommand(hostId, "budget.remove", { id }),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
+    this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>
         this.inbox.notify(notification, route, undefined, source),
-      t: () => this.i18n.t,
     });
-    this.messaging = new MessagingSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
-      setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
+    this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
-      t: () => this.i18n.t,
     });
-    this.settings = new SettingsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
+    this.settings = wireSettings(this.kernel, {
       platform,
-      t: () => this.i18n.t,
       onShortcut: () => this.history.openSearch(),
     });
     this.hostTabs = HostTabs.restore(
@@ -535,7 +494,11 @@ export class AppStore {
         knownProjects([
           ...hubRows(this.state),
           ...Object.entries(this.state.projects).flatMap(([hostId, list]) =>
-            list.map((p) => ({ hostId, cwd: p.path, projectKey: this.projectKeyOf(hostId, p) })),
+            list.map((p) => ({
+              hostId,
+              cwd: p.path,
+              projectKey: this.projectList.keyOf(hostId, p),
+            })),
           ),
         ]),
       changed: () => {
@@ -974,11 +937,6 @@ export class AppStore {
     return (this.options.day ?? localDay)(this.now());
   }
 
-  /** Phase 36: the day the hosts' ROI figures end on (UTC, as a host dates a delivery). */
-  roiToday(): string {
-    return this.roiFigures.today();
-  }
-
   /** HH:MM of an instant, in this machine's time zone unless injected. */
   formatTime(iso: string): string {
     if (this.options.formatTime) return this.options.formatTime(iso);
@@ -1364,11 +1322,6 @@ export class AppStore {
     else this.hostTabs.show({ name: "home" });
   }
 
-  /** The switcher picked a host: its tabs replace the row. */
-  pickHost(hostId: string): void {
-    this.hostTabs.switchHost(hostId);
-  }
-
   /** The host whose mode the window shows: the selected one, else the first that is online. */
   uiHostId(): string | null {
     const { hosts, selected } = this.state;
@@ -1423,24 +1376,9 @@ export class AppStore {
     }
   }
 
-  /** A host's projects into the state (quiet: a host without a board, or offline, lists none). */
-  loadProjects(hostId: string): Promise<Project[] | null> {
-    return this.projectList.load(hostId);
-  }
-
-  /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
-  rememberProjects(hostId: string, projects: Project[]): void {
-    this.projectList.remember(hostId, projects);
-  }
-
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
   setWorktreeFilter(filter: WorktreeFilter | null): void {
     this.update({ worktreeFilter: filter });
-  }
-
-  /** The key of a project of a host: the daemon's, else the one its folder would have. */
-  projectKeyOf(hostId: string, project: Project): string {
-    return this.projectList.keyOf(hostId, project);
   }
 
   /**
@@ -1459,7 +1397,7 @@ export class AppStore {
     const boards = this.state.hosts
       .filter((host) => host.status === "online")
       .map(async (host) => {
-        const projects = await this.loadProjects(host.id);
+        const projects = await this.projectList.load(host.id);
         await inSequence(projects ?? [], (project) => this.loadBoard(host.id, project.id));
       });
     const targets = this.state.hosts
@@ -1736,7 +1674,7 @@ export class AppStore {
     // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
     // one request, not two.
     if (options.connect === true && wantsProjects && projects?.ok) {
-      this.rememberProjects(hostId, projects.data.projects);
+      this.projectList.remember(hostId, projects.data.projects);
     }
     const probe = probeAfter(this.state.setupProbes[hostId], wants, { hooks, github, projects });
     this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
@@ -2261,25 +2199,12 @@ export class AppStore {
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
   readonly whatsNew: WhatsNew;
-  /** Phase 36: each online host's `roi.summary` for the days given; a host that cannot answer is left out. */
-  roiSummaries(
-    from: string,
-    to: string,
-  ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    return this.roiFigures.summaries(from, to);
-  }
-
-  /** Phase 36: what the person typed that turns the work of a project into money. */
-  roiMoneyOf(projectKey: string): RoiMoney {
-    return this.roiFigures.moneyOf(projectKey);
-  }
-
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */
   readonly roi: RoiSettings;
   /** The ROI figures: the day they end on, each host's summary and a project's money (#1596). */
-  private readonly roiFigures: RoiSlice;
+  readonly roiFigures: RoiSlice;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;
@@ -2334,17 +2259,7 @@ export class AppStore {
   /** The PR watch of the cards: each card's watch, its commands and the screen a PR link opens (#1596). */
   readonly prWatch: WatchSlice;
   /** The projects each host lists: the list, a project's key and its PR provider (#1596). */
-  private readonly projectList: ProjectsSlice;
-
-  /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
-  detectPrProvider(
-    hostId: string,
-    projectId: string,
-    /** A press of the person's: a host that cannot answer, or finds nothing yet, is said. */
-    report = false,
-  ): Promise<ProjectDetectResult | null> {
-    return this.projectList.detectProvider(hostId, projectId, report);
-  }
+  readonly projectList: ProjectsSlice;
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {
