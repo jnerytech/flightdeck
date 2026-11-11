@@ -117,6 +117,30 @@ describe("host update slice: a daemon's update", () => {
     expect(live.size).toBe(1);
   });
 
+  test("two clicks in flight at once still leave one late timer", async () => {
+    const open: Array<() => void> = [];
+    const s = slice({ applies: () => new Promise((resolve) => open.push(() => resolve({}))) });
+    const first = s.updates.apply("h1");
+    const second = s.updates.apply("h1");
+    for (const resolve of open) resolve();
+    await Promise.all([first, second]);
+    expect(live.size).toBe(1);
+  });
+
+  test("a host removed, or the store closed, while an update is asked for gets no late timer", async () => {
+    for (const leave of ["forget", "dispose"] as const) {
+      live.clear();
+      let resolve: () => void = () => {};
+      const s = slice({ applies: () => new Promise((done) => (resolve = () => done({}))) });
+      const pending = s.updates.apply("h1");
+      if (leave === "forget") s.updates.forget("h1");
+      else s.updates.dispose();
+      resolve();
+      await pending;
+      expect(live.size, leave).toBe(0);
+    }
+  });
+
   test("the late timer goes when the host comes back, when the host is removed and on dispose", async () => {
     const back = slice();
     await back.updates.apply("h1");
