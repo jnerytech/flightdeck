@@ -1,13 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { layoutViolations, styleViolations } from "../../../scripts/lib/style-lint.ts";
 
-/** The client components that compose the layout primitives (the screens beside them still hold raw utilities, counted by layout-baseline.json). */
+/** The client components that compose the layout primitives; the screens beside them are not held to it. */
 const files = ["assign-menu.tsx", "client-chip.tsx", "client-dot.tsx", "client-switcher.tsx"];
-const DIR = ["../src/features/clients", "../src/components/clients"]
-  .map((dir) => resolve(import.meta.dir, dir))
-  .find((dir) => existsSync(join(dir, "client-dot.tsx"))) as string;
+const DIR = resolve(import.meta.dir, "../src/features/clients");
 
 describe("clients-ui: the client components compose the layout primitives", () => {
   test("there are components to check", () => {
