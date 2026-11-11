@@ -8,7 +8,7 @@ suggested model, effort, tools and permission mode, and the instructions of the 
 
 - **Pack**: thirteen come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
   performance, code reviewer, docs, frontend, **UX** (judges whether a person can finish a task and
-  only recommends: it cannot edit code), **UI** (keeps the interface consistent with the design
+  only recommends: it has no edit tool), **UI** (keeps the interface consistent with the design
   system and fixes it in small PRs), DBA, the team coordinator of phase 21 and the
   **Developer**, the one that writes the code: test first, small scoped changes, follows the
   project's CLAUDE.md and ADRs, runs the project's checks before saying done, never pushes). Editing one

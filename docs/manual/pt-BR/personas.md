@@ -8,7 +8,7 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
 
 - **Pacote**: treze vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
   performance, revisor de código, docs, frontend, **UX** (avalia se uma pessoa consegue concluir uma
-  tarefa e só recomenda: não edita código), **UI** (mantém a interface consistente com o sistema de
+  tarefa e só recomenda: não tem ferramenta de edição), **UI** (mantém a interface consistente com o sistema de
   design e a corrige em PRs pequenos), DBA, o coordenador de time da Fase 21 e o
   **Desenvolvedor**, o que escreve o código: teste primeiro, mudanças pequenas e no escopo, segue o
   CLAUDE.md e os ADRs do projeto, roda as checagens do projeto antes de dizer que terminou, nunca
