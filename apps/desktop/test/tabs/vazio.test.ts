@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { Route } from "../src/lib/router.ts";
-import { Tabs } from "../src/lib/tabs.ts";
-import { Workspace } from "../src/lib/workspace.ts";
+import type { Route } from "../../src/lib/router.ts";
+import { Tabs } from "../../src/lib/tabs.ts";
+import { Workspace } from "../../src/lib/workspace.ts";
 
 const hub: Route = { name: "hub" };
 const costs: Route = { name: "costs" };

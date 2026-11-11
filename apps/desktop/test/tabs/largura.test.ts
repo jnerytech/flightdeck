@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 
-const read = (file: string) => readFileSync(join(import.meta.dir, "../src", file), "utf8");
+const read = (file: string) => readFileSync(join(import.meta.dir, "../../src", file), "utf8");
 const block = (css: string, name: string) =>
   css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
@@ -13,7 +13,7 @@ const block = (css: string, name: string) =>
  * a real browser by the e2e `layout` journey (scripts/e2e/journeys.ts); happy-dom has no layout.
  */
 describe("guard: abas-largura: tabs share the width like a browser's (issue #103)", () => {
-  const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+  const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
   // Issue #488: as wide as its title (VS Code), between a minimum and a maximum, and shrinking
   // with the rest before the strip scrolls.

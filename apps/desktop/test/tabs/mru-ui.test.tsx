@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { seedDemoHosts } from "../src/demo/boot.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform, seedHosts } from "./fixtures.ts";
+import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform, seedHosts } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, render, screen, within } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TabSwitcherHost } = await import("../src/components/tabs/tab-switcher.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TabSwitcherHost } = await import("../../src/components/tabs/tab-switcher.tsx");
 
 setDefaultTimeout(20_000);
 afterEach(cleanup);
