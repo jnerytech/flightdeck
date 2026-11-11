@@ -3,8 +3,10 @@
  * search, a repo's issues. The token stays with `gh`; nothing here reads, keeps or returns it.
  */
 import type { Issue } from "@flightdeck/protocol";
+import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
-import { GH_FIELDS, type GhIssue, GithubIssues } from "../issues/providers.ts";
+import { GH_FIELDS, GhIssueRow, GithubIssues } from "../issues/providers.ts";
+import { parseJsonWith } from "../json-text.ts";
 import type { GhResult, GhRunner } from "./gh.ts";
 import { GITHUB_HOST, type GithubStatus, githubStatus } from "./status.ts";
 
@@ -18,6 +20,18 @@ const detailOf = (result: GhResult) =>
     .map((line) => line.trim())
     .find(Boolean)
     ?.slice(0, 300) ?? "";
+
+/** One repo as `gh repo list` or `gh search repos` prints it. */
+const RepoRows = z.array(
+  z.object({
+    nameWithOwner: z.string().optional(),
+    fullName: z.string().optional(),
+    description: z.string().nullish(),
+    isPrivate: z.boolean(),
+    url: z.string(),
+    updatedAt: z.string(),
+  }),
+);
 
 const LIST_LIMIT = 50;
 const ISSUE_LIMIT = 50;
@@ -109,14 +123,12 @@ export class Github {
       const detail = result ? detailOf(result) : "";
       throw refuse("repos_failed", `gh could not list the repos: ${detail}`, { detail });
     }
-    const rows = JSON.parse(result.stdout || "[]") as Array<{
-      nameWithOwner?: string;
-      fullName?: string;
-      description: string | null;
-      isPrivate: boolean;
-      url: string;
-      updatedAt: string;
-    }>;
+    let rows: z.infer<typeof RepoRows>;
+    try {
+      rows = parseJsonWith(RepoRows, result.stdout || "[]");
+    } catch {
+      throw refuse("repos_failed", "gh printed a repo list the app cannot read");
+    }
     return rows.map((row) => ({
       name: row.nameWithOwner ?? row.fullName ?? "",
       description: row.description ?? "",
@@ -141,7 +153,13 @@ export class Github {
     }
     const me = await this.opts.gh(["api", "user", "--jq", ".login"]);
     const login = me?.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
-    return new GithubIssues(repo).toIssue(JSON.parse(result.stdout) as GhIssue, login);
+    let row: z.infer<typeof GhIssueRow>;
+    try {
+      row = parseJsonWith(GhIssueRow, result.stdout);
+    } catch {
+      throw refuse("issues_failed", "gh printed an issue the app cannot read");
+    }
+    return new GithubIssues(repo).toIssue(row, login);
   }
 
   /** The open issues of `repo` (`owner/name`), asked of GitHub whatever folder the daemon is in. */
@@ -170,8 +188,12 @@ export class Github {
     const me = await this.opts.gh(["api", "user", "--jq", ".login"]);
     const login = me?.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
     const provider = new GithubIssues(repo);
-    return (JSON.parse(result.stdout || "[]") as GhIssue[]).map((issue) =>
-      provider.toIssue(issue, login),
-    );
+    let rows: Array<z.infer<typeof GhIssueRow>>;
+    try {
+      rows = parseJsonWith(z.array(GhIssueRow), result.stdout || "[]");
+    } catch {
+      throw refuse("issues_failed", "gh printed an issue list the app cannot read");
+    }
+    return rows.map((issue) => provider.toIssue(issue, login));
   }
 }

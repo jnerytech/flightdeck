@@ -11,8 +11,6 @@
   "apps/daemon/src/boardsync/store.ts": 1,
   "apps/daemon/src/central/waiting.ts": 1,
   "apps/daemon/src/config.ts": 2,
-  "apps/daemon/src/github/alerts.ts": 1,
-  "apps/daemon/src/github/github.ts": 3,
   "apps/daemon/src/harness/stack.ts": 1,
   "apps/daemon/src/harness/templates-store.ts": 1,
   "apps/daemon/src/history/parser.ts": 1,
