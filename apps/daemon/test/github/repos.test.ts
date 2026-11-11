@@ -134,3 +134,30 @@ describe("github-repos: a person's repos and a search", () => {
     });
   });
 });
+
+describe("github-repos: what gh printed is checked before it is used (#1609)", () => {
+  test("a list that is not JSON is refused as repos_failed, and the message keeps gh's text out", async () => {
+    fakeGh([SIGNED_IN, { args: ["repo", "list"], stdout: "ghp_NOT_A_REAL_TOKEN {" }]);
+    const error = await new Github({ gh: runGh }).repos().catch((e: unknown) => e);
+    expect(error).toMatchObject({ reason: "repos_failed" });
+    expect(String((error as Error).message)).not.toContain("ghp_NOT_A_REAL_TOKEN");
+  });
+
+  test("a row with no url is refused as repos_failed", async () => {
+    fakeGh([
+      SIGNED_IN,
+      {
+        args: ["repo", "list"],
+        stdout: JSON.stringify([{ nameWithOwner: "acme/app", isPrivate: false }]),
+      },
+    ]);
+    await expect(new Github({ gh: runGh }).repos()).rejects.toMatchObject({
+      reason: "repos_failed",
+    });
+  });
+
+  test("an empty answer is an empty list", async () => {
+    fakeGh([SIGNED_IN, { args: ["repo", "list"], stdout: "" }]);
+    expect(await new Github({ gh: runGh }).repos()).toEqual([]);
+  });
+});

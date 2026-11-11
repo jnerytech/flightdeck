@@ -823,7 +823,18 @@ jobs:
         env:
           DEMO_BUILD: "1"
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
+          E2E_JSON: e2e-json/e2e.json
         run: bun run e2e -- --shard=${{ matrix.shard }}/3
+
+      # The pyramid's e2e row (#1854) is built from this report by the aggregate job.
+      - name: Publicar o JSON do e2e
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-json-${{ matrix.shard }}
+          path: e2e-json/e2e.json
+          if-no-files-found: ignore
+          retention-days: 30
 
       # A journey that failed and passed on its retry shows as flaky in the report, never hidden.
       - name: Publicar o relatório e2e
@@ -850,6 +861,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # The e2e row of the pyramid (#1854): a table in the job summary, never a gate.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: always() && needs.quick.outputs.e2e == 'true'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        if: always() && needs.quick.outputs.e2e == 'true'
+        with:
+          bun-version: 1.4.4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: always() && needs.quick.outputs.e2e == 'true'
+        continue-on-error: true
+        with:
+          pattern: e2e-json-*
+          path: ${{ runner.temp }}/e2e-json
+      - name: E2E journeys by outcome
+        if: always() && needs.quick.outputs.e2e == 'true'
+        continue-on-error: true
+        run: bun run scripts/e2e-summary.ts
+
       # A pull request whose paths need no screen run passes here, so the check still reports. The
       # e2e result is every shard's: one failed shard fails it.
       - name: The prints and the e2e journeys passed
