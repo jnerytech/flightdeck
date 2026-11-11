@@ -24,7 +24,15 @@ export type ArchInputs = {
   /** Raw `JSON.parse` calls per source file today and in json-parse-baseline.json. */
   jsonParseCounts: Record<string, number>;
   jsonParseBaseline: Record<string, number>;
+  /** The share of test files per upper tier today (integration, e2e), in basis points, and in test-shape-baseline.json. */
+  shapeShares: Record<string, number>;
+  shapeBaseline: Record<string, number>;
 };
+
+/** The share of the test files that sit above the base of the pyramid (#1854), in basis points, rounded up. A stub. */
+export function shapeShares(_filesByTier: Record<string, number>): Record<string, number> {
+  return {};
+}
 
 const sum = (counts: Record<string, number>) => Object.values(counts).reduce((a, b) => a + b, 0);
 

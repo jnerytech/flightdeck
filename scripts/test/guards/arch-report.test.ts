@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type ArchInputs, formatTable, growing, ratchetRows } from "../../lib/arch-report.ts";
+import { type ArchInputs, formatTable, growing, ratchetRows, shapeShares } from "../../lib/arch-report.ts";
 
 const known = (rules: Record<string, number>) =>
   JSON.stringify(
@@ -19,6 +19,8 @@ const inputs = (over: Partial<ArchInputs> = {}): ArchInputs => ({
   knipBaseline: { exports: 160, types: 100, files: 15 },
   jsonParseCounts: { "apps/daemon/src/a.ts": 2, "apps/desktop/src/lib/b.ts": 1 },
   jsonParseBaseline: { "apps/daemon/src/a.ts": 3, "apps/desktop/src/lib/b.ts": 1, "apps/x.ts": 4 },
+  shapeShares: { integration: 2380, e2e: 220 },
+  shapeBaseline: { integration: 2390, e2e: 220 },
   ...over,
 });
 
@@ -32,6 +34,8 @@ describe("arch-report (#1610)", () => {
       { ratchet: "knip files", baseline: 15, today: 15 },
       { ratchet: "knip types", baseline: 100, today: 100 },
       { ratchet: "src-size files over the limit", baseline: 2, today: 1 },
+      { ratchet: "test-shape e2e share (basis points)", baseline: 220, today: 220 },
+      { ratchet: "test-shape integration share (basis points)", baseline: 2390, today: 2380 },
       { ratchet: "test-layout apps/desktop/test", baseline: 680, today: 600 },
       { ratchet: "test-layout packages/protocol/test", baseline: 23, today: 23 },
     ]);
@@ -92,6 +96,26 @@ describe("arch-report (#1610)", () => {
       "| a | 3 | 3 | ok |",
       "| b | 3 | 2 | down |",
       "| c | 3 | 4 | UP |",
+    ]);
+  });
+});
+
+describe("test shape: the pyramid's upper tiers may not take a larger share of the test files (#1854)", () => {
+  test("the share of integration and e2e files, in basis points, rounded up", () => {
+    expect(shapeShares({ unit: 700, component: 500, integration: 400, e2e: 100 })).toEqual({
+      integration: 2354,
+      e2e: 589,
+    });
+  });
+
+  test("a tree with no test file has no share, not a division by zero", () => {
+    expect(shapeShares({})).toEqual({ integration: 0, e2e: 0 });
+  });
+
+  test("a planted integration test with no unit test beside it puts the integration row above its baseline", () => {
+    const rows = ratchetRows(inputs({ shapeShares: { integration: 2391, e2e: 220 } }));
+    expect(growing(rows)).toEqual([
+      { ratchet: "test-shape integration share (basis points)", baseline: 2390, today: 2391 },
     ]);
   });
 });
