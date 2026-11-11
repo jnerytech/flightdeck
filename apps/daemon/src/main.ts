@@ -20,11 +20,7 @@ import { CheckLoopSwitch, cardMode } from "./board/check-loop.ts";
 import { HostPause } from "./board/host-pause.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
-import { BoardSync } from "./boardsync/engine.ts";
-import { GithubBoards } from "./boardsync/github.ts";
-import { BoardSyncLoop } from "./boardsync/loop.ts";
-import { BoardSyncService } from "./boardsync/service.ts";
-import { BoardSyncStore } from "./boardsync/store.ts";
+import { createBoardSync } from "./boardsync/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { Forker } from "./checkpoints/fork.ts";
@@ -527,19 +523,7 @@ export async function startDaemon(
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
-  const boardSyncStore = new BoardSyncStore(store.db);
-  const boardProvider = new GithubBoards({ gh: runGh });
-  const boardEngine = new BoardSync({
-    board,
-    store: boardSyncStore,
-    provider: boardProvider,
-    autoApprove,
-  });
-  const boardLoop = new BoardSyncLoop({
-    engine: boardEngine,
-    store: boardSyncStore,
-    timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
-  });
+  const boardSync = createBoardSync({ db: store.db, board, autoApprove, gh: runGh });
   // Phase 22: the PRs of the cards are watched and fixed, inside their limits (before the
   // automations: a watched PR is the watch's alone, #77).
   const prWatcher = new PrWatcher({
@@ -905,13 +889,7 @@ export async function startDaemon(
       keyOf: (path) => keys.known(path),
       signals: new RoiSignals(),
     }),
-    boardsync: new BoardSyncService({
-      board,
-      store: boardSyncStore,
-      provider: boardProvider,
-      engine: boardEngine,
-      loop: boardLoop,
-    }),
+    boardsync: boardSync.service,
     github: new GithubService({
       roots: config.allowedRoots,
       board,
@@ -1069,7 +1047,7 @@ export async function startDaemon(
   logger.log(
     `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
   );
-  boardLoop.start();
+  boardSync.loop.start();
   warnIfNoRoots(config, logger);
 
   let stopped: Promise<void> | null = null;
@@ -1095,7 +1073,7 @@ export async function startDaemon(
         await automations.idle();
         prWatch.stop();
         for (const unwatch of unwatchRunEnv) unwatch();
-        boardLoop.stop();
+        boardSync.loop.stop();
         board.stop();
         terminals.stop();
         await central.stop();
