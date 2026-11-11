@@ -94,3 +94,8 @@ export function renderPyramid(pyramid: Pyramid): string {
   }
   return `${lines.join("\n")}\n`;
 }
+
+/** The table a local run prints at its end (#1854); a stub. */
+export function localPyramid(_tiers: Record<string, Tier>, _junit: string | null): string {
+  return "";
+}
