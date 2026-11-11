@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sshOf, TAB_ICONS, tabFacts, tabTitle } from "../../src/features/tabs/tab-facts.ts";
+import { TAB_ICONS, tabFacts, tabTitle } from "../../src/features/tabs/tab-facts.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState, AppStore } from "../../src/lib/app-store.ts";
 import { hostColorVar } from "../../src/lib/host-color.ts";
@@ -59,12 +59,16 @@ describe("tab-facts: the title of a tab", () => {
     expect(tabTitle(terminalTab, state(), ssh)).toBe(
       t("terminalUi.sshBadge", { name: "build box" }),
     );
-    expect(sshOf(terminalTab, ssh)).toEqual({ name: "build box", tags: ["prod"] });
+    expect(tabFacts(terminalTab, { t, state: state(), store: ssh, host: null }).ssh).toEqual({
+      name: "build box",
+      tags: ["prod"],
+    });
   });
 
   test("a terminal that no destino opened has no ssh facts", () => {
-    expect(sshOf(terminalTab, store())).toBeUndefined();
-    expect(sshOf(tab({ name: "overview" }), ssh)).toBeUndefined();
+    const none = { t, state: state(), store: store(), host: null };
+    expect(tabFacts(terminalTab, none).ssh).toBeUndefined();
+    expect(tabFacts(tab({ name: "overview" }), { ...none, store: ssh }).ssh).toBeUndefined();
   });
 
   test("a host's overview and history show their section, not the host's name", () => {

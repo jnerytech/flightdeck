@@ -25,7 +25,7 @@ export const TAB_ICONS: Record<TabKind, LucideIcon> = {
 };
 
 /** What a terminal tab says about the ssh destino it was opened from, if it was. */
-export function sshOf(tab: Tab, store: AppStore) {
+function sshOf(tab: Tab, store: AppStore) {
   const route = tab.router.current;
   return route.name === "terminal"
     ? store.ssh.terminals.get(`${route.host}/${route.terminalId}`)
@@ -46,7 +46,7 @@ export function tabTitle(tab: Tab, state: AppState, store: AppStore): string {
   return breadcrumb(route, state, store.i18n.t).at(-1)?.label ?? "";
 }
 
-export type TabFactsAt = {
+type TabFactsAt = {
   t: AppStore["i18n"]["t"];
   state: AppState;
   store: AppStore;
