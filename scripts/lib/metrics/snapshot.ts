@@ -43,6 +43,8 @@ export function parseRatchetRows(text: string): RatchetRow[] | null {
 export interface MetricsDeps {
   /** Runs `git <args>` in the repository. */
   git(args: string[]): Promise<GitResult>;
+  /** Runs `gh <args>`; stderr is kept for the reason a metric was not read. */
+  gh(args: string[]): Promise<GitResult & { stderr?: string }>;
   /** The rows of `scripts/arch-report.ts --json`, or null when the report could not be made. */
   arch(): Promise<RatchetRow[] | null>;
   now(): Date;

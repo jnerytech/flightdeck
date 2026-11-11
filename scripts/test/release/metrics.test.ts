@@ -107,7 +107,7 @@ describe("metrics: hotspots and coupling", () => {
 });
 
 /** A fake git over a small history: two tags, v1 and v2, and a file's text at the tag. */
-function fakeGit(opts: { previous?: boolean; archRows?: boolean } = {}) {
+function fakeGit(opts: { previous?: boolean; archRows?: boolean; ghFails?: string[] } = {}) {
   const calls: string[][] = [];
   const commits = [
     commit("c3", "2026-11-10T09:00:00Z", ["src/big.ts", "src/small.ts"], "feat: three"),
@@ -153,6 +153,35 @@ function fakeGit(opts: { previous?: boolean; archRows?: boolean } = {}) {
       }
       void a2;
       return { code: 1, stdout: "" };
+    },
+    gh: async (args) => {
+      calls.push(["gh", ...args]);
+      const key = args.includes("pr") ? "pr" : args.includes("main") ? "main" : "ci";
+      if (opts.ghFails?.includes(key)) return { code: 1, stdout: "", stderr: "gh: HTTP 502\nmore" };
+      if (key === "pr") {
+        return {
+          code: 0,
+          stdout: JSON.stringify([
+            { additions: 30, deletions: 10, mergedAt: "2026-11-10T00:00:00Z" },
+          ]),
+        };
+      }
+      const run = (created: string, conclusion: string, attempt = 1) => ({
+        createdAt: created,
+        startedAt: created,
+        updatedAt: new Date(Date.parse(created) + 600_000).toISOString(),
+        attempt,
+        status: "completed",
+        conclusion,
+      });
+      return {
+        code: 0,
+        stdout: JSON.stringify(
+          key === "main"
+            ? [run("2026-11-06T10:00:00Z", "success"), run("2026-11-05T10:00:00Z", "failure")]
+            : [run("2026-11-09T10:00:00Z", "success", 2), run("2026-11-08T10:00:00Z", "success")],
+        ),
+      };
     },
     arch: async () =>
       opts.archRows === false ? null : [{ ratchet: "knip files", baseline: 15, today: 14 }],
@@ -208,17 +237,36 @@ describe("metrics: the snapshot", () => {
     expect(snapshot.hotspots.last30Days.length).toBeGreaterThan(0);
   });
 
-  test("the metrics of a later task are null and say so, never zero", async () => {
+  test("the gh metrics are filled: CI health, PR size and one red period of main", async () => {
     const { deps } = fakeGit();
     const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
-    const names = snapshot.unavailable.map((u: { metric: string }) => u.metric);
-    expect([snapshot.coverage, snapshot.ciHealth, snapshot.prSize, snapshot.mainRed]).toEqual([
-      null,
-      null,
-      null,
-      null,
-    ]);
-    expect(names).toEqual(expect.arrayContaining(["coverage", "ciHealth", "prSize", "mainRed"]));
+    expect(snapshot.ciHealth.last30Days).toMatchObject({ runs: 2, rerunRate: 0.5 });
+    expect(snapshot.prSize.last30Days).toMatchObject({
+      merged: 1,
+      changedLines: { p50: 40, p90: 40 },
+    });
+    // From the failed run (the 5th, 10:00) to the end of the next green one (the 6th, 10:10).
+    expect(snapshot.mainRed.last30Days).toEqual({ periods: 1, totalSeconds: 87_000 });
+    // The window since the release starts on the 1st: the same runs are all in it.
+    expect(snapshot.ciHealth.sinceRelease.runs).toBe(2);
+  });
+
+  test("a gh call that fails makes that metric null with its reason, and the others are still written", async () => {
+    const { deps } = fakeGit({ ghFails: ["ci"] });
+    const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
+    expect(snapshot.ciHealth).toBeNull();
+    const failed = snapshot.unavailable.find((u: { metric: string }) => u.metric === "ciHealth");
+    expect(failed.reason).toContain("HTTP 502");
+    expect(snapshot.mainRed.last30Days.periods).toBe(1);
+    expect(snapshot.prSize.last30Days.merged).toBe(1);
+    expect(snapshot.hotspots.last30Days.length).toBeGreaterThan(0);
+  });
+
+  test("coverage is still null and says it is not collected yet", async () => {
+    const { deps } = fakeGit();
+    const snapshot = (await buildSnapshot(deps, "v0.2.0")) as Record<string, any>;
+    expect(snapshot.coverage).toBeNull();
+    expect(snapshot.unavailable.map((u: { metric: string }) => u.metric)).toContain("coverage");
   });
 
   test("a git log that fails makes the git metrics null and named in unavailable, the ratchets still written", async () => {
