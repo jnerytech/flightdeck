@@ -67,6 +67,10 @@ describe("typecheck-plan", () => {
   test("with a limit of two, two runs overlap, every run finishes and the first failure in plan order is the result", async () => {
     let running = 0;
     let most = 0;
+    let release = () => {};
+    const both = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const done: string[] = [];
     const code = await runAll(
       [
@@ -78,7 +82,9 @@ describe("typecheck-plan", () => {
       async (command) => {
         running++;
         most = Math.max(most, running);
-        await new Promise((resolve) => setTimeout(resolve, command[2] === "a" ? 5 : 1));
+        if (running === 2) release();
+        // The first two wait for each other: they can only finish if they run side by side.
+        if (command[2] === "a" || command[2] === "b") await both;
         running--;
         done.push(command[2] ?? "");
         return command[2] === "b" ? 2 : command[2] === "c" ? 3 : 0;

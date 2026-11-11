@@ -167,9 +167,6 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   `bun run typecheck` and `bun run lint` go through the light lane by themselves
   (`scripts/lane.ts`): at most two run at once on the machine, one when less than 5 GB is
   available (one tsc run takes up to 1.5 GB), and the next waits for a place.
-  `typecheck` runs two projects at a time when 8 GB are free (`FLIGHTDECK_TYPECHECK_JOBS` overrides),
-  seeds a new worktree's tsc cache from the newest sibling worktree's, and prints the lane wait and
-  each project's time (#1762).
   `FLIGHTDECK_LANE_PLACES` overrides the count.
 
 ## Conventions
