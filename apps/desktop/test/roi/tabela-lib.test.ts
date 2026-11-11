@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { EMPTY_PERIOD, figures, type RoiMoney } from "../src/lib/roi.ts";
-import { csvOf, type RoiRow, rowsFrom, sortRows, totalsOf } from "../src/lib/roi-table.ts";
+import { EMPTY_PERIOD, figures, type RoiMoney } from "../../src/lib/roi.ts";
+import { csvOf, type RoiRow, rowsFrom, sortRows, totalsOf } from "../../src/lib/roi-table.ts";
 
 const period = (over: Partial<RoiPeriod>): RoiPeriod => ({ ...EMPTY_PERIOD, ...over });
 const MONEY: RoiMoney = {
