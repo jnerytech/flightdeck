@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
   symlinkSync,
@@ -701,8 +702,18 @@ describe("worktrees-seguranca: only what a build recreates, at the root, goes un
   });
 
   test("the confirmation says that rebuildable files go with the folder", async () => {
-    const en = await Bun.file(new URL("../../desktop/src/i18n/en.ts", import.meta.url)).text();
-    expect(en).toMatch(/confirm:[\s\S]{0,300}rebuil/);
+    // The dictionary is en.ts plus the domain files of en/ as it is split (#1598).
+    const dir = join(import.meta.dir, "../../desktop/src/i18n");
+    const files = [join(dir, "en.ts")];
+    if (existsSync(join(dir, "en"))) {
+      const names = readdirSync(join(dir, "en")).filter((name) => name.endsWith(".ts"));
+      files.push(...names.map((name) => join(dir, "en", name)));
+    }
+    // One file must say it, never a match across two files.
+    const says = files.some((file) =>
+      /confirm:[\s\S]{0,300}rebuil/.test(readFileSync(file, "utf8")),
+    );
+    expect(says).toBe(true);
   });
 });
 
