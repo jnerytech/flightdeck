@@ -123,6 +123,13 @@ describe("areas: a tela se adapta à largura da sua área", () => {
     const root = resolve(import.meta.dir, "../src");
     const files = [
       ...readdirSync(join(root, "ui")).map((f) => join(root, "ui", f)),
+      ...readdirSync(join(root, "features"), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .flatMap((entry) =>
+          readdirSync(join(root, "features", entry.name)).map((f) =>
+            join(root, "features", entry.name, f),
+          ),
+        ),
       ...["layout", "vault", "feedback"].flatMap((dir) =>
         readdirSync(join(root, "components", dir)).map((f) => join(root, "components", dir, f)),
       ),

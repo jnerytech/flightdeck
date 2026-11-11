@@ -190,7 +190,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const { TeamsPage } = await import("../src/ui/TeamsPage.tsx");
     const { PluginsPage } = await import("../src/ui/PluginsPage.tsx");
     const { PersonasPage } = await import("../src/ui/PersonasPage.tsx");
-    const { SnippetsPage } = await import("../src/features/snippets/snippets-page.tsx");
+    const { SnippetsPage } = await import("../src/features/snippets/page.tsx");
     const { CostsPage } = await import("../src/ui/CostsPage.tsx");
     const { ConnectionsPage } = await import("../src/ui/ConnectionsPage.tsx");
     const { ConversationsPage } = await import("../src/ui/ConversationsPage.tsx");

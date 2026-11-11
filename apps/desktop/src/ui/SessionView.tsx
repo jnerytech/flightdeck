@@ -31,9 +31,9 @@ import {
 import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { SessionStatusLine } from "@/components/session/status-line";
 import { WorkingRow } from "@/components/session/working-row";
-import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
