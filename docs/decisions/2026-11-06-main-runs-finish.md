@@ -7,4 +7,4 @@
 - **The rule.** `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`. On main the run in
   progress finishes; GitHub keeps it and only the newest pending run of the group, so a burst of
   merges costs at most two runs. On a PR or a branch a new push still cancels its previous run.
-- **The test.** `scripts/test/ci-branches.test.ts` pins the expression.
+- **The test.** `scripts/test/ci/ci-branches.test.ts` pins the expression.

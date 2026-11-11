@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { CONTINUATION } = await import("../src/features/sessions/index.ts");
 const { NeedsYou } = await import("../src/ui/NeedsYou.tsx");
-const { ActivityBoard } = await import("../src/ui/ActivityBoard.tsx");
+const { ActivityBoard } = await import("../src/features/activity/board.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

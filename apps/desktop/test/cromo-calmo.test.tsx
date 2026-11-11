@@ -71,7 +71,7 @@ describe("cromo-calmo", () => {
       expect(alpha).toBeLessThanOrEqual(6);
     }
     // Dark: #98 made them opaque so the divisions show; the floor (3:1, WCAG 1.4.11) is also
-    // guarded in scripts/test/theme-contrast.test.ts, and the ceiling keeps them from being harsh.
+    // guarded in scripts/test/demo/theme-contrast.test.ts, and the ceiling keeps them from being harsh.
     const vars = new Map([...tokensOf(css, ":root"), ...tokensOf(css, ".dark")]);
     const rgb = (name: string) => {
       const color = colorOf(vars.get(name), vars);

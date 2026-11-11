@@ -37,7 +37,7 @@ Facts read in the repo, with where, because each one shaped a decision.
    `apple-native`, `windows-native`, `linux-native`; `Cargo.lock`: 3.6.3). Host tokens use service `dev.flightdeck.app`
    (account = host id) and vault values use `flightdeck-vault` (account = secret id). Both have `get` commands that **return
    the secret to the webview** (`token_get`, `vault_get`). The assistant keys must not copy that shape.
-   Blocking keyring work goes through `spawn_blocking_result`; `scripts/test/tauri-release.test.ts` pins the number of direct
+   Blocking keyring work goes through `spawn_blocking_result`; `scripts/test/release/tauri-release.test.ts` pins the number of direct
    `async_runtime::spawn_blocking(` uses in `lib.rs` to 3 and `panic = "abort"` is set in the release profile, so a panic in new
    code is a silent app exit.
 2. **`linux-native` is the kernel keyutils store, which does not survive a reboot.** `docs.rs/keyring/3.6.3` (module

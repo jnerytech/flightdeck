@@ -15,6 +15,7 @@ export {
   type VaultRulesCore,
   VaultRulesSlice,
 } from "./rules-store.ts";
+export { type VaultScanCore, VaultScanSlice } from "./scan-store.ts";
 export {
   type VaultFileFailure,
   type VaultSecretsCore,

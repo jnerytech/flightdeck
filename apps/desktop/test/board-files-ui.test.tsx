@@ -498,7 +498,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
   // Security review of #827: the masker also knows the vault's values and the hosts' tokens.
   test("a content match never shows a value of the vault or a host's token", async () => {
     const { store, pick } = setup({ features: SEARCHING });
-    store.scanValues = () => [VAULT];
+    store.scan.values = () => [VAULT];
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
     await mode("Content");
@@ -517,7 +517,7 @@ describe("board-files-ui: search over the whole tree, on a host with file.search
   test("a vault value the app learns after the answer hides in the matches on screen", async () => {
     const { store, pick } = setup({ features: SEARCHING });
     let learned: string[] = [];
-    store.scanValues = () => learned;
+    store.scan.values = () => learned;
     await pick("worktree", "/wt/b", "fd/b");
     await settle(() => shows("Files · fd/b", "b-readme.md"));
     await mode("Content");

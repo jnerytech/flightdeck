@@ -12,7 +12,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { ActivityBoard } = await import("../../src/ui/ActivityBoard.tsx");
+const { ActivityBoard } = await import("../../src/features/activity/board.tsx");
 const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { breadcrumb } = await import("../../src/lib/breadcrumb.ts");

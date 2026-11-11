@@ -11,5 +11,5 @@ that file is now their frozen index.
   may follow the number: `(issue #109, part b)`.
 - **Body:** the why, then what was chosen, in short bullets.
 
-`scripts/test/decisions-files.test.ts` checks the names and first lines, and that the
+`scripts/test/guards/decisions-files.test.ts` checks the names and first lines, and that the
 index `docs/DECISIONS.md` stays as frozen.

@@ -314,7 +314,7 @@ Probes for this round (2026-11-05; no credential read; every probe session delet
   Proposed for phase 40: one private server per preflight (`opencode serve` with Flightdeck's environment, three HTTP
   GETs) instead of three boots, which would also cut the CPU of every start by about two thirds.
 - **The pure parts** (the hostile project, the options it answers with, the saved rules' ids, `--model`) are in
-  `scripts/lib/opencode-real.ts` with `scripts/test/opencode-real.test.ts` (scope `opencode-real`, not a row of the table).
+  `scripts/lib/opencode-real.ts` with `scripts/test/hooks/opencode-real.test.ts` (scope `opencode-real`, not a row of the table).
 
 ## Phase 39: the spec-verifier's round (2026-11-05)
 

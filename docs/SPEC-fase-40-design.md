@@ -294,7 +294,7 @@ under `flightdeck.assistant.pending` (id, time, provider, model, token counts, c
 - Fixtures under `apps/desktop/src-tauri/tests/fixtures/assistant/` (and `apps/desktop/test/fixtures/assistant/`): hand copied
   from the official docs examples with the doc URL in a header, or scrubbed from the proof of concept; nothing invented. One TS
   test validates every fixture against zod schemas of the documented shapes, and the Rust tests read the same files.
-- `scripts/test/tauri-release.test.ts` scans every `src-tauri/src/*.rs` for the `spawn_blocking` count.
+- `scripts/test/release/tauri-release.test.ts` scans every `src-tauri/src/*.rs` for the `spawn_blocking` count.
 
 ### Docs
 

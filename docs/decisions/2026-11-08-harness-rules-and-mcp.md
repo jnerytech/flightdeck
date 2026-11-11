@@ -21,7 +21,7 @@ other item of #169 shipped (see the map on the issue).
   in every package. Per-package files would repeat it four times.
 - **Shipped** in `feat(path-rules)` (d0f12fd95, 2026-11-05): `ui.md`, `protocol.md`, `daemon.md`,
   `tests.md` and `scripts.md`.
-  - `claude -p` in a worktree showed that reading `scripts/test/slot.test.ts` loads `tests.md` and
+  - `claude -p` in a worktree showed that reading `scripts/test/slot/slot.test.ts` loads `tests.md` and
     `scripts.md`, and a daemon file loads `daemon.md` (`path_glob_match`).
   - `harness-config.test.ts` fails a rule whose frontmatter does not parse, or whose `paths` match
     no tracked file. A frontmatter that does not parse loads the rule everywhere.

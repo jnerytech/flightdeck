@@ -29,7 +29,7 @@ new `listen` cancels the one before. `Platform.oauthLoopback.listen(state)` now 
 
 `connect-src` gains `https://oauth2.googleapis.com` and `https://www.googleapis.com`, and nothing else
 (no `https:`, no wildcard): the webview's `fetch` calls Google for the token and the Drive files. This
-is a change to phase 40's rule that the CSP has no `https:`; `scripts/test/assistant-csp.test.ts` now
+is a change to phase 40's rule that the CSP has no `https:`; `scripts/test/assistant/csp.test.ts` now
 pins the exact two hosts.
 
 ## Restore from Drive

@@ -24,7 +24,7 @@ export function HostLogs(props: Readonly<{ store: AppStore; host: HostView }>) {
     }
     // The host redacts, and so does the app: what reaches the clipboard is never taken on trust.
     const clean = scrubHome(
-      new SecretScanner(() => store.scanValues()).redact(tail.lines.join("\n"), false),
+      new SecretScanner(() => store.scan.values()).redact(tail.lines.join("\n"), false),
     );
     await store.copyText(clean);
     store.success(t("diagnostics.hostCopied", { n: tail.lines.length }));
