@@ -12,7 +12,7 @@ The user asked for a slim bar at the bottom like Orca's. It re-opens what #118 l
   everything of #118 (see `2026-11-06-quota-glance.md`): `quotaGlance` and its levels (`isHot`, from
   80% "near"), the warning mark, the level, host and time in the name and tooltip, the shared native
   `<meter>`, and the click that opens the host. It adds the time left beside the percent and a
-  refresh button (`AppStore.refreshQuota`: each online host is asked again; one that does not answer
+  refresh button (`QuotaSlice.refresh`, #1596: each online host is asked again; one that does not answer
   keeps its reading).
 - **The right side is what no other place says at a glance.** Keep-awake (the hosts that offer it,
   as one state: holding, on or off; it opens the host that holds, else the first that has it on),
