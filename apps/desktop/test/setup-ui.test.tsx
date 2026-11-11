@@ -421,7 +421,7 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
       hosts: [host("h1")],
       setupProbes: { h1: { hooks: "installed", github: null } },
     });
-    await w.store.removeHost("h1");
+    await w.store.roster.remove("h1");
     expect(w.store.getState().setupProbes).toEqual({});
   });
 });

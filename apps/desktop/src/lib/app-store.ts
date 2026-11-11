@@ -43,12 +43,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import {
-  EPHEMERAL_EVENTS,
-  FEATURE_RESUME_OFFER,
-  inSequence,
-  parsePairingLink,
-} from "@flightdeck/protocol";
+import { EPHEMERAL_EVENTS, FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import {
   AccountSlice,
   type AccountSliceState,
@@ -87,8 +82,10 @@ import {
 import {
   HealthSlice,
   type HealthSliceState,
+  HostRosterSlice,
   HostUpdateSlice,
   initialHealthState,
+  type NewHost,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
 import {
@@ -166,7 +163,6 @@ import {
   RequestError,
   statusLine,
 } from "./host-connection.ts";
-import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
 import { HostTabs } from "./host-tabs.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
@@ -181,9 +177,7 @@ import {
   summaryNotifications,
 } from "./notify.ts";
 import { decide, NotifyPreferences, type NotifySource } from "./notify-policy.ts";
-import { pairingErrorText } from "./pairing-text.ts";
 import { basename, isInside } from "./paths.ts";
-import { probeHost } from "./probe-host.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
@@ -1243,6 +1237,35 @@ export class AppStore {
         this.fail(error, this.i18n.t("messages.terminalFailed", { error: describeError(error) })),
     });
     this.viewPrefs = new ViewPrefsSlice({ storage: platform.storage });
+    this.roster = new HostRosterSlice({
+      secrets: platform.secrets,
+      hosts: () => this.state.hosts,
+      list: (config) => this.update({ hosts: [...this.state.hosts, newHostView(config)] }),
+      persist: () => this.persistHosts(),
+      connect: (config, token) => this.connect(config, token),
+      stop: (hostId) => this.connections.get(hostId)?.dispose(),
+      detach: (hostId) => {
+        this.hostTabs.removeHost(hostId);
+        this.connections.get(hostId)?.dispose();
+        this.connections.delete(hostId);
+      },
+      forget: (hostId) => {
+        const ofOthers = <T>(all: Record<string, T>) =>
+          Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith(`${hostId}/`)));
+        const { [hostId]: _gone, ...setupProbes } = this.state.setupProbes;
+        this.update({
+          hosts: this.state.hosts.filter((h) => h.id !== hostId),
+          sessions: ofOthers(this.state.sessions),
+          cards: ofOthers(this.state.cards),
+          selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
+          setupProbes,
+        });
+        this.hostUpdate.forget(hostId);
+      },
+      setName: (hostId, name) => this.updateHost(hostId, (h) => ({ ...h, name })),
+      rememberToken: (token) => this.scan.rememberToken(token),
+      t: () => this.i18n.t,
+    });
     this.inbox = new InboxSlice({
       storage: platform.storage,
       entries: () => this.state.inbox,
@@ -1378,6 +1401,8 @@ export class AppStore {
   readonly inbox: InboxSlice;
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
+  /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
+  readonly roster: HostRosterSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
   readonly terminals: TerminalsSlice;
   /** How the person left the windows: widths, folds, hub view and filter, tile layout (#1596). */
@@ -1533,76 +1558,9 @@ export class AppStore {
     }
   }
 
-  async addHost(input: { name: string; url: string; token: string }): Promise<string> {
-    const config: HostConfig = { id: crypto.randomUUID(), name: input.name, url: input.url };
-    await this.platform.secrets.set(config.id, input.token);
-    this.update({
-      hosts: [...this.state.hosts, newHostView(config)],
-    });
-    this.persistHosts();
-    this.connect(config, input.token);
-    return config.id;
-  }
-
-  /** Tests the connection (`hello` + `host.info`) and saves the host only if it answers. */
-  async testAndAddHost(input: {
-    name: string;
-    url: string;
-    token: string;
-  }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
-    this.scan.rememberToken(input.token);
-    const probe = await probeHost(input.url, input.token, this.i18n.t);
-    if (!probe.ok) return probe;
-    return { ok: true, hostId: await this.addHost(input) };
-  }
-
-  async removeHost(hostId: string): Promise<void> {
-    this.hostTabs.removeHost(hostId);
-    this.connections.get(hostId)?.dispose();
-    this.connections.delete(hostId);
-    await this.platform.secrets.delete(hostId);
-    const ofOthers = <T>(all: Record<string, T>) =>
-      Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith(`${hostId}/`)));
-    const { [hostId]: _gone, ...setupProbes } = this.state.setupProbes;
-    this.update({
-      hosts: this.state.hosts.filter((h) => h.id !== hostId),
-      sessions: ofOthers(this.state.sessions),
-      cards: ofOthers(this.state.cards),
-      selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
-      setupProbes,
-    });
-    this.hostUpdate.forget(hostId);
-    this.persistHosts();
-  }
-
-  /** Saves the app-side display name (trimmed); the error says why a name is refused. */
-  renameHost(hostId: string, name: string): HostNameError | null {
-    const error = hostNameError(name, this.state.hosts, hostId);
-    if (error) return error;
-    this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
-    this.persistHosts();
-    return null;
-  }
-
-  /** A new token or pairing link for a host that refused the old one; the error text, or null. */
-  async pairAgain(hostId: string, input: string): Promise<string | null> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!host) return this.i18n.t("hostOffline.pairGone");
-    const text = input.trim();
-    let token = text;
-    if (text.toLowerCase().startsWith("flightdeck://")) {
-      const parsed = parsePairingLink(text);
-      if (!parsed.ok) return pairingErrorText(this.i18n.t, parsed.error);
-      token = parsed.value.token;
-    }
-    if (!token) return this.i18n.t("hostForm.pairToken");
-    const probe = await probeHost(host.url, token, this.i18n.t);
-    if (!probe.ok) return probe.error;
-    // The host may have been removed while it was tested: keep no secret for it.
-    if (!this.state.hosts.some((h) => h.id === hostId)) return this.i18n.t("hostOffline.pairGone");
-    await this.platform.secrets.set(hostId, token);
-    await this.reconnectHost(hostId);
-    return null;
+  /** Adds a host and connects; the roster does the work (kept here: most screens' tests start from it). */
+  addHost(input: NewHost): Promise<string> {
+    return this.roster.add(input);
   }
 
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
@@ -1610,14 +1568,6 @@ export class AppStore {
     if (this.options.githubTicker) return this.options.githubTicker(tick);
     const timer = setInterval(tick, 1500);
     return () => clearInterval(timer);
-  }
-
-  /** Drops the connection and opens a new one right away. */
-  async reconnectHost(hostId: string): Promise<void> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    const token = await this.platform.secrets.get(hostId);
-    this.connections.get(hostId)?.dispose();
-    if (host && token) this.connect(host, token);
   }
 
   /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
