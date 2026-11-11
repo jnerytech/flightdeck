@@ -37,7 +37,7 @@ function countingKeys() {
 function clonedKeys() {
   return new ProjectKeys("h", async (args) =>
     args.includes("rev-parse")
-      ? { code: 0, stdout: `${args[1]}/.git` }
+      ? { code: 0, stdout: `${args[args.indexOf("-C") + 1]}/.git` }
       : { code: 0, stdout: "git@github.com:Acme/Repo.git" },
   );
 }
@@ -189,7 +189,9 @@ describe("history-perf: the lists never block the event loop on git", () => {
     // The external sessions' keys were looked up, off the loop, when their hook events arrived.
     expect(calls.async).toBe(FOLDERS * 2);
   });
+});
 
+describe("history-perf: a list waits for the keys of its cold folders", () => {
   test("session.list answers its first request with the repository key of a cold folder", async () => {
     const { manager, root } = newManager();
     const cwd = join(root, "clone");
