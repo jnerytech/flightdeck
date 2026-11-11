@@ -9,7 +9,6 @@ import type {
   HistoryListResult,
   MessageInfo,
   Project,
-  ProjectDetectResult,
   RunConfigInfo,
   RunState,
   SessionImage,
@@ -35,19 +34,21 @@ import {
 import { BackupSlice } from "../features/backup/index.ts";
 import { ClientScopeSlice } from "../features/clients/index.ts";
 import {
-  BudgetsSlice,
+  type BudgetsSlice,
   ClientBudgetsSlice,
   initialBudgetsState,
   initialClientBudgetsState,
+  wireBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
   type HealthSlice,
   HostRosterSlice,
-  HostUpdateSlice,
+  type HostUpdateSlice,
   initialHealthState,
   type NewHost,
   wireHealth,
+  wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { InboxSlice } from "../features/inbox/index.ts";
 import {
@@ -387,16 +388,10 @@ export class AppStore {
       secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
     });
     this.health = wireHealth(this.kernel);
-    this.hostUpdate = new HostUpdateSlice({
-      host: (hostId) => this.state.hosts.find((h) => h.id === hostId),
+    this.hostUpdate = wireHostUpdate(this.kernel, {
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
-      connected: (hostId) => this.connections.has(hostId),
-      apply: (hostId) =>
-        this.openConnection(hostId).request("daemon.update.apply", { confirm: true }),
-      check: (hostId) => this.openConnection(hostId).request("daemon.update.check", {}),
+      open: (hostId) => this.openConnection(hostId),
       describeError,
-      t: () => this.i18n.t,
-      now: () => this.now(),
       timeoutMs: options.daemonUpdateTimeoutMs,
     });
     this.background = wireBackground(this.kernel, {
@@ -420,17 +415,10 @@ export class AppStore {
     });
     this.account = wireAccount(this.kernel);
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
-    this.budgets = new BudgetsSlice({
-      state: () => this.state,
-      update: (patch) => this.update(patch),
-      set: (hostId, input) => this.hostCommand(hostId, "budget.set", input),
-      setQuota: (hostId, input) => this.hostCommand(hostId, "budget.setQuota", input),
-      remove: (hostId, id) => this.hostCommand(hostId, "budget.remove", { id }),
-      hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
+    this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>
         this.inbox.notify(notification, route, undefined, source),
-      t: () => this.i18n.t,
     });
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
@@ -1342,11 +1330,6 @@ export class AppStore {
       this.hostTabs.hostId ?? hosts.find((h) => h.status === "online")?.id ?? hosts[0]?.id ?? null;
     if (host) this.hostTabs.open({ name: "host", host });
     else this.hostTabs.show({ name: "home" });
-  }
-
-  /** The switcher picked a host: its tabs replace the row. */
-  pickHost(hostId: string): void {
-    this.hostTabs.switchHost(hostId);
   }
 
   /** The host whose mode the window shows: the selected one, else the first that is online. */
@@ -2301,17 +2284,7 @@ export class AppStore {
   /** The PR watch of the cards: each card's watch, its commands and the screen a PR link opens (#1596). */
   readonly prWatch: WatchSlice;
   /** The projects each host lists: the list, a project's key and its PR provider (#1596). */
-  private readonly projectList: ProjectsSlice;
-
-  /** Issue #1568: asks the host to read a project's PR provider from its remote; null when it refuses. */
-  detectPrProvider(
-    hostId: string,
-    projectId: string,
-    /** A press of the person's: a host that cannot answer, or finds nothing yet, is said. */
-    report = false,
-  ): Promise<ProjectDetectResult | null> {
-    return this.projectList.detectProvider(hostId, projectId, report);
-  }
+  readonly projectList: ProjectsSlice;
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {

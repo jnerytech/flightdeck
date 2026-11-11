@@ -611,7 +611,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                 t={t}
                 onChoose={(hostId) => {
                   store.select(hostId, null);
-                  store.pickHost(hostId);
+                  store.hostTabs.switchHost(hostId);
                 }}
                 onAdd={() => go({ name: "add-host" })}
                 allHosts={tabScope === "all"}

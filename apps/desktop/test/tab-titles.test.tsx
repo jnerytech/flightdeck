@@ -75,12 +75,12 @@ describe("tab-titles: a host's tabs are titled by what they show, and named with
     });
     expect(announced()).toBe("beta: 1 aba");
     await act(async () => {
-      store.pickHost("ha");
+      store.hostTabs.switchHost("ha");
     });
     expect(announced()).toBe("alfa: 3 abas");
     // The same host again says nothing new.
     await act(async () => {
-      store.pickHost("ha");
+      store.hostTabs.switchHost("ha");
     });
     expect(announced()).toBe("alfa: 3 abas");
   });
@@ -121,7 +121,7 @@ describe("tab-titles: a host's tabs are titled by what they show, and named with
     expect(names).toEqual(["Sessions", "History, host beta"]);
     expect(screen.queryByRole("status", { name: "Tab position" })?.textContent).toBe("beta: 1 tab");
     await act(async () => {
-      store.pickHost("ha");
+      store.hostTabs.switchHost("ha");
     });
     expect(screen.queryByRole("status", { name: "Tab position" })?.textContent).toBe(
       "alfa: 2 tabs",

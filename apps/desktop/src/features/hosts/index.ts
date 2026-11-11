@@ -29,4 +29,4 @@ export {
   HostUpdateSlice,
   type HostUpdateView,
 } from "./update-store.ts";
-export { wireHealth } from "./wire.ts";
+export { wireHealth, wireHostUpdate } from "./wire.ts";
