@@ -63,7 +63,7 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     const { store } = twoHosts();
     store.router.push({ name: "projects", host: "ha" });
     expect(store.activeHostId()).toBe("ha");
-    store.pickHost("hb");
+    store.hostTabs.switchHost("hb");
     expect(store.activeHostId()).toBe("hb");
     expect(store.router.current).toEqual({ name: "host", host: "hb" });
     store.router.push({ name: "projects", host: "ha" });

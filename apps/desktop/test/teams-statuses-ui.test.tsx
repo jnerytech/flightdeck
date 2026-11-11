@@ -84,7 +84,7 @@ describe("teams-statuses-ui: the page's own pick and the switcher", () => {
         hosts: [withTeams("h1", "alfa"), withTeams("h2", "beta"), withTeams("h3", "gama")],
       }),
     );
-    act(() => store.pickHost("h1"));
+    act(() => store.hostTabs.switchHost("h1"));
     render(
       <TooltipProvider>
         <TeamsPage store={store} go={() => {}} />
@@ -97,7 +97,7 @@ describe("teams-statuses-ui: the page's own pick and the switcher", () => {
       fireEvent.change(select() as HTMLSelectElement, { target: { value: "h2" } });
     });
     const picked = select()?.value;
-    await act(async () => store.pickHost("h3"));
+    await act(async () => store.hostTabs.switchHost("h3"));
     expect({ picked, after: select()?.value }).toEqual({ picked: "h2", after: "h3" });
   });
 });
