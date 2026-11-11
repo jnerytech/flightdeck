@@ -93,24 +93,24 @@ describe("clients-filter: the Sessions screen", () => {
     const { store } = await setup();
     expect(store.getState().clientSelection).toBe(ALL_CLIENTS);
     expect(shown()).toEqual(["Sessão Acme", "Sessão Beta", "Sessão Solta"]);
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await settle(() => shown().length === 1);
     expect(shown()).toEqual(["Sessão Acme"]);
-    await act(async () => store.setClientSelection("beta"));
+    await act(async () => store.clientScope.select("beta"));
     await settle(() => item("Sessão Beta") !== null);
     expect(shown()).toEqual(["Sessão Beta"]);
   });
 
   test("Unassigned lists what no client claims", async () => {
     const { store } = await setup();
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     await settle(() => shown().length === 1);
     expect(shown()).toEqual(["Sessão Solta"]);
   });
 
   test("a change to the clients shows at once: a project that gains a rule moves", async () => {
     const { store } = await setup();
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     await settle(() => shown().length === 1);
     await act(async () => {
       store.clients.addRule("acme", { kind: "remote", pattern: "github.com/other/*" });
@@ -122,7 +122,7 @@ describe("clients-filter: the Sessions screen", () => {
 
   test("the selection is kept for the next start, and a client that is gone falls back to all", async () => {
     const { store, platform } = await setup();
-    await act(async () => store.setClientSelection("beta"));
+    await act(async () => store.clientScope.select("beta"));
     const next = new AppStore(platform.platform, { baseDelayMs: 60_000 });
     expect(next.getState().clientSelection).toBe("beta");
     await act(async () => {
@@ -133,14 +133,14 @@ describe("clients-filter: the Sessions screen", () => {
 
   test("a selection that names nothing the app knows is refused", async () => {
     const { store } = await setup();
-    await act(async () => store.setClientSelection("ghost"));
+    await act(async () => store.clientScope.select("ghost"));
     expect(store.getState().clientSelection).toBe(ALL_CLIENTS);
   });
 
   test("with no client defined every session shows, whatever was kept", async () => {
     const { store } = await setup({ v: 1, clients: [], overrides: {} });
     expect(shown()).toHaveLength(3);
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     expect(store.getState().clientSelection).toBe(ALL_CLIENTS);
     expect(shown()).toHaveLength(3);
   });
@@ -172,7 +172,7 @@ describe("clients-filter: what a client never hides", () => {
     });
     await settle(() => Object.keys(store.getState().externalRequests).length === 1);
     expect(needsYou(store.getState())).toHaveLength(1);
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     await settle(() => shown().length === 1);
     expect(shown()).toEqual(["Sessão Acme"]);
     expect(needsYou(store.getState())).toHaveLength(1);

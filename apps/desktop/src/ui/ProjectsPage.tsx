@@ -150,8 +150,8 @@ export function ProjectsPage(
     const board = props.focus === "board";
     // The picker shows the selected client's projects; the host's own screen below lists them all.
     const state = store.getState();
-    const projects = store
-      .clientScope()
+    const projects = store.clientScope
+      .get()
       .filter(list?.projects ?? [], state.clientSelection, (p) => store.projectKeyOf(hostId, p));
     const hidden = (list?.projects.length ?? 0) > 0 && projects.length === 0;
     return (

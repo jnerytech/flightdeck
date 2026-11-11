@@ -152,7 +152,7 @@ describe("clients-ui: the client switcher", () => {
 
   test("Unassigned is named on the button when it is the selection", async () => {
     const { store } = await setup(TWO, false);
-    await act(async () => store.setClientSelection(UNASSIGNED));
+    await act(async () => store.clientScope.select(UNASSIGNED));
     expect(trigger("Cliente: Sem cliente")).not.toBeNull();
   });
 
@@ -168,17 +168,17 @@ describe("clients-ui: the client switcher", () => {
   test("a request waiting in another client puts a mark on the button", async () => {
     const { store } = await setup();
     expect(screen.queryByRole("img", { name: /em outros clientes/ })).toBeNull();
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     expect(
       screen.queryByRole("img", { name: "Esperando por você em outros clientes: 1" }),
     ).not.toBeNull();
-    await act(async () => store.setClientSelection("beta"));
+    await act(async () => store.clientScope.select("beta"));
     expect(screen.queryByRole("img", { name: /em outros clientes/ })).toBeNull();
   });
 
   test("in the collapsed rail the mark becomes a dot on the button, and its count moves to the name", async () => {
     const { store } = await setup();
-    await act(async () => store.setClientSelection("acme"));
+    await act(async () => store.clientScope.select("acme"));
     const collapse = screen.queryByRole("button", { name: "Recolher barra lateral" });
     expect(collapse).not.toBeNull();
     await act(async () => {

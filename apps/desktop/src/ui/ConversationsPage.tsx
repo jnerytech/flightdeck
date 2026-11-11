@@ -91,7 +91,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
 
   const needle = text.trim().toLowerCase();
   // A message belongs to the selected client when either of its sessions does.
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const projectOf = sessionProjectKeys(hubRows(store.getState()));
   const shown = (rows ?? []).filter(({ message: m, hostName }) => {
     const ends = [projectOf.get(m.fromSession) ?? null, projectOf.get(m.toSession) ?? null];

@@ -71,7 +71,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
         openIn: open.call,
       },
       getState: () => ({ hosts: [] }),
-      clientScope: () => ({ defaultPersona: () => "" }),
+      clientScope: { get: () => ({ defaultPersona: () => "" }) },
     } as unknown as AppStore;
     render(
       <TContext.Provider value={t}>

@@ -191,7 +191,7 @@ function windowShortcut(e: KeyboardEvent, store: AppStore): void {
     e.preventDefault();
   } else if (e.altKey && e.shiftKey && key === "c") {
     e.preventDefault();
-    store.nextClient();
+    store.clientScope.next();
   } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
     e.preventDefault();
     if (e.key === "ArrowLeft") store.router.back();
@@ -270,7 +270,7 @@ export function runPaletteTarget(
       store.i18n.setLang(ui.lang === "pt-BR" ? "en" : "pt-BR");
       return;
     case "switch-client":
-      store.setClientSelection(target.clientId);
+      store.clientScope.select(target.clientId);
       return;
     case "snippet":
       store.snippets.choose({ hostId: target.hostId, snippetId: target.snippetId });
@@ -299,7 +299,7 @@ export function runPaletteTarget(
       // the persona the client defaults to for that folder, as on the form.
       const { mode, model } = store.newSessionPrefs.value;
       const persona = store.personas.ref(
-        store.clientScope().defaultPersona(target.hostId, target.cwd),
+        store.clientScope.get().defaultPersona(target.hostId, target.cwd),
       );
       void store.createSession(target.hostId, {
         cwd: target.cwd,

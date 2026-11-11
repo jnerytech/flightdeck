@@ -376,7 +376,7 @@ export function NeedsYou(
   const [selected, setSelected] = useState<string | null>(null);
   /** The row the keyboard is on (-1: none yet). */
   const [cursor, setCursor] = useState(-1);
-  const scope = store.clientScope();
+  const scope = store.clientScope.get();
   const projectOf = sessionProjectKeys(hubRows(state));
   const chipOf = (sessionId: string) => {
     const key = projectOf.get(sessionId);
