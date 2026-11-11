@@ -1,8 +1,10 @@
 import { access, chmod, copyFile, mkdir, realpath, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
+import { z } from "zod";
 import { type HookTarget, hooksStatus, installHooks } from "./central/hooks-install.ts";
 import type { Config } from "./config.ts";
+import { parseJsonOr } from "./json-text.ts";
 import type { Logger } from "./logger.ts";
 import {
   installService,
@@ -11,6 +13,13 @@ import {
   startService,
   stopService,
 } from "./service.ts";
+
+/** The reply frame the shutdown handshake reads; any other frame is ignored. */
+const ACK_FRAME = z.object({
+  type: z.string(),
+  id: z.string().optional(),
+  ok: z.boolean().optional(),
+});
 
 /** What stopping the daemon of a service needs; the CLI gives the real pieces. */
 export interface StopDeps {
@@ -311,8 +320,8 @@ export function requestShutdown(url: string, token: string, timeoutMs: number): 
       send("1", "hello", { token, client: "flightdeckd", protocolVersion: PROTOCOL_VERSION }),
     );
     ws.addEventListener("message", (msg) => {
-      const frame = JSON.parse(String(msg.data)) as { type: string; id?: string; ok?: boolean };
-      if (frame.type !== "ack") return;
+      const frame = parseJsonOr(ACK_FRAME, String(msg.data), null);
+      if (frame === null || frame.type !== "ack") return;
       if (frame.ok && frame.id === "1") send("2", "daemon.shutdown", {});
       else done(frame.ok === true);
     });

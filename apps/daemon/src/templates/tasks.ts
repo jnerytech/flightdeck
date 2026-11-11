@@ -2,8 +2,10 @@ import { lstat, mkdir, open, readdir, readFile, realpath } from "node:fs/promise
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
+import { z } from "zod";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
+import { parseJsonWith } from "../json-text.ts";
 import { isInside } from "../paths.ts";
 
 /** Names, sizes and times of the files of some folders, to compare with later. */
@@ -13,6 +15,11 @@ interface Kept {
   folders: string[];
   before: Snapshot;
 }
+
+const KEPT = z.object({
+  folders: z.array(z.string()),
+  before: z.record(z.string(), z.object({ size: z.number(), mtimeMs: z.number() })),
+});
 
 /** Files looked at per folder at most, and how deep: a task folder is never a whole disk. */
 const MAX_WALKED = 5000;
@@ -140,7 +147,7 @@ export class TaskTracker {
 
   private async load(sessionId: string): Promise<Kept> {
     try {
-      return JSON.parse(await readFile(this.file(sessionId), "utf8")) as Kept;
+      return parseJsonWith(KEPT, await readFile(this.file(sessionId), "utf8"));
     } catch {
       throw new FlightdeckError("not_found", `no task for ${sessionId}`, "task_unknown", {
         sessionId,
