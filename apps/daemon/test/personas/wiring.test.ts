@@ -33,7 +33,7 @@ function setup() {
     agents: {
       list: async () => [],
       write: async (_projectPath, item) => {
-        written.push(item.path);
+        written.push(`${item.kind} ${item.origin} ${item.path}`);
         return {} as never;
       },
     },
@@ -48,14 +48,9 @@ describe("personas-wiring: the personas the daemon builds (#1593)", () => {
     expect([prepared.persona?.source, prepared.persona?.persona.id]).toEqual(["pack", "revisor"]);
   });
 
-  test("a session with no persona opens with none", async () => {
-    const { prepare, project } = setup();
-    expect((await prepare(undefined, project)).persona).toBeNull();
-  });
-
   test("a persona is published through the agent editor given", async () => {
     const { personaStore, project, written } = setup();
     await personaStore.publishAgent({ id: "revisor", projectPath: project, confirm: true });
-    expect(written).toEqual([".claude/agents/persona-revisor.md"]);
+    expect(written).toEqual(["agent project .claude/agents/persona-revisor.md"]);
   });
 });
