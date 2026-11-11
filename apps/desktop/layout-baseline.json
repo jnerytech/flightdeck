@@ -1,4 +1,6 @@
 {
+  "src/features/backup/backup-all-panel.tsx": 8,
+  "src/features/backup/backup-schedule-panel.tsx": 4,
   "src/features/costs/day-chart.tsx": 16,
   "src/features/costs/page.tsx": 18,
   "src/features/costs/QuotaCharts.tsx": 6,
