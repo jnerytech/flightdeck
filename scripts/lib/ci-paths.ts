@@ -104,14 +104,26 @@ export function ciPlan(
   };
 }
 
+const COMMIT = /^[0-9a-f]{40}$/;
+
 /**
- * The ref `test:related --pr` compares with (#444): the PR's target branch, or the commit a push
+ * The commit `test:related --pr` compares with (#444): the PR's target branch, or the commit a push
  * to main came after; none ("") for the schedule and a run by hand, which run the whole suite.
- * A push's before must be a commit id (a new branch's is all zeros).
+ * A push's before must be a commit id (a new branch's is all zeros). A PR's target is resolved
+ * here, once, to its commit (#1957): each shard job fetches on its own, and a target named by ref
+ * moved between them when main did, so the shards planned different selections.
  */
-export function selectionBase(event: string, baseRef: string, before: string): string {
-  if (event === "pull_request") return baseRef ? `origin/${baseRef}` : "";
-  if (event === "push" && /^[0-9a-f]{40}$/.test(before) && !/^0+$/.test(before)) return before;
+export function selectionBase(
+  event: string,
+  baseRef: string,
+  before: string,
+  revParse: (ref: string) => string | null = () => null,
+): string {
+  if (event === "pull_request") {
+    const commit = baseRef ? (revParse(`origin/${baseRef}`)?.trim() ?? "") : "";
+    return COMMIT.test(commit) ? commit : "";
+  }
+  if (event === "push" && COMMIT.test(before) && !/^0+$/.test(before)) return before;
   return "";
 }
 

@@ -11,14 +11,20 @@ import { planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 
 const event = process.env.GITHUB_EVENT_NAME ?? "";
-// The selection's base (#444): the PR's target, or the commit a push to main came after.
-const base = selectionBase(event, process.env.GITHUB_BASE_REF ?? "", process.env.BEFORE ?? "");
-let changed: string[] | null = null;
-let removed: string[] = [];
 const lines = (args: string[]): string[] | null => {
   const diff = spawnSync("git", args, { encoding: "utf8" }); // NOSONAR: git from the CI runner's PATH
   return diff.status === 0 ? diff.stdout.split("\n").filter(Boolean) : null;
 };
+// The selection's base (#444): the PR's target as a commit (#1957), or the commit a push to main
+// came after. The shards and the merge job read this output, so they all plan the same selection.
+const base = selectionBase(
+  event,
+  process.env.GITHUB_BASE_REF ?? "",
+  process.env.BEFORE ?? "",
+  (ref) => lines(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])?.[0] ?? null,
+);
+let changed: string[] | null = null;
+let removed: string[] = [];
 if (base) {
   // A PR diffs against the merge-base with its target; a push against the commit before it.
   const range = event === "pull_request" ? `${base}...HEAD` : `${base}..HEAD`;
