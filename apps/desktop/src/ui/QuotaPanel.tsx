@@ -138,7 +138,7 @@ export const QuotaPanel = memo(function QuotaPanel(props: { store: AppStore }) {
     .map((host) => host.id)
     .join("\n");
   useEffect(() => {
-    const stops = watching === "" ? [] : watching.split("\n").map((id) => store.watchAccount(id));
+    const stops = watching === "" ? [] : watching.split("\n").map((id) => store.account.watch(id));
     return () => {
       for (const stop of stops) stop();
     };
