@@ -298,7 +298,8 @@ describe("metrics: the snapshot", () => {
       },
     };
     const snapshot = (await buildSnapshot(wide, "v0.2.0")) as Record<string, any>;
-    expect(snapshot.prSize.last30Days.merged).toBe(1500);
+    // The ones of the 15th were merged after the tag (00:00 of that day): 14 days of 100.
+    expect(snapshot.prSize.last30Days.merged).toBe(1400);
     expect(snapshot.unavailable.map((u: { metric: string }) => u.metric)).not.toContain("prSize");
     expect(asked.length).toBeGreaterThan(1);
   });
