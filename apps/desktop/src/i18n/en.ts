@@ -9,6 +9,7 @@ import { chrome } from "./en/chrome.ts";
 import { clients } from "./en/clients.ts";
 import { costs } from "./en/costs.ts";
 import { firstrun } from "./en/firstrun.ts";
+import { github } from "./en/github.ts";
 import { hosts } from "./en/hosts.ts";
 import { notifications } from "./en/notifications.ts";
 import { palette } from "./en/palette.ts";
@@ -79,53 +80,7 @@ export const en: Dictionary = {
         'OpenCode is optional. To use it, set "opencode": { "enabled": true } in the host config and restart the daemon; the manual\'s OpenCode section explains each reason.',
     },
   },
-  github: {
-    title: "GitHub",
-    hint: "Sign in with the GitHub account this host uses. It goes through the host's gh: Flightdeck never sees your token.",
-    notInstalled:
-      "gh (the GitHub CLI) is not installed on this host. Install it, then check again.",
-    signedOut: "Not signed in to GitHub on this host.",
-    signIn: "Sign in with GitHub",
-    codeLabel: "One-time code",
-    codeHint: "Type this code on the GitHub page, then confirm.",
-    copyCode: "Copy code",
-    openGithub: "Open GitHub",
-    waiting: "Waiting for you to confirm on GitHub…",
-    cancel: "Cancel",
-    recheck: "Check again",
-    signedIn: "Signed in as {login}",
-    source: {
-      keyring: "kept in the system keyring",
-      file: "kept in gh's own file",
-      env: "set by an environment variable of the daemon",
-    },
-    scopes: "Access: {scopes}",
-    signOut: "Sign out",
-    signOutEnv: "The login comes from an environment variable of the daemon: remove it there.",
-  },
-  githubStart: {
-    open: "Start from GitHub",
-    title: "Start from GitHub",
-    description:
-      "Pick a repository or one of its issues. It is cloned into an allowed folder on the host, or the clone already there is used.",
-    search: "Search repositories",
-    searchButton: "Search",
-    mine: "My repositories",
-    repos: "Repositories",
-    noRepos: "No repository found.",
-    issues: "Issues of {repo}",
-    noIssues: "No open issue.",
-    wholeRepo: "No issue: just the repository",
-    folder: "Clone into",
-    mode: "Open as",
-    modeCard: "A board card",
-    modeSession: "A session",
-    start: "Start",
-    pickRepo: "Pick a repository first.",
-    private: "private",
-    done: "Started in {path}.",
-    reused: "The clone that was already there was used.",
-  },
+  ...github,
   ...board,
   ...costs,
   toast: {
@@ -450,16 +405,6 @@ export const en: Dictionary = {
     copy: "Copy command",
     copyNamed: "Copy the command of {name}",
   },
-  pr: {
-    open: "PR open",
-    merged: "PR merged",
-    closed: "PR closed",
-  },
-  checks: {
-    pending: "checks pending",
-    passing: "checks passing",
-    failing: "checks failing",
-  },
   away: {
     title: "While you were away",
     lastActive: "Last active {ago}",
@@ -476,42 +421,6 @@ export const en: Dictionary = {
     quota: "Quota used: {windows}",
     quotaLine: "{window} {pct}%",
     unreached: "{host} did not answer",
-  },
-  pullRequests: {
-    title: "Pull requests",
-    subtitle: "Every open pull request on your hosts, with what to do next.",
-    list: "Open pull requests",
-    loading: "Reading the pull requests…",
-    empty: "No open pull requests.",
-    emptyDetail: "A card's PR shows up here while it is open.",
-    /** #1500: the PRs Update N from the base leaves out, each with its reason. */
-    updateLeftOut: "Left out: {items}.",
-    refused: "{title}: {reason}",
-    noHosts: "No host is online.",
-    watchOff: "Watch and fix is off",
-    conflict: "Conflicts with the base",
-    mergeClean: "No conflicts",
-    mergeBlocked: "Blocked from merging",
-    reviewApproved: "Approved",
-    reviewChanges: "Changes requested",
-    reviewRequired: "Review required",
-    opened: "Opened {ago}",
-    conflictHint: "This PR conflicts with its base: bring the branch up to date, then merge.",
-    heldHint: "GitHub may refuse this merge: {why}.",
-    heldWhy: {
-      blocked: "the branch rules hold it",
-      changes: "changes were requested",
-      required: "a review is required",
-    },
-  },
-  conflictRadar: {
-    badgeOne: "May conflict with {title}",
-    badgeMany: "May conflict with {n} cards",
-    title: "May conflict with other cards",
-    intro:
-      "These cards change the same files. Whoever merges second may have to resolve conflicts.",
-    mergeLine:
-      "Other cards change the same files: {titles}. Whoever merges second may have to resolve conflicts.",
   },
   teleportUi: {
     menu: "Move to another host…",
