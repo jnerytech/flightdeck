@@ -91,6 +91,24 @@ describe("view preferences (#1596)", () => {
     });
   });
 
+  test("each choice is written under its own key", () => {
+    const { slice, kept } = prefs();
+    slice.setListWidth(500);
+    slice.saveHubView("cards");
+    slice.saveRoiOpen(true);
+    slice.setActivityIdle(true);
+    slice.setTreeOpened(["h1/p-web"]);
+    slice.setTreePinned(["h1/p-cli"]);
+    expect(Object.fromEntries(kept)).toEqual({
+      "flightdeck.listWidth": "500",
+      "flightdeck.hubView": "cards",
+      "flightdeck.roiOpen": "true",
+      "flightdeck.activityIdle": "true",
+      "flightdeck.treeOpened": '["h1/p-web"]',
+      "flightdeck.treePinned": '["h1/p-cli"]',
+    });
+  });
+
   test("a choice about one window leaves the others at their defaults", () => {
     const { slice } = prefs();
     slice.setTreePinned(["h1/p-cli"]);
