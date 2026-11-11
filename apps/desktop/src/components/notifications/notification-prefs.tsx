@@ -177,7 +177,7 @@ export function NotificationPrefs(
         <Button
           variant="outline"
           className="self-start"
-          onClick={() => void store.sendTestNotification().then(setTest)}
+          onClick={() => void store.inbox.sendTest().then(setTest)}
         >
           {t("notifyPrefs.test")}
         </Button>

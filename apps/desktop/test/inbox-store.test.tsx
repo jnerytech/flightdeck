@@ -76,11 +76,11 @@ describe("inbox-store", () => {
   test("mark one, mark all and clear change the list and what is saved", async () => {
     const { store, phone } = await setup();
     const id = store.getState().inbox[0]?.id as string;
-    store.inboxMarkRead(id);
+    store.inbox.markRead(id);
     expect(store.getState().inbox[0]?.read).toBe(true);
-    store.inboxMarkAllRead();
+    store.inbox.markAllRead();
     expect(store.getState().inbox.every((e) => e.read)).toBe(true);
-    store.inboxClear();
+    store.inbox.clear();
     expect(store.getState().inbox).toEqual([]);
     expect(phone.items.get("flightdeck.inbox")).toBe("[]");
   });
