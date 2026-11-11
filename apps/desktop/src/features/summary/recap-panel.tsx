@@ -8,11 +8,11 @@ import { useTight } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
-import type { T } from "../i18n/index.ts";
-import type { AppStore } from "../lib/app-store.ts";
-import { usd } from "../lib/costs.ts";
-import { recapPreview } from "../lib/recap-preview.ts";
-import { hasFeature } from "../lib/version.ts";
+import type { T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { usd } from "../../lib/costs.ts";
+import { recapPreview } from "../../lib/recap-preview.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
