@@ -202,6 +202,9 @@ const EXTERNAL: Record<ExternalStatus, HubState> = {
 
 /** The hub state of a terminal session: what its hooks said, and a plan or a question it waits at (#1736). */
 export function externalState(session: ExternalSession): HubState {
+  // A session that ended is over, whatever its transcript's end says; one that asks for a permission
+  // already needs the person.
+  if (session.waiting && session.status !== "ended") return "needs_you";
   return EXTERNAL[session.status];
 }
 
@@ -373,8 +376,8 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
           cwd: cwd || s.claudeSessionId,
         }),
         // At a plan or a question the session needs the person, whatever its hooks last said (#1736).
-        state: s.waiting ? "needs_you" : EXTERNAL[s.status],
-        ...(s.waiting ? { waiting: s.waiting } : {}),
+        state: externalState(s),
+        ...(s.waiting && s.status !== "ended" ? { waiting: s.waiting } : {}),
         controllable: s.controllable,
         lastActivity: s.lastEventAt,
         summary: s.summary ?? null,
