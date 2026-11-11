@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 type Phase =
   | { name: "opening" }

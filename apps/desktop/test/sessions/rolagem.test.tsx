@@ -13,7 +13,7 @@ const personScrolls = (el: Element) => {
 };
 const screen = liveScreen(within);
 const { SessionView } = await import("../../src/ui/SessionView.tsx");
-const { RecapPanel } = await import("../../src/ui/RecapPanel.tsx");
+const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
 const { emptySession } = await import("../../src/lib/session-state.ts");
 
 afterEach(cleanup);

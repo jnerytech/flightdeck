@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
+import { RecapPanel } from "@/features/summary/index.ts";
 import { BgPanel } from "../features/background/bg-panel.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import { TerminalButton } from "../features/terminal/index.ts";
@@ -15,7 +16,6 @@ import { externalState } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import { hasFeature } from "../lib/version.ts";
-import { RecapPanel } from "./RecapPanel.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**
