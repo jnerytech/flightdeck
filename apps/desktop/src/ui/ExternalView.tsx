@@ -5,6 +5,7 @@ import { AssistField } from "@/components/assistant/assist-field";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { TranscriptReader } from "@/features/history/index.ts";
 import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
@@ -16,7 +17,6 @@ import { externalState } from "../lib/hub.ts";
 import { basename } from "../lib/paths.ts";
 import { useLaunchTerminal } from "../lib/use-launch-terminal.ts";
 import { hasFeature } from "../lib/version.ts";
-import { TranscriptReader } from "./TranscriptReader.tsx";
 
 /**
  * A live session opened outside Flightdeck: its transcript as it grows, its permission requests

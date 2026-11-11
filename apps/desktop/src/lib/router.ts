@@ -1,5 +1,5 @@
+import type { ReaderTarget } from "../features/history/index.ts";
 import type { HostDraft } from "../features/hosts/index.ts";
-import type { ReaderTarget } from "../ui/TranscriptReader.tsx";
 import { actionOfRoute, startMeasure } from "./measures.ts";
 import type { ActionSeed } from "./snippets.ts";
 
