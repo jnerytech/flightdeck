@@ -48,7 +48,7 @@ export function NotificationBell(
   /** A request answered since it was sent leaves the bell (the store says which). */
   const inbox = props.inbox.filter((entry) => {
     const request = entry.link ? parseRequestLink(entry.link) : null;
-    return !(request && store.requestAnswered(request.hostId, request.requestId));
+    return !(request && store.inbox.requestAnswered(request.hostId, request.requestId));
   });
   const unread = unreadRows(inbox, new Date());
   const cardExists = (r: Extract<Route, { name: "card" }>) =>
@@ -100,7 +100,7 @@ export function NotificationBell(
     }
   };
   const pick = (row: InboxRow) => {
-    store.inboxMarkRead(row.ids);
+    store.inbox.markRead(row.ids);
     setOpen(false);
     const target = inboxTarget(row.entry, cardExists, requestOpen);
     if (target?.kind === "link") store.openRequestLink(target.link);
@@ -129,11 +129,11 @@ export function NotificationBell(
         onPick={pick}
         onApprove={(row, held) => void respond(row, "allow", held)}
         onDeny={(row) => void respond(row, "deny", false)}
-        onMarkRead={(row) => store.inboxMarkRead(row.ids)}
-        onMarkUnread={(row) => store.inboxMarkUnread(row.ids)}
-        onDismiss={(row) => store.inboxDismiss(row.ids)}
-        onMarkAll={() => store.inboxMarkAllRead()}
-        onClear={() => store.inboxClear()}
+        onMarkRead={(row) => store.inbox.markRead(row.ids)}
+        onMarkUnread={(row) => store.inbox.markUnread(row.ids)}
+        onDismiss={(row) => store.inbox.dismiss(row.ids)}
+        onMarkAll={() => store.inbox.markAllRead()}
+        onClear={() => store.inbox.clear()}
       />
     </Popover>
   );

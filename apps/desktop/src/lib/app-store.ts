@@ -85,6 +85,7 @@ import {
   HostUpdateSlice,
   initialHealthState,
 } from "../features/hosts/index.ts";
+import { InboxSlice } from "../features/inbox/index.ts";
 import {
   initialMessagingState,
   MessagingSlice,
@@ -176,16 +177,7 @@ import {
   saveHubView,
   takeHubHost,
 } from "./hub.ts";
-import {
-  addEntry,
-  type InboxEntry,
-  loadInbox,
-  markAllRead,
-  markRead,
-  markUnread,
-  saveInbox,
-  unreadRows,
-} from "./inbox.ts";
+import type { InboxEntry } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
@@ -196,7 +188,6 @@ import {
   summaryNotifications,
 } from "./notify.ts";
 import { decide, NotifyPreferences, type NotifySource } from "./notify-policy.ts";
-import { browserSound, playNotifySound } from "./notify-sound.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename, isInside } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
@@ -1062,7 +1053,7 @@ export class AppStore {
       read: (hostId) => this.hostCommand(hostId, "quota.get", {}),
       setPauseAt: (hostId, pauseAt) => this.hostCommand(hostId, "quota.setPauseAt", { pauseAt }),
       notify: (notice, hostId) =>
-        this.notifyUser(notice, { name: "host", host: hostId }, undefined, {
+        this.inbox.notify(notice, { name: "host", host: hostId }, undefined, {
           event: "budget-quota",
           hostId,
         }),
@@ -1101,7 +1092,7 @@ export class AppStore {
       hostName: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.name,
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
       notify: (notification, route, source) =>
-        this.notifyUser(notification, route, undefined, source),
+        this.inbox.notify(notification, route, undefined, source),
       t: () => this.i18n.t,
     });
     this.messaging = new MessagingSlice({
@@ -1109,7 +1100,7 @@ export class AppStore {
       update: (patch) => this.update(patch),
       rules: (hostId) => this.hostCommand(hostId, "messaging.rules.get", {}),
       setRules: (hostId, rules) => this.hostCommand(hostId, "messaging.rules.set", rules),
-      notify: (notification) => this.notifyUser(notification),
+      notify: (notification) => this.inbox.notify(notification),
       t: () => this.i18n.t,
     });
     this.settings = new SettingsSlice({
@@ -1156,7 +1147,7 @@ export class AppStore {
       dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
       optionsPolicy: () => this.options.vaultPolicy,
       now: () => (this.options.now ?? Date.now)(),
-      notify: (title, body) => this.notifyUser({ title, body, event: "needs-you" }),
+      notify: (title, body) => this.inbox.notify({ title, body, event: "needs-you" }),
       recorded: (outcome) => {
         this.usage.recordOutcome(outcome);
         this.keepUsage();
@@ -1204,7 +1195,7 @@ export class AppStore {
       feed: (name, clientId, percent, limit) =>
         this.webhookFeed.clientBudget(name, clientId, percent, limit),
       notify: (notification, clientId) =>
-        this.notifyUser(notification, { name: "costs", client: clientId }, undefined, {
+        this.inbox.notify(notification, { name: "costs", client: clientId }, undefined, {
           event: "budget-quota",
         }),
       t: () => this.i18n.t,
@@ -1255,6 +1246,19 @@ export class AppStore {
     this.newSessionPrefs = new NewSessionPrefs(platform.storage);
     this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
+    this.inbox = new InboxSlice({
+      storage: platform.storage,
+      entries: () => this.state.inbox,
+      setEntries: (entries) => this.update({ inbox: entries }),
+      prefs: () => this.notifyPrefs.value,
+      soundFile: () => this.notifyPrefs.soundFile(),
+      waiting: () => needsYou(this.state).map((i) => `${i.hostId}/${i.requestId}`),
+      hostOnline: (hostId) => this.state.hosts.find((h) => h.id === hostId)?.status === "online",
+      now: () => this.now(),
+      show: (notification) => this.platform.notify(notification),
+      setBadge: (count) => this.platform.setBadge?.(count),
+      t: () => this.i18n.t,
+    });
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
       onAttention: (kind) => this.onBackupAttention(kind),
@@ -1373,9 +1377,8 @@ export class AppStore {
   readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
   readonly notifyPrefs: NotifyPreferences;
-  /** Plays the notification sound; tests replace it. */
-  soundPlayer: () => void = () =>
-    playNotifySound(this.notifyPrefs.value.sound, this.notifyPrefs.soundFile(), browserSound());
+  /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
+  readonly inbox: InboxSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
@@ -1515,10 +1518,10 @@ export class AppStore {
   };
 
   async init(): Promise<void> {
-    this.update({ inbox: loadInbox(this.platform.storage) });
+    this.inbox.load();
     const kept = loadFinished(this.platform.storage);
     this.update({ finished: kept.list, finishedLook: kept.lastLook });
-    this.syncBadge();
+    this.inbox.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.listenForWake();
@@ -1826,111 +1829,13 @@ export class AppStore {
   /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
   private onBackupAttention(kind: Attention): void {
     const t = this.i18n.t;
-    this.notifyUser(
+    this.inbox.notify(
       {
         title: t(`backupSchedule.attention.${kind}.title`),
         body: t(`backupSchedule.attention.${kind}.body`),
       },
       { name: "settings", section: "backup" },
     );
-  }
-
-  /** Sends an OS notification and keeps it in the notification center. */
-  private notifyUser(
-    notification: AboutNotification,
-    route?: Route,
-    fallbackUrl?: string | null,
-    source?: NotifySource,
-  ): void {
-    const { about, event, ...n } = notification;
-    const prefs = this.notifyPrefs.value;
-    const decision = decide(prefs, source ?? { event: event ?? "other" }, this.now());
-    if (!decision.bell && !decision.os) return;
-    const entry: InboxEntry = {
-      id: crypto.randomUUID(),
-      at: new Date().toISOString(),
-      title: n.title,
-      body: n.body,
-      ...(n.link ? { link: n.link } : {}),
-      ...(route ? { route } : {}),
-      ...(fallbackUrl ? { fallbackUrl } : {}),
-      ...(about ? { subject: about.subject, host: about.host } : {}),
-      ...(about?.ask ? { ask: about.ask } : {}),
-      ...(about?.group ? { group: about.group } : {}),
-      read: false,
-    };
-    if (decision.bell) this.setInbox(addEntry(this.state.inbox, entry));
-    if (decision.os) void this.platform.notify(n);
-    if (decision.sound && prefs.sound.mode !== "off") this.soundPlayer();
-  }
-
-  /** The requests waiting now, and every one this run has seen waiting (`host/request`). */
-  private waiting = new Set<string>();
-  private readonly everWaiting = new Set<string>();
-
-  /** Remembers what waits, so a request that stops waiting is known to have been answered. */
-  private rememberWaiting(): void {
-    const now = new Set(needsYou(this.state).map((i) => `${i.hostId}/${i.requestId}`));
-    let changed = now.size !== this.waiting.size;
-    for (const key of now) {
-      this.everWaiting.add(key);
-      if (!this.waiting.has(key)) changed = true;
-    }
-    this.waiting = now;
-    // The bell hides an answered request, so its count and the taskbar badge change with it.
-    if (changed) this.syncBadge();
-  }
-
-  /**
-   * Whether a request this run saw waiting is answered: it no longer waits and its host is up to say
-   * so. One never seen waiting (answered while the app was closed) is not claimed to be answered.
-   */
-  requestAnswered(hostId: string, requestId: string): boolean {
-    const key = `${hostId}/${requestId}`;
-    if (!this.everWaiting.has(key) || this.waiting.has(key)) return false;
-    return this.state.hosts.find((h) => h.id === hostId)?.status === "online";
-  }
-
-  /** The bell's entries: a request answered since it was sent is not among them. */
-  visibleInbox(): InboxEntry[] {
-    return this.state.inbox.filter((entry) => {
-      const request = entry.link ? parseRequestLink(entry.link) : null;
-      return !(request && this.requestAnswered(request.hostId, request.requestId));
-    });
-  }
-
-  /** The bell's unread count as a taskbar badge, told only when it changes. */
-  private syncBadge(): void {
-    const count = unreadRows(this.visibleInbox(), new Date(this.now()));
-    if (count === this.badgeShown) return;
-    this.badgeShown = count;
-    // A taskbar that cannot show it is not worth a toast: the bell has the same count.
-    void Promise.resolve(this.platform.setBadge?.(count)).catch(() => {});
-  }
-
-  private resendBadge(): void {
-    if (this.badgeShown > 0)
-      void Promise.resolve(this.platform.setBadge?.(this.badgeShown)).catch(() => {});
-  }
-
-  /** What the taskbar badge shows now, so it is only told when the count changes. */
-  private badgeShown = 0;
-
-  private setInbox(inbox: InboxEntry[]): void {
-    this.update({ inbox });
-    this.syncBadge();
-    saveInbox(this.platform.storage, inbox);
-  }
-
-  /** Sends a notification of the app's own and says whether the system showed it. */
-  async sendTestNotification(): Promise<"delivered" | "blocked"> {
-    const { t } = this.i18n;
-    const shown = await this.platform.notify({
-      title: t("notify.testTitle"),
-      body: t("notify.testBody"),
-    });
-    if (shown) this.soundPlayer();
-    return shown ? "delivered" : "blocked";
   }
 
   /** Remembers which sessions are workers of which team, for folding their notifications. */
@@ -1948,32 +1853,6 @@ export class AppStore {
         worker: member.role === "worker",
       });
     }
-  }
-
-  /** Marks entries unread again, for the person to come back to. */
-  inboxMarkUnread(ids: string | string[]): void {
-    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
-    this.setInbox([...wanted].reduce((list, id) => markUnread(list, id), this.state.inbox));
-  }
-
-  /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
-  inboxMarkRead(ids: string | string[]): void {
-    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
-    this.setInbox([...wanted].reduce((list, id) => markRead(list, id), this.state.inbox));
-  }
-
-  /** Drops entries: a notification about something that is gone. */
-  inboxDismiss(ids: string[]): void {
-    const gone = new Set(ids);
-    this.setInbox(this.state.inbox.filter((e) => !gone.has(e.id)));
-  }
-
-  inboxMarkAllRead(): void {
-    this.setInbox(markAllRead(this.state.inbox));
-  }
-
-  inboxClear(): void {
-    this.setInbox([]);
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
@@ -3013,7 +2892,7 @@ export class AppStore {
     const wake = () => {
       for (const conn of this.connections.values()) conn.wake();
       // Hiding the window to the tray can drop its taskbar badge: say it again.
-      this.resendBadge();
+      this.inbox.resendBadge();
     };
     const visible = () => {
       if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();
@@ -3227,7 +3106,7 @@ export class AppStore {
           text: alert.message,
         };
         this.update({ notices: [...this.state.notices, notice] });
-        this.notifyUser({
+        this.inbox.notify({
           title: this.i18n.t("vaultAudit.alertTitle"),
           body: alert.message,
         });
@@ -3428,7 +3307,7 @@ export class AppStore {
     // #1220: the coordinator reported the goal done; the host sends it once per final report.
     const body = frame.event === "report_done" ? this.i18n.t("teamsUi.reportDone") : frame.reason;
     if (body) {
-      this.notifyUser(
+      this.inbox.notify(
         { title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }), body },
         { name: "teams", host: hostId, team: frame.team.id },
       );
@@ -3530,7 +3409,7 @@ export class AppStore {
       }
       // A request's entry keeps its session too: once answered, the bell opens it at that request.
       const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
-      this.notifyUser(
+      this.inbox.notify(
         n,
         requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
         undefined,
@@ -3572,11 +3451,11 @@ export class AppStore {
     if (!pending || !first) return;
     if (pending.items.length === 1) {
       // Alone, a worker is told as itself (not folded: it has nothing to fold with).
-      this.notifyUser(first.n, undefined, undefined, { ...first.source, worker: false });
+      this.inbox.notify(first.n, undefined, undefined, { ...first.source, worker: false });
       return;
     }
     const t = this.i18n.t;
-    this.notifyUser(
+    this.inbox.notify(
       {
         event: "turn-finished",
         title: t("notify.teamDone", { team: pending.name, n: pending.items.length }),
@@ -3650,7 +3529,7 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      this.notifyUser(
+      this.inbox.notify(
         externalRequestNotification(
           {
             hostId,
@@ -3903,7 +3782,7 @@ export class AppStore {
     if (watch.status === "needs_you" && before?.status !== "needs_you") {
       const card = this.state.cards[key];
       const title = card?.title ?? watch.cardId;
-      this.notifyUser(
+      this.inbox.notify(
         { title: this.i18n.t("watchUi.notifyTitle"), body: `${title}: ${watch.reason ?? ""}` },
         card
           ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
@@ -4109,7 +3988,7 @@ export class AppStore {
     const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      this.notifyUser(
+      this.inbox.notify(
         {
           title: this.i18n.t("deps.notifyTitle"),
           body: this.i18n.t("deps.notifyBody", { title: card.title }),
@@ -4142,7 +4021,7 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
-    if (patch.hosts || patch.externalRequests) this.rememberWaiting();
+    if (patch.hosts || patch.externalRequests) this.inbox.rememberWaiting();
     if (patch.secrets) void this.scan.refresh();
     if (patch.hosts || patch.uiChoices) this.syncTray();
     if (

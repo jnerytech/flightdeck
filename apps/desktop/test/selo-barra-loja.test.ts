@@ -18,7 +18,7 @@ function world(stored: unknown[] = []) {
   mem.platform.setBadge = async (count: number) => void badges.push(count);
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   stores.push(store);
-  const notify = (n: object) => (store as unknown as { notifyUser(n: object): void }).notifyUser(n);
+  const notify = (n: Parameters<AppStore["inbox"]["notify"]>[0]) => store.inbox.notify(n);
   return { store, mem, badges, notify };
 }
 
@@ -44,9 +44,9 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
   test("marking everything read clears it; clearing the list keeps it clear", () => {
     const w = world();
     w.notify({ title: "a", body: "" });
-    w.store.inboxMarkAllRead();
+    w.store.inbox.markAllRead();
     expect(w.badges).toEqual([1, 0]);
-    w.store.inboxClear();
+    w.store.inbox.clear();
     expect(w.badges).toEqual([1, 0]);
   });
 
@@ -55,7 +55,7 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
     w.notify({ title: "a", body: "", about: { subject: "A", host: "h", group: "g1" } });
     w.notify({ title: "b", body: "", about: { subject: "B", host: "h", group: "g2" } });
     const first = w.store.getState().inbox[0]?.id as string;
-    w.store.inboxMarkRead(first);
+    w.store.inbox.markRead(first);
     expect(w.badges).toEqual([1, 2, 1]);
   });
 
@@ -71,7 +71,7 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
     expect(w.badges).toEqual([2]);
     globalThis.dispatchEvent(new Event("focus"));
     expect(w.badges).toEqual([2, 2]);
-    w.store.inboxMarkAllRead();
+    w.store.inbox.markAllRead();
     globalThis.dispatchEvent(new Event("focus"));
     // Nothing unread: nothing to bring back.
     expect(w.badges).toEqual([2, 2, 0]);
@@ -101,9 +101,7 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
     const mem = memoryPlatform(false, "en");
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     stores.push(store);
-    expect(() =>
-      (store as unknown as { notifyUser(n: object): void }).notifyUser({ title: "a", body: "" }),
-    ).not.toThrow();
+    expect(() => store.inbox.notify({ title: "a", body: "" })).not.toThrow();
   });
 
   test("a platform that fails to set it does not break the notification", async () => {

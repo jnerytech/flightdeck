@@ -178,6 +178,7 @@ test's baseline, with the issue that renames them.
 | `harness` | harness | A project's Markdown harness shared as a host template |
 | `history` | history | The conversations Claude Code already recorded, indexed and read only |
 | `hosts` | host | The machines the app talks to: what each reports about its health (dependencies and doctor), then its saved list and connection |
+| `inbox` | notification | The notification center: what the app sent, kept for the bell, read and unread, the taskbar badge, the system toast and the sound |
 | `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
 | `knowledge` | library | A project's document library and what a session is given from it |
 | `logs` | log | The daemon's own log files: rotation, scan and serve |
