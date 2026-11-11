@@ -12,7 +12,7 @@ import { McpConfig } from "./agentcfg/mcp.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { Automations } from "./automations/automations.ts";
-import { BgService } from "./bg/service.ts";
+import { createBgService } from "./bg/wiring.ts";
 import { Board } from "./board/board.ts";
 import { readSpecText } from "./board/spec.ts";
 import { templateRootOf } from "./board/spec-template.ts";
@@ -707,25 +707,14 @@ export async function startDaemon(
     usage,
     costs,
     telemetry: telemetryStore,
-    bg: new BgService({
+    bg: createBgService({
       db: store.db,
-      claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
+      config,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
-      trust: projectTrust.sessionTrust.bind(projectTrust),
-      prepare: projectTrust.prepare.bind(projectTrust),
-      // A listed session's folder is checked against the roots before respawn or message runs in it.
-      allowedRoots: config.allowedRoots,
-      // `getCard` refuses a card that does not exist, with the not_found the app knows.
-      card: (cardId) => {
-        const card = board.getCard(cardId);
-        const prompt = [card.title, card.description].filter(Boolean).join("\n\n");
-        return { cwd: board.getProject(card.projectId).path, prompt, name: card.title };
-      },
-      start: {
-        self: selfCommand,
-        configFile,
-        allowedRoots: config.allowedRoots,
-      },
+      projectTrust,
+      board,
+      self: selfCommand,
+      configFile,
     }),
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),

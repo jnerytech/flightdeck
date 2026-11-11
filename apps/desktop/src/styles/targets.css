@@ -1,0 +1,27 @@
+/*
+ * Pointer targets of WCAG 2.5.8 (at least 24 px). Shared classes, so a screen does not hold a raw
+ * layout utility for them (the layout ratchet counts those).
+ */
+@utility hit-24 {
+  min-height: 1.5rem;
+}
+
+@utility hit-inline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+/* A radio or checkbox: the control itself is a 24 px target. */
+@utility hit-control {
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+}
+
+/* A small switch: the box is 24 px tall, the padding is not painted, so the track keeps its look. */
+@utility hit-switch {
+  min-height: 1.5rem;
+  padding-block: 0.25rem;
+  background-clip: content-box;
+  box-shadow: none;
+}
