@@ -14,7 +14,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { RequestError } = await import("../src/lib/host-connection.ts");
-const { TeleportMove } = await import("../src/ui/TeleportMove.tsx");
+const { TeleportMove } = await import("../src/features/teleport/teleport-move.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 /**
