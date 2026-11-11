@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultVerdict } from "@flightdeck/protocol";
-import { type VaultRulesCore, VaultRulesSlice } from "../src/features/vault/index.ts";
-import type { SecretMeta } from "../src/lib/vault.ts";
+import { type VaultRulesCore, VaultRulesSlice } from "../../src/features/vault/index.ts";
+import type { SecretMeta } from "../../src/lib/vault.ts";
 
 const ALLOW = [{ id: "r1", decision: "allow" }];
 const ASK = [{ id: "r2", decision: "ask" }];

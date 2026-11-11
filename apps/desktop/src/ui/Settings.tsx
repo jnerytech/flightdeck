@@ -12,9 +12,10 @@ import { WatchSettingsSection } from "@/components/watch/watch-settings-section"
 import { BackupAllPanel } from "@/features/backup/backup-all-panel.tsx";
 import { BackupSchedulePanel } from "@/features/backup/backup-schedule-panel.tsx";
 import { useStoreSlice } from "@/lib/use-store";
+import type { AppUpdateState } from "../features/appupdate/index.ts";
 import type { Settings as SettingsState } from "../features/settings/index.ts";
 import { LANGS, type Lang, type T } from "../i18n/index.ts";
-import type { AppStore, AppUpdateState } from "../lib/app-store.ts";
+import type { AppStore } from "../lib/app-store.ts";
 import type { CacheTtl } from "../lib/cache-timer.ts";
 import type { Density } from "../lib/density.ts";
 import type { TabOrder } from "../lib/tab-switcher.ts";

@@ -32,10 +32,10 @@ export const UpdateBanner = memo(function UpdateBanner(props: { store: AppStore 
           {offer.notes && <p>{offer.notes}</p>}
           {daemonsBehind && <p className="text-muted-foreground text-xs">{t("update.first")}</p>}
           <Inline gap={2}>
-            <ActionButton size="sm" onClick={() => store.installAppUpdate()}>
+            <ActionButton size="sm" onClick={() => store.appUpdates.install()}>
               {t("update.install")}
             </ActionButton>
-            <Button variant="outline" size="sm" onClick={() => store.dismissAppUpdate()}>
+            <Button variant="outline" size="sm" onClick={() => store.appUpdates.dismiss()}>
               {t("update.later")}
             </Button>
           </Inline>

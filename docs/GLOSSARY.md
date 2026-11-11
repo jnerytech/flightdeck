@@ -163,6 +163,7 @@ test's baseline, with the issue that renames them.
 | `actions` | action | Declared commands with places for vault secrets, their trust and their runs |
 | `activity` | activity | What happened on the host since a time, read from what the daemon already keeps |
 | `agentcfg` | agent | A project's Claude Code configuration: MCP servers, CLAUDE.md, agents and skills |
+| `appupdate` | app update | The app's own signed update: the check, the download in the background, the install, and the one on quit |
 | `assistant` | assistant | The host's assistant: checks a request, writes a commit message or a PR text |
 | `automations` | automation | Triggers (time, PR comment, failing checks, labeled issue) and the action each fires |
 | `background` | background session | Claude Code's own background sessions of a host (`claude --bg`): list, stop, respawn, message, attach and start |
