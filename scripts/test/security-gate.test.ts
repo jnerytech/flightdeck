@@ -584,11 +584,21 @@ describe("security-gate: the app's dictionaries are text (#1541)", () => {
     const other = new Map([
       ["apps/desktop/src/i18n/en/deep/hub.ts", ['    tokenHint: "Paste the pairing token here",']],
     ]);
-    expect([riskyFiles(added), riskyFiles(leaked), riskyFiles(code), riskyFiles(other)]).toEqual([
+    const language = new Map([
+      ["apps/desktop/src/i18n/fr/hub.ts", ['    tokenHint: "Paste the pairing token here",']],
+    ]);
+    expect([
+      riskyFiles(added),
+      riskyFiles(leaked),
+      riskyFiles(code),
+      riskyFiles(other),
+      riskyFiles(language),
+    ]).toEqual([
       [],
       [{ path: ENX, why: ["secret"] }],
       [{ path: PTX, why: ["spawn"] }],
       [{ path: "apps/desktop/src/i18n/en/deep/hub.ts", why: ["secret"] }],
+      [{ path: "apps/desktop/src/i18n/fr/hub.ts", why: ["secret"] }],
     ]);
   });
 
