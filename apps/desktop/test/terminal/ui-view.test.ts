@@ -15,7 +15,7 @@ import {
   terminalKeyAction,
   terminalTheme,
   terminalWheelAction,
-} from "../src/lib/terminal-view.ts";
+} from "../../src/lib/terminal-view.ts";
 
 const key = (
   k: string,

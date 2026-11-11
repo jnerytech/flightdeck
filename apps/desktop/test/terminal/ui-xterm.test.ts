@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FIND_DECORATIONS } from "../src/lib/terminal-view.ts";
+import { FIND_DECORATIONS } from "../../src/lib/terminal-view.ts";
 import {
   createXtermScreen,
   type XtermDeps,
@@ -7,8 +7,8 @@ import {
   type XtermLinkProvider,
   type XtermSearch,
   type XtermTerminal,
-} from "../src/lib/xterm-screen.ts";
-import { settleMaybe } from "./wait.ts";
+} from "../../src/lib/xterm-screen.ts";
+import { settleMaybe } from "../wait.ts";
 
 const THEME = {
   background: "#000000",

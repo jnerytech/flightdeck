@@ -3,7 +3,7 @@ import { AppStore } from "../../src/lib/app-store.ts";
 import { terminalKeyAction } from "../../src/lib/terminal-view.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
-import { fakeXterm } from "../terminal-fakes.ts";
+import { fakeXterm } from "../terminal/fakes.ts";
 import { waiter } from "../wait.ts";
 import { snippetsHost } from "./ui-setup.ts";
 

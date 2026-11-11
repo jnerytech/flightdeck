@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const {
@@ -17,9 +17,9 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { realXtermDeps } = await import("../src/lib/xterm-deps.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { realXtermDeps } = await import("../../src/lib/xterm-deps.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -96,7 +96,7 @@ describe("terminal-ui: the route and the settings", () => {
   });
 
   test("the stylesheet takes xterm's own, which hides its helper textarea and measure element", () => {
-    const desktop = resolve(import.meta.dir, "..");
+    const desktop = resolve(import.meta.dir, "../..");
     const css = readStyles(resolve(desktop, "src/styles.css"));
     const imported = /@import\s+"(@xterm\/xterm\/css\/xterm\.css)"/.exec(css)?.[1] ?? "";
     expect(imported).toBe("@xterm/xterm/css/xterm.css");
