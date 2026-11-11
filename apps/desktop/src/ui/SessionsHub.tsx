@@ -3,7 +3,6 @@ import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
-import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { AsleepMark } from "@/components/hub/asleep-mark";
 import { CacheTimer } from "@/components/hub/cache-timer";
 import { CardGrid } from "@/components/hub/card-grid";
@@ -29,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { HostsBanner } from "@/features/hosts/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "../components/feedback/inline-notice.tsx";

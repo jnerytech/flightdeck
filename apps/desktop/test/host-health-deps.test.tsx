@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { HostHealth } = await import("../src/components/hosts/host-health.tsx");
+const { HostHealth } = await import("../src/features/hosts/host-health.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);

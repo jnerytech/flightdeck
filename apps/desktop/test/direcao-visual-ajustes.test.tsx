@@ -17,7 +17,7 @@ const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { hostDotView } = await import("../src/lib/host-status.ts");
-const { HostsBanner } = await import("../src/components/hosts/hosts-banner.tsx");
+const { HostsBanner } = await import("../src/features/hosts/hosts-banner.tsx");
 const { Timeline } = await import("../src/components/session/parts.tsx");
 
 setDefaultTimeout(20_000);

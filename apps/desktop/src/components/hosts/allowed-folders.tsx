@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
-import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Input } from "@/components/ui/input";
+import { hostDownReason } from "@/features/hosts/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { isLocalUrl } from "@/lib/terminal";

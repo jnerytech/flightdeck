@@ -125,7 +125,7 @@ describe("host-offline-ui", () => {
   });
 
   test("a host that refused the token says so, with no countdown to a retry that would be refused again", async () => {
-    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    const { HostOfflineBanner } = await import("../src/features/hosts/host-offline-banner.tsx");
     render(
       <HostOfflineBanner
         host={

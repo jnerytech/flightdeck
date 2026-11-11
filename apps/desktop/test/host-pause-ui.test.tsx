@@ -11,7 +11,7 @@ const { useStoreSlice } = await import("../src/lib/use-store.ts");
 const { statusBarSummary } = await import("../src/lib/status-bar.ts");
 const { StatusBar, StatusBarSlot } = await import("../src/components/shell/status-bar.tsx");
 const { BoardView } = await import("../src/ui/BoardView.tsx");
-const { HostPausePanel } = await import("../src/components/hosts/host-pause-panel.tsx");
+const { HostPausePanel } = await import("../src/features/hosts/host-pause-panel.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 

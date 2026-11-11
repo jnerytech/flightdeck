@@ -17,7 +17,6 @@ import {
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
-import { HostVersionTip, hostVersionText } from "@/components/hosts/host-version";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { ProjectTree } from "@/components/projects/project-tree";
 import { RailFlyout } from "@/components/projects/rail-flyout";
@@ -33,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HostVersionTip, hostVersionText, RenameHostDialog } from "@/features/hosts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import { budgetAlerts } from "../features/costs/index.ts";
@@ -54,7 +54,6 @@ import type { SidebarGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { RenameHostDialog } from "./RenameHostDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
 
 const ITEM =

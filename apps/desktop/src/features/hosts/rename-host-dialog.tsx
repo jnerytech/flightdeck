@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import type { HostNameError } from "../lib/host-name.ts";
+import type { HostNameError } from "../../lib/host-name.ts";
 
 /** Renames a host (the app's display name only). Esc or Cancel closes it; Enter saves. */
 export function RenameHostDialog(

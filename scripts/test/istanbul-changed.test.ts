@@ -10,7 +10,7 @@ const TRACKED = [
   "scripts/lib/shots-holds.ts",
   "scripts/test/shots-holds.test.ts",
   "scripts/test/other.test.ts",
-  "apps/desktop/src/ui/HostPage.tsx",
+  "apps/desktop/src/features/hosts/page.tsx",
   "apps/desktop/test/host-ui.test.tsx",
   "apps/desktop/test/dom.ts",
 ];
@@ -48,7 +48,7 @@ describe("istanbul-changed (#1493)", () => {
       "scripts/test/gone.test.ts",
     ]);
     const code = await istanbulChanged("abc123", OUT, f.deps);
-    const sources = ["scripts/lib/shots-holds.ts", "apps/desktop/src/ui/HostPage.tsx"];
+    const sources = ["scripts/lib/shots-holds.ts", "apps/desktop/src/features/hosts/page.tsx"];
     const expected = shardRun(
       "istanbul",
       ["apps/desktop/test/host-ui.test.tsx", "scripts/test/shots-holds.test.ts"],

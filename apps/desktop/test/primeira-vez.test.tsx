@@ -196,7 +196,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
   });
 
   test("the notice asks for the new link or token and shows what the host answered", async () => {
-    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    const { HostOfflineBanner } = await import("../src/features/hosts/host-offline-banner.tsx");
     const asked: string[] = [];
     render(
       <HostOfflineBanner
@@ -228,7 +228,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
   });
 
   test("a host that is only offline, not refused, has no such field", async () => {
-    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    const { HostOfflineBanner } = await import("../src/features/hosts/host-offline-banner.tsx");
     render(
       <HostOfflineBanner
         host={
@@ -259,7 +259,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
   });
 
   test("the notice holds still while it tests: one try at a time, the token masked, the field emptied on success", async () => {
-    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    const { HostOfflineBanner } = await import("../src/features/hosts/host-offline-banner.tsx");
     let release: (value: string | null) => void = () => {};
     let calls = 0;
     render(
@@ -302,7 +302,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
   });
 
   test("when trying throws, the notice shows the message and can try again", async () => {
-    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    const { HostOfflineBanner } = await import("../src/features/hosts/host-offline-banner.tsx");
     render(
       <HostOfflineBanner
         host={

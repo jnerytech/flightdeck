@@ -5,8 +5,8 @@ import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { type BoundToken, maskOnLeave, readLinkEdit } from "../lib/pairing-mask.ts";
-import { pairingErrorText } from "../lib/pairing-text.ts";
+import { type BoundToken, maskOnLeave, readLinkEdit } from "../../lib/pairing-mask.ts";
+import { pairingErrorText } from "../../lib/pairing-text.ts";
 
 export interface HostDraft {
   name: string;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { AppStore, HostView } from "../lib/app-store.ts";
-import { useStoreSlice } from "../lib/use-store.ts";
-import { AccountCard } from "./AccountCard.tsx";
+import type { AppStore, HostView } from "../../lib/app-store.ts";
+import { useStoreSlice } from "../../lib/use-store.ts";
+import { AccountCard } from "../../ui/AccountCard.tsx";
 
 /** After a refresh the button stays off this long: the host refuses a sooner one anyway. */
 const COOLDOWN_MS = 30_000;
