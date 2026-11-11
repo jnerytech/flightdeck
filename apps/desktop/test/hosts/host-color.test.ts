@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { contrastRatio } from "../../src/lib/contrast.ts";
 import { HOST_COLORS, hostColorIndex, hostColorVar } from "../../src/lib/host-color.ts";
 
-const css = readFileSync(resolve(import.meta.dir, "../../src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
 
 /** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
 function tokens(selector: string): Record<string, string> {

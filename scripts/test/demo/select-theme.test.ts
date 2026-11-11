@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readStyles } from "../../lib/styles-source.ts";
 
-const css = readFileSync("apps/desktop/src/styles.css", "utf8");
+const css = readStyles("apps/desktop/src/styles.css");
 const base = css.slice(css.indexOf("@layer base"));
 
 test("the dropdown of a native select is painted with the popover colors, in both themes", () => {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -12,7 +12,7 @@ const { App } = await import("../src/ui/App.tsx");
 
 afterEach(cleanup);
 
-const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+const css = readStyles(resolve(import.meta.dir, "../src/styles.css"));
 
 /** The `flex` a named style of styles.css sets, or null when it sets none. */
 function flexOf(utility: string): string | null {

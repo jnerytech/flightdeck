@@ -1,3 +1,5 @@
+import { account } from "./pt-BR/account.ts";
+
 import { agent } from "./pt-BR/agent.ts";
 import { assistant } from "./pt-BR/assistant.ts";
 import { automations } from "./pt-BR/automations.ts";
@@ -354,81 +356,7 @@ export const ptBR = {
     },
   },
   ...notifications,
-  account: {
-    region: "Conta do Claude de {host}",
-    title: "Conta do Claude",
-    loading: "Lendo a conta…",
-    offline: "{host} está offline: a conta aparece de novo quando ele voltar.",
-    plans: {
-      free: "Free",
-      pro: "Pro",
-      max: "Max",
-      ultra: "Ultra",
-      team: "Team",
-      enterprise: "Enterprise",
-    },
-    planHint:
-      "Vem do login do claude neste host. Mudou de plano? Saia e entre de novo lá, depois toque em Atualizar.",
-    windows: {
-      five_hour: "5 horas",
-      seven_day: "7 dias",
-      seven_day_opus: "7 dias · Opus",
-      seven_day_sonnet: "7 dias · Sonnet",
-    },
-    meter: "{window} de {host}",
-    meterText: "{percent}%, {reset}",
-    meterTextNoReset: "{percent}%",
-    resetsIn: "reinicia em {d}",
-    lastRead: "Última leitura {ago}",
-    noWindows: "O host não informou janelas do plano.",
-    stale: "Não foi possível atualizar: esta é a última leitura.",
-    refresh: "Atualizar",
-    refreshing: "Lendo…",
-    refreshLabel: "Atualizar a conta de {host}",
-    signedOut: {
-      title: "Este host não está conectado ao Claude.",
-      steps: "Abra o terminal deste host, rode este comando e siga os passos lá; depois volte:",
-    },
-    copy: "Copiar comando",
-    copied: "Comando copiado",
-    terminal: "Abrir terminal",
-    apiKey: "Este host usa uma chave de API. Os limites do plano não se aplicam.",
-    provider: "Este host usa {provider}. Os limites do plano não se aplicam.",
-    unknownSignIn: "O app não conhece o tipo de login deste host.",
-    unavailable: "Não foi possível ler a conta.",
-    retry: "Tentar de novo",
-  },
-  quota: {
-    windows: { five_hour: "5 horas", seven_day: "7 dias" },
-    shortWindows: { five_hour: "5 h", seven_day: "7 dias" },
-    region: "Cota de {host}",
-    meter: "{window} de {host}",
-    noReading: "sem leitura ainda",
-    resets: "reinicia às {time}",
-    read: "lida {ago}",
-    guard: {
-      label: "Cartões novos esperam a partir de",
-      labelFor: "Cartões novos esperam a partir de, em {host}",
-      off: "Nunca",
-      hint: "Sessões que já estão rodando nunca são paradas.",
-      readOnly:
-        "Cartões novos esperam a partir de {pct}%. Este host não deixa mudar pelo app: atualize o flightdeckd.",
-      readOnlyOff:
-        "A trava está desligada. Este host não deixa mudar pelo app: atualize o flightdeckd.",
-    },
-    popover: {
-      label: "Cota do plano dos hosts",
-      showRunning: "Mostrar o que está rodando",
-      openHost: "Abrir a página do host",
-      openHostOf: "Abrir a página de {host}",
-    },
-    hotNotice: "{host}: cota acima de {pct}%: cards novos esperam a cota; sessões manuais seguem.",
-    projection: {
-      few: "poucas leituras para projetar",
-      exhausts: "no ritmo atual, a janela de {window} esgota às {time}",
-      holds: "não esgota antes de {time}",
-    },
-  },
+  ...account,
   errors: {
     bad_request: "O host recusou o pedido.",
     unauthorized:

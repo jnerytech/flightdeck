@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readStyles } from "../../../scripts/lib/styles-source.ts";
 import { git } from "../../daemon/test/support/board-helpers.ts";
 import { must } from "../../daemon/test/support/helpers.ts";
 import { chooseFromCardMenu } from "./card-menu.ts";
@@ -261,7 +262,7 @@ describe("board-ui", () => {
     };
     await type("Filtrar cards", "nada disso");
     const noMatch = within(lane("Backlog")).queryByText("Nenhuma correspondência");
-    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
     const rule = (head: string) => {
       const at = css.indexOf(head);
       return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
@@ -573,7 +574,7 @@ describe("board-ui", () => {
     await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
     const after = details() ?? null;
     const log = screen.queryByRole("log", { name: "Conversa do card" });
-    const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
+    const css = readStyles(join(import.meta.dir, "../src/styles.css"));
     const at = css.indexOf("@utility card-info {");
     const rule = at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
     expect({
