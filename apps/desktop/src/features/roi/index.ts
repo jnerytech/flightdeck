@@ -6,3 +6,4 @@
  */
 export { CardHours } from "./card-hours.tsx";
 export { RoiCard } from "./roi-card.tsx";
+export { RoiSlice } from "./store.ts";
