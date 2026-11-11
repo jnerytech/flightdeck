@@ -64,12 +64,12 @@ export function refreshSignature(hosts: readonly HubHost[]): string {
 /** The row-menu entries that depend on the row: sleeping it now, moving it to another host. */
 export function rowOffers(
   row: Pick<HubRow, "origin" | "state" | "asleep" | "sessionId">,
-  by: { teleportPreview: boolean; canTeleport: boolean },
+  by: { teleportPreview: boolean; canTeleport: () => boolean },
 ): { sleep: boolean; teleport: boolean } {
   const idleManaged = row.origin === "flightdeck" && row.state === "idle" && !!row.sessionId;
   return {
     sleep: idleManaged && !row.asleep,
-    teleport: idleManaged && by.teleportPreview && by.canTeleport,
+    teleport: idleManaged && by.teleportPreview && by.canTeleport(),
   };
 }
 

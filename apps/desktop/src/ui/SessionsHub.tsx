@@ -310,7 +310,7 @@ export function SessionsHub(
     if (!row.claudeSessionId) return null;
     const offers = rowOffers(row, {
       teleportPreview: state.settings.teleportPreview,
-      canTeleport: canTeleport(row.hostId),
+      canTeleport: () => canTeleport(row.hostId),
     });
     return (
       <DropdownMenu>
