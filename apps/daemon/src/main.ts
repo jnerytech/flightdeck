@@ -106,8 +106,7 @@ import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { ProjectTrust } from "./trust/project-trust.ts";
-import { trustServer } from "./trust/wiring.ts";
+import { createProjectTrust, trustServer } from "./trust/wiring.ts";
 import { autoUpdateOf } from "./updates/auto.ts";
 import { createUpdates } from "./updates/wiring.ts";
 import { DAEMON_VERSION } from "./version.ts";
@@ -303,22 +302,13 @@ export async function startDaemon(
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
 
-  // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
-  // where the person trusted it (or already worked in it before this existed). A card's worktree is
-  // read from its project's main checkout.
-  const projectTrust = new ProjectTrust(store.db, {
-    roots: () => config.allowedRoots,
-    configRootOf: (cwd) => {
-      const found = board.projectForCwd(cwd);
-      return found?.card ? found.project.path : null;
-    },
+  // A folder's trust (issue #196), a card's worktree read from its project's main checkout.
+  const { projectTrust, trustForKnowledge } = createProjectTrust({
+    db: store.db,
+    config,
+    projectForCwd: (cwd) => board.projectForCwd(cwd),
     log: (line) => logger.log(line),
   });
-  // The library's index (#76) goes to a trusted folder only, read from its trusted checkout.
-  const trustForKnowledge = async (path: string) => {
-    await projectTrust.prepare(path);
-    return projectTrust.sessionTrust(path);
-  };
   const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
   const manager = new SessionManager({
     folderLocks,
