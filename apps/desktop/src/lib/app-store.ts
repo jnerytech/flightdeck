@@ -27,7 +27,6 @@ import type {
   RuleIssue,
   RunConfigInfo,
   RunState,
-  SessionEventOf,
   SessionImage,
   SessionMeta,
   SessionNameInfo,
@@ -37,7 +36,6 @@ import type {
   SessionSubscribeResult,
   SessionSummary,
   SettableMode,
-  TeamInfo,
   TeamsUpdatedFrame,
   WatchInfo,
   WorkflowRun,
@@ -102,6 +100,7 @@ import {
   initialSessionsState,
   SessionsSlice,
   type SessionsSliceState,
+  SummariesSlice,
 } from "../features/sessions/index.ts";
 import {
   initialSettingsState,
@@ -171,12 +170,8 @@ import type { InboxEntry } from "./inbox.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import {
-  type AboutNotification,
-  externalRequestNotification,
-  summaryNotifications,
-} from "./notify.ts";
-import { decide, NotifyPreferences, type NotifySource } from "./notify-policy.ts";
+import { externalRequestNotification } from "./notify.ts";
+import { NotifyPreferences } from "./notify-policy.ts";
 import { basename, isInside } from "./paths.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
@@ -186,6 +181,7 @@ import { parseRequestLink, requestLink } from "./request-link.ts";
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
+import { sessionKey } from "./session-key.ts";
 import { sessionLabel } from "./session-label.ts";
 import {
   applyEnvelope,
@@ -757,7 +753,7 @@ export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
 
-export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
+export { sessionKey };
 
 /** Issue #1478: how long "Not stuck" keeps a quiet session out of Needs you. */
 export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
@@ -845,16 +841,8 @@ export class AppStore {
   private readonly watched = new Map<string, number>();
   private tray: TrayStatus | null = null;
   private noticeSeq = 0;
-  /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
-  private readonly teamOf = new Map<
-    string,
-    { hostId: string; team: string; name: string; worker: boolean }
-  >();
-  /** Workers' finished turns waiting to be folded into one message per team. */
-  private readonly folding = new Map<
-    string,
-    { name: string; hostId: string; items: Array<{ n: AboutNotification; source: NotifySource }> }
-  >();
+  /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
+  readonly summaries: SummariesSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
   private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
@@ -1323,6 +1311,25 @@ export class AppStore {
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });
+    this.summaries = new SummariesSlice({
+      hosts: () => this.state.hosts,
+      markUnread: (keys) =>
+        this.update({
+          unread: { ...this.state.unread, ...Object.fromEntries(keys.map((key) => [key, true])) },
+        }),
+      setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
+      shown: () => this.shownSessions(),
+      projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
+      isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
+      isFocused: () => this.platform.isFocused(),
+      prefs: () => this.notifyPrefs.value,
+      now: () => this.now(),
+      t: () => this.i18n.t,
+      notify: (...args) => this.inbox.notify(...args),
+      feed: (host, prev, next) => this.webhookFeed.managed(host, prev, next),
+      finished: (hostId, prev, next) => this.recordFinished(hostId, prev, next),
+      later: (fn, ms) => void this.later(fn, ms),
+    });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -1753,23 +1760,6 @@ export class AppStore {
       },
       { name: "settings", section: "backup" },
     );
-  }
-
-  /** Remembers which sessions are workers of which team, for folding their notifications. */
-  rememberTeam(hostId: string, team: TeamInfo): void {
-    for (const [key, known] of this.teamOf) {
-      if (known.hostId === hostId && known.team === team.id) this.teamOf.delete(key);
-    }
-    if (team.state === "closed") return;
-    for (const member of team.members) {
-      if (!member.sessionId) continue;
-      this.teamOf.set(sessionKey(hostId, member.sessionId), {
-        hostId,
-        team: team.id,
-        name: team.name,
-        worker: member.role === "worker",
-      });
-    }
   }
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
@@ -2745,7 +2735,7 @@ export class AppStore {
       onSubscribed: (sessionId, result) => this.onSubscribed(config.id, sessionId, result),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
       onEvent: (envelope) => this.onEvent(config.id, envelope),
-      onSummaries: (summaries) => this.onSummaries(config.id, summaries),
+      onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
       onExternal: (frame) => this.onExternal(config.id, frame),
       onVaultRequest: (request) => void this.vaultApprovals.onRequest(config, request),
@@ -2892,7 +2882,7 @@ export class AppStore {
       void conn
         .request("teams.list", {})
         .then((result) => {
-          for (const team of result.teams) this.rememberTeam(hostId, team);
+          for (const team of result.teams) this.summaries.rememberTeam(hostId, team);
         })
         .catch(() => null);
     }
@@ -2914,7 +2904,7 @@ export class AppStore {
 
   private onEvent(hostId: string, envelope: EventEnvelope): void {
     if (envelope.event.type === "session.summary") {
-      this.onSummary(hostId, envelope.event);
+      this.summaries.apply(hostId, [envelope.event]);
       return;
     }
     const key = sessionKey(hostId, envelope.sessionId);
@@ -2955,7 +2945,7 @@ export class AppStore {
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
   private onTeams(hostId: string, frame: TeamsUpdatedFrame): void {
-    this.rememberTeam(hostId, frame.team);
+    this.summaries.rememberTeam(hostId, frame.team);
     for (const listener of this.teamListeners) listener(hostId, frame);
     // #1220: the coordinator reported the goal done; the host sends it once per final report.
     const body = frame.event === "report_done" ? this.i18n.t("teamsUi.reportDone") : frame.reason;
@@ -2967,166 +2957,12 @@ export class AppStore {
     }
   }
 
-  /** Sidebar, queue, tray and notifications all come from `session.summary`. */
-  private onSummary(hostId: string, summary: SessionEventOf<"session.summary">): void {
-    this.onSummaries(hostId, [summary]);
-  }
-
-  /**
-   * A host's summaries, in order, as one change of its sessions (#1191): the snapshot of a host
-   * with hundreds of sessions renders the app once, not once per session. What each one tells the
-   * person (unread, notifications, finished) still follows each in turn.
-   */
-  private onSummaries(hostId: string, summaries: SessionEventOf<"session.summary">[]): void {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!host || summaries.length === 0) return;
-    const sessions = [...host.sessions];
-    const at = new Map(sessions.map((session, i) => [session.id, i]));
-    const changes: Array<{ prev: SidebarSession | undefined; next: SidebarSession }> = [];
-    for (const summary of summaries) {
-      const next: SidebarSession = {
-        id: summary.sessionId,
-        name: summary.name,
-        cwd: summary.cwd,
-        status: summary.status,
-        pendingPermissions: summary.pendingPermissions,
-        updatedAt: summary.updatedAt,
-        ...(summary.runtime ? { runtime: summary.runtime } : {}),
-        ...(summary.trustStale ? { trustStale: true } : {}),
-        ...(summary.quietSince
-          ? { quietSince: summary.quietSince, quietTool: summary.quietTool ?? null }
-          : {}),
-      };
-      const i = at.get(next.id);
-      const prev = i === undefined ? undefined : sessions[i];
-      if (i === undefined) {
-        at.set(next.id, sessions.length);
-        sessions.push(next);
-      } else {
-        sessions[i] = next;
-      }
-      changes.push({ prev, next });
-    }
-    this.updateHost(hostId, (h) => ({ ...h, sessions }));
-    const unread = changes.flatMap(({ prev, next }) => {
-      const replied =
-        (prev?.status === "running" || prev?.status === "starting") && next.status === "idle";
-      const key = sessionKey(hostId, next.id);
-      return replied && !this.shownSessions().has(key) ? [key] : [];
-    });
-    if (unread.length > 0) {
-      this.update({
-        unread: { ...this.state.unread, ...Object.fromEntries(unread.map((key) => [key, true])) },
-      });
-    }
-    for (const { prev, next } of changes) {
-      this.webhookFeed.managed({ id: hostId, name: host.name }, prev, next);
-      this.tellAboutSummary(hostId, host.name, prev, next);
-      this.recordFinished(hostId, prev, next);
-    }
-  }
-
-  /** What a changed summary tells the person: the notifications it raises, or folds into its team's. */
-  private tellAboutSummary(
-    hostId: string,
-    hostName: string,
-    prev: SidebarSession | undefined,
-    next: SidebarSession,
-  ): void {
-    const key = sessionKey(hostId, next.id);
-    const label = `${hostName} · ${next.name ?? basename(next.cwd)}`;
-    const linkFor = (requestId: string) => requestLink(hostId, requestId);
-    const focused = this.platform.isFocused();
-    const t = this.i18n.t;
-    const names = { subject: next.name ?? basename(next.cwd), host: hostName, group: key };
-    const project = this.sessionProject(hostId, next.cwd);
-    const team = this.teamOf.get(key);
-    const simple = this.uiMode(hostId).mode === "simple";
-    for (const n of summaryNotifications(prev, next, label, focused, {
-      linkFor,
-      t,
-      names,
-      simple,
-    })) {
-      const source: NotifySource = {
-        event: n.event ?? "other",
-        hostId,
-        session: key,
-        ...(project ? { project } : {}),
-        ...(team?.worker ? { worker: true } : {}),
-      };
-      // A worker's finished turn waits a moment to be told with its team's others.
-      if (team && decide(this.notifyPrefs.value, source, this.now()).fold) {
-        this.foldWorker(`${hostId}/${team.team}`, team.name, hostId, { n, source });
-        continue;
-      }
-      // A request's entry keeps its session too: once answered, the bell opens it at that request.
-      const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
-      this.inbox.notify(
-        n,
-        requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
-        undefined,
-        source,
-      );
-    }
-  }
-
   /** `hostId/projectId` of the project whose folder holds `cwd`, if any. */
   private sessionProject(hostId: string, cwd: string | null | undefined): string | undefined {
     const project = cwd
       ? (this.state.projects[hostId] ?? []).find((p) => isInside(cwd, p.path))
       : undefined;
     return project ? `${hostId}/${project.id}` : undefined;
-  }
-
-  /** How long workers of one team finishing are gathered into one message. */
-  private static readonly FOLD_MS = 10_000;
-
-  private foldWorker(
-    teamKey: string,
-    name: string,
-    hostId: string,
-    item: { n: AboutNotification; source: NotifySource },
-  ): void {
-    const pending = this.folding.get(teamKey);
-    if (pending) {
-      pending.items.push(item);
-      return;
-    }
-    this.folding.set(teamKey, { name, hostId, items: [item] });
-    this.later(() => this.flushFold(teamKey), AppStore.FOLD_MS);
-  }
-
-  private flushFold(teamKey: string): void {
-    const pending = this.folding.get(teamKey);
-    this.folding.delete(teamKey);
-    const [first] = pending?.items ?? [];
-    if (!pending || !first) return;
-    if (pending.items.length === 1) {
-      // Alone, a worker is told as itself (not folded: it has nothing to fold with).
-      this.inbox.notify(first.n, undefined, undefined, { ...first.source, worker: false });
-      return;
-    }
-    const t = this.i18n.t;
-    this.inbox.notify(
-      {
-        event: "turn-finished",
-        title: t("notify.teamDone", { team: pending.name, n: pending.items.length }),
-        body: t("notify.teamDoneBody"),
-        about: {
-          subject: pending.name,
-          host: first.n.about?.host ?? pending.hostId,
-          group: teamKey,
-        },
-      },
-      { name: "teams", host: pending.hostId, team: teamKey.split("/")[1] ?? "" },
-      undefined,
-      {
-        event: "turn-finished",
-        hostId: pending.hostId,
-        ...(first.source.project ? { project: first.source.project } : {}),
-      },
-    );
   }
 
   /** The sessions an area shows right now (the active tab of each area), by session key. */
