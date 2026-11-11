@@ -33,7 +33,7 @@ export function DiagnosticsPanel(props: Readonly<{ store: AppStore }>) {
         features: host.hostInfo?.features ?? [],
       })),
       lines,
-      values: () => store.scanValues(),
+      values: () => store.scan.values(),
     });
     await store.copyText(text);
     store.success(t("diagnostics.copied"));

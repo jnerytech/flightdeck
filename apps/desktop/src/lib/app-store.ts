@@ -115,6 +115,7 @@ import { initialSshState, SshSlice, type SshSliceState } from "../features/ssh/i
 import {
   VaultApprovalsSlice,
   VaultRulesSlice,
+  VaultScanSlice,
   VaultSecretsSlice,
 } from "../features/vault/index.ts";
 import { refusalText } from "../i18n/errors.ts";
@@ -1170,6 +1171,7 @@ export class AppStore {
       pickFile: () => this.platform.vault.pickFile(),
       fail: (error) => this.fail(error),
     });
+    this.scan = new VaultScanSlice({ vault: this.vault });
     this.vaultRules = new VaultRulesSlice({
       rules: new VaultRules(platform.storage),
       secrets: () => this.vault.list(),
@@ -1281,7 +1283,7 @@ export class AppStore {
       fail: (error) => this.fail(error),
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
-    this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
+    this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -1593,7 +1595,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
-    this.rememberToken(input.token);
+    this.scan.rememberToken(input.token);
     const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
@@ -3180,7 +3182,7 @@ export class AppStore {
   }
 
   private connect(config: HostConfig, token: string): void {
-    this.rememberToken(token);
+    this.scan.rememberToken(token);
     const conn = new HostConnection({
       url: config.url,
       token,
@@ -3729,6 +3731,8 @@ export class AppStore {
   readonly secrets: VaultSecretsSlice;
   /** The daemon's requests for a secret: the policy, the queue and the outcome listeners. */
   readonly vaultApprovals: VaultApprovalsSlice;
+  /** What the app's log and the screens must never show: the hosts' tokens and the vault's values. */
+  readonly scan: VaultScanSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
@@ -3841,71 +3845,6 @@ export class AppStore {
 
   private keepUsage(): void {
     this.update({ vaultUsage: this.usage.list() });
-  }
-
-  /**
-   * The vault's values, line by line and an env set's variable by variable, long enough to tell
-   * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
-   * by the caller, never sent and never kept here (phase 18's history import).
-   */
-  /**
-   * What the app's log must never write, read at each line: every host's token and the vault's
-   * values (a copy kept in memory only, refreshed when the vault changes, never saved or sent).
-   */
-  scanValues(): string[] {
-    return [...this.hostTokens, ...this.vaultPieces];
-  }
-
-  private readonly hostTokens = new Set<string>();
-  private vaultPieces: string[] = [];
-
-  /**
-   * Goes up each time `scanValues` may give more (#827): what masks text already on screen, such
-   * as the files search's matches, renders again through `subscribeScan`.
-   */
-  scanVersion = 0;
-  private readonly scanListeners = new Set<() => void>();
-
-  subscribeScan = (listener: () => void): (() => void) => {
-    this.scanListeners.add(listener);
-    return () => this.scanListeners.delete(listener);
-  };
-
-  private rememberToken(token: string): void {
-    this.hostTokens.add(token);
-    this.scanChanged();
-  }
-
-  private scanChanged(): void {
-    this.scanVersion++;
-    for (const listener of this.scanListeners) listener();
-  }
-
-  private async rememberVaultValues(): Promise<void> {
-    try {
-      this.vaultPieces = await this.vaultValuesForScan();
-      this.scanChanged();
-    } catch {
-      // The log's cache is a convenience: a vault that cannot be read leaves the last one.
-    }
-  }
-
-  async vaultValuesForScan(): Promise<string[]> {
-    const pieces: string[] = [];
-    await inSequence(this.vault.list(), async (secret) => {
-      const value = await this.vault.value(secret.id);
-      if (value === null) return;
-      // A whole value can be long and many-lined: what a history line would carry is one line,
-      // and of an env set, one variable's value.
-      for (const line of value.split(/\r?\n/)) {
-        const assigned = secret.type === "env" ? /^\s*[A-Za-z_]\w*\s*=(.*)$/.exec(line) : null;
-        const piece = (assigned ? (assigned[1] as string) : line)
-          .trim()
-          .replace(/^(["'])(.*)\1$/, "$2");
-        if (piece.length >= 6) pieces.push(piece);
-      }
-    });
-    return pieces;
   }
 
   private peersTimer: ReturnType<typeof setInterval> | null = null;
@@ -4204,7 +4143,7 @@ export class AppStore {
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
     if (patch.hosts || patch.externalRequests) this.rememberWaiting();
-    if (patch.secrets) void this.rememberVaultValues();
+    if (patch.secrets) void this.scan.refresh();
     if (patch.hosts || patch.uiChoices) this.syncTray();
     if (
       patch.hosts ||
