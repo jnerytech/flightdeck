@@ -65,6 +65,12 @@ describe("plugins: JSON the plugin and the CLI hand over (#1609)", () => {
     expect(pins["b@m"]).toEqual({ version: "", hash: "", at: "" });
   });
 
+  test("a pin with one wrong-typed field keeps the others, so writing the file back loses nothing", async () => {
+    const file = join(tempDir("fd-pins-json-"), "plugin-pins.json");
+    writeFileSync(file, JSON.stringify({ "a@m": { version: 5, hash: "h", at: "t" } }));
+    expect((await filePins(file).all())["a@m"]).toEqual({ version: "", hash: "h", at: "t" });
+  });
+
   test("a pins file that is a list, or not JSON, holds no pin", async () => {
     const file = join(tempDir("fd-pins-json-"), "plugin-pins.json");
     writeFileSync(file, "[1]");
