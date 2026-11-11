@@ -73,6 +73,15 @@ export class HostUpdateSlice {
     );
   }
 
+  /** The host came back on the update's version: its late timer is not needed. */
+  settled(_hostId: string): void {}
+
+  /** A host was removed: its timer and its last check go. */
+  forget(_hostId: string): void {}
+
+  /** The store is closing: no timer outlives it. */
+  dispose(): void {}
+
   /** Asks the host's daemon to check for an update now (`daemon.update.check`). */
   async check(hostId: string): Promise<void> {
     if (!this.core.connected(hostId)) return;

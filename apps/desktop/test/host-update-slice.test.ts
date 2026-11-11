@@ -8,18 +8,26 @@ import {
 } from "../src/features/hosts/index.ts";
 import { APP_VERSION } from "../src/lib/version.ts";
 
-/** The timers the slice started and not yet fired: the test fires them, so no test waits. */
+/** The timers the slice started and not yet fired or cleared: the test fires them, so no test waits. */
 let timers: Array<() => void> = [];
+let live = new Map<number, () => void>();
 const realSetTimeout = globalThis.setTimeout;
+const realClearTimeout = globalThis.clearTimeout;
 beforeEach(() => {
   timers = [];
+  live = new Map();
   globalThis.setTimeout = ((fn: () => void) => {
     timers.push(fn);
-    return 0;
+    live.set(timers.length, fn);
+    return timers.length;
   }) as unknown as typeof setTimeout;
+  globalThis.clearTimeout = ((id: number) => {
+    live.delete(id);
+  }) as unknown as typeof clearTimeout;
 });
 afterEach(() => {
   globalThis.setTimeout = realSetTimeout;
+  globalThis.clearTimeout = realClearTimeout;
 });
 
 const STATUS = { version: "9.9.9" } as unknown as UpdateStatus;
@@ -91,8 +99,45 @@ describe("host update slice: a daemon's update", () => {
       },
     });
     await s.updates.apply("h1");
-    expect(s.host().daemonUpdate).toEqual({ target: "9.9.9", failed: "refused" });
+    expect(s.host().daemonUpdate).toEqual({ target: "9.9.9", failed: "described: Error: refused" });
     expect(timers).toHaveLength(0);
+  });
+
+  test("a refusal that is not an Error is shown too, not left blank", async () => {
+    const s = slice({ applies: () => Promise.reject("not allowed") });
+    await s.updates.apply("h1");
+    expect(s.host().daemonUpdate).toEqual({ target: "9.9.9", failed: "described: not allowed" });
+  });
+
+  test("two clicks leave one late timer: the first cannot mark the second update late", async () => {
+    const s = slice();
+    await s.updates.apply("h1");
+    await s.updates.apply("h1");
+    expect(timers).toHaveLength(2);
+    expect(live.size).toBe(1);
+  });
+
+  test("the late timer goes when the host comes back, when the host is removed and on dispose", async () => {
+    const back = slice();
+    await back.updates.apply("h1");
+    back.updates.settled("h1");
+    expect(live.size).toBe(0);
+    const removed = slice();
+    await removed.updates.apply("h1");
+    removed.updates.forget("h1");
+    expect(live.size).toBe(0);
+    const closed = slice();
+    await closed.updates.apply("h1");
+    closed.updates.dispose();
+    expect(live.size).toBe(0);
+  });
+
+  test("a removed host's last check is forgotten, so a host added again is checked at once", async () => {
+    const s = slice();
+    await s.updates.autoCheck("h1");
+    s.updates.forget("h1");
+    await s.updates.autoCheck("h1");
+    expect(s.checks()).toBe(2);
   });
 
   test("a check keeps the daemon's answer, and a failed one names why", async () => {
