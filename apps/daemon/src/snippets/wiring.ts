@@ -24,9 +24,9 @@ export interface SnippetsDeps {
 export function createSnippets({ db, config, scanner, use, history }: SnippetsDeps) {
   const snippets = new Snippets({ db, allowedRoots: config.allowedRoots, scanner });
   return {
-    snippets,
-    snippetUse: new SnippetUse({ ...use, snippets, allowedRoots: config.allowedRoots }),
-    snippetHistory: new HistoryImporter({
+    library: snippets,
+    use: new SnippetUse({ ...use, snippets, allowedRoots: config.allowedRoots }),
+    history: new HistoryImporter({
       sources: defaultHistorySources(history),
       scanner,
       snippets,

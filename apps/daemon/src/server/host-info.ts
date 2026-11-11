@@ -134,7 +134,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Phase 17: the actions that use a vault secret without Claude seeing it.
     ...when(opts.actions, "actions"),
     // Phase 18: saved commands and prompts of the host and its projects.
-    ...when(opts.snippets, "snippets"),
+    ...when(opts.snippets?.library, "snippets"),
     // Phase 20: the engineering personas of the host and its projects.
     ...when(opts.personas, "personas"),
     // Phase 21: messages between sessions, teams and the standard session names.

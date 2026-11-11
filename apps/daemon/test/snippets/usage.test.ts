@@ -342,7 +342,7 @@ describe("snippets-uso: pelo protocolo", () => {
     const { root } = workspace();
     const server = startServer({
       manager: newManager().manager,
-      ...(s ? { snippets: s.snippets, snippetUse: s.use, terminals: s.terminals } : {}),
+      ...(s ? { snippets: { library: s.snippets, use: s.use }, terminals: s.terminals } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
