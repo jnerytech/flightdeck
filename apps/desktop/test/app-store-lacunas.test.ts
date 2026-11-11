@@ -89,7 +89,7 @@ describe("app-store-lacunas: a host that does not answer", () => {
   test("following its account does not throw and leaves the account unknown", async () => {
     const { store } = make();
     const hostId = await store.addHost({ name: "alfa", url: DEAD, token: TOKEN });
-    const stop = store.watchAccount(hostId);
+    const stop = store.account.watch(hostId);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(store.getState().account[hostId]).toBeUndefined();
     stop();

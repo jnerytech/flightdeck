@@ -105,7 +105,18 @@ function classTokens(source: string): string[] {
 }
 
 /** Every screen of the app. */
-const SCREENS = readdirSync(UI).filter((file) => file.endsWith(".tsx"));
+// A screen moves into its feature folder (#1597): it is still a screen.
+const FEATURES = resolve(UI, "../features");
+const SCREENS = [
+  ...readdirSync(UI).filter((file) => file.endsWith(".tsx")),
+  ...readdirSync(FEATURES, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) =>
+      readdirSync(resolve(FEATURES, entry.name))
+        .filter((file) => file.endsWith(".tsx"))
+        .map((file) => `../features/${entry.name}/${file}`),
+    ),
+];
 
 describe("direcao-visual: telas", () => {
   test("as classes do estilo antigo saem de todas as telas", () => {

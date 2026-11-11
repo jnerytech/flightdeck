@@ -1,5 +1,4 @@
 import type {
-  AccountState,
   Card,
   ChangesUpdated,
   CommandPayload,
@@ -53,6 +52,11 @@ import {
   inSequence,
   parsePairingLink,
 } from "@flightdeck/protocol";
+import {
+  AccountSlice,
+  type AccountSliceState,
+  initialAccountState,
+} from "../features/account/index.ts";
 import {
   ActivitySlice,
   type ActivitySliceState,
@@ -336,6 +340,7 @@ export interface AppState
     HealthSliceState,
     BackgroundSliceState,
     QuotaSliceState,
+    AccountSliceState,
     SettingsSliceState {
   hosts: HostView[];
   /** Keyed by `sessionKey(hostId, sessionId)`. */
@@ -366,8 +371,6 @@ export interface AppState
   meta: Record<string, SessionMeta>;
   /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
   uiChoices: Record<string, UiMode>;
-  /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
-  account: Record<string, AccountState>;
   /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
   setupProbes: Record<string, SetupProbe>;
   /** Phase 16: the vault's list, metadata only (a value is only read to be delivered). */
@@ -989,6 +992,8 @@ export class AppStore {
   readonly background: BackgroundSlice;
   /** The plan quota of each host, its pause guard and the notices it raises (#1596). */
   readonly quota: QuotaSlice;
+  /** The Claude account each host is signed in to (phase 34, #1596). */
+  readonly account: AccountSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
   readonly hostUpdate: HostUpdateSlice;
   readonly settings: SettingsSlice;
@@ -1092,6 +1097,20 @@ export class AppStore {
         }),
       t: () => this.i18n.t,
       now: () => this.now(),
+    });
+    this.account = new AccountSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      stream: (hostId) => {
+        const conn = this.connections.get(hostId);
+        return (
+          conn && {
+            watch: (on) => conn.watchAccount(on),
+            get: () => conn.request("account.get", {}),
+          }
+        );
+      },
+      refresh: (hostId) => this.hostCommand(hostId, "account.refresh", {}),
     });
     this.snippets = new SnippetsSlice({
       state: () => this.state,
@@ -1250,7 +1269,7 @@ export class AppStore {
       cards: {},
       runs: {},
       ...initialQuotaState(),
-      account: {},
+      ...initialAccountState(),
       ...initialHealthState(),
       setupProbes: {},
       ...initialSnippetsState(),
@@ -1484,7 +1503,7 @@ export class AppStore {
       cards: {},
       runs: {},
       ...initialQuotaState(),
-      account: {},
+      ...initialAccountState(),
       ...initialHealthState(),
     });
     await this.settings.load();
@@ -3188,8 +3207,7 @@ export class AppStore {
       onRunUpdated: (run) => this.onRun(config.id, run),
       onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
       onQuotaUpdated: (state) => this.quota.updated(config.id, state),
-      onAccountUpdated: (state) =>
-        this.update({ account: { ...this.state.account, [config.id]: state } }),
+      onAccountUpdated: (state) => this.account.updated(config.id, state),
       onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
       onTerminal: (frame) => {
         for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
@@ -3646,25 +3664,6 @@ export class AppStore {
       this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
       (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
     );
-  }
-
-  /** Starts the host's account stream while its card is on screen; returns the function that ends it. */
-  watchAccount(hostId: string): () => void {
-    const conn = this.connections.get(hostId);
-    conn?.watchAccount(true);
-    // What the host already knows comes at once; its first read follows through the stream.
-    void conn?.request("account.get", {}).then(
-      (state) => this.update({ account: { ...this.state.account, [hostId]: state } }),
-      () => {},
-    );
-    return () => conn?.watchAccount(false);
-  }
-
-  /** Asks the host to read its account again now; `false` when it refused (the banner says why). */
-  async refreshAccount(hostId: string): Promise<boolean> {
-    const state = await this.hostCommand(hostId, "account.refresh", {});
-    if (state) this.update({ account: { ...this.state.account, [hostId]: state } });
-    return state !== null;
   }
 
   /**

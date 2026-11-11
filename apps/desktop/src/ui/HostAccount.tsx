@@ -18,7 +18,7 @@ export function HostAccount(
   const [cooling, setCooling] = useState(false);
   const [copied, setCopied] = useState(false);
   const online = host.status === "online";
-  useEffect(() => (online ? store.watchAccount(host.id) : undefined), [store, host.id, online]);
+  useEffect(() => (online ? store.account.watch(host.id) : undefined), [store, host.id, online]);
   useEffect(() => {
     if (!cooling) return;
     const timer = setTimeout(() => setCooling(false), props.cooldownMs ?? COOLDOWN_MS);
@@ -35,7 +35,7 @@ export function HostAccount(
       copied={copied}
       onRefresh={() => {
         setBusy(true);
-        void store.refreshAccount(host.id).then(() => {
+        void store.account.refresh(host.id).then(() => {
           setBusy(false);
           setCooling(true);
         });

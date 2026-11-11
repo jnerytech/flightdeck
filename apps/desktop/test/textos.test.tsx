@@ -37,11 +37,19 @@ const SOURCES = [
   "src/components/layout",
   "src/components/session",
   "src/components/status",
-].flatMap((dir) =>
-  readdirSync(resolve(import.meta.dir, "..", dir))
-    .filter((file) => file.endsWith(".tsx"))
-    .map((file) => resolve(import.meta.dir, "..", dir, file)),
-);
+]
+  .flatMap(
+    (dir) =>
+      readdirSync(resolve(import.meta.dir, "..", dir))
+        .filter((file) => file.endsWith(".tsx"))
+        .map((file) => resolve(import.meta.dir, "..", dir, file)),
+    // Screens move into their feature folder (#1597): a domain's folder is swept like the rest.
+  )
+  .concat(
+    [...new Bun.Glob("src/features/*/*.tsx").scanSync(resolve(import.meta.dir, ".."))].map((file) =>
+      resolve(import.meta.dir, "..", file),
+    ),
+  );
 /** Names and ids that are not translated. */
 const ALLOWED = ["Flightdeck", "Ctrl K", "flightdeck://…"];
 

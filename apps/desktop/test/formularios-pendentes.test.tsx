@@ -12,7 +12,7 @@ const { BudgetsSection } = await import("../src/ui/BudgetsSection.tsx");
 const { MessagingRulesSection } = await import("../src/ui/MessagingRulesSection.tsx");
 const { NewSecretForm } = await import("../src/components/vault/new-secret-form.tsx");
 const { PersonaEditor } = await import("../src/components/personas/persona-editor.tsx");
-const { SnippetEditor } = await import("../src/components/snippets/snippet-editor.tsx");
+const { SnippetEditor } = await import("../src/features/snippets/snippet-editor.tsx");
 const { ActionForm } = await import("../src/ui/ActionForm.tsx");
 const { TargetForm } = await import("../src/components/connections/target-form.tsx");
 

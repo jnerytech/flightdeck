@@ -10,7 +10,8 @@ import {
 } from "../../../scripts/lib/layout-ratchet.ts";
 
 const DESKTOP = resolve(import.meta.dir, "..");
-const SCREENS = resolve(DESKTOP, "src/ui");
+// A screen moves from `ui/` to its feature folder (#1597): both are counted.
+const SCREENS = [resolve(DESKTOP, "src/ui"), resolve(DESKTOP, "src/features")];
 const BASELINE = resolve(DESKTOP, "layout-baseline.json");
 
 const baseline = (): LayoutBaseline =>
