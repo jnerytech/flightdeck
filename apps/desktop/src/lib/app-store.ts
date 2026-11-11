@@ -67,7 +67,7 @@ import {
 } from "../features/personas/index.ts";
 import { ProjectsSlice } from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
-import { RoiSlice } from "../features/roi/index.ts";
+import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import {
   ExternalSessionsSlice,
   HISTORY_LIST_LIMIT,
@@ -524,10 +524,7 @@ export class AppStore {
       const clientId = cwd ? this.clientScope.get().clientOfFolder(hostId, cwd) : UNASSIGNED;
       return clientId === UNASSIGNED ? null : clientId;
     });
-    this.roiFigures = new RoiSlice({
-      hosts: () => this.state.hosts,
-      now: () => this.now(),
-      summary: (hostId, range) => this.hostRequest(hostId, "roi.summary", range),
+    this.roiFigures = wireRoi(this.kernel, {
       clientOf: (projectKey) => {
         const clientId = this.clientScope.get().clientOf(projectKey);
         return clientId === UNASSIGNED ? null : clientId;
