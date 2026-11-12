@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AssistantBlock, EffortLevel, McpLiveStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { AsyncQueue } from "../async-queue.ts";
+import { AsyncQueue } from "../kernel/index.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
 import { describeCommands } from "./commands.ts";

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { buildChildEnv } from "../../src/env.ts";
 import { FlightdeckError } from "../../src/errors.ts";
+import { buildChildEnv } from "../../src/kernel/env.ts";
 import { resolveAllowedCwd } from "../../src/paths.ts";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";

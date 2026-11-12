@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { AsyncQueue } from "../../src/async-queue.ts";
 import { defaultConfigPath, expandHome } from "../../src/config.ts";
+import { AsyncQueue } from "../../src/kernel/async-queue.ts";
 import { ulid } from "../../src/ulid.ts";
 
 describe("util", () => {
