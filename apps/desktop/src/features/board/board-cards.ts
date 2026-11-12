@@ -21,7 +21,7 @@ export interface BoardCardsCore {
 }
 
 /** A card's key in the state: `host/card`, the format of the sessions' `sessionKey` (not imported: the sessions domain imports the board's, #1624). */
-const cardKey = (hostId: string, cardId: string) => `${hostId}/${cardId}`;
+const stateKey = (hostId: string, cardId: string) => `${hostId}/${cardId}`;
 
 const isCard = (value: unknown): value is Card =>
   typeof value === "object" && value !== null && "column" in value && "projectId" in value;
@@ -46,7 +46,7 @@ export class BoardCardsSlice {
 
   /** A card a host sent or answered with: kept, or dropped when discarded. */
   onCard(hostId: string, card: Card): void {
-    const { [cardKey(hostId, card.id)]: previous, ...others } = this.core.cards();
+    const { [stateKey(hostId, card.id)]: previous, ...others } = this.core.cards();
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
       const t = this.core.t();
@@ -59,7 +59,7 @@ export class BoardCardsSlice {
         card.prUrl,
       );
     }
-    const cards = card.discarded ? others : { ...others, [cardKey(hostId, card.id)]: card };
+    const cards = card.discarded ? others : { ...others, [stateKey(hostId, card.id)]: card };
     this.core.setCards(cards);
   }
 
