@@ -171,6 +171,27 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** #1593: the host's projects, each service optional. */
+interface ProjectsServer {
+  /** Looks up the project of a folder before a session is created in it (without blocking). */
+  warmKey?: (cwd: string) => Promise<unknown>;
+  /** The project key of a folder, asked without blocking: `history.list` filters by it. */
+  keyOf?: (cwd: string) => Promise<string>;
+  /** Which projects' own hooks and MCP servers run without a prompt (`project.trust.*`). */
+  trust?: {
+    /**
+     * Reads what `state` and `set` compare with (the roots' real paths) and the git boundaries of
+     * `paths` (a nested clone is not covered by the folder around it) before they answer.
+     */
+    refresh(paths?: readonly string[]): Promise<void>;
+    state(paths: string[]): ProjectTrustState[];
+    inspect(path: string): Promise<ProjectLoad>;
+    set(path: string, trusted: boolean): ProjectTrustState;
+  };
+  /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
+  find?: boolean;
+}
+
 /** Phase 22, #1593: the cards' PR watch, each service optional. */
 interface PrWatchServer {
   /** Phase 22: the PR watch of the cards. */
@@ -352,10 +373,8 @@ export interface ServerOptions {
     info: () => OpenCodeInfo;
     models: () => Promise<Array<{ id: string; name: string }>>;
   };
-  /** Looks up the project of a folder before a session is created in it (without blocking). */
-  warmProjectKey?: (cwd: string) => Promise<unknown>;
-  /** The project key of a folder, asked without blocking: `history.list` filters by it. */
-  projectKeyOf?: (cwd: string) => Promise<string>;
+  /** The host's projects: their keys, their trust and "find my projects" (#1593). */
+  projects?: ProjectsServer;
   hostName: string;
   bind: string;
   port: number;
@@ -379,16 +398,6 @@ export interface ServerOptions {
   alerts?: (cwd: string) => Promise<AlertList>;
   /** Issue #76: the project's library of documents; each part is announced by `host.info` on its own. */
   knowledge?: KnowledgeServer;
-  projectTrust?: {
-    /**
-     * Reads what `state` and `set` compare with (the roots' real paths) and the git boundaries of
-     * `paths` (a nested clone is not covered by the folder around it) before they answer.
-     */
-    refresh(paths?: readonly string[]): Promise<void>;
-    state(paths: string[]): ProjectTrustState[];
-    inspect(path: string): Promise<ProjectLoad>;
-    set(path: string, trusted: boolean): ProjectTrustState;
-  };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -410,8 +419,6 @@ export interface ServerOptions {
   activity?: (since: string, limit: number) => ActivitySinceResult;
   /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
   boardsync?: BoardSyncService;
-  /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
-  findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
   git?: GitRunner;
   /** #1593: the session settings: the commands' announcement and the host's switches. */

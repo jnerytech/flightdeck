@@ -595,8 +595,12 @@ export async function startDaemon(
         meta: central.meta,
       }),
     }),
-    warmProjectKey: (cwd) => keys.resolve(cwd),
-    projectKeyOf: (cwd) => keys.resolve(cwd),
+    projects: serverGroup<"projects">()({
+      warmKey: (cwd) => keys.resolve(cwd),
+      keyOf: (cwd) => keys.resolve(cwd),
+      trust: trustServer({ projectTrust, manager }),
+      find: true,
+    }),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...present({ rootsPlatform: options.rootsPlatform }),
     hostPause: hostPauseServer,
@@ -605,11 +609,9 @@ export async function startDaemon(
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: serverGroup<"knowledge">()(knowledge),
     harness: serverGroup<"harness", "draft">()(harness),
-    projectTrust: trustServer({ projectTrust, manager }),
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
-    findProjects: true,
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
     // Issue #1344: "While you were away": what happened since a time, from what is stored.
     activity: (since, limit) =>

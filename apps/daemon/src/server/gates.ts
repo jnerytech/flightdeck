@@ -146,6 +146,9 @@ export const GROUP_GATES = {
     watch: "prWatch",
     checkLoop: "prWatch",
   },
+  projects: {
+    trust: "projectTrust",
+  },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<
     Exclude<keyof NonNullable<ServerOptions[G]>, AnnouncedOnly[G & keyof AnnouncedOnly]>,
@@ -153,9 +156,14 @@ export const GROUP_GATES = {
   >;
 };
 
-/** The members of a group that `host.info` only announces: no command refuses for them. */
+/**
+ * The members of a group no gate refuses for: `host.info` announces them, or the server reads them
+ * when present.
+ */
 interface AnnouncedOnly {
   sessionSettings: "commands" | "stall";
+  /** The keys are read when present; "find my projects" refuses with its two commands' names. */
+  projects: "keyOf" | "warmKey" | "find";
 }
 
 export type GatedGroup = keyof typeof GROUP_GATES;

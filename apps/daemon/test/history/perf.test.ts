@@ -91,7 +91,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
       allowedRoots: [],
       history: index,
       central: central(keys, manager),
-      warmProjectKey: (cwd) => keys.resolve(cwd),
+      projects: { warmKey: (cwd) => keys.resolve(cwd) },
     });
     cleanups.push(() => server.stop());
     const client = await app(server.url);
@@ -120,7 +120,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
       token: TOKEN,
       allowedRoots: [root],
       central: central(keys, manager),
-      warmProjectKey: (cwd) => keys.resolve(cwd),
+      projects: { warmKey: (cwd) => keys.resolve(cwd) },
     });
     cleanups.push(() => server.stop());
     const client = await app(server.url);
@@ -144,7 +144,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
       token: TOKEN,
       allowedRoots: [root],
       central: hub,
-      warmProjectKey: (cwd) => keys.resolve(cwd),
+      projects: { warmKey: (cwd) => keys.resolve(cwd) },
     });
     cleanups.push(() => server.stop());
     const client = await app(server.url);
@@ -180,7 +180,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
       central: hub,
       // Only the directory is read here; the real service lists the same endpoints.
       messaging: { messages: { directory: () => endpoints.list() } as unknown as Messaging },
-      warmProjectKey: (cwd) => keys.resolve(cwd),
+      projects: { warmKey: (cwd) => keys.resolve(cwd) },
     });
     cleanups.push(() => server.stop());
     const client = await app(server.url);
@@ -206,7 +206,7 @@ describe("history-perf: a list waits for the keys of its cold folders", () => {
       token: TOKEN,
       allowedRoots: [root],
       central: central(keys, manager),
-      warmProjectKey: (dir) => keys.resolve(dir),
+      projects: { warmKey: (dir) => keys.resolve(dir) },
     });
     cleanups.push(() => server.stop());
     const client = await app(server.url);
@@ -236,7 +236,7 @@ describe("history-perf: a list waits for the keys of its cold folders", () => {
       allowedRoots: [],
       history: index,
       central: central(keys, manager),
-      warmProjectKey: (dir) => keys.resolve(dir),
+      projects: { warmKey: (dir) => keys.resolve(dir) },
     });
     cleanups.push(() => server.stop());
     const client = await app(server.url);

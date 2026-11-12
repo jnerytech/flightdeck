@@ -496,7 +496,6 @@ export function daemon(
   if (options.doctor && !options.firstRun) throw new Error("the doctor option needs firstRun");
   const firstRunOptions = options.firstRun
     ? {
-        findProjects: true,
         git: async (args: string[]) => {
           gitCalls.push(args);
           const dest = args[args.length - 1] as string;
@@ -621,13 +620,16 @@ export function daemon(
       ...(options.account ? { account: options.account } : {}),
       usage,
       central,
-      warmProjectKey: (cwd) => keys.resolve(cwd),
+      projects: {
+        warmKey: (cwd) => keys.resolve(cwd),
+        ...(options.firstRun ? { find: true } : {}),
+        ...(projectTrust ? { trust: projectTrustOver(projectTrust, manager) } : {}),
+      },
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       costs: { ...(costs ? { costs } : {}), ...(budgets ? { budgets } : {}) },
       ...(telemetry ? { telemetry: { store: telemetry, optIn: telemetryOptIn } } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
-      ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
       ...(review ? { review } : {}),
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       agentSetup: {
