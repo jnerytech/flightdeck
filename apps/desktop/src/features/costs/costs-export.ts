@@ -8,7 +8,7 @@ import { mergeHostCsv } from "./costs-csv.ts";
  * gave a file.
  */
 export async function exportCosts(
-  store: Pick<AppStore, "hostCommand" | "saveFile">,
+  store: Pick<AppStore, "hostCommand" | "system">,
   scope: {
     acrossHosts: boolean;
     hostId: string;
@@ -18,7 +18,7 @@ export async function exportCosts(
 ): Promise<void> {
   if (!scope.acrossHosts) {
     const file = await store.hostCommand(scope.hostId, "costs.export", filter);
-    if (file) await store.saveFile(file.filename, file.csv);
+    if (file) await store.system.saveFile(file.filename, file.csv);
     return;
   }
   const answers = await Promise.allSettled(
@@ -33,5 +33,5 @@ export async function exportCosts(
   });
   const csv = mergeHostCsv(files);
   const first = files[0];
-  if (first && csv !== "") await store.saveFile(first.filename, csv);
+  if (first && csv !== "") await store.system.saveFile(first.filename, csv);
 }

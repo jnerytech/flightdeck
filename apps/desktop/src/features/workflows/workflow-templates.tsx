@@ -79,7 +79,7 @@ export function WorkflowTemplates(
   const copy = async (template: WorkflowTemplate) => {
     // Emptied first, so a second copy that works is announced again, not left as the same text.
     setCopied(null);
-    setCopied((await store.copyText(template.yaml)) ? "worked" : "refused");
+    setCopied((await store.system.copyText(template.yaml)) ? "worked" : "refused");
   };
 
   return (

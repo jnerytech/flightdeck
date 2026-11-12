@@ -25,8 +25,8 @@ describe("pasta: the system's folder dialog", () => {
   test("a browser has no such dialog: the store says so and picks nothing", async () => {
     expect(createWebPlatform({} as never).pickFolder).toBeUndefined();
     const store = new AppStore(memoryPlatform(false, "en").platform);
-    expect(store.canPickFolder()).toBe(false);
-    expect(await store.pickFolder()).toBeNull();
+    expect(store.system.canPickFolder()).toBe(false);
+    expect(await store.system.pickFolder()).toBeNull();
   });
 
   test("the store offers the dialog when the platform has one, and a dialog that breaks is an error, not a crash", async () => {
@@ -37,10 +37,10 @@ describe("pasta: the system's folder dialog", () => {
       return "/work";
     };
     const store = new AppStore(mem.platform);
-    expect(store.canPickFolder()).toBe(true);
-    expect(await store.pickFolder()).toBe("/work");
+    expect(store.system.canPickFolder()).toBe(true);
+    expect(await store.system.pickFolder()).toBe("/work");
     broken = true;
-    expect(await store.pickFolder()).toBeNull();
+    expect(await store.system.pickFolder()).toBeNull();
     expect(store.getState().error).toContain("the dialog failed");
   });
 });

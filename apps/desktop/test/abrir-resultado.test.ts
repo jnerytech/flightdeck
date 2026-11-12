@@ -30,16 +30,16 @@ async function setup(withPlatform: boolean, url?: (real: string) => string) {
 describe("abrir-resultado: opening what a task made, through the platform", () => {
   test("Given the desktop app and a host on this machine, When a file is opened or shown, Then the platform does it", async () => {
     const { store, hostId, calls } = await setup(true);
-    expect(store.canOpenPaths(hostId)).toBe(true);
-    expect(await store.openPath(hostId, "/work/Reports/a.docx")).toBe(true);
-    expect(await store.revealPath(hostId, "/work/Reports/a.docx")).toBe(true);
+    expect(store.system.canOpenPaths(hostId)).toBe(true);
+    expect(await store.system.openPath(hostId, "/work/Reports/a.docx")).toBe(true);
+    expect(await store.system.revealPath(hostId, "/work/Reports/a.docx")).toBe(true);
     expect(calls).toEqual(["open:/work/Reports/a.docx", "reveal:/work/Reports/a.docx"]);
   });
 
   test("Given a browser, which has no way to open a file, Then it says it cannot and does nothing", async () => {
     const { store, hostId, calls } = await setup(false);
-    expect(store.canOpenPaths(hostId)).toBe(false);
-    expect(await store.openPath(hostId, "/work/a.docx")).toBe(false);
+    expect(store.system.canOpenPaths(hostId)).toBe(false);
+    expect(await store.system.openPath(hostId, "/work/a.docx")).toBe(false);
     expect(calls).toEqual([]);
   });
 
@@ -47,8 +47,8 @@ describe("abrir-resultado: opening what a task made, through the platform", () =
     const { store, hostId, calls } = await setup(true, (real) =>
       real.replace("127.0.0.1", "localhost.example.com"),
     );
-    expect(store.canOpenPaths(hostId)).toBe(false);
-    expect(await store.openPath(hostId, "/work/a.docx")).toBe(false);
+    expect(store.system.canOpenPaths(hostId)).toBe(false);
+    expect(await store.system.openPath(hostId, "/work/a.docx")).toBe(false);
     expect(calls).toEqual([]);
   });
 
@@ -57,21 +57,21 @@ describe("abrir-resultado: opening what a task made, through the platform", () =
     mem.platform.openPath = async () => {
       throw new Error("no program is set for this file");
     };
-    expect(await store.openPath(hostId, "/work/Reports/a.docx")).toBe(false);
+    expect(await store.system.openPath(hostId, "/work/Reports/a.docx")).toBe(false);
   });
 
   test("Given a path that is not absolute, Then it is refused", async () => {
     const { store, hostId, calls } = await setup(true);
-    expect(await store.openPath(hostId, "../a.docx")).toBe(false);
-    expect(await store.revealPath(hostId, "relative/a.docx")).toBe(false);
+    expect(await store.system.openPath(hostId, "../a.docx")).toBe(false);
+    expect(await store.system.revealPath(hostId, "relative/a.docx")).toBe(false);
     expect(calls).toEqual([]);
   });
 
   test("Given a path with two leading separators, Then it is refused (on Windows both are UNC)", async () => {
     const { store, hostId, calls } = await setup(true);
     for (const path of ["/\\attacker\\share\\a.pdf", "\\\\.\\pipe\\x.pdf", "//server/a.pdf"]) {
-      expect(await store.openPath(hostId, path)).toBe(false);
-      expect(await store.revealPath(hostId, path)).toBe(false);
+      expect(await store.system.openPath(hostId, path)).toBe(false);
+      expect(await store.system.revealPath(hostId, path)).toBe(false);
     }
     expect(calls).toEqual([]);
   });

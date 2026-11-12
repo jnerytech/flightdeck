@@ -40,7 +40,7 @@ export function HostAccount(
           setCooling(true);
         });
       }}
-      onCopy={() => void store.copyText(state?.loginCommand ?? "").then(setCopied)}
+      onCopy={() => void store.system.copyText(state?.loginCommand ?? "").then(setCopied)}
       onTerminal={() => void store.terminals.open(host.id)}
     />
   );

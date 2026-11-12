@@ -92,16 +92,16 @@ function TaskScreen(
       results={results}
       t={t}
       locked={props.locked}
-      canOpen={store.canOpenPaths(hostId)}
+      canOpen={store.system.canOpenPaths(hostId)}
       onBack={props.onBack}
       onStop={() => void store.hostCommand(hostId, "session.close", { sessionId })}
       onAnswer={(requestId, decision, held) =>
         void store.respondTo(hostId, requestId, decision, { held })
       }
       onOpenFull={props.onDetails}
-      onCopy={store.copyText.bind(store)}
-      onOpenFile={(path) => void store.openPath(hostId, path)}
-      onRevealFile={(path) => void store.revealPath(hostId, path)}
+      onCopy={store.system.copyText.bind(store.system)}
+      onOpenFile={(path) => void store.system.openPath(hostId, path)}
+      onRevealFile={(path) => void store.system.revealPath(hostId, path)}
       onPreview={async (path) => {
         const answer = await store.hostRequest(hostId, "task.preview", { sessionId, path });
         return answer.ok ? answer.data : null;
@@ -143,7 +143,7 @@ function FilesScreen(
       alive = false;
     };
   }, [store, hostId, ids]);
-  const canOpen = store.canOpenPaths(hostId);
+  const canOpen = store.system.canOpenPaths(hostId);
   return (
     <div className="home-simple">
       <h1 className="task-title">{t("simple.filesPage.title")}</h1>
@@ -161,7 +161,7 @@ function FilesScreen(
                     size="sm"
                     variant="outline"
                     aria-label={t("simple.openFile", { name: file.name })}
-                    onClick={() => void store.openPath(hostId, file.path)}
+                    onClick={() => void store.system.openPath(hostId, file.path)}
                   >
                     {t("simple.open")}
                   </Button>
@@ -169,7 +169,7 @@ function FilesScreen(
                     size="sm"
                     variant="ghost"
                     aria-label={t("simple.showInFolder", { name: file.name })}
-                    onClick={() => void store.revealPath(hostId, file.path)}
+                    onClick={() => void store.system.revealPath(hostId, file.path)}
                   >
                     {t("simple.showFolder")}
                   </Button>
@@ -277,8 +277,8 @@ export function SimpleApp(
             templates={templates}
             tasks={tasks}
             t={t}
-            canPickFolder={store.canPickFolder()}
-            onPickFolder={() => store.pickFolder()}
+            canPickFolder={store.system.canPickFolder()}
+            onPickFolder={() => store.system.pickFolder()}
             onStart={async (templateId, values) => {
               const started = await store.hostCommand(hostId, "template.start", {
                 templateId,
@@ -325,8 +325,8 @@ export function SimpleApp(
             onTheme={(next) => store.theme.setMode(next)}
             folders={host?.info?.allowedRoots ?? []}
             onAddFolder={(path) => store.allowRoot(hostId, path)}
-            canPickFolder={store.canPickFolder()}
-            onPickFolder={() => store.pickFolder()}
+            canPickFolder={store.system.canPickFolder()}
+            onPickFolder={() => store.system.pickFolder()}
             notifications={props.notifyUpdates}
             onNotifications={(enabled) => {
               void store.settings.setNotifyUpdates(enabled); // NOSONAR: the promise is deliberately not awaited; void says so

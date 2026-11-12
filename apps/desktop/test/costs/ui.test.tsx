@@ -443,7 +443,7 @@ describe("custos-ui", () => {
     const { showSaveFilePicker: _none, ...noPicker } = mem.win;
     const { createWebPlatform } = await import("../../src/platform/web/index.ts");
     const store = new AppStore(createWebPlatform(noPicker), { now: () => START, day: utcDay });
-    expect(await store.saveFile("a.csv", "x")).toBe(false);
+    expect(await store.system.saveFile("a.csv", "x")).toBe(false);
     expect(store.getState().error).toBe("saving a file is not available on this platform");
   });
   test("com dois hosts, a tela troca de host", async () => {

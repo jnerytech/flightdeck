@@ -352,7 +352,7 @@ function AddHost(
       {...(props.empty ? { subtitle: t("welcome.addHost") } : {})}
     >
       <div className="flex w-full max-w-xl flex-col gap-6">
-        <FirstRun onCopy={(text) => void props.store.copyText(text)} />
+        <FirstRun onCopy={(text) => void props.store.system.copyText(text)} />
         <HostForm
           {...(props.draft
             ? {

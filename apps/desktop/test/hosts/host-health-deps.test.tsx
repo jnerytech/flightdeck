@@ -51,7 +51,7 @@ function setup(deps: DepsResult | null) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const copied: string[] = [];
-  store.copyText = (async (text: string) => {
+  store.system.copyText = (async (text: string) => {
     copied.push(text);
     return true;
   }) as never;

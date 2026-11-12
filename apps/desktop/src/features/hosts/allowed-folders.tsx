@@ -36,13 +36,13 @@ export function AllowedFolders(props: Readonly<{ store: AppStore; host: HostView
           onChange={(e) => setFolder(e.target.value)}
         />
         {/* The system's dialog browses THIS machine's folders: only for a host that runs here. */}
-        {store.canPickFolder() && isLocalUrl(host.url) && (
+        {store.system.canPickFolder() && isLocalUrl(host.url) && (
           <ActionButton
             variant="outline"
             disabled={!online}
             disabledReason={offlineReason}
             onClick={async () => {
-              const picked = await store.pickFolder();
+              const picked = await store.system.pickFolder();
               if (picked) setFolder(picked);
             }}
           >

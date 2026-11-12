@@ -370,7 +370,7 @@ export function SessionsHub(
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() =>
-              void store.copyText(`flightdeckd claude --resume ${row.claudeSessionId}`)
+              void store.system.copyText(`flightdeckd claude --resume ${row.claudeSessionId}`)
             }
           >
             {t("hub.copyCommand")}
