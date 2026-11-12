@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { type PendingPermission, plainInfo } from "@flightdeck/protocol";
+import { summaryNotifications } from "../src/features/inbox/notify.ts";
 import { translator } from "../src/i18n/index.ts";
 import { needsYou, type PendingItem } from "../src/lib/app-store.ts";
-import { summaryNotifications } from "../src/lib/notify.ts";
 import { trayMenu } from "../src/lib/tray.ts";
 
 /**

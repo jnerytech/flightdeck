@@ -7,7 +7,7 @@ import { ApprovalActions, RiskSeal } from "@/features/permissions/index.ts";
 import type { Key } from "@/i18n";
 import { formatTime } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
-import { type InboxEntry, type InboxRow, inboxRows } from "../../lib/inbox.ts";
+import { type InboxEntry, type InboxRow, inboxRows } from "./inbox.ts";
 
 /** The count on the bell: the unread rows, the same ones that show a dot. */
 export function UnreadBadge(props: Readonly<{ unread: number }>) {
