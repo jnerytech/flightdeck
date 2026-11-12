@@ -27,8 +27,8 @@ import {
   DEMO_UPDATE_CARDS,
   OVERFLOW_VIEWPORTS,
   REACH_VIEWPORTS,
-} from "../lib/e2e-journeys.ts";
-import { ensureOnline } from "../lib/e2e-online.ts";
+} from "../lib/e2e/journeys.ts";
+import { ensureOnline } from "../lib/e2e/online.ts";
 import {
   BARS,
   confirmGaps,

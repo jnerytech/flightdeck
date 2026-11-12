@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { NARROW_SHOTS, narrowSizes, unknownNarrowShots } from "../../lib/shots-narrow.ts";
+import { NARROW_SHOTS, narrowSizes, unknownNarrowShots } from "../../lib/shots/narrow.ts";
 
 describe("shots-narrow: the narrow windows demo:shots re-measures (#641)", () => {
   test("a dark print in the list is re-measured at 1024x700, 640x800 and 390x844", () => {

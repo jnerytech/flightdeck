@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { PENDING_SELECTOR } from "../../../scripts/lib/shots-loaded.ts";
+import { PENDING_SELECTOR } from "../../../scripts/lib/shots/loaded.ts";
 import { registerDom } from "./dom.ts";
 
 registerDom();

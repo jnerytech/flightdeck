@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { holdsRewriter, holdsScript, installHolds } from "../../lib/shots-holds.ts";
+import { holdsRewriter, holdsScript, installHolds } from "../../lib/shots/holds.ts";
 
 /**
  * #1414: the print of Start N's confirm shows the host's memory hold and a budget hold the same on
