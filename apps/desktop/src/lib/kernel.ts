@@ -1,6 +1,6 @@
 import type { CommandPayload, CommandResults, CommandType, RuleIssue } from "@flightdeck/protocol";
+import type { HostConnection } from "../features/hosts/index.ts";
 import type { T } from "../i18n/index.ts";
-import type { HostConnection } from "./host-connection.ts";
 
 /** Commands sent through `hostCommand`: board (phase 4), hooks, external sessions and meta (phase 5), checkpoints and the agent's config (phase 12). */
 export type HostCommandType = Extract<

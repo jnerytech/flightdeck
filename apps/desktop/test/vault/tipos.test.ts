@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { describeSecret } from "../../src/lib/vault-types.ts";
+import { describeSecret } from "../../src/features/vault/vault-types.ts";
 
 /** Generated with ssh-keygen -t ed25519; the second one has the passphrase "pw12345". */
 const PLAIN_KEY = `-----BEGIN OPENSSH PRIVATE KEY-----

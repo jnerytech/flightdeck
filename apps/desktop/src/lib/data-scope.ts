@@ -1,5 +1,5 @@
+import type { ConnectionStatus } from "../features/hosts/index.ts";
 import type { Platform } from "../platform/types.ts";
-import type { ConnectionStatus } from "./host-connection.ts";
 
 /** Where the data scope is kept across starts (#126). */
 export const DATA_SCOPE_KEY = "flightdeck.dataScope";

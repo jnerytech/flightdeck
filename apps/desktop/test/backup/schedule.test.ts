@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { BackupPlatform } from "../../src/lib/backup-bundle.ts";
-import { previewRestore } from "../../src/lib/backup-bundle.ts";
+import type { BackupPlatform } from "../../src/features/backup/backup-bundle.ts";
+import { previewRestore } from "../../src/features/backup/backup-bundle.ts";
 import {
   type BackupFolder,
   type BackupSchedule,
@@ -10,9 +10,9 @@ import {
   loadSchedule,
   runScheduledBackup,
   saveSchedule,
-} from "../../src/lib/backup-schedule.ts";
-import type { BackupTarget } from "../../src/lib/backup-target.ts";
-import { DriveError } from "../../src/lib/drive-target.ts";
+} from "../../src/features/backup/backup-schedule.ts";
+import type { BackupTarget } from "../../src/features/backup/backup-target.ts";
+import { DriveError } from "../../src/features/backup/drive-target.ts";
 
 /**
  * Issue #1264: a schedule (off, daily or weekly) writes an encrypted backup to a picked folder and

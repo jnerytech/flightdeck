@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
 import {
   HUB_FILTER_KEY,
   loadHubFilter,
@@ -12,7 +13,6 @@ import {
   DataScopeController,
   hubHostScope,
 } from "../../src/lib/data-scope.ts";
-import { HOSTS_KEY } from "../../src/lib/hosts.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];

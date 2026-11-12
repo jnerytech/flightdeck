@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import type { UsageEntry, UsageFilter } from "@/lib/vault-usage";
+import type { UsageEntry, UsageFilter } from "./vault-usage";
 
 const REQUESTERS = ["you", "claude", "automation", "workflow", "unknown"] as const;
 type Requester = (typeof REQUESTERS)[number];

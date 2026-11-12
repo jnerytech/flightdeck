@@ -1,5 +1,5 @@
 import type { AppStore } from "../../lib/app-store.ts";
-import type { BoardFiles } from "../../lib/board-files.ts";
+import type { BoardFiles } from "../board/index.ts";
 import { FileExplorer } from "./file-explorer.tsx";
 
 /**

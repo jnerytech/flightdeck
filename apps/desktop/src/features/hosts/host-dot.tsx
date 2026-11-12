@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { hostColorIndex, hostColorVar } from "../../lib/host-color.ts";
+import { hostColorIndex, hostColorVar } from "./host-color.ts";
 
 /** A host's color as a dot, never the only sign of the host: its name always stands next to it. */
 export function HostDot(props: Readonly<{ hostId: string; className?: string }>) {

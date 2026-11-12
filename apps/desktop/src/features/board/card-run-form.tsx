@@ -17,9 +17,9 @@ import type { AppStore } from "@/lib/app-store";
 import { findingsNote } from "@/lib/second-opinion";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { FieldRow, Panel, Stack } from "@/shared/layout/index.ts";
-import { nextStep } from "../../lib/card-next-step.ts";
-import { cardStartBlock } from "../../lib/card-start-block.ts";
 import { CardFinishDialog } from "./card-finish.tsx";
+import { nextStep } from "./card-next-step.ts";
+import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 
 interface Confirming {

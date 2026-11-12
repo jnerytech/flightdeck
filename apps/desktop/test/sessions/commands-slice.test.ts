@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import type { HostConnection } from "../../src/features/hosts/host-connection.ts";
 import { SessionCommandsSlice } from "../../src/features/sessions/index.ts";
-import type { HostConnection } from "../../src/lib/host-connection.ts";
 import { settle } from "../wait.ts";
 
 type Sent = { type: string; payload: Record<string, unknown> };
