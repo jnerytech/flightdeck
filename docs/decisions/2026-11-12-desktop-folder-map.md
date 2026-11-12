@@ -130,7 +130,7 @@ prefix. Tests move with their file in the same PR.
 | `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` |
 | `teleport.ts` | `features/teleport/` |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
-| `trace.ts` | `features/trace/` |
+| `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
 | `vault*.ts` | `features/vault/` (`vault-approval.ts` goes to `features/permissions/`, listed above) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
