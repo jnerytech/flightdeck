@@ -113,20 +113,67 @@ export function formatTable(rows: RatchetRow[]): string {
 
 export type EntryRow = { entry: string; base: number | null; today: number; broad: boolean };
 
-/** Whether a tracked path is a domain's `index.ts` (#1624); stub. */
-export function isEntry(_path: string): boolean {
-  return false;
+/** Growth of an entry's export count in one PR that gets flagged (#1624), as a share of its count on main. */
+const ENTRY_GROWTH = 0.2;
+
+/** Whether a tracked path is a domain's `index.ts` under a package's `src` (#1624). */
+export function isEntry(path: string): boolean {
+  return /^(?:apps|packages)\/[^/]+\/src\/(?:.*\/)?index\.ts$/.test(path);
 }
 
-/** One row per entry in `today` (path to source text), against the same entry in `base` (#1624); stub. */
+/** The names an entry lists and whether it has a bare `export * from` (#1624); comments are skipped. */
+function exportsOf(source: string): { count: number; broad: boolean } {
+  const text = source.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/(^|[^:])\/\/.*$/gm, "$1");
+  const listed = [...text.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}/gm)].reduce(
+    (sum, [, names]) => sum + (names ?? "").split(",").filter((name) => name.trim()).length,
+    0,
+  );
+  const declared = text.match(
+    /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|interface|type|enum)\s+\w+/gm,
+  );
+  const others = text.match(/^export\s*\*\s*as\s+\w+|^export\s+default\b/gm);
+  return {
+    count: listed + (declared?.length ?? 0) + (others?.length ?? 0),
+    broad: /^export\s*\*\s*from/m.test(text),
+  };
+}
+
+/** One row per entry in `today` (path to source text), against the same entry in `base`, sorted by path (#1624). */
 export function entryRows(
-  _today: ReadonlyMap<string, string>,
-  _base: ReadonlyMap<string, string>,
+  today: ReadonlyMap<string, string>,
+  base: ReadonlyMap<string, string>,
 ): EntryRow[] {
-  return [];
+  return [...today.entries()]
+    .map(([entry, source]) => {
+      const now = exportsOf(source);
+      const before = base.get(entry);
+      return {
+        entry,
+        base: before === undefined ? null : exportsOf(before).count,
+        today: now.count,
+        broad: now.broad,
+      };
+    })
+    .sort((a, b) => (a.entry < b.entry ? -1 : Number(a.entry > b.entry)));
 }
 
-/** A markdown table of the entries with a note for a broad one and for a growth over 20% (#1624); stub. */
-export function formatEntries(_rows: EntryRow[]): string {
-  return "";
+const entryNote = (row: EntryRow): string => {
+  const notes = [];
+  if (row.broad) notes.push("broad (export *)");
+  if (row.base !== null && row.today > row.base * (1 + ENTRY_GROWTH))
+    notes.push(
+      `grew ${row.base === 0 ? "from 0" : `${Math.round(((row.today - row.base) / row.base) * 100)}%`} (over ${ENTRY_GROWTH * 100}%)`,
+    );
+  return notes.join("; ");
+};
+
+/** A markdown table of the entries with a note for a broad one and for a growth over 20% (#1624). */
+export function formatEntries(rows: EntryRow[]): string {
+  return [
+    "| Entry | On main | Today | Note |",
+    "| --- | ---: | ---: | --- |",
+    ...rows.map(
+      (row) => `| ${row.entry} | ${row.base ?? "-"} | ${row.today} | ${entryNote(row)} |`,
+    ),
+  ].join("\n");
 }
