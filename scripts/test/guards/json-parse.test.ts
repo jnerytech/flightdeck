@@ -17,6 +17,7 @@ describe("json-parse (#1609)", () => {
     expect(isScanned("apps/daemon/test/store/db.test.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/text-modules.d.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/kernel/json-text.ts")).toBe(false);
+    expect(isScanned("apps/desktop/src/shared/lib/stored-json.ts")).toBe(false);
     expect(isScanned("scripts/lib/slot.ts")).toBe(false);
     expect(isScanned("apps/desktop/src/styles.css")).toBe(false);
   });
