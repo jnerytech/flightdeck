@@ -1,10 +1,11 @@
 import type { Database } from "bun:sqlite";
 import type { Central, ProjectKeys } from "../central/index.ts";
 import type { Config } from "../config.ts";
-import { LocalEndpoints, type LocalEndpointsOptions, Messaging } from "../messaging/index.ts";
+import { Idle, LocalEndpoints, type LocalEndpointsOptions, Messaging } from "../messaging/index.ts";
 import { type Names, type TrackOptions, trackNames, warmKnown } from "../names/index.ts";
 import { OpenSessionPersonas, type Personas, type Prepare } from "../personas/index.ts";
 import { present } from "../present.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { Teams, type TeamsOptions } from "./teams.ts";
 
 /** What the sessions that work together are built from. */
@@ -25,7 +26,9 @@ export interface TeamsWiringDeps {
 
 /**
  * The sessions that work together (phases 20 and 21, issue #1593): the messages between them, the
- * teams, the personas they open in, and the names they are known by.
+ * teams, the personas they open in, and the names they are known by. Its module (issue #2094)
+ * serves the `messaging` and `personas` groups, sweeps the messages every 5 minutes, and stops the
+ * names, the teams, the idle notices, the messages and the endpoints in that order.
  */
 export async function createTeams({
   db,
@@ -136,5 +139,24 @@ export async function createTeams({
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
-  return { endpoints, messaging, teams, personaSessions, stopNames };
+  const idle = new Idle({ endpoints, messaging, host: config.hostName });
+  let sweep: ReturnType<typeof setInterval> | undefined;
+  const module: DomainModule<"messaging" | "personas"> = {
+    server: {
+      messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
+      personas: serverGroup<"personas">()({ store: personaStore, sessions: personaSessions }),
+    },
+    start: () => {
+      sweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
+    },
+    stop: () => {
+      clearInterval(sweep);
+      stopNames();
+      teams.stop();
+      idle.stop();
+      messaging.stop();
+      endpoints.stop();
+    },
+  };
+  return { modules: [module] as const };
 }
