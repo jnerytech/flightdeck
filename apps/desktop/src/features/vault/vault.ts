@@ -17,13 +17,13 @@ export interface SecretMeta {
   allowedHosts: string[];
 }
 
-/** What a stored or imported secret must look like: the identity and the hosts are required, the rest has a default. */
+/** What a stored or imported secret must look like: identity, tags and hosts are required (they decide who may use it), the rest has a default. */
 export const SecretMetaSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["ssh-key", "password", "token", "env"]),
   description: z.string().catch(""),
-  tags: z.array(z.string()).catch([]),
+  tags: z.array(z.string()),
   createdAt: z.number().catch(0),
   lastUsedAt: z.number().nullable().catch(null),
   allowedHosts: z.array(z.string()),
@@ -52,6 +52,8 @@ export interface VaultOptions {
 }
 
 const LIST_KEY = "flightdeck.vault";
+/** Where the text of a list that held damaged entries waits when a write replaces it (#1609). */
+const ASIDE_KEY = "flightdeck.vault.aside";
 
 /** Phase 16: the vault's list in `storage` and its values in the system keyring. */
 export class Vault {
@@ -64,7 +66,17 @@ export class Vault {
     return readStored(this.platform.storage, LIST_KEY, validItems(SecretMetaSchema), []);
   }
 
+  /** A write drops what `list` left out; keep that text aside once, so a damaged entry is never erased for good. */
+  private keepDamagedAside(): void {
+    const raw = this.platform.storage.getItem(LIST_KEY);
+    if (raw === null) return;
+    const stored = readStored(this.platform.storage, LIST_KEY, z.array(z.unknown()), null);
+    if (stored?.length === this.list().length) return;
+    this.platform.storage.setItem(ASIDE_KEY, raw);
+  }
+
   private save(list: SecretMeta[]): void {
+    this.keepDamagedAside();
     this.platform.storage.setItem(LIST_KEY, JSON.stringify(list));
   }
 

@@ -67,6 +67,10 @@ export class VaultUsageLog {
       .reverse();
   }
 
+  private now(): number {
+    return (this.options.clock ?? Date.now)();
+  }
+
   private append(entry: UsageEntry): UsageEntry {
     const all = readStored(this.platform.storage, LOG_KEY, Stored, []);
     const kept = [...all, entry].slice(-(this.options.limit ?? DEFAULT_LIMIT));
@@ -81,7 +85,7 @@ export class VaultUsageLog {
       hostId: outcome.hostId,
       purpose: outcome.purpose,
       requester: outcome.requester,
-      at: (this.options.clock ?? Date.now)(),
+      at: this.now(),
       kind: outcome.delivered ? "delivered" : "denied",
       detail: outcome.delivered ? "" : outcome.reason,
     });
@@ -94,7 +98,8 @@ export class VaultUsageLog {
       hostId,
       purpose: frame.purpose,
       requester: frame.requester,
-      at: Date.parse(frame.at),
+      // A report whose date is not a date is logged when it arrived, so it never drops out of the log.
+      at: Number.isNaN(Date.parse(frame.at)) ? this.now() : Date.parse(frame.at),
       kind: "used",
       detail: frame.action,
     });
