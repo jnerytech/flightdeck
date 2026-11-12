@@ -19,8 +19,10 @@ async function features(parts: { messaging?: boolean; teams?: boolean; names?: b
   cleanups.push(() => ctx.board.stop());
   const server = startServer({
     manager: ctx.manager,
-    ...(parts.messaging ? { messaging: {} as Messaging } : {}),
-    ...(parts.teams ? { teams: {} as Teams } : {}),
+    messaging: {
+      ...(parts.messaging ? { messages: {} as Messaging } : {}),
+      ...(parts.teams ? { teams: {} as Teams } : {}),
+    },
     ...(parts.names ? { names: {} as Names } : {}),
     hostName: "h",
     bind: "127.0.0.1",

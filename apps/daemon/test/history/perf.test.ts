@@ -179,7 +179,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
       allowedRoots: [root],
       central: hub,
       // Only the directory is read here; the real service lists the same endpoints.
-      messaging: { directory: () => endpoints.list() } as unknown as Messaging,
+      messaging: { messages: { directory: () => endpoints.list() } as unknown as Messaging },
       warmProjectKey: (cwd) => keys.resolve(cwd),
     });
     cleanups.push(() => server.stop());

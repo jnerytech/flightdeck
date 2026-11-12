@@ -5,6 +5,7 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
+import { Markdown } from "@/components/markdown/markdown";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
 import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,6 @@ import { awaitingApproval } from "../../lib/awaiting-approval.ts";
 import { toolLoader } from "../../lib/history-tool.ts";
 import { basename, isInside } from "../../lib/paths.ts";
 import { messageParts } from "../../lib/tool-line.ts";
-import { Markdown } from "../../ui/Markdown.tsx";
 import { useLiveElsewhereGuard } from "../sessions/index.ts";
 
 /** Which transcript to read, and where to open it (a search hit). */

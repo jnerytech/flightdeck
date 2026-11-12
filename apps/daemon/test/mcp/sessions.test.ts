@@ -115,8 +115,7 @@ describe("mcp-sessoes", () => {
     const { manager } = newManager();
     const server = startServer({
       manager,
-      messaging: base.messaging,
-      idle,
+      messaging: { messages: base.messaging, idle },
       hostName: "pc",
       bind: "127.0.0.1",
       port: 0,
