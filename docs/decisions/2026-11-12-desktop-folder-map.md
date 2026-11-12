@@ -31,6 +31,12 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   they are; the depcruise rule `shared-depends-on-no-domain` allows them and nothing else outside
   `shared/` (decision of fd-coordinator, 2026-11-12). `bun run arch` now cruises `apps/desktop/src`, so
   the rule gates the desktop too.
+- Widened by fd-coordinator's ack of #2126 (2026-11-12): `shared/` may also import `i18n/context.tsx`
+  (the translation hook, domain-free) and `hooks/use-in-flight.ts` (the in-flight stage hook), which the
+  feedback and layout primitives need. `components/layout/form.tsx` was a third exception only until the
+  layout move (the field-row context now lives in `shared/layout/field-row-context.ts`, a leaf). The three
+  helpers `lib/list-width.ts`, `lib/use-width.ts` and `lib/scroll-edge.ts` are allowed until the `shared/lib/`
+  move. Each exception is a path in the rule, so it shows in `.dependency-cruiser.cjs`.
 - `components/ui/` **stays**: it is the vendored shadcn folder (`components.json` alias,
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way
@@ -43,12 +49,12 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `approval/` | `features/permissions/` | the approval card, hold button and question form belong to the permission flow; `approval-lines.ts` and `gate-text.tsx` go with it. **theirs** if fd-frontend needs the card for the session view: ask before moving |
 | `assistant/` | `features/assistant/` (new domain, GLOSSARY row) | the wand, model picker and keys; `refusal-text.ts` goes with it |
 | `feedback/` | `shared/feedback/` | **moved**: `action-button`, `busy`, `confirm-dialog`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`. `notices.tsx` stays in `components/feedback/` until the store moves: it reads `AppStore`, so it is not domain-free; it goes to `app/` with the root |
-| `layout/` | `shared/layout/` | primitives with no domain; `app-shell.tsx` and `breadcrumb.tsx` move to `features/shell/` (below) |
-| `markdown/` | `shared/markdown/` | `markdown.tsx` and the lazy `markdown-body.tsx` (the lazy chunk must stay lazy: keep `bundle-reach` green) |
+| `layout/` | `shared/layout/` | **moved** (14 primitives, behind an `index.ts`; the field-row context is a leaf, `field-row-context.ts`, that `shared/feedback` imports directly); `app-shell.tsx` and `breadcrumb.tsx` went to `features/shell/` (below); `view-toggle.tsx` stays in `components/layout/` for now: only the sessions hub and the history list use it, and it reads `lib/hub.ts`, so it follows the sessions rows |
+| `markdown/` | `shared/markdown/` | **moved**: `markdown.tsx` and the lazy `markdown-body.tsx`; the `index.ts` exports only `Markdown` and `preloadMarkdown`, never the body, so the lazy chunk stays lazy (`bundle-reach` green) |
 | `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
 | `session/` | **theirs** (`features/sessions/`) | activity line, message actions, parts, tool rows, finish dialogs |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
-| `shell/` | `features/shell/` (new domain, GLOSSARY row) | account footer, quota bars, scope menu, status bar, top bar; with `app-shell.tsx` and `breadcrumb.tsx` from `layout/` |
+| `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and the shell `lib/` files follow in later PRs |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (the sheet already lives there) |
 | `simple/` | `features/home/` (simple mode) | home, question and task views, settings view; `ui/simple/SimpleApp.tsx` goes with it |
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
@@ -68,7 +74,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
 | `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
-| `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | the first step is **done** (#2099); the second goes with the `markdown/` folder |
+| `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | **moved** (#2099, then the `markdown/` folder) |
 | `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | |
 | `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place |
 | `SessionTabs.tsx` | **theirs** (`features/tabs/`) | |
@@ -103,7 +109,7 @@ prefix. Tests move with their file in the same PR.
 | `quiet*.ts` | `features/needs-you/` (the quiet badge of the board and the needs-you rows) |
 | `away.ts` | `features/needs-you/` |
 | `keep-awake.ts` | `features/hosts/` |
-| `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `list-width.ts`, `use-width.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `scroll-edge.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`; `list-width.ts` and `use-width.ts` to `shared/lib/` if two domains use them) |
+| `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`) |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
 | `deps*.ts` | `features/deps/` |
 | `harness.ts` | `features/harness/` |
@@ -129,7 +135,7 @@ prefix. Tests move with their file in the same PR.
 | `watch-*.ts` | `features/watch/` |
 | `webhook*.ts` | `features/webhook/` |
 | `app-log.ts`, `kernel.ts` | `app/` |
-| `backoff.ts`, `format-bytes.ts`, `paths.ts`, `utils.ts`, `file-language.ts`, `contrast.ts`, `status.ts` | `shared/lib/` |
+| `backoff.ts`, `format-bytes.ts`, `paths.ts`, `utils.ts`, `file-language.ts`, `contrast.ts`, `status.ts`, `list-width.ts`, `use-width.ts`, `scroll-edge.ts` | `shared/lib/` (the last three are used by `shared/layout`, so they are shared; until they move, the shared rule allows those three paths) |
 
 ## Rules for the moves
 

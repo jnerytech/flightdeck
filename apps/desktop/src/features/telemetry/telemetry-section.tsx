@@ -1,10 +1,9 @@
 import type { TelemetryOptInStatus } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
-import { Inline, Stack } from "../../components/layout/stack.tsx";
+import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 

@@ -4,11 +4,11 @@ import { visibleLiterals } from "./lib/i18n-sweep.ts";
 const FEATURES = "apps/desktop/src/features";
 const dirs = [
   "apps/desktop/src/ui",
-  "apps/desktop/src/components/approval",
   "apps/desktop/src/components/feedback",
   "apps/desktop/src/shared/feedback",
+  "apps/desktop/src/shared/layout",
   "apps/desktop/src/components/layout",
-  "apps/desktop/src/components/session",
+  "apps/desktop/src/shared/markdown",
   "apps/desktop/src/shared/status",
   // Screens move into their feature folder (#1597): a domain's folder is swept like the rest.
   ...readdirSync(FEATURES, { withFileTypes: true })

@@ -8,13 +8,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { ApprovalCard } from "@/components/approval/approval-card";
-import { GateText } from "@/components/approval/gate-text";
-import { SplitView } from "@/components/layout/split-view";
-import { Inline, Stack } from "@/components/layout/stack";
-import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
+import { ApprovalCard, GateText } from "@/features/permissions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { EmptyState, Inline, SplitView, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";

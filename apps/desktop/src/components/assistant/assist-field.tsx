@@ -1,6 +1,6 @@
 import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect } from "react";
-import { Stack } from "@/components/layout/stack";
 import type { T } from "@/i18n/index";
+import { Stack } from "@/shared/layout/index.ts";
 import { useWand, type WandBinding } from "./use-wand.ts";
 import { WandButton, WandPanel } from "./wand-controls.tsx";
 

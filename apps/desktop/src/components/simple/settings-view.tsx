@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { FieldRow, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TContext } from "@/i18n/context";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { FieldRow, NativeSelect } from "@/shared/layout/index.ts";
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { ThemeMode } from "../../lib/theme.ts";
 

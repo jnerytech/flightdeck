@@ -1,10 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { Page } from "@/components/layout/page";
-import { SplitView } from "@/components/layout/split-view";
-import { EmptyState, LoadingState } from "@/components/layout/states";
-import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
 import {
@@ -17,12 +13,14 @@ import {
 } from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
+import { EarlierTurns } from "@/features/sessions/earlier-turns";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute, sessionTabOffers } from "@/features/sessions/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
+import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";
@@ -33,6 +31,7 @@ import { QuotaPanel } from "../features/quota/index.ts";
 import { NewSessionForm } from "../features/sessions/new-session-form.tsx";
 import { SessionTabs } from "../features/sessions/session-tabs.tsx";
 import { SessionView } from "../features/sessions/session-view.tsx";
+import { SessionsHub } from "../features/sessions/sessions-hub.tsx";
 import { StartScreen } from "../features/sessions/start-screen.tsx";
 import { SetupPage } from "../features/setup/index.ts";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
@@ -55,7 +54,6 @@ import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { lazyScreen } from "./lazy-screen.ts";
-import { SessionsHub } from "./SessionsHub.tsx";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`

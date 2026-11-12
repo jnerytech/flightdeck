@@ -827,10 +827,10 @@ import { KEY_REGIONS, PAGE_AREA, SINGLE_SCROLL } from "../../lib/layout-guards.t
 
 describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
   const sources = [
-    "components/approval/approval-card.tsx",
+    "features/permissions/approval-card.tsx",
     "ui/Sidebar.tsx",
     "features/board/board-view.tsx",
-    "components/layout/form.tsx",
+    "shared/layout/form.tsx",
   ].map((file) => readFileSync(join(import.meta.dir, "../../../apps/desktop/src", file), "utf8"));
 
   test("each key region is named in the page it belongs to", () => {
@@ -860,7 +860,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
 
   test("each region that scrolls as one is named in the shell (#567)", () => {
     const shell = readFileSync(
-      join(import.meta.dir, "../../../apps/desktop/src/components/layout/app-shell.tsx"),
+      join(import.meta.dir, "../../../apps/desktop/src/features/shell/app-shell.tsx"),
       "utf8",
     );
     for (const slot of SINGLE_SCROLL) {

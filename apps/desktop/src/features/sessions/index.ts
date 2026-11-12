@@ -9,27 +9,6 @@
 
 export { SessionCommandsSlice } from "./commands.ts";
 export { ExternalSessionsSlice } from "./external.ts";
-export {
-  costAsks,
-  cursorMove,
-  filterCount,
-  hasBackgroundHost,
-  hostlessHub,
-  personasOf,
-  refreshSignature,
-  rowOffers,
-  rowSummary,
-  showsStateWord,
-  worktreesOf,
-} from "./hub-derive.ts";
-export {
-  awayHost,
-  hubProjectKeys,
-  projectChoices,
-  projectName,
-  rowsInScope,
-  scopeKeys,
-} from "./hub-scope.ts";
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";

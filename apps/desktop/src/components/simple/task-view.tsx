@@ -5,10 +5,10 @@ import { AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Markdown } from "@/shared/markdown/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { SessionState } from "../../lib/session-state.ts";
 import { lastSummary, pendingQuestion, recentTools, taskState } from "../../lib/simple-task.ts";
-import { Markdown } from "../markdown/markdown.tsx";
 import { QuestionCard } from "./question-card.tsx";
 
 export interface TaskViewHandlers {

@@ -1,17 +1,12 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { memo, useEffect, useState, useSyncExternalStore } from "react";
-import { NativeSelect } from "@/components/layout/form";
-import { Page } from "@/components/layout/page";
-import { Panel } from "@/components/layout/panel";
-import { Toolbar } from "@/components/layout/stack";
-import { EmptyState, LoadingState } from "@/components/layout/states";
-import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RoiPeople } from "@/features/roi/roi-people";
 import { RoiSettingsPanel } from "@/features/roi/roi-settings-panel";
 import { RoiTable } from "@/features/roi/roi-table";
+import { ScopeMenu } from "@/features/shell/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
@@ -19,6 +14,14 @@ import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import {
+  EmptyState,
+  LoadingState,
+  NativeSelect,
+  Page,
+  Panel,
+  Toolbar,
+} from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";

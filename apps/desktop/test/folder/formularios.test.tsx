@@ -1,0 +1,287 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdirSync } from "node:fs";
+import { basename, join } from "node:path";
+import type { HostView } from "../../src/lib/app-store.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+
+registerDom();
+const {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  within,
+  waitFor: rtlWaitFor,
+} = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+
+setDefaultTimeout(30_000);
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
+
+async function setup() {
+  const d = makeDaemon(cleanups);
+  mkdirSync(join(d.root, "alfa", "interna"), { recursive: true });
+  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, {
+    baseDelayMs: 10,
+    maxDelayMs: 20,
+  });
+  cleanups.push(() => store.dispose());
+  render(<App store={store} />);
+  const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
+  await waitFor(() => expect(store.getState().hosts[0]?.hostInfo).not.toBeNull());
+  return { ...d, store, hostId };
+}
+
+const dialog = () => screen.queryByRole("dialog", { name: "Escolher pasta" });
+const inDialog = (name: string | RegExp) =>
+  within(dialog() as HTMLElement).queryByRole("button", { name });
+const shown = (name: string | RegExp) => inDialog(name) !== null;
+async function pressInDialog(name: string | RegExp) {
+  await waitFor(() => expect(shown(name)).toBe(true));
+  await act(async () => {
+    fireEvent.click(inDialog(name) as HTMLElement);
+  });
+}
+/** Browses to `<root>/alfa` and chooses it. */
+async function chooseAlfa(root: string) {
+  await waitFor(() => expect(dialog()).not.toBeNull());
+  await pressInDialog(new RegExp(`^${basename(root)}`));
+  await pressInDialog("alfa");
+  await waitFor(() => expect(shown("interna")).toBe(true));
+  await pressInDialog("Escolher esta pasta");
+}
+
+describe("pasta: o seletor nos formulários", () => {
+  test("Nova sessão: Procurar… fills the folder and the subfolder, and the session starts there", async () => {
+    const { store, hostId, root, manager } = await setup();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await chooseAlfa(root);
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("alfa");
+    fireEvent.change(screen.getByLabelText("Primeiro prompt"), { target: { value: "oi" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Criar sessão" }));
+    });
+    await waitFor(() => expect(manager.list()[0]?.cwd).toBe(join(root, "alfa")));
+  });
+
+  test("Nova sessão: typing the subfolder still works", async () => {
+    const { store, hostId, root, manager } = await setup();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByLabelText("Subpasta")).not.toBeNull());
+    fireEvent.change(screen.getByLabelText("Subpasta"), { target: { value: "alfa" } });
+    fireEvent.change(screen.getByLabelText("Primeiro prompt"), { target: { value: "oi" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Criar sessão" }));
+    });
+    await waitFor(() => expect(manager.list()[0]?.cwd).toBe(join(root, "alfa")));
+  });
+
+  test("Projetos: Procurar… fills the repository path", async () => {
+    const { store, hostId, root } = await setup();
+    await act(async () => {
+      store.router.push({ name: "projects", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await chooseAlfa(root);
+    await waitFor(() =>
+      expect((screen.getByLabelText("Caminho do repositório") as HTMLInputElement).value).toBe(
+        join(root, "alfa"),
+      ),
+    );
+  });
+
+  /** Changes what the app knows about its host, as a daemon of another kind would have said. */
+  const rewrite = async (
+    store: InstanceType<typeof AppStore>,
+    hostId: string,
+    change: (host: HostView) => Partial<HostView>,
+  ) => {
+    const hosts = store.getState().hosts.map((h) => (h.id === hostId ? { ...h, ...change(h) } : h));
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({ hosts });
+    });
+  };
+
+  test("a host that does not announce fs.dirs gets no Procurar… button", async () => {
+    const { store, hostId } = await setup();
+    await rewrite(store, hostId, (h) => ({
+      hostInfo: { ...(h.hostInfo as object), features: [] } as unknown as HostView["hostInfo"],
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByLabelText("Subpasta")).not.toBeNull());
+    expect(screen.queryByRole("button", { name: "Procurar…" })).toBeNull();
+  });
+
+  test("Nova sessão: a folder the host resolved outside its configured roots becomes a root of its own", async () => {
+    const { store, hostId, root, manager } = await setup();
+    // The configured root is a name the host's real folders do not start with (a link, say).
+    await rewrite(store, hostId, (h) => ({
+      info: {
+        ...(h.info as object),
+        allowedRoots: ["/somewhere/else"],
+      } as unknown as HostView["info"],
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await chooseAlfa(root);
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect((screen.getByLabelText("Pasta") as HTMLSelectElement).value).toBe(join(root, "alfa"));
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Primeiro prompt"), { target: { value: "oi" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Criar sessão" }));
+    });
+    await waitFor(() => expect(manager.list()[0]?.cwd).toBe(join(root, "alfa")));
+  });
+
+  test("Nova sessão: when two roots hold the folder, the deepest one is the folder and the rest the subfolder", async () => {
+    const { store, hostId, root } = await setup();
+    await rewrite(store, hostId, (h) => ({
+      info: {
+        ...(h.info as object),
+        allowedRoots: [root, join(root, "alfa")],
+      } as unknown as HostView["info"],
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await waitFor(() => expect(dialog()).not.toBeNull());
+    await pressInDialog(new RegExp(`^${basename(root)}`));
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    await pressInDialog("interna");
+    await pressInDialog("Escolher esta pasta");
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect((screen.getByLabelText("Pasta") as HTMLSelectElement).value).toBe(join(root, "alfa"));
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe("interna");
+  });
+
+  test("Nova sessão: a folder clicked in the picker is the chosen one at once, before its listing arrives", async () => {
+    const { store, hostId, root } = await setup();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await waitFor(() => expect(dialog()).not.toBeNull());
+    await pressInDialog(new RegExp(`^${basename(root)}`));
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    // From here on the host answers fs.dirs only when the test lets it.
+    const request = store.hostRequest.bind(store);
+    const held: Array<() => void> = [];
+    store.hostRequest = (async (id: string, type: never, payload: never) => {
+      if ((type as string) === "fs.dirs") await new Promise<void>((release) => held.push(release));
+      return request(id, type, payload);
+    }) as typeof store.hostRequest;
+    await pressInDialog("interna");
+    expect(held).toHaveLength(1);
+    const current = within(dialog() as HTMLElement).queryByText("interna", {
+      selector: "[aria-current='location']",
+    });
+    expect(current).not.toBeNull();
+    await pressInDialog("Escolher esta pasta");
+    await waitFor(() => expect(dialog()).toBeNull());
+    expect((screen.getByLabelText("Subpasta") as HTMLInputElement).value).toBe(
+      join("alfa", "interna"),
+    );
+    for (const release of held) release();
+  });
+
+  test("Nova sessão: a late listing of a folder left behind does not take the picker back to it", async () => {
+    const { store, hostId, root } = await setup();
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+    });
+    await waitFor(() => expect(dialog()).not.toBeNull());
+    await pressInDialog(new RegExp(`^${basename(root)}`));
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    // The answer for "interna" is held; "alfa" is asked for again and answered first.
+    const request = store.hostRequest.bind(store);
+    let release = () => {};
+    let answered: () => void = () => {};
+    const late = new Promise<void>((resolve) => {
+      answered = resolve;
+    });
+    store.hostRequest = (async (id: string, type: never, payload: never) => {
+      const path = (payload as { path?: string }).path ?? "";
+      const held = (type as string) === "fs.dirs" && path.endsWith("interna");
+      if (held)
+        await new Promise<void>((resume) => {
+          release = resume;
+        });
+      const result = await request(id, type, payload);
+      if (held) answered();
+      return result;
+    }) as typeof store.hostRequest;
+    await pressInDialog("interna");
+    await pressInDialog("alfa");
+    await waitFor(() => expect(shown("interna")).toBe(true));
+    await act(async () => {
+      release();
+      await late;
+    });
+    const crumb = (name: string) =>
+      within(dialog() as HTMLElement).queryByText(name, { selector: "[aria-current='location']" });
+    expect(crumb("alfa")).not.toBeNull();
+    expect(crumb("interna")).toBeNull();
+  });
+
+  test("Cancelar closes the picker of Nova sessão and of Projetos without changing the form", async () => {
+    const { store, hostId } = await setup();
+    for (const route of [
+      { name: "new-session", host: hostId },
+      { name: "projects", host: hostId },
+    ] as const) {
+      await act(async () => {
+        store.router.push(route);
+      });
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Procurar…" })).not.toBeNull(),
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Procurar…" }));
+      });
+      await pressInDialog("Cancelar");
+      await waitFor(() => expect(dialog()).toBeNull());
+    }
+  });
+});

@@ -3,7 +3,7 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { cleanup, render } = await import("@testing-library/react");
-const { ListRow } = await import("../src/components/layout/list-row.tsx");
+const { ListRow } = await import("../src/shared/layout/list-row.tsx");
 
 afterEach(cleanup);
 

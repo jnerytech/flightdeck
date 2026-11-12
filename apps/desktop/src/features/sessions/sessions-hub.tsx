@@ -1,0 +1,867 @@
+import type { SessionMeta } from "@flightdeck/protocol";
+import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { ViewToggle } from "@/components/layout/view-toggle";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AssignMenu } from "@/features/clients/assign-menu.tsx";
+import { ClientChip } from "@/features/clients/client-chip.tsx";
+import { HostsBanner } from "@/features/hosts/index.ts";
+import { WorktreeChip } from "@/features/projects/index.ts";
+import { ScopeMenu } from "@/features/shell/index.ts";
+import { TeleportMove } from "@/features/teleport/index.ts";
+import { useProjectLabels } from "@/hooks/use-project-labels";
+import { cn } from "@/lib/utils";
+import { CardGrid, EmptyState, NativeSelect, Page, Toolbar } from "@/shared/layout/index.ts";
+import { StatusDot } from "@/shared/status/index.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { ALL_CLIENTS } from "../../lib/client-scope.ts";
+import { UNASSIGNED } from "../../lib/clients.ts";
+import { usd } from "../../lib/costs.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
+import type { Density } from "../../lib/density.ts";
+import {
+  activeCount,
+  capGroups,
+  HUB_ROW_CAP,
+  type HubFilter,
+  type HubGroupView,
+  type HubRow,
+  type HubView,
+  hubGroups,
+  hubRows,
+  hubView,
+  isSearching,
+  rowStatus,
+  sessionLineText,
+  sharedMeta,
+} from "../../lib/hub.ts";
+import { typing } from "../../lib/keys.ts";
+import { newSessionHost } from "../../lib/new-session-host.ts";
+import { activeWorktreeFilter } from "../../lib/project-tree.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { InlineNotice } from "../../shared/feedback/index.ts";
+import { AsleepMark } from "./asleep-mark";
+import { CacheTimer } from "./cache-timer";
+import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
+import {
+  costAsks,
+  cursorMove,
+  filterCount,
+  hasBackgroundHost,
+  hostlessHub,
+  personasOf,
+  refreshSignature,
+  rowOffers,
+  rowSummary,
+  showsStateWord,
+  worktreesOf,
+} from "./hub-derive.ts";
+import {
+  awayHost,
+  hubProjectKeys,
+  projectChoices,
+  projectName,
+  rowsInScope,
+  scopeKeys,
+} from "./hub-scope.ts";
+import { RuntimeBadge } from "./runtime-badge";
+import { SessionCard, STATE_TONES } from "./session-card";
+
+/** How often the hub asks the hosts about their background sessions. */
+const BG_REFRESH_MS = 10_000;
+
+/** The key of a row's state: an asleep session is its own word, though it is idle underneath. */
+const stateKey = (row: HubRow) => (row.asleep ? "asleep" : row.state);
+
+/** Native selects: the filters stay light, and keyboard and screen readers work as they are. */
+
+/**
+ * The main screen: every session of every online host (managed, opened in the terminal, or from
+ * the history), grouped by project; the ones that need you first, then pinned, then the latest
+ * activity. Filters are kept in the app; each row has its actions in a menu.
+ */
+export function SessionsHub(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    onOpen(row: HubRow): void;
+    /** Whether the row is the session open on the right. */
+    isOpen(row: HubRow): boolean;
+    density: Density;
+    /** Only this project's sessions, with a chip that clears it (from the project page). */
+    project?: { hostId: string; projectKey: string; name: string };
+    /** Only this host's sessions (its name), set by the route: it applies the host filter once. */
+    host?: string;
+  }>,
+) {
+  const { store, state } = props;
+  const { t } = store.i18n;
+  const [filter, setFilter] = useState<HubFilter>(() => store.viewPrefs.hubFilter());
+  const [view, setView] = useState<HubView>(() => store.viewPrefs.hubView());
+  // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
+  // a session changes the route but not the list); a different project from the route replaces it.
+  const [only, setOnly] = useState(props.project ?? null);
+  const askedKey = props.project ? `${props.project.hostId}/${props.project.projectKey}` : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different project asked for by the route applies
+  useEffect(() => {
+    if (props.project) setOnly(props.project);
+  }, [askedKey]);
+  // The data scope (#126): the hub lists the sessions of its hosts. A host asked for by the route
+  // ("See all" on its page, a name) wins for this visit and never rewrites the scope (#207); any
+  // pick in the Data from menu ends the visit. Showing every host from a visit widens the visit.
+  const kept = useSyncExternalStore(store.dataScope.subscribe, () => store.dataScope.value);
+  const [visit, setVisit] = useState(props.host);
+  const [visitAll, setVisitAll] = useState(false);
+  useEffect(() => {
+    if (props.host === undefined) return;
+    setVisit(props.host);
+    setVisitAll(false);
+  }, [props.host]);
+  useEffect(
+    () =>
+      store.dataScope.subscribe(() => {
+        setVisit(undefined);
+        setVisitAll(false);
+      }),
+    [store],
+  );
+  const visiting = visit === undefined ? undefined : state.hosts.find((h) => h.name === visit);
+  let hostScope: DataScope = activeScope(kept, state.hosts, state.hostsLoaded);
+  if (visitAll) hostScope = ALL_SCOPE;
+  else if (visiting) hostScope = { kind: "host", hostId: visiting.id };
+  // A project scope (#126 slice 4) shows that project's sessions, on every host it is on.
+  const { host: scoped, project: scopedProject } = scopeKeys(hostScope);
+  const away = awayHost(state.hosts, hostScope);
+  const [renaming, setRenaming] = useState<HubRow | null>(null);
+  /** Issue #100: the session being moved to another host (the preview's dialog). */
+  const [moving, setMoving] = useState<HubRow | null>(null);
+  const canTeleport = (hostId: string) =>
+    hasFeature(state.hosts.find((h) => h.id === hostId)?.hostInfo?.features, "teleport", false);
+  const [name, setName] = useState("");
+  // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
+  // keeps failing to connect changes status on every attempt: only being online counts.
+  const signature = refreshSignature(state.hosts);
+  useEffect(() => {
+    if (signature) void store.refreshHub();
+  }, [store, signature]);
+
+  // Background sessions change state on their own (a permission asked, a turn done): while the
+  // hub is open and a host has them, it asks again every BG_REFRESH_MS.
+  const withBackground = hasBackgroundHost(state.hosts);
+  useEffect(() => {
+    if (!withBackground) return;
+    let stopped = false;
+    let cancel: (() => void) | undefined;
+    const schedule = () => {
+      cancel = store.later(() => {
+        void store.refreshHub().then(() => {
+          if (!stopped) schedule();
+        });
+      }, BG_REFRESH_MS);
+    };
+    schedule();
+    return () => {
+      stopped = true;
+      cancel?.();
+    };
+  }, [store, withBackground]);
+
+  // The branch picked in the sidebar tree, when it still points at a checkout that is there.
+  const picked = activeWorktreeFilter(state);
+  const pickedProject = picked
+    ? state.projects[picked.hostId]?.find((p) => p.id === picked.projectId)
+    : undefined;
+  const worktrees = useMemo(() => worktreesOf(state.cards, picked), [state.cards, picked]);
+  // Only what the rows are made of recomputes them (a typing indicator or an error does not).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
+  const allRows = useMemo(
+    () =>
+      store.clientScope.get().filter(hubRows(state, t), state.clientSelection, (r) => r.projectKey),
+    [
+      store,
+      state.hosts,
+      state.hub,
+      state.meta,
+      state.externals,
+      state.names,
+      state.background,
+      state.personas,
+      t,
+      state.clientList,
+      state.clientOverrides,
+      state.clientSelection,
+    ],
+  );
+  // The hub's projects, for the Projects group of the scope menu (as Home and Costs offer theirs).
+  const projectKeys = useMemo(
+    () => hubProjectKeys(allRows, scopedProject),
+    [allRows, scopedProject],
+  );
+  const projectNames = useProjectLabels(store, projectKeys);
+  const projects = useMemo(
+    () => projectChoices(projectKeys, projectNames),
+    [projectKeys, projectNames],
+  );
+  const rows = useMemo(
+    () =>
+      rowsInScope(allRows, {
+        host: scoped,
+        project: scopedProject,
+        only,
+        picked,
+        pickedProject,
+        worktrees,
+      }),
+    [allRows, scoped, scopedProject, only, picked, pickedProject, worktrees],
+  );
+  const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
+  /** How many rows are drawn: the cap, and one more cap for each "show more". */
+  const [limit, setLimit] = useState(HUB_ROW_CAP);
+  // Each project: open when it has live sessions (or a search is on), its history behind a count.
+  const [openState, setOpenState] = useState<Record<string, boolean | undefined>>(() =>
+    store.viewPrefs.hubOpen(),
+  );
+  /** What the person opened or folded is remembered, per project. */
+  const setOpen = (next: Record<string, boolean | undefined>) => {
+    setOpenState(next);
+    store.viewPrefs.saveHubOpen(next);
+  };
+  const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
+  // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
+  const searching = isSearching(filter);
+  const views = useMemo(
+    () => hubView(allGroups, openState, earlierOpen, searching),
+    [allGroups, openState, earlierOpen, searching],
+  );
+  const { groups, hidden } = useMemo(
+    () =>
+      capGroups(
+        views.map((v) => ({ ...v.group, rows: v.rows })),
+        limit,
+      ),
+    [views, limit],
+  );
+  const viewOf = (key: string): HubGroupView | undefined => views.find((v) => v.group.key === key);
+  const scope = store.clientScope.get();
+  // The personas the sessions run in: the Persona filter offers only those.
+  const personas = personasOf(rows);
+  /** The rows as listed, top to bottom: what J and K walk. */
+  const listed = groups.flatMap((g) => g.rows);
+  /** The row the keyboard is on (-1: none yet). */
+  const [cursor, setCursor] = useState(-1);
+  // J and K move the cursor, Enter opens the row under it (a focused button keeps its own Enter).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+      const moved = cursorMove(e.key, cursor, listed.length);
+      if (moved !== null) setCursor(moved);
+      else if (
+        e.key === "Enter" &&
+        listed[cursor] &&
+        (e.target as HTMLElement).tagName !== "BUTTON"
+      ) {
+        props.onOpen(listed[cursor] as HubRow);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  /** Estimated cost of each row's session, by row key (hosts with costs, phase 8). */
+  const [costs, setCosts] = useState<Record<string, number>>({});
+  const asked = JSON.stringify(costAsks(state.hosts, rows));
+  useEffect(() => {
+    const byHost = JSON.parse(asked) as Array<[string, string[]]>;
+    void Promise.all(
+      byHost.map(async ([hostId, ids]) => {
+        const result = await store.hostCommand(hostId, "costs.sessions", {
+          claudeSessionIds: ids.slice(0, 500),
+        });
+        return Object.entries(result?.costs ?? {}).map(([id, cost]) => [`${hostId}/${id}`, cost]);
+      }),
+    ).then((all) => setCosts(Object.fromEntries(all.flat())));
+  }, [store, asked]);
+  const set = (patch: Partial<HubFilter>) => {
+    const next = { ...filter, ...patch };
+    setFilter(next);
+    store.viewPrefs.saveHubFilter(next);
+  };
+  const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
+    void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
+
+  // The row menu reads the mutes: a change of them draws it again.
+  useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);
+  /** The key notifications use for this session: the host's own id, else the Claude one. */
+  const sessionKeyOf = (row: HubRow) => `${row.hostId}/${row.sessionId ?? row.claudeSessionId}`;
+  const isMuted = (row: HubRow) =>
+    store.notifyPrefs.value.mutedSessions.includes(sessionKeyOf(row));
+  /** The row's actions menu, the same in a line and on a card. */
+  const rowActions = (row: HubRow) => {
+    if (!row.claudeSessionId) return null;
+    const offers = rowOffers(row, {
+      teleportPreview: state.settings.teleportPreview,
+      canTeleport: () => canTeleport(row.hostId),
+    });
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("hub.actions", { title: row.title })}
+            className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => {
+              store.hostTabs.openNextInNewTab();
+              props.onOpen(row);
+            }}
+          >
+            {t("tabs.openInNew")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              setRenaming(row);
+              setName(row.title);
+            }}
+          >
+            {t("hub.rename")}
+          </DropdownMenuItem>
+          {offers.sleep && (
+            <DropdownMenuItem
+              onSelect={() => void store.sleepSession(row.hostId, row.sessionId as string)}
+            >
+              {t("hub.sleepNow")}
+            </DropdownMenuItem>
+          )}
+          {offers.teleport && (
+            <DropdownMenuItem onSelect={() => setMoving(row)}>
+              {t("teleportUi.menu")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
+            {row.pinned ? t("hub.unpin") : t("hub.pin")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => store.notifyPrefs.muteSession(sessionKeyOf(row), !isMuted(row))}
+          >
+            {isMuted(row) ? t("notifyPrefs.unmuteSession") : t("notifyPrefs.mutedLabel")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() =>
+              store.notifyPrefs.snooze(sessionKeyOf(row), store.now() + 3_600_000, store.now())
+            }
+          >
+            {t("notifyPrefs.snooze")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => meta(row, { archived: !row.archived })}>
+            {row.archived ? t("hub.unarchive") : t("hub.archive")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() =>
+              void store.copyText(`flightdeckd claude --resume ${row.claudeSessionId}`)
+            }
+          >
+            {t("hub.copyCommand")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
+  /** A card's cost, when its host reported one. */
+  /** The prompt cache countdown: only an idle session that says since when it has been idle. */
+  const cacheOf = (row: HubRow) =>
+    row.state === "idle" && row.summary?.state === "idle" ? (
+      <CacheTimer store={store} since={row.summary.since} />
+    ) : null;
+  const cardCost = (row: HubRow) => {
+    const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
+    return {
+      costLabel: t("hub.cost", { title: row.title }),
+      ...(cost === undefined ? {} : { cost: usd(cost, t.lang) }),
+    };
+  };
+  const active = filterCount(filter);
+  const starter = newSessionHost(state.hosts, state.selected);
+  const hostless = hostlessHub(state.hosts, rows.length);
+  const toolbar = (
+    <Toolbar label={t("hub.filters")}>
+      {state.hostsLoaded && (state.hosts.length > 1 || scopedProject !== "") && (
+        <ScopeMenu store={store} hosts={state.hosts} projects={projects} scope={hostScope} />
+      )}
+      <ViewToggle
+        view={view}
+        label={t("hub.view")}
+        listLabel={t("hub.viewList")}
+        cardsLabel={t("hub.viewCards")}
+        onChange={(next) => {
+          setView(next);
+          store.viewPrefs.saveHubView(next);
+        }}
+      />
+      <Input
+        aria-label={t("hub.filterLabel")}
+        placeholder={t("hub.filterPlaceholder")}
+        value={filter.text}
+        onChange={(e) => set({ text: e.target.value })}
+        className="h-8 min-w-0 flex-1 text-xs"
+      />
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1">
+            <ListFilter aria-hidden="true" />
+            {t("hub.filters")}
+            {active > 0 && (
+              <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
+                {active}
+              </Badge>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="flex w-64 flex-col gap-2">
+          <NativeSelect
+            compact
+            aria-label={t("hub.origin")}
+            value={filter.origin}
+            onChange={(e) => set({ origin: e.target.value as HubFilter["origin"] })}
+          >
+            <option value="">{t("hub.allOrigins")}</option>
+            <option value="flightdeck">{t("hub.origins.flightdeck")}</option>
+            <option value="terminal">{t("hub.origins.terminal")}</option>
+            <option value="history">{t("hub.origins.history")}</option>
+            <option value="background">{t("hub.origins.background")}</option>
+          </NativeSelect>
+          <NativeSelect
+            compact
+            aria-label={t("hub.state")}
+            value={filter.state}
+            onChange={(e) => set({ state: e.target.value as HubFilter["state"] })}
+          >
+            <option value="">{t("hub.allStates")}</option>
+            <option value="running">{t("hub.states.running")}</option>
+            <option value="needs_you">{t("hub.states.needs_you")}</option>
+            <option value="idle">{t("hub.states.idle")}</option>
+            <option value="ended">{t("hub.states.ended")}</option>
+            <option value="failed">{t("hub.states.failed")}</option>
+          </NativeSelect>
+          {personas.length > 0 && (
+            <NativeSelect
+              compact
+              aria-label={t("hub.persona")}
+              value={filter.persona}
+              onChange={(e) => set({ persona: e.target.value })}
+            >
+              <option value="">{t("hub.allPersonas")}</option>
+              {personas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={filter.pinnedOnly}
+            onClick={() => set({ pinnedOnly: !filter.pinnedOnly })}
+          >
+            {t("hub.pinnedOnly")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={filter.showArchived}
+            onClick={() => set({ showArchived: !filter.showArchived })}
+          >
+            {t("hub.showArchived")}
+          </Button>
+        </PopoverContent>
+      </Popover>
+    </Toolbar>
+  );
+
+  return (
+    <Page
+      title={t("sidebar.sessions")}
+      toolbar={toolbar}
+      actions={
+        starter && (
+          <Button
+            size="sm"
+            onClick={() => {
+              store.select(starter.id, null);
+              store.router.push({ name: "new-session", host: starter.id });
+            }}
+          >
+            {t("sidebar.newSession")}
+          </Button>
+        )
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <HostsBanner hosts={state.hosts} t={store.i18n.t} />
+        {away && (
+          <InlineNotice tone="info">
+            <span>{t(awayKey(away.status, "sessions"), { host: away.name })} </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (visiting ? setVisitAll(true) : store.dataScope.set(ALL_SCOPE))}
+            >
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
+        {/* A project picked on Home or Costs can have no session here: the list says so (#126). */}
+        {!hostless && scopedProject && rows.length === 0 && (
+          <InlineNotice tone="info">
+            <span>
+              {t("scope.projectNoSessions", {
+                project: projectName(scopedProject, projectNames),
+              })}{" "}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => store.dataScope.set(ALL_SCOPE)}>
+              {t("scope.showAll")}
+            </Button>
+          </InlineNotice>
+        )}
+        {hostless ? (
+          <EmptyState
+            icon={Server}
+            title={state.hosts.length === 0 ? t("hub.noHost") : t("hub.noOnlineHost")}
+            action={
+              <Button onClick={() => store.router.push({ name: "add-host" })}>
+                {t("hub.addHost")}
+              </Button>
+            }
+          />
+        ) : (
+          <FoldAll
+            expandLabel={t("hub.expandAll")}
+            collapseLabel={t("hub.collapseAll")}
+            onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
+            onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
+          />
+        )}
+        {only && (
+          <div className="filter-chip self-start rounded-full border bg-muted/40 text-xs">
+            <span>{t("hub.projectFilter", { name: only.name })}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              aria-label={t("hub.clearProjectFilter")}
+              onClick={() => setOnly(null)}
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </div>
+        )}
+        {picked && (
+          <WorktreeChip filter={picked} t={t} onClear={() => store.setWorktreeFilter(null)} />
+        )}
+        {moving?.sessionId && (
+          <TeleportMove
+            store={store}
+            hostId={moving.hostId}
+            sessionId={moving.sessionId}
+            onClose={() => setMoving(null)}
+          />
+        )}
+        {renaming && (
+          <div className="flex items-center gap-2">
+            <Input
+              aria-label={t("hub.newName")}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-64"
+            />
+            <Button
+              onClick={() => {
+                meta(renaming, { name: name.trim() || null });
+                setRenaming(null);
+              }}
+            >
+              {t("hub.saveName")}
+            </Button>
+          </div>
+        )}
+        {groups.map((group) => {
+          const shared = sharedMeta(group.rows);
+          const clientChip = scope.chipOf(group.key);
+          const groupView = viewOf(group.key);
+          // Two projects with one name tell themselves apart by where they are.
+          const label = group.hint ? `${group.name} (${group.hint})` : group.name;
+          // Pinned rows stay in the live list after they end or fail; they are not active.
+          const liveCount = activeCount(groupView?.live ?? []);
+          // The hosts the project's sessions run on, each one a link to the host page.
+          const hostChips = [
+            ...new Map((groupView?.group.rows ?? group.rows).map((r) => [r.hostId, r.hostName])),
+          ].map(([id, name]) => ({ id, name }));
+          return (
+            <section
+              key={group.key}
+              aria-label={t("hub.project", { name: label })}
+              className="flex flex-col gap-1"
+            >
+              <ProjectHeader
+                name={group.name}
+                expanded={groupView?.expanded ?? true}
+                toggleLabel={t("hub.toggleProject", { name: label })}
+                onToggle={() =>
+                  setOpen({ ...openState, [group.foldKey]: !(groupView?.expanded ?? false) })
+                }
+              >
+                {clientChip && state.clientSelection === ALL_CLIENTS && (
+                  <ClientChip name={clientChip.name} color={clientChip.color} />
+                )}
+                {scope.active && scope.clientOf(group.key) === UNASSIGNED && (
+                  <AssignMenu
+                    store={store}
+                    state={state}
+                    projectKey={group.key}
+                    name={group.name}
+                  />
+                )}
+                {group.hint && (
+                  <span data-slot="group-hint" className="min-w-0 truncate text-muted-foreground">
+                    {group.hint}
+                  </span>
+                )}
+                <CountChip
+                  live={liveCount}
+                  total={groupView?.total ?? group.rows.length}
+                  label={t("hub.countChip", {
+                    live: liveCount,
+                    total: groupView?.total ?? group.rows.length,
+                  })}
+                  text={t("hub.countShort", {
+                    live: liveCount,
+                    total: groupView?.total ?? group.rows.length,
+                  })}
+                />
+                {hostChips.map((chip) => (
+                  <HostChip
+                    key={chip.id}
+                    name={chip.name}
+                    label={t("hub.openHost", { name: chip.name })}
+                    onOpen={() => store.router.push({ name: "host", host: chip.id })}
+                  />
+                ))}
+                {/* A terminal session says so on its own row, as a chip (#583). */}
+                {shared.origin && shared.origin !== "terminal" && (
+                  <span
+                    data-slot="group-meta"
+                    className="min-w-0 truncate text-muted-foreground/80"
+                  >
+                    {t(`hub.originTags.${shared.origin}` as Key)}
+                  </span>
+                )}
+              </ProjectHeader>
+              {/* The rows sit under the folder icon, the footer with them (#588). */}
+              <div data-slot="group-body" className="group-body">
+                {view === "cards" ? (
+                  <CardGrid>
+                    {group.rows.map((row) => (
+                      <SessionCard
+                        key={row.key}
+                        title={row.title}
+                        project={group.name}
+                        host={row.hostName}
+                        stateLabel={t(`hub.stateDots.${stateKey(row)}` as Key)}
+                        tone={STATE_TONES[row.state]}
+                        line={sessionLineText(row.summary, store.now(), t)}
+                        {...cardCost(row)}
+                        persona={row.persona?.name ?? null}
+                        asleep={row.asleep ? t("hub.asleep") : null}
+                        cache={cacheOf(row)}
+                        runtime={row.runtime ? t("session.runtimeOpenCode") : null}
+                        current={props.isOpen(row)}
+                        active={listed[cursor]?.key === row.key}
+                        onOpen={() => {
+                          setCursor(listed.findIndex((r) => r.key === row.key));
+                          props.onOpen(row);
+                        }}
+                        actions={rowActions(row)}
+                      />
+                    ))}
+                  </CardGrid>
+                ) : (
+                  <ul className="flex flex-col">
+                    {group.rows.map((row) => {
+                      const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
+                      const line = sessionLineText(row.summary, store.now(), t);
+                      const said = rowStatus(row, store.now(), t);
+                      // #1132: the row's state in words. A working or waiting row in the compact
+                      // list shows the word where its time was (the time stays in the tooltip):
+                      // the row has no room for one more item. An idle or past row keeps its time,
+                      // which says more there. The summary carries the word and its detail.
+                      const showWord = showsStateWord(props.density, row);
+                      const summaryText = rowSummary(said, line);
+                      // What the whole group shares is in its header; the row keeps what differs.
+                      const rowMeta = [
+                        shared.origin === null && row.origin !== "terminal"
+                          ? t(`hub.originTags.${row.origin}` as Key)
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+                      return (
+                        <li
+                          key={row.key}
+                          aria-label={row.title}
+                          aria-current={props.isOpen(row) ? "true" : undefined}
+                          data-active={listed[cursor]?.key === row.key}
+                          className={cn(
+                            "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
+                            props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
+                          )}
+                        >
+                          <StatusDot
+                            tone={STATE_TONES[row.state]}
+                            label={t(`hub.stateDots.${stateKey(row)}` as Key)}
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCursor(listed.findIndex((r) => r.key === row.key));
+                                  props.onOpen(row);
+                                }}
+                                className="row-title min-w-0 flex-1 truncate text-left font-medium text-sm"
+                              >
+                                {row.title}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{row.title}</TooltipContent>
+                          </Tooltip>
+                          {shared.hostName === null && (
+                            <HostChip
+                              name={row.hostName}
+                              label={t("hub.openHost", { name: row.hostName })}
+                              onOpen={() => store.router.push({ name: "host", host: row.hostId })}
+                            />
+                          )}
+                          {rowMeta && (
+                            <span
+                              data-slot="row-meta"
+                              className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline"
+                            >
+                              {rowMeta}
+                            </span>
+                          )}
+                          {row.persona && (
+                            <span className="shrink-0 rounded bg-muted px-1 text-xs">
+                              {row.persona.name}
+                            </span>
+                          )}
+                          {row.asleep && <AsleepMark label={t("hub.asleep")} />}
+                          {row.origin === "terminal" && (
+                            <RuntimeBadge slot="origin-chip" label={t("hub.originTags.terminal")} />
+                          )}
+                          {row.runtime && <RuntimeBadge label={t("session.runtimeOpenCode")} />}
+                          {row.controllable && (
+                            <>
+                              <Radio
+                                aria-hidden="true"
+                                className="size-3 shrink-0 text-muted-foreground"
+                              />
+                              <span className="sr-only">{t("hub.controllable")}</span>
+                            </>
+                          )}
+                          {cost !== undefined && (
+                            <output
+                              aria-label={t("hub.cost", { title: row.title })}
+                              className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                            >
+                              {usd(cost, t.lang)}
+                            </output>
+                          )}
+                          {cacheOf(row)}
+                          {showWord ? (
+                            <span
+                              data-slot="row-word"
+                              title={[
+                                said.word,
+                                row.lastActivity && store.formatDateTime(row.lastActivity),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                              className="row-word"
+                            >
+                              {said.word}
+                            </span>
+                          ) : (
+                            row.lastActivity && (
+                              <time
+                                dateTime={new Date(row.lastActivity).toISOString()}
+                                title={store.formatDateTime(row.lastActivity)}
+                                className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                              >
+                                {store.formatWhen(row.lastActivity)}
+                              </time>
+                            )
+                          )}
+                          {rowActions(row)}
+                          <span
+                            data-slot="summary"
+                            className={cn(
+                              "truncate text-muted-foreground text-xs",
+                              props.density === "compact" ? "sr-only" : "basis-full pl-4",
+                            )}
+                          >
+                            {summaryText}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {groupView?.expanded && !searching && groupView.earlier.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-start text-muted-foreground text-xs"
+                    aria-expanded={groupView.earlierShown}
+                    onClick={() =>
+                      setEarlierOpen({ ...earlierOpen, [group.foldKey]: !groupView.earlierShown })
+                    }
+                  >
+                    {groupView.earlier.length === 1
+                      ? t("hub.earlierOne")
+                      : t("hub.earlier", { n: groupView.earlier.length })}
+                  </Button>
+                )}
+              </div>
+            </section>
+          );
+        })}
+        {hidden > 0 && (
+          <Button
+            variant="outline"
+            className="self-center"
+            onClick={() => setLimit(limit + HUB_ROW_CAP)}
+          >
+            {t("hub.showMore", { n: Math.min(hidden, HUB_ROW_CAP) })}
+          </Button>
+        )}
+      </div>
+    </Page>
+  );
+}

@@ -1,4 +1,4 @@
-import { Inline } from "@/components/layout/stack";
+import { Inline } from "@/shared/layout/index.ts";
 import type { ClientColor } from "../../lib/clients.ts";
 import { ClientDot } from "./client-dot";
 

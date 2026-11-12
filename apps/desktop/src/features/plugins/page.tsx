@@ -1,10 +1,5 @@
 import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
 import { memo, useCallback, useEffect, useState } from "react";
-import { Field, Form } from "@/components/layout/form";
-import { Page } from "@/components/layout/page";
-import { Panel } from "@/components/layout/panel";
-import { Inline, Stack } from "@/components/layout/stack";
-import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +8,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { AppDialogContent, ConfirmDialog } from "@/shared/feedback/index.ts";
+import {
+  EmptyState,
+  Field,
+  Form,
+  Inline,
+  LoadingState,
+  Page,
+  Panel,
+  Stack,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/index.ts";

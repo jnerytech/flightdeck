@@ -1,7 +1,7 @@
 import type { PlainInfo } from "@flightdeck/protocol";
 import type { KeyboardEvent } from "react";
-import { HoldButton } from "@/components/approval/hold-button";
 import { Button } from "@/components/ui/button";
+import { HoldButton } from "@/features/permissions/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
 

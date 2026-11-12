@@ -31,11 +31,11 @@ const ROOT = resolve(import.meta.dir, "../../..");
 /** Every screen and component with text: all of it comes from the dictionary. */
 const SOURCES = [
   "src/ui",
-  "src/components/approval",
   "src/components/feedback",
   "src/shared/feedback",
+  "src/shared/layout",
   "src/components/layout",
-  "src/components/session",
+  "src/shared/markdown",
   "src/shared/status",
 ]
   .flatMap(

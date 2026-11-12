@@ -8,8 +8,8 @@ registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ActionButton } = await import("../src/shared/feedback/index.ts");
-const { FormActions } = await import("../src/components/layout/form.tsx");
-const { LoadingState } = await import("../src/components/layout/states.tsx");
+const { FormActions } = await import("../src/shared/layout/form.tsx");
+const { LoadingState } = await import("../src/shared/layout/states.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 afterEach(cleanup);

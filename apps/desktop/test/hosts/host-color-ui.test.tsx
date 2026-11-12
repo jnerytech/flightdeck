@@ -11,7 +11,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
-const { TopBarHost } = await import("../../src/components/shell/top-bar.tsx");
+const { TopBarHost } = await import("../../src/features/shell/top-bar.tsx");
 const { TabOverflow } = await import("../../src/components/tabs/tab-overflow.tsx");
 
 setDefaultTimeout(30_000);

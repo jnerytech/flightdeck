@@ -1,10 +1,8 @@
 import { useEffect, useReducer, useState } from "react";
-import { NativeSelect } from "@/components/layout/form";
-import { Page } from "@/components/layout/page";
-import { EmptyState } from "@/components/layout/states";
 import { Input } from "@/components/ui/input";
 import { useBoardTransition } from "@/hooks/use-board-transition";
 import { useStoreSlice } from "@/lib/use-store";
+import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import {
   ACTIVITY_COLUMNS,

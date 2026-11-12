@@ -1,7 +1,7 @@
 import { isPreviewUrl } from "@flightdeck/protocol";
-import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /**

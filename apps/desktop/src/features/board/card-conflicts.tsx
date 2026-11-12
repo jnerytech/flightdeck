@@ -1,8 +1,8 @@
 import type { Card } from "@flightdeck/protocol";
 import { useId } from "react";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { Stack } from "@/shared/layout/index.ts";
 
 /**
  * The cards that change the same files as this one, and the files they share (#1405). Each title

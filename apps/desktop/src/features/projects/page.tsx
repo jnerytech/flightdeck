@@ -1,16 +1,13 @@
 import type { BoardColumn, Project, ProjectListResult, PrProviderKind } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { NativeSelect } from "@/components/layout/form";
-import { Page } from "@/components/layout/page";
-import { Panel } from "@/components/layout/panel";
-import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PersonaPicker } from "@/features/personas/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { EmptyState, LoadingState, NativeSelect, Page, Panel } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/index.ts";

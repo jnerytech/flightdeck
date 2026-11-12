@@ -1,7 +1,6 @@
 import type { FsDirsResult, FsFilesResult } from "@flightdeck/protocol";
 import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
+import { FieldRow } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { breadcrumbSteps, isInside } from "../../lib/paths.ts";
 import { isLocalUrl } from "../../lib/terminal.ts";

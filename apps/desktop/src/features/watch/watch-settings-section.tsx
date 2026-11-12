@@ -1,12 +1,10 @@
 import type { Project, WatchSettings } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
-import { Field, FieldRow } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
-import { Grid, Inline, Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Field, FieldRow, Grid, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import {
   loopProblemsOf,
   validateWatchDraft,

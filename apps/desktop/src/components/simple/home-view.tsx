@@ -1,8 +1,6 @@
 import type { Template, TemplateField } from "@flightdeck/protocol";
 import { FileText, FolderSearch, GitCompare, type LucideIcon, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
-import { Note } from "@/components/layout/note";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
+import { Field, FieldRow, NativeSelect, Note } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { ConnectionStatus } from "../../lib/host-connection.ts";
 import type { TaskState } from "../../lib/simple-task.ts";

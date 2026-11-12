@@ -1,7 +1,6 @@
 import type { ActionInfo } from "@flightdeck/protocol";
 import { Plus, X } from "lucide-react";
 import { Fragment, useState } from "react";
-import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SecretPicker } from "@/features/vault/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { actionIssueText, refusalText } from "@/i18n/errors";
+import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { ActionSeed } from "../../lib/snippets.ts";

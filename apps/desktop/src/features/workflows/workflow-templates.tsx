@@ -1,8 +1,6 @@
 import type { WorkflowTemplate, WorkflowTemplateAdded } from "@flightdeck/protocol";
 import { FilePlus2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { Inline, Stack } from "@/components/layout/stack";
-import { LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
+import { Inline, LoadingState, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";

@@ -1,10 +1,10 @@
 import type { Card } from "@flightdeck/protocol";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
+import { Stack } from "@/shared/layout/index.ts";
 
 /**
  * Finish… (journey J5, issue #188): the three ways a card ends, each with what it does: move it to

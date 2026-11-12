@@ -1,8 +1,8 @@
 import { memo } from "react";
-import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 const UPDATEBANNER_KEYS = ["appUpdate", "hosts", "settings"] as const;

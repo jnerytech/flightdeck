@@ -1,9 +1,9 @@
 import type { SshImportEntry } from "@flightdeck/protocol";
 import { useState } from "react";
-import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { FieldRow } from "@/shared/layout/index.ts";
 
 /** The names of the host's `~/.ssh/config` that could become destinos; the registered ones are marked. */
 export function ImportPanel(
