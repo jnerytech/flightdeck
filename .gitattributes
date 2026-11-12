@@ -2,3 +2,7 @@
 *.ico binary
 *.png binary
 apps/daemon/test/fixtures/release/sample.bin binary
+# Path-keyed ratchet baselines merge key by key (#2270): scripts/lib/baseline-merge.ts.
+src-size-baseline.json merge=baseline-json
+json-parse-baseline.json merge=baseline-json
+fast-coverage-baseline.json merge=baseline-json
