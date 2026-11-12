@@ -5,9 +5,10 @@ import { join } from "node:path";
 const read = (file: string) => readFileSync(join(import.meta.dir, "../../src", file), "utf8");
 
 /**
- * The widths (6 to 13 rem, shrinking before the strip scrolls) and the strip that never widens the
- * page are measured in a real browser by the e2e `layout` journey (`tabWidthsProblem` and the
- * sideways-scroll checks in scripts/e2e/journeys.ts); happy-dom has no layout.
+ * The widths (never under 80 px, never over 13 rem, shrinking before the strip scrolls) and the strip
+ * that never widens the page are measured in a real browser by the e2e `layout` journey
+ * (`tabWidthsProblem` and the sideways-scroll checks in scripts/e2e/journeys.ts); happy-dom has no
+ * layout.
  */
 describe("guard: abas-largura: tabs say their title (issue #103)", () => {
   test("a tab says its full title in a tooltip", () => {
