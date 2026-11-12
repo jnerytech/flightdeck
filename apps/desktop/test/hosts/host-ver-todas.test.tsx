@@ -47,7 +47,7 @@ async function setup() {
   git(repo, "commit", "-q", "-m", "inicial");
   await act(async () => {
     await store.hostCommand(hostId, "project.add", { path: repo });
-    await store.loadPalette();
+    await store.palette.load();
   });
   return { store, hostId };
 }

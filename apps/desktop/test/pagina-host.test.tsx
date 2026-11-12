@@ -126,7 +126,7 @@ describe("pagina-host", () => {
     git(repo, "commit", "-q", "-m", "inicial");
     await act(async () => {
       await store.hostCommand(hostId, "project.add", { path: repo });
-      await store.loadPalette();
+      await store.palette.load();
     });
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Ver todas as sessões" })).not.toBeNull(),
