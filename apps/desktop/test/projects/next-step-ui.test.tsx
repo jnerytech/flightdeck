@@ -1,21 +1,21 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { BoardResult } from "@flightdeck/protocol";
 import { useSyncExternalStore } from "react";
-import { en } from "../src/i18n/en.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import type { Route } from "../src/lib/router.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle, settleMaybe } from "./wait.ts";
+import { en } from "../../src/i18n/en.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import type { Route } from "../../src/lib/router.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectPage } = await import("../src/features/projects/project.tsx");
-const { BoardView } = await import("../src/features/board/board-view.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { Router } = await import("../src/lib/router.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ProjectPage } = await import("../../src/features/projects/project.tsx");
+const { BoardView } = await import("../../src/features/board/board-view.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { Router } = await import("../../src/lib/router.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

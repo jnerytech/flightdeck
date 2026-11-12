@@ -113,7 +113,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
 - **The remaining methods go by domain** to the slice of their domain: `allowRoot` to the hosts
   (`HostRosterSlice.allowRoot`, with the host's name and allowed folders; `roots.add` and the
   toast reach it as roster deps); the platform helpers (`saveFile`, `copyText`, `pickFolder`,
-  `openPath`, `revealPath`, ...) with the `onLocalPath` guard to `features/shell/`; the UI mode and tab methods (`uiMode`, `toggleUiMode`,
+  `openPath`, `revealPath`, ...) with the `onLocalPath` guard to `features/shell/`
+  (`SystemSlice` in `system.ts`; whether a host is local is a dep, so the shell imports no
+  terminal entry); the UI mode and tab methods (`uiMode`, `toggleUiMode`,
   `setUiChoice`, `setHostUi`, `openNewTab`, `uiHostId`) to the host tabs; the palette
   (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette; the runs (`runEnvConfig`,
   `runTrust`, `runStart`, `runStop`, `onRun`, `onRunEnv`) to their wire; messaging (`relayDeps`,
