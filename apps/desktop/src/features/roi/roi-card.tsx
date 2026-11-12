@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { periodRange, usd } from "../costs/index.ts";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { periodRange, usd } from "../costs/index.ts";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "./roi.ts";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
