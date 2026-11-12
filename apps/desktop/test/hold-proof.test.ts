@@ -20,7 +20,9 @@ function storeWithUnlistedHighRisk() {
   const payloads: unknown[] = [];
   const hidden = store as unknown as {
     state: unknown;
-    connections: Map<string, { request(type: string, payload: unknown): Promise<unknown> }>;
+    link: {
+      connections: Map<string, { request(type: string, payload: unknown): Promise<unknown> }>;
+    };
   };
   hidden.state = {
     ...store.getState(),
@@ -42,7 +44,7 @@ function storeWithUnlistedHighRisk() {
       },
     },
   };
-  hidden.connections.set("h1", {
+  hidden.link.connections.set("h1", {
     request: async (type, payload) => {
       sent.push(`${type}:${(payload as { decision?: string }).decision ?? ""}`);
       payloads.push(payload);

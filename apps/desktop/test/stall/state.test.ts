@@ -174,9 +174,11 @@ describe("stall-state: Not stuck, and the ways on", () => {
     const sent: Array<[string, unknown]> = [];
     (
       store as unknown as {
-        connections: Map<string, { request(type: string, payload: unknown): Promise<unknown> }>;
+        link: {
+          connections: Map<string, { request(type: string, payload: unknown): Promise<unknown> }>;
+        };
       }
-    ).connections.set("h", {
+    ).link.connections.set("h", {
       request: async (type, payload) => {
         sent.push([type, payload]);
         return {};
