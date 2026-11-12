@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { runDoctor } from "../../src/doctor.ts";
+import { runDoctor } from "../../src/deps/doctor.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { refusedAddress } from "../../src/service/update.ts";
 import { newManager } from "../support/helpers.ts";
