@@ -6,7 +6,7 @@ import { memoryPlatform, seedHosts } from "../fixtures.ts";
 registerDom();
 const { act, cleanup, render, screen, within } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { TabSwitcherHost } = await import("../../src/components/tabs/tab-switcher.tsx");
+const { TabSwitcherHost } = await import("../../src/features/tabs/tab-switcher.tsx");
 
 setDefaultTimeout(20_000);
 afterEach(cleanup);
