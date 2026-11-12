@@ -6,7 +6,7 @@ import { waiter } from "../wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { SessionTabs } = await import("../../src/ui/SessionTabs.tsx");
+const { SessionTabs } = await import("../../src/features/sessions/session-tabs.tsx");
 
 setDefaultTimeout(30_000);
 const settle = waiter(5000);
