@@ -16,7 +16,6 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
-import { Markdown } from "@/components/markdown/markdown";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
 import { ModeChip } from "@/components/session/mode-chip";
@@ -38,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/shared/markdown/index.ts";
 import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
 import {
   commandItemsOf,
