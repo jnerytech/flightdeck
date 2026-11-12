@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
+import { Markdown } from "@/components/markdown/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../../lib/app-store.ts";
 import { getField, parseDocument, serialize, setField } from "../../lib/frontmatter.ts";
-import { Markdown } from "../../ui/Markdown.tsx";
 
 type Kind = AgentCfgItem["kind"];
 type Origin = AgentCfgItem["origin"];
