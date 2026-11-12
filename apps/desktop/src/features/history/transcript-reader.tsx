@@ -1,8 +1,6 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { Copy, History } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Markdown } from "@/components/markdown/markdown";
@@ -11,6 +9,7 @@ import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { awaitingApproval } from "../../lib/awaiting-approval.ts";
 import { toolLoader } from "../../lib/history-tool.ts";

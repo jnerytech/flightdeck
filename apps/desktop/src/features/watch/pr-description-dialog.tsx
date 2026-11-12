@@ -1,13 +1,12 @@
 import { type ReactNode, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
-import { ActionButton } from "@/components/feedback/action-button";
-import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
+import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
 
 /**
  * Phase 22: the PR description made from the card's sessions, for the person to read and edit.

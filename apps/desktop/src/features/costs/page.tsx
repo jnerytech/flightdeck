@@ -1,7 +1,6 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { memo, useEffect, useState, useSyncExternalStore } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -19,6 +18,7 @@ import { useFormatNumber, useT } from "@/i18n/context";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";

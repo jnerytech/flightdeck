@@ -1,10 +1,10 @@
 import type { VaultVerdict } from "@flightdeck/protocol";
 import { useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { PURPOSES, REQUESTERS } from "@/lib/vault-rules-form";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";

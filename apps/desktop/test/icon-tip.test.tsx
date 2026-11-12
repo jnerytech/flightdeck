@@ -8,7 +8,7 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { IconTip } = await import("../src/components/feedback/icon-tip.tsx");
+const { IconTip } = await import("../src/shared/feedback/index.ts");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { PersonaPicker } from "@/features/personas/index.ts";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { generatedScopeRules, vaultFindings } from "../../lib/client-vault.ts";
 import type { Client } from "../../lib/clients.ts";

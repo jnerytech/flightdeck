@@ -8,11 +8,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Spinner } from "@/components/feedback/busy";
 import { Button } from "@/components/ui/button";
 import { useInFlight } from "@/hooks/use-in-flight";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/shared/feedback/index.ts";
 
 /** What a form is laid out for: a page, a dialog's body, a bordered panel, or a part of a panel. */
 export type FormVariant = "page" | "dialog" | "panel" | "inline";

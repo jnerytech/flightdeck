@@ -1,11 +1,11 @@
 import type { SnippetHistoryCandidate } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { secretKindsText } from "@/i18n/secret-kinds";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 // The daemon's tag for imported lines (data, not text on screen), so both tag the same way.

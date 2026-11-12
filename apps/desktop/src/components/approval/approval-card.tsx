@@ -13,7 +13,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
@@ -24,6 +23,7 @@ import { type ApprovalView, approvalView, shortPath } from "@/lib/approval";
 import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "@/lib/ask-question";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { cn } from "@/lib/utils";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { AlwaysAllow } from "../../features/permissions/index.ts";
 import { Markdown } from "../markdown/markdown.tsx";
 import { ApprovalActions } from "./approval-actions.tsx";

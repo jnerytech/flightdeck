@@ -1,6 +1,5 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +9,7 @@ import { PersonaPicker, useSuggestedPersona } from "@/features/personas/index.ts
 import { AlertPicker } from "@/features/workflows/index.ts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { AppDialogContent } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";

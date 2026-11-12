@@ -6,7 +6,6 @@ import {
   type ModelOption,
 } from "@flightdeck/protocol";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { NativeSelect } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import type { AppStore } from "@/lib/app-store";
 import { confirmHost, modelFor, needsHostConfirm, profileFor } from "@/lib/assistant-prefs";
 import { useStoreSlice } from "@/lib/use-store";
 import { hostsWith } from "@/lib/version";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { KeyField } from "./key-field.tsx";
 import { ModelPicker } from "./model-picker.tsx";
 

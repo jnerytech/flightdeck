@@ -1,6 +1,5 @@
 import { type Card, type KnowledgeEntry, PINNED_DOCS_MAX } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,7 @@ import type { Key } from "@/i18n";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 /**
  * The library documents pinned to a card (issue #76): the session is told to read them when the

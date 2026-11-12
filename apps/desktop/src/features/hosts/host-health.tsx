@@ -6,11 +6,10 @@ import {
 } from "@flightdeck/protocol";
 import { Check, ChevronRight, Copy, Minus, TriangleAlert, X } from "lucide-react";
 import { useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";

@@ -1,12 +1,12 @@
 import type { Card } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { radarMergeLine } from "@/lib/conflict-radar";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 
 export interface CardMergePrProps {
   store: AppStore;

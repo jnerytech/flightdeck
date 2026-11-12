@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { useTight } from "@/components/session/parts.tsx";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "@/lib/app-store";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 
 /**
  * A session in a folder the person has not trusted says what did not load: the folder's own hooks,

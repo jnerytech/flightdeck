@@ -1,10 +1,10 @@
 import type { GithubLoginResult, GithubStatusResult } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 /**
  * The host's GitHub sign-in (phase 37): the host's gh does the device flow and keeps the token, so

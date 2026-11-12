@@ -1,6 +1,6 @@
 import { HoldButton } from "@/components/approval/hold-button";
-import { ActionButton } from "@/components/feedback/action-button";
 import { cn } from "@/lib/utils";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import { formatAgo, formatDuration } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import {
@@ -20,6 +19,7 @@ import {
   TRIGGER_TYPES,
   type TriggerType,
 } from "../../lib/automations.ts";
+import { AppDialogContent } from "../../shared/feedback/index.ts";
 
 const STEPS = ["trigger", "action", "limit"] as const;
 

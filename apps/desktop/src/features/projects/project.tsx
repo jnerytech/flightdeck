@@ -1,6 +1,5 @@
 import { type LucideIcon, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
@@ -8,6 +7,7 @@ import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import { KnowledgePanel } from "@/features/knowledge/index.ts";
 import { TrustPanel } from "@/features/trust/index.ts";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import type { HubRowState } from "../../lib/hub.ts";

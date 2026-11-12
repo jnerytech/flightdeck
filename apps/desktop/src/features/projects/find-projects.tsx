@@ -2,8 +2,6 @@ import type { ProjectsScanResult } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 
 /** An example address, not a word to translate (the text sweep of #1597 reads literals in the markup). */
 const CLONE_URL_EXAMPLE = "https://github.com/owner/repo.git";

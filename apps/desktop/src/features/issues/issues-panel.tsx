@@ -1,7 +1,6 @@
 import type { Card, Issue, IssuesConfig, Project } from "@flightdeck/protocol";
 import { ExternalLink, RefreshCw, Settings } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { useMinLoading } from "@/hooks/use-min-loading";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { filterIssues, issueLabel, issueNumber } from "../../lib/issues.ts";
 

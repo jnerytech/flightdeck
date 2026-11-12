@@ -1,10 +1,9 @@
 import { Copy, ExternalLink, SquareTerminal } from "lucide-react";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { PersonaPicker } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
+import { ActionButton, IconActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { TerminalTarget } from "../../lib/terminal.ts";
 import { hasFeature } from "../../lib/version.ts";

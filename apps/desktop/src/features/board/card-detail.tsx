@@ -1,6 +1,5 @@
 import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { memo, useEffect, useRef, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { CardSyncLog } from "@/features/board/board-sync";
 import { CardAdjustment, CardRuns } from "@/features/board/card-adjustment";
@@ -19,6 +18,7 @@ import { canMergeCardPr } from "@/lib/card-merge-pr";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { projectCards } from "../../lib/board.ts";
 import { opensOnChanges } from "../../lib/card-next-step.ts";

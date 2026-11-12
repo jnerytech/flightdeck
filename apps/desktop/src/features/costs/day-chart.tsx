@@ -1,8 +1,8 @@
 import { type KeyboardEvent, useState } from "react";
-import { IconTip } from "@/components/feedback/icon-tip";
 import { Inline } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { IconTip } from "@/shared/feedback/index.ts";
 import { formatDay } from "../../i18n/format.ts";
 import { usd } from "../../lib/costs.ts";
 
