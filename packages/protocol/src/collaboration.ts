@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { cmd } from "./command.ts";
 import { PermissionMode } from "./permissions.ts";
-import { SessionLine } from "./sessions.ts";
+import { EffortLevel, SessionLine } from "./sessions.ts";
 
 /** Who sends: a managed session by its id, or a terminal session by its launch id. */
 export const SessionIdentity = z
@@ -310,6 +310,9 @@ export const collaborationCommands = [
       /** Issue #93: the permission mode of the coordinator and of each worker; none or null is the default. */
       coordinatorPermission: PermissionMode.optional(),
       workerPermissions: z.array(PermissionMode.nullable()).max(8).optional(),
+      /** Issue #2310: the effort of the coordinator and of each worker; none or null is the persona's own. */
+      coordinatorEffort: EffortLevel.optional(),
+      workerEfforts: z.array(EffortLevel.nullable()).max(8).optional(),
       checks: z.array(z.string().min(1).max(400)).max(10).optional(),
     }),
   ),
@@ -331,6 +334,8 @@ export const collaborationCommands = [
           model: z.string().min(1).nullable().optional(),
           /** Issue #93: the permission mode the new worker opens in. */
           permission: PermissionMode.nullable().optional(),
+          /** Issue #2310: the effort the new worker starts with; none or null is the persona's own. */
+          effort: EffortLevel.nullable().optional(),
         })
         .optional(),
       removeMember: z.string().min(1).optional(),

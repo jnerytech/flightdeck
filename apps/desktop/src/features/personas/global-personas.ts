@@ -1,10 +1,11 @@
 import {
   normalizePersona,
-  type PersonaFields,
+  PersonaFields,
   type PersonaInput,
   type PersonaRef,
   SecretScanner,
 } from "@flightdeck/protocol";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 /** A persona the library shows: one of a host (the pack's, the host's, a project's) or the app's. */
@@ -41,8 +42,7 @@ export class GlobalPersonas {
   constructor(private readonly platform: Pick<Platform, "storage">) {}
 
   private read(): PersonaFields[] {
-    const raw = this.platform.storage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as PersonaFields[]) : [];
+    return readStored(this.platform.storage, KEY, validItems(PersonaFields), []);
   }
 
   list(): AppPersona[] {

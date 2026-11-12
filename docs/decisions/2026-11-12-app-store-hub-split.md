@@ -117,11 +117,16 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   (`SystemSlice` in `system.ts`; whether a host is local is a dep, so the shell imports no
   terminal entry); the UI mode methods (`uiMode`, `toggleUiMode`, `setUiChoice`, `setHostUi`,
   `uiHostId`) to a `UiModeSlice` next to the mode's rules in `features/home/simple-mode.ts`
-  (they change with simple mode, phase 33, not with the tabs); `openNewTab` to the host tabs;
-  the palette (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette
-  (`PaletteSlice` in `features/palette/palette-store.ts`; the stores it loads from are deps); the
-  runs (`runEnvConfig`,
-  `runTrust`, `runStart`, `runStop`, `onRun`, `onRunEnv`) to their wire; messaging (`relayDeps`,
+  (they change with simple mode, phase 33, not with the tabs); `openNewTab` to the host tabs
+  (`HostTabs.openNew`, given the hosts: the model keeps no host status); the palette
+  (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette (`PaletteSlice` in
+  `features/palette/palette-store.ts`; the stores it loads from are deps); the run environment
+  (`runEnvConfig`, `runTrust`, `runStart`, `runStop`, `onRunEnv`) to a `RunEnvSlice` in
+  `features/runenv/store.ts`, built in the store with no wire file (a wire would import
+  `lib/kernel.ts` and join the hosts' cycle; the sessions' key is a dep for the same reason; the
+  store imports the file, not the entry, which re-exports the run panel, and the panel imports the
+  store); `onRun` stays: it is one line fed by `dispatch` for every command's workflow run, not a
+  run environment's; messaging (`relayDeps`,
   `onTeams`, `onTeamsUpdated`, `onMessageUpdated`, `startPeersSync`) to messaging; the requests
   (`onOpenRequest`, `openRequest`, `decideOldest`, `respondTo`, `respond`, with the open-request
   listener set) to permissions; the quiet snooze to sessions.

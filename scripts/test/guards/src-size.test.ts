@@ -27,7 +27,7 @@ describe("src-size (#1592)", () => {
     expect(isMeasured("apps/desktop/src/i18n/pt-BR.ts")).toBe(false);
     expect(isMeasured("apps/daemon/src/text-modules.d.ts")).toBe(false);
     expect(isMeasured("apps/daemon/test/board/board.test.ts")).toBe(false);
-    expect(isMeasured("scripts/lib/slot.ts")).toBe(false);
+    expect(isMeasured("scripts/lib/slot/index.ts")).toBe(false);
     expect(isMeasured("apps/desktop/src/styles.css")).toBe(false);
   });
 

@@ -11,7 +11,7 @@
   `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
 - **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
   takes longer than a session should wait; the second run is the "after merge" half of the
-  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+  issue. Logic in `scripts/lib/release/cmd.ts`, effects injected, no test pushes or tags.
 - **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
   tags through child processes the hook never sees, and its own check is the same environment flag,
   which a command can set inline. `prMergeViolation` now blocks `bun run release` and
