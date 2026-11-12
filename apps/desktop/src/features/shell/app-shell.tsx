@@ -2,9 +2,8 @@ import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { useBreakpoint } from "@/hooks/use-breakpoint";
-import { usePageFocus } from "@/hooks/use-page-focus";
 import { cn } from "@/lib/utils";
+import { useBreakpoint, usePageFocus } from "@/shared/hooks/index.ts";
 
 /** Where the top bar lets the tab strip sit, once the shell has drawn it (null before, and in tests). */
 const HeaderSlot = createContext<HTMLElement | null>(null);

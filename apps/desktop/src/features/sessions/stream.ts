@@ -69,8 +69,14 @@ export class SessionStreamSlice {
     this.core.setSessions({ ...this.core.sessions(), [key]: pruned });
   }
 
-  /** Partial text from before a drop will never be completed by a delta; drop it. */
+  /**
+   * Partial text from before a drop will never be completed by a delta; drop it. The asks for a
+   * replay went down with that connection too: a hole seen after the reconnect is asked again.
+   */
   dropPartialText(hostId: string): void {
+    for (const key of this.resyncing.keys()) {
+      if (key.startsWith(`${hostId}/`)) this.resyncing.delete(key);
+    }
     const sessions = { ...this.core.sessions() };
     for (const key of Object.keys(sessions)) {
       if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { InFlightTimers } from "../src/hooks/use-in-flight.ts";
+import { InFlightTimers } from "../src/shared/hooks/use-in-flight.ts";
 
 const instant = {
   now: () => 0,

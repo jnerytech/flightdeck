@@ -8,13 +8,13 @@ import { RoiPeople } from "@/features/roi/roi-people.tsx";
 import { RoiSettingsPanel } from "@/features/roi/roi-settings-panel.tsx";
 import { RoiTable } from "@/features/roi/roi-table.tsx";
 import { ScopeMenu } from "@/features/shell/index.ts";
-import { useMinLoading } from "@/hooks/use-min-loading";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
   LoadingState,

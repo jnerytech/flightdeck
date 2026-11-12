@@ -15,13 +15,12 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useBusy } from "@/hooks/use-busy";
-import { focusLost } from "@/hooks/use-page-focus";
 import { formatAgo } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import { uniqueKeys } from "@/lib/unique-keys";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { focusLost, useBusy } from "@/shared/hooks/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import { AlwaysAllow } from "./always-allow.tsx";
 import { type ApprovalView, approvalView, shortPath } from "./approval.ts";
