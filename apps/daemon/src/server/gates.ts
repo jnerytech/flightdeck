@@ -16,9 +16,7 @@ export const GATES = {
   bg: "bg",
   board: "board",
   boardsync: "boardsync",
-  budgets: "budgets",
   central: "central",
-  costs: "costs",
   fileLog: "logs",
   github: "github",
   history: "history",
@@ -134,6 +132,11 @@ export const GROUP_GATES = {
   personas: {
     store: "personas",
     sessions: "personaSessions",
+  },
+  // The costs and their budgets keep their flat names.
+  costs: {
+    costs: "costs",
+    budgets: "budgets",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<

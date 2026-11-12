@@ -55,7 +55,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.sessionSettings?.stall, "stall"),
     ...when(opts.review?.cardReview, "cardReview"),
     // Budgets can be a share of a plan quota window (issue #1248).
-    ...when(opts.budgets?.opts.quota, "quotaBudgets"),
+    ...when(opts.costs?.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.hostChecks?.deps, "depsCheck"),
     ...when(opts.projectTrust, "projectTrust"),
     ...when(opts.harness?.stack, "harnessStack"),
@@ -94,7 +94,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.board, "rules"),
     // Issue #1568: a project with no PR provider can have it read from its remote.
     ...when(opts.board, "prDetect"),
-    ...when(opts.costs, "costs"),
+    ...when(opts.costs?.costs, "costs"),
     ...when(opts.telemetry, "telemetry"),
     ...when(opts.trace, "trace"),
     ...when(opts.summary, "summary"),
