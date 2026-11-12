@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { DATA_SCOPE_KEY } = await import("../../src/lib/data-scope.ts");
-const { SessionsHub } = await import("../../src/ui/SessionsHub.tsx");
+const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);

@@ -101,7 +101,7 @@ describe("bifurcar-terminal", () => {
     const { manager } = newManager();
     const server = startServer({
       manager,
-      snapshots,
+      checkpoints: { snapshots },
       history,
       hostName: "h",
       bind: "127.0.0.1",

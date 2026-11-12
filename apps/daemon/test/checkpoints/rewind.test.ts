@@ -170,8 +170,7 @@ describe("rewind", () => {
     const { manager } = newManager();
     const server = startServer({
       manager,
-      snapshots,
-      rewinder,
+      checkpoints: { snapshots, rewinder },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
