@@ -192,7 +192,10 @@ describe("budget-quota: a budget in terms of the plan quota window, not dollars 
   test("a window budget needs the plan quota: a host without it refuses, as feature_off", () => {
     const db = new EventStore(":memory:").db;
     const budgets = new Budgets({ db });
-    const server = { needIn: () => budgets };
+    const server = {
+      needIn: (group: string, key: string) =>
+        group === "costs" && key === "budgets" ? budgets : undefined,
+    };
     const handler = costsHandlers["budget.setQuota"] as unknown as (
       payload: unknown,
       ctx: { server: typeof server },
