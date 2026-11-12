@@ -10,24 +10,24 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import type { Key } from "../../i18n/index.ts";
+import type { AppStore, HostView } from "../../lib/app-store.ts";
+import { CLAUDE_MODELS } from "../../lib/new-session-prefs.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { FolderPicker } from "../../ui/FolderPicker.tsx";
+import { ModelOptions } from "./model-options.tsx";
 import {
   choicesToKeep,
   createPayload,
   joinPath,
-  ModelOptions,
   opensMoreOptions,
   promptMissing,
   sessionModes,
   startChoices,
   startFolder,
   underRoot,
-} from "../features/sessions/index.ts";
-import type { Key } from "../i18n/index.ts";
-import type { AppStore, HostView } from "../lib/app-store.ts";
-import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
-import { hasFeature } from "../lib/version.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { FolderPicker } from "./FolderPicker.tsx";
+} from "./new-session.ts";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";

@@ -15,7 +15,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { FolderPicker } = await import("../src/ui/FolderPicker.tsx");
-const { NewSessionForm } = await import("../src/ui/NewSessionForm.tsx");
+const { NewSessionForm } = await import("../src/features/sessions/new-session-form.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);

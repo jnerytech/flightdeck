@@ -29,6 +29,8 @@ import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { NeedsYou } from "../features/needs-you/page.tsx";
 import { QuotaPanel } from "../features/quota/index.ts";
+import { NewSessionForm } from "../features/sessions/new-session-form.tsx";
+import { SessionTabs } from "../features/sessions/session-tabs.tsx";
 import { SetupPage } from "../features/setup/index.ts";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
 import {
@@ -51,9 +53,7 @@ import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
-import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
-import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StartScreen } from "./StartScreen.tsx";
 
