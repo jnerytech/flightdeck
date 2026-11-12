@@ -5,7 +5,7 @@ import {
   MAIN_MODELS,
   MORE_MODELS,
   modelName,
-} from "../src/lib/model-menu.ts";
+} from "../src/features/sessions/model-menu.ts";
 
 describe("model-menu: the names", () => {
   test("a versioned id reads as the family and the version", () => {

@@ -1,5 +1,5 @@
 import type { PermissionMode } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** Where the New session form's last choices are kept on this computer. */
 export const NEW_SESSION_PREFS_KEY = "flightdeck.newSessionPrefs";

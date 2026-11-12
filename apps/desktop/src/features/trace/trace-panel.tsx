@@ -1,6 +1,7 @@
 import type { SessionTrace, TraceNode } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { formatMs } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import {
   Bar,
@@ -16,7 +17,6 @@ import {
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";
-import { formatMs } from "../../lib/timing.ts";
 import { longest, onlyTool, toolNames } from "./trace.ts";
 import { TraceReplay } from "./trace-replay.tsx";
 

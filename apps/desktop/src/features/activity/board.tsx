@@ -5,6 +5,8 @@ import { useBoardTransition } from "@/hooks/use-board-transition";
 import { useStoreSlice } from "@/lib/use-store";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { Route } from "../../lib/router.ts";
 import {
   ACTIVITY_COLUMNS,
   ACTIVITY_KEYS,
@@ -12,9 +14,7 @@ import {
   activityBoard,
   activityOptions,
   NO_ACTIVITY_FILTER,
-} from "../../lib/activity.ts";
-import type { AppStore } from "../../lib/app-store.ts";
-import type { Route } from "../../lib/router.ts";
+} from "./activity.ts";
 import { ActivityCardView } from "./activity-card.tsx";
 import { ActivityColumnView } from "./activity-column.tsx";
 

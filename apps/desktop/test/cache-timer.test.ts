@@ -8,7 +8,7 @@ import {
   clockText,
   SharedClock,
   spokenParts,
-} from "../src/lib/cache-timer.ts";
+} from "../src/features/sessions/cache-timer-model.ts";
 import type { Platform } from "../src/platform/types.ts";
 import { settle } from "./wait.ts";
 

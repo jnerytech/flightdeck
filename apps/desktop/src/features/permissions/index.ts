@@ -8,6 +8,7 @@ export { AlwaysAllow } from "./always-allow.tsx";
 export { ApprovalActions } from "./approval-actions.tsx";
 export { ApprovalCard, type ApprovalRequest, RiskSeal } from "./approval-card.tsx";
 export { GateText } from "./gate-text.tsx";
+export { HIGH_RISK_HOLD_MS } from "./hold.ts";
 export { HoldButton } from "./hold-button.tsx";
 export { RulesSection } from "./project-rules.tsx";
 export { PermissionsSlice } from "./store.ts";

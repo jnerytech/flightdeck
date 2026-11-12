@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { toolLoader } from "../../src/lib/history-tool.ts";
+import { toolLoader } from "../../src/features/sessions/history-tool.ts";
 
 const DETAIL = { name: "Bash", input: { command: "ls" }, result: null, truncated: false };
 

@@ -3,7 +3,7 @@
  * again starts a second `claude` on the same session id: the two do not see each other's turns.
  */
 import type { ExternalSession, ExternalStatus } from "@flightdeck/protocol";
-import { sessionKey } from "../features/sessions/index.ts";
+import { sessionKey } from "./session-key.ts";
 
 /**
  * A `claude` that is still running there: in a turn, waiting for its next prompt or for an answer.
