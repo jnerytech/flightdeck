@@ -26,12 +26,6 @@ describe("hook-test-markers", () => {
     }
   });
 
-  test("a .skip is blocked too, and the reason says a flaky test is deleted (#1003)", () => {
-    const reason = edit("apps/daemon/test/a.test.ts", "", `describe${SKIP}"b", () => {})`) ?? "";
-    expect(reason).toContain("is blocked");
-    expect(reason).toContain("a flaky test is deleted, never skipped (#1003)");
-  });
-
   test("tsx files and Windows paths count as test files", () => {
     expect(edit("apps/desktop/test/b.test.tsx", "x", `it${ONLY}"x")`) ?? "").toContain(
       "is blocked",

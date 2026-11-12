@@ -4,7 +4,7 @@
   the 20-minute jobs. A count that went up now fails the run in minutes.
 - **The `quick` job** (`quick checks`, Linux, 10 minutes at most) runs typecheck, lint, the TDD
   audit (full history) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
-  `protocol-surface.test.ts`, by name (scripts/lib/ci-quick.ts), in seconds with no coverage. The
+  `protocol-surface.test.ts`, by name (scripts/lib/ci/quick.ts), in seconds with no coverage. The
   Linux suite no longer runs typecheck, lint and the audit itself.
 - **Every heavy job needs it:** the Linux suite, the Windows shards and checks, the prints and the
   e2e shards.

@@ -4,7 +4,7 @@ import type { T } from "../../i18n/index.ts";
 import { type AppState, sessionKey } from "../../lib/app-store.ts";
 import { sessionLabel } from "../sessions/index.ts";
 
-export { QUIET_SNOOZE_MS } from "../../lib/app-store.ts";
+export { QUIET_SNOOZE_MS } from "./quiet-snooze.ts";
 
 /** The parts of the state the quiet sessions are made of. */
 export type QuietState = Pick<AppState, "hosts" | "meta" | "names" | "personas" | "quietSnooze">;
