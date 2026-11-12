@@ -133,6 +133,21 @@ describe("the session lists slice", () => {
     expect(held().externals["h1/e1"]).toBe(newer as never);
   });
 
+  test("a list entry whose time cannot be read does not undo the frame it is older than", async () => {
+    const answers = {
+      h1: {
+        "session.list": { sessions: [] },
+        "history.list": { sessions: [] },
+        "external.list": { sessions: [external("e1", "not a time")] },
+      },
+    };
+    const { slice, held } = lists([host("h1", { features: [] })], answers);
+    const frame = external("e1", "2026-11-11T10:00:00Z");
+    (held() as { externals: Record<string, unknown> }).externals = { "h1/e1": frame };
+    await slice.refresh();
+    expect(held().externals["h1/e1"]).toBe(frame as never);
+  });
+
   test("only the online hosts are asked, and only for what their daemon announces", async () => {
     const answers = {
       h1: { "session.list": { sessions: [] }, "history.list": { sessions: [] } },

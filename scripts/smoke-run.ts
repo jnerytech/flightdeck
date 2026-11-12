@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, inSequence, parseServerMessage, type RunState } from "@flightdeck/protocol";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,

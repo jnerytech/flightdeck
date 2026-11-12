@@ -65,9 +65,12 @@ export class TraySlice {
     this.offAction = this.platform.onTrayAction((action) => this.act(action));
   }
 
+  /** Lets go of the listener and of the submenu wait: a closed app sends no menu after it. */
   stop(): void {
     this.offAction?.();
     this.offAction = null;
+    if (this.menuTimer !== null) this.core.timers.clearTimeout(this.menuTimer);
+    this.menuTimer = null;
   }
 
   /** A change in the state: the badge, the title and the submenu follow what it touched. */

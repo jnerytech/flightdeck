@@ -3,6 +3,8 @@
  * default, a client's, a project's), the plan price, the review-time switch, and the people with
  * their limits. It lives in the app's own storage, beside the clients; a daemon never sees it.
  */
+import { z } from "zod";
+import { parseJsonText, readStored } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 export const ROI_KEY = "flightdeck.roi";
@@ -124,6 +126,14 @@ function parse(raw: unknown): RoiSettingsData | null {
   };
 }
 
+/** What is kept or imported: a whole, valid one, or nothing. */
+const Whole = z.unknown().transform((raw, ctx) => {
+  const data = parse(raw);
+  if (data) return data;
+  ctx.addIssue({ code: "custom" });
+  return z.NEVER;
+});
+
 export class RoiSettings {
   constructor(
     private readonly platform: Pick<Platform, "storage">,
@@ -131,11 +141,7 @@ export class RoiSettings {
   ) {}
 
   data(): RoiSettingsData {
-    try {
-      return parse(JSON.parse(this.platform.storage.getItem(ROI_KEY) ?? "null")) ?? empty();
-    } catch {
-      return empty();
-    }
+    return readStored(this.platform.storage, ROI_KEY, Whole, null) ?? empty();
   }
 
   private write(data: RoiSettingsData): void {
@@ -250,12 +256,7 @@ export class RoiSettings {
 
   /** Replaces the rates and the switches and merges the people by id; null when the text is not an export. */
   importJson(text: string): { people: number } | null {
-    let incoming: RoiSettingsData | null;
-    try {
-      incoming = parse(JSON.parse(text));
-    } catch {
-      return null;
-    }
+    const incoming = parseJsonText(text, Whole, null);
     if (!incoming) return null;
     const data = this.data();
     const people = [...data.people];

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { FileListing } from "@flightdeck/protocol";
-import { NARROW_SHOTS } from "../../../../scripts/lib/shots-narrow.ts";
+import { NARROW_SHOTS } from "../../../../scripts/lib/shots/narrow.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, settleMaybe, stays } from "../wait.ts";

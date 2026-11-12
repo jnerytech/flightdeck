@@ -17,6 +17,9 @@ describe("ci-paths: which jobs a path starts", () => {
       "scripts/e2e/journeys.e2e.ts",
       "scripts/lib/e2e-helpers.ts",
       "scripts/lib/demo-seed.ts",
+      // The concern folders of scripts/lib (#1603): a file in them is the same code as the flat one.
+      "scripts/lib/e2e/nested.ts",
+      "scripts/lib/demo/nested.ts",
       "scripts/lib/browser.ts",
       "scripts/lib/layout-guards.ts",
       "scripts/demo-seed.ts",
@@ -25,7 +28,7 @@ describe("ci-paths: which jobs a path starts", () => {
       "scripts/test/fixtures.ts",
     ];
     const near = [
-      "scripts/lib/e2e/nested.ts",
+      "scripts/lib/e2e/deeper/nested.ts",
       "scripts/lib/other.ts",
       "scripts/lib/browser.tsx",
       "scripts/demo/nested.ts",
@@ -49,15 +52,19 @@ describe("ci-paths: which jobs a path starts", () => {
       "scripts/lib/layout-guards.ts",
       "scripts/lib/print-theme.ts",
       "scripts/lib/shots-names.ts",
+      "scripts/lib/shots/nested.ts",
       "scripts/lib/visual.ts",
       "scripts/lib/e2e-helpers.ts",
       "scripts/lib/demo-seed.ts",
+      "scripts/lib/demo/nested.ts",
       "scripts/test/fixtures.ts",
     ];
     const near = [
+      "scripts/lib/demo/deeper/nested.ts",
       "scripts/e2e/journeys.e2e.ts",
       "scripts/lib/axe-more.ts",
       "scripts/lib/visual-more.ts",
+      "scripts/lib/shots/deeper/nested.ts",
       "scripts/lib/other.ts",
       "scripts/demo/nested.ts",
       "scripts/test/fixtures.test.ts",

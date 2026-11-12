@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseJsonText, readStored } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 /** Where the clients are kept (phase 29). */
@@ -120,14 +121,7 @@ export class Clients {
   ) {}
 
   private read(): ClientsData {
-    try {
-      const parsed = DataSchema.safeParse(
-        JSON.parse(this.platform.storage.getItem(CLIENTS_KEY) ?? "null"),
-      );
-      return parsed.success ? parsed.data : empty();
-    } catch {
-      return empty();
-    }
+    return readStored(this.platform.storage, CLIENTS_KEY, DataSchema, empty());
   }
 
   private write(data: ClientsData): void {
@@ -295,17 +289,12 @@ export class Clients {
 
   /** Merges an export by client id: same id replaces that client, a new id is added, nothing is deleted. */
   importJson(text: string): ImportResult | null {
-    let parsed: ReturnType<typeof DataSchema.safeParse>;
-    try {
-      parsed = DataSchema.safeParse(JSON.parse(text));
-    } catch {
-      return null;
-    }
-    if (!parsed.success) return null;
+    const imported = parseJsonText(text, DataSchema.nullable(), null);
+    if (!imported) return null;
     const data = this.read();
     const result = { added: 0, updated: 0 };
     const clients = [...data.clients];
-    for (const incoming of parsed.data.clients) {
+    for (const incoming of imported.clients) {
       const at = clients.findIndex((c) => c.id === incoming.id);
       if (at < 0) {
         clients.push(incoming);
@@ -316,11 +305,11 @@ export class Clients {
       }
     }
     const overrides = { ...data.overrides };
-    for (const [key, to] of Object.entries(parsed.data.overrides)) {
+    for (const [key, to] of Object.entries(imported.overrides)) {
       if (to === null || clients.some((c) => c.id === to)) overrides[key] = to;
     }
     const budgets = { ...data.budgets };
-    for (const [id, limit] of Object.entries(parsed.data.budgets)) {
+    for (const [id, limit] of Object.entries(imported.budgets)) {
       if (clients.some((c) => c.id === id)) budgets[id] = limit;
     }
     this.write({ v: 1, clients, overrides, budgets });

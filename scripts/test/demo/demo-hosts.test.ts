@@ -3,7 +3,7 @@ import {
   compareHosts,
   hostFacts,
 } from "../../../apps/desktop/src/features/hosts/host-compare-model.ts";
-import { DEMO_ONLINE_HOSTS, demoHostSetup } from "../../lib/demo-hosts.ts";
+import { DEMO_ONLINE_HOSTS, demoHostSetup } from "../../lib/demo/hosts.ts";
 
 /** What the Compare hosts table holds for a demo host: its Start at boot state, as the daemon words it. */
 const bootState = (name: string) =>

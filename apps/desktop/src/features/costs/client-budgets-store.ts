@@ -1,5 +1,6 @@
 import type { CostsFilter, CostsSummary } from "@flightdeck/protocol";
 import { byCodeUnit } from "@flightdeck/protocol";
+import { z } from "zod";
 import {
   ALL_CLIENTS,
   type Client,
@@ -7,6 +8,7 @@ import {
   costByClient,
   loadCostsSummary,
 } from "@/features/clients/index.ts";
+import { readStored, validValues } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
@@ -14,6 +16,8 @@ import {
   evaluateClientBudgets,
 } from "./client-budgets.ts";
 import { usd } from "./costs.ts";
+
+const Announced = validValues(z.array(z.number()));
 
 /** The clients' limits are looked at this often, besides when one changes or a host comes online. */
 export const CLIENT_BUDGET_INTERVAL_MS = 10 * 60_000;
@@ -159,12 +163,8 @@ export class ClientBudgetsSlice {
     }
   }
 
+  /** The thresholds announced before; a client whose entry is not a list of numbers has none. */
   private announced(): Record<string, number[]> {
-    try {
-      const stored = JSON.parse(this.core.storage.getItem(CLIENT_BUDGET_ALERTS_KEY) ?? "{}");
-      return stored && typeof stored === "object" ? stored : {};
-    } catch {
-      return {};
-    }
+    return readStored(this.core.storage, CLIENT_BUDGET_ALERTS_KEY, Announced, {});
   }
 }

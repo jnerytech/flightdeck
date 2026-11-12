@@ -13,15 +13,15 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
-import { DEMO_CARD_TEMPLATE } from "./lib/demo-card-templates.ts";
-import { demoFinished, demoInbox } from "./lib/demo-seeds.ts";
+import { DEMO_CARD_TEMPLATE } from "./lib/demo/card-templates.ts";
+import { demoFinished, demoInbox } from "./lib/demo/seeds.ts";
 import {
   DEMO_AWAY_SINCE,
   DEMO_PR_CARD,
   DEMO_PR_URL,
   DEMO_TEAM_REPORT,
   DEMO_UPDATE_CARDS,
-} from "./lib/e2e-journeys.ts";
+} from "./lib/e2e/journeys.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -38,10 +38,10 @@ import {
   waitForStable,
 } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
-import { holdsScript } from "./lib/shots-holds.ts";
-import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
-import { narrowSizes, unknownNarrowShots } from "./lib/shots-narrow.ts";
-import { pickVariants } from "./lib/shots-variants.ts";
+import { holdsScript } from "./lib/shots/holds.ts";
+import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
+import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
+import { pickVariants } from "./lib/shots/variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");

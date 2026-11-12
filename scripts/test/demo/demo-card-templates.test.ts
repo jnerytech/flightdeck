@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parseCardTemplates } from "../../../apps/daemon/src/board/card-templates.ts";
-import { DEMO_CARD_TEMPLATE, demoCardTemplates } from "../../lib/demo-card-templates.ts";
+import { DEMO_CARD_TEMPLATE, demoCardTemplates } from "../../lib/demo/card-templates.ts";
 
 describe("demoCardTemplates (#1249)", () => {
   test("the host takes the demo's file whole: one template, none left out", () => {
