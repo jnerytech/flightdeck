@@ -185,7 +185,7 @@ test's baseline, with the issue that renames them.
 | `hosts` | host | The machines the app talks to: what each reports about its health (dependencies and doctor), then its saved list and connection |
 | `inbox` | notification | The notification center: what the app sent, kept for the bell, read and unread, the taskbar badge, the system toast and the sound |
 | `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
-| `kernel` | shared kernel | The daemon's small helpers every domain uses and that know no domain: running a command, finding an executable, the daemon error and its refusals, writing a file atomically, reading a regular file, parsing JSON text, ids, the logger shape, the daemon version, queues, line reading, text trims, a child's environment, NTFS names (#1594) |
+| `kernel` | shared kernel | The daemon's small helpers every domain uses and that know no domain: running a command, finding an executable, the daemon error and its refusals, writing a file atomically, reading a regular file, parsing JSON text, ids, the logger shape, the daemon version, queues, line reading, text trims, a child's environment, NTFS names, path containment and the allowed working folder (#1594) |
 | `knowledge` | library | A project's document library and what a session is given from it |
 | `logs` | log | The daemon's own log files: rotation, scan and serve |
 | `maintenance` | maintenance | Backup and retention of the daemon's data |
@@ -195,6 +195,7 @@ test's baseline, with the issue that renames them.
 | `needs-you` | needs you | The sessions that wait for an answer: the screen and its rows, and the summary of what happened while the person was away |
 | `notifications` | notification | Which events notify, quiet hours, the sound and the preferences screen that sets them |
 | `palette` | palette | The command palette and the global search: the box, its sections and scope chips, and what a choice opens |
+| `pairing` | pairing | How the app reaches this daemon the first time: the address in the pairing link, its QR code, the Tailscale IP and the token rotation |
 | `permissions` | permission | Permission requests, risk, auto-approval and the rules behind them |
 | `personas` | persona | Engineering roles a session takes, the pack and their storage |
 | `plugins` | plugin | Claude Code plugins of the host, through the `claude plugin` CLI |

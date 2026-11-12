@@ -169,7 +169,7 @@ the same session, the same trust as the watch's round prompt. It never reaches a
       - a drive letter (`C:`, `C:/x`);
       - a UNC or device path (`//server/share`, `//./x`);
       - a word whose `..` segments, resolved from the worktree, leave it.
-    - The test is `isInside` (`apps/daemon/src/paths.ts`) on the resolved path. On Windows it
+    - The test is `isInside` (`apps/daemon/src/kernel/paths.ts`) on the resolved path. On Windows it
       compares case-insensitively, with each step read through `ntfsName`
       (2026-11-09-ntfs-names-in-path-checks.md). The test is lexical: it does not follow
       symlinks, so a link inside the worktree that points out passes.

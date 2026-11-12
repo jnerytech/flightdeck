@@ -96,12 +96,13 @@ prefix. Tests move with their file in the same PR.
 | Entries | Target |
 |---|---|
 | `app-store.ts`, `app-state.ts`, `use-store.ts`, `unique-keys.ts` | `app/` (the store is one slice per domain; slices already live in `features/*/store.ts` or `*-store.ts`, and each move shrinks this file) |
-| `board*.ts`, `card-*.ts`, `conflict-radar.ts`, `file-changes.ts`, `review.ts`, `second-opinion.ts`, `word-diff.ts`, `diff.ts`, `pull-requests.ts`, `runs.ts` | **theirs** (`features/board/`) and `features/review/` for `file-changes`, `review`, `word-diff`, `diff`, `second-opinion` |
+| `board*.ts`, `card-*.ts`, `conflict-radar.ts`, `file-changes.ts`, `review.ts`, `second-opinion.ts`, `word-diff.ts`, `diff.ts`, `pull-requests.ts`, `runs.ts` | **theirs** (`features/board/`) and `features/review/` for `file-changes`, `review`, `word-diff`, `diff`, `second-opinion`; **moved** so far: `board-bulk`, `board-card-keys`, `board-contracts`, `board-files`, `board-keys`, `board-select`, `board-shortcut`, `card-next-step`, `card-start-block` and `card-merge-pr` (as `card-merge-pr-model.ts`, because `card-merge-pr.tsx` already lives in the folder), the ones other domains read behind the board `index.ts` (the screen and its dialogs stay out of it so the board loads lazily) |
 | `session-*.ts`, `hub*.ts`, `live-elsewhere.ts`, `start-elsewhere.ts`, `new-session-*.ts`, `turns.ts`, `tool-*.ts`, `history-tool.ts`, `finished.ts`, `hold.ts`, `awaiting-approval.ts`, `pending-text.ts`, `cache-timer.ts`, `tiles.ts`, `timing.ts`, `use-session-cost.ts`, `use-follow.ts`, `use-draft.ts`, `mode-menu.ts`, `model-menu.ts`, `prompt-menu.ts` | **theirs** (`features/sessions/`); **moved** so far: `session-activity`, `session-finish`, `session-images`, `session-key`, `session-label`, `session-state`, `session-views`, `hub`, `hub-title`, `finished`, `turns`, `tool-line`, `tool-input`, `live-elsewhere`, `start-elsewhere`, `new-session-host`, `new-session-prefs`, `history-tool`, `awaiting-approval`, `pending-text`, `cache-timer` (as `cache-timer-model.ts`, because `cache-timer.tsx` already lives in the folder), `tiles`, `timing`, `use-session-cost`, `use-follow`, `use-draft`, `mode-menu`, `model-menu`, behind the sessions `index.ts`. Three went elsewhere to keep the folders free of import cycles: `activity.ts` is the activity board's model (`features/activity/`), `hold.ts` goes with the approval buttons that use it (`features/permissions/`) and `prompt-menu.ts` with the `/` menu that shows it (`features/snippets/prompt-menu-model.ts`) |
 | `approval.ts`, `ask-question.ts`, `vault-approval.ts` | `features/permissions/` (`vault-approval.ts` went to `features/vault/` instead: it implements the vault's `VaultPolicy` and `features/vault` calls it, so keeping it in `permissions` made a cycle between the two domains; `permissions/store.ts` takes the `VaultAnswer` type from the vault index) |
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` |
-| `automations.ts`, `check-loop.ts` | `features/automations/` |
-| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` |
+| `automations.ts` | `features/automations/` (**moved**) |
+| `check-loop.ts` | `features/board/`: its only reader is `check-loop-panel.tsx`, which lives there, so it goes with the board and not with `features/automations` |
+| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` (**moved**: `backup-bundle`, `backup-error`, `backup-schedule`, `backup-scheduler`, `backup-target`, `drive-target`; the index adds `BackupError` and `BackupScheduler`, and `backup-bundle` stays out of it, a lazy chunk. `google-config` and `google-oauth` handle tokens: they stay in `lib/` for their own slice with the security review) |
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
@@ -112,7 +113,7 @@ prefix. Tests move with their file in the same PR.
 | `keep-awake.ts` | `features/hosts/` |
 | `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`, **moved**; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`, `workspace.ts`, `density.ts`, `theme.ts`. Still in `lib/`: `router.ts` (to `app/`, last). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
-| `deps*.ts` | `features/deps/` |
+| `deps*.ts` | `deps-summary.ts` to `features/deps/` (**moved**); `deps.ts` (`chainOf`, `pickable`: a card's dependency chain) belongs to `features/board/`, its only reader is `card-deps.tsx` |
 | `harness.ts` | `features/harness/`: **moved** |
 | `home-*.ts`, `simple-*.ts` | `features/home/` |
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`; `host-*.ts` and `hosts.ts` **moved**, where `host-compare.ts` and `host-overview.ts` became `host-compare-model.ts` and `host-overview-model.ts` because `host-compare.tsx` and `host-overview.tsx` already live in the folder) |
@@ -121,7 +122,7 @@ prefix. Tests move with their file in the same PR.
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` |
 | `github-session.ts` | `features/hosts/` (the GitHub panel) |
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (`board-shortcut.ts` stays with the board) |
-| `palette.ts` | `features/palette/` |
+| `palette.ts` | `features/palette/` (**moved**) |
 | `project-*.ts` | `features/projects/` |
 | `quota*.ts` | `features/quota/` |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
@@ -132,7 +133,7 @@ prefix. Tests move with their file in the same PR.
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
-| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `lib/backup-bundle.ts`, a lazy chunk, imports it from the file) |
+| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/` |

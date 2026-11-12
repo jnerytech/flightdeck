@@ -2,8 +2,8 @@ import { SquareKanban, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Keycap } from "@/features/shortcuts/index.ts";
 import type { Key, T } from "@/i18n/index";
-import type { PaletteItem, PaletteSection } from "@/lib/palette";
 import { type StateTone, StatusDot } from "@/shared/status/index.ts";
+import type { PaletteItem, PaletteSection } from "./palette.ts";
 
 /** How many recent entries take Alt+1… */
 export const ALT_KEYS = 6;

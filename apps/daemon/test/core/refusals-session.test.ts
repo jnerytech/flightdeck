@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveAllowedCwd } from "../../src/paths.ts";
+import { resolveAllowedCwd } from "../../src/kernel/paths.ts";
 import { newManager } from "../support/helpers.ts";
 
 /** What a refusal carries: the code, the reason the app translates, its params and the log text. */

@@ -12,14 +12,14 @@ import { Switch } from "@/components/ui/switch";
 import { Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
+import { AppDialogContent } from "../../shared/feedback/index.ts";
 import {
   type ActionType,
   actionsFor,
   carriesThirdParty,
   TRIGGER_TYPES,
   type TriggerType,
-} from "../../lib/automations.ts";
-import { AppDialogContent } from "../../shared/feedback/index.ts";
+} from "./automations.ts";
 
 const STEPS = ["trigger", "action", "limit"] as const;
 

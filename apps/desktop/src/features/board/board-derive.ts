@@ -1,10 +1,10 @@
 import type { BoardColumn, Card, WorkflowInfo } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
 import { COLUMNS, filterCards, positionsBefore } from "../../lib/board.ts";
-import type { BulkRefusal } from "../../lib/board-select.ts";
 import { reasonText } from "../../lib/notice-text.ts";
 import { cardInFilter, type WorktreeFilter } from "../../lib/project-tree.ts";
 import { hasFeature } from "../../lib/version.ts";
+import type { BulkRefusal } from "./board-select.ts";
 
 /** The cards the board shows: the text filter, "only blocked" and the branch picked in the sidebar tree. */
 export function shownCards(

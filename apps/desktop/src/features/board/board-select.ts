@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
-import type { T } from "../i18n/index.ts";
-import type { Platform } from "../platform/types.ts";
+import type { T } from "../../i18n/index.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** Ctrl-click: adds the card to the selection, or takes it out when it is there. */
 export function toggleSelection(selected: string[], id: string): string[] {
