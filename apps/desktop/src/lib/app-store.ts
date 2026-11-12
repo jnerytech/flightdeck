@@ -136,10 +136,10 @@ import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
 import {
+  SessionMover,
   type TeleportOutcome,
   type TeleportRequest,
   type TeleportRunArgs,
-  teleportSession,
 } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
@@ -816,6 +816,8 @@ export class AppStore {
   readonly inbox: InboxSlice;
   /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
   private readonly boardCards: BoardCardsSlice;
+  /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
+  private readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
@@ -1512,13 +1514,7 @@ export class AppStore {
 
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
   teleportRequest(hostId: string): TeleportRequest {
-    // Straight to the connection: a host's teleport answer is checked by the relay, and never
-    // reaches the board's card or run state on the way.
-    return ((type, payload) => {
-      const conn = this.link.connection(hostId);
-      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
-      return conn.request(type, payload);
-    }) as TeleportRequest;
+    return this.mover.request(hostId);
   }
 
   /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
@@ -1527,15 +1523,7 @@ export class AppStore {
     sessionId: string,
     args: TeleportRunArgs,
   ): Promise<TeleportOutcome> {
-    return teleportSession({
-      source: this.teleportRequest(sourceHost),
-      target: this.teleportRequest(args.target),
-      sessionId,
-      repo: args.repo,
-      confirm: args.confirm,
-      onProgress: args.onProgress,
-      signal: args.signal,
-    });
+    return this.mover.move(sourceHost, sessionId, args);
   }
 
   /** The session a move made, opened on its new host. */

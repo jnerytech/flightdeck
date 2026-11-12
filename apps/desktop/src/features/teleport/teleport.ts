@@ -11,7 +11,7 @@ import {
   type TeleportManifest,
   TeleportManifestSchema,
 } from "@flightdeck/protocol";
-import { RequestError } from "../hosts/index.ts";
+import { type HostConnection, RequestError } from "../hosts/index.ts";
 import { isLocalUrl } from "../terminal/index.ts";
 
 /** One host's command channel: a connection's `request`, injected so tests use fakes. */
@@ -244,5 +244,37 @@ async function relay(run: TeleportRun, manifest: TeleportManifest, id: string): 
       run.onProgress?.(sent, total);
       if (chunk.eof && offset < part.size) throw refused("teleport_incomplete");
     }
+  }
+}
+
+/**
+ * The store's session moves (#1596: a slice of the store): each host's command channel for a
+ * teleport's relay, and the move itself from one host to the target the dialog picked.
+ */
+export class SessionMover {
+  constructor(private readonly connection: (hostId: string) => HostConnection | undefined) {}
+
+  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
+  request(hostId: string): TeleportRequest {
+    // Straight to the connection: a host's teleport answer is checked by the relay, and never
+    // reaches the board's card or run state on the way.
+    return ((type, payload) => {
+      const conn = this.connection(hostId);
+      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
+      return conn.request(type, payload);
+    }) as TeleportRequest;
+  }
+
+  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
+  move(sourceHost: string, sessionId: string, args: TeleportRunArgs): Promise<TeleportOutcome> {
+    return teleportSession({
+      source: this.request(sourceHost),
+      target: this.request(args.target),
+      sessionId,
+      repo: args.repo,
+      confirm: args.confirm,
+      onProgress: args.onProgress,
+      signal: args.signal,
+    });
   }
 }
