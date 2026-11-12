@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { type SummarySnapshot, summaryNotifications } from "../src/features/inbox/notify.ts";
-import { translator } from "../src/i18n/index.ts";
+import { type SummarySnapshot, summaryNotifications } from "../../src/features/inbox/notify.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 const running: SummarySnapshot = { status: "running", pendingPermissions: [] };
 const quiet: SummarySnapshot = { ...running, quietSince: "2026-11-09T12:05:00.000Z" };
