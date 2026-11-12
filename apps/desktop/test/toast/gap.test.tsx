@@ -1,20 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { demoToast } = await import("../src/demo/boot.ts");
-const { Composer } = await import("../src/features/sessions/parts.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { demoToast } = await import("../../src/demo/boot.ts");
+const { Composer } = await import("../../src/features/sessions/parts.tsx");
 
-const CSS = readStyles(join(import.meta.dir, "../src/styles.css"));
+const CSS = readStyles(join(import.meta.dir, "../../src/styles.css"));
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
   cleanup();

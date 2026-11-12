@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { Notice } from "../src/lib/app-store.ts";
-import { sameNotice } from "../src/lib/notice-lifetime.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle, stays } from "./wait.ts";
+import type { Notice } from "../../src/lib/app-store.ts";
+import { sameNotice } from "../../src/lib/notice-lifetime.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle, stays } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 afterEach(() => cleanup());
 
