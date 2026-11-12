@@ -1,4 +1,4 @@
-import type { ServerOptions } from "../server.ts";
+import type { ServerOptions } from "../server-options.ts";
 
 /**
  * What `main.ts` sees of a daemon domain (#2094, `docs/decisions/2026-11-12-daemon-domain-modules.md`):
