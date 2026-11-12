@@ -616,6 +616,97 @@ describe("times-ui: the teams of a host", () => {
     expect(added?.permission).toBe("bypassPermissions");
   });
 
+  /** The effort of each card of a project's board, by card id, read from the daemon. */
+  async function efforts(client: { data<T>(type: string, payload: object): Promise<T | null> }) {
+    const projects = await client.data<{ projects: Array<{ id: string }> }>("project.list", {});
+    const found = new Map<string, string | null>();
+    for (const project of projects?.projects ?? []) {
+      const board = await client.data<{
+        columns: Array<{ cards: Array<{ id: string; variant: { effort: string | null } | null }> }>;
+      }>("board.get", { projectId: project.id });
+      for (const column of board?.columns ?? []) {
+        for (const card of column.cards) found.set(card.id, card.variant?.effort ?? null);
+      }
+    }
+    return found;
+  }
+
+  test("each member's effort is picked in the form, the persona's effort standing when none is (#2310)", async () => {
+    const { teams, client } = await open();
+    await click("Novo time");
+    await change("Objetivo", "esforço por membro");
+    await change("Nome do time", "ef");
+    await workerRows(2);
+    const options = (label: string) =>
+      [...((screen.queryByLabelText(label) as HTMLSelectElement | null)?.options ?? [])].map(
+        (o) => o.value,
+      );
+    expect(options("Esforço da coordenadora")).toEqual([
+      "",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]);
+    expect(options("Esforço da executora 1")).toEqual([
+      "",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]);
+    await change("Esforço da coordenadora", "max");
+    await change("Esforço da executora 2", "low");
+    await click("Criar e iniciar");
+    await settle(() => row("ef") !== null);
+    const members = (await teams())[0]?.members ?? [];
+    const byCard = await efforts(client);
+    expect(members.slice(1).map((m) => byCard.get(m.cardId as string) ?? null)).toEqual([
+      null,
+      "low",
+    ]);
+  });
+
+  test("a model with no effort choice hides the picker, and a host that does not announce it shows none (#2310)", async () => {
+    const { store } = await open();
+    await click("Novo time");
+    await settle(() => screen.queryByLabelText("Esforço da executora 1") !== null);
+    await change("Modelo da executora 1", "haiku");
+    await settle(() => screen.queryByLabelText("Esforço da executora 1") === null);
+    expect(screen.queryByLabelText("Esforço da executora 2")).not.toBeNull();
+    const host = store.getState().hosts[0];
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            ...host,
+            hostInfo: {
+              ...host?.hostInfo,
+              features: (host?.hostInfo?.features ?? []).filter((f) => f !== "teams.effort"),
+            },
+          },
+        ],
+      });
+    });
+    await settle(() => screen.queryByLabelText("Esforço da executora 2") === null);
+    expect(screen.queryByLabelText("Esforço da coordenadora")).toBeNull();
+    expect(screen.queryByLabelText("Modelo da executora 2")).not.toBeNull();
+  });
+
+  test("a worker added to a running team takes an effort too (#2310)", async () => {
+    const { teams, client } = await open();
+    await create("ae", "1");
+    await click("Adicionar executora a ae", row("ae"));
+    await settle(() => screen.queryByLabelText("Esforço da nova executora de ae") !== null);
+    await change("Esforço da nova executora de ae", "xhigh");
+    await click("Adicionar a ae", row("ae"));
+    await settle(() => (row("ae")?.textContent ?? "").includes("ae · executora 2"));
+    const added = (await teams())[0]?.members.find((m) => m.name === "ae · executora 2");
+    expect((await efforts(client)).get(added?.cardId as string)).toBe("xhigh");
+  });
+
   test("the worker rows are a grid of fixed columns: persona, model, permissions, remove (#93)", async () => {
     await open();
     await click("Novo time");

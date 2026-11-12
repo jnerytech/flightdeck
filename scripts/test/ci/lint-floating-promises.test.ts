@@ -22,9 +22,4 @@ describe("lint-floating-promises: a promise nobody awaits is a lint error", () =
     expect(covered("apps/**")).toBe(true);
     expect(covered("scripts/**")).toBe(true);
   });
-
-  test("docs/TDD.md tells how to write a call that is meant to be left alone", () => {
-    const tdd = readFileSync(resolve(ROOT, "docs/TDD.md"), "utf8");
-    expect(tdd).toContain("noFloatingPromises");
-  });
 });

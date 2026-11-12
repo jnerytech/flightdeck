@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { logHook } from "../.claude/hooks/log.ts";
-import { formatReport, planCoverageFuncs } from "./lib/coverage-funcs.ts";
+import { formatReport, planCoverageFuncs } from "./lib/coverage-gate/funcs.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const args = process.argv.slice(2).filter((a) => a !== "--");
