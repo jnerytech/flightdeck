@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import type { SpawnedAcp } from "../../src/runtime/acp/client.ts";
+import { treeKiller } from "../../src/runtime/opencode-kill.ts";
 import {
   IDLE_CLOSE_MS,
   INTERRUPT_ESCALATION_MS,
   OpenCodeRuntime,
   type OpenCodeRuntimeOptions,
-  treeKiller,
 } from "../../src/runtime/opencode-runtime.ts";
 import type { AgentRun, RuntimeEvent, StartOptions } from "../../src/runtime/types.ts";
 import { poll } from "../support/helpers.ts";

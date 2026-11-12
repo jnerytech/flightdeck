@@ -48,7 +48,7 @@ function TaskScreen(
   }>,
 ) {
   const { store, hostId, sessionId, t } = props;
-  useEffect(() => store.watchSession(hostId, sessionId), [store, hostId, sessionId]);
+  useEffect(() => store.subscriptions.watchSession(hostId, sessionId), [store, hostId, sessionId]);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
   const state = taskState(session);
   const [results, setResults] = useState<TaskResultsResult | null>(null);

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, jest, setDefaultTimeout, test } from "bun:test";
-import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import {
+  type AxeViolation,
+  blocking,
+  describeViolation,
+} from "../../../../scripts/lib/browser/axe.ts";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../../scripts/test/fake-cli.ts";
 import { en } from "../../src/i18n/en.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";

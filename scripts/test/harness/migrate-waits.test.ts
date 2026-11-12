@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isTarget, migrate, waitPathFor } from "../../lib/migrate-esperas.ts";
+import { isTarget, migrate, waitPathFor } from "../../lib/tests/migrate-esperas.ts";
 
 const DEF = (
   timeout: string,

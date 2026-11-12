@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * `bun run scripts/protocol-surface.ts [--write]`: compares the protocol's surface with its release
- * baseline (scripts/lib/protocol-surface.ts) and lists what was lost. `--write` refreshes
+ * baseline (scripts/lib/release/protocol-surface.ts) and lists what was lost. `--write` refreshes
  * packages/protocol/surface-baseline.txt; run it at release only, so that branches adding to the
  * protocol never touch the baseline.
  */
@@ -9,7 +9,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { byCodeUnit } from "../packages/protocol/src/compare.ts";
 import * as protocol from "../packages/protocol/src/index.ts";
-import { removed, walkSchema } from "./lib/protocol-surface.ts";
+import { removed, walkSchema } from "./lib/release/protocol-surface.ts";
 
 const BASELINE = join(resolve(import.meta.dir, ".."), "packages/protocol/surface-baseline.txt");
 const current = Object.entries(protocol)

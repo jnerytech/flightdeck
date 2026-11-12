@@ -11,8 +11,9 @@ import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
 import { createBg } from "./bg/wiring.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
-import { Central, messageExternal } from "./central/central.ts";
+import { messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
+import { createCentral } from "./central/wiring.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
@@ -44,9 +45,9 @@ import { createKnowledge } from "./knowledge/wiring.ts";
 import { createHostLog } from "./logs/wiring.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
-import { Names } from "./names/names.ts";
+import { createNames } from "./names/wiring.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
-import { createPermissions } from "./permissions/wiring.ts";
+import { createPermissions, type PermissionsDeps } from "./permissions/wiring.ts";
 import { createPersonas } from "./personas/wiring.ts";
 import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
@@ -238,14 +239,18 @@ export async function startDaemon(
   const snapshots = new Snapshots({ db: store.db });
   // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
   // below) and the costs.
-  const { risk, autoApprove } = createPermissions({
-    db: store.db,
-    runtime,
-    config,
-    home: userHome(env),
-    projectForCwd: (cwd) => board.projectForCwd(cwd),
-    usage: { record: (entry) => usageIndex.record(entry) },
-  });
+  const { risk, autoApprove } = await domains.add(
+    createPermissions({
+      db: store.db,
+      runtime,
+      config,
+      home: userHome(env),
+      // The return type is named: `board` is made below from `autoApprove`, and `domains.add` would loop.
+      projectForCwd: (cwd): ReturnType<PermissionsDeps["projectForCwd"]> =>
+        board.projectForCwd(cwd),
+      usage: { record: (entry) => usageIndex.record(entry) },
+    }),
+  );
   // The vault joins this scanner when it exists (phase 16).
   const snippetScanner = new SecretScanner();
   // What a session starts with: agents, MCP, plugins, auto memory, templates and their tasks.
@@ -302,7 +307,7 @@ export async function startDaemon(
   await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
   await domains.add(createProjects({ keys, projectTrust, manager }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
-  const names = new Names(store.db);
+  const { names } = await domains.add(createNames(store.db));
   const { history } = await domains.add(
     createHistory({ db: store.db, config, names, manager, log: (m) => logger.log(m) }),
   );
@@ -430,20 +435,22 @@ export async function startDaemon(
   await domains.add(createGithub({ config, board, issues, manager }));
   await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
   await domains.add(createReleases());
-  const central = new Central({
-    risk,
-    autoApprove,
-    snapshots,
-    db: store.db,
-    keys,
-    manager,
-    hooks: config.hooks,
-    dataDir: config.dataDir,
-    hostName: config.hostName,
-    configFile,
-    selfCommand,
-    settingsPath: claudeSettingsPath,
-  });
+  const { central } = await domains.add(
+    createCentral({
+      risk,
+      autoApprove,
+      snapshots,
+      db: store.db,
+      keys,
+      manager,
+      hooks: config.hooks,
+      dataDir: config.dataDir,
+      hostName: config.hostName,
+      configFile,
+      selfCommand,
+      settingsPath: claudeSettingsPath,
+    }),
+  );
   // Phase 15: the SSH destinations, their server keys, the connector and askpass.
   const ssh = await createSsh({
     db: store.db,
@@ -629,15 +636,12 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    names,
     vault,
     log: logger.log.bind(logger),
     actions,
-    autoApprove,
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    central,
     fileLog,
     hostName: config.hostName,
     bind: config.bind,

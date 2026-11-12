@@ -148,7 +148,7 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
   test("an Approve from the tray opens a vault request instead of granting it", async () => {
     const { store, hostId, push, types, fromTray } = await setup();
     const opened: string[] = [];
-    store.onOpenRequest((item) => opened.push(item.requestId));
+    store.permissions.onOpen((item) => opened.push(item.requestId));
     push({});
     await settle(() => needsYou(store.getState()).length === 1);
     fromTray({ key: `${hostId}/r1`, action: "approve" });

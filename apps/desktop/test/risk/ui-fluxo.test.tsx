@@ -148,7 +148,7 @@ describe("risco-ui: do daemon à tela", () => {
     expect(tray.menus.at(-1)?.items[0]?.actions).toEqual(["deny", "open"]);
 
     const opened: unknown[] = [];
-    store.onOpenRequest((i) => opened.push(i));
+    store.permissions.onOpen((i) => opened.push(i));
     tray.act({ key: `${item?.hostId}/${item?.requestId}`, action: "approve" });
     await settle(() => opened.length === 1);
     await stays(() => d.manager.get(sessionId).status === "awaiting_permission", 150);

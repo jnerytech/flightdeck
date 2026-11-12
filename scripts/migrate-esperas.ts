@@ -1,7 +1,7 @@
 /** `bun scripts/migrate-esperas.ts`: swaps each desktop test file's own `settle` for the shared one. */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isTarget, migrate, waitPathFor } from "./lib/migrate-esperas.ts";
+import { isTarget, migrate, waitPathFor } from "./lib/tests/migrate-esperas.ts";
 
 const DIR = resolve(import.meta.dir, "../apps/desktop/test");
 let changed = 0;
