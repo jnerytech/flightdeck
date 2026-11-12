@@ -131,7 +131,7 @@ prefix. Tests move with their file in the same PR.
 | `teleport.ts` | `features/teleport/` |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/` |
-| `tray.ts` | `features/tray/` |
+| `tray.ts` | `features/tray/`: **moved** |
 | `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `lib/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/` |

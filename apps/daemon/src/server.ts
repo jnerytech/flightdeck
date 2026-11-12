@@ -69,7 +69,7 @@ import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
 import type { Plugins } from "./plugins/plugins.ts";
-import type { GitRunner } from "./project-find.ts";
+import type { GitRunner } from "./projects/index.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";

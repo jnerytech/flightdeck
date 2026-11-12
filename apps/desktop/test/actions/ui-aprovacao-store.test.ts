@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { trayMenu } from "../../src/lib/tray.ts";
+import { trayMenu } from "../../src/features/tray/tray.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { settlePlain as settle } from "../wait.ts";
