@@ -119,7 +119,7 @@ prefix. Tests move with their file in the same PR.
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`; `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts` and `setup-steps.ts` **moved**; `version.ts` **stays in `lib/`**: about 80 files from every domain read `APP_VERSION` and `isNewer`, so moving it would make each of them depend on `hosts` for the app's own version, and the hosts index would then sit between the e2e Node chain and `package.json`; it goes with the shell files to `app/`; `host-*.ts` and `hosts.ts`, where `host-compare.ts` and `host-overview.ts` became `host-compare-model.ts` and `host-overview-model.ts` because `host-compare.tsx` and `host-overview.tsx` already live in the folder) |
 | `inbox.ts` | `features/inbox/` (**moved**) |
 | `issues.ts` | `features/issues/` (**moved**) |
-| `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` |
+| `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` (**moved**) |
 | `github-session.ts` | `features/hosts/` (the GitHub panel) |
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (`board-shortcut.ts` stays with the board) |
 | `palette.ts` | `features/palette/` (**moved**) |

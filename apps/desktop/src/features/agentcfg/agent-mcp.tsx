@@ -26,7 +26,7 @@ import {
   emptyDraft,
   type McpDraft,
   serverFromDraft,
-} from "../../lib/mcp-form.ts";
+} from "./mcp-form.ts";
 
 /** The protocol's names, which the screen shows as they are. */
 /** Sessions of a managed run that can still answer `mcp.status`. */
