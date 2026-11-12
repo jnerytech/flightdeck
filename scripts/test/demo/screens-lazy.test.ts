@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { staticImports } from "../../lib/bundle-reach.ts";
+import { staticImports } from "../../lib/bundle/bundle-reach.ts";
 
 const UI = resolve(import.meta.dir, "../../../apps/desktop/src/ui");
 

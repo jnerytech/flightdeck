@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ENTRY_GZIP_LIMIT, overBudget } from "../../lib/bundle-budget.ts";
+import { ENTRY_GZIP_LIMIT, overBudget } from "../../lib/bundle/bundle-budget.ts";
 
 const chunk = (file: string, gzip: number) => ({ file, bytes: gzip * 3, gzip });
 

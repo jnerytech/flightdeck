@@ -109,12 +109,7 @@ import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts"
 import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
-import {
-  SessionMover,
-  type TeleportOutcome,
-  type TeleportRequest,
-  type TeleportRunArgs,
-} from "../features/teleport/teleport.ts";
+import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
@@ -718,7 +713,7 @@ export class AppStore {
   /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
   private readonly boardCards: BoardCardsSlice;
   /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
-  private readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
+  readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
   readonly roster: HostRosterSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
@@ -1155,11 +1150,6 @@ export class AppStore {
     return this.system.saveFile(name, text);
   }
 
-  /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
-  copySecret(id: string, clearMs: number): Promise<boolean> {
-    return this.secrets.copy(id, clearMs);
-  }
-
   /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
   canReadBackup(): boolean {
     return this.system.canReadBackup();
@@ -1314,20 +1304,6 @@ export class AppStore {
     this.clientBudgets.dispose();
     this.vaultRules.dispose();
     this.theme.stop();
-  }
-
-  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
-  teleportRequest(hostId: string): TeleportRequest {
-    return this.mover.request(hostId);
-  }
-
-  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
-  moveSession(
-    sourceHost: string,
-    sessionId: string,
-    args: TeleportRunArgs,
-  ): Promise<TeleportOutcome> {
-    return this.mover.move(sourceHost, sessionId, args);
   }
 
   /** The session a move made, opened on its new host. */

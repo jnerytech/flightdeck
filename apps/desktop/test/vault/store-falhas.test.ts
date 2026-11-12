@@ -68,7 +68,7 @@ describe("cofre-store: a tool of the shell that fails", () => {
     const store = new AppStore(platform, { baseDelayMs: 60_000 });
     stores.push(store);
     const meta = await store.secrets.add({ name: "deploy", type: "token", value: "v-123" });
-    expect(await store.copySecret(meta.id, 5)).toBe(true);
+    expect(await store.secrets.copy(meta.id, 5)).toBe(true);
     await Bun.sleep(40);
     expect(copied).toEqual(["v-123"]);
     expect(errors(store)).toEqual([]);

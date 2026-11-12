@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { runAudit } from "../../lib/tdd-audit.ts";
+import { runAudit } from "../../lib/guards/tdd-audit.ts";
 
 const git = (subjects: string[]) => (args: string[]) => {
   if (args[0] === "rev-parse") return "abc";
