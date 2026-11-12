@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settleMaybe } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { RunAgain } = await import("../src/features/board/run-again.tsx");
-const { RunTimeline } = await import("../src/features/runenv/run-timeline.tsx");
-const { runAgain } = await import("../src/lib/runs.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { RunAgain } = await import("../../src/features/board/run-again.tsx");
+const { RunTimeline } = await import("../../src/features/runenv/run-timeline.tsx");
+const { runAgain } = await import("../../src/lib/runs.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { installFakeCheck } from "../../../scripts/test/check-guard.ts";
-import { Quota } from "../../daemon/src/quota/quota.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { waiter } from "./wait.ts";
-import { workflowDaemon } from "./workflow-fixtures.ts";
+import { installFakeCheck } from "../../../../scripts/test/check-guard.ts";
+import { Quota } from "../../../daemon/src/quota/quota.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { waiter } from "../wait.ts";
+import { workflowDaemon } from "../workflow-fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Real git and a workflow run under the in-process daemon: more than the default 5 s.
 setDefaultTimeout(30_000);
