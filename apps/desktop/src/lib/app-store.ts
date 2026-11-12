@@ -25,7 +25,7 @@ import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { SystemSlice } from "@/features/shell/system.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
-import { isInside } from "@/shared/lib/index.ts";
+import { isInside, quiet } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
@@ -285,9 +285,6 @@ const newHostView = (config: HostConfig): HostView => ({
   updateCheck: null,
   sessions: [],
 });
-
-/** A request whose failure only means less to show (an older daemon, a host without a board). */
-const quiet = <T>(promise: Promise<T>) => promise.catch(() => null);
 
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
