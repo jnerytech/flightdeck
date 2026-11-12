@@ -42,6 +42,8 @@ function fake(
     statuses?: Record<string, { context: string; state: string }[]>;
     behind?: Record<string, number>;
     subjects?: Record<string, string[]>;
+    /** Subjects a merge of main brought into the branch: a plain log lists them after its own (oldest), a first-parent one does not (#2157). */
+    mergedIn?: Record<string, string[]>;
     pushed?: string[];
     fail?: RegExp;
     env?: Record<string, string>;
@@ -245,7 +247,14 @@ function fake(
       if (args[0] === "log") {
         const range = args.at(-1) ?? "";
         const branch = range.split("..origin/")[1] ?? "";
-        return ok((opts.subjects?.[branch] ?? []).map((s) => `${s}\n`).join(""));
+        const own = opts.subjects?.[branch] ?? [];
+        const listed = args.includes("--first-parent")
+          ? own
+          : [...own, ...(opts.mergedIn?.[branch] ?? [])];
+        const shown = args.includes("--no-merges")
+          ? listed.filter((s) => !s.startsWith("Merge "))
+          : listed;
+        return ok(shown.map((s) => `${s}\n`).join(""));
       }
       return { code: 1, stdout: "" };
     },
@@ -492,6 +501,46 @@ describe("pr-flow: open", () => {
       "one lock (#117)",
     );
     expect(await title(["Merge branch 'main' into slice"])).toBe("A big issue (#117)");
+  });
+
+  test("#2157: a branch that merged main is titled, listed and linked by its own first-parent commits only", async () => {
+    const open = async (subjects: string[], mergedIn: string[], args: string[]) => {
+      const f = fake({
+        pushed: ["slice"],
+        subjects: { slice: subjects },
+        mergedIn: { slice: mergedIn },
+        issues: { 117: "A big issue", 2094: "The modules" },
+      });
+      expect(await prFlow(["open", "slice", ...args], f.deps)).toBe(0);
+      const post = f.writes[0] ?? "";
+      return {
+        title: /-f title=(.*?) -f head=/.exec(post)?.[1],
+        body: /-f body=([\s\S]*?) -F draft=/.exec(post)?.[1],
+      };
+    };
+    const merge = "Merge remote-tracking branch 'origin/main' into slice";
+    const other = ["feat(y): other work (#1593)", "feat(z): more other work (#1593)"];
+    expect(await open([merge, "refactor(x): own work (#2094)"], other, ["--refs", "117"])).toEqual({
+      title: "own work (#117)",
+      body: "Refs #117\n\n- refactor(x): own work (#2094)",
+    });
+    expect(
+      await open(["test(x): second (#2094)", merge, "refactor(x): first (#2094)"], other, [
+        "--refs",
+        "117",
+      ]),
+    ).toEqual({
+      title: "first (#117)",
+      body: "Refs #117\n\n- test(x): second (#2094)\n- refactor(x): first (#2094)",
+    });
+    expect(await open([merge], other, ["--refs", "117"])).toEqual({
+      title: "A big issue (#117)",
+      body: "Refs #117\n",
+    });
+    // Without --issue or --refs the issue is the own commits' one, not the merged-in ones'.
+    expect(
+      (await open([merge, "refactor(x): own work (#2094)"], [...other, ...other], [])).title,
+    ).toBe("The modules (#2094)");
   });
 
   test("#909: --title overrides the title in every mode, and the issue still links", async () => {

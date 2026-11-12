@@ -221,6 +221,27 @@ async function behindBy(deps: PrFlowDeps, base: string, head: string): Promise<n
 }
 
 /**
+ * The subjects of the branch's own commits, newest first: its first-parent line, without merge
+ * commits, so a merge of main brings none of main's commits into the title, the PR body or the
+ * issue (#2157). A stale origin/<base> can still list a direct commit on main's own first-parent
+ * line between it and the fork point; pr open does not fetch.
+ */
+async function ownSubjects(
+  branch: string,
+  base: string,
+  git: PrFlowDeps["git"],
+): Promise<string[]> {
+  const log = await git([
+    "log",
+    "--first-parent",
+    "--no-merges",
+    "--format=%s",
+    `origin/${base}..origin/${branch}`,
+  ]);
+  return log.stdout.split("\n").filter(Boolean);
+}
+
+/**
  * The first non-merge commit's subject (git log lists the newest first) without its
  * `type(scope): ` prefix and trailing `(#N)`, or null when the branch has none (#909).
  */
@@ -281,8 +302,7 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
       return 1;
     }
   }
-  const log = await deps.git(["log", "--format=%s", `origin/${base}..origin/${branch}`]);
-  const subjects = log.stdout.split("\n").filter(Boolean);
+  const subjects = await ownSubjects(branch, base, deps.git);
   const issue = Number(option("--issue") ?? option("--refs")) || issueOf(subjects);
   if (!issue) {
     deps.log(`no (#N) in the subjects of ${branch}'s commits: name the issue with --issue <n>`);
