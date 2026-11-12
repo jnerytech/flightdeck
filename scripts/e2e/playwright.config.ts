@@ -2,7 +2,7 @@ import { statSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
 import { defineBddConfig } from "playwright-bdd";
-import { browserLaunch, whichOnNodePath } from "../lib/browser.ts";
+import { browserLaunch, whichOnNodePath } from "../lib/browser/browser.ts";
 import { E2E_TEST_DIR, E2E_TEST_MATCH, grepFor, runnerSettings } from "../lib/e2e/config.ts";
 
 const isFile = (path: string) => {

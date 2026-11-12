@@ -1,5 +1,5 @@
 import { linesOf } from "../kernel/index.ts";
-import { REAL_KILL_DEPS, treeKiller } from "./opencode-runtime.ts";
+import { REAL_KILL_DEPS, treeKiller } from "./opencode-kill.ts";
 
 /**
  * One private `opencode serve` for a whole preflight (issue #243): started with Flightdeck's

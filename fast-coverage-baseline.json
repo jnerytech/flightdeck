@@ -240,8 +240,9 @@
   "packages/protocol/src/question.ts",
   "packages/protocol/src/refusals.ts",
   "packages/protocol/src/snippets.ts",
-  "scripts/lib/axe.ts",
-  "scripts/lib/browser.ts",
+  "scripts/lib/browser/axe.ts",
+  "scripts/lib/browser/browser.ts",
+  "scripts/lib/browser/visual.ts",
   "scripts/lib/bundle/bundle-budget.ts",
   "scripts/lib/bundle/bundle-reach.ts",
   "scripts/lib/bundle/perf-baseline.ts",
@@ -291,6 +292,5 @@
   "scripts/lib/styles/theme-contrast.ts",
   "scripts/lib/tests/fast-coverage.ts",
   "scripts/lib/tests/related-coverage.ts",
-  "scripts/lib/typecheck/typecheck.ts",
-  "scripts/lib/visual.ts"
+  "scripts/lib/typecheck/typecheck.ts"
 ]

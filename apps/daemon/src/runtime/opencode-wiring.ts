@@ -14,9 +14,10 @@ import {
   fileStamp,
   type OpenCodeInfo,
 } from "./opencode-discovery.ts";
+import { REAL_KILL_DEPS, treeKiller } from "./opencode-kill.ts";
 import { OpenCodePreflight } from "./opencode-preflight.ts";
 import { OpenCodeModels, runCommand } from "./opencode-process.ts";
-import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./opencode-runtime.ts";
+import { OpenCodeRuntime } from "./opencode-runtime.ts";
 import { scanOpenCodeScope } from "./opencode-scope.ts";
 import { startPrivateServer } from "./opencode-serve.ts";
 import { OPENCODE_LEDGER_FILE, ProcessLedger, procSource } from "./process-ledger.ts";

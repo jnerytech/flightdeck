@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { resolve } from "node:path";
-import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import {
+  type AxeViolation,
+  blocking,
+  describeViolation,
+} from "../../../../scripts/lib/browser/axe.ts";
 import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
