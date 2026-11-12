@@ -1,5 +1,5 @@
-import { formatDuration } from "../i18n/format.ts";
-import type { T } from "../i18n/index.ts";
+import { formatDuration } from "../../i18n/format.ts";
+import type { T } from "../../i18n/index.ts";
 
 /** A tool's or request's time: "150 ms" under a second, "2.9 s" under a minute, else minutes. */
 export function formatMs(ms: number, t: T): string {

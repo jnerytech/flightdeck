@@ -5,7 +5,7 @@ import {
   activityOptions,
   DONE_WINDOW_MS,
   NO_ACTIVITY_FILTER,
-} from "../../src/lib/activity.ts";
+} from "../../src/features/activity/activity.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { activityState, HOUR, MIN, NOW } from "./fixtures.ts";

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { filterMenu, fuzzyScore, groupOf, highlight, MENU_GROUPS } from "../src/lib/prompt-menu.ts";
+import {
+  filterMenu,
+  fuzzyScore,
+  groupOf,
+  highlight,
+  MENU_GROUPS,
+} from "../src/features/snippets/prompt-menu-model.ts";
 
 const slash = (name: string, description?: string) => ({
   key: `slash:${name}`,

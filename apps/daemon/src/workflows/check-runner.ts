@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { isCheckEnvName } from "@flightdeck/protocol";
 import { killTree, runCommand, runLimited } from "../board/command.ts";
 import { shellCommand } from "../board/setup.ts";
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import { MAX_VALUE } from "./interpolate.ts";
 
 /** How long a check may run before it is killed, unless the caller gives another limit. */

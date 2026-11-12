@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import { whichOnPath } from "../../src/kernel/which.ts";
 import { agentSetupOptions, createAgentSetup } from "../../src/plugins/wiring.ts";
 import { BUILTIN_TEMPLATES } from "../../src/templates/index.ts";
-import { whichOnPath } from "../../src/which.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /**

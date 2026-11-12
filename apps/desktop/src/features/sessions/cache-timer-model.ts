@@ -1,4 +1,4 @@
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** How long Claude Code keeps the prompt cache: 5 minutes, or 1 hour with extended caching. */
 export const CACHE_TTLS = [300_000, 3_600_000] as const;

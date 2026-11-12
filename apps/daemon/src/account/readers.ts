@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
-import type { Exec } from "../exec.ts";
 import { parseJsonOr } from "../json-text.ts";
+import type { Exec } from "../kernel/index.ts";
 import type { QuotaReading } from "../runtime/types.ts";
 import type { AccountReaders } from "./account.ts";
 
