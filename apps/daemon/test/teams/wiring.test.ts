@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Central } from "../../src/central/central.ts";
@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 describe("teams-wiring: the sessions that work together, as the daemon builds them (#2094)", () => {
-  test("its module serves the messages, the idle notices, the teams and the personas, and its stop lets go of the quota", async () => {
+  test("its module serves the messages, the idle notices, the teams and the personas, sweeps the messages every 5 minutes, and its stop lets go of the sweep and the quota", async () => {
     const { board, manager, store, repo } = newBoard({}, 1);
     cleanups.push(() => board.stop());
     const dir = tempDir("fd-teams-");
@@ -66,11 +66,22 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
       prepare: withoutPersonas,
       quota,
     });
+    cleanups.push(() => module.stop?.());
     const messaging = module.server?.messaging;
     const personas = module.server?.personas;
+    const every = spyOn(globalThis, "setInterval");
+    const clear = spyOn(globalThis, "clearInterval");
+    cleanups.push(
+      () => every.mockRestore(),
+      () => clear.mockRestore(),
+    );
     await module.start?.();
     const started = [...watching];
+    const sweeps = every.mock.calls.flatMap((call, i) =>
+      call[1] === 5 * 60_000 ? [every.mock.results[i]?.value] : [],
+    );
     await module.stop?.();
+    const cleared = clear.mock.calls.some((call) => sweeps.length === 1 && call[0] === sweeps[0]);
     expect([
       messaging?.messages !== undefined,
       messaging?.idle?.pending(),
@@ -79,6 +90,8 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
       personas?.sessions !== undefined,
       started,
       watching,
-    ]).toEqual([true, 0, true, true, true, ["on"], ["on", "off"]]);
+      sweeps.length,
+      cleared,
+    ]).toEqual([true, 0, true, true, true, ["on"], ["on", "off"], 1, true]);
   });
 });
