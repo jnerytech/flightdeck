@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { SHORTCUTS } from "../../src/lib/shortcuts.ts";
+import { SHORTCUTS } from "../../src/features/shortcuts/shortcuts.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "../fixtures.ts";
 

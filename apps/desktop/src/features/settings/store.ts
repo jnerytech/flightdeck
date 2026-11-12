@@ -1,6 +1,6 @@
 import type { T } from "../../i18n/index.ts";
-import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "../../lib/shortcut.ts";
 import type { Platform } from "../../platform/types.ts";
+import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "../shortcuts/index.ts";
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
