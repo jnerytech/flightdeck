@@ -217,6 +217,15 @@ Before a file is split, check its coverage (`bun run coverage:funcs <file>`, `te
 they pin what the code does today, right or wrong, red by assertion when that behavior changes
 (Feathers). The moves come after, in their own PRs.
 
+CI's removed-tests guard (`scripts/tests-removed.ts`, #2176) reads every PR's net diff from the
+merge-base with main, so a merge of main is judged by its result. It fails when a test file has
+fewer tests (`test(`, `it(` and their `.each`/`.skipIf` forms) or fewer `expect(` calls than at the
+base, was deleted, or was renamed to a path that is not a test file. A file git cannot read fails
+too: nothing was checked. A removal that is meant (a test merged into another file, a flaky test
+deleted, #1003) passes only when a commit of the PR ends its message with a trailer naming each such
+file by its path (at the base or the head) and the reason: `Tests-Removed: <path>[, <path>] — <why>`.
+A trailer waives only the files it names.
+
 ## Test anchors
 
 How a UI test finds what it checks, in this order (issue #168, owner decision). The design rules
