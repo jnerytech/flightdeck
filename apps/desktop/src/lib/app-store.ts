@@ -41,7 +41,12 @@ import {
   initialBackgroundState,
   wireBackground,
 } from "../features/background/index.ts";
-import { type Attention, BackupScheduler, BackupSlice } from "../features/backup/index.ts";
+import {
+  type Attention,
+  BackupScheduler,
+  BackupSlice,
+  googleConfig,
+} from "../features/backup/index.ts";
 import { BoardWidth } from "../features/board/index.ts";
 import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
 import {
@@ -179,7 +184,6 @@ import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
-import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
