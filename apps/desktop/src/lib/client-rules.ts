@@ -1,5 +1,5 @@
+import { isInside } from "@/shared/lib/index.ts";
 import { type ClientsData, type RuleInput, UNASSIGNED } from "./clients.ts";
-import { isInside } from "./paths.ts";
 
 /** A project the app knows: its key and the folders (per host) its sessions ran in. */
 export interface KnownProject {

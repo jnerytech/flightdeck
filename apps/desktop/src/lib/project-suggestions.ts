@@ -1,4 +1,4 @@
-import { isInside } from "./paths.ts";
+import { isInside } from "@/shared/lib/index.ts";
 
 const MOST = 5;
 

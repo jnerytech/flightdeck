@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { basename } from "@/lib/paths";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import { byProject, CONTINUATION } from "./resume-offer.ts";
 
 type Outcome = { ok: true } | { ok: false; reason: string };

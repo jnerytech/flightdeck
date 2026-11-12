@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Bar, Panel } from "@/shared/layout/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import { formatBytes, formatDuration } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { basename } from "../../lib/paths.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { MemoryGuard } from "./memory-guard.tsx";
 

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { contrastRatio } from "@/shared/lib/index.ts";
 import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { contrastRatio } from "../src/lib/contrast.ts";
 import { THEME_KEY, ThemeController, type ThemeEnv } from "../src/lib/theme.ts";
 import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
