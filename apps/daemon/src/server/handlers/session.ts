@@ -111,7 +111,7 @@ export const sessionHandlers = {
       const cwd = await resolveAllowedCwd(payload.cwd, opts.allowedRoots);
       await opts.warmProjectKey(cwd);
     }
-    const prepared = await preparePersonas(opts.personas, payload.persona, payload.cwd);
+    const prepared = await preparePersonas(opts.personas?.store, payload.persona, payload.cwd);
     return await manager.create(payload, { prepared });
   },
   // Issue #1361: the person's own input into a card's session steps the check loop aside.
@@ -230,11 +230,13 @@ export const sessionHandlers = {
   "session.applyPersona": async (payload, { server }) => {
     const { sessionId, claudeSessionId, persona } = payload;
     if (sessionId) server.opts.board?.personTurnOfSession(sessionId);
-    return await server.need("personaSessions").apply({ sessionId, claudeSessionId, persona });
+    return await server
+      .needIn("personas", "sessions")
+      .apply({ sessionId, claudeSessionId, persona });
   },
   "session.clearPersona": async (payload, { server }) => {
     if (payload.sessionId) server.opts.board?.personTurnOfSession(payload.sessionId);
-    return await server.need("personaSessions").clear(payload);
+    return await server.needIn("personas", "sessions").clear(payload);
   },
   "sessions.watch": (payload, { ws, send, server }) => {
     // Same pattern as subscribe: ack, current summaries, then live ones, with no gap.

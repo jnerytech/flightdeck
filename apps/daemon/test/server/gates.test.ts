@@ -37,8 +37,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   resources: "resources",
   worktrees: "worktrees",
   names: "names",
-  personaSessions: "personaSessions",
-  personas: "personas",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   releases: "releases",
@@ -143,6 +141,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     inbox: "teleport",
     imports: "teleport",
   },
+  // The personas and what applies one to an open session (#1593): each keeps its flat name.
+  personas: {
+    store: "personas",
+    sessions: "personaSessions",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -197,6 +200,7 @@ describe("server-gates", () => {
       messaging: {},
       sessionSettings: {},
       teleport: {},
+      personas: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),

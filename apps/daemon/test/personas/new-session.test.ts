@@ -323,7 +323,7 @@ async function terminalHost(personas: Personas | null, root: string) {
   writeFileSync(join(dataDir, RECEPTOR_FILE), JSON.stringify({ url: receptor.url }));
   const server = startServer({
     manager: newManager().manager,
-    ...(personas ? { personas } : {}),
+    ...(personas ? { personas: { store: personas } } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
@@ -546,7 +546,7 @@ describe("personas-sessao-nova: pelo protocolo", () => {
     const { root, project, personas, start, manager } = await setup();
     const server = startServer({
       manager,
-      personas,
+      personas: { store: personas },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
