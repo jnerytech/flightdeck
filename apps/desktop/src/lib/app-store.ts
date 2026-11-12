@@ -698,11 +698,6 @@ export class AppStore {
         this.router.push({ name: "session", host: hostId, id: sessionId });
       },
     });
-    this.sessionActions = wireSessionActions(this.commands, {
-      copyText: (text) => this.system.copyText(text),
-      respond: (requestId, decision, answer) =>
-        this.permissions.respond(requestId, decision, answer ?? {}),
-    });
     this.permissions = wirePermissions(this.kernel, {
       needsYou: () => needsYou(this.state, this.i18n.t),
       settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
@@ -710,6 +705,11 @@ export class AppStore {
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
       showWindow: () => void this.platform.showMainWindow(),
       act: (action) => this.tray.act(action),
+    });
+    this.sessionActions = wireSessionActions(this.commands, {
+      copyText: (text) => this.system.copyText(text),
+      respond: (requestId, decision, answer) =>
+        this.permissions.respond(requestId, decision, answer ?? {}),
     });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),

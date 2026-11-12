@@ -1170,7 +1170,7 @@ function NewSession(
           )}
         </>
       }
-      // The created session opens by itself (AppStore.createSession).
+      // The created session opens by itself (SessionCommandsSlice.create).
       onCreate={(payload) => {
         if (payload.runtime === "opencode") return props.store.commands.create(host.id, payload);
         if (background) return startInBackground(props.store, host.id, payload, persona);
