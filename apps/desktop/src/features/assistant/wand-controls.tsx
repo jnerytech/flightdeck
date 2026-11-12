@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ShortArea } from "@/features/sessions/parts";
 import type { T } from "@/i18n/index";
-import { wordDiff } from "@/lib/word-diff";
 import { IconActionButton, Spinner } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { isMac } from "../shortcuts/index.ts";
 import { refusalText } from "./refusal-text.ts";
 import type { Wand } from "./use-wand.ts";
+import { wordDiff } from "./word-diff.ts";
 
 /** The wand's button for a toolbar (issue #158). */
 export function WandButton(props: Readonly<{ wand: Wand; t: T }>) {

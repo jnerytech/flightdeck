@@ -119,6 +119,7 @@ prefix. Tests move with their file in the same PR.
 | `badge-icon.ts` | `platform/tauri/` (**moved**: a pure pixel helper with no imports, read only by `platform/tauri/index.ts`, so the platform adapter no longer reaches into `lib/`) |
 | `notice-*.ts` | `notice-lifetime.ts` goes to `app/` with `notices.tsx` (it reads the `Notice` type and the store; **moved**: `notice-lifetime.ts` is the first file in `app/`, read by `components/feedback/notices.tsx` and `lib/app-store.ts`; `notices.tsx` stays in `components/feedback`, because a feature may not import `app/` and features read it); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) stays until `i18n` has a home |
 | `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
+| `review.ts`, `word-diff.ts` | **moved**: `review.ts` to `features/review/`; `word-diff.ts` to `features/assistant/`, not `features/review/` as the row above says: its only reader is `wand-controls.tsx`, so it needs no review entry and no assistant to review cycle |
 | `quiet*.ts` | `features/needs-you/` (**moved**; the quiet badge of the board and the needs-you rows) |
 | `away.ts` | `features/needs-you/` (**moved**) |
 | `keep-awake.ts` | `features/hosts/` (**moved**, `holdAwake` behind the hosts index) |
