@@ -9,7 +9,7 @@ const { act, cleanup, render } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
-const { SessionsHub } = await import("../src/ui/SessionsHub.tsx");
+const { SessionsHub } = await import("../src/features/sessions/sessions-hub.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
 afterEach(cleanup);

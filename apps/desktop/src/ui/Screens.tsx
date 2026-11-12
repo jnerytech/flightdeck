@@ -33,6 +33,7 @@ import { QuotaPanel } from "../features/quota/index.ts";
 import { NewSessionForm } from "../features/sessions/new-session-form.tsx";
 import { SessionTabs } from "../features/sessions/session-tabs.tsx";
 import { SessionView } from "../features/sessions/session-view.tsx";
+import { SessionsHub } from "../features/sessions/sessions-hub.tsx";
 import { StartScreen } from "../features/sessions/start-screen.tsx";
 import { SetupPage } from "../features/setup/index.ts";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
@@ -55,7 +56,6 @@ import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { lazyScreen } from "./lazy-screen.ts";
-import { SessionsHub } from "./SessionsHub.tsx";
 
 /**
  * The screens the first one does not need are loaded when their route opens (`bundle:budget`

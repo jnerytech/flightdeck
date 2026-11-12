@@ -118,6 +118,7 @@
   "src/features/sessions/session-card.tsx": 11,
   "src/features/sessions/session-tabs.tsx": 5,
   "src/features/sessions/session-view.tsx": 3,
+  "src/features/sessions/sessions-hub.tsx": 25,
   "src/features/sessions/tool-call.tsx": 8,
   "src/features/settings/page.tsx": 3,
   "src/features/snippets/file-import.tsx": 14,
@@ -154,6 +155,5 @@
   "src/ui/App.tsx": 3,
   "src/ui/Areas.tsx": 4,
   "src/ui/Screens.tsx": 9,
-  "src/ui/SessionsHub.tsx": 25,
   "src/ui/Sidebar.tsx": 30
 }

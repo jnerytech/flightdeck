@@ -7,7 +7,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { SessionsHub } = await import("../../src/ui/SessionsHub.tsx");
+const { SessionsHub } = await import("../../src/features/sessions/sessions-hub.tsx");
 const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 afterEach(cleanup);

@@ -24,40 +24,17 @@ import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { HostsBanner } from "@/features/hosts/index.ts";
 import { WorktreeChip } from "@/features/projects/index.ts";
-import { AsleepMark } from "@/features/sessions/asleep-mark";
-import { CacheTimer } from "@/features/sessions/cache-timer";
-import { CountChip, FoldAll, HostChip, ProjectHeader } from "@/features/sessions/group-header";
-import {
-  awayHost,
-  costAsks,
-  cursorMove,
-  filterCount,
-  hasBackgroundHost,
-  hostlessHub,
-  hubProjectKeys,
-  personasOf,
-  projectChoices,
-  projectName,
-  refreshSignature,
-  rowOffers,
-  rowSummary,
-  rowsInScope,
-  scopeKeys,
-  showsStateWord,
-  worktreesOf,
-} from "@/features/sessions/index.ts";
-import { SessionCard, STATE_TONES } from "@/features/sessions/session-card";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "@/shared/status/index.ts";
-import type { Key } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import { ALL_CLIENTS } from "../lib/client-scope.ts";
-import { UNASSIGNED } from "../lib/clients.ts";
-import { usd } from "../lib/costs.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../lib/data-scope.ts";
-import type { Density } from "../lib/density.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { ALL_CLIENTS } from "../../lib/client-scope.ts";
+import { UNASSIGNED } from "../../lib/clients.ts";
+import { usd } from "../../lib/costs.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
+import type { Density } from "../../lib/density.ts";
 import {
   activeCount,
   capGroups,
@@ -73,12 +50,37 @@ import {
   rowStatus,
   sessionLineText,
   sharedMeta,
-} from "../lib/hub.ts";
-import { typing } from "../lib/keys.ts";
-import { newSessionHost } from "../lib/new-session-host.ts";
-import { activeWorktreeFilter } from "../lib/project-tree.ts";
-import { hasFeature } from "../lib/version.ts";
-import { InlineNotice } from "../shared/feedback/index.ts";
+} from "../../lib/hub.ts";
+import { typing } from "../../lib/keys.ts";
+import { newSessionHost } from "../../lib/new-session-host.ts";
+import { activeWorktreeFilter } from "../../lib/project-tree.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { InlineNotice } from "../../shared/feedback/index.ts";
+import { AsleepMark } from "./asleep-mark";
+import { CacheTimer } from "./cache-timer";
+import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
+import {
+  costAsks,
+  cursorMove,
+  filterCount,
+  hasBackgroundHost,
+  hostlessHub,
+  personasOf,
+  refreshSignature,
+  rowOffers,
+  rowSummary,
+  showsStateWord,
+  worktreesOf,
+} from "./hub-derive.ts";
+import {
+  awayHost,
+  hubProjectKeys,
+  projectChoices,
+  projectName,
+  rowsInScope,
+  scopeKeys,
+} from "./hub-scope.ts";
+import { SessionCard, STATE_TONES } from "./session-card";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;
