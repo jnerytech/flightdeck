@@ -5,7 +5,7 @@
  * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
  * order, heavy runs outside `bun run slot --`, a worker's full coverage run (#674), a session's hand merge or tag of a PR, and pushes of anything but the session's own work
  * branch, and a push that would cancel the branch's PR run while it is still green (#741). Exit 2 blocks the call and shows the reason to Claude. The rules live in
- * scripts/lib/claude-hooks.ts, with their tests.
+ * scripts/lib/hooks/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -29,7 +29,7 @@ import {
   weakAssertViolation,
   weakerEscape,
   withBudget,
-} from "../../scripts/lib/claude-hooks.ts";
+} from "../../scripts/lib/hooks/claude-hooks.ts";
 import { logHook } from "./log.ts";
 
 const ROOT = resolve(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, "../.."));
@@ -65,7 +65,7 @@ if (typeof command === "string") {
   block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
   // #741: gh is asked for a push, in the push's own checkout: without an override to decide, with
   // one to log the run's age. A failed lookup is asked once more, then the push holds with the
-  // override line (budgetedGh, prRunVia and pushWaitCheck in scripts/lib/claude-hooks.ts).
+  // override line (budgetedGh, prRunVia and pushWaitCheck in scripts/lib/hooks/claude-hooks.ts).
   const ghCalls = budgetedGh(
     (args, dir) => {
       // 3 s each, and each starts only in the first 6 s, so the retry never takes the hook past

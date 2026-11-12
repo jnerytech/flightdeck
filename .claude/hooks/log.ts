@@ -1,10 +1,10 @@
 /**
  * Appends one hook call to the repository's hook log (`bun run harness:stats`). The rules live in
- * scripts/lib/hook-log.ts, with their tests. Logging never fails a hook: any error is swallowed.
+ * scripts/lib/hooks/hook-log.ts, with their tests. Logging never fails a hook: any error is swallowed.
  */
 import { appendFileSync, existsSync, renameSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { appendHookLog, type HookLogEntry, hookLogPath } from "../../scripts/lib/hook-log.ts";
+import { appendHookLog, type HookLogEntry, hookLogPath } from "../../scripts/lib/hooks/hook-log.ts";
 
 export function logHook(
   hook: string,

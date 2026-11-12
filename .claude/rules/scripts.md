@@ -9,7 +9,7 @@ paths:
   effects (git, fs, clock, spawn) as a deps object, such as `runAudit({ since, git, readFile })`;
   the entry file in `scripts/` only wires the real ones. `scripts/test/` calls the function with
   fakes, at the coverage gate (80% of lines and functions, #1002).
-- The rules of the Claude Code hooks live in `scripts/lib/claude-hooks.ts`; the files in
+- The rules of the Claude Code hooks live in `scripts/lib/hooks/claude-hooks.ts`; the files in
   `.claude/hooks/` only read stdin, call it and exit. A hook fails open on its own errors.
 - A ratchet is a bun test with a baseline that only goes down (`overBaseline` in
   `layout-ratchet.ts`). Reuse that shape for a new one.

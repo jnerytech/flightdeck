@@ -1,5 +1,5 @@
 /**
- * What the slot-heavy guard (scripts/lib/claude-hooks.ts) and coverage:funcs share (#674): the
+ * What the slot-heavy guard (scripts/lib/hooks/claude-hooks.ts) and coverage:funcs share (#674): the
  * limit, the reason check and the refusal. A module of its own, so coverage:funcs does not load
  * the hook rules and what they import (#687).
  */
