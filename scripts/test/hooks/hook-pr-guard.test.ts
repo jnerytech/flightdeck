@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { prMergeViolation } from "../../lib/claude-hooks.ts";
+import { prMergeViolation } from "../../lib/hooks/claude-hooks.ts";
 
 const session = (command: string) => prMergeViolation(command, {});
 

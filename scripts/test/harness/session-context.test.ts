@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gatherFacts, type SessionFacts, sessionContext } from "../../lib/session-context.ts";
+import { gatherFacts, type SessionFacts, sessionContext } from "../../lib/hooks/session-context.ts";
 
 const HEAD = "f".repeat(40);
 const BASE = "b".repeat(40);

@@ -93,7 +93,7 @@ with no `test(<area>)` commit. From phase 40 on the spec follows `docs/templates
 **Checked at commit time and in CI.** Without `--since` (or with `--since auto`) the audit starts
 at the merge-base with `main`, or at the last tag when `HEAD` is on `main`; CI runs it that way on
 every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard.ts`, rules in
-`scripts/lib/claude-hooks.ts`) checks the same things earlier:
+`scripts/lib/hooks/claude-hooks.ts`) checks the same things earlier:
 
 - it refuses a `git commit` whose subject is not `type(scope): text`, a `feat`/`fix` without a
   scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;

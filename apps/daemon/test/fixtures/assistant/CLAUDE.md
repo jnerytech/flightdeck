@@ -17,7 +17,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   fail) and `security-reviewer` (spawns, paths, secrets, pairing), all read-only; hooks that block wide `git add`, edits of
   generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, commits
   that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
-  Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
+  Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/hooks/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Rules per
   area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
   is touched; a SessionStart hook states the branch, the tested scopes and the slot, and after a
