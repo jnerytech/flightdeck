@@ -512,7 +512,7 @@
   "apps/desktop/test/history/host.test.tsx": 2.508,
   "apps/desktop/test/history/lista-custos.test.tsx": 2.267,
   "apps/desktop/test/history/pasta-fora.test.tsx": 2.354,
-  "apps/desktop/test/home-simple-ui.test.tsx": 0.886,
+  "apps/desktop/test/home/simple-ui.test.tsx": 0.886,
   "apps/desktop/test/hooks-ui.test.tsx": 0.872,
   "apps/desktop/test/hosts/adicionar-host.test.tsx": 0.341,
   "apps/desktop/test/hosts/host-connection.test.ts": 2.125,

@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle, settleMaybe } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle, settleMaybe } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { emptySummary } = await import("../src/lib/client-costs.ts");
-const { HomePage } = await import("../src/features/home/page.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { emptySummary } = await import("../../src/lib/client-costs.ts");
+const { HomePage } = await import("../../src/features/home/page.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
