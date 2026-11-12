@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { quickTests } from "../../lib/ci-quick.ts";
+import { quickTests } from "../../lib/ci/quick.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 

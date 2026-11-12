@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   # Which job groups this run needs (#264): on a pull request, from the paths it changes
-  # (scripts/lib/ci-paths.ts); a push to main and a run by hand need everything. A job skipped by
+  # (scripts/lib/ci/paths.ts); a push to main and a run by hand need everything. A job skipped by
   # path still reports under the ruleset's name through its aggregate.
   # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
   # test. Sonar runs in its own job, on a PR and on a full run of main (#283, #296). The heavy jobs need it, so a count that went up fails the run
@@ -95,7 +95,7 @@ jobs:
       - name: TDD audit
         run: bun run tdd:audit -- --since auto
 
-      # Every *-ratchet.test.ts and the protocol surface (scripts/lib/ci-quick.ts), in seconds.
+      # Every *-ratchet.test.ts and the protocol surface (scripts/lib/ci/quick.ts), in seconds.
       - name: Ratchets
         run: bun run scripts/ci-quick.ts
 
@@ -732,7 +732,7 @@ jobs:
         run: |
           test "${{ needs.quick.result }}" = success
           if [ "${{ needs.quick.outputs.windows }}" != true ]; then
-            echo "Windows skipped by path (scripts/lib/ci-paths.ts)"; exit 0
+            echo "Windows skipped by path (scripts/lib/ci/paths.ts)"; exit 0
           fi
           echo "shards: ${{ needs.test-windows-shard.result }}, checks: ${{ needs.checks-windows.result }}"
           test "${{ needs.test-windows-shard.result }}" = success
@@ -908,7 +908,7 @@ jobs:
           test "${{ needs.quick.result }}" = success
           echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
           if [ "${{ needs.quick.outputs.screenshots }}" != true ]; then
-            echo "Prints skipped by path (scripts/lib/ci-paths.ts)"
+            echo "Prints skipped by path (scripts/lib/ci/paths.ts)"
           else
             test "${{ needs.screenshots-prints.result }}" = success
           fi
@@ -916,6 +916,6 @@ jobs:
           if [ "${{ needs.quick.outputs.e2e }}" = true ]; then
             test "${{ needs.screenshots-e2e.result }}" = success
           else
-            echo "Journeys skipped by path (scripts/lib/ci-paths.ts)"
+            echo "Journeys skipped by path (scripts/lib/ci/paths.ts)"
             test "${{ needs.screenshots-e2e.result }}" = skipped
           fi

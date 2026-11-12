@@ -7,7 +7,7 @@ import {
   planOutputs,
   selectionBase,
   WINDOWS_SPLIT_ABOVE,
-} from "../../lib/ci-paths.ts";
+} from "../../lib/ci/paths.ts";
 
 /**
  * #264: a pull request runs only the jobs its paths need; main, a run by hand and a diff that

@@ -2,7 +2,7 @@
 
 - **Why.** Every PR ran the whole matrix (Windows in three shards, prints, e2e, cargo), so a
   docs or scripts change waited half an hour for checks that read none of it.
-- **The plan** (scripts/lib/ci-paths.ts, run by the `changes` job against the merge-base with the
+- **The plan** (scripts/lib/ci/paths.ts, run by the `changes` job against the merge-base with the
   PR's target): docs and scripts alone run the Linux job (the whole suite with the 100% gate,
   typecheck, lint, the audit, SonarCloud); `apps/daemon/**` or a smoke adds the Windows shards, the
   Windows checks and the smokes; `apps/desktop/**`, `packages/**`, `package.json`, `bun.lock`, a
