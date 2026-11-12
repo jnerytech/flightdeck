@@ -77,11 +77,14 @@ describe("structure-guard: a store member moved under a slice (#1732)", () => {
   test("a slice move next to a changed assertion, or a member that is not the old one, still fails", () => {
     const assertion = STORE_SLICED.replace("toBe(1)", "toBe(2)");
     const otherMember = STORE_BEFORE.replace("store.addCard(card)", "store.cards.remove(card)");
-    const verdicts = [assertion, otherMember].map(
+    // The old name's words all reach the new path, but the member called is a new one.
+    const newCall = STORE_BEFORE.replace("store.addCard(card)", "store.cardAdd.remove(card)");
+    const verdicts = [assertion, otherMember, newCall].map(
       (head) =>
         structureVerdict(pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: head }, change)).problems,
     );
     expect(verdicts).toEqual([
+      [`${TEST}: changed beyond its import paths`],
       [`${TEST}: changed beyond its import paths`],
       [`${TEST}: changed beyond its import paths`],
     ]);
