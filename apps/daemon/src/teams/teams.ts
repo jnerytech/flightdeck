@@ -5,6 +5,7 @@
 
 import type { Database } from "bun:sqlite";
 import {
+  type EffortLevel,
   inSequence,
   type MessageInfo,
   type PermissionMode,
@@ -66,6 +67,8 @@ export interface TeamsOptions {
     name: string;
     persona: string | null;
     model: string | null;
+    /** Issue #2310: the effort the coordinator opens with; null is the persona's own. */
+    effort: EffortLevel | null;
     /** Issue #93: the mode the coordinator opens in; null is the host's default. */
     permissionMode: PermissionMode | null;
   }) => { sessionId: string } | Promise<{ sessionId: string }>;
@@ -89,6 +92,9 @@ export interface NewTeam {
   /** The model of the coordinator and of each worker; none or null is the persona's own. */
   coordinatorModel?: string;
   workerModels?: Array<string | null>;
+  /** Issue #2310: the effort of the coordinator and of each worker; none or null is the persona's own. */
+  coordinatorEffort?: EffortLevel;
+  workerEfforts?: Array<EffortLevel | null>;
   /** Issue #93: the permission mode of the coordinator and of each worker; none or null is the default. */
   coordinatorPermission?: PermissionMode;
   workerPermissions?: Array<PermissionMode | null>;
@@ -105,6 +111,7 @@ export interface TeamPatch {
   addMember?: {
     persona?: string | null;
     model?: string | null;
+    effort?: EffortLevel | null;
     permission?: PermissionMode | null;
   };
   removeMember?: string;
@@ -477,6 +484,7 @@ export class Teams {
       name: coordinatorName,
       persona: coordinatorPersona,
       model: coordinatorModel,
+      effort: null,
       permissionMode: coordinatorPermission,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
