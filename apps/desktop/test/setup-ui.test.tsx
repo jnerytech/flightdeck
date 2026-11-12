@@ -10,7 +10,7 @@ const { AppStore } = await import("../src/lib/app-store.ts");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 const { SetupPage } = await import("../src/features/setup/index.ts");
 const { Settings } = await import("../src/features/settings/page.tsx");
-const { StartScreen } = await import("../src/ui/StartScreen.tsx");
+const { StartScreen } = await import("../src/features/sessions/start-screen.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
