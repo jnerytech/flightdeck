@@ -57,7 +57,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
 | `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and the shell `lib/` files follow in later PRs |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (**moved**; the sheet already lives there) |
-| `simple/` | `features/home/` (simple mode) | home, question and task views, settings view; `ui/simple/SimpleApp.tsx` goes with it |
+| `simple/` | `features/home/` (simple mode) | home, question and task views, settings view (**moved**); `ui/simple/SimpleApp.tsx` goes with it |
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
 | `tabs/` | `features/tabs/` | overflow and switcher (the tab bar already lives there); **theirs** if the session view needs the file, ask first |
 | `ui/` | **stay** | vendored shadcn |
