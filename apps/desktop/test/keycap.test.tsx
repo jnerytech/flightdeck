@@ -6,7 +6,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Keycap, ShortcutKeys } = await import("../src/components/shortcuts/keycap.tsx");
+const { Keycap, ShortcutKeys } = await import("../src/features/shortcuts/keycap.tsx");
 const { keysText } = await import("../src/lib/shortcuts.ts");
 
 afterEach(cleanup);
@@ -83,10 +83,10 @@ describe("keycap: no screen draws its own (issue #165)", () => {
       .map((e) => join(e.parentPath, e.name).replaceAll("\\", "/"));
 
   test("a kbd appears only in the keycap component (the vendored ui folder aside)", () => {
-    const found = ["ui", "components"]
+    const found = ["ui", "components", "features"]
       .flatMap(files)
       .filter((file) => !file.includes("/components/ui/"))
-      .filter((file) => !file.endsWith("components/shortcuts/keycap.tsx"))
+      .filter((file) => !file.endsWith("features/shortcuts/keycap.tsx"))
       .filter((file) => /<kbd[\s>]/.test(readFileSync(file, "utf8")))
       .map((file) => file.slice(root.length + 1));
     expect(found).toEqual([]);

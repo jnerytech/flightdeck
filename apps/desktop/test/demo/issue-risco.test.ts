@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { DANGER_SESSION, type DemoSeed, seedDemo } from "../../../scripts/demo-seed.ts";
-import { acoesActions } from "../../../scripts/lib/e2e-journeys.ts";
-import { FrameClient } from "../../daemon/test/support/history-helpers.ts";
+import { DANGER_SESSION, type DemoSeed, seedDemo } from "../../../../scripts/demo-seed.ts";
+import { acoesActions } from "../../../../scripts/lib/e2e-journeys.ts";
+import { FrameClient } from "../../../daemon/test/support/history-helpers.ts";
 
 // Two daemons, real git and a fake `gh`: more than the default 5 s.
 setDefaultTimeout(60_000);

@@ -4,6 +4,7 @@
   "src/features/agentcfg/agent-files.tsx": 25,
   "src/features/agentcfg/agent-mcp.tsx": 11,
   "src/features/appupdate/update-banner.tsx": 4,
+  "src/features/appupdate/whats-new-dialog.tsx": 16,
   "src/features/assistant/assistant-settings.tsx": 27,
   "src/features/assistant/key-field.tsx": 10,
   "src/features/assistant/model-picker.tsx": 13,

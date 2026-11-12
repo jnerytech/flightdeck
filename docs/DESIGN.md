@@ -83,7 +83,7 @@ control, and 8 px between buttons.
 | An icon-only action | `IconActionButton`, or `IconTip` for an icon-only control | It has a name and a tooltip; never a native `title` for text a person needs. |
 | A status | `StatusDot`, `StatusText` (`shared/status/`) | A shape plus a label for each state, not colour alone. |
 | A tab's badge | `TabBadgeGlyph` (in `features/tabs/tab-bar.tsx`) | A glyph named in words (`role="img"`), never a text pill. It becomes `StatusDot` once #146 lands. |
-| A keyboard shortcut | `Keycap` and `ShortcutKeys` (`components/shortcuts/keycap.tsx`, #165, once merged) | The only place that draws a `<kbd>`, written for the platform: Ctrl, or ⌘ on a Mac. No shortcut on Cancel or Dismiss buttons, or on links. |
+| A keyboard shortcut | `Keycap` and `ShortcutKeys` (`features/shortcuts/keycap.tsx`, #165, once merged) | The only place that draws a `<kbd>`, written for the platform: Ctrl, or ⌘ on a Mac. No shortcut on Cancel or Dismiss buttons, or on links. |
 | A list row | `ListRow`, and the list-row rule below | |
 | Empty, loading, failed | `EmptyState`, `LoadingState`, `ErrorState` (`layout/states.tsx`) | An empty state says what to do next; a failure says what happened and offers Try again. |
 | A message in a page | `InlineNotice` (`feedback/inline-notice.tsx`) | `role="alert"` or `"status"`, depending on the tone. |

@@ -10,8 +10,7 @@ import {
 import { Notices } from "@/components/feedback/notices";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
-import { UpdateBanner, UpdateCard } from "@/features/appupdate/index.ts";
+import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
