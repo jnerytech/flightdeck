@@ -19,7 +19,7 @@ export interface CostsDeps {
   quota: BudgetsOptions["quota"];
   log: (message: string) => void;
   /** The history index: what it sees changing is indexed again. */
-  history: { onChange(listener: () => void): unknown };
+  history: { onChange(listener: () => void): () => void };
 }
 
 /**
@@ -49,11 +49,13 @@ export function createCosts(deps: CostsDeps) {
   });
   const budgets = new Budgets({ db, quota });
   budgets.start();
-  deps.history.onChange(() => usageIndex.request());
+  const offHistory = deps.history.onChange(() => usageIndex.request());
   usageIndex.start();
   const module: DomainModule<"costs"> = {
     server: { costs: serverGroup<"costs">()({ costs, budgets }) },
     stop: async () => {
+      // First: a history change must not start a pass on a stopped index (the history stops later).
+      offHistory();
       await usageIndex.stop();
       budgets.stop();
     },
