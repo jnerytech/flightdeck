@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { periodRange, usd } from "@/lib/costs";
 import { useStoreSlice } from "@/lib/use-store";
+import { periodRange, usd } from "../costs/index.ts";
 import { humanTokens, personRows } from "./roi-people.ts";
 
 const DASH = "—";

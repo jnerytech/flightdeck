@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { Inline } from "@/shared/layout/index.ts";
 import { formatDay } from "../../i18n/format.ts";
-import { usd } from "../../lib/costs.ts";
+import { usd } from "./costs.ts";
 
 /**
  * A series style per project in a day's bar (issue #179): its own hue and, from the second on, a

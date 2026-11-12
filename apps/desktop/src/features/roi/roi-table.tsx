@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { usd } from "@/lib/costs";
 import { useStoreSlice } from "@/lib/use-store";
 import { WideTable } from "@/shared/layout/index.ts";
+import { usd } from "../costs/index.ts";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "./roi-table.ts";
 
 const COLUMNS: RoiColumn[] = [

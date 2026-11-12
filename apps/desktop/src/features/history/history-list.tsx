@@ -18,9 +18,8 @@ import {
 } from "@/shared/layout/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
-import { usd } from "../../lib/costs.ts";
-import { projectLabel } from "../../lib/usage-rows.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { usageProjectLabel, usd } from "../costs/index.ts";
 import { HistoryCard } from "./history-card.tsx";
 
 /** Native selects, as in the hub. */
@@ -209,7 +208,7 @@ export function HistoryList(
         </div>
         {draft.projectKey && filter.projectKey === draft.projectKey && (
           <Inline gap={2} className="text-sm">
-            <span>{t("historyUi.project", { name: projectLabel(draft.projectKey) })}</span>
+            <span>{t("historyUi.project", { name: usageProjectLabel(draft.projectKey) })}</span>
             <Button variant="link" size="sm" onClick={clearProject}>
               {t("historyUi.clearProject")}
             </Button>
