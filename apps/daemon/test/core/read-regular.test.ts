@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readRegular, readRegularSized } from "../../src/read-regular.ts";
+import { readRegular, readRegularSized } from "../../src/kernel/read-regular.ts";
 import { tempDir } from "../support/helpers.ts";
 
 describe("read-regular: the bytes of a regular file, and how big the file is", () => {

@@ -4,8 +4,7 @@ import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { z } from "zod";
 import { type HookTarget, hooksStatus, installHooks } from "../central/index.ts";
 import type { Config } from "../config.ts";
-import { parseJsonOr } from "../json-text.ts";
-import type { Logger } from "../kernel/index.ts";
+import { type Logger, parseJsonOr } from "../kernel/index.ts";
 import {
   installService,
   type ServiceContext,

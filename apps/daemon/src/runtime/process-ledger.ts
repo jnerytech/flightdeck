@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /**
  * A ledger of the process groups the daemon starts for OpenCode (issue #250). After a SIGKILL of

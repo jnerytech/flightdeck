@@ -1,7 +1,7 @@
 import { promisify } from "node:util";
 import { gunzip } from "node:zlib";
 import { z } from "zod";
-import { parseJsonWith } from "../json-text.ts";
+import { parseJsonWith } from "../kernel/index.ts";
 import { tokenMatches } from "../token.ts";
 
 const inflate = promisify(gunzip);

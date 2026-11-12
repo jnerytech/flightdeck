@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { SessionEventOf, UsageRow, UsageSummary } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /** The cost a stored turn result carries; a payload without one costs nothing. */
 const TURN_COST = z.object({ costUsd: z.number().optional() });

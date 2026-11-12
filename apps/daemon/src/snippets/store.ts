@@ -5,8 +5,7 @@ import { join } from "node:path";
 import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr } from "../json-text.ts";
-import { ulid } from "../kernel/index.ts";
+import { parseJsonOr, ulid } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./model.ts";
 

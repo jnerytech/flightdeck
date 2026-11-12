@@ -9,7 +9,7 @@ import { type FileHandle, open, realpath } from "node:fs/promises";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
 import { createInside } from "../board/index.ts";
 import { FlightdeckError } from "../errors.ts";
-import { layoutLike } from "../json-text.ts";
+import { layoutLike } from "../kernel/index.ts";
 import { samePath } from "../paths.ts";
 import type { HarnessDrafts } from "./draft.ts";
 import {

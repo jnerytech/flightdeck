@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { parseJsonText } from "../json-text.ts";
+import { parseJsonText } from "../kernel/index.ts";
 
 /**
  * The env block of Claude Code's settings file (`~/.claude/settings.json`), as strings; empty when

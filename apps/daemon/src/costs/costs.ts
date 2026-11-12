@@ -11,7 +11,7 @@ import type {
 } from "@flightdeck/protocol";
 import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import { costOf, PRICING_DATE, type Pricing } from "./pricing.ts";
 import type { InitialLoad, UsageTokens } from "./usage-indexer.ts";
 

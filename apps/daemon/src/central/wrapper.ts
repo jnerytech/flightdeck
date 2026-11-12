@@ -4,8 +4,14 @@ import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protoc
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import type { Config } from "../config.ts";
-import { parseJsonOr } from "../json-text.ts";
-import { type Exec, type Logger, spawnExec, ulid, whichOnPath } from "../kernel/index.ts";
+import {
+  type Exec,
+  type Logger,
+  parseJsonOr,
+  spawnExec,
+  ulid,
+  whichOnPath,
+} from "../kernel/index.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
 

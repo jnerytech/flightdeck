@@ -34,7 +34,7 @@ import type {
 import type { ServerWebSocket } from "bun";
 import type { DeltaCoalescer } from "../delta-coalescer.ts";
 import type { FlightdeckError } from "../errors.ts";
-import { parseJsonText } from "../json-text.ts";
+import { parseJsonText } from "../kernel/index.ts";
 import type { TerminalSink } from "../terminal/terminal-manager.ts";
 import { sendFrame } from "./ws-send.ts";
 

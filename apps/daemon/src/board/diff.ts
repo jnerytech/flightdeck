@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
+import { readRegularSized } from "../kernel/index.ts";
 import { maskConfig, maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
-import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
 import { type Rev, refArg } from "./ref-arg.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";

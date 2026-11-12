@@ -1,8 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { writeFileAtomic } from "../atomic-write.ts";
 import type { Config } from "../config.ts";
-import { layoutLike, parseJsonText } from "../json-text.ts";
+import { layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
 
 /** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
 export const HTTP_HOOK_EVENTS = [

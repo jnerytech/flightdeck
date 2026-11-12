@@ -7,8 +7,7 @@ import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } fr
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr } from "../json-text.ts";
-import { settled, ulid } from "../kernel/index.ts";
+import { parseJsonOr, settled, ulid } from "../kernel/index.ts";
 import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
 import { MAX_VALUE } from "../workflows/interpolate.ts";
 import { masked, runChecks } from "./check-run.ts";

@@ -1,6 +1,6 @@
 import { SessionPersona } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
 
 const Payload = z.record(z.string(), z.unknown());
 

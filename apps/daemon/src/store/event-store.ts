@@ -13,7 +13,7 @@ import {
   type SessionSummary,
   ToolInput,
 } from "@flightdeck/protocol";
-import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
 import type { PersonaSnapshot } from "../personas/snapshot.ts";
 import { MIGRATIONS } from "./migrations.ts";
 import { AgentsJson, ModePayload, PersonaSnapshotJson } from "./row-json.ts";
