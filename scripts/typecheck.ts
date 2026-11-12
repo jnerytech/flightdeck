@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * `bun run typecheck`: one incremental tsc per project, two at a time when 8 GB are free and in
- * sequence otherwise (scripts/lib/typecheck.ts).
+ * sequence otherwise (scripts/lib/typecheck/typecheck.ts).
  * The package script runs it inside the light lane (scripts/lane.ts).
  */
 import { spawnSync } from "node:child_process";
@@ -14,8 +14,8 @@ import {
   renameSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { seedCache, TSC_CACHE } from "./lib/tsc-cache.ts";
-import { PROJECTS, runAll, typecheckJobs, typecheckPlan } from "./lib/typecheck.ts";
+import { seedCache, TSC_CACHE } from "./lib/typecheck/tsc-cache.ts";
+import { PROJECTS, runAll, typecheckJobs, typecheckPlan } from "./lib/typecheck/typecheck.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 /** The memory left now: /proc/meminfo on Linux, null elsewhere (one run at a time). */

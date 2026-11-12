@@ -128,12 +128,7 @@ import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
-import {
-  SessionMover,
-  type TeleportOutcome,
-  type TeleportRequest,
-  type TeleportRunArgs,
-} from "../features/teleport/teleport.ts";
+import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
 import {
@@ -171,7 +166,6 @@ import type {
   HistoryFilter,
   HostView,
   Notice,
-  PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
@@ -263,7 +257,7 @@ export class AppStore {
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
   /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
-  private readonly permissions: PermissionsSlice;
+  readonly permissions: PermissionsSlice;
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
@@ -806,7 +800,7 @@ export class AppStore {
   /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
   private readonly boardCards: BoardCardsSlice;
   /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
-  private readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
+  readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
@@ -954,21 +948,6 @@ export class AppStore {
     if (this.options.githubTicker) return this.options.githubTicker(tick);
     const timer = setInterval(tick, 1500);
     return () => clearInterval(timer);
-  }
-
-  /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
-  onOpenRequest(listener: (item: PendingItem) => void): () => void {
-    return this.permissions.onOpen(listener);
-  }
-
-  /** A `flightdeck://request` link: the window comes up on it; false for any other link. */
-  openRequestLink(url: string): boolean {
-    return this.permissions.openLink(url);
-  }
-
-  /** Approves or denies the oldest waiting request, if it is still the one shown (#245). */
-  decideOldest(decision: "approve" | "deny", shown: string): void {
-    this.permissions.decideOldest(decision, shown);
   }
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
@@ -1253,11 +1232,6 @@ export class AppStore {
     return this.system.saveFile(name, text);
   }
 
-  /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
-  copySecret(id: string, clearMs: number): Promise<boolean> {
-    return this.secrets.copy(id, clearMs);
-  }
-
   /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
   canReadBackup(): boolean {
     return this.system.canReadBackup();
@@ -1412,20 +1386,6 @@ export class AppStore {
     this.clientBudgets.dispose();
     this.vaultRules.dispose();
     this.theme.stop();
-  }
-
-  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
-  teleportRequest(hostId: string): TeleportRequest {
-    return this.mover.request(hostId);
-  }
-
-  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
-  moveSession(
-    sourceHost: string,
-    sessionId: string,
-    args: TeleportRunArgs,
-  ): Promise<TeleportOutcome> {
-    return this.mover.move(sourceHost, sessionId, args);
   }
 
   /** The session a move made, opened on its new host. */

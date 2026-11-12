@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { staticImports } from "../../lib/bundle-reach.ts";
+import { staticImports } from "../../lib/bundle/bundle-reach.ts";
 
 describe("sonar-scripts3: staticImports reads whitespace in the import pattern with the same matches", () => {
   test("any whitespace, newlines included, separates the keyword, the names, `from` and the source", () => {

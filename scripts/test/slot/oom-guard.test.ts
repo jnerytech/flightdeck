@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
-import { OOM_SCORE_ADJ, offerToOomKiller } from "../../lib/oom-guard.ts";
+import { OOM_SCORE_ADJ, offerToOomKiller } from "../../lib/machine/oom-guard.ts";
 
 describe("oom-guard", () => {
   test("on Linux this process's own oom_score_adj becomes 1000, and nothing else is written", () => {

@@ -277,7 +277,7 @@ export function runPaletteTarget(
       ui.showHelp();
       return;
     case "decide-oldest":
-      store.decideOldest(target.decision, target.key);
+      store.permissions.decideOldest(target.decision, target.key);
       return;
     default:
       ui.go(paletteRoute(target));
@@ -384,7 +384,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   useEffect(
     () =>
       store.onDeepLink((url) => {
-        if (store.openRequestLink(url)) return;
+        if (store.permissions.openLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
           const { t } = store.i18n;
@@ -463,7 +463,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   };
   const openRequestRef = useRef(openRequest);
   openRequestRef.current = openRequest;
-  useEffect(() => store.onOpenRequest((item) => openRequestRef.current(item)), [store]);
+  useEffect(() => store.permissions.onOpen((item) => openRequestRef.current(item)), [store]);
 
   /** Board or Workflows from the sidebar: the only project opens directly, several ask which. */
   const openProjectScreen = (hostId: string, kind: "board" | "workflows") => {
