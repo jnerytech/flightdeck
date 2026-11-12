@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 import {
   boardFeatures,
   boardOrder,
+  cardMoveBody,
   cardMoves,
   columnCards,
   dropPositions,
   idsByColumn,
+  queueMaxOf,
   refusalNames,
   showingColumn,
   shownCards,
@@ -240,17 +242,37 @@ describe("board derive: what the host offers the board", () => {
       roi: false,
       sync: true,
       issues: false,
+      memoryPause: false,
+      cardTemplates: false,
     });
     expect(boardFeatures(["roi", "issues", "other"])).toEqual({
       deps: false,
       roi: true,
       sync: false,
       issues: true,
+      memoryPause: false,
+      cardTemplates: false,
+    });
+  });
+
+  test("memoryPause and cardTemplates are on when the host announces them", () => {
+    expect(boardFeatures(["memoryPause"]).memoryPause).toBe(true);
+    expect(boardFeatures(["cardTemplates"]).cardTemplates).toBe(true);
+    expect(boardFeatures(["memoryPause", "cardTemplates"])).toMatchObject({
+      memoryPause: true,
+      cardTemplates: true,
     });
   });
 
   test("a host that announces nothing, or is not known, offers none", () => {
-    const none = { deps: false, roi: false, sync: false, issues: false };
+    const none = {
+      deps: false,
+      roi: false,
+      sync: false,
+      issues: false,
+      memoryPause: false,
+      cardTemplates: false,
+    };
     expect(boardFeatures([])).toEqual(none);
     expect(boardFeatures(undefined)).toEqual(none);
   });
@@ -296,5 +318,42 @@ describe("board derive: the refusals named", () => {
 
   test("none refused, an empty text", () => {
     expect(refusalNames([], translator("en"))).toBe("");
+  });
+});
+
+describe("board derive: the card.move request", () => {
+  test("a move names the card and the column, and sends position and force only when given", () => {
+    expect(cardMoveBody("c1", "doing")).toEqual({ cardId: "c1", column: "doing" });
+    expect(cardMoveBody("c1", "doing", 2)).toEqual({ cardId: "c1", column: "doing", position: 2 });
+    expect(cardMoveBody("c1", "doing", undefined, true)).toEqual({
+      cardId: "c1",
+      column: "doing",
+      force: true,
+    });
+    expect(cardMoveBody("c1", "done", 0, true)).toEqual({
+      cardId: "c1",
+      column: "done",
+      position: 0,
+      force: true,
+    });
+  });
+
+  test("a position of 0 is sent, and force false is not", () => {
+    expect(cardMoveBody("c1", "doing", 0, false)).toEqual({
+      cardId: "c1",
+      column: "doing",
+      position: 0,
+    });
+  });
+});
+
+describe("board derive: the host's limit of parallel runs", () => {
+  test("a number is the limit; anything else, or no answer, is null", () => {
+    expect(queueMaxOf({ maxParallelRuns: 3 })).toBe(3);
+    expect(queueMaxOf({ maxParallelRuns: 0 })).toBe(0);
+    expect(queueMaxOf({ maxParallelRuns: "3" })).toBeNull();
+    expect(queueMaxOf({})).toBeNull();
+    expect(queueMaxOf(null)).toBeNull();
+    expect(queueMaxOf(undefined)).toBeNull();
   });
 });

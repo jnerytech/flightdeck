@@ -119,13 +119,32 @@ export function boardFeatures(features: readonly string[] | undefined): {
   roi: boolean;
   sync: boolean;
   issues: boolean;
+  memoryPause: boolean;
+  cardTemplates: boolean;
 } {
   return {
     deps: hasFeature(features, "deps", false),
     roi: hasFeature(features, "roi", false),
     sync: hasFeature(features, "boardsync", false),
     issues: hasFeature(features, "issues", false),
+    memoryPause: false,
+    cardTemplates: false,
   };
+}
+
+/** The body of a `card.move` request: the position and the force only when given. */
+export function cardMoveBody(
+  cardId: string,
+  column: BoardColumn,
+  position?: number,
+  force?: boolean,
+): { cardId: string; column: BoardColumn; position?: number; force?: boolean } {
+  return { cardId, column: "backlog" };
+}
+
+/** The host's limit of parallel runs, from its project list answer; null when it gives none. */
+export function queueMaxOf(list: { maxParallelRuns?: unknown } | null | undefined): number | null {
+  return list ? 0 : null;
 }
 
 /** A card shows "queued" only when no reason badge below says why it waits. */
