@@ -30,8 +30,8 @@ afterEach(async () => {
 });
 const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
 
-type MoveArgs = Parameters<InstanceType<typeof AppStore>["moveSession"]>[2];
-type Outcome = Awaited<ReturnType<InstanceType<typeof AppStore>["moveSession"]>>;
+type MoveArgs = Parameters<InstanceType<typeof AppStore>["mover"]["move"]>[2];
+type Outcome = Awaited<ReturnType<InstanceType<typeof AppStore>["mover"]["move"]>>;
 
 async function setup() {
   const alfa = makeDaemon(cleanups, { teleport: true });
@@ -50,7 +50,7 @@ async function setup() {
     end?: (outcome: Outcome) => void;
     fail?: (error: unknown) => void;
   } = {};
-  (store as unknown as { moveSession: unknown }).moveSession = (
+  (store.mover as unknown as { move: unknown }).move = (
     _source: string,
     _session: string,
     args: MoveArgs,
