@@ -35,6 +35,7 @@ import type { GoogleConfig } from "../features/backup/index.ts";
 import type { Client } from "../features/clients/index.ts";
 import type { BudgetsSliceState, ClientBudgetsSliceState } from "../features/costs/index.ts";
 import type { HistorySliceState } from "../features/history/index.ts";
+import type { UiMode } from "../features/home/index.ts";
 import type {
   ConnectionStatus,
   HealthSliceState,
@@ -61,7 +62,6 @@ import type { T } from "../i18n/index.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import type { Route } from "./router.ts";
 import type { SetupProbe } from "./setup-steps.ts";
-import type { UiMode } from "./simple-mode.ts";
 import type { TerminalEnv } from "./terminal.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */

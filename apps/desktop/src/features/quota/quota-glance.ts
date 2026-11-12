@@ -1,5 +1,5 @@
 import type { QuotaState, QuotaWindow } from "@flightdeck/protocol";
-import { isHot } from "./quota";
+import { isHot } from "./quota.ts";
 
 /** How close the window is to its limit: from 80% near; reached at 100%, at the host's `pauseAt` or refused. */
 export type QuotaLevel = "ok" | "near" | "reached";

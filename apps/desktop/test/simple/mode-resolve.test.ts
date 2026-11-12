@@ -4,7 +4,7 @@ import {
   loadChoices,
   saveChoice,
   UI_CHOICES_KEY,
-} from "../../src/lib/simple-mode.ts";
+} from "../../src/features/home/simple-mode.ts";
 
 const memory = (initial?: string) => {
   const data = new Map<string, string>(initial ? [[UI_CHOICES_KEY, initial]] : []);

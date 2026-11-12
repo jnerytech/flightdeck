@@ -6,7 +6,6 @@
   "apps/daemon/src/main.ts": 1202,
   "apps/daemon/src/messaging/messages.ts": 965,
   "apps/daemon/src/sessions/session-manager.ts": 1115,
-  "apps/daemon/src/store/migrations.ts": 1045,
   "apps/daemon/src/teams/teams.ts": 818,
   "apps/daemon/src/workflows/engine.ts": 1317,
   "apps/desktop/src/features/board/board-view.tsx": 1537,

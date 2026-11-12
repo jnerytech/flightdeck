@@ -3,9 +3,9 @@ import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
-import type { UiMode } from "@/lib/simple-mode";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Panel } from "@/shared/layout/index.ts";
+import type { UiMode } from "../home/index.ts";
 
 const MODES: readonly UiMode[] = ["full", "simple"];
 
