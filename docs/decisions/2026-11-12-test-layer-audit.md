@@ -69,7 +69,12 @@ journey measures the real browser and is the protection for the layout rows.
 
 | path | verdict | stays protected by |
 |---|---|---|
-| `tabs/look`, `tabs/largura`, `layout/overflow`, `margens-blocos`, `dialogo-centro`, `dialogo-compacto`, `bloco-pedido`, `linhas-bloco`, `movimento-tokens`, `css-utilities`, `simple/narrow-ui`, `sessions/hub-row-narrow`, `sessions/session-header`, `sidebar/target`, `sidebar/project-name`, `projects/tree-ui` (CSS regex only) | delete | e2e `layout` journey and `demo:shots`; `style-lint` for the rule-shaped ones |
+| `tabs/look` (two of three tests), `tabs/largura` (two tests), `layout/overflow` * | deleted, desktop slice | e2e `layout` journey: `tabWidthsProblem` (80 px floor, 13 rem ceiling), `flatTabsProblem` and `activeTabProblem` (borders, colors, line under the bar), `layoutAbas` (no sideways scroll with 12 tabs and a long path) |
+| `tabs/look` (active line takes `--host-color`) | keep | the journey checks the line's contrast and uniqueness, not its color |
+| `bloco-pedido`, `linhas-bloco` * | keep for now | no seed puts a long request or an unbroken terminal line in a project tile, and the narrow-window guards judge against `responsive-baseline.json`; a seed plus a guard is needed before these go |
+| `margens-blocos`, `css-utilities`, `movimento-tokens` * | keep: policy scans (no `mb-4` on a block, no duplicate `@utility`, motion token parity) | the scans themselves |
+| `dialogo-centro` * | keep for now | no browser guard checks a dialog's centering; `layout-guards` checks only sheet actions |
+| `dialogo-compacto`, `simple/narrow-ui`, `sessions/hub-row-narrow`, `sessions/session-header`, `sidebar/target`, `sidebar/project-name`, `projects/tree-ui` (render some cases, read CSS in others) | rewrite: drop the CSS case, keep the rendered ones | e2e `layout` journey and `demo:shots` |
 | `clients/ui-layout`, `visual-direction/telas` (L121-151), `keycap` (L85-93), `areas-container` (L125-141) (source scans of `.tsx`) | delete the scan | `scripts/lib/style-lint.ts` or a Biome rule |
 | `crumb-largura`, `icon-tip`, `tabela-larga`, `split-tabbar`, `ux-basicos`, `toggle-pressed`, `rolagem`, `botao-motivo-linha`, `palette/mais-ui`, `pagina-host`, `board/ui`, `hosts/host-health-ui`, `costs/table`, `costs/cost-chart` (one CSS or class case each in files that otherwise render) | rewrite: drop that case | the rendered cases beside it |
 | `layout/layout`, `layout/list-row`, `layout/compose`, `visual-direction/colunas` (class lists, `getByTestId`) | rewrite | role, text and open/closed state |
