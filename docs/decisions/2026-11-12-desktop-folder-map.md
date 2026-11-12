@@ -50,7 +50,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `assistant/` | `features/assistant/` (new domain, GLOSSARY row) | the wand, model picker and keys; `refusal-text.ts` goes with it |
 | `feedback/` | `shared/feedback/` | **moved**: `action-button`, `busy`, `confirm-dialog`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`. `notices.tsx` stays in `components/feedback/` until the store moves: it reads `AppStore`, so it is not domain-free; it goes to `app/` with the root |
 | `layout/` | `shared/layout/` | **moved** (14 primitives, behind an `index.ts`; the field-row context is a leaf, `field-row-context.ts`, that `shared/feedback` imports directly); `app-shell.tsx`, `breadcrumb.tsx` and `view-toggle.tsx` stay in `components/layout/` until they move to `features/shell/` (below) |
-| `markdown/` | `shared/markdown/` | `markdown.tsx` and the lazy `markdown-body.tsx` (the lazy chunk must stay lazy: keep `bundle-reach` green) |
+| `markdown/` | `shared/markdown/` | **moved**: `markdown.tsx` and the lazy `markdown-body.tsx`; the `index.ts` exports only `Markdown` and `preloadMarkdown`, never the body, so the lazy chunk stays lazy (`bundle-reach` green) |
 | `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
 | `session/` | **theirs** (`features/sessions/`) | activity line, message actions, parts, tool rows, finish dialogs |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
@@ -74,7 +74,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
 | `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
-| `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | the first step is **done** (#2099); the second goes with the `markdown/` folder |
+| `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | **moved** (#2099, then the `markdown/` folder) |
 | `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | |
 | `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place |
 | `SessionTabs.tsx` | **theirs** (`features/tabs/`) | |
