@@ -65,6 +65,7 @@ export {
   type SessionsSliceState,
 } from "./store.ts";
 export { SessionStreamSlice } from "./stream.ts";
+export type { SessionSubscriptions } from "./subscriptions.ts";
 export { SummariesSlice } from "./summaries.ts";
 export { sessionTabOffers } from "./tab-offers.ts";
 export {
@@ -94,6 +95,7 @@ export {
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
+  wireSessionSubscriptions,
   wireSessions,
   wireSummaries,
 } from "./wire.ts";

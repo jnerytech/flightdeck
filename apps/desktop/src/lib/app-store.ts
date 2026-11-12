@@ -112,6 +112,7 @@ import {
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
+  type SessionSubscriptions,
   type SessionsSlice,
   SessionViews,
   SharedClock,
@@ -123,6 +124,7 @@ import {
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
+  wireSessionSubscriptions,
   wireSessions,
   wireSummaries,
 } from "../features/sessions/index.ts";
@@ -290,7 +292,7 @@ export class AppStore {
     lastSeqFor: (hostId, sessionId) =>
       this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
     selected: () => this.state.selected,
-    watched: () => this.watched.keys(),
+    watched: () => this.subscriptions.followed(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
     // Read at connect: the table is a field declared after this one.
     routes: () => this.routes,
@@ -299,8 +301,6 @@ export class AppStore {
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
-  /** Sessions followed without being open (the project page's tiles), with how many follow each. */
-  private readonly watched = new Map<string, number>();
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
   /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
@@ -316,6 +316,8 @@ export class AppStore {
   private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
+  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
+  private readonly subscriptions: SessionSubscriptions;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -732,6 +734,7 @@ export class AppStore {
     this.sessionLists = wireSessionLists(this.kernel, {
       backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
     });
+    this.subscriptions = wireSessionSubscriptions(this.kernel);
     this.stream = wireSessionStream(this.kernel, {
       summary: (hostId, event) => this.summaries.apply(hostId, [event]),
     });
@@ -1040,16 +1043,7 @@ export class AppStore {
 
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
-    const previous = this.state.selected;
-    if (
-      previous?.sessionId &&
-      previous.sessionId !== sessionId &&
-      !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
-    ) {
-      this.link.connection(previous.hostId)?.unsubscribe(previous.sessionId);
-    }
-    if (sessionId) this.link.connection(hostId)?.subscribe(sessionId);
-    this.update({ selected: { hostId, sessionId } });
+    this.subscriptions.select(hostId, sessionId);
   }
 
   /**
@@ -1057,23 +1051,7 @@ export class AppStore {
    * has not been called (the tiles of a project follow several at once).
    */
   watchSession(hostId: string, sessionId: string): () => void {
-    const key = `${hostId}/${sessionId}`;
-    this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
-    this.link.connection(hostId)?.subscribe(sessionId);
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      const left = (this.watched.get(key) ?? 1) - 1;
-      if (left > 0) {
-        this.watched.set(key, left);
-        return;
-      }
-      this.watched.delete(key);
-      const open = this.state.selected;
-      if (open?.hostId === hostId && open.sessionId === sessionId) return;
-      this.link.connection(hostId)?.unsubscribe(sessionId);
-    };
+    return this.subscriptions.watchSession(hostId, sessionId);
   }
 
   /** Puts an idle session to sleep now and says, in a toast, what came of it. */
