@@ -860,7 +860,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
 
   test("each region that scrolls as one is named in the shell (#567)", () => {
     const shell = readFileSync(
-      join(import.meta.dir, "../../../apps/desktop/src/components/layout/app-shell.tsx"),
+      join(import.meta.dir, "../../../apps/desktop/src/features/shell/app-shell.tsx"),
       "utf8",
     );
     for (const slot of SINGLE_SCROLL) {
