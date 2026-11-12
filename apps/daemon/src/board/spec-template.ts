@@ -13,7 +13,7 @@ import {
   hasChecklistItem,
   specPathProblem,
 } from "@flightdeck/protocol";
-import { createInside, readInsideWhy, walkInside } from "../create-inside.ts";
+import { createInside, readInsideWhy, walkInside } from "./create-inside.ts";
 
 /** The project's TDD skill, as the harness setup writes it (#75). */
 const TDD_SKILL = ".claude/skills/tdd/SKILL.md";

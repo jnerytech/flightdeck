@@ -13,8 +13,8 @@ import {
   commitOnNewBranch,
   safeGit,
 } from "../board/branch-commit.ts";
+import { readInside } from "../board/index.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
-import { readInside } from "../create-inside.ts";
 import { FlightdeckError } from "../errors.ts";
 import { samePath } from "../paths.ts";
 import { MAX_FILE, SETTINGS } from "./preview.ts";

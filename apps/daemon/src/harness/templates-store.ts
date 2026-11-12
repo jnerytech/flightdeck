@@ -14,7 +14,7 @@ import {
   type SecretScanner,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { createInside, readInside } from "../create-inside.ts";
+import { createInside, readInside } from "../board/index.ts";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr } from "../json-text.ts";
 
