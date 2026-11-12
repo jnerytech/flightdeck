@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig } from "../../daemon/src/config.ts";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
+import { loadConfig } from "../../../daemon/src/config.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { userLine, writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
 import {
   DEFAULT_HUB_FILTER,
   HUB_FILTER_KEY,
@@ -13,20 +13,20 @@ import {
   loadHubFilter,
   saveHubFilter,
   sharedMeta,
-} from "../src/lib/hub.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { unfoldAll } from "./unfold.ts";
-import { settle } from "./wait.ts";
+} from "../../src/lib/hub.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { unfoldAll } from "../unfold.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 /** The body of one `@utility` block, nested rules included. */
 function utility(name: string): string {
