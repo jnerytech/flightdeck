@@ -1,4 +1,4 @@
-import { BackupError, type BackupErrorCode } from "../../lib/backup-error.ts";
+import { BackupError, type BackupErrorCode } from "../backup/index.ts";
 import type { NewKey, NewSecret, SecretMeta, SecretPatch, Vault } from "./vault.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
 

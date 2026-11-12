@@ -41,7 +41,7 @@ import {
   initialBackgroundState,
   wireBackground,
 } from "../features/background/index.ts";
-import { BackupSlice } from "../features/backup/index.ts";
+import { type Attention, BackupScheduler, BackupSlice } from "../features/backup/index.ts";
 import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
@@ -173,7 +173,6 @@ import type {
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
-import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
@@ -647,7 +646,7 @@ export class AppStore {
     });
     this.backup = new BackupSlice({
       createText: async (passphrase, confirmation) => {
-        const { createBackup } = await import("./backup-bundle.ts");
+        const { createBackup } = await import("../features/backup/backup-bundle.ts");
         return createBackup(platform, passphrase, confirmation, {
           ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
         });
@@ -655,11 +654,11 @@ export class AppStore {
       saveFile: (name, text) => platform.saveFile(name, text),
       pickFile: () => platform.vault.pickFile(),
       previewText: async (text, passphrase) => {
-        const { previewRestore } = await import("./backup-bundle.ts");
+        const { previewRestore } = await import("../features/backup/backup-bundle.ts");
         return previewRestore(platform, text, passphrase);
       },
       applyPreview: async (preview, onConflict) => {
-        const { applyRestore } = await import("./backup-bundle.ts");
+        const { applyRestore } = await import("../features/backup/backup-bundle.ts");
         return applyRestore(platform, preview, onConflict);
       },
       driveNames: () => this.backupScheduler.driveBackups(),
