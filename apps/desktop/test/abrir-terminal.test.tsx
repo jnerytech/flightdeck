@@ -11,7 +11,7 @@ import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { startDaemon } from "../../daemon/src/main.ts";
 import { git } from "../../daemon/test/support/board-helpers.ts";
 import { must, poll } from "../../daemon/test/support/helpers.ts";
-import { isLocalUrl, terminalLaunch } from "../src/lib/terminal.ts";
+import { isLocalUrl, terminalLaunch } from "../src/features/terminal/terminal.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar/helpers.ts";

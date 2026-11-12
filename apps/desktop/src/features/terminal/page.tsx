@@ -16,8 +16,10 @@ import { useT } from "@/i18n/context";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { insideFolder, resolvePath } from "../../lib/terminal-paths.ts";
-import { TerminalSession, type TerminalState } from "../../lib/terminal-session.ts";
+import { useStoreState } from "../../lib/use-store.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { insideFolder, resolvePath } from "./terminal-paths.ts";
+import { TerminalSession, type TerminalState } from "./terminal-session.ts";
 import {
   type FindFlags,
   findPatternProblem,
@@ -25,15 +27,13 @@ import {
   pasteLines,
   TERMINAL_FONT_FAMILY,
   terminalTheme,
-} from "../../lib/terminal-view.ts";
-import { useStoreState } from "../../lib/use-store.ts";
-import { hasFeature } from "../../lib/version.ts";
+} from "./terminal-view.ts";
 import {
   createXtermScreen,
   type FindResults,
   type XtermDeps,
   type XtermScreen,
-} from "../../lib/xterm-screen.ts";
+} from "./xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first path opened.
@@ -106,7 +106,7 @@ export function TerminalPage(
     const stops: Array<() => void> = [];
     const parent = area.current;
     void (async () => {
-      const deps = props.deps ?? (await import("../../lib/xterm-deps.ts")).realXtermDeps;
+      const deps = props.deps ?? (await import("./xterm-deps.ts")).realXtermDeps;
       if (!alive || !parent) return;
       const host = store.terminals.host(hostId);
       // The terminal's folder, for the relative paths of its output: known once the list answers.

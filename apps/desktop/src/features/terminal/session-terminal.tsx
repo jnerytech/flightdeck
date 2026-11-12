@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppStore } from "../../lib/app-store.ts";
-import type { XtermDeps } from "../../lib/xterm-screen.ts";
 import { TerminalPage } from "./page.tsx";
+import type { XtermDeps } from "./xterm-screen.ts";
 
 /** Where a session page's shell comes from: one opened in the session's folder, or an existing one. */
 export type TerminalSource = { session: string } | { terminalId: string };

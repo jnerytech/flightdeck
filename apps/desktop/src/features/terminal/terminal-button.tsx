@@ -5,9 +5,9 @@ import { PersonaPicker } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import { ActionButton, IconActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import type { TerminalTarget } from "../../lib/terminal.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { useLiveElsewhereGuard } from "../sessions/index.ts";
+import type { TerminalTarget } from "./terminal.ts";
 
 /**
  * "Abrir no terminal" for a session, card or project: opens one on this machine, or copies the
