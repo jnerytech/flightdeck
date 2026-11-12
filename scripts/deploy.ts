@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
-import { runDeploy } from "./lib/deploy.ts";
+import { runDeploy } from "./lib/release/deploy.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const alias = process.argv.slice(2).find((a) => a !== "--");
