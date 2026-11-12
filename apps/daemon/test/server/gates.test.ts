@@ -160,6 +160,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     watch: "prWatch",
     checkLoop: "prWatch",
   },
+  // The projects' trust (#1593): it keeps `projectTrust`. The keys and "find my projects" are not
+  // refused through a gate.
+  projects: {
+    trust: "projectTrust",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -219,6 +224,7 @@ describe("server-gates", () => {
       telemetry: {},
       updates: {},
       prWatch: {},
+      projects: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
