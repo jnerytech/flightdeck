@@ -1,8 +1,7 @@
 import type { PlainInfo } from "@flightdeck/protocol";
 import type { KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { HoldButton } from "@/features/permissions/index.ts";
-import { HIGH_RISK_HOLD_MS } from "@/features/sessions/index.ts";
+import { HIGH_RISK_HOLD_MS, HoldButton } from "@/features/permissions/index.ts";
 import type { T } from "../../i18n/index.ts";
 
 /** A permission request as a yes/no question with its consequence (simple mode, phase 33). */

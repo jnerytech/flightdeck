@@ -1,5 +1,5 @@
 import type { CommandPayload, CommandResults, VaultRequestFrame } from "@flightdeck/protocol";
-import { HIGH_RISK_HOLD_MS } from "@/features/sessions/index.ts";
+import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
 import type { SecretMeta, Vault } from "../../lib/vault.ts";

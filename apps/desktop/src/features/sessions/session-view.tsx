@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useWand, type WandBinding, WandButton, WandPanel } from "@/features/assistant/index.ts";
 import { ApprovalCard } from "@/features/permissions/index.ts";
+import type { MenuItem } from "@/features/snippets/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,6 @@ import {
   SessionPane,
   Timeline,
 } from "./parts";
-import type { MenuItem } from "./prompt-menu.ts";
 import { RuntimeBadge } from "./runtime-badge";
 import { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
 import { activityOf } from "./session-activity.ts";

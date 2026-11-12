@@ -5,7 +5,7 @@ import {
   groupOf,
   highlight,
   MENU_GROUPS,
-} from "../src/features/sessions/prompt-menu.ts";
+} from "../src/features/snippets/prompt-menu-model.ts";
 
 const slash = (name: string, description?: string) => ({
   key: `slash:${name}`,

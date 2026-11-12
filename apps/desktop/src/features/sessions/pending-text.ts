@@ -1,6 +1,6 @@
 import type { T } from "../../i18n/index.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
-import { inputSummary } from "./index.ts";
+import { inputSummary } from "./tool-input.ts";
 
 /**
  * What a waiting item asks, as one line for a person (issue #175): a workflow gate says which step

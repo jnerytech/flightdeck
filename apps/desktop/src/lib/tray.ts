@@ -1,5 +1,5 @@
 import type { PendingPermission } from "@flightdeck/protocol";
-import { pendingText, pendingWhere } from "../features/sessions/index.ts";
+import { pendingText, pendingWhere } from "../features/sessions/pending-text.ts";
 import { type T, translator } from "../i18n/index.ts";
 import type { TrayMenu, TrayStatus } from "../platform/types.ts";
 import type { PendingItem } from "./app-store.ts";

@@ -4,7 +4,8 @@
  * terminal, the lists the Sessions screen shows from the hosts, what its events do to the
  * conversations, the commands a person asks of a session, and the question a person answers before
  * a second `claude` opens on a conversation another terminal holds, a session's status badge, and the
- * list and cards toggle the hub and the history list share.
+ * list and cards toggle the hub and the history list share, and the helpers around a session: the
+ * hosts a session starts on, its timing and cost, the follow and draft hooks, the mode and model menus.
  * Another domain imports from here, never a file inside.
  */
 
@@ -27,7 +28,6 @@ export {
   withFiles,
 } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";
-export { HIGH_RISK_HOLD_MS } from "./hold.ts";
 export {
   groupName,
   type HubFilter,
@@ -51,7 +51,6 @@ export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { newSessionHost } from "./new-session-host.ts";
 export { NewSessionPrefs } from "./new-session-prefs.ts";
 export { pendingText, pendingWhere } from "./pending-text.ts";
-export { filterMenu, highlight, type MenuItem } from "./prompt-menu.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
 export { rowRoute } from "./row-route.ts";
