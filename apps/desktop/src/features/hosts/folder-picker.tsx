@@ -13,11 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AllowedFolders } from "@/features/hosts/index.ts";
 import { useT } from "@/i18n/context";
-import type { AppStore, HostView } from "../lib/app-store.ts";
-import { breadcrumbSteps, isInside } from "../lib/paths.ts";
-import { isLocalUrl } from "../lib/terminal.ts";
+import type { AppStore, HostView } from "../../lib/app-store.ts";
+import { breadcrumbSteps, isInside } from "../../lib/paths.ts";
+import { isLocalUrl } from "../../lib/terminal.ts";
+import { AllowedFolders } from "./allowed-folders.tsx";
 
 /** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
 function moveByKey(event: KeyboardEvent, list: HTMLElement): boolean {

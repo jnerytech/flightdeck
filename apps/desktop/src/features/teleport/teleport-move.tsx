@@ -11,7 +11,7 @@ import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { isPlainRemote, plainText } from "../../lib/teleport.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { FolderPicker } from "../../ui/FolderPicker.tsx";
+import { FolderPicker } from "../hosts/index.ts";
 import { failureText, TeleportDialog } from "./teleport-dialog.tsx";
 
 const TELEPORT_KEYS = ["hosts"] as const;

@@ -14,7 +14,7 @@ const {
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { FolderPicker } = await import("../src/ui/FolderPicker.tsx");
+const { FolderPicker } = await import("../src/features/hosts/folder-picker.tsx");
 const { NewSessionForm } = await import("../src/ui/NewSessionForm.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

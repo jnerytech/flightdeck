@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { FolderPicker } from "../features/hosts/index.ts";
 import {
   choicesToKeep,
   createPayload,
@@ -27,7 +28,6 @@ import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import { CLAUDE_MODELS } from "../lib/new-session-prefs.ts";
 import { hasFeature } from "../lib/version.ts";
-import { FolderPicker } from "./FolderPicker.tsx";
 
 const EFFORTS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 type Runtime = "claude" | "opencode";
