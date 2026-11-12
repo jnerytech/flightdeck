@@ -2,6 +2,8 @@
  * The frontmatter of an agent or skill file, read and written without losing what the form does
  * not edit: every line of the block that is not a field it changes comes back as it was.
  */
+import { z } from "zod";
+import { parseJsonText } from "@/shared/lib/index.ts";
 
 /** One `key: value` of the block; `raw` is the value as the file spells it (quotes included). */
 export interface Entry {
@@ -44,11 +46,7 @@ function keyLine(line: string): { key: string; value: string | undefined } | nul
 /** The text of a YAML scalar: quotes taken off, the escapes undone. */
 function unquote(raw: string): string {
   if (raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')) {
-    try {
-      return JSON.parse(raw) as string;
-    } catch {
-      return raw;
-    }
+    return parseJsonText(raw, z.string(), raw);
   }
   if (raw.length >= 2 && raw.startsWith("'") && raw.endsWith("'")) {
     return raw.slice(1, -1).replaceAll("''", "'");

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { layoutViolations } from "./style-lint.ts";
+import { layoutViolations } from "../style-lint.ts";
 
 /** How many raw layout utilities each screen may still hold: the count per file, only ever down. */
 export type LayoutBaseline = Record<string, number>;

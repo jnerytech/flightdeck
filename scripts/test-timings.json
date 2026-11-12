@@ -524,7 +524,6 @@
   "apps/desktop/test/layout/layout.test.tsx": 2.588,
   "apps/desktop/test/layout/lint.test.ts": 0,
   "apps/desktop/test/layout/list-row.test.tsx": 0.003,
-  "apps/desktop/test/layout/overflow.test.ts": 0,
   "apps/desktop/test/lazy-screen.test.tsx": 0.08,
   "apps/desktop/test/lib.test.ts": 0.003,
   "apps/desktop/test/linha-do-tempo-ui.test.tsx": 24.235,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { isCoverageSource } from "../../lib/coverage-check.ts";
+import { isCoverageSource } from "../../lib/coverage-gate/check.ts";
 import {
   countsForCoverage,
   exclusionsOf,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { quickTests } from "../../lib/ci-quick.ts";
+import { quickTests } from "../../lib/ci/quick.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -49,7 +49,7 @@ describe("ci-quick", () => {
           "apps/desktop/test/layout/layout-ratchet.test.ts",
           "scripts/test/guards/protocol-surface.test.ts",
           "scripts/test/ci/ci-quick.test.ts",
-          "scripts/lib/wait-ratchet.ts",
+          "scripts/lib/ratchets/wait.ts",
           "scripts/test/ci/perf-baseline.test.ts",
           "apps/desktop/test/x-ratchet.test.tsx",
         ],

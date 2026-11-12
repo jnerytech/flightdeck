@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { overBaseline } from "../../lib/layout-ratchet.ts";
-import { reasonlessRefusals, refusalCounts } from "../../lib/refusal-ratchet.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
+import { reasonlessRefusals, refusalCounts } from "../../lib/ratchets/refusal.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const BASELINE = resolve(ROOT, "refusal-baseline.json");
