@@ -69,7 +69,7 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
       );
     });
     await waitFor(() => screen.getByRole("button", { name: "Board" }));
-    expect(store.uiMode(hostId).mode).toBe("full");
+    expect(store.uiModes.mode(hostId).mode).toBe("full");
     expect(mem.items.get("flightdeck.uiMode")).toContain('"full"');
   });
 

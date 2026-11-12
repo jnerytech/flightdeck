@@ -8,7 +8,7 @@ import { switcherHosts } from "./switcher-hosts.ts";
  */
 export function useSwitcherHostId(store: AppStore): string | null {
   useSyncExternalStore(store.hostTabs.subscribe, () => store.hostTabs.version);
-  return store.activeHostId() ?? store.uiHostId();
+  return store.activeHostId() ?? store.uiModes.hostId();
 }
 
 /**

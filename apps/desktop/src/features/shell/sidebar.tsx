@@ -290,7 +290,7 @@ export function Sidebar(
   const here = props.route ? activeNav(props.route) : null;
   /**
    * The host the screens that need one open on: the switcher's, as the project tree (#126, #932).
-   * With none picked, that is the selected session's host, else the first online (`uiHostId`).
+   * With none picked, that is the selected session's host, else the first online (`uiModes.hostId`).
    */
   const switcherId = useSwitcherHostId(props.store);
   const navHost = state.hosts.find((h) => h.id === switcherId) ?? state.hosts[0];

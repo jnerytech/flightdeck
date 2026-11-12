@@ -30,7 +30,7 @@ function recorder(
       open: (host: string) => void calls.push(`new-terminal ${host}`),
     },
     theme: { toggle: () => void calls.push("theme") },
-    toggleUiMode: () => void calls.push("ui-mode"),
+    uiModes: { toggle: () => void calls.push("ui-mode") },
     i18n: { setLang: (lang: string) => void calls.push(`lang ${lang}`) },
     snippets: {
       choose: (c: { hostId: string; snippetId: string }) =>

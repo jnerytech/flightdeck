@@ -198,7 +198,7 @@ export function SimpleApp(
   const theme = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [templates, setTemplates] = useState<Template[]>([]);
-  const mode = store.uiMode(hostId);
+  const mode = store.uiModes.mode(hostId);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
@@ -225,7 +225,7 @@ export function SimpleApp(
 
   /** The full app, with this task open when there is one: the way out for the day it is not enough. */
   const toFull = (sessionId?: string) => {
-    store.setUiChoice(hostId, "full");
+    store.uiModes.choose(hostId, "full");
     if (sessionId) store.router.push({ name: "session", host: hostId, id: sessionId });
   };
 
