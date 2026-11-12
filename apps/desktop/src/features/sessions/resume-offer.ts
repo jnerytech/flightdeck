@@ -1,5 +1,5 @@
 import type { InterruptedSession } from "@flightdeck/protocol";
-import { basename } from "../../lib/paths.ts";
+import { basename } from "@/shared/lib/index.ts";
 
 /** What resume sends to a resumed session: the original request is never sent again. */
 export const CONTINUATION = "Continue where you left off.";

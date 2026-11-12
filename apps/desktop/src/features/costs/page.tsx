@@ -22,6 +22,7 @@ import {
   Panel,
   Toolbar,
 } from "@/shared/layout/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
@@ -36,7 +37,6 @@ import {
 } from "../../lib/costs.ts";
 import { exportCosts } from "../../lib/costs-export.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
-import { basename } from "../../lib/paths.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
 import {

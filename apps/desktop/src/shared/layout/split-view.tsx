@@ -8,8 +8,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { clampListWidth, LIST_DEFAULT, LIST_MAX, LIST_MIN } from "@/lib/list-width";
-import { useWidth } from "@/lib/use-width";
+import { clampListWidth, LIST_DEFAULT, LIST_MAX, LIST_MIN, useWidth } from "@/shared/lib/index.ts";
 
 const STEP = 16;
 /** Below this width of the area there is room for one pane only. */

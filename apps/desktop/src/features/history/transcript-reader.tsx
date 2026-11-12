@@ -8,11 +8,11 @@ import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
 import { EmptyState, ErrorState, LoadingState, Note } from "@/shared/layout/index.ts";
+import { basename, isInside } from "@/shared/lib/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { awaitingApproval } from "../../lib/awaiting-approval.ts";
 import { toolLoader } from "../../lib/history-tool.ts";
-import { basename, isInside } from "../../lib/paths.ts";
 import { messageParts } from "../../lib/tool-line.ts";
 import { useLiveElsewhereGuard } from "../sessions/index.ts";
 

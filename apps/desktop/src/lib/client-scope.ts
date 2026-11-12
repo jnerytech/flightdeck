@@ -1,4 +1,5 @@
 import { byCodeUnit } from "@flightdeck/protocol";
+import { isInside } from "@/shared/lib/index.ts";
 import { type KnownProject, resolveClient, ruleMatches } from "./client-rules.ts";
 import {
   type Client,
@@ -7,7 +8,6 @@ import {
   type RuleInput,
   UNASSIGNED,
 } from "./clients.ts";
-import { isInside } from "./paths.ts";
 
 /** Where the selected client is kept between starts. */
 export const CLIENT_SELECTION_KEY = "flightdeck.clientFilter";

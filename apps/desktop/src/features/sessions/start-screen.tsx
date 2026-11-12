@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { MissingToolsCards } from "@/features/deps/index.ts";
 import { useT } from "@/i18n/context";
 import { Inline, Page, Section, Stack } from "@/shared/layout/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { newSessionHost } from "../../lib/new-session-host.ts";
-import { basename } from "../../lib/paths.ts";
 import type { Route } from "../../lib/router.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 
