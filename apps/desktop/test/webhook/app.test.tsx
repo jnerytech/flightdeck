@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Budgets } from "../../daemon/src/costs/budgets.ts";
-import { WebhookSender } from "../../daemon/src/webhook/sender.ts";
-import { registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { settleMaybe, waiter } from "./wait.ts";
+import { Budgets } from "../../../daemon/src/costs/budgets.ts";
+import { WebhookSender } from "../../../daemon/src/webhook/sender.ts";
+import { registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { settleMaybe, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 setDefaultTimeout(20_000);
 
