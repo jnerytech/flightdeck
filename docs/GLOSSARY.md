@@ -225,3 +225,4 @@ test's baseline, with the issue that renames them.
 | `webhook` | webhook | Posts the app's events to a webhook URL, kept as a secret |
 | `workflows` | workflow | A card's steps (agent, check, gate), their engine and findings |
 | `worktrees` | worktree | A card's git worktree and branch, locks and cleanup |
+| `wsl` | WSL | A host that runs inside WSL, and the distros whose daemons a Windows host keeps running |
