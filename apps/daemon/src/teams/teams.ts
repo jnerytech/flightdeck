@@ -5,6 +5,7 @@
 
 import type { Database } from "bun:sqlite";
 import {
+  type EffortLevel,
   inSequence,
   type MessageInfo,
   type PermissionMode,
@@ -21,6 +22,7 @@ import type { Messaging } from "../messaging/messages.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
+import type { NewTeam, TeamPatch } from "./input.ts";
 import {
   coordinatorInstructions,
   INSTRUCTIONS_VERSION,
@@ -66,6 +68,8 @@ export interface TeamsOptions {
     name: string;
     persona: string | null;
     model: string | null;
+    /** Issue #2310: the effort the coordinator opens with; null is the persona's own. */
+    effort: EffortLevel | null;
     /** Issue #93: the mode the coordinator opens in; null is the host's default. */
     permissionMode: PermissionMode | null;
   }) => { sessionId: string } | Promise<{ sessionId: string }>;
@@ -77,37 +81,6 @@ export interface TeamsOptions {
   warm?: (cwd: string) => Promise<unknown> | undefined;
   /** Tells a running session its persona changed. */
   applyPersona?: (sessionId: string, persona: string | null) => void;
-}
-
-export interface NewTeam {
-  projectId: string;
-  goal: string;
-  name?: string;
-  workers: number;
-  coordinatorPersona?: string;
-  workerPersonas?: string[];
-  /** The model of the coordinator and of each worker; none or null is the persona's own. */
-  coordinatorModel?: string;
-  workerModels?: Array<string | null>;
-  /** Issue #93: the permission mode of the coordinator and of each worker; none or null is the default. */
-  coordinatorPermission?: PermissionMode;
-  workerPermissions?: Array<PermissionMode | null>;
-  checks?: string[];
-}
-
-export interface TeamPatch {
-  team: string;
-  goal?: string;
-  checks?: string[];
-  persona?: { member: string; persona: string | null };
-  addWorkers?: number;
-  /** One more worker with the persona and model asked for (none or null is the default). */
-  addMember?: {
-    persona?: string | null;
-    model?: string | null;
-    permission?: PermissionMode | null;
-  };
-  removeMember?: string;
 }
 
 /** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
@@ -161,9 +134,10 @@ const RESUME_QUOTA =
 interface WorkerSpec {
   readonly persona: string | null;
   readonly model: string | null;
+  readonly effort: EffortLevel | null;
   readonly permission: PermissionMode | null;
 }
-const NO_SPEC: WorkerSpec = { persona: null, model: null, permission: null };
+const NO_SPEC: WorkerSpec = { persona: null, model: null, effort: null, permission: null };
 
 export class Teams {
   private readonly listeners = new Set<(frame: TeamsUpdatedFrame) => void>();
@@ -376,14 +350,15 @@ export class Teams {
     model: string | null = null,
     number: number | null = null,
     permission: PermissionMode | null = null,
+    effort: EffortLevel | null = null,
   ): Promise<StoredMember> {
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
       title: name,
       description: workerInstructions(brief, coordinator),
-      // The card's variant is where a card keeps the model and the mode its session opens in.
-      ...(model || permission
-        ? { variant: { label: "team", model, effort: null, persona, permissionMode: permission } }
+      // The card's variant is where a card keeps the model, the effort and the mode its session opens in.
+      ...(model || effort || permission
+        ? { variant: { label: "team", model, effort, persona, permissionMode: permission } }
         : {}),
     });
     // Before the card starts: its session is named with this persona from the first moment.
@@ -426,6 +401,7 @@ export class Teams {
       workerPersonas.push(await this.checkPersona(p));
     });
     const coordinatorModel = input.coordinatorModel ?? null;
+    const coordinatorEffort = input.coordinatorEffort ?? null;
     const coordinatorPermission = input.coordinatorPermission ?? null;
     // Only the modes of workers the team has: a longer list is not used, so it is not refused either.
     this.checkPermissions([
@@ -456,6 +432,7 @@ export class Teams {
         prompt: string;
         name: string;
         model: string | null;
+        effort: EffortLevel | null;
         permissionMode: PermissionMode | null;
       }) =>
         this.opts.manager.create(
@@ -464,6 +441,7 @@ export class Teams {
             prompt: start.prompt,
             name: start.name,
             ...(start.model ? { model: start.model } : {}),
+            ...(start.effort ? { effort: start.effort } : {}),
             ...(start.permissionMode ? { permissionMode: start.permissionMode } : {}),
           },
           { prepared: await (this.opts.preparePersonas ?? withoutPersonas)(undefined, start.cwd) },
@@ -477,6 +455,7 @@ export class Teams {
       name: coordinatorName,
       persona: coordinatorPersona,
       model: coordinatorModel,
+      effort: coordinatorEffort,
       permissionMode: coordinatorPermission,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
@@ -503,6 +482,7 @@ export class Teams {
           input.workerModels?.[i] ?? null,
           i + 1,
           input.workerPermissions?.[i] ?? null,
+          input.workerEfforts?.[i] ?? null,
         ),
       );
     });
@@ -713,12 +693,14 @@ export class Teams {
           spec.model,
           number,
           spec.permission,
+          spec.effort,
         );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
       const asked = [
         spec.persona && `persona ${spec.persona}`,
         spec.model && `modelo ${spec.model}`,
+        spec.effort && `effort ${spec.effort}`,
         spec.permission && `modo de permissão ${spec.permission}`,
       ].filter(Boolean);
       tellCoordinator(
@@ -788,6 +770,7 @@ export class Teams {
       const spec = {
         persona: await this.checkPersona(patch.addMember.persona),
         model: patch.addMember.model ?? null,
+        effort: patch.addMember.effort ?? null,
         permission: patch.addMember.permission ?? null,
       };
       await this.addWorkers(row, 1, coordinator, tellCoordinator, spec);

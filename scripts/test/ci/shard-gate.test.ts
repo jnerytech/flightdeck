@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { FunctionCoverage } from "../../lib/coverage-funcs.ts";
+import type { FunctionCoverage } from "../../lib/coverage-gate/funcs.ts";
 import {
   failedCount,
   type GateInput,
@@ -449,9 +449,9 @@ describe("shard-gate: istanbul sees every source (#296)", () => {
     // and two of them could not be settled by Bun's counts.
     const preload = importsOf(readFileSync("scripts/test/coverage-funcs-preload.ts", "utf8"));
     expect(preload.filter((spec) => spec.startsWith("."))).toEqual([
-      "../lib/coverage-funcs-hooks.ts",
+      "../lib/coverage-gate/funcs-hooks.ts",
     ]);
-    const hooks = importsOf(readFileSync("scripts/lib/coverage-funcs-hooks.ts", "utf8"));
+    const hooks = importsOf(readFileSync("scripts/lib/coverage-gate/funcs-hooks.ts", "utf8"));
     expect(hooks).toEqual(["istanbul-lib-instrument"]);
   });
 });

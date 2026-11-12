@@ -1,4 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
+import { nullOnError } from "@/shared/lib/index.ts";
 
 /** What the board's cards read and ask through the app's store. */
 export interface BoardCardsCore {
@@ -21,7 +22,7 @@ export interface BoardCardsCore {
 }
 
 /** A card's key in the state: `host/card`, the format of the sessions' `sessionKey` (not imported: the sessions domain imports the board's, #1624). */
-const cardKey = (hostId: string, cardId: string) => `${hostId}/${cardId}`;
+const stateKey = (hostId: string, cardId: string) => `${hostId}/${cardId}`;
 
 const isCard = (value: unknown): value is Card =>
   typeof value === "object" && value !== null && "column" in value && "projectId" in value;
@@ -33,9 +34,6 @@ function cardsIn(result: unknown): Card[] {
   return columns.flatMap((column) => column.cards);
 }
 
-/** A request whose failure only means less to show (a host without a board, or offline). */
-const quiet = <R>(promise: Promise<R>) => promise.catch(() => null);
-
 /**
  * The board cards the app has seen (#1596: a slice of the store): the ones a host sends
  * (`card.updated`), the ones a command answers with, and a board loaded on its own. A discarded
@@ -46,7 +44,7 @@ export class BoardCardsSlice {
 
   /** A card a host sent or answered with: kept, or dropped when discarded. */
   onCard(hostId: string, card: Card): void {
-    const { [cardKey(hostId, card.id)]: previous, ...others } = this.core.cards();
+    const { [stateKey(hostId, card.id)]: previous, ...others } = this.core.cards();
     // Phase 31: a card the app already knew has just lost its last blocker.
     if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
       const t = this.core.t();
@@ -59,7 +57,7 @@ export class BoardCardsSlice {
         card.prUrl,
       );
     }
-    const cards = card.discarded ? others : { ...others, [cardKey(hostId, card.id)]: card };
+    const cards = card.discarded ? others : { ...others, [stateKey(hostId, card.id)]: card };
     this.core.setCards(cards);
   }
 
@@ -72,7 +70,7 @@ export class BoardCardsSlice {
   async load(hostId: string, projectId: string): Promise<void> {
     const conn = this.core.connection(hostId);
     if (!conn) return;
-    const board = await quiet(conn.request("board.get", { projectId }));
+    const board = await nullOnError(conn.request("board.get", { projectId }));
     this.onResult(hostId, board);
   }
 }

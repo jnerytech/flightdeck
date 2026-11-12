@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { GhResult } from "../../lib/ci-branch.ts";
+import type { GhResult } from "../../lib/ci/branch.ts";
 import {
   claimIssue,
   currentOwner,

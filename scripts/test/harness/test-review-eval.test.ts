@@ -5,7 +5,7 @@ import {
   type TestReviewCase,
   testReviewArgs,
   testReviewPrompt,
-} from "../../lib/test-review-eval.ts";
+} from "../../lib/evals/test-review-eval.ts";
 
 // A missing case is an empty one, so its tests fail by assertion, not by a throw.
 const byName = (name: string): TestReviewCase =>

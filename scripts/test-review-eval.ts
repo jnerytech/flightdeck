@@ -4,7 +4,7 @@
  * measures the `test-quality-reviewer` agent on the Khorikov criteria (issue #1604). For each case
  * and sample it clones HEAD into a temporary folder (origin removed), commits the case's test and
  * feat pair there, runs `claude -p --agent test-quality-reviewer` on it with no Edit, Write or git,
- * and grades the report with the deterministic checks of scripts/lib/test-review-eval.ts. The
+ * and grades the report with the deterministic checks of scripts/lib/evals/test-review-eval.ts. The
  * session gets no token or key from the environment. It costs real quota: opt-in only, never in
  * the suite or CI, and never under the slot. Linux and macOS only, like the other evals.
  */
@@ -12,14 +12,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { startEval } from "./eval-start.ts";
-import { prepareClone } from "./lib/harness-eval.ts";
+import { prepareClone } from "./lib/evals/harness-eval.ts";
 import {
   gradeTestReview,
   TEST_REVIEW_CASES,
   testReviewArgs,
   testReviewPrompt,
-} from "./lib/test-review-eval.ts";
-import { reportOf, uxScorecard } from "./lib/ux-review-eval.ts";
+} from "./lib/evals/test-review-eval.ts";
+import { reportOf, uxScorecard } from "./lib/evals/ux-review-eval.ts";
 
 const argv = process.argv.slice(2);
 const options = startEval("test-review-eval", [

@@ -5,7 +5,7 @@
  * scan (checkEditedFile, #1566), so the type-aware rules are left to `bun run lint`.
  */
 import { relative, resolve } from "node:path";
-import { checkEditedFile, checkoutRoot } from "../../scripts/lib/claude-hooks.ts";
+import { checkEditedFile, checkoutRoot } from "../../scripts/lib/hooks/claude-hooks.ts";
 import { logHook } from "./log.ts";
 
 const CHECKED = /\.(ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$/i;

@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AssistField } from "@/features/assistant/index.ts";
 import { useSwitcherHostId } from "@/features/hosts/index.ts";
 import {
+  EffortSelect,
   ModelSelect,
   type PermissionChoice,
   PermissionSelect,
@@ -37,11 +38,14 @@ import {
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
+import { NewMember } from "./new-member.tsx";
 import {
   bypassAsked,
   chosenProject,
   confirmCopy,
   createPayload,
+  type EffortChoice,
+  effortOffered,
   memberPayload,
   type NewTeamRow,
   offeredChoice,
@@ -49,21 +53,7 @@ import {
   type TeamConfirm,
 } from "./new-team.ts";
 import { TeamOutcome } from "./team-outcome.tsx";
-
-/**
- * Issue #93: what a host takes for a team member's permission mode. A host that does not announce
- * it would ignore the choice, so the form shows none; Bypass needs the host's own switch.
- */
-function useModes(store: AppStore, hostId: string) {
-  const { hosts } = useStoreSlice(store, MODES_KEYS);
-  const host = hosts.find((h) => h.id === hostId);
-  return {
-    offered: hasFeature(host?.hostInfo?.features, "teams.permissions", false),
-    allowBypass: host?.hostInfo?.allowBypassPermissions === true,
-    name: host?.name ?? hostId,
-  };
-}
-const MODES_KEYS = ["hosts"] as const;
+import { useModes, usePersonaModels } from "./use-modes.ts";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
@@ -91,6 +81,8 @@ function NewTeam(
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
   const modes = useModes(store, hostId);
+  const personaModels = usePersonaModels(store, hostId);
+  const [effort, setEffort] = useState<EffortChoice>("");
   const [permission, setPermission] = useState<PermissionChoice>("");
   /** Bypass asks again each time the team is created. */
   const [asking, setAsking] = useState(false);
@@ -99,19 +91,34 @@ function NewTeam(
    * nobody picked is `null` and shows the Developer when the host has it.
    */
   const [rows, setRows] = useState<NewTeamRow[]>([
-    { persona: null, model: "", permission: "" },
-    { persona: null, model: "", permission: "" },
+    { persona: null, model: "", effort: "", permission: "" },
+    { persona: null, model: "", effort: "", permission: "" },
   ]);
   const setRow = (index: number, change: Partial<NewTeamRow>) =>
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
   const workerDefault = useSuggestedPersona(store, hostId, "dev", true);
   const personaOf = (row: NewTeamRow) => rowPersona(row, workerDefault);
+  const effortShown = (member: string, personaId: string) =>
+    effortOffered({ efforts: modes.efforts, personaModels }, member, personaId);
   const [creating, setCreating] = useState(false);
   // A second submit before the first answered would create the team twice.
   const inFlight = useRef(false);
   const create = async (confirmed = false) => {
     if (inFlight.current) return;
-    const form = { projectId, goal, name, persona, model, permission, rows, workerDefault, modes };
+    const form = {
+      projectId,
+      goal,
+      name,
+      persona,
+      model,
+      effort,
+      permission,
+      rows,
+      workerDefault,
+      modes,
+      efforts: modes.efforts,
+      personaModels,
+    };
     if (bypassAsked(form) && !confirmed) {
       setAsking(true);
       return;
@@ -196,6 +203,14 @@ function NewTeam(
         value={model}
         onChange={setModel}
       />
+      {effortShown(model, persona) && (
+        <EffortSelect
+          label={t("teamsUi.coordinatorEffort")}
+          defaultLabel={t("teamsUi.effortDefault")}
+          value={effort}
+          onChange={setEffort}
+        />
+      )}
       {modes.offered && (
         <PermissionSelect
           label={t("teamsUi.coordinatorPermission")}
@@ -227,6 +242,14 @@ function NewTeam(
               value={row.model}
               onChange={(value) => setRow(i, { model: value })}
             />
+            {effortShown(row.model, personaOf(row)) && (
+              <EffortSelect
+                label={t("teamsUi.workerEffort", { n: i + 1 })}
+                defaultLabel={t("teamsUi.effortDefault")}
+                value={row.effort}
+                onChange={(value) => setRow(i, { effort: value })}
+              />
+            )}
             {modes.offered && (
               <PermissionSelect
                 label={t("teamsUi.workerPermission", { n: i + 1 })}
@@ -254,7 +277,9 @@ function NewTeam(
           className="self-start"
           disabled={rows.length >= 8}
           aria-label={t("teamsUi.addRow")}
-          onClick={() => setRows((all) => [...all, { persona: null, model: "", permission: "" }])}
+          onClick={() =>
+            setRows((all) => [...all, { persona: null, model: "", effort: "", permission: "" }])
+          }
         >
           {t("teamsUi.addWorkerButton")}
         </Button>
@@ -467,62 +492,6 @@ export function TeamMemberRow(
   );
 }
 
-/** The persona and model of a worker about to join a running team. */
-function NewMember(
-  props: Readonly<{
-    store: AppStore;
-    hostId: string;
-    team: TeamInfo;
-    onAdd(member: { persona: string; model: string; permission: PermissionChoice }): void;
-    onCancel(): void;
-  }>,
-) {
-  const { store, team } = props;
-  const { t } = store.i18n;
-  const [persona, setPersona] = useState("");
-  const [model, setModel] = useState("");
-  const [permission, setPermission] = useState<PermissionChoice>("");
-  const modes = useModes(store, props.hostId);
-  return (
-    <div className="row-end-wrap">
-      <PersonaPicker
-        store={store}
-        hostId={props.hostId}
-        label={t("teamsUi.newMemberPersona", { name: team.name })}
-        value={persona}
-        onChange={setPersona}
-        idsOnly
-      />
-      <ModelSelect
-        label={t("teamsUi.newMemberModel", { name: team.name })}
-        defaultLabel={t("teamsUi.modelDefault")}
-        value={model}
-        onChange={setModel}
-      />
-      {modes.offered && (
-        <PermissionSelect
-          label={t("teamsUi.newMemberPermission", { name: team.name })}
-          value={offeredChoice(permission, modes.allowBypass)}
-          allowBypass={modes.allowBypass}
-          onChange={setPermission}
-        />
-      )}
-      <Button
-        size="sm"
-        aria-label={t("teamsUi.addMember", { name: team.name })}
-        onClick={() =>
-          props.onAdd({ persona, model, permission: offeredChoice(permission, modes.allowBypass) })
-        }
-      >
-        {t("teamsUi.addMemberButton")}
-      </Button>
-      <Button variant="ghost" size="sm" onClick={props.onCancel}>
-        {t("teamsUi.cancel")}
-      </Button>
-    </div>
-  );
-}
-
 /** One team with its members and its controls. */
 function Team(
   props: Readonly<{
@@ -544,12 +513,18 @@ function Team(
   const [bypassing, setBypassing] = useState<{
     persona: string;
     model: string;
+    effort: EffortChoice;
     permission: PermissionChoice;
   } | null>(null);
   const modes = useModes(store, hostId);
   const [confirm, setConfirm] = useState<TeamConfirm | null>(null);
   const open = team.state !== "closed";
-  const addMember = (member: { persona: string; model: string; permission: PermissionChoice }) => {
+  const addMember = (member: {
+    persona: string;
+    model: string;
+    effort: EffortChoice;
+    permission: PermissionChoice;
+  }) => {
     setAdding(false);
     setBypassing(null);
     void act(
