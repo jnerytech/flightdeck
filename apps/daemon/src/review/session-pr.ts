@@ -9,11 +9,11 @@ import { type PrProvider, prProvider } from "../board/pr.ts";
 import { assertNoSecretInPr, publishPr, withoutCredentials } from "../board/publish-pr.ts";
 import { assertBranchName } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../kernel/index.ts";
-import type { Changes } from "./changes.ts";
 import type { SessionCommits } from "./session-commit.ts";
+import type { ChangesReader } from "./target.ts";
 
 export interface SessionPrDeps {
-  changes: Pick<Changes, "resolve">;
+  changes: Pick<ChangesReader, "resolve">;
   /** The base each new branch started from, when this daemon made it. */
   commits: Pick<SessionCommits, "baseOf" | "commitOf">;
   /** The host's scanner: the title and the description go public. */
