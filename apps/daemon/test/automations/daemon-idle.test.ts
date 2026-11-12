@@ -33,10 +33,10 @@ const probe = () => {
 const IDLE_TIMERS = [
   "central/external.ts 60000",
   "history/indexer.ts 10000",
-  "main.ts 300000",
   "maintenance/maintenance.ts 86400000",
   "server.ts 15000",
   "sessions/stall.ts 30000",
+  "teams/wiring.ts 300000",
 ];
 
 describe("daemon-idle: what a started daemon keeps running", () => {

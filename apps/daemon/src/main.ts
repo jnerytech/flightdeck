@@ -42,7 +42,6 @@ import type { Logger } from "./logger.ts";
 import { createHostLog } from "./logs/wiring.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
-import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
@@ -499,19 +498,23 @@ export async function startDaemon(
     },
   });
   heldValues = () => vault.heldValues();
-  const { endpoints, messaging, teams, personaSessions, stopNames } = await createTeams({
-    db: store.db,
-    config,
-    manager,
-    board,
-    central,
-    keys,
-    autoApprove,
-    names,
-    personaStore,
-    prepare,
-    quota,
-  });
+  const {
+    modules: [teamsModule],
+  } = await domains.add(
+    await createTeams({
+      db: store.db,
+      config,
+      manager,
+      board,
+      central,
+      keys,
+      autoApprove,
+      names,
+      personaStore,
+      prepare,
+      quota,
+    }),
+  );
   prWatch.start();
   // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
   const runEnv = createRunEnv({
@@ -521,8 +524,6 @@ export async function startDaemon(
     terminals,
     board,
   });
-  const idle = new Idle({ endpoints, messaging, host: config.hostName });
-  const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
@@ -639,7 +640,6 @@ export async function startDaemon(
       ...sessionSettings.server,
       commands: true,
     }),
-    messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
     prWatch: serverGroup<"prWatch">()({
       watch: prWatch,
@@ -670,7 +670,6 @@ export async function startDaemon(
     review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
-    personas: serverGroup<"personas">()({ store: personaStore, sessions: personaSessions }),
     terminals,
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
@@ -739,12 +738,7 @@ export async function startDaemon(
         await keepAwakeModule.stop?.();
         await wsl?.stop();
         automations.stop();
-        clearInterval(messagingSweep);
-        stopNames();
-        teams.stop();
-        idle.stop();
-        messaging.stop();
-        endpoints.stop();
+        await teamsModule.stop?.();
         actions.stop();
         vault.stop();
         await automations.idle();
