@@ -12,7 +12,7 @@ const personScrolls = (el: Element) => {
   fireEvent.scroll(el);
 };
 const screen = liveScreen(within);
-const { SessionView } = await import("../../src/ui/SessionView.tsx");
+const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
 const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
 const { emptySession } = await import("../../src/lib/session-state.ts");
 
