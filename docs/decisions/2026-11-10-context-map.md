@@ -49,7 +49,7 @@ so it is regenerated rather than drawn by hand.
 | Usage | `quota`, `account`, `costs`, `roi`, `resources` | supporting | What the work uses and what it is worth |
 | Observation | `history`, `trace`, `telemetry`, `activity` | read model | What already happened, read from transcripts, OTLP and the daemon's own records |
 | Assistant | `assistant` | supporting | The host's assistant for requests, commits and PR texts |
-| Host operations | `deps`, `updates`, `maintenance`, `logs`, `power`, `releases`, `terminal` | generic | Keeping the host and the daemon running |
+| Host operations | `deps`, `updates`, `maintenance`, `logs`, `power`, `releases`, `terminal`, `service`, `wsl` | generic | Keeping the host and the daemon running |
 
 Not contexts: `server` (the WebSocket transport and command handlers), `store` (the SQLite schema
 and event store) and `main.ts` (the wiring). They are adapters and composition; `server` and `store`
@@ -63,8 +63,7 @@ are in the glossary test's baseline until #1594 and #1601 move their parts into 
   `settled`, `read-regular`, `env`, `ntfs-name`, `lines`, `async-queue`, `logger`, `version`) are a kernel, grouped by
   #1594. The rest of the loose files belong to a context: `pairing`, `token`, `networks`,
   `roots`, `project-find`, `fs-dirs`, `present`, `ws-send`, `delta-coalescer`, `server` to the
-  transport; `service*`, `setup`, `update`, `user-path`, `linger`, `wsl*`, `doctor`, `lock`,
-  `config` to host operations; `card-cli`, `create-inside`, `references` to the board; `mcp`,
+  transport; `doctor`, `lock`, `config` to host operations (`service/` and `wsl/` since #1594); `card-cli`, `create-inside`, `references` to the board; `mcp`,
   `claude-probe`, `transcript-text` to the session.
 - **Customer and supplier.** Board is the customer of Session (it launches and watches sessions),
   of Permission, of Agent setup (personas, snippets) and of Usage (quota holds the queue).

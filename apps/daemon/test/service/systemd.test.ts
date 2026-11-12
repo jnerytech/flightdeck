@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { daemonCommand, SYSTEMD_UNIT_PATH, systemdUnit } from "../../src/service.ts";
+import { daemonCommand, SYSTEMD_UNIT_PATH, systemdUnit } from "../../src/service/install.ts";
 
 describe("unit-systemd", () => {
   test("unit gerada bate com o texto esperado", () => {

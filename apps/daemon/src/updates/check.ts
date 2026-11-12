@@ -5,7 +5,7 @@
  */
 import { DaemonManifest, type UpdateStatus } from "@flightdeck/protocol";
 import type { Timers } from "../quota/quota.ts";
-import { compareVersions } from "../update.ts";
+import { compareVersions } from "../service/index.ts";
 
 export type { UpdateStatus };
 

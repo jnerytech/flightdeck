@@ -2,17 +2,17 @@ import { access, chmod, copyFile, mkdir, realpath, rename, rm } from "node:fs/pr
 import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { z } from "zod";
-import { type HookTarget, hooksStatus, installHooks } from "./central/hooks-install.ts";
-import type { Config } from "./config.ts";
-import { parseJsonOr } from "./json-text.ts";
-import type { Logger } from "./logger.ts";
+import { type HookTarget, hooksStatus, installHooks } from "../central/index.ts";
+import type { Config } from "../config.ts";
+import { parseJsonOr } from "../json-text.ts";
+import type { Logger } from "../logger.ts";
 import {
   installService,
   type ServiceContext,
   serviceCommand,
   startService,
   stopService,
-} from "./service.ts";
+} from "./install.ts";
 
 /** The reply frame the shutdown handshake reads; any other frame is ignored. */
 const ACK_FRAME = z.object({

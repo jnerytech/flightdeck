@@ -1,5 +1,5 @@
 import type { DepFeature, DepId, DepResult, DepsResult } from "@flightdeck/protocol";
-import { compareVersions } from "../update.ts";
+import { compareVersions } from "../service/index.ts";
 
 /** What the dependency probes need of the machine; tests give fakes, the daemon gives the real ones. */
 export interface DepsEnv {

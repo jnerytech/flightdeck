@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { addToUserPath, binDir, type PathEnv, removeFromUserPath } from "../../src/user-path.ts";
+import {
+  addToUserPath,
+  binDir,
+  type PathEnv,
+  removeFromUserPath,
+} from "../../src/service/user-path.ts";
 
 const HOME = "C:\\Users\\dev";
 const BIN = "C:\\Users\\dev\\.flightdeck\\bin";
