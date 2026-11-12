@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
+import { translator } from "../../src/i18n/index.ts";
 import {
   activeCount,
   type HubGroup,
@@ -8,7 +8,7 @@ import {
   hubView,
   loadHubFilter,
   rowStatus,
-} from "../src/lib/hub.ts";
+} from "../../src/lib/hub.ts";
 
 /**
  * Issue #1132: each row of the sessions list says what the session is doing: a state word and one
