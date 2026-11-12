@@ -1,5 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
-import type { WorktreeFilter } from "../../lib/project-tree.ts";
+import type { WorktreeFilter } from "@/features/projects/index.ts";
 import { hasFeature } from "../../lib/version.ts";
 
 /**

@@ -8,14 +8,14 @@ import { useProjectCards } from "@/hooks/use-project-cards";
 import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { NewProject } from "./new-project.tsx";
+import { ProjectCardTile } from "./project-card-tile.tsx";
 import {
   filterProjectCards,
   type ProjectCard,
   type ProjectSort,
   sortProjectCards,
-} from "../../lib/project-cards.ts";
-import { NewProject } from "./new-project.tsx";
-import { ProjectCardTile } from "./project-card-tile.tsx";
+} from "./project-cards.ts";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 

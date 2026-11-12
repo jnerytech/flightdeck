@@ -1,4 +1,4 @@
-import { rowInFilter, type WorktreeFilter } from "../../lib/project-tree.ts";
+import { rowInFilter, type WorktreeFilter } from "@/features/projects/index.ts";
 import { type DataScope, projectLabel } from "../costs/index.ts";
 import type { HubRow } from "./hub.ts";
 

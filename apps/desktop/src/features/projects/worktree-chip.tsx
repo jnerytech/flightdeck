@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { T } from "../../i18n/index.ts";
-import type { WorktreeFilter } from "../../lib/project-tree.ts";
+import type { WorktreeFilter } from "./project-tree-model.ts";
 
 /** The branch the sidebar tree narrowed this screen to, with the button that clears it. */
 export function WorktreeChip(props: Readonly<{ filter: WorktreeFilter; t: T; onClear(): void }>) {

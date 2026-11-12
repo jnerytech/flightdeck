@@ -1,5 +1,5 @@
+import type { WorktreeFilter } from "@/features/projects/index.ts";
 import type { Density } from "@/features/shell/index.ts";
-import type { WorktreeFilter } from "../../lib/project-tree.ts";
 import { hostsWith } from "../../lib/version.ts";
 import type { HubFilter, HubRow } from "./hub.ts";
 

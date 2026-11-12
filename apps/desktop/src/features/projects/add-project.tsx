@@ -15,9 +15,9 @@ import { FolderPicker } from "@/features/hosts/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { shortPath } from "@/lib/approval";
-import { suggestFolders } from "@/lib/project-suggestions";
 import { hasFeature } from "@/lib/version";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { suggestFolders } from "./project-suggestions";
 
 /** How many characters of a suggested folder fit a row of the dialog at 390 px. */
 const SUGGESTED_MAX = 40;

@@ -1,9 +1,9 @@
 import type { CostsSummary } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
+import { buildProjectCards, type ProjectCard } from "@/features/projects/index.ts";
 import { type HubRowState, hubRows } from "@/features/sessions/index.ts";
 import { addDays } from "../features/costs/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { buildProjectCards, type ProjectCard } from "../lib/project-cards.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** One card per project of every online host, with the week's cost each host reports (issue #9). */

@@ -1,5 +1,5 @@
 import type { BoardColumn, Card, CostsSummary, Project } from "@flightdeck/protocol";
-import type { HubRow } from "../features/sessions/index.ts";
+import type { HubRow } from "../sessions/index.ts";
 
 /** One project as a card of the Projects screen. */
 export interface ProjectCard {
