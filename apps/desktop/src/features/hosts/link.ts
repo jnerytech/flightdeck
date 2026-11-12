@@ -10,24 +10,33 @@ import type { HostConfig } from "./hosts.ts";
 const wakeTarget = (): Partial<Window> =>
   ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
 
-/** The frame callbacks the rest of the app handles; the link keeps the status, the ping and the changes. */
-export type HostFrames = Omit<
-  HostConnectionOptions,
-  | "url"
-  | "token"
-  | "clientName"
-  | "hostId"
-  | "baseDelayMs"
-  | "wakeDebounceMs"
-  | "maxDelayMs"
-  | "staleMs"
-  | "connectTimeoutMs"
-  | "watchdog"
-  | "lastSeqFor"
-  | "onStatus"
-  | "onPing"
-  | "onChangesUpdated"
+/** The frame kinds the rest of the app takes; the link keeps the status, the ping and the changes. */
+type FrameKey = Exclude<
+  Extract<keyof HostConnectionOptions, `on${string}`>,
+  "onStatus" | "onPing" | "onChangesUpdated"
 >;
+
+/**
+ * Where each frame kind of a host goes (#1596): one entry per frame callback of
+ * `HostConnectionOptions`, each given the host it came from. A frame kind added there is a type
+ * error in the table until the table names the slice that takes it.
+ */
+export type HostRoutes = {
+  [K in FrameKey]: (
+    host: HostConfig,
+    ...args: Parameters<NonNullable<HostConnectionOptions[K]>>
+  ) => void;
+};
+
+/** The routes as one connection's callbacks, bound to its host; the table is a plain object literal. */
+function framesFor(routes: HostRoutes, host: HostConfig): Pick<HostConnectionOptions, FrameKey> {
+  const bound = Object.entries(routes).map(([kind, route]) => [
+    kind,
+    (...args: unknown[]) =>
+      (route as (host: HostConfig, ...rest: unknown[]) => void)(host, ...args),
+  ]);
+  return Object.fromEntries(bound) as Pick<HostConnectionOptions, FrameKey>;
+}
 
 /** What the link reads of the rest of the app. */
 export interface HostLinkDeps {
@@ -40,7 +49,8 @@ export interface HostLinkDeps {
   /** The watched sessions, by `hostId/sessionId`, subscribed on connect. */
   watched(): Iterable<string>;
   onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void;
-  frames(config: HostConfig): HostFrames;
+  /** The route table, read at each connect (the store builds it after the link). */
+  routes(): HostRoutes;
   /** Runs after every connection was woken (the window came back). */
   onWake(): void;
 }
@@ -96,7 +106,7 @@ export class HostLink {
       lastSeqFor: (sessionId) => this.deps.lastSeqFor(config.id, sessionId),
       onStatus: (status) => this.deps.onStatus(config.id, conn, status),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
-      ...this.deps.frames(config),
+      ...framesFor(this.deps.routes(), config),
       onChangesUpdated: (update) => {
         for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
           listener(update);

@@ -84,9 +84,9 @@ import {
   type HealthSlice,
   type HostConfig,
   type HostConnection,
-  type HostFrames,
   HostLink,
   HostRosterSlice,
+  type HostRoutes,
   HostTabs,
   type HostUpdateSlice,
   initialHealthState,
@@ -331,7 +331,8 @@ export class AppStore {
     selected: () => this.state.selected,
     watched: () => this.watched.keys(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
-    frames: (config) => this.frames(config),
+    // Read at connect: the table is a field declared after this one.
+    routes: () => this.routes,
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
@@ -1824,56 +1825,55 @@ export class AppStore {
 
   // -- internals ------------------------------------------------------------
 
-  /** The frames of a host's connection, each to the slice that takes it. */
-  private frames(config: HostConfig): HostFrames {
-    return {
-      onSubscribed: (sessionId, result) => this.stream.onSubscribed(config.id, sessionId, result),
-      onEvent: (envelope) => this.stream.onEvent(config.id, envelope),
-      onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
-      onCardUpdated: (card) => this.onCard(config.id, card),
-      onExternal: (frame) => this.external.onExternal(config.id, frame),
-      onVaultRequest: (request) => void this.vaultApprovals.onRequest(config, request),
-      onVaultUsed: (used) => {
-        this.usage.recordUsed(config.id, used);
-        this.keepUsage();
-      },
-      // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-      onTeams: (frame) => this.onTeams(config.id, frame),
-      onMessagingAlert: (alert) => this.messaging.onLoopAlert(config.id, alert),
-      onWatch: (frame) => this.prWatch.keep(config.id, frame.watch),
-      onMessages: (frame) => {
-        if (frame.type === "messages.updated") {
-          for (const listener of this.messageListeners) listener(config.id, frame.message);
-        }
-        const deps = this.relayDeps();
-        if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
-        else void relayUpdate(deps, config.id, frame.message);
-      },
-      onVaultAlert: (alert) => {
-        const notice: Notice = {
-          id: ++this.noticeSeq,
-          kind: "error",
-          code: "vault_alert",
-          text: alert.message,
-        };
-        this.update({ notices: [...this.state.notices, notice] });
-        this.inbox.notify({
-          title: this.i18n.t("vaultAudit.alertTitle"),
-          body: alert.message,
-        });
-      },
-      onRunUpdated: (run) => this.onRun(config.id, run),
-      onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
-      onQuotaUpdated: (state) => this.quota.updated(config.id, state),
-      onAccountUpdated: (state) => this.account.updated(config.id, state),
-      onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
-      onTerminal: (frame) => this.terminals.deliver(config.id, frame),
-      onHistoryChanged: (change) => {
-        for (const listener of this.historyListeners) listener(config.id, change);
-      },
-      onAskpass: (request) => void this.ssh.onAskpass(config.id, request),
-    };
-  }
+  /** The frames of a host's connection, each to the slice that takes it (#1596). */
+  private readonly routes: HostRoutes = {
+    onSubscribed: (config, sessionId, result) =>
+      this.stream.onSubscribed(config.id, sessionId, result),
+    onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
+    onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
+    onCardUpdated: (config, card) => this.onCard(config.id, card),
+    onExternal: (config, frame) => this.external.onExternal(config.id, frame),
+    onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
+    onVaultUsed: (config, used) => {
+      this.usage.recordUsed(config.id, used);
+      this.keepUsage();
+    },
+    // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
+    onTeams: (config, frame) => this.onTeams(config.id, frame),
+    onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
+    onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
+    onMessages: (config, frame) => {
+      if (frame.type === "messages.updated") {
+        for (const listener of this.messageListeners) listener(config.id, frame.message);
+      }
+      const deps = this.relayDeps();
+      if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
+      else void relayUpdate(deps, config.id, frame.message);
+    },
+    onVaultAlert: (_config, alert) => {
+      const notice: Notice = {
+        id: ++this.noticeSeq,
+        kind: "error",
+        code: "vault_alert",
+        text: alert.message,
+      };
+      this.update({ notices: [...this.state.notices, notice] });
+      this.inbox.notify({
+        title: this.i18n.t("vaultAudit.alertTitle"),
+        body: alert.message,
+      });
+    },
+    onRunUpdated: (config, run) => this.onRun(config.id, run),
+    onRunEnvUpdated: (config, state) => this.onRunEnv(config.id, state),
+    onQuotaUpdated: (config, state) => this.quota.updated(config.id, state),
+    onAccountUpdated: (config, state) => this.account.updated(config.id, state),
+    onBudgetUpdated: (config, update) => this.budgets.onUpdated(config.id, update),
+    onTerminal: (config, frame) => this.terminals.deliver(config.id, frame),
+    onHistoryChanged: (config, change) => {
+      for (const listener of this.historyListeners) listener(config.id, change);
+    },
+    onAskpass: (config, request) => void this.ssh.onAskpass(config.id, request),
+  };
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
     const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
