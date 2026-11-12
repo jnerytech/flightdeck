@@ -7,7 +7,7 @@ import {
   overBaseline,
   screenCounts,
   tightened,
-} from "../../../../scripts/lib/layout-ratchet.ts";
+} from "../../../../scripts/lib/ratchets/layout.ts";
 
 const DESKTOP = resolve(import.meta.dir, "../..");
 // A screen moves from `ui/` to its feature folder (#1597): both are counted.

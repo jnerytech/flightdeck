@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { overBaseline } from "../../lib/layout-ratchet.ts";
-import { localWaits, waitCounts } from "../../lib/wait-ratchet.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
+import { localWaits, waitCounts } from "../../lib/ratchets/wait.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const BASELINE = resolve(ROOT, "wait-baseline.json");
