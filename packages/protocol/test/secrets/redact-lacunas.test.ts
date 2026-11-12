@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SecretScanner } from "../src/snippets.ts";
+import { SecretScanner } from "../../src/snippets.ts";
 
 /** Each case: a line a log could carry, and the fake value that must not survive it. */
 const FAKE = "FAKEVALUE0123456789abcdef";

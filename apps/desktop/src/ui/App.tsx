@@ -29,9 +29,9 @@ import {
   terminalTabCount,
 } from "@/features/shell/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
-import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
+import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";
 import { boardShortcut } from "../features/board/index.ts";
 import { GlobalSearch, type PaletteTarget, paletteRoute } from "../features/palette/index.ts";

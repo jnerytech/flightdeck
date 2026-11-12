@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { TraceNode } from "../src/index.ts";
+import { TraceNode } from "../../src/index.ts";
 
 const node = (id: string, children: unknown[] = []) => ({
   id,

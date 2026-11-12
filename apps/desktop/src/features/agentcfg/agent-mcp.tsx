@@ -7,8 +7,8 @@ import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useBusy } from "@/hooks/use-busy";
 import { AppDialogContent, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { useBusy } from "@/shared/hooks/index.ts";
 import {
   EmptyState,
   ErrorState,

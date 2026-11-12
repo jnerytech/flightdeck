@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { normalizeOutput } from "../src/assistant-prompts.ts";
+import { normalizeOutput } from "../../src/assistant-prompts.ts";
 
 /** #363 (Sonar S8786): the trailing-space strip of normalizeOutput keeps its exact reach. */
 describe("sonar363-normalize: normalizeOutput trailing whitespace", () => {

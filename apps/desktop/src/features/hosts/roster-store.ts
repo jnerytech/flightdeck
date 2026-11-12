@@ -1,4 +1,4 @@
-import { parsePairingLink } from "@flightdeck/protocol";
+import { parsePairingLink, type RootsResult } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { HostConfig } from "./hosts.ts";
@@ -31,6 +31,12 @@ export interface RosterCore {
   setName(hostId: string, name: string): void;
   /** A token typed: the diagnostics hide it from what they show. */
   rememberToken(token: string): void;
+  /** Asks the host to allow a folder (`roots.add`); null when it failed (the banner says why). */
+  addRoot(hostId: string, folder: string): Promise<RootsResult | null>;
+  /** Records the host's allowed folders on its connection and in its view. */
+  setAllowedRoots(hostId: string, allowedRoots: string[]): void;
+  /** A success toast. */
+  success(text: string): void;
   t(): T;
 }
 
@@ -43,8 +49,8 @@ export interface NewHost {
 
 /**
  * Which hosts the app has (#1596: a slice of the store): adding one after testing it, removing it,
- * its name, a new token or pairing link when it refused the old one, and the reconnect. The token
- * goes from here to the OS store and to the connection, nowhere else.
+ * its name, its allowed folders, a new token or pairing link when it refused the old one, and the
+ * reconnect. The token goes from here to the OS store and to the connection, nowhere else.
  */
 export class HostRosterSlice {
   constructor(private readonly core: RosterCore) {}
@@ -106,6 +112,17 @@ export class HostRosterSlice {
     await this.core.secrets.set(hostId, token);
     await this.reconnect(hostId);
     return null;
+  }
+
+  /** Adds a folder to a host's allowed folders; `retry` runs once the host has accepted it. */
+  async allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
+    const result = await this.core.addRoot(hostId, folder);
+    if (!result) return false;
+    this.core.setAllowedRoots(hostId, result.allowedRoots);
+    const host = this.core.hosts().find((h) => h.id === hostId)?.name ?? hostId;
+    this.core.success(this.core.t()("toast.rootAdded", { folder, host }));
+    retry?.();
+    return true;
   }
 
   /** Drops the connection and opens a new one right away. */

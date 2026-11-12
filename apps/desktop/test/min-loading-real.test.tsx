@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { IN_FLIGHT } from "../src/hooks/use-in-flight.ts";
-import { MIN_LOADING_MS, useMinLoading } from "../src/hooks/use-min-loading.ts";
+import { IN_FLIGHT } from "../src/shared/hooks/use-in-flight.ts";
+import { MIN_LOADING_MS, useMinLoading } from "../src/shared/hooks/use-min-loading.ts";
 import { registerDom } from "./dom.ts";
 import { settle } from "./wait.ts";
 

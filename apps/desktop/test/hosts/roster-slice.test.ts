@@ -72,6 +72,12 @@ function roster(hosts: Array<{ id: string; name: string; url: string }> = []) {
       if (host) host.name = name;
     },
     rememberToken: (token) => void log.push(`remember ${token}`),
+    addRoot: async (hostId, folder) => {
+      log.push(`roots.add ${hostId} ${folder}`);
+      return { allowedRoots: [folder] };
+    },
+    setAllowedRoots: (hostId, roots) => void log.push(`roots ${hostId} ${roots.join(",")}`),
+    success: (text) => void log.push(`success ${text}`),
     t: () => t,
   });
   return { slice, log, secrets, listed };

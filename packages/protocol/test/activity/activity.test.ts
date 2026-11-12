@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { type TaskActivity, type ToolEvent, taskActivity } from "../src/activity.ts";
-import type { QuestionLanguage } from "../src/question.ts";
+import { type TaskActivity, type ToolEvent, taskActivity } from "../../src/activity.ts";
+import type { QuestionLanguage } from "../../src/question.ts";
 
 const read = (path: string): ToolEvent => ({ name: "Read", input: { file_path: path } });
 const write = (path: string): ToolEvent => ({ name: "Write", input: { file_path: path } });

@@ -32,8 +32,8 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   `shared/` (decision of fd-coordinator, 2026-11-12). `bun run arch` now cruises `apps/desktop/src`, so
   the rule gates the desktop too.
 - Widened by fd-coordinator's ack of #2126 (2026-11-12): `shared/` may also import `i18n/context.tsx`
-  (the translation hook, domain-free) and `hooks/use-in-flight.ts` (the in-flight stage hook), which the
-  feedback and layout primitives need. `components/layout/form.tsx` was a third exception only until the
+  (the translation hook, domain-free), which the feedback and layout primitives need; the in-flight stage
+  hook they also need moved into `shared/hooks/` (#1597), so that exception is gone. `components/layout/form.tsx` was a third exception only until the
   layout move (the field-row context now lives in `shared/layout/field-row-context.ts`, a leaf). The three
   helpers `lib/list-width.ts`, `lib/use-width.ts` and `lib/scroll-edge.ts` were allowed only until the
   `shared/lib/` move (they live there now, so that entry is gone). Each exception is a path in the rule, so
@@ -46,10 +46,13 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   longer reads the tabs) and `use-start-elsewhere` to `features/sessions/`, each behind its index. Two stay in
   `hooks/` for now: `use-project-labels` (it reads the costs index, which reaches the store) and
   `use-start-ask` (it reads the board index, which reaches the projects and sessions indexes): moving them
-  adds import cycles, and the cycle count only goes down (#1624). The domain-free hooks (`use-busy`, `use-breakpoint`, `use-in-flight` and the rest) stay in `hooks/` too.
+  adds import cycles, and the cycle count only goes down (#1624).
 - Hooks that only one feature reads moved into it (#1597): `use-move-focus` to `features/board/`,
   `use-board-transition` to `features/activity/` and `use-now` to `features/hosts/`, each imported by file
   from inside its own folder.
+- Hooks with no domain moved to `shared/hooks/` behind an `index.ts` (#1597, fd-coordinator, 2026-11-12):
+  `use-busy`, `use-min-loading`, `use-in-flight`, `use-breakpoint`, `use-media-query`, `use-page-focus` and
+  `real-timers`.
 
 ## `components/`
 
