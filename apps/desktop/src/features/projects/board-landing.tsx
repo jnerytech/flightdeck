@@ -7,7 +7,6 @@ import { EmptyState } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { COLUMNS } from "../../lib/board.ts";
-import { gridStep } from "../../lib/grid-keys.ts";
 import {
   boardLandingOrder,
   buildProjectCards,
@@ -16,6 +15,7 @@ import {
 } from "../../lib/project-cards.ts";
 import { useStoreState } from "../../lib/use-store.ts";
 import { usd } from "../costs/index.ts";
+import { gridStep } from "../shortcuts/index.ts";
 import { AddProject } from "./add-project.tsx";
 
 /** Past this many projects the landing offers a filter box. */
