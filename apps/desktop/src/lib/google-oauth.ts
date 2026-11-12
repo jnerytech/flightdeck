@@ -1,5 +1,5 @@
+import { type DriveAuth, DriveError } from "../features/backup/drive-target.ts";
 import type { Platform } from "../platform/types.ts";
-import { type DriveAuth, DriveError } from "./drive-target.ts";
 
 /** The Google Cloud OAuth client of the app; none until the maintainer makes one (#57). */
 export interface GoogleConfig {
