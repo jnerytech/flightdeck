@@ -130,7 +130,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `startPeersSync` and its timer) to the `MessagingSlice` (`onFrame`, `onUpdated`,
   `startPeersSync`, `dispose`), after `relay.ts` moved from `features/hosts/` to
   `features/messaging/`; the hosts that take part come from the store as a dep, and the interval
-  lives in the wire; the teams (`onTeams`, `onTeamsUpdated`) in a step of their own; the requests
+  lives in the wire; the teams (`onTeams`, `onTeamsUpdated`) to a `TeamsSlice` in
+  `features/teams/store.ts` (`onFrame`, `onUpdated`; the summaries keep the team, the inbox
+  notifies; the connect step that lists the teams stays with the other connect steps); the requests
   (`onOpenRequest`, `openRequest`, `decideOldest`, `respondTo`, `respond`, with the open-request
   listener set) to permissions; the quiet snooze to sessions.
 - **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(...)`, next to
