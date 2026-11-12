@@ -36,27 +36,30 @@ export class PaletteSlice {
    * cards. Quiet: a host without a board (or offline) just lists less.
    */
   async load(): Promise<void> {
-    const hosts = this.core.hosts();
-    const boards = hosts
+    const boards = this.core
+      .hosts()
       .filter((host) => host.status === "online")
       .map(async (host) => {
         const projects = await this.core.loadProjects(host.id);
         await inSequence(projects ?? [], (project) => this.core.loadBoard(host.id, project.id));
       });
-    const targets = hosts
+    const targets = this.core
+      .hosts()
       .filter(
         (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "ssh", false),
       )
       .map(async (host) => {
         await this.core.loadSshTargets(host.id);
       });
-    const personas = hosts
+    const personas = this.core
+      .hosts()
       .filter(
         (host) =>
           host.status === "online" && hasFeature(host.hostInfo?.features, "personas", false),
       )
       .map((host) => this.core.loadPersonas(host.id));
-    const snippets = hosts
+    const snippets = this.core
+      .hosts()
       .filter(
         (host) =>
           host.status === "online" && hasFeature(host.hostInfo?.features, "snippets", false),

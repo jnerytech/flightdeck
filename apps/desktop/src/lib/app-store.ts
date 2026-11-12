@@ -1879,6 +1879,7 @@ export class AppStore {
   readonly scan: VaultScanSlice;
   /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
   readonly system: SystemSlice;
+  /** What the command palette loads and the entries it used lately (#1596). */
   readonly palette: PaletteSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
