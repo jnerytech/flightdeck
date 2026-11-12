@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { terminalKeyAction } from "../../src/features/terminal/terminal-view.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
-import { terminalKeyAction } from "../../src/lib/terminal-view.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
 import { fakeXterm } from "../terminal/fakes.ts";

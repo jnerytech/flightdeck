@@ -56,13 +56,13 @@ import type { SettingsSliceState } from "../features/settings/index.ts";
 import type { SnippetsSliceState } from "../features/snippets/index.ts";
 import type { SshSliceState } from "../features/ssh/index.ts";
 import type { ClosingTerminal } from "../features/terminal/index.ts";
+import type { TerminalEnv } from "../features/terminal/terminal.ts";
 import type { SecretMeta, UsageEntry, VaultPolicy } from "../features/vault/index.ts";
 import type { T } from "../i18n/index.ts";
 import type { Client } from "./clients.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import type { Route } from "./router.ts";
 import type { SetupProbe } from "./setup-steps.ts";
-import type { TerminalEnv } from "./terminal.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
