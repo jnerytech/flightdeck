@@ -21,7 +21,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   account: "account",
   activity: "activity",
   actions: "actions",
-  agentcfg: "agentcfg",
   autoApprove: "autoApprove",
   automations: "automations",
   bg: "bg",
@@ -38,13 +37,10 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   maintenance: "maintenance",
   resources: "resources",
   worktrees: "worktrees",
-  mcp: "mcp",
-  memory: "memory",
   messaging: "messaging",
   names: "names",
   personaSessions: "personaSessions",
   personas: "personas",
-  plugins: "plugins",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   releases: "releases",
@@ -67,8 +63,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   serviceInstall: "serviceInstall",
   forker: "forker",
   snapshots: "snapshots",
-  tasks: "tasks",
-  templates: "templates",
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
@@ -132,6 +126,14 @@ const GROUPED: Record<string, Record<string, string>> = {
     files: "files",
     sessionFiles: "sessionFiles",
   },
+  agentSetup: {
+    agentcfg: "agentcfg",
+    mcp: "mcp",
+    plugins: "plugins",
+    memory: "memory",
+    tasks: "tasks",
+    templates: "templates",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -182,6 +184,7 @@ describe("server-gates", () => {
       hostChecks: {},
       quota: {},
       review: {},
+      agentSetup: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
