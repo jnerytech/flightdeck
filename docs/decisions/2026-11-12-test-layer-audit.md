@@ -6,7 +6,8 @@
   act on it follow, one tests-only PR per domain (product code unchanged).
 - **Baseline (2026-11-12, `bun run test:tiers`).** 1,696 test files by content: unit 790, component
   479, integration 391, e2e 36. By domain (`*.test.ts[x]`): daemon 579, desktop 884, protocol 24,
-  scripts 172. Suite time before and after is read from the PR's CI
+  scripts 172. The two do not sum to one total: the tiers are counted by content and include the
+  `*.e2e.ts` journeys, the domains by file name. Suite time before and after is read from the PR's CI
   pyramid table, not from the Pi.
 - **Method.** Four read-only reviewer passes (one per domain, the `test-quality-reviewer` brief),
   each starting from greps over the whole domain (source-text reads, casts into private state, mocks
