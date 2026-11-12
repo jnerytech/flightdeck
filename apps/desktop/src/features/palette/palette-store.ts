@@ -1,4 +1,6 @@
 import { inSequence, type Snippet } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import { hasFeature } from "../../lib/version.ts";
 
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
@@ -73,14 +75,7 @@ export class PaletteSlice {
 
   /** What the palette was used for lately, most recent first. */
   recents(): string[] {
-    try {
-      const stored = JSON.parse(this.core.storage.getItem(PALETTE_RECENTS_KEY) ?? "[]");
-      return Array.isArray(stored)
-        ? stored.filter((id): id is string => typeof id === "string")
-        : [];
-    } catch {
-      return [];
-    }
+    return readStored(this.core.storage, PALETTE_RECENTS_KEY, validItems(z.string()), []);
   }
 
   /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */

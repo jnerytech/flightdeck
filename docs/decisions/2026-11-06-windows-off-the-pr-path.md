@@ -8,7 +8,7 @@
 - **The decision (the user, 2026-11-06).** "Disable the Windows test if needed, I will test it by
   hand during use": fast delivery comes first. Windows stays as a signal, not a gate.
 - **What changed.**
-  - `scripts/lib/ci-paths.ts`: a PR and a push to `main` plan no Windows jobs, whatever they
+  - `scripts/lib/ci/paths.ts`: a PR and a push to `main` plan no Windows jobs, whatever they
     change and even when the diff cannot be read. The schedule (every 3 hours) and a run by hand
     still plan everything, Windows included.
   - `.github/workflows/ci.yml`: the Windows shard job, the Windows checks job and the
