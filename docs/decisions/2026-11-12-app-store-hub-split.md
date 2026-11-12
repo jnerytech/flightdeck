@@ -193,12 +193,16 @@ remaining short methods); it is never a new hub.
 
 ## Open questions
 
-- **Where the selection and the session actions go.** `select` and `watchSession` subscribe and
-  unsubscribe on the host connections and set `selected`. `SessionStreamSlice` does not handle
-  subscriptions today; it takes the frames. Either it grows the subscriptions, or a new
-  `SessionSelection` slice owns them and keeps the stream to frames. `moveSession`, `closeTab`,
-  `sendTo`, `setMeta`, `sessionRecap` and `onCard` follow from that choice. Decided in that PR,
-  after reading `stream.ts`, and recorded in its body.
+- **Where the session actions go.** `moveSession`, `closeTab`, `sendTo`, `setMeta`, `sessionRecap`
+  and `onCard` follow, one group per PR, each decided in its PR and recorded in its body.
+
+Decided: the subscriptions (`select`, `watchSession` and the followed sessions' count) are a slice
+of their own, `SessionSubscriptions` in `features/sessions/subscriptions.ts`, not a part of
+`SessionStreamSlice`: the stream applies frames, the subscriptions decide which sessions the hosts
+send in full; the two change for different reasons. `selected` stays in the app state, read and
+written through the kernel (host removal and the reset write it too). `HostLink` keeps the replay
+for a host that connects later and reads the followed keys from the slice. Not named "watch": the
+glossary gives that word to the rounds that watch a PR.
 
 ## Consequences
 
