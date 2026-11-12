@@ -1,6 +1,7 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
 import { Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -10,7 +11,6 @@ import { useT } from "@/i18n/context";
 import { workflowIssueText } from "@/i18n/errors";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { WorkflowTemplates } from "./workflow-templates.tsx";
 
 /** What trusting a workflow allows, said before the user confirms it. */

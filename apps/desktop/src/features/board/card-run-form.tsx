@@ -2,6 +2,7 @@ import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -22,7 +23,6 @@ import type { AppStore } from "@/lib/app-store";
 import { findingsNote } from "@/lib/second-opinion";
 import { nextStep } from "../../lib/card-next-step.ts";
 import { cardStartBlock } from "../../lib/card-start-block.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { CardFinishDialog } from "./card-finish.tsx";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 

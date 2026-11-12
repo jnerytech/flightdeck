@@ -171,6 +171,28 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Issue #100, #1593: the teleport's part of the server, each service optional. */
+interface TeleportServer {
+  /** The packages of the sessions this host teleports to another. */
+  packages?: TeleportPackages;
+  /** The packages other hosts send to this one. */
+  inbox?: TeleportInbox;
+  /** What an import on this host reads (none without a history root). */
+  imports?: TeleportImportDeps;
+}
+
+/** #1593: the session settings' part of the server, each switch optional. */
+interface SessionSettingsServer {
+  /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
+  commands?: true;
+  /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
+  bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
+  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
+  /** Issue #1478: the stall watcher: its presence announces the host feature `stall`. */
+  stall?: { minutes(): number };
+}
+
 /** #1593: the messaging's part of the server (phase 21), each service optional. */
 interface MessagingServer {
   /** Messages between sessions (`messages.*`, `messaging.*`). */
@@ -294,14 +316,8 @@ export interface ServerOptions {
   port: number;
   token: string;
   allowedRoots: readonly string[];
-  /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
-  bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
-  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
-  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
-  /** Issue #1478: the stall watcher: its presence announces the host feature `stall`. */
-  stall?: { minutes(): number };
   /** Issue #1568: the git behind `project.detectProvider` (the real one when absent; a test fakes it). */
   projectGit?: AsyncGitRunner;
   /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
@@ -353,8 +369,8 @@ export interface ServerOptions {
   findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
   git?: GitRunner;
-  /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
-  sessionSettings?: boolean;
+  /** #1593: the session settings: the commands' announcement and the host's switches. */
+  sessionSettings?: SessionSettingsServer;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
@@ -368,12 +384,8 @@ export interface ServerOptions {
   board?: Board;
   /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
   assistant?: AssistantService;
-  /** Issue #100: the packages of the sessions this host teleports to another. */
-  teleport?: TeleportPackages;
-  /** Issue #100: the packages other hosts send to this one. */
-  teleportInbox?: TeleportInbox;
-  /** Issue #100: what an import on this host reads. */
-  teleportImport?: TeleportImportDeps;
+  /** Issue #100, #1593: the teleport between hosts. */
+  teleport?: TeleportServer;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */

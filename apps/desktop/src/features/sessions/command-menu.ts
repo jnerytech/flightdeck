@@ -21,3 +21,8 @@ export function commandItemsOf(
     group: GROUP_OF_KIND[command.kind],
   }));
 }
+
+/** What a `/` menu key fills into the message box: the command and a space, or null for a snippet key. */
+export function slashFill(key: string): string | null {
+  return key.startsWith("slash:") ? `/${key.slice(6)} ` : null;
+}

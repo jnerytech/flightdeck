@@ -2,6 +2,7 @@ import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -9,7 +10,6 @@ import { formatBytes } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 type Filter = "all" | "suggested" | "protected" | "noCard";
 type Sort = "age" | "size";

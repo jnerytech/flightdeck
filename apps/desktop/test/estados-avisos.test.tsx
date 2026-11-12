@@ -22,7 +22,7 @@ const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { HostStatusBadge } = await import("../src/features/hosts/host-status-badge.tsx");
 const { ActionButton } = await import("../src/components/feedback/action-button.tsx");
-const { ConfirmDialog } = await import("../src/ui/ConfirmDialog.tsx");
+const { ConfirmDialog } = await import("../src/components/feedback/confirm-dialog.tsx");
 
 setDefaultTimeout(20_000);
 
