@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
-import type { AppStore } from "../../lib/app-store.ts";
-import { projectLabels } from "../costs/index.ts";
-import { knownProjectKeys } from "./project-keys.ts";
+import { knownProjectKeys } from "@/features/projects/index.ts";
+import { projectLabels } from "../features/costs/index.ts";
+import type { AppStore } from "../lib/app-store.ts";
 
 /**
  * The labels of `keys` on any screen: told apart against every project the app knows (the hosts'

@@ -86,7 +86,6 @@ export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";
 export { useLiveElsewhereAsk, useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
 export { useSessionCost } from "./use-session-cost.ts";
-export { projectContracts, useStartAsk } from "./use-start-ask.tsx";
 export { useStartElsewhere } from "./use-start-elsewhere.ts";
 export { ViewToggle } from "./view-toggle.tsx";
 export {

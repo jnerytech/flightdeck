@@ -69,14 +69,10 @@ import {
   worktreeOfProject,
 } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
-import {
-  elsewhereNotice,
-  useStartAsk,
-  useStartElsewhere,
-  waitingCards,
-} from "@/features/sessions/index.ts";
+import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
+import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
-import { knownProjectKeys, useProjectLabels } from "@/features/projects/index.ts";
+import { knownProjectKeys } from "@/features/projects/index.ts";
 import { ScopeMenu } from "@/features/shell/index.ts";
+import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { T } from "@/i18n/index";
 import { InlineNotice } from "@/shared/feedback/index.ts";

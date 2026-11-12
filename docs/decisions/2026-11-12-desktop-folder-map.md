@@ -41,10 +41,13 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 - `components/ui/` **stays**: it is the vendored shadcn folder (`components.json` alias,
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way.
-  **Moved** (#1597): `use-project-cards`, `use-project-labels` to `features/projects/`,
-  `use-switcher-hosts` to `features/hosts/`, `use-start-elsewhere`, `use-start-ask` to
-  `features/sessions/`, each behind its index. The domain-free hooks (`use-now`, `use-busy`,
-  `use-breakpoint`, `use-in-flight` and the rest) stay in `hooks/`.
+  **Moved** (#1597): `use-project-cards` to `features/projects/`, `use-switcher-hosts` to
+  `features/hosts/` (with its `switcher-hosts.ts`, the pure rule that left `tabs/tab-scope.ts`, so hosts no
+  longer reads the tabs) and `use-start-elsewhere` to `features/sessions/`, each behind its index. Two stay in
+  `hooks/` for now: `use-project-labels` (it reads the costs index, which reaches the store) and
+  `use-start-ask` (it reads the board index, which reaches the projects and sessions indexes): moving them
+  adds import cycles, and the cycle count only goes down (#1624). The domain-free hooks (`use-now`,
+  `use-busy`, `use-breakpoint`, `use-in-flight` and the rest) stay in `hooks/` too.
 
 ## `components/`
 
@@ -131,7 +134,7 @@ prefix. Tests move with their file in the same PR.
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` (**moved**: `recap-preview.ts`, read only by the recap panel in the same folder; no `summary*.ts` file is left in `lib/`) |
 | `roi*.ts` | `features/roi/` (**moved**; `RoiSettingsError` is exported by the index for `features/clients`) |
 | `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
-| `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` (**moved**; the shell, hosts and the switcher hosts hook import by file to avoid an index cycle, settings reads the `TabOrder` type through the index. These deep imports break the "other domains import only the index" rule on purpose: `features/shell/nav-active.ts` (`tab-badge.ts`), `features/shell/workspace.ts` and `features/hosts/host-tabs.ts` (`tabs.ts`) and `hooks/use-switcher-hosts.ts` (`tab-scope.ts`). The tab strip imports the shell and hosts indexes, so an index import back would close shell, then `tabs/index`, then shell, and the shell loaded first would throw `NAV_ICONS` before initialization (#2266). Undo them only after `tab-facts` stops reading the shell and hosts indexes at load time) |
+| `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` (**moved**; the shell and hosts import by file to avoid an index cycle, settings reads the `TabOrder` type through the index. These deep imports break the "other domains import only the index" rule on purpose: `features/shell/nav-active.ts` (`tab-badge.ts`), `features/shell/workspace.ts` and `features/hosts/host-tabs.ts` (`tabs.ts`). The tab strip imports the shell and hosts indexes, so an index import back would close shell, then `tabs/index`, then shell, and the shell loaded first would throw `NAV_ICONS` before initialization (#2266). Undo them only after `tab-facts` stops reading the shell and hosts indexes at load time) |
 | `teleport.ts` | `features/teleport/`: **moved** |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` (**moved**; public names through its index) |
 | `trace.ts` | `features/trace/`: **moved** |

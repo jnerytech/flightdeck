@@ -2,9 +2,9 @@ import type { Card, ContractOverrides } from "@flightdeck/protocol";
 import { type ReactNode, useState } from "react";
 import { ContractDialog } from "@/features/board/contract-dialog";
 import { useT } from "@/i18n/context";
-import type { T } from "../../i18n/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
-import { type Lacking, startNeeds } from "../board/index.ts";
+import { type Lacking, startNeeds } from "../features/board/index.ts";
+import type { T } from "../i18n/index.ts";
+import type { AppStore } from "../lib/app-store.ts";
 
 /** What the project's columns ask of a card, from the project list the app holds. */
 export function projectContracts(

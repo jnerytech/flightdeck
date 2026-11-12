@@ -21,6 +21,5 @@ export {
 export { RailFlyout } from "./rail-flyout.tsx";
 export { ProjectsSlice } from "./store.ts";
 export { useProjectCards } from "./use-project-cards.ts";
-export { useProjectLabels } from "./use-project-labels.ts";
 export { wireProjects } from "./wire.ts";
 export { WorktreeChip } from "./worktree-chip.tsx";

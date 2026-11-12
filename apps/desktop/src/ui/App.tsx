@@ -14,12 +14,7 @@ import { SimpleApp } from "@/features/home/index.ts";
 import { draftFromLink, pairingErrorText } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { activeWorktreeFilter } from "@/features/projects/index.ts";
-import {
-  projectContracts,
-  ResumeOfferDialog,
-  useLiveElsewhereAsk,
-  useStartAsk,
-} from "@/features/sessions/index.ts";
+import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
 import {
   AppShell,
   Breadcrumb,
@@ -35,6 +30,7 @@ import {
 } from "@/features/shell/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
+import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { preloadMarkdown } from "@/shared/markdown/index.ts";
 import { boardShortcut } from "../features/board/index.ts";

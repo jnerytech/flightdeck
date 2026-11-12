@@ -9,8 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
-import { projectContracts, useStartAsk } from "@/features/sessions/index.ts";
 import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
+import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
