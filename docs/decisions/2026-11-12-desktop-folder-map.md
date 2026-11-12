@@ -98,7 +98,7 @@ prefix. Tests move with their file in the same PR.
 | `app-store.ts`, `app-state.ts`, `use-store.ts`, `unique-keys.ts` | `app/` (the store is one slice per domain; slices already live in `features/*/store.ts` or `*-store.ts`, and each move shrinks this file) |
 | `board*.ts`, `card-*.ts`, `conflict-radar.ts`, `file-changes.ts`, `review.ts`, `second-opinion.ts`, `word-diff.ts`, `diff.ts`, `pull-requests.ts`, `runs.ts` | **theirs** (`features/board/`) and `features/review/` for `file-changes`, `review`, `word-diff`, `diff`, `second-opinion` |
 | `session-*.ts`, `hub*.ts`, `live-elsewhere.ts`, `start-elsewhere.ts`, `new-session-*.ts`, `turns.ts`, `tool-*.ts`, `history-tool.ts`, `finished.ts`, `hold.ts`, `awaiting-approval.ts`, `pending-text.ts`, `cache-timer.ts`, `tiles.ts`, `timing.ts`, `use-session-cost.ts`, `use-follow.ts`, `use-draft.ts`, `mode-menu.ts`, `model-menu.ts`, `prompt-menu.ts` | **theirs** (`features/sessions/`); **moved** so far: `session-activity`, `session-finish`, `session-images`, `session-key`, `session-label`, `session-state`, `session-views`, `hub`, `hub-title`, `finished`, `turns`, `tool-line`, `tool-input`, `live-elsewhere`, `start-elsewhere`, `new-session-host`, `new-session-prefs`, `history-tool`, `awaiting-approval`, `pending-text`, `cache-timer` (as `cache-timer-model.ts`, because `cache-timer.tsx` already lives in the folder), `tiles`, `timing`, `use-session-cost`, `use-follow`, `use-draft`, `mode-menu`, `model-menu`, behind the sessions `index.ts`. Three went elsewhere to keep the folders free of import cycles: `activity.ts` is the activity board's model (`features/activity/`), `hold.ts` goes with the approval buttons that use it (`features/permissions/`) and `prompt-menu.ts` with the `/` menu that shows it (`features/snippets/prompt-menu-model.ts`) |
-| `approval.ts`, `ask-question.ts`, `vault-approval.ts` | `features/permissions/` |
+| `approval.ts`, `ask-question.ts`, `vault-approval.ts` | `features/permissions/` (`vault-approval.ts` went to `features/vault/` instead: it implements the vault's `VaultPolicy` and `features/vault` calls it, so keeping it in `permissions` made a cycle between the two domains; `permissions/store.ts` takes the `VaultAnswer` type from the vault index) |
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` |
 | `automations.ts`, `check-loop.ts` | `features/automations/` |
 | `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` |
@@ -115,13 +115,13 @@ prefix. Tests move with their file in the same PR.
 | `deps*.ts` | `features/deps/` |
 | `harness.ts` | `features/harness/`: **moved** |
 | `home-*.ts`, `simple-*.ts` | `features/home/` |
-| `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`) |
+| `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`; `host-*.ts` and `hosts.ts` **moved**, where `host-compare.ts` and `host-overview.ts` became `host-compare-model.ts` and `host-overview-model.ts` because `host-compare.tsx` and `host-overview.tsx` already live in the folder) |
 | `inbox.ts` | `features/inbox/` (**moved**) |
-| `issues.ts` | `features/issues/` |
+| `issues.ts` | `features/issues/` (**moved**) |
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` |
 | `github-session.ts` | `features/hosts/` (the GitHub panel) |
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (`board-shortcut.ts` stays with the board) |
-| `palette.ts` | `features/palette/` |
+| `palette.ts` | `features/palette/` (**moved**) |
 | `project-*.ts` | `features/projects/` |
 | `quota*.ts` | `features/quota/` |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
@@ -132,7 +132,7 @@ prefix. Tests move with their file in the same PR.
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
-| `vault*.ts` | `features/vault/` (`vault-approval.ts` goes to `features/permissions/`, listed above) |
+| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `lib/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/` |

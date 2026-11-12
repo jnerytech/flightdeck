@@ -1,10 +1,9 @@
 import { inSequence } from "@flightdeck/protocol";
 import { Decrypter, Encrypter } from "age-encryption";
 import { z } from "zod";
-import type { Platform } from "../platform/types.ts";
-import { BackupError } from "./backup-error.ts";
-import { HOSTS_KEY, type HostConfig, loadHosts } from "./hosts.ts";
-import { Vault } from "./vault.ts";
+import { HOSTS_KEY, type HostConfig, loadHosts } from "../features/hosts/index.ts";
+import { Vault } from "../features/vault/index.ts";
+// A lazy chunk imports the backup file directly: the vault index leaves it out so `age` stays out of the entry chunk.
 import {
   type BackupEntry,
   type ConflictChoice,
@@ -13,7 +12,9 @@ import {
   MIN_PASSPHRASE,
   sameSecret,
   toFdvault,
-} from "./vault-backup.ts";
+} from "../features/vault/vault-backup.ts";
+import type { Platform } from "../platform/types.ts";
+import { BackupError } from "./backup-error.ts";
 
 /** What a backup reads and writes: the app's settings, the host tokens and the vault. */
 export type BackupPlatform = Pick<Platform, "storage" | "secrets" | "vault">;

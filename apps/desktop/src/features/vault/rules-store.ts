@@ -9,8 +9,8 @@ import {
   stripGenerated,
 } from "../../lib/client-vault.ts";
 import type { Client } from "../../lib/clients.ts";
-import type { SecretMeta } from "../../lib/vault.ts";
-import type { VaultRules } from "../../lib/vault-rules.ts";
+import type { SecretMeta } from "./vault.ts";
+import type { VaultRules } from "./vault-rules.ts";
 
 /** How long the app waits for changes to settle before it sends scoped rules again. */
 const VAULT_SCOPE_DELAY_MS = 300;

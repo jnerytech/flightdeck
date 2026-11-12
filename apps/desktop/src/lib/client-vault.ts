@@ -1,6 +1,6 @@
+import type { SecretMeta } from "../features/vault/index.ts";
 import type { ClientScope } from "./client-scope.ts";
 import { type Client, UNASSIGNED } from "./clients.ts";
-import type { SecretMeta } from "./vault.ts";
 
 /** The id every rule generated for a client's secrets starts with: they are never stored. */
 export const SCOPE_RULE_PREFIX = "client-scope:";

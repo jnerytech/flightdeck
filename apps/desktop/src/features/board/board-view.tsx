@@ -115,9 +115,8 @@ import {
 } from "../../lib/board-select.ts";
 import { cardStartBlock } from "../../lib/card-start-block.ts";
 import { radarBadge } from "../../lib/conflict-radar.ts";
-import { issueNumber } from "../../lib/issues.ts";
 import { activeWorktreeFilter, worktreeOfProject } from "../../lib/project-tree.ts";
-import { ExternalSeal, IssuesPanel } from "../issues/index.ts";
+import { ExternalSeal, IssuesPanel, issueNumber } from "../issues/index.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import { BulkRunDialog } from "./bulk-run-dialog.tsx";
 import { CardStartDialog } from "./card-start-dialog.tsx";

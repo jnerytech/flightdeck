@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CLOSE_HEARTBEAT } from "@flightdeck/protocol";
-import { HostConnection } from "../../../desktop/src/lib/host-connection.ts";
+import { HostConnection } from "../../../desktop/src/features/hosts/host-connection.ts";
 import {
   PING_INTERVAL_MS,
   type RunningServer,

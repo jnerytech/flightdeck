@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { hostProjectCards, hostSessionRows } from "../../src/features/hosts/host-overview-model.ts";
 import type { HubRow } from "../../src/features/sessions/hub.ts";
-import { hostProjectCards, hostSessionRows } from "../../src/lib/host-overview.ts";
 import type { ProjectCard } from "../../src/lib/project-cards.ts";
 
 const row = (key: string, hostId: string, extra: Partial<HubRow> = {}): HubRow => ({

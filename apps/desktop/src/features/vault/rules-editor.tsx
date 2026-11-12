@@ -6,7 +6,9 @@ import { useT } from "@/i18n/context";
 import { refusalText, ruleIssueText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { generatedScopeRules, scopingClient } from "@/lib/client-vault";
-import type { SecretMeta } from "@/lib/vault";
+import { ActionButton } from "@/shared/feedback/index.ts";
+import { RulesPreview } from "./rules-preview.tsx";
+import type { SecretMeta } from "./vault";
 import {
   DAYS,
   DECISIONS,
@@ -17,9 +19,7 @@ import {
   REQUESTERS,
   type RuleDraft,
   ruleOf,
-} from "@/lib/vault-rules-form";
-import { ActionButton } from "@/shared/feedback/index.ts";
-import { RulesPreview } from "./rules-preview.tsx";
+} from "./vault-rules-form";
 
 /** The field of a rule's draft that each path of the daemon's issues points at. */
 const FIELD_OF: Record<string, keyof RuleDraft> = {
