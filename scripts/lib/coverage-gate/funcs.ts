@@ -1,5 +1,5 @@
 import { testArgs } from "../../test/timeout.ts";
-import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "../slot-heavy.ts";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "../slot/heavy.ts";
 import { type Plan, SLOT_ABOVE, selectRelated } from "../test-related.ts";
 import type { FunctionCoverage } from "./funcs-hooks.ts";
 

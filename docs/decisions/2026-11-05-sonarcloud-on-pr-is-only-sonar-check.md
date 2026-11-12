@@ -11,5 +11,5 @@
 - **What stays:** every `// NOSONAR: <reason>` comment, since SonarCloud honours them; and
   `sonar-coverage.test.ts`, which guards SonarCloud's own configuration (its coverage is read on
   exactly the files of the 100% gate, and every test file is analysed as test code). Its helpers
-  moved, unchanged, to `scripts/lib/sonar-project.ts`.
+  moved, unchanged, to `scripts/lib/sonar/project.ts`.
 - **For sessions:** no Sonar run before a push. A SonarCloud finding on a PR is fixed in that PR.
