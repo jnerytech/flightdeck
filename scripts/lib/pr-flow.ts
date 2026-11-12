@@ -223,7 +223,8 @@ async function behindBy(deps: PrFlowDeps, base: string, head: string): Promise<n
 /**
  * The subjects of the branch's own commits, newest first: its first-parent line, without merge
  * commits, so a merge of main brings none of main's commits into the title, the PR body or the
- * issue (#2157), even with a local origin/main that is behind.
+ * issue (#2157). A stale origin/<base> can still list a direct commit on main's own first-parent
+ * line between it and the fork point; pr open does not fetch.
  */
 async function ownSubjects(
   branch: string,
