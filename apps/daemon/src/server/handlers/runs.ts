@@ -98,6 +98,7 @@ export const runsHandlers = {
         { id: templateId },
       );
     }
+    const tasks = server.opts.agentSetup?.tasks;
     return await startTemplate(
       template,
       language,
@@ -105,7 +106,7 @@ export const runsHandlers = {
       {
         allowedRoots: server.opts.allowedRoots,
         create: (payload) => server.manager.create(payload),
-        ...(server.opts.agentSetup?.tasks ? { tasks: server.opts.agentSetup.tasks } : {}),
+        ...(tasks ? { tasks } : {}),
       },
       name,
     );

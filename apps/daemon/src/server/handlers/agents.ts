@@ -19,20 +19,23 @@ export const agentsHandlers = {
   },
   "mcp.save": async (payload, { server }) => {
     const path = server.projectPath(payload.projectId);
-    await server.needIn("agentSetup", "mcp").save(path, payload.server, payload.confirm === true);
-    return { servers: await server.needIn("agentSetup", "mcp").list(path) };
+    const mcp = server.needIn("agentSetup", "mcp");
+    await mcp.save(path, payload.server, payload.confirm === true);
+    return { servers: await mcp.list(path) };
   },
   "mcp.remove": async (payload, { server }) => {
     const path = server.projectPath(payload.projectId);
-    await server.needIn("agentSetup", "mcp").remove(path, payload.name, payload.confirm === true);
-    return { servers: await server.needIn("agentSetup", "mcp").list(path) };
+    const mcp = server.needIn("agentSetup", "mcp");
+    await mcp.remove(path, payload.name, payload.confirm === true);
+    return { servers: await mcp.list(path) };
   },
   "mcp.toggle": async (payload, { server }) => {
     const { projectId, name, enabled, confirm, sessionId } = payload;
     const path = server.projectPath(projectId);
-    await server.needIn("agentSetup", "mcp").toggle(path, name, enabled, confirm === true);
+    const mcp = server.needIn("agentSetup", "mcp");
+    await mcp.toggle(path, name, enabled, confirm === true);
     if (sessionId) await server.manager.toggleMcpServer(sessionId, name, enabled);
-    return { servers: await server.needIn("agentSetup", "mcp").list(path) };
+    return { servers: await mcp.list(path) };
   },
   "mcp.status": async (payload, { server }) => {
     return { servers: await server.manager.mcpStatus(payload.sessionId) };
