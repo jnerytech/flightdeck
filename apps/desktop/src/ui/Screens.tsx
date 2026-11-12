@@ -10,6 +10,7 @@ import { TranscriptReader } from "@/features/history/index.ts";
 import {
   awaitedHost,
   draftUrl,
+  FirstRun,
   type HostDraft,
   HostForm,
   HostOfflineBanner,
@@ -47,7 +48,6 @@ import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ExternalView } from "./ExternalView.tsx";
-import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
 import { NewSessionForm } from "./NewSessionForm.tsx";
