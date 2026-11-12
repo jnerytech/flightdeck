@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { agentSetupOptions, createAgentSetup } from "../../src/plugins/wiring.ts";
 import { BUILTIN_TEMPLATES } from "../../src/templates/index.ts";
 import { whichOnPath } from "../../src/which.ts";
+import { tempDir } from "../support/helpers.ts";
 
 /**
  * What a session starts with, as main.ts builds it (issue #1593): Claude Code's plugins through the
@@ -33,7 +33,7 @@ describe("agent-setup-wiring: the agent setup the daemon builds (#1593)", () => 
   });
 
   test("the tasks are kept in the data folder and the templates start with the built-ins", async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), "agent-setup-"));
+    const dataDir = tempDir("agent-setup-");
     try {
       const setup = createAgentSetup({ dataDir, claudePath: undefined });
       const loaded = await setup.templates();
