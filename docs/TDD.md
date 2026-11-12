@@ -215,16 +215,9 @@ an implementation detail: the change goes in a PR of its own, with an issue to m
 Before a file is split, check its coverage (`bun run coverage:funcs <file>`, `test:related`). Under
 80% of its lines or functions, the split's first PR adds characterization tests and nothing else:
 they pin what the code does today, right or wrong, red by assertion when that behavior changes
-(Feathers). The moves come after, in their own PRs.
-
-CI's removed-tests guard (`scripts/tests-removed.ts`, #2176) reads every PR's net diff from the
-merge-base with main, so a merge of main is judged by its result. It fails when a test file has
-fewer tests (`test(`, `it(` and their `.each`/`.skipIf` forms) or fewer `expect(` calls than at the
-base, was deleted, or was renamed to a path that is not a test file. A file git cannot read fails
-too: nothing was checked. A removal that is meant (a test merged into another file, a flaky test
-deleted, #1003) passes only when a commit of the PR ends its message with a trailer naming each such
-file by its path (at the base or the head) and the reason: `Tests-Removed: <path>[, <path>] — <why>`.
-A trailer waives only the files it names.
+(Feathers). The moves come after, in their own PRs. CI's removed-tests guard (#2176) fails a PR
+whose net diff leaves a test file with fewer tests or `expect(` calls or deletes it; a meant removal
+needs a commit trailer naming each such file: `Tests-Removed: <path>[, <path>] — <why>`.
 
 ## Test anchors
 
@@ -250,10 +243,9 @@ page (`docs/DESIGN.md`) lists the anchors the app owns.
 Os testes provam o comportamento sem tocar em nada real. As travas tornam isso verificável,
 em vez de depender de cuidado.
 
-- **Claude real.** `scripts/test/preload.ts` (preload dos dois bunfigs) põe um `claude`
-  sentinela no início do PATH, tira do PATH as pastas com um `claude` de verdade e reprova a
-  suíte se o sentinela tiver sido executado. Também aborta se a busca no PATH atual não cair
-  no sentinela.
+- **Claude real.** `scripts/test/preload.ts` (preload dos dois bunfigs) põe um `claude` sentinela no
+  início do PATH, tira do PATH as pastas com um `claude` de verdade e reprova a suíte se o sentinela
+  tiver sido executado. Também aborta se a busca no PATH atual não cair no sentinela.
   - Código que procura executáveis usa `whichOnPath` (`apps/daemon/src/which.ts`).
     `Bun.which(nome)` sem opções usa o PATH de quando o processo começou e escapa da trava.
   - Teste que sobe o daemon com runtime `claude` aponta `claude.executablePath` para um
@@ -292,11 +284,10 @@ em vez de depender de cuidado.
   minutes a hold is LONG: the holder and its waiters get a line, `--status` marks it, and
   `harness:stats` lists it.
 - **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
-  `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a
-  test that call races the next line (an assertion runs before the work, a cleanup before the
-  stop). Await the call. When the test means to leave it alone, say so with `void`
-  (`void server.stop()` cuts a connection without waiting for it to drain). Do not silence the
-  rule with a `biome-ignore`.
+  `apps/` and `scripts/`: TypeScript does not flag a call whose promise nobody awaits, and in a test
+  that call races the next line (an assertion runs before the work, a cleanup before the stop).
+  Await the call. When the test means to leave it alone, say so with `void` (`void server.stop()`
+  cuts a connection without waiting for it to drain). Do not silence the rule with a `biome-ignore`.
 
 - **BDD for the journeys a person reads.** The journeys a non-programmer reads (approval, new
   session, board, the simple mode of phase 33) are Gherkin scenarios in `pt-BR` and `en`
