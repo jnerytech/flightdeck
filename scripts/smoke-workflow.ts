@@ -10,9 +10,9 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
-import { describeCard } from "./lib/smoke-card.ts";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
-import { type Pending, pollUntil } from "./lib/smoke-poll";
+import { describeCard } from "./lib/smoke/card.ts";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke/poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
