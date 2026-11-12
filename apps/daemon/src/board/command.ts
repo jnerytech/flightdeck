@@ -1,4 +1,4 @@
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 
 export interface CommandResult {
   code: number;

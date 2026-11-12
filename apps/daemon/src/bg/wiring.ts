@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { Card, Project } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import { BgService, type BgServiceOptions } from "./service.ts";
 
 /** What the daemon hands Claude Code's background sessions (issue #1593). */

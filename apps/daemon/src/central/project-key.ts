@@ -1,7 +1,6 @@
 import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { trimEndOf } from "../trim.ts";
-import { whichOnPath } from "../which.ts";
+import { trimEndOf, whichOnPath } from "../kernel/index.ts";
 
 export type GitResult = { code: number; stdout: string };
 /** Asks git without waiting for the process: the event loop keeps serving while git runs. */

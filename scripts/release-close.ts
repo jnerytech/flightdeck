@@ -5,7 +5,7 @@
  * called as `<cmd> <issue> done ""` (the coordinator's issue-note.sh, with its REST queue of #242).
  * The logic is in `lib/release-close.ts`.
  */
-import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { releaseClose } from "./lib/release-close.ts";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");

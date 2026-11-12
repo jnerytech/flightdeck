@@ -6,8 +6,8 @@ import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@f
 import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr } from "../json-text.ts";
+import { ulid } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
-import { ulid } from "../ulid.ts";
 import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./model.ts";
 
 export interface SnippetsOptions {

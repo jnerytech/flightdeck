@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
-import { AsyncQueue } from "../../src/async-queue.ts";
+import { AsyncQueue } from "../../src/kernel/async-queue.ts";
 import {
   ACP_CLOSED,
   ACP_INTERNAL_ERROR,

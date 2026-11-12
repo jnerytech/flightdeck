@@ -9,8 +9,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
-import { whichOnPath } from "../which.ts";
 import { inspectPlugin, type PluginInventory } from "./inventory.ts";
 import { AnyJson, JsonObject, PinsJson } from "./json-reads.ts";
 

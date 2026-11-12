@@ -1,4 +1,4 @@
-import { whichOnPath } from "../../apps/daemon/src/which.ts";
+import { whichOnPath } from "../../apps/daemon/src/kernel/which.ts";
 
 export type BrowserAttempt = { channel: "chrome" | "msedge" } | { executablePath: string };
 

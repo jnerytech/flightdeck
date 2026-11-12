@@ -5,7 +5,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { release } from "./lib/release-cmd.ts";
 
 const ROOT = resolve(import.meta.dir, "..");

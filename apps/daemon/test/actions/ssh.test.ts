@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { envInput, quoteArg, remoteCommand } from "../../src/actions/ssh-command.ts";
-import { whichOnPath } from "../../src/which.ts";
+import { whichOnPath } from "../../src/kernel/which.ts";
 
 const TRICKY = ["; rm -rf ~", "$(id)", "`id`", "a b", "it's", "--x", "", "*", "\\n", 'say "hi"'];
 

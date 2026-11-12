@@ -17,8 +17,8 @@ import type {
 import { z } from "zod";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr } from "../json-text.ts";
+import { ulid } from "../kernel/index.ts";
 import { slug } from "../names/format.ts";
-import { ulid } from "../ulid.ts";
 import type { EndpointInfo, Endpoints } from "./endpoints.ts";
 import { formatSessionMessage, formatSystemMessage } from "./header.ts";
 import {

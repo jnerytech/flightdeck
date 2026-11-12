@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { Route } from "../src/lib/router.ts";
-import { registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import type { Route } from "../../src/lib/router.ts";
+import { registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
-const { hubRows } = await import("../src/features/sessions/hub.ts");
-const { useStoreState } = await import("../src/lib/use-store.ts");
-const { ProjectPage } = await import("../src/features/projects/project.tsx");
+const { AppStore, sessionKey } = await import("../../src/lib/app-store.ts");
+const { hubRows } = await import("../../src/features/sessions/hub.ts");
+const { useStoreState } = await import("../../src/lib/use-store.ts");
+const { ProjectPage } = await import("../../src/features/projects/project.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

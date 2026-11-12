@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Webhooks } from "../../src/lib/webhooks.ts";
+import { Webhooks } from "../../src/features/webhook/webhooks.ts";
 import type { WebhookRequest, WebhookResponse } from "../../src/platform/types.ts";
 
 function setup(answers: Array<WebhookResponse | "throw">) {
