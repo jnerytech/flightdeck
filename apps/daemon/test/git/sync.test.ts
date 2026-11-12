@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { installSleepingGit, type SleepingGit } from "../../../../scripts/test/sleeping-git.ts";
 import { Board } from "../../src/board/board.ts";
 import { excludeLocalSettingsAsync } from "../../src/board/worktree.ts";
@@ -33,17 +33,6 @@ function sleepingGit(delayMs: number): SleepingGit {
   const sleeping = installSleepingGit(delayMs);
   cleanups.push(() => sleeping.restore());
   return sleeping;
-}
-
-const SRC = join(import.meta.dir, "../../src");
-
-/** Every file under `dir` that is TypeScript. */
-function sources(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) return sources(path);
-    return path.endsWith(".ts") ? [path] : [];
-  });
 }
 
 describe("sync-git: a slow git does not stop the protocol", () => {

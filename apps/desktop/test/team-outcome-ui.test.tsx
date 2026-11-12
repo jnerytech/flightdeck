@@ -145,11 +145,9 @@ describe("team-outcome-ui: a team's outcome in one place (#1220)", () => {
     test(`${lang}: the coordinator reporting the goal done tells the person, once, in their language`, () => {
       const { store: made, notifications } = setup(lang);
       const frame = { type: "teams.updated", team: TEAM, reason: null, event: "report_done" };
-      (made as unknown as { onTeams(host: string, f: unknown): void }).onTeams("h1", frame);
-      (made as unknown as { onTeams(host: string, f: unknown): void }).onTeams("h1", {
-        ...frame,
-        event: undefined,
-      });
+      // The fixture is loosely typed, as the host's JSON is.
+      made.teams.onFrame("h1", frame as never);
+      made.teams.onFrame("h1", { ...frame, event: undefined } as never);
       expect(notifications).toEqual([n.notified]);
     });
 
