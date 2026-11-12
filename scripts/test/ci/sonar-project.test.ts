@@ -5,7 +5,7 @@ import {
   isTestFile,
   matchesGlob,
   testInclusionsOf,
-} from "../../lib/sonar-project.ts";
+} from "../../lib/sonar/project.ts";
 
 describe("sonar-project: what sonar-project.properties tells SonarCloud (#283)", () => {
   const properties = [
