@@ -44,8 +44,7 @@ import { Issues } from "./issues/issues.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import type { Logger } from "./logger.ts";
-import { FileLog } from "./logs/file-log.ts";
-import { createLogScanner } from "./logs/scanner.ts";
+import { createHostLog } from "./logs/wiring.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
@@ -189,24 +188,14 @@ export async function startDaemon(
   // holds. The vault is made further down; until then there is nothing held.
   let currentToken = config.token;
   let heldValues: () => string[] = () => [];
-  const fileLog = new FileLog({
+  const { logger, fileLog } = createHostLog({
+    console: console_,
     dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
     home: userHome(env),
-    scanner: createLogScanner({
-      tokens: () => [config.token, currentToken, config.hooks.token ?? ""].filter(Boolean),
-      vaultValues: () => heldValues(),
-    }),
+    config,
+    currentToken: () => currentToken,
+    heldValues: () => heldValues(),
   });
-  const logger: Logger = {
-    log: (message) => {
-      console_.log(message);
-      fileLog.write("info", message);
-    },
-    error: (message) => {
-      console_.error(message);
-      fileLog.write("error", message);
-    },
-  };
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
