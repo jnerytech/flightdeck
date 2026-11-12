@@ -42,6 +42,7 @@ import {
   chosenProject,
   confirmCopy,
   createPayload,
+  type EffortChoice,
   memberPayload,
   type NewTeamRow,
   offeredChoice,
@@ -99,8 +100,8 @@ function NewTeam(
    * nobody picked is `null` and shows the Developer when the host has it.
    */
   const [rows, setRows] = useState<NewTeamRow[]>([
-    { persona: null, model: "", permission: "" },
-    { persona: null, model: "", permission: "" },
+    { persona: null, model: "", effort: "", permission: "" },
+    { persona: null, model: "", effort: "", permission: "" },
   ]);
   const setRow = (index: number, change: Partial<NewTeamRow>) =>
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
@@ -111,7 +112,20 @@ function NewTeam(
   const inFlight = useRef(false);
   const create = async (confirmed = false) => {
     if (inFlight.current) return;
-    const form = { projectId, goal, name, persona, model, permission, rows, workerDefault, modes };
+    const form = {
+      projectId,
+      goal,
+      name,
+      persona,
+      model,
+      effort: "" as const,
+      permission,
+      rows,
+      workerDefault,
+      modes,
+      efforts: false,
+      personaModels: {},
+    };
     if (bypassAsked(form) && !confirmed) {
       setAsking(true);
       return;
@@ -254,7 +268,9 @@ function NewTeam(
           className="self-start"
           disabled={rows.length >= 8}
           aria-label={t("teamsUi.addRow")}
-          onClick={() => setRows((all) => [...all, { persona: null, model: "", permission: "" }])}
+          onClick={() =>
+            setRows((all) => [...all, { persona: null, model: "", effort: "", permission: "" }])
+          }
         >
           {t("teamsUi.addWorkerButton")}
         </Button>
@@ -473,7 +489,12 @@ function NewMember(
     store: AppStore;
     hostId: string;
     team: TeamInfo;
-    onAdd(member: { persona: string; model: string; permission: PermissionChoice }): void;
+    onAdd(member: {
+      persona: string;
+      model: string;
+      effort: EffortChoice;
+      permission: PermissionChoice;
+    }): void;
     onCancel(): void;
   }>,
 ) {
@@ -511,7 +532,12 @@ function NewMember(
         size="sm"
         aria-label={t("teamsUi.addMember", { name: team.name })}
         onClick={() =>
-          props.onAdd({ persona, model, permission: offeredChoice(permission, modes.allowBypass) })
+          props.onAdd({
+            persona,
+            model,
+            effort: "",
+            permission: offeredChoice(permission, modes.allowBypass),
+          })
         }
       >
         {t("teamsUi.addMemberButton")}
@@ -544,12 +570,18 @@ function Team(
   const [bypassing, setBypassing] = useState<{
     persona: string;
     model: string;
+    effort: EffortChoice;
     permission: PermissionChoice;
   } | null>(null);
   const modes = useModes(store, hostId);
   const [confirm, setConfirm] = useState<TeamConfirm | null>(null);
   const open = team.state !== "closed";
-  const addMember = (member: { persona: string; model: string; permission: PermissionChoice }) => {
+  const addMember = (member: {
+    persona: string;
+    model: string;
+    effort: EffortChoice;
+    permission: PermissionChoice;
+  }) => {
     setAdding(false);
     setBypassing(null);
     void act(

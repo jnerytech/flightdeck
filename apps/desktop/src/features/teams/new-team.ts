@@ -1,10 +1,15 @@
+import type { CommandPayload, EffortLevel } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
 import type { PermissionChoice } from "../personas/index.ts";
 
-/** One worker row of the form: the persona (`null` until picked), the model and the permission mode. */
+/** The effort a member was given; "" is the persona's own. */
+export type EffortChoice = EffortLevel | "";
+
+/** One worker row of the form: the persona (`null` until picked), the model, the effort and the permission mode. */
 export interface NewTeamRow {
   persona: string | null;
   model: string;
+  effort: EffortChoice;
   permission: PermissionChoice;
 }
 
@@ -15,11 +20,16 @@ export interface NewTeamForm {
   name: string;
   persona: string;
   model: string;
+  effort: EffortChoice;
   permission: PermissionChoice;
   rows: NewTeamRow[];
   /** The persona a worker takes when its row picked none ("" when the host has no Developer). */
   workerDefault: string;
   modes: { offered: boolean; allowBypass: boolean };
+  /** Whether the host announces `teams.effort`: it takes the efforts the form sends. */
+  efforts: boolean;
+  /** The model of each persona the host lists, by persona id (null for a persona with none). */
+  personaModels: Readonly<Record<string, string | null>>;
 }
 
 /** A member's confirm: closing or deleting the team, or removing one member. */
@@ -27,6 +37,18 @@ export type TeamConfirm =
   | { kind: "close" }
   | { kind: "delete" }
   | { kind: "remove"; member: string };
+
+/**
+ * Whether a member's effort select shows, and its choice is sent: the host announces it and the
+ * member's model takes one. `persona` is the member's persona id ("" for none).
+ */
+export function effortOffered(
+  form: Pick<NewTeamForm, "efforts" | "personaModels">,
+  model: string,
+  persona: string,
+): boolean {
+  return form.efforts && model === "" && persona === "";
+}
 
 /** A choice the host no longer offers (Bypass after its switch went off) is the default again. */
 export const offeredChoice = (value: PermissionChoice, allowBypass: boolean): PermissionChoice =>
@@ -60,7 +82,7 @@ export function bypassAsked(form: NewTeamForm): boolean {
 }
 
 /** The `teams.create` payload: what the person left blank is not sent. */
-export function createPayload(form: NewTeamForm) {
+export function createPayload(form: NewTeamForm): CommandPayload<"teams.create"> {
   const { coordinator, workers } = modesSent(form);
   const personaOf = (row: NewTeamRow) => rowPersona(row, form.workerDefault);
   const name = form.name.trim();
@@ -86,8 +108,9 @@ export function createPayload(form: NewTeamForm) {
 export const memberPayload = (member: {
   persona: string;
   model: string;
+  effort: EffortChoice;
   permission: PermissionChoice;
-}) => ({
+}): NonNullable<CommandPayload<"teams.update">["addMember"]> => ({
   persona: member.persona || null,
   model: member.model || null,
   ...(member.permission ? { permission: member.permission } : {}),
