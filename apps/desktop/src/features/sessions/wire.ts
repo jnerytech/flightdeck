@@ -3,6 +3,7 @@ import { type SessionCommandsCore, SessionCommandsSlice } from "./commands.ts";
 import { type ExternalSessionsCore, ExternalSessionsSlice } from "./external.ts";
 import { type FinishedCore, FinishedSlice } from "./finished.ts";
 import { type SessionListsCore, SessionListsSlice } from "./lists.ts";
+import type { SessionActions } from "./session-view.tsx";
 import { type SessionsCore, SessionsSlice, type SessionsSliceState } from "./store.ts";
 import { type SessionStreamCore, SessionStreamSlice } from "./stream.ts";
 import { type OpenSession, SessionSubscriptions } from "./subscriptions.ts";
@@ -43,6 +44,27 @@ export function wireSessionCommands(
     success: (text) => kernel.success(text),
     t: () => kernel.t(),
   });
+}
+
+/**
+ * What a conversation screen asks of the app: the commands on the open session, plus the two things
+ * that live elsewhere (copying a text, answering a permission request).
+ */
+export function wireSessionActions(
+  commands: SessionCommandsSlice,
+  deps: Pick<SessionActions, "respond"> & { copyText: (text: string) => Promise<boolean> },
+): SessionActions {
+  return {
+    copyText: (text) => deps.copyText(text),
+    respond: (requestId, decision, answer) => deps.respond(requestId, decision, answer),
+    send: (text, images) => commands.send(text, images),
+    setMode: (mode) => commands.setMode(mode),
+    setModel: (model) => commands.setModel(model),
+    setEffort: (effort) => commands.setEffort(effort),
+    interrupt: () => commands.interrupt(),
+    close: () => commands.close(),
+    resume: () => commands.resume(),
+  };
 }
 
 /** The sessions Claude Code runs outside the daemon, and their permission requests. */

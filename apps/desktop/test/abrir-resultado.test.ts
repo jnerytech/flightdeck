@@ -18,7 +18,7 @@ async function setup(withPlatform: boolean, url?: (real: string) => string) {
   const server = d.listen();
   const store = new AppStore(mem.platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({
+  const hostId = await store.roster.add({
     name: "pc",
     url: url ? url(server.url) : server.url,
     token: TOKEN,

@@ -35,7 +35,7 @@ async function setup(files: boolean) {
     maxDelayMs: 20,
   });
   cleanups.push(() => store.dispose());
-  await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
   const host = store.getState().hosts[0];
   const picked: string[] = [];

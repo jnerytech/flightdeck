@@ -42,8 +42,8 @@ async function fleet() {
   const mem = memoryPlatform(false);
   const store = new AppStore(mem.platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
-  const hostA = await store.addHost({ name: "pc", url: serverA.url, token: TOKEN });
-  const hostB = await store.addHost({ name: "pi", url: serverB.url, token: TOKEN });
+  const hostA = await store.roster.add({ name: "pc", url: serverA.url, token: TOKEN });
+  const hostB = await store.roster.add({ name: "pi", url: serverB.url, token: TOKEN });
   await settle(() => needsYou(store.getState()).length === 2);
   expect(needsYou(store.getState())).toHaveLength(2);
   return { a, b, serverA, serverB, first, second, store, hostA, hostB, ...mem };

@@ -340,7 +340,7 @@ export function SessionsHub(
           </DropdownMenuItem>
           {offers.sleep && (
             <DropdownMenuItem
-              onSelect={() => void store.sleepSession(row.hostId, row.sessionId as string)}
+              onSelect={() => void store.commands.sleep(row.hostId, row.sessionId as string)}
             >
               {t("hub.sleepNow")}
             </DropdownMenuItem>

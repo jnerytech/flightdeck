@@ -117,7 +117,7 @@ async function connect(url: string, opts: { offer?: { version: string; notes: st
   const store = new AppStore(mem.platform, { baseDelayMs: 10, daemonUpdateTimeoutMs: 300 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "pc", url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "pc", url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
   return store;
 }

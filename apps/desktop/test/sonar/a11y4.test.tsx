@@ -91,11 +91,11 @@ async function tiles(names: string[]) {
   const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
   cleanups.push(() => store.dispose());
   store.i18n.start();
-  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   const ids: string[] = [];
   for (const [at, name] of names.entries()) {
-    const id = (await store.createSession(hostId, {
+    const id = (await store.commands.create(hostId, {
       cwd: d.project,
       prompt: at === 0 ? "[tool]" : `oi ${name}`,
       name,

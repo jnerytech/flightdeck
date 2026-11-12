@@ -54,7 +54,7 @@ async function online(language = "pt-BR") {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   return { d, store, copied, hostId: store.getState().hosts[0]?.id ?? "" };
@@ -69,7 +69,7 @@ describe("estados-avisos", () => {
   test("erros viram toasts traduzidos pelo code, com Detalhes, e não se apagam uns aos outros", async () => {
     const { store, hostId } = await online();
     await act(async () => {
-      await store.createSession(hostId, { cwd: "/", prompt: "oi" });
+      await store.commands.create(hostId, { cwd: "/", prompt: "oi" });
       await store.hostCommand(hostId, "card.get", { cardId: "nao-existe" });
       await store.hostCommand(hostId, "file.read", {
         target: "session:x",
@@ -158,7 +158,7 @@ describe("estados-avisos", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
@@ -188,7 +188,7 @@ describe("estados-avisos", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
@@ -291,9 +291,9 @@ describe("estados-avisos", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
-      await store.addHost({ name: "notebook", url: deadUrl, token: TOKEN });
-      await store.addHost({ name: "servidor", url: deadUrl, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: alfa.listen().url, token: TOKEN });
+      await store.roster.add({ name: "notebook", url: deadUrl, token: TOKEN });
+      await store.roster.add({ name: "servidor", url: deadUrl, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     await act(async () => store.router.push({ name: "hub" }));

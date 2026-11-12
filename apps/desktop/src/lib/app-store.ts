@@ -2,12 +2,9 @@ import type {
   ChangesUpdated,
   CommandPayload,
   CommandResults,
-  EffortLevel,
   HistoryChanged,
   MessageInfo,
-  SessionImage,
   SessionRecap,
-  SettableMode,
   TeamsUpdatedFrame,
   WorkflowRun,
 } from "@flightdeck/protocol";
@@ -56,7 +53,6 @@ import {
   type HostUpdateSlice,
   initialHealthState,
   loadHosts,
-  type NewHost,
   type OnlineStep,
   RequestError,
   saveHosts,
@@ -83,6 +79,7 @@ import {
   type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
+  type SessionActions,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
@@ -94,6 +91,7 @@ import {
   takeHubHost,
   wireExternalSessions,
   wireFinished,
+  wireSessionActions,
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
@@ -249,7 +247,9 @@ export class AppStore {
   /** The sessions that keep their full event stream: the open one and the followed (#1596). */
   readonly subscriptions: SessionSubscriptions;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
-  private readonly commands: SessionCommandsSlice;
+  readonly commands: SessionCommandsSlice;
+  /** What a conversation screen asks of the app: the commands, copying a text, answering a request. */
+  readonly sessionActions: SessionActions;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   private offQuit: (() => void) | null = null;
 
@@ -639,6 +639,11 @@ export class AppStore {
       showWindow: () => void this.platform.showMainWindow(),
       act: (action) => this.tray.act(action),
     });
+    this.sessionActions = wireSessionActions(this.commands, {
+      copyText: (text) => this.system.copyText(text),
+      respond: (requestId, decision, answer) =>
+        this.permissions.respond(requestId, decision, answer ?? {}),
+    });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
       isFocused: () => this.platform.isFocused(),
@@ -834,11 +839,6 @@ export class AppStore {
     }
   }
 
-  /** Adds a host and connects; the roster does the work (kept here: most screens' tests start from it). */
-  addHost(input: NewHost): Promise<string> {
-    return this.roster.add(input);
-  }
-
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
   githubTicker(tick: () => void): () => void {
     if (this.options.githubTicker) return this.options.githubTicker(tick);
@@ -908,11 +908,6 @@ export class AppStore {
     this.subscriptions.select(hostId, sessionId);
   }
 
-  /** Puts an idle session to sleep now and says, in a toast, what came of it. */
-  sleepSession(hostId: string, sessionId: string): Promise<void> {
-    return this.commands.sleep(hostId, sessionId);
-  }
-
   /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
   activeHostId(): string | null {
     return this.hostTabs.hostId;
@@ -921,11 +916,6 @@ export class AppStore {
   /** A new tab; the host tabs choose where (`HostTabs.openNew`). */
   openNewTab(): void {
     this.hostTabs.openNew(this.state.hosts);
-  }
-
-  /** Sends a message to a session of a host, whether it is the open one or not. */
-  sendTo(hostId: string, sessionId: string, text: string, images?: SessionImage[]): Promise<void> {
-    return this.commands.sendTo(hostId, sessionId, text, images);
   }
 
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
@@ -1092,11 +1082,6 @@ export class AppStore {
     });
   }
 
-  /** Adds a folder to a host's allowed folders; the roster does the work. */
-  allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
-    return this.roster.allowRoot(hostId, folder, retry);
-  }
-
   /** A toast closed (or shown, for successes): it leaves the list. */
   dismissNotice(id: number): void {
     this.update({ notices: this.state.notices.filter((n) => n.id !== id) });
@@ -1124,39 +1109,6 @@ export class AppStore {
       error: text ?? describeError(error),
       notices: [...this.state.notices.filter((n) => !sameNotice(n, notice)), notice],
     });
-  }
-
-  createSession(hostId: string, payload: CommandPayload<"session.create">): Promise<string | null> {
-    return this.commands.create(hostId, payload);
-  }
-
-  send(text: string, images?: SessionImage[]): Promise<void> {
-    return this.commands.send(text, images);
-  }
-
-  interrupt(): Promise<void> {
-    return this.commands.interrupt();
-  }
-
-  /** Whether the host took the mode (#935): false when it refused (said why), or no session is open. */
-  setMode(permissionMode: SettableMode): Promise<boolean> {
-    return this.commands.setMode(permissionMode);
-  }
-
-  setModel(model: string | null): Promise<void> {
-    return this.commands.setModel(model);
-  }
-
-  setEffort(effort: EffortLevel | null): Promise<void> {
-    return this.commands.setEffort(effort);
-  }
-
-  close(): Promise<void> {
-    return this.commands.close();
-  }
-
-  resume(): Promise<void> {
-    return this.commands.resume();
   }
 
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
@@ -1453,11 +1405,6 @@ export class AppStore {
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {
     this.quietSnooze.snooze(hostId, sessionId);
-  }
-
-  /** Issue #1478: interrupts any session of a host, open or not. */
-  interruptSession(hostId: string, sessionId: string): Promise<void> {
-    return this.commands.interruptOn(hostId, sessionId);
   }
 
   /** Phase 21: told each time a team of a host changes. */

@@ -56,7 +56,7 @@ async function online(language = "pt-BR") {
   });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   return { ...d, ...mem, time, quota, store };
@@ -248,12 +248,12 @@ describe("cota-ui", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({
+      await store.roster.add({
         name: "sem",
         url: d.listen(0, undefined, ["central", "workflows"]).url,
         token: TOKEN,
       });
-      await store.addHost({ name: "velho", url: legacyDaemon(cleanups).url, token: TOKEN });
+      await store.roster.add({ name: "velho", url: legacyDaemon(cleanups).url, token: TOKEN });
     });
     await settle(() =>
       store.getState().hosts.every((h) => h.status === "online" && h.hostInfo !== null),

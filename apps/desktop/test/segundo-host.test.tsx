@@ -33,7 +33,7 @@ describe("segundo-host: adding another host (issue #185, J2)", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 10 });
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
-    await act(() => store.addHost({ name: "one", url: firstServer.url, token: TOKEN }));
+    await act(() => store.roster.add({ name: "one", url: firstServer.url, token: TOKEN }));
     await act(async () => {
       store.tabs.active.router.push({ name: "add-host" });
     });

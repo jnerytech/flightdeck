@@ -26,7 +26,7 @@ describe("setup-live: the checklist learns from a real host (issue #164)", () =>
     });
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     const hostId = store.getState().hosts[0]?.id ?? "";
     await settle(() => store.getState().hosts[0]?.status === "online");
     // The hooks are not installed on a fresh host.

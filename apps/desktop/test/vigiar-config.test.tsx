@@ -49,7 +49,7 @@ async function openSettings(
   daemon.watch.settings = { ...daemon.watch.settings, ...settings } as typeof daemon.watch.settings;
   Object.assign(daemon.connection, connection);
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await chooseFromAccountMenu("Configurações");
   return { store, daemon };

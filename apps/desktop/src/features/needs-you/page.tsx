@@ -199,7 +199,7 @@ function QuietDetail(
           variant="outline"
           onClick={() => {
             props.onActed();
-            return store.interruptSession(alert.hostId, alert.sessionId);
+            return store.commands.interruptOn(alert.hostId, alert.sessionId);
           }}
         >
           {t("needsYou.quietInterrupt")}
@@ -208,7 +208,7 @@ function QuietDetail(
           variant="outline"
           onClick={() => {
             props.onActed();
-            return store.sendTo(alert.hostId, alert.sessionId, CONTINUATION);
+            return store.commands.sendTo(alert.hostId, alert.sessionId, CONTINUATION);
           }}
         >
           {t("needsYou.quietContinue")}

@@ -40,7 +40,7 @@ async function setup(options: { native?: (root: string) => string; remote?: bool
   }
   const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   await waitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"));
   const view = store.getState().hosts[0];
   const host = options.remote && view ? { ...view, url: "ws://100.64.0.9:7420/v1/ws" } : view;

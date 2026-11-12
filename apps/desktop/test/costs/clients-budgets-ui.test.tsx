@@ -64,8 +64,8 @@ async function setup(budgets: Record<string, number> = {}) {
   });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
-    await store.addHost({ name: "beta", url: beta.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: alfa.listen().url, token: TOKEN });
+    await store.roster.add({ name: "beta", url: beta.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
   await act(async () => store.router.push({ name: "clients" }));

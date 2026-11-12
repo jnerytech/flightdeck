@@ -65,7 +65,7 @@ export function AllowedFolders(props: Readonly<{ store: AppStore; host: HostView
           onCancel={() => setAsking(false)}
           onConfirm={() => {
             setAsking(false);
-            void store.allowRoot(host.id, folder.trim()).then((ok) => ok && setFolder(""));
+            void store.roster.allowRoot(host.id, folder.trim()).then((ok) => ok && setFolder(""));
           }}
         />
       )}

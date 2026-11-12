@@ -88,7 +88,7 @@ async function setup() {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   // The request reaches the counter of Precisa de você.
   await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?1$/ }) !== null);
@@ -332,8 +332,8 @@ describe("navegacao", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
-      await store.addHost({ name: "beta", url: beta.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: alfa.listen().url, token: TOKEN });
+      await store.roster.add({ name: "beta", url: beta.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     await sidebar.hostAction("Nova sessão", "beta");
@@ -368,7 +368,7 @@ describe("navegacao", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => Object.keys(store.getState().externals).length === 1);
     const hostId = store.getState().hosts[0]?.id ?? "";
@@ -498,7 +498,7 @@ describe("navegacao", () => {
     store.router.push({ name: "settings" });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     void hook("PermissionRequest", { tool_name: "Bash", tool_input: { command: "ls" } });

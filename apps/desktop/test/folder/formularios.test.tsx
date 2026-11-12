@@ -35,7 +35,9 @@ async function setup() {
   });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
+  const hostId = await act(() =>
+    store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN }),
+  );
   await waitFor(() => expect(store.getState().hosts[0]?.hostInfo).not.toBeNull());
   return { ...d, store, hostId };
 }
