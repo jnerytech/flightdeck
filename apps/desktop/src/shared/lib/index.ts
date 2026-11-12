@@ -20,5 +20,5 @@ export {
 } from "./paths.ts";
 export { canScrollRight } from "./scroll-edge.ts";
 export { isBusy, statusTone } from "./status.ts";
-export { readStored } from "./stored-json.ts";
+export { parseJsonText, readStored, validItems, validValues } from "./stored-json.ts";
 export { useHeight, useWidth } from "./use-width.ts";
