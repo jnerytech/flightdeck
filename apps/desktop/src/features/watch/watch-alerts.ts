@@ -1,5 +1,5 @@
 import type { WatchInfo } from "@flightdeck/protocol";
-import type { AppState } from "./app-store.ts";
+import type { AppState } from "../../lib/app-store.ts";
 
 /** A card whose PR watch asks for the person, for "Precisa de você" (phase 22). */
 export interface WatchAlert {
