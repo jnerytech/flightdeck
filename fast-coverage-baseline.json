@@ -105,7 +105,7 @@
   "apps/desktop/src/features/hosts/host-terminal.tsx",
   "apps/desktop/src/features/hosts/hosts.ts",
   "apps/desktop/src/features/hosts/probe-host.ts",
-  "apps/desktop/src/features/hosts/relay.ts",
+  "apps/desktop/src/features/messaging/relay.ts",
   "apps/desktop/src/features/hosts/rename-host-dialog.tsx",
   "apps/desktop/src/features/hosts/request-link.ts",
   "apps/desktop/src/features/hosts/use-now.ts",
