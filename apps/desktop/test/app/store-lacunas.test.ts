@@ -38,7 +38,8 @@ describe("app-store-lacunas: the palette's recents", () => {
 describe("app-store-lacunas: following sessions without opening them", () => {
   test("two followers of one session: the first to let go keeps the follow, the last ends it", () => {
     const { store } = make();
-    const watched = (store as unknown as { watched: Map<string, number> }).watched;
+    const watched = (store as unknown as { subscriptions: { watched: Map<string, number> } })
+      .subscriptions.watched;
     const first = store.watchSession("h", "s1");
     const second = store.watchSession("h", "s1");
     expect(watched.get("h/s1")).toBe(2);

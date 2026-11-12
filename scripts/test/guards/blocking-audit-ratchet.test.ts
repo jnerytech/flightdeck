@@ -6,7 +6,7 @@ import {
   asyncCommandsInline,
   SYNC_COMMANDS_ALLOWED,
   syncTauriCommands,
-} from "../../lib/blocking-audit-ratchet.ts";
+} from "../../lib/ratchets/blocking-audit.ts";
 
 const root = resolve(import.meta.dir, "../../..");
 const daemonSrc = join(root, "apps/daemon/src");

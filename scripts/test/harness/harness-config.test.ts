@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { slotViolation } from "../../lib/claude-hooks.ts";
+import { slotViolation } from "../../lib/hooks/claude-hooks.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 // repo-wide (#1108): reads every tracked file, so CI's quick job runs it on every PR.

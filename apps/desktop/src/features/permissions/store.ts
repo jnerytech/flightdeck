@@ -3,6 +3,8 @@ import type { VaultAnswer } from "@/features/vault/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Answer, AppState, PendingItem } from "../../lib/app-store.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
+import type { TrayAction } from "../../platform/types.ts";
+import { parseRequestLink } from "./request-link.ts";
 
 /** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
 function permissionResponse(requestId: string, decision: "allow" | "deny", answer: Answer) {
@@ -34,6 +36,10 @@ export interface PermissionsCore {
   sendSelected(response: PermissionResponse): Promise<void>;
   fail(error: unknown, text?: string): void;
   t(): T;
+  /** Brings the app's window up. */
+  showWindow(): void;
+  /** Answers a request as the tray's menu does. */
+  act(action: TrayAction): void;
 }
 
 /**
@@ -42,7 +48,55 @@ export interface PermissionsCore {
  * not held is refused here, below every screen.
  */
 export class PermissionsSlice {
+  private readonly openListeners = new Set<(item: PendingItem) => void>();
+
   constructor(private readonly core: PermissionsCore) {}
+
+  /** Told when a request is to be opened in the window (a notification, the tray, the palette). */
+  onOpen(listener: (item: PendingItem) => void): () => void {
+    this.openListeners.add(listener);
+    return () => this.openListeners.delete(listener);
+  }
+
+  /** Brings the window up on a request. */
+  open(item: PendingItem): void {
+    this.core.showWindow();
+    for (const listener of this.openListeners) listener(item);
+  }
+
+  /**
+   * A `flightdeck://request` link (a notification click): brings the window up on the request.
+   * False for any other link, which the caller handles (pairing).
+   */
+  openLink(url: string): boolean {
+    const link = parseRequestLink(url);
+    if (!link) return false;
+    const item = this.core
+      .needsYou()
+      .find((i) => i.hostId === link.hostId && i.requestId === link.requestId);
+    // Already answered: the window still comes up.
+    if (item) this.open(item);
+    else this.core.showWindow();
+    return true;
+  }
+
+  /**
+   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
+   * `shown` is the `host/request` the command named: when that one has gone in between, the one
+   * now oldest is opened to be seen, never answered unseen (#245).
+   */
+  decideOldest(decision: "approve" | "deny", shown: string): void {
+    const item = this.core.needsYou()[0];
+    if (!item) return;
+    if (`${item.hostId}/${item.requestId}` !== shown) {
+      this.open(item);
+      return;
+    }
+    // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
+    // palette is not the tray, so a vault grant is never logged as the tray's.
+    if (item.gate || item.vault) this.open(item);
+    else this.core.act({ key: `${item.hostId}/${item.requestId}`, action: decision });
+  }
 
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
   async respondTo(

@@ -2,8 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { cruise } from "dependency-cruiser";
-import { grownRules, KNOWN, newRules, ruleCounts, runArchRatchet } from "../../lib/arch-ratchet.ts";
 import { type CruiseModule, cycleFiles } from "../../lib/cycle-files.ts";
+import {
+  grownRules,
+  KNOWN,
+  newRules,
+  ruleCounts,
+  runArchRatchet,
+} from "../../lib/ratchets/arch.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 // The real rules: a planted import is judged by what CI runs (`bun run arch`).

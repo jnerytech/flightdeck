@@ -7,7 +7,7 @@ Ranked by frequency × cost on Windows. "Closed" means a ratchet or an earlier f
    `PATH` and `terminal_open` spawns a process. They run once per host at startup and per
    interaction, so the whole window froze. They are `async fn` now. Only the tray and window
    commands (`tray_set_menu`, `tray_set_status`, `focus_main`, `set_close_to_tray`) and the
-   state-only `vault_remove_file` stay sync. `scripts/lib/blocking-audit-ratchet.ts` pins that list.
+   state-only `vault_remove_file` stay sync. `scripts/lib/ratchets/blocking-audit.ts` pins that list.
 2. **Sync project key in `session.list`, `history.list`, `messages.*`, `teams.*`** (closed by
    `history-perf`; since #1850 its tests check that the first `session.list` and `history.list`
    carry a cold folder's repository key, and the `blocking-key-ratchet` source count is gone).

@@ -49,7 +49,7 @@ describe("ci-quick", () => {
           "apps/desktop/test/layout/layout-ratchet.test.ts",
           "scripts/test/guards/protocol-surface.test.ts",
           "scripts/test/ci/ci-quick.test.ts",
-          "scripts/lib/wait-ratchet.ts",
+          "scripts/lib/ratchets/wait.ts",
           "scripts/test/ci/perf-baseline.test.ts",
           "apps/desktop/test/x-ratchet.test.tsx",
         ],
