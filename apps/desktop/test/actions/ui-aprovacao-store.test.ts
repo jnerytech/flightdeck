@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { trayMenu } from "../src/lib/tray.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { settlePlain as settle } from "./wait.ts";
+import { trayMenu } from "../../src/lib/tray.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { settlePlain as settle } from "../wait.ts";
 
-const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
+const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
 
 setDefaultTimeout(30_000);
 
