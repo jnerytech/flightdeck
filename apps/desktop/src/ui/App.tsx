@@ -155,7 +155,7 @@ function appKey(
 ): void {
   // Ctrl+Shift+M: simple mode and the full app, when the host lets the person choose.
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
-    if (store.toggleUiMode()) e.preventDefault();
+    if (store.uiModes.toggle()) e.preventDefault();
     return;
   }
   // The go-to chords and `?` (never while typing in a field).
@@ -211,7 +211,7 @@ export function runPaletteTarget(
       store.theme.toggle();
       return;
     case "toggle-ui-mode":
-      store.toggleUiMode();
+      store.uiModes.toggle();
       return;
     case "switch-language":
       store.i18n.setLang(ui.lang === "pt-BR" ? "en" : "pt-BR");
@@ -329,7 +329,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   /** The first terminal tab is brought forward; with none open, the host where one can be opened. */
   const openTerminals = () => {
     const found = firstTerminalTab(store.workspace);
-    if (!found) return go(hostsRoute(state.hosts, store.uiHostId()));
+    if (!found) return go(hostsRoute(state.hosts, store.uiModes.hostId()));
     store.workspace.focusArea(found.area);
     store.hostTabs.activate(found.id);
   };
@@ -506,8 +506,8 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.
-  const focusHost = state.hosts.find((h) => h.id === store.uiHostId());
-  if (focusHost && store.uiMode(focusHost.id).mode === "simple") {
+  const focusHost = state.hosts.find((h) => h.id === store.uiModes.hostId());
+  if (focusHost && store.uiModes.mode(focusHost.id).mode === "simple") {
     return (
       <TContext.Provider value={t}>
         <TooltipProvider>
@@ -554,7 +554,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                   status: h.status,
                   version: h.hostInfo?.daemonVersion ?? null,
                 }))}
-                currentId={store.activeHostId() ?? store.uiHostId()}
+                currentId={store.activeHostId() ?? store.uiModes.hostId()}
                 appVersion={APP_VERSION}
                 t={t}
                 onChoose={(hostId) => {
@@ -592,7 +592,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               now={Date.now()}
               terminalTabs={terminalTabs}
               refreshing={refreshingQuota}
-              currentHostId={store.uiHostId()}
+              currentHostId={store.uiModes.hostId()}
               onRefreshQuota={() => void refreshQuota()}
               onOpenTerminals={openTerminals}
               go={go}
@@ -616,10 +616,10 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             onToggleTheme: () => store.theme.toggle(),
             onShortcuts: () => setHelp(true),
             onWhatsNew: () => setWhatsNew(true),
-            ...(focusHost && store.uiMode(focusHost.id).canSwitch
+            ...(focusHost && store.uiModes.mode(focusHost.id).canSwitch
               ? {
                   onSimpleMode: () => {
-                    void store.toggleUiMode(); // NOSONAR: the promise is deliberately not awaited; void says so
+                    void store.uiModes.toggle(); // NOSONAR: the promise is deliberately not awaited; void says so
                   },
                 }
               : {}),

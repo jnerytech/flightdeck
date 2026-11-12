@@ -27,13 +27,13 @@ export function SimpleModePanel(props: Readonly<{ store: AppStore; host: HostVie
   const setDefault = async (mode: UiMode) => {
     if (mode === ui.mode) return;
     // The default is for the next person: the one changing it keeps the view they have.
-    store.setUiChoice(host.id, store.uiMode(host.id).mode);
-    if (await store.setHostUi(host.id, { mode })) {
+    store.uiModes.choose(host.id, store.uiModes.mode(host.id).mode);
+    if (await store.uiModes.setHostUi(host.id, { mode })) {
       store.success(t("hostPage.simpleDefaultDone", { mode: modeName(mode), host: host.name }));
     }
   };
   const setLocked = async (next: boolean) => {
-    if (await store.setHostUi(host.id, { locked: next })) {
+    if (await store.uiModes.setHostUi(host.id, { locked: next })) {
       store.success(
         t(next ? "hostPage.simpleLockedDone" : "hostPage.simpleUnlockedDone", { host: host.name }),
       );
@@ -84,7 +84,7 @@ export function SimpleModePanel(props: Readonly<{ store: AppStore; host: HostVie
             onClick={() => {
               // The app shows simple mode for the selected host: this page's host is the one meant.
               store.select(host.id, null);
-              store.setUiChoice(host.id, "simple");
+              store.uiModes.choose(host.id, "simple");
             }}
           >
             {t("hostPage.simpleUse")}

@@ -5,7 +5,7 @@ import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
 import { createVault } from "./actions/wiring.ts";
-import { activitySince } from "./activity/since.ts";
+import { createActivity } from "./activity/wiring.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
@@ -427,6 +427,7 @@ export async function startDaemon(
   await domains.add(createWebhook({ log: logger.log.bind(logger) }));
   await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   await domains.add(createGithub({ config, board, issues, manager }));
+  await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
   await domains.add(createReleases());
   const central = new Central({
     risk,
@@ -627,9 +628,6 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    // Issue #1344: "While you were away": what happened since a time, from what is stored.
-    activity: (since, limit) =>
-      activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
     names,
     vault,
     log: logger.log.bind(logger),
