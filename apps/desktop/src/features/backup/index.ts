@@ -7,3 +7,4 @@ export { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 export { googleConfig } from "./google-config.ts";
 export type { GoogleConfig } from "./google-oauth.ts";
 export { type BackupCore, BackupSlice } from "./store.ts";
+export { wireBackup } from "./wire.ts";
