@@ -184,7 +184,7 @@ describe("stall-state: Not stuck, and the ways on", () => {
         return {};
       },
     });
-    await store.interruptSession("h", "s1");
+    await store.commands.interruptOn("h", "s1");
     expect(sent).toEqual([["session.interrupt", { sessionId: "s1" }]]);
   });
 });

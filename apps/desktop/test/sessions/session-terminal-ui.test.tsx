@@ -42,7 +42,7 @@ async function onSessionPage(terminals: true | "off" = true) {
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   // createSession opens the session's page, in its own tab.
   const sessionId = (await act(() =>
-    store.createSession(hostId, { cwd: d.project, prompt: "go", name: "s1" }),
+    store.commands.create(hostId, { cwd: d.project, prompt: "go", name: "s1" }),
   )) as string;
   expect(sessionId).not.toBeNull();
   await settle(() => store.getState().sessions[`${hostId}/${sessionId}`]?.status === "idle");

@@ -30,7 +30,11 @@ describe("desktop: estado do app", () => {
     await waitFor(() => host(store, hostId)?.status === "online", "online");
     expect(host(store, hostId)?.info?.allowedRoots).toHaveLength(1);
 
-    const sessionId = await store.createSession(hostId, { cwd: project, prompt: "oi", name: "s1" });
+    const sessionId = await store.commands.create(hostId, {
+      cwd: project,
+      prompt: "oi",
+      name: "s1",
+    });
     expect(sessionId).toBeTruthy();
     expect(store.getState().selected).toEqual({ hostId, sessionId: sessionId as string });
     const key = sessionKey(hostId, sessionId as string);
@@ -38,7 +42,7 @@ describe("desktop: estado do app", () => {
     expect(host(store, hostId)?.sessions.map((s) => s.name)).toEqual(["s1"]);
     expect(host(store, hostId)?.sessions[0]?.status).toBe("idle");
 
-    await store.send("de novo");
+    await store.commands.send("de novo");
     await waitFor(
       () => store.getState().sessions[key]?.items.filter((i) => i.kind === "result").length === 2,
       "segundo turno",
@@ -51,7 +55,7 @@ describe("desktop: estado do app", () => {
     const { store, server, project, notifications } = setup(false);
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
-    const sessionId = (await store.createSession(hostId, {
+    const sessionId = (await store.commands.create(hostId, {
       cwd: project,
       prompt: "[tool]",
     })) as string;
@@ -62,7 +66,7 @@ describe("desktop: estado do app", () => {
     await waitFor(() => store.getState().sessions[key]?.status === "idle");
     expect(notifications.map((n) => n.title)).toContain("pc · p: turno concluído");
 
-    await store.send("[tool] de novo");
+    await store.commands.send("[tool] de novo");
     const second = await waitFor(
       () => store.getState().sessions[key]?.pending[0],
       "segundo pedido",
@@ -105,40 +109,40 @@ describe("desktop: estado do app", () => {
     const { store, server, project } = setup();
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
-    const sessionId = (await store.createSession(hostId, {
+    const sessionId = (await store.commands.create(hostId, {
       cwd: project,
       prompt: "[tool]",
     })) as string;
     const key = sessionKey(hostId, sessionId);
     await waitFor(() => store.getState().sessions[key]?.pending.length === 1);
-    await store.interrupt();
+    await store.commands.interrupt();
     await waitFor(() => store.getState().sessions[key]?.status === "idle", "idle após interrupt");
     expect(store.getState().sessions[key]?.status).toBe("idle");
     expect(store.getState().sessions[key]?.pending).toEqual([]);
-    await store.close();
+    await store.commands.close();
     await waitFor(() => store.getState().sessions[key]?.status === "ended", "ended");
     expect(store.getState().sessions[key]?.status).toBe("ended");
-    await store.resume();
+    await store.commands.resume();
     await waitFor(() => store.getState().sessions[key]?.status === "idle", "retomada");
     expect(store.getState().sessions[key]?.status).toBe("idle");
   });
 
   test("erros viram mensagem no estado; sem seleção as ações não fazem nada", async () => {
     const { store, server } = setup();
-    await store.send("x");
-    await store.interrupt();
+    await store.commands.send("x");
+    await store.commands.interrupt();
     await store.respond("r", "allow");
     expect(store.getState().error).toBeNull();
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
-    expect(await store.createSession(hostId, { cwd: "/nao/existe", prompt: "x" })).toBeNull();
+    expect(await store.commands.create(hostId, { cwd: "/nao/existe", prompt: "x" })).toBeNull();
     expect(store.getState().error).toContain("forbidden_cwd");
     store.clearError();
     expect(store.getState().error).toBeNull();
-    expect(await store.createSession("host-inexistente", { cwd: "/", prompt: "x" })).toBeNull();
+    expect(await store.commands.create("host-inexistente", { cwd: "/", prompt: "x" })).toBeNull();
     expect(store.getState().error).toContain("host");
     store.select(hostId, "sessao-fantasma");
-    await store.send("x");
+    await store.commands.send("x");
     expect(store.getState().error).toContain("not_found");
   });
 
@@ -157,7 +161,7 @@ describe("desktop: estado do app", () => {
     await store.init();
     await waitFor(() => host(store, "a")?.status === "online", "host a online");
     expect(host(store, "b")?.status).toBe("offline");
-    const sessionId = (await store.createSession("a", { cwd: project, prompt: "oi" })) as string;
+    const sessionId = (await store.commands.create("a", { cwd: project, prompt: "oi" })) as string;
     await waitFor(() => store.getState().sessions[sessionKey("a", sessionId)]?.status === "idle");
     store.select("a", null);
     await store.roster.remove("a");
@@ -174,7 +178,10 @@ describe("desktop: estado do app", () => {
     const { store, server, project } = setup();
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
-    const sessionId = (await store.createSession(hostId, { cwd: project, prompt: "oi" })) as string;
+    const sessionId = (await store.commands.create(hostId, {
+      cwd: project,
+      prompt: "oi",
+    })) as string;
     await waitFor(
       () => store.getState().sessions[sessionKey(hostId, sessionId)]?.status === "idle",
     );

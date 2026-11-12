@@ -183,7 +183,7 @@ export function CardWork(
         <SessionView
           title={shown ? `${card.title} · ${shown.step.stepId}` : card.title}
           session={conversation}
-          actions={store}
+          actions={store.sessionActions}
           t={store.i18n.t}
           nowMs={store.now()}
           focusRequestId={null}

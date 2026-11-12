@@ -53,8 +53,8 @@ describe("medidas-app: where the measures start", () => {
       () => store.getState().hosts.find((h) => h.id === hostId)?.status === "online",
       "online",
     );
-    await store.createSession(hostId, { cwd: d.project, prompt: "oi", name: "s1" });
-    await store.send("de novo");
+    await store.commands.create(hostId, { cwd: d.project, prompt: "oi", name: "s1" });
+    await store.commands.send("de novo");
     await store.respondTo(hostId, "pedido-inexistente", "allow");
     flush();
     expect(measured()).toEqual(["fd:send", "fd:approve"]);

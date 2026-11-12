@@ -69,7 +69,7 @@ describe("estados-avisos", () => {
   test("erros viram toasts traduzidos pelo code, com Detalhes, e não se apagam uns aos outros", async () => {
     const { store, hostId } = await online();
     await act(async () => {
-      await store.createSession(hostId, { cwd: "/", prompt: "oi" });
+      await store.commands.create(hostId, { cwd: "/", prompt: "oi" });
       await store.hostCommand(hostId, "card.get", { cardId: "nao-existe" });
       await store.hostCommand(hostId, "file.read", {
         target: "session:x",

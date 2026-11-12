@@ -70,7 +70,7 @@ describe("abas: Abrir em nova aba nos menus", () => {
   test("a session row's menu opens it in a new tab", async () => {
     const { store, hostId, project } = await setup();
     const sessionId = await act(() =>
-      store.createSession(hostId, { cwd: project, prompt: "oi", name: "s1" }),
+      store.commands.create(hostId, { cwd: project, prompt: "oi", name: "s1" }),
     );
     await waitFor(() =>
       expect(

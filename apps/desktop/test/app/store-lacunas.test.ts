@@ -83,7 +83,7 @@ describe("app-store-lacunas: a host that does not answer", () => {
   test("sending to it raises an error notice instead of throwing", async () => {
     const { store } = make();
     const hostId = await store.addHost({ name: "alfa", url: DEAD, token: TOKEN });
-    await store.sendTo(hostId, "s1", "hello");
+    await store.commands.sendTo(hostId, "s1", "hello");
     expect(store.getState().notices.map((n) => n.kind)).toEqual(["error"]);
   });
 

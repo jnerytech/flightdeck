@@ -570,7 +570,7 @@ describe("recusas-daemon: the daemon's refusals about folders and sessions", () 
     while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
       await Bun.sleep(10);
     }
-    await store.createSession(hostId, { cwd: "/folder/nobody/made", prompt: "hi" });
+    await store.commands.create(hostId, { cwd: "/folder/nobody/made", prompt: "hi" });
     expect(store.getState().notices[0]).toMatchObject({
       code: "forbidden_cwd",
       reason: "cwd_outside_roots",

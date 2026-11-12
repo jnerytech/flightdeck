@@ -106,9 +106,9 @@ function TaskScreen(
         const answer = await store.hostRequest(hostId, "task.preview", { sessionId, path });
         return answer.ok ? answer.data : null;
       }}
-      onAskChanges={(text) => void store.sendTo(hostId, sessionId, text)}
+      onAskChanges={(text) => void store.commands.sendTo(hostId, sessionId, text)}
       onTryAgain={() => {
-        if (lastUser?.kind === "user") void store.sendTo(hostId, sessionId, lastUser.text);
+        if (lastUser?.kind === "user") void store.commands.sendTo(hostId, sessionId, lastUser.text);
       }}
       onShowDetails={props.onDetails}
     />
