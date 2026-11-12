@@ -71,16 +71,50 @@ function within(part: string[], whole: string[]): boolean {
   return minus(part, whole).length === 0;
 }
 
-const TOKEN = /\w+|\s+|[^\w\s]/g;
+/** A string literal, a word or one sign: the whitespace between them is the formatter's. */
+const TOKEN = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\w+|[^\w\s]/g;
+const WORD = /^\w+$/;
+/** The app's store as a test reads it: `store`, `appStore`, or `getState()`. */
+const STORE = /^\w*[sS]tore$/;
+
+/** A body's tokens, a trailing comma before a closing bracket left out (the formatter adds it on a wrap). */
+function tokens(text: string): string[] {
+  const all = text.match(TOKEN) ?? [];
+  return all.filter((token, k) => token !== "," || !/^[)\]}]$/.test(all[k + 1] ?? ""));
+}
+
+/** Whether the tokens before index `i` read `<store>.`. */
+function onStore(a: string[], i: number): boolean {
+  if (a[i - 1] !== ".") return false;
+  if (STORE.test(a[i - 2] ?? "")) return true;
+  return a[i - 2] === ")" && a[i - 3] === "(" && a[i - 4] === "getState";
+}
 
 /**
- * Issue #1732: whether a test line changed only by moving members under a slice of their object:
- * `.checkClientBudgets` became `.clientBudgets.check`, `.refresh` became `.board.refresh`. The
- * member called keeps words of the old name, and the old name's words all reach the new path.
+ * Whether a store member moved under a slice: the same member under any slice (`refresh` became
+ * `board.refresh`), or the old name split into the slice and the member (`checkClientBudgets` became
+ * `clientBudgets.check`).
  */
-function onlySliceMoves(was: string, is: string): boolean {
-  const a = was.match(TOKEN) ?? [];
-  const b = is.match(TOKEN) ?? [];
+function sliceOf(member: string, slice: string, called: string): boolean {
+  if (![member, slice, called].every((token) => WORD.test(token))) return false;
+  if (called === member) return true;
+  const parts = [...words(slice), ...words(called)];
+  return (
+    within(words(slice), words(member)) &&
+    within(words(member), parts) &&
+    within(parts, words(member))
+  );
+}
+
+/**
+ * Issue #1732: whether a moved test checks the same: its tokens are equal but for store members
+ * moved under a slice (`store.x` became `store.slice.x`). Strings stay whole tokens, so a text
+ * inside one never counts as a move.
+ */
+function sameBody(was: string, is: string): boolean {
+  if (was === is) return true;
+  const a = tokens(was);
+  const b = tokens(is);
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
@@ -89,26 +123,13 @@ function onlySliceMoves(was: string, is: string): boolean {
       j++;
       continue;
     }
-    const [member = "", slice = "", dot, called = ""] = [a[i], b[j], b[j + 1], b[j + 2]];
-    const word = /^\w+$/;
-    if (a[i - 1] !== "." || dot !== "." || ![member, slice, called].every((t) => word.test(t)))
-      return false;
-    if (!within(words(member), [...words(slice), ...words(called)])) return false;
-    if (!within(words(called), words(member))) return false;
+    const moved =
+      onStore(a, i) && b[j + 1] === "." && sliceOf(a[i] ?? "", b[j] ?? "", b[j + 2] ?? "");
+    if (!moved) return false;
     i++;
     j += 3;
   }
   return i === a.length && j === b.length;
-}
-
-/** Whether a moved test checks the same: equal bodies, or lines that only move members under a slice. */
-function sameBody(was: string, is: string): boolean {
-  if (was === is) return true;
-  const a = was.split("\n");
-  const b = is.split("\n");
-  return (
-    a.length === b.length && a.every((line, k) => line === b[k] || onlySliceMoves(line, b[k] ?? ""))
-  );
 }
 
 /** The texts of a dictionary file, imports left out. */
