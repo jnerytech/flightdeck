@@ -44,8 +44,6 @@ export const GATES = {
   forker: "forker",
   snapshots: "snapshots",
   ui: "ui.mode",
-  updater: "updater",
-  updates: "updater",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
@@ -140,6 +138,11 @@ export const GROUP_GATES = {
   telemetry: {
     store: "telemetry",
     optIn: "telemetry",
+  },
+  updates: {
+    check: "updater",
+    apply: "updater",
+    auto: "autoUpdate",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<

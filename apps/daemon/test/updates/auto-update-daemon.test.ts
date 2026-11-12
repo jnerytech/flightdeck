@@ -122,11 +122,13 @@ describe("auto-update-daemon: the setting, the check hook and what the host repo
     const server = startServer({
       ...base,
       allowedRoots: [],
-      autoUpdate: {
-        status,
-        set: async (next: boolean) => {
-          auto = next;
-          return status();
+      updates: {
+        auto: {
+          status,
+          set: async (next: boolean) => {
+            auto = next;
+            return status();
+          },
         },
       },
     });

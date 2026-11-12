@@ -171,6 +171,19 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Phases 9 and #280, #1593: the daemon's own update, each service optional. */
+interface UpdatesServer {
+  /** Phase 9: the release manifest check behind `host.info.update` and `daemon.update.check`. */
+  check?: UpdateChecker;
+  /** Phase 9: applies the checked update (`daemon.update.apply`). */
+  apply?: DaemonUpdater;
+  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
+  auto?: {
+    status(): AutoUpdateStatus;
+    set(auto: boolean): Promise<AutoUpdateStatus>;
+  };
+}
+
 /** Phase 23, #1593: the telemetry's part of the server, each service optional. */
 interface TelemetryServer {
   /** The timing of terminal sessions, from Claude Code's OTLP telemetry. */
@@ -452,15 +465,8 @@ export interface ServerOptions {
   rewinder?: Rewinder;
   /** Phase 12: the git snapshots behind `snapshots.list`. */
   snapshots?: Snapshots;
-  /** Phase 9: applies the checked update (`daemon.update.apply`). */
-  updater?: DaemonUpdater;
-  /** Phase 9: the release manifest check behind `host.info.update`. */
-  updates?: UpdateChecker;
-  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
-  autoUpdate?: {
-    status(): AutoUpdateStatus;
-    set(auto: boolean): Promise<AutoUpdateStatus>;
-  };
+  /** The daemon's own update: its check, its apply and the automatic update (#1593). */
+  updates?: UpdatesServer;
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */

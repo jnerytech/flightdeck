@@ -90,7 +90,7 @@ describe("atualizacao-rechecar: the daemon checks for an update when asked", () 
     release.state.body = JSON.stringify(manifest("0.9.1"));
     const { manager } = newManager();
     const base = { manager, hostName: "h", bind: "127.0.0.1", port: 0, token: TOKEN };
-    const server = startServer({ ...base, allowedRoots: [], updates });
+    const server = startServer({ ...base, allowedRoots: [], updates: { check: updates } });
     cleanups.push(() => server.stop());
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());

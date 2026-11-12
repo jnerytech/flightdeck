@@ -692,14 +692,17 @@ export async function startDaemon(
       externals: central.external,
       locks: folderLocks,
     }),
-    ...present({ updates }),
     snapshots,
     rewinder,
     forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
-    ...present({
-      updater,
-      autoUpdate: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
-    }),
+    // A host without the update manifest runs none of them.
+    updates: serverGroup<"updates", "check" | "apply" | "auto">()(
+      present({
+        check: updates,
+        apply: updater,
+        auto: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
+      }),
+    ),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
