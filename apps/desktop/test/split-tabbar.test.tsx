@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";

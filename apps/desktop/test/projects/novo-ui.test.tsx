@@ -35,7 +35,7 @@ function setup(
     baseDelayMs: 600_000,
   });
   store.i18n.start();
-  store.loadPalette = async () => {};
+  store.palette.load = async () => {};
   const sent: Array<[string, string, unknown]> = [];
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     sent.push([hostId, type, payload]);

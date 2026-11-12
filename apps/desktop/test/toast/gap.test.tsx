@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle } from "../wait.ts";

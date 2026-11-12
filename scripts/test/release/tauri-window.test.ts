@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { GUARD_SIZES } from "../../lib/layout-guards.ts";
+import { GUARD_SIZES } from "../../lib/styles/layout-guards.ts";
 
 const conf = JSON.parse(
   readFileSync(join(import.meta.dir, "../../../apps/desktop/src-tauri/tauri.conf.json"), "utf8"),
