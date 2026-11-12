@@ -4,7 +4,6 @@ import { visibleLiterals } from "./lib/i18n-sweep.ts";
 const FEATURES = "apps/desktop/src/features";
 const dirs = [
   "apps/desktop/src/ui",
-  "apps/desktop/src/components/approval",
   "apps/desktop/src/components/feedback",
   "apps/desktop/src/shared/feedback",
   "apps/desktop/src/components/layout",

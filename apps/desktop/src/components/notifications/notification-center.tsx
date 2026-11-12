@@ -1,10 +1,9 @@
 import type { RiskLevel } from "@flightdeck/protocol";
 import { Check, Undo2 } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
-import { ApprovalActions } from "@/components/approval/approval-actions";
-import { RiskSeal } from "@/components/approval/approval-card";
 import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
+import { ApprovalActions, RiskSeal } from "@/features/permissions/index.ts";
 import type { Key } from "@/i18n";
 import { formatTime } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";

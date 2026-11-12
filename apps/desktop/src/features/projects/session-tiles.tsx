@@ -1,10 +1,10 @@
 import { CornerDownLeft } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { ApprovalActions } from "@/components/approval/approval-actions";
 import { useWand } from "@/components/assistant/use-wand";
 import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ApprovalActions } from "@/features/permissions/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
 import { StatusText } from "@/shared/status/index.ts";

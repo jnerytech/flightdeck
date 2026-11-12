@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { ApprovalCard, HIGH_RISK_HOLD_MS } = await import(
-  "../src/components/approval/approval-card.tsx"
+  "../src/features/permissions/approval-card.tsx"
 );
 
 setDefaultTimeout(30_000);

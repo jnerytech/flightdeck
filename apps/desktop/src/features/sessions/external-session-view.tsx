@@ -1,11 +1,11 @@
 import { Radio } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { ApprovalCard } from "@/components/approval/approval-card";
 import { AssistField } from "@/components/assistant/assist-field";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TranscriptReader } from "@/features/history/index.ts";
+import { ApprovalCard } from "@/features/permissions/index.ts";
 import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";

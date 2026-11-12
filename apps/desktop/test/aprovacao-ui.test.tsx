@@ -17,7 +17,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
+const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
 
 setDefaultTimeout(30_000);
 

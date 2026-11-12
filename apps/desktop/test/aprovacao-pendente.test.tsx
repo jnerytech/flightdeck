@@ -6,7 +6,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
+const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

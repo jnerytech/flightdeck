@@ -24,8 +24,8 @@ import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "@/lib
 import { uniqueKeys } from "@/lib/unique-keys";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { AlwaysAllow } from "../../features/permissions/index.ts";
-import { Markdown } from "../markdown/markdown.tsx";
+import { Markdown } from "../../components/markdown/markdown.tsx";
+import { AlwaysAllow } from "./always-allow.tsx";
 import { ApprovalActions } from "./approval-actions.tsx";
 import { resolutionLine, savedAnswers } from "./approval-lines.ts";
 import { QuestionForm } from "./question-form.tsx";
