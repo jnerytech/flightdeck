@@ -268,7 +268,7 @@ em vez de depender de cuidado.
   contexto injetado; os testes nunca os executam. Config de teste sempre em pasta temporária.
 
 - **The slot for the heavy runs.** The full suite, `demo:shots`, `e2e`, the smokes and the builds
-  run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
+  run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot/index.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
   flaky. Area tests, typecheck and lint do not need the slot; `bun run typecheck` and
   `bun run lint` take a place in the light lane instead (`scripts/lane.ts`, two places), because

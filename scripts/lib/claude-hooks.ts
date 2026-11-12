@@ -4,7 +4,7 @@
  */
 import { existsSync, lstatSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot/heavy.ts";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits, uncommentedOffLinux } from "./tdd-audit.ts";
 import { assertionCounts, weakensAssertions } from "./weak-assert.ts";
 
