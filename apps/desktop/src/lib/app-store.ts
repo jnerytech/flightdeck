@@ -66,6 +66,8 @@ import {
   type MessagingSlice,
   wireMessaging,
 } from "../features/messaging/index.ts";
+import { AwayClock } from "../features/needs-you/away.ts";
+import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
@@ -135,7 +137,6 @@ import type {
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
-import { AwayClock } from "./away.ts";
 import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
@@ -168,7 +169,6 @@ import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
-import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { RoiSettings } from "./roi-settings.ts";

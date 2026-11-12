@@ -1,10 +1,10 @@
 import { basename } from "@/shared/lib/index.ts";
-import { formatDuration } from "../i18n/format.ts";
-import type { T } from "../i18n/index.ts";
-import { type AppState, sessionKey } from "./app-store.ts";
-import { sessionLabel } from "./session-label.ts";
+import { formatDuration } from "../../i18n/format.ts";
+import type { T } from "../../i18n/index.ts";
+import { type AppState, sessionKey } from "../../lib/app-store.ts";
+import { sessionLabel } from "../../lib/session-label.ts";
 
-export { QUIET_SNOOZE_MS } from "./app-store.ts";
+export { QUIET_SNOOZE_MS } from "../../lib/app-store.ts";
 
 /** The parts of the state the quiet sessions are made of. */
 export type QuietState = Pick<AppState, "hosts" | "meta" | "names" | "personas" | "quietSnooze">;

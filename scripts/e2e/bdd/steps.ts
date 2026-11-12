@@ -7,9 +7,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
+import { AWAY_KEY } from "../../../apps/desktop/src/features/needs-you/away.ts";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
-import { AWAY_KEY } from "../../../apps/desktop/src/lib/away.ts";
 import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { HOSTS_KEY } from "../../../apps/desktop/src/lib/hosts.ts";
 import { TOKEN_MASK } from "../../../apps/desktop/src/lib/pairing-mask.ts";

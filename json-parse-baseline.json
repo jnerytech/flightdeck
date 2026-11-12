@@ -29,7 +29,7 @@
   "apps/desktop/src/lib/hub.ts": 3,
   "apps/desktop/src/lib/inbox.ts": 1,
   "apps/desktop/src/lib/new-session-prefs.ts": 1,
-  "apps/desktop/src/lib/quiet-snooze.ts": 1,
+  "apps/desktop/src/features/needs-you/quiet-snooze.ts": 1,
   "apps/desktop/src/lib/roi-settings.ts": 2,
   "apps/desktop/src/lib/setup-steps.ts": 1,
   "apps/desktop/src/lib/simple-mode.ts": 1,
