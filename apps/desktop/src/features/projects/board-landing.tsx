@@ -2,7 +2,6 @@ import type { Project } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
 import { type KeyboardEvent, useId, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useProjectCards } from "@/hooks/use-project-cards";
 import { EmptyState } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
@@ -17,6 +16,7 @@ import {
   filterProjectCards,
   type ProjectCard,
 } from "./project-cards.ts";
+import { useProjectCards } from "./use-project-cards.ts";
 
 /** Past this many projects the landing offers a filter box. */
 const FILTER_FROM = 7;
