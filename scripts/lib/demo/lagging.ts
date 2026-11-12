@@ -5,7 +5,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DemoGit } from "./demo-teleport.ts";
+import type { DemoGit } from "./teleport.ts";
 
 /** Makes `count` worktrees of `repo` under `worktrees`, then a commit on main; returns them in order. */
 export function laggingBranches(
