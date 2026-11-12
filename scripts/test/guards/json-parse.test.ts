@@ -16,7 +16,7 @@ describe("json-parse (#1609)", () => {
     expect(isScanned("packages/protocol/src/index.ts")).toBe(true);
     expect(isScanned("apps/daemon/test/store/db.test.ts")).toBe(false);
     expect(isScanned("apps/daemon/src/text-modules.d.ts")).toBe(false);
-    expect(isScanned("apps/daemon/src/json-text.ts")).toBe(false);
+    expect(isScanned("apps/daemon/src/kernel/json-text.ts")).toBe(false);
     expect(isScanned("scripts/lib/slot.ts")).toBe(false);
     expect(isScanned("apps/desktop/src/styles.css")).toBe(false);
   });
@@ -34,7 +34,7 @@ describe("json-parse (#1609)", () => {
         },
         { path: "apps/daemon/src/c.ts", text: "const ok = Schema.parse(raw);\n" },
         { path: "apps/daemon/test/d.test.ts", text: "JSON.parse(x);\n" },
-        { path: "apps/daemon/src/json-text.ts", text: "return JSON.parse(text);\n" },
+        { path: "apps/daemon/src/kernel/json-text.ts", text: "return JSON.parse(text);\n" },
       ]),
     ).toEqual({ "apps/daemon/src/a.ts": 2 });
   });

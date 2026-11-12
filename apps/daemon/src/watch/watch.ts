@@ -5,7 +5,7 @@ import type { Board } from "../board/board.ts";
 import { type PrCheck, type PrComment, type PrProvider, prProvider } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /** What a watched PR needs fixed: the reason a round of fixing starts (phase 22). */
 export interface WatchTrigger {

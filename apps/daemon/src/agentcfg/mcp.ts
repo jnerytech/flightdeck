@@ -9,10 +9,9 @@ import { dirname, join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { writeFileAtomic } from "../atomic-write.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
-import { layoutLike, parseJsonText } from "../json-text.ts";
+import { layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
 import { samePath } from "../paths.ts";
 
 /** What secrets (env and headers values) look like in the app. */

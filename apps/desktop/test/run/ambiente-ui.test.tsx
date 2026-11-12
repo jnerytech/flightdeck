@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { git, gitRepo } from "../../daemon/test/support/board-helpers.ts";
-import { WORKSPACE_KEY } from "../src/features/shell/workspace.ts";
-import { AppStore, sessionKey } from "../src/lib/app-store.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { git, gitRepo } from "../../../daemon/test/support/board-helpers.ts";
+import { WORKSPACE_KEY } from "../../src/features/shell/workspace.ts";
+import { AppStore, sessionKey } from "../../src/lib/app-store.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { App } = await import("../src/ui/App.tsx");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Real git, a daemon and a fake runtime: more than the default 5 s.
 setDefaultTimeout(30_000);
@@ -178,7 +178,7 @@ describe("run-ui: o preview em uma aba", () => {
 
   test("a CSP do app deixa quadros só em http(s) 127.0.0.1 e localhost", () => {
     const conf = JSON.parse(
-      readFileSync(resolve(import.meta.dir, "../src-tauri/tauri.conf.json"), "utf8"),
+      readFileSync(resolve(import.meta.dir, "../../src-tauri/tauri.conf.json"), "utf8"),
     ) as { app: { security: { csp: string } } };
     const csp = conf.app.security.csp;
     const directive = csp

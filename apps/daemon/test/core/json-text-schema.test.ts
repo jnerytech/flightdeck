@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { parseJsonOr, parseJsonWith } from "../../src/json-text.ts";
+import { parseJsonOr, parseJsonWith } from "../../src/kernel/json-text.ts";
 
 const Auto = z.object({ workflow: z.string().nullable() });
 

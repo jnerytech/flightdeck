@@ -3,7 +3,7 @@
  * The format is internal and changes between versions: anything unexpected is kept raw.
  */
 import { createHash } from "node:crypto";
-import { parseJsonText } from "../json-text.ts";
+import { parseJsonText } from "../kernel/index.ts";
 
 export type HistoryKind = "message" | "tool_result" | "summary" | "system" | "raw";
 export type HistoryRole = "user" | "assistant" | "system" | "summary";

@@ -7,7 +7,7 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import {
   OPENCODE_API_TIMEOUT_MS,
   opencodeConfig,

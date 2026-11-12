@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { open, stat } from "node:fs/promises";
-import { parseJsonText } from "../json-text.ts";
+import { parseJsonText } from "../kernel/index.ts";
 
 /** What a session started in a terminal waits for, read from the end of its transcript (#1736). */
 export type Waiting = "plan" | "question";

@@ -1,9 +1,8 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { PermissionRule } from "@flightdeck/protocol";
-import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
-import { layoutLike, parseJsonText } from "../json-text.ts";
+import { layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
 
 /** Where Claude Code keeps a project's local (not versioned) settings. */
 export const LOCAL_SETTINGS = ".claude/settings.local.json";

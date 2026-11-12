@@ -1,8 +1,7 @@
 import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
-import { writeFileAtomic } from "../atomic-write.ts";
-import { layoutLike, parseJsonText } from "../json-text.ts";
+import { layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
 
 /** The settings an exporter needs to reach the daemon's OTLP receiver. */
 export interface TelemetryTarget {
