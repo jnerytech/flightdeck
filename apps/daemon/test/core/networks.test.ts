@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
-import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "../../src/networks.ts";
+import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "../../src/kernel/networks.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 
