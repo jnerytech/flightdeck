@@ -4,7 +4,8 @@ import type { ActionDef } from "./schema.ts";
 import type { Fingerprint } from "./trust.ts";
 
 /** The JSON columns of an action row, read through their schemas (#1609: parse, don't validate). */
-const Definition: z.ZodType<ActionDef> = z.object({
+/** Loose: a key the row holds but `ActionDef` does not name is kept, as the old cast kept it. */
+const Definition: z.ZodType<ActionDef> = z.looseObject({
   name: z.string(),
   description: z.string(),
   host: z.string().optional(),
@@ -12,7 +13,10 @@ const Definition: z.ZodType<ActionDef> = z.object({
   run: z.array(z.string()),
   cwd: z.string().optional(),
   env: z.record(z.string(), z.string()),
-  params: z.record(z.string(), z.object({ pattern: z.string(), default: z.string().optional() })),
+  params: z.record(
+    z.string(),
+    z.looseObject({ pattern: z.string(), default: z.string().optional() }),
+  ),
   timeoutS: z.number(),
   approval: z.enum(["always", "never", "first-per-session"]).optional(),
   tags: z.array(z.string()).optional(),
