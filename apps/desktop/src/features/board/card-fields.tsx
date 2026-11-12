@@ -1,10 +1,9 @@
 import { type Card, specPathProblem, type ValidationTemplate } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
-import type { WandBinding } from "@/components/assistant/use-wand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { type AssistControl, AssistField, type WandBinding } from "@/features/assistant/index.ts";
 import { CardHours } from "@/features/roi/index.ts";
 import type { Key } from "@/i18n";
 import { useT } from "@/i18n/context";

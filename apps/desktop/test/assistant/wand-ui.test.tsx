@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
 const { emptySession } = await import("../../src/lib/session-state.ts");
-const { AssistantSettings } = await import("../../src/components/assistant/assistant-settings.tsx");
+const { AssistantSettings } = await import("../../src/features/assistant/assistant-settings.tsx");
 
 setDefaultTimeout(30_000);
 const realObserver = globalThis.ResizeObserver;

@@ -1,10 +1,9 @@
 import { type TaskFile, type TaskResultsResult, taskActivity } from "@flightdeck/protocol";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { AssistField } from "@/components/assistant/assist-field";
-import type { WandBinding } from "@/components/assistant/use-wand";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistField, type WandBinding } from "@/features/assistant/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { SessionState } from "../../lib/session-state.ts";

@@ -1,8 +1,8 @@
 import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
 import { useEffect, useId, useState } from "react";
-import { AssistField } from "@/components/assistant/assist-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistField } from "@/features/assistant/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
