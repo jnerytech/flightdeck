@@ -10,7 +10,7 @@ import { lstat, mkdir, readdir, readFile, realpath, stat, writeFile } from "node
 import { dirname, isAbsolute, join } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 
 export type AgentCfgKind = "claudemd" | "agent" | "skill";

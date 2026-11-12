@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { TeamsUpdatedFrame } from "@flightdeck/protocol";
 import { ExternalSessions } from "../../src/central/external.ts";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { startServer } from "../../src/server.ts";

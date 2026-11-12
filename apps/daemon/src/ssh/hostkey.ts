@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SshHostKeyCheck, SshTarget } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { type Exec, spawnExec } from "../kernel/index.ts";
+import { type Exec, FlightdeckError, spawnExec } from "../kernel/index.ts";
 import type { SshTargets } from "./targets.ts";
 
 export interface HostKeysOptions {

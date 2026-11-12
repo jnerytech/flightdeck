@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { CardDiff, DiffFile } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import {
   type CardReviewDeps,
   CardReviews,

@@ -15,7 +15,7 @@ import {
 } from "../board/branch-commit.ts";
 import { readInside } from "../board/index.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { samePath } from "../paths.ts";
 import { MAX_FILE, SETTINGS } from "./preview.ts";
 import { plainName, unvetted } from "./templates-store.ts";

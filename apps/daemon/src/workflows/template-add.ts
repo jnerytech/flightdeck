@@ -14,7 +14,7 @@ import {
 import type { PrProvider } from "../board/pr.ts";
 import { publishPr } from "../board/publish-pr.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 export interface TemplateAddDeps {
   /** The project's PR host, or null when it has none. */

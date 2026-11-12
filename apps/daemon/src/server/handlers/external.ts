@@ -5,7 +5,7 @@
  */
 import type { ExternalSession, ExternalStatus, SessionLine } from "@flightdeck/protocol";
 import { messageExternal } from "../../central/central.ts";
-import { FlightdeckError } from "../../errors.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 import type { ServerContext } from "../context.ts";
 import { afterAck, type Handlers } from "../dispatch.ts";
 

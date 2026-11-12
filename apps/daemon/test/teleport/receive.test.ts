@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { TeleportManifest } from "@flightdeck/protocol";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { TeleportInbox, type TeleportInboxDeps } from "../../src/teleport/receive.ts";
 import { tempDir } from "../support/helpers.ts";
 

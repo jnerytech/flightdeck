@@ -4,7 +4,7 @@
  */
 import type { BoardColumn, BoardSyncStatus } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { BoardSync, SyncReport } from "./engine.ts";
 import type { BoardSyncLoop } from "./loop.ts";
 import { type ColumnMap, checkMap, defaultMapFor } from "./map.ts";

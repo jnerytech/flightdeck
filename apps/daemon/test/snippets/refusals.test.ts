@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { Snippets } from "../../src/snippets/store.ts";
 import { SnippetUse } from "../../src/snippets/use.ts";

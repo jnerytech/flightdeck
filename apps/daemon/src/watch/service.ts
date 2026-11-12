@@ -6,7 +6,7 @@ import type {
   WatchUpdatedFrame,
 } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { PrFixer } from "./fix.ts";
 import type { Traces } from "./trace.ts";
 import type { PrWatcher } from "./watch.ts";

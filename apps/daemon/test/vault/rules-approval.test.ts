@@ -6,7 +6,7 @@ import {
   type ActionsOptions,
   REQUEST_TTL_MS,
 } from "../../src/actions/actions.ts";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import type { Rule } from "../../src/vault/rules.ts";
 import { VaultRules } from "../../src/vault/rules-store.ts";

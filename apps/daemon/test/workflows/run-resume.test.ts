@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { startServer } from "../../src/server.ts";
 import type { CheckRunner } from "../../src/workflows/check-runner.ts";
 import { git } from "../support/board-helpers.ts";

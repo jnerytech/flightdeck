@@ -9,8 +9,7 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../kernel/index.ts";
+import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 
 export interface SnapshotRow {
   claudeSessionId: string;

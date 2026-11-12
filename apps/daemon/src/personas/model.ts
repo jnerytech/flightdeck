@@ -5,7 +5,7 @@ import {
   PersonaModelError,
   type SecretScanner,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 export {
   clampPermissionMode,

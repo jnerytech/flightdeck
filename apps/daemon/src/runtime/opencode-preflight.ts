@@ -6,7 +6,7 @@
  */
 
 import { join } from "node:path";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import {
   FLIGHTDECK_AGENT,
   FLIGHTDECK_PLAN_AGENT,

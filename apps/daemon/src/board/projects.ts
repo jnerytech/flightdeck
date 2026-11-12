@@ -12,8 +12,7 @@ import {
   PersonaSubagentsMode as PersonaSubagentsModeSchema,
 } from "@flightdeck/protocol";
 import { z } from "zod";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr, parseJsonWith, ulid } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonOr, parseJsonWith, ulid } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import { git } from "./command.ts";
 import { assertBranchName } from "./ref-arg.ts";

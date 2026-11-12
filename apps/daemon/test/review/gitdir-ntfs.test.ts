@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { fileInRoot, firstStep, isGitDir } from "../../src/review/paths.ts";
 
 /** Every way a filesystem may name the `.git` folder (issues #509, #1034). */

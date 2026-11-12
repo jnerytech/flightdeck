@@ -4,8 +4,8 @@
  * (`board.*`) and the allowed roots (`roots.add`) are separate.
  */
 import { detectProvider } from "../../board/pr-provider.ts";
-import { FlightdeckError, featureOff } from "../../errors.ts";
 import type { TemplateMarkdown } from "../../harness/templates-store.ts";
+import { FlightdeckError, featureOff } from "../../kernel/index.ts";
 import { resolveAllowedCwd, rootNames } from "../../paths.ts";
 import { cloneRepo, scanRepos, spawnGit } from "../../projects/index.ts";
 import { trustsManyProjects } from "../../trust/trust-root.ts";

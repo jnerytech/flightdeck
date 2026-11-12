@@ -10,8 +10,7 @@ import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/prom
 import { basename, join, resolve } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonWith } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 import { AnyJson } from "./json-reads.ts";
 
