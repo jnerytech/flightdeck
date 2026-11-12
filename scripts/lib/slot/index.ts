@@ -3,7 +3,7 @@
  * builds), so two sessions never run them at once. Every effect (files, clock, processes) comes
  * in through `SlotEnv`, so the tests run nothing real and wait for nothing.
  */
-import { heavyReasonGiven } from "./slot-heavy.ts";
+import { heavyReasonGiven } from "./heavy.ts";
 
 /** Who holds the slot, as written in the lock file. */
 export interface SlotHolder {

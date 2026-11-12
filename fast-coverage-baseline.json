@@ -282,7 +282,7 @@
   "scripts/lib/shots/loaded.ts",
   "scripts/lib/shots/variants.ts",
   "scripts/lib/sleep-ratchet.ts",
-  "scripts/lib/slot.ts",
+  "scripts/lib/slot/index.ts",
   "scripts/lib/smoke/card.ts",
   "scripts/lib/sonar-project.ts",
   "scripts/lib/spec-lint.ts",

@@ -780,6 +780,30 @@ describe("protocolo", () => {
     },
   );
 
+  test("teams.create and addMember carry an effort for the coordinator and each worker, and refuse a level that does not exist (#2310)", () => {
+    const create = {
+      projectId: "p1",
+      goal: "x",
+      workers: 2,
+      coordinatorEffort: "max",
+      workerEfforts: ["low", null],
+    };
+    const parsed = Command.safeParse({ id: "1", type: "teams.create", payload: create });
+    expect(parsed.success && parsed.data.payload).toEqual(create);
+    const add = { team: "t1", addMember: { persona: "qa", effort: "high" } };
+    const added = Command.safeParse({ id: "1", type: "teams.update", payload: add });
+    expect(added.success && added.data.payload).toEqual(add);
+    const nullable = { team: "t1", addMember: { effort: null } };
+    const none = Command.safeParse({ id: "1", type: "teams.update", payload: nullable });
+    expect(none.success && none.data.payload).toEqual(nullable);
+    const refuses = (type: string, payload: unknown) =>
+      Command.safeParse({ id: "1", type, payload }).success;
+    expect(refuses("teams.create", { ...create, coordinatorEffort: "turbo" })).toBe(false);
+    expect(refuses("teams.create", { ...create, workerEfforts: ["low", "turbo"] })).toBe(false);
+    expect(refuses("teams.create", { ...create, workerEfforts: Array(9).fill("low") })).toBe(false);
+    expect(refuses("teams.update", { team: "t1", addMember: { effort: "turbo" } })).toBe(false);
+  });
+
   test("payload inválido é recusado pelo schema", () => {
     expect(
       Command.safeParse({ id: "1", type: "session.create", payload: { cwd: "" } }).success,
