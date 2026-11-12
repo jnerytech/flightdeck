@@ -32,10 +32,7 @@ function wired() {
     log: () => {},
     history: { onChange: (listener) => listeners.push(listener) },
   });
-  stops.push(
-    () => built.usageIndex.stop(),
-    () => built.budgets.stop(),
-  );
+  stops.push(() => built.modules[0].stop?.());
   return { built, listeners, reads: () => reads };
 }
 
@@ -44,6 +41,34 @@ describe("costs-wiring: the host's usage index, costs and budgets (#1593)", () =
     const { built } = wired();
     await poll(() => built.costs.status().initialLoad.state === "done");
     expect(built.costs.status().initialLoad).toEqual(built.usageIndex.status());
+  });
+
+  test("its module serves the costs and the budgets, and stops after the server (#2094)", () => {
+    const { built } = wired();
+    const [module] = built.modules;
+    expect([
+      module.server?.costs?.costs === built.costs,
+      module.server?.costs?.budgets === built.budgets,
+      module.stopPhase,
+    ]).toEqual([true, true, "late"]);
+  });
+
+  test("its module's stop lets go of the usage index, then the budgets", async () => {
+    const { built } = wired();
+    const calls: string[] = [];
+    const { usageIndex, budgets } = built;
+    const indexStop = usageIndex.stop.bind(usageIndex);
+    const budgetsStop = budgets.stop.bind(budgets);
+    usageIndex.stop = async () => {
+      calls.push("usage index");
+      await indexStop();
+    };
+    budgets.stop = () => {
+      calls.push("budgets");
+      budgetsStop();
+    };
+    await built.modules[0].stop?.();
+    expect(calls).toEqual(["usage index", "budgets"]);
   });
 
   test("a reprice reads the pricing again", async () => {

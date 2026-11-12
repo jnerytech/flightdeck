@@ -18,14 +18,14 @@ function built(scanIntervalMs = 0) {
   const names = { adoptTitle: (...args: unknown[]) => adopted.push(args) } as unknown as Names;
   const manager = { list: () => [{ id: "fd-1", claudeSessionId: "c-1" }] };
   const store = new EventStore(":memory:");
-  const { history } = createHistory({
+  const { history, modules } = createHistory({
     db: store.db,
     config: { ...config, history: { ...config.history, scanIntervalMs } },
     names,
     manager: manager as never,
     log: () => {},
   });
-  return { history, adopted, store };
+  return { history, module: modules[0], adopted, store };
 }
 
 describe("history-wiring: the index of the recorded conversations (#1593)", () => {
@@ -37,6 +37,24 @@ describe("history-wiring: the index of the recorded conversations (#1593)", () =
         history.opts.excludeCwds?.includes("/skip"),
         history.opts.excludeCwds,
       ]).toEqual([config.history.roots, true, historyExcludes(config)]);
+    } finally {
+      store.close();
+    }
+  });
+
+  test("its module serves the index, and starts and stops it after the server (#2094)", async () => {
+    const { history, module, store } = built();
+    const calls: string[] = [];
+    history.start = () => calls.push("start");
+    history.stop = () => calls.push("stop");
+    try {
+      await module.start?.();
+      await module.stop?.();
+      expect([module.server?.history === history, module.stopPhase, calls]).toEqual([
+        true,
+        "late",
+        ["start", "stop"],
+      ]);
     } finally {
       store.close();
     }
