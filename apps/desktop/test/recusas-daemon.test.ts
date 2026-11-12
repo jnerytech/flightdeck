@@ -148,6 +148,7 @@ const REASONS = [
   "persona_not_applied",
   "session_target_needed",
   "terminal_sessions_off",
+  "terminal_stopping",
   "snippet_scope_fixed",
   "snippet_place_fixed",
   "snippet_file_missing",

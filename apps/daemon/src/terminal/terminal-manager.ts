@@ -167,6 +167,8 @@ export class TerminalManager {
   private readonly now: () => number;
   private flushTimer: unknown = null;
   private on: boolean;
+  /** Set by `stop`: the daemon is going, so nothing opens any more. */
+  private stopped = false;
 
   constructor(readonly opts: TerminalManagerOptions) {
     this.timers = opts.timers ?? realTimers;
@@ -198,6 +200,12 @@ export class TerminalManager {
       which: this.opts.which ?? whichOnPath,
     });
     return { enabled: this.on, max: this.opts.max ?? DEFAULT_MAX, shell: programOf(shell) };
+  }
+
+  /** After `stop` no PTY starts: nothing would kill it before the daemon exits. */
+  private assertRunning(): void {
+    if (this.stopped)
+      throw new FlightdeckError("invalid_state", "the daemon is stopping", "terminal_stopping");
   }
 
   /** Every terminal command goes through here: a host with the terminal off refuses them. */
@@ -267,6 +275,7 @@ export class TerminalManager {
   }
 
   async open(req: OpenRequest): Promise<TerminalInfo> {
+    this.assertRunning();
     this.assertOn();
     const cwd = req.internal ? req.cwd : await resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
@@ -321,6 +330,8 @@ export class TerminalManager {
       env.CLAUDE_CODE_SCROLL_SPEED || kept.CLAUDE_CODE_SCROLL_SPEED
         ? {}
         : { CLAUDE_CODE_SCROLL_SPEED: "3" };
+    // The stop may have run while this open waited on the folder or the settings.
+    this.assertRunning();
     let pty: Pty;
     try {
       pty = this.opts.pty({
@@ -484,6 +495,7 @@ export class TerminalManager {
 
   /** The daemon is stopping: no terminal outlives it. */
   stop(): void {
+    this.stopped = true;
     if (this.flushTimer !== null) this.timers.clear(this.flushTimer);
     this.flushTimer = null;
     this.killAll();

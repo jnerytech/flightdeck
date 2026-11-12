@@ -223,7 +223,7 @@ export async function startDaemon(
       configFile,
       // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
       // run waiting at a gate has no session but resumes after a restart).
-      running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
+      running: (): number => manager.activeSessionCount() + board.workflows.activeRuns().length,
     }),
   );
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
@@ -331,42 +331,53 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const board = createBoard({
-    folderLocks,
-    preparePersonas: prepare,
-    trustForKnowledge,
-    log: (line) => logger.log(line),
-    db: store.db,
-    manager,
-    quota,
-    memory: memoryGate,
-    pause: hostPause,
-    // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
-    // below is ready by then) and the project's trust, through the bounded runner.
-    checkLoop: checkLoop.board,
-    vaultValues: () => heldValues(),
-    config,
-    configFile,
-    budgets,
-    projectKeys: keys,
-    cardCost: costs.card.bind(costs),
-    // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
-    idle: snapshots.idle.bind(snapshots),
-    // A card raised from an agent's findings keeps automatic approval off (issue #79).
-    suspendApproval: autoApprove.suspendCard.bind(autoApprove),
-  });
-  // In the background: the radar reads the worktrees; the project keys get cached for the first card.
-  void board.start();
-  void board.warmProjectKeys();
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
-  const { terminals, onTerminalSettings } = createTerminals({
-    config,
-    configFile,
-    folderLocks,
-    pty: options.pty,
-    self: selfCommand,
-    log: (message) => logger.log(message),
-  });
+  const { terminals } = await domains.add(
+    createTerminals({
+      config,
+      configFile,
+      folderLocks,
+      pty: options.pty,
+      self: selfCommand,
+      log: (message) => logger.log(message),
+    }),
+  );
+  const { board } = await domains.add(
+    createBoard({
+      folderLocks,
+      preparePersonas: prepare,
+      trustForKnowledge,
+      log: (line) => logger.log(line),
+      db: store.db,
+      manager,
+      quota,
+      memory: memoryGate,
+      pause: hostPause,
+      // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
+      // below is ready by then) and the project's trust, through the bounded runner.
+      checkLoop: checkLoop.board,
+      vaultValues: () => heldValues(),
+      config,
+      configFile,
+      budgets,
+      projectKeys: keys,
+      cardCost: costs.card.bind(costs),
+      // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
+      idle: snapshots.idle.bind(snapshots),
+      // A card raised from an agent's findings keeps automatic approval off (issue #79).
+      suspendApproval: autoApprove.suspendCard.bind(autoApprove),
+    }),
+  );
+  // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
+  const { manager: runs } = await domains.add(
+    createRunEnv({
+      db: store.db,
+      portBase: config.run.portBase,
+      portProbe: options.portProbe,
+      terminals,
+      board,
+    }),
+  );
   // The diff of every session and card, for the review (phase 11), a plain session's commit
   // and PR (#1133), and the files viewer.
   const changes = createChanges({
@@ -485,14 +496,6 @@ export async function startDaemon(
       quota,
     }),
   );
-  // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
-  const runEnv = createRunEnv({
-    db: store.db,
-    portBase: config.run.portBase,
-    portProbe: options.portProbe,
-    terminals,
-    board,
-  });
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
@@ -613,8 +616,6 @@ export async function startDaemon(
     log: logger.log.bind(logger),
     actions,
     autoApprove,
-    board,
-    runenv: { configs: runEnv.configs, manager: runEnv.manager },
     usage,
     bg: createBgService({
       db: store.db,
@@ -631,12 +632,10 @@ export async function startDaemon(
     review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
-    terminals,
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
-    onTerminalSettings,
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
@@ -651,7 +650,7 @@ export async function startDaemon(
     worktrees: createWorktrees({
       board,
       sessions: manager,
-      runs: runEnv.manager,
+      runs,
       terminals,
       externals: central.external,
       locks: folderLocks,
@@ -702,9 +701,6 @@ export async function startDaemon(
           await wsl?.stop();
           actions.stop();
           vault.stop();
-          for (const unwatch of runEnv.unwatch) unwatch();
-          board.stop();
-          terminals.stop();
           await central.stop();
           sleeper.stop();
           stall.stop();

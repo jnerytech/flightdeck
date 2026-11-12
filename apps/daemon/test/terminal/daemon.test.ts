@@ -419,6 +419,28 @@ describe("terminal-daemon", () => {
     expect(manager.list()).toEqual([]);
   });
 
+  test("after stop no terminal opens, not even one asked for before it: nothing outlives the daemon (#1593)", async () => {
+    // The first open waits on the person's Claude Code settings until the stop has run.
+    const gate = Promise.withResolvers<Record<string, string>>();
+    const asked = Promise.withResolvers<void>();
+    const { manager, ptys, open } = setup({
+      claudeEnv: () => {
+        asked.resolve();
+        return gate.promise;
+      },
+    });
+    const inFlight = code(open);
+    await asked.promise;
+    manager.stop();
+    gate.resolve({});
+    expect([await inFlight, await code(open), ptys.spawned.length, manager.list()]).toEqual([
+      "invalid_state",
+      "invalid_state",
+      0,
+      [],
+    ]);
+  });
+
   test("o adaptador do Bun repassa tamanho, cwd e ambiente explícitos, dados, escrita, resize e kill; o código vem depois do fim da saída", async () => {
     const calls: Array<{ argv: string[]; options: Record<string, unknown> }> = [];
     const written: string[] = [];

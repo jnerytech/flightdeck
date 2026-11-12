@@ -11,11 +11,14 @@ import { Maintenance } from "../../src/maintenance/maintenance.ts";
 import type { Holder, PowerContext } from "../../src/power/keep-awake.ts";
 import { KeepAwake } from "../../src/power/keep-awake.ts";
 import { Quota } from "../../src/quota/quota.ts";
+import { RunManager } from "../../src/runenv/manager.ts";
+import { CardPorts } from "../../src/runenv/ports.ts";
 import type { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { Teams } from "../../src/teams/teams.ts";
 import { TeleportPackages } from "../../src/teleport/package.ts";
+import { TerminalManager } from "../../src/terminal/terminal-manager.ts";
 import { PrWatch } from "../../src/watch/service.ts";
 import { poll, tempDir, workspace } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";
@@ -107,6 +110,25 @@ describe("stop-order: what a stopping daemon lets go first", () => {
   });
 
   test("every domain stops once, the board's work before the board, the late ones after the sessions, the store last (#2094)", async () => {
+    const order: string[] = [];
+    // The run env follows the board from its start: written down when it lets go of it.
+    const follows: Array<[{ follow: (...args: never[]) => () => void }, string]> = [
+      [RunManager.prototype, "runs unfollow"],
+      [CardPorts.prototype, "ports unfollow"],
+    ];
+    for (const [proto, name] of follows) {
+      const original = proto.follow;
+      proto.follow = function (this: unknown, ...args: never[]) {
+        const off = original.apply(this, args);
+        return () => {
+          order.push(name);
+          off();
+        };
+      };
+      cleanups.push(() => {
+        proto.follow = original;
+      });
+    }
     const dir = tempDir();
     const { root } = workspace();
     const file = join(dir, "config.json");
@@ -127,7 +149,6 @@ describe("stop-order: what a stopping daemon lets go first", () => {
       { powerContext: fakePower([]).ctx },
     );
     // Written down once the daemon is up: only what its stop calls, in the order it calls it.
-    const order: string[] = [];
     const record = (proto: object, method: string, name: string) => {
       const target = proto as Record<string, (...args: unknown[]) => unknown>;
       const original = target[method] as (...args: unknown[]) => unknown;
@@ -147,6 +168,7 @@ describe("stop-order: what a stopping daemon lets go first", () => {
       [Teams.prototype, "stop", "teams"],
       [Maintenance.prototype, "stop", "maintenance"],
       [Board.prototype, "stop", "board"],
+      [TerminalManager.prototype, "stop", "terminals"],
       [SessionManager.prototype, "shutdown", "sessions"],
       [TeleportPackages.prototype, "stop", "teleport"],
       [HistoryIndexer.prototype, "stop", "history"],
@@ -168,7 +190,7 @@ describe("stop-order: what a stopping daemon lets go first", () => {
 
     await running.stop();
     const at = (name: string) => order.indexOf(name);
-    const names = stops.map(([, , name]) => name);
+    const names = [...stops.map(([, , name]) => name), ...follows.map(([, name]) => name)];
     expect(names.filter((name) => order.filter((n) => n === name).length !== 1)).toEqual([]);
     expect([
       ["keep-awake first", at("keepAwake") === 0],
@@ -181,6 +203,12 @@ describe("stop-order: what a stopping daemon lets go first", () => {
         "the watch and the board sync before the board",
         Math.max(at("watch"), at("boardSync")) < at("board"),
       ],
+      [
+        "the run env lets go of the board after the drain, before the board stops",
+        at("drained") < Math.min(at("runs unfollow"), at("ports unfollow")) &&
+          Math.max(at("runs unfollow"), at("ports unfollow")) < at("board"),
+      ],
+      ["the terminals after the board", at("board") < at("terminals")],
       ["the sessions after the board", at("board") < at("sessions")],
       [
         "the late ones after the sessions",
@@ -192,6 +220,8 @@ describe("stop-order: what a stopping daemon lets go first", () => {
       ["the automations stopped, then drained", true],
       ["drained before the watch and the board sync", true],
       ["the watch and the board sync before the board", true],
+      ["the run env lets go of the board after the drain, before the board stops", true],
+      ["the terminals after the board", true],
       ["the sessions after the board", true],
       ["the late ones after the sessions", true],
       ["the store last", true],
