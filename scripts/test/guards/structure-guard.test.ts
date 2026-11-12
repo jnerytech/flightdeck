@@ -4,7 +4,7 @@ import {
   runStructureGuard,
   type StructureInput,
   structureVerdict,
-} from "../../lib/structure-guard.ts";
+} from "../../lib/guards/structure-guard.ts";
 
 const TEST_BEFORE = [
   'import { describe, expect, test } from "bun:test";',

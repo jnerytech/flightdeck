@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { mdLimit, oversized } from "../../lib/md-size.ts";
+import { mdLimit, oversized } from "../../lib/guards/md-size.ts";
 import { overBaseline } from "../../lib/ratchets/layout.ts";
 
 // repo-wide (#1108): reads every tracked doc, so CI's quick job runs it on every PR.

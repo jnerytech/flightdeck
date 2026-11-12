@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { staticImports } from "../../lib/bundle-reach.ts";
-import { anchorsOf, githubSlug } from "../../lib/md-links.ts";
+import { anchorsOf, githubSlug } from "../../lib/guards/md-links.ts";
 
 const LIMIT_MS = 250;
 

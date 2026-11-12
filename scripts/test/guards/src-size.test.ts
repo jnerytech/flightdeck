@@ -2,14 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { overBaseline } from "../../lib/ratchets/layout.ts";
 import {
   crowdedDomains,
   isMeasured,
   oversizedSources,
   SRC_LIMIT,
   shallowModules,
-} from "../../lib/src-size.ts";
+} from "../../lib/guards/src-size.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
 
 // repo-wide (#1108): reads every tracked source file, so CI's quick job runs it on every PR.
 

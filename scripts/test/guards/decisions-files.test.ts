@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { decisionFileProblem, FROZEN_DECISIONS_SHA256 } from "../../lib/decisions.ts";
+import { decisionFileProblem, FROZEN_DECISIONS_SHA256 } from "../../lib/guards/decisions.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");

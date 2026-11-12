@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { FileChange } from "../../lib/structure-guard.ts";
-import { countTests, removalVerdict, runTestsRemoved } from "../../lib/tests-removed.ts";
+import type { FileChange } from "../../lib/guards/structure-guard.ts";
+import { countTests, removalVerdict, runTestsRemoved } from "../../lib/guards/tests-removed.ts";
 
 const FILE = "apps/desktop/test/visual-direction/cabecalho.test.tsx";
 const IMPORTS = 'import { expect, test } from "bun:test";\n';
