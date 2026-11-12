@@ -27,7 +27,7 @@ project's harness (#75). The design is on #78. This record covers slice S-T1.
   - the sections Goal, Acceptance criteria (the card's `- [ ]` items, or an empty one), Out of
     scope and Test plan.
   - Placeholders are filled in one pass, so a criterion that names one stays as it is.
-- **How it is written.** Through `createInside` (`apps/daemon/src/create-inside.ts`), moved out of
+- **How it is written.** Through `createInside` (`apps/daemon/src/board/create-inside.ts`), moved out of
   the harness apply (#988) so the two share it:
   - every folder on the way is made or found as a real folder;
   - the file is opened with `O_CREAT | O_EXCL` and without following a link;
