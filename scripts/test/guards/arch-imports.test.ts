@@ -3,6 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { cruise } from "dependency-cruiser";
 import { grownRules, KNOWN, newRules, ruleCounts, runArchRatchet } from "../../lib/arch-ratchet.ts";
+import { type CruiseModule, cycleFiles } from "../../lib/cycle-files.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 // The real rules: a planted import is judged by what CI runs (`bun run arch`).
@@ -34,6 +35,24 @@ async function planted(files: Record<string, string>): Promise<string[]> {
       summary: { violations: { rule: { name: string }; from: string; to: string }[] };
     };
     return output.summary.violations.map((v) => `${v.rule.name} ${v.from} -> ${v.to}`).sort();
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+/** The files in a cycle of a planted desktop tree, counted the way `bun run arch` counts them. */
+async function plantedCycleFiles(files: Record<string, string>): Promise<string[]> {
+  const root = realTempDir("fd-arch-");
+  try {
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), text);
+    }
+    const result = await cruise(["apps/desktop/src"], {
+      ...PLANTED_OPTIONS,
+      baseDir: root,
+    } as Parameters<typeof cruise>[1]);
+    return cycleFiles((result.output as { modules: CruiseModule[] }).modules);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -124,13 +143,77 @@ describe("arch-imports: the domain borders (#1591)", () => {
     expect(found).toEqual([]);
   });
 
-  test("a cycle in the desktop fails under its own rule, so the daemon's baseline does not grow (#1624)", async () => {
-    const found = await planted({
+  test("a cycle in the desktop is no violation of the borders: its files are counted instead (#1624)", async () => {
+    const files = {
       "apps/desktop/src/features/board/a.ts": 'import { b } from "./b.ts";\nexport const a = b;\n',
       "apps/desktop/src/features/board/b.ts": 'import { a } from "./a.ts";\nexport const b = a;\n',
+    };
+    expect(await planted(files)).toEqual([]);
+    expect(await plantedCycleFiles(files)).toEqual([
+      "apps/desktop/src/features/board/a.ts",
+      "apps/desktop/src/features/board/b.ts",
+    ]);
+  });
+
+  test("the files in a cycle do not change when a file moves or a barrel carries the import (#1624)", async () => {
+    const A = "apps/desktop/src/features/board/a.ts";
+    const direct = await plantedCycleFiles({
+      [A]: 'import { b } from "../sessions/b.ts";\nexport const a = b;\n',
+      "apps/desktop/src/features/sessions/b.ts":
+        'import { a } from "../board/a.ts";\nexport const b = a;\n',
     });
-    expect(found).toEqual([
-      "desktop-no-cycle apps/desktop/src/features/board/a.ts -> apps/desktop/src/features/board/b.ts",
+    // b moves to another folder and reaches a through the feature's index.ts, as CLAUDE.md requires
+    const moved = await plantedCycleFiles({
+      [A]: 'import { b } from "../setup/b.ts";\nexport const a = b;\n',
+      "apps/desktop/src/features/board/index.ts": 'export { a } from "./a.ts";\n',
+      "apps/desktop/src/features/setup/b.ts":
+        'import { a } from "../board/index.ts";\nexport const b = a;\n',
+    });
+    expect(direct).toHaveLength(2);
+    expect(moved).toHaveLength(2);
+    expect(moved).not.toContain("apps/desktop/src/features/board/index.ts");
+  });
+
+  test("a chain, an import of one's own barrel and a self import sit in no cycle (#1624)", async () => {
+    expect(
+      await plantedCycleFiles({
+        "apps/desktop/src/features/board/a.ts":
+          'import { b } from "./b.ts";\nexport const a = b;\n',
+        "apps/desktop/src/features/board/b.ts":
+          'import { i } from "./index.ts";\nimport { s } from "./b.ts";\nexport const b = [i, s];\n',
+        "apps/desktop/src/features/board/c.ts": "export const c = 3;\n",
+        "apps/desktop/src/features/board/index.ts":
+          'export { b } from "./b.ts";\nexport { c } from "./c.ts";\n',
+      }),
+    ).toEqual([]);
+  });
+
+  test("barrels that re-export barrels are followed to the files, and two that re-export each other end the walk (#1624)", () => {
+    const module = (source: string, ...deps: [string, string][]) => ({
+      source,
+      dependencies: deps.map(([resolved, type]) => ({ resolved, dependencyTypes: [type] })),
+    });
+    expect(
+      cycleFiles([
+        module("a.ts", ["x/index.ts", "import"]),
+        module("b.ts", ["a.ts", "import"]),
+        module("x/index.ts", ["y/index.ts", "export"]),
+        module("y/index.ts", ["b.ts", "export"], ["x/index.ts", "export"]),
+      ]),
+    ).toEqual(["a.ts", "b.ts"]);
+  });
+
+  test("an index.ts with code of its own is a file like any other, so a cycle through it counts it (#1624)", async () => {
+    expect(
+      await plantedCycleFiles({
+        "apps/desktop/src/features/board/index.ts":
+          'import { b } from "../sessions/b.ts";\nexport const a = b;\n',
+        "apps/desktop/src/features/sessions/b.ts":
+          'import { a } from "../board/index.ts";\nexport const b = a;\n',
+      }),
+    ).toEqual([
+      "apps/desktop/src/features/board/index.ts",
+      "apps/desktop/src/features/sessions/b.ts",
     ]);
   });
 

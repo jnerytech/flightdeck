@@ -8,8 +8,10 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { cruise } from "dependency-cruiser";
 import { CONFIG, KNOWN, newRules } from "./lib/arch-ratchet.ts";
 import {
+  cycleBaseline,
   entryRows,
   formatEntries,
   formatTable,
@@ -18,6 +20,7 @@ import {
   ratchetRows,
   shapeShares,
 } from "./lib/arch-report.ts";
+import { type CruiseModule, cycleFiles } from "./lib/cycle-files.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
@@ -51,6 +54,14 @@ function runKnip(): string {
   return proc.stdout;
 }
 
+/** The desktop's files in an import cycle, from dependency-cruiser's modules (#1624); the rules are not run, only the edges. */
+async function desktopCycleCount(): Promise<number> {
+  const { options } = require("../.dependency-cruiser.cjs") as { options: Record<string, unknown> };
+  const result = await cruise(["apps/desktop/src"], options as Parameters<typeof cruise>[1]);
+  return cycleFiles((result.output as { modules: CruiseModule[] }).modules).length;
+}
+
+const CYCLES = "desktop-cycles-baseline.json";
 const mergeBase = ["origin/main", "main"]
   .map((main) => git(["merge-base", "HEAD", main])?.trim())
   .find((found) => found);
@@ -80,6 +91,13 @@ const rows = ratchetRows({
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
   newRules: newRules(mergeBase ? git(["show", `${mergeBase}:${CONFIG}`]) : null, read(CONFIG)),
+  desktopCycles: {
+    today: await desktopCycleCount(),
+    baseline: cycleBaseline(
+      mergeBase ? git(["show", `${mergeBase}:${CYCLES}`]) : null,
+      read(CYCLES),
+    ),
+  },
   srcOversized: oversizedSources(sources.filter(({ path }) => isMeasured(path))),
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),

@@ -14,6 +14,8 @@ export type ArchInputs = {
   knownHead: string | null;
   /** The rules the head's `.dependency-cruiser.cjs` adds to main's (`newRules`); today is their first baseline (#1624). */
   newRules?: ReadonlySet<string>;
+  /** The desktop's files in an import cycle today and in desktop-cycles-baseline.json (#1624); absent when not counted. */
+  desktopCycles?: { today: number; baseline: number };
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;
   srcBaseline: Record<string, number>;
@@ -41,6 +43,22 @@ export function shapeShares(filesByTier: Record<string, number>): Record<string,
   return { integration: share("integration"), e2e: share("e2e") };
 }
 
+/** The desktop cycle baseline (`{ "files": n }`): the head's file may lower main's, never raise it (#1624). */
+export function cycleBaseline(onMain: string | null, head: string | null): number {
+  const files = (text: string | null): number | null => {
+    try {
+      const value = (JSON.parse(text ?? "{}") as { files?: unknown }).files;
+      return typeof value === "number" ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const own = files(head);
+  const base = files(onMain);
+  if (own === null) return 0; // unreadable: nothing is allowed
+  return base === null ? own : Math.min(base, own);
+}
+
 /** One row per ratchet figure, sorted by name. */
 export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
   const rows: RatchetRow[] = [];
@@ -55,6 +73,12 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
         today: head[rule] ?? 0,
       });
   }
+  if (inputs.desktopCycles)
+    rows.push({
+      ratchet: "desktop-cycles files in a cycle",
+      baseline: inputs.desktopCycles.baseline,
+      today: inputs.desktopCycles.today,
+    });
   rows.push({
     ratchet: "src-size files over the limit",
     baseline: Object.keys(inputs.srcBaseline).length,
