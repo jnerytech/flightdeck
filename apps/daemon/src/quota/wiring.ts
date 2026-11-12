@@ -1,7 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { type Config, updateConfigFile } from "../config.ts";
-import type { DomainModule } from "../server/index.ts";
-import { serverGroup } from "../server.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { QuotaHistory } from "./history.ts";
 import { Quota } from "./quota.ts";
 
