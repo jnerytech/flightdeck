@@ -6,12 +6,12 @@ import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { cardDiff, workingDiff } from "../board/diff.ts";
 import { aheadBehind } from "../board/merge.ts";
-import { HEAD, type Rev, refArg } from "../board/ref-arg.ts";
-import type { DiffFile } from "../board/types.ts";
+import { HEAD, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError, resolveAllowedCwd } from "../kernel/index.ts";
 import type { Timers } from "../quota/quota.ts";
 import { commitHooks, withDigests } from "./session-commit.ts";
 import { pushAddress } from "./session-pr.ts";
+import type { ChangesReader, ChangesResult, ResolvedTarget } from "./target.ts";
 
 /** Watches a folder recursively; `filename` is relative to it (`null` when the OS does not say). */
 export type WatchFn = (
@@ -33,32 +33,6 @@ export interface ChangesOptions {
   terminals?: { cwdOf(terminalId: string): string | null };
   /** A project's checkout (`project:<id>` targets, #797) is a target only inside these. */
   allowedRoots?: readonly string[];
-}
-
-/** What a target (`session:<claudeSessionId>` or `card:<id>`) points at. */
-export interface ResolvedTarget {
-  target: string;
-  /** The repository's top level (the worktree, for a card). */
-  root: string;
-  /** The card's base branch; `null` for a session, whose diff is against `HEAD`. */
-  base: Rev | null;
-  cardId: string | null;
-  claudeSessionId: string | null;
-  /** The card's branch: its position is read from it, never from a `HEAD` that a rebase detaches. */
-  branch?: string;
-}
-
-export interface ChangesResult {
-  target: string;
-  root: string;
-  base: string | null;
-  files: DiffFile[];
-  /** A card's commits ahead of and behind its base; `null` for a session. */
-  position: { ahead: number; behind: number } | null;
-  /** The commit hooks a commit of this checkout runs (#1133); only against `HEAD`. */
-  hooks?: string[];
-  /** Where a PR's push would go, with no password (#1133); only against `HEAD`. */
-  remote?: string;
 }
 
 const DEBOUNCE_MS = 500;
@@ -89,7 +63,7 @@ const SESSION_CWD = `SELECT cwd FROM (
  * The working tree of any session or card, as a diff. The folder always comes from what the
  * daemon recorded (sessions, external sessions, history, card worktrees), never from the client.
  */
-export class Changes {
+export class Changes implements ChangesReader {
   private readonly timers: Timers;
 
   constructor(readonly opts: ChangesOptions) {

@@ -10,13 +10,13 @@ import { FlightdeckError, readRegular, ulid } from "../kernel/index.ts";
 import { maskConfig, maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
-import type { Changes, ResolvedTarget } from "./changes.ts";
 import { linesOf, located, refuseCredential } from "./paths.ts";
 import { frameReviewerComment } from "./second-opinion.ts";
+import type { ChangesReader, ResolvedTarget } from "./target.ts";
 
 export interface ReviewCommentsOptions {
   db: Database;
-  changes: Changes;
+  changes: Pick<ChangesReader, "resolve">;
   manager: SessionManager;
   board?: Board;
   /** Terminal sessions and their channels (phase 5). */

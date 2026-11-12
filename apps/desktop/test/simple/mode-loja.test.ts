@@ -21,35 +21,35 @@ async function setup(ui: { mode: "full" | "simple"; locked: boolean }, mem = mem
 describe("simple-mode-loja: the app's mode per host", () => {
   test("Given a host set to simple, When the app opens it, Then it is in simple mode and the person can switch", async () => {
     const { store, hostId } = await setup({ mode: "simple", locked: false });
-    expect(store.uiMode(hostId)).toEqual({ mode: "simple", canSwitch: true });
+    expect(store.uiModes.mode(hostId)).toEqual({ mode: "simple", canSwitch: true });
   });
 
   test("Given a person who chose full on that host, Then full wins, is kept for the next start, and forgetting it brings the host's default back", async () => {
     const { store, hostId, mem } = await setup({ mode: "simple", locked: false });
-    store.setUiChoice(hostId, "full");
-    expect(store.uiMode(hostId).mode).toBe("full");
+    store.uiModes.choose(hostId, "full");
+    expect(store.uiModes.mode(hostId).mode).toBe("full");
     expect(store.getState().uiChoices).toEqual({ [hostId]: "full" });
     const again = new AppStore(mem.platform, { baseDelayMs: 10 });
     cleanups.push(() => again.dispose());
     expect(again.getState().uiChoices).toEqual({ [hostId]: "full" });
-    store.setUiChoice(hostId, null);
-    expect(store.uiMode(hostId).mode).toBe("simple");
+    store.uiModes.choose(hostId, null);
+    expect(store.uiModes.mode(hostId).mode).toBe("simple");
   });
 
   test("Given a locked host, Then the choice does not move it and there is no switch", async () => {
     const { store, hostId } = await setup({ mode: "simple", locked: true });
-    store.setUiChoice(hostId, "full");
-    expect(store.uiMode(hostId)).toEqual({ mode: "simple", canSwitch: false });
+    store.uiModes.choose(hostId, "full");
+    expect(store.uiModes.mode(hostId)).toEqual({ mode: "simple", canSwitch: false });
   });
 
   test("Given full mode, When the host's default is set to simple and locked, Then the host says so and the app follows", async () => {
     const { store, hostId } = await setup({ mode: "full", locked: false });
-    expect(await store.setHostUi(hostId, { mode: "simple", locked: true })).toBe(true);
+    expect(await store.uiModes.setHostUi(hostId, { mode: "simple", locked: true })).toBe(true);
     expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui).toEqual({
       mode: "simple",
       locked: true,
     });
-    expect(store.uiMode(hostId)).toEqual({ mode: "simple", canSwitch: false });
+    expect(store.uiModes.mode(hostId)).toEqual({ mode: "simple", canSwitch: false });
   });
 
   test("Given a host without the setting (an older daemon), Then it is full", async () => {
@@ -59,6 +59,6 @@ describe("simple-mode-loja: the app's mode per host", () => {
     cleanups.push(() => store.dispose());
     const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo);
-    expect(store.uiMode(hostId)).toEqual({ mode: "full", canSwitch: true });
+    expect(store.uiModes.mode(hostId)).toEqual({ mode: "full", canSwitch: true });
   });
 });
