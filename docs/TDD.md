@@ -234,7 +234,7 @@ page (`docs/DESIGN.md`) lists the anchors the app owns.
 3. **`data-testid` only as a last resort**, for an element with no role and no slot of its own (an
    `aria-hidden` line, for example). The line above it carries a `// testid:` comment that says why.
    - `apps/desktop/testid-baseline.json` holds their count.
-   - `apps/desktop/test/test-anchors.test.tsx` fails on a `data-testid` with no `testid:` comment,
+   - `apps/desktop/test/layout/test-anchors.test.tsx` fails on a `data-testid` with no `testid:` comment,
      and on more of them than the baseline.
    - The count only goes down: lower the baseline when one goes away.
 
