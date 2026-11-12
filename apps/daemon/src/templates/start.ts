@@ -7,8 +7,7 @@ import type {
   TemplateStartResult,
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../kernel/index.ts";
-import { isInside, resolveAllowedCwd } from "../paths.ts";
+import { FlightdeckError, isInside, resolveAllowedCwd } from "../kernel/index.ts";
 import type { TaskTracker } from "./tasks.ts";
 
 /** How far each preset lets Claude go: never past editing the chosen folder, never without questions. */

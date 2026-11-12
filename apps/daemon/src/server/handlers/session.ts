@@ -13,7 +13,7 @@ import type {
 import { userHome } from "../../config.ts";
 import type { HistoryIndexer } from "../../history/indexer.ts";
 import type { LiveState } from "../../history/session-line.ts";
-import { resolveAllowedCwd } from "../../paths.ts";
+import { resolveAllowedCwd } from "../../kernel/index.ts";
 import { realPathOf, statKind } from "../../permissions/path-kind.ts";
 import { rulePaths, ruleReadings } from "../../permissions/permission-updates.ts";
 import { pathKinds, realPaths } from "../../permissions/rule-risk.ts";

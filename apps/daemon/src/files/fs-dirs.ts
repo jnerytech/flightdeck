@@ -2,7 +2,7 @@ import type { Dirent } from "node:fs";
 import { readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, sep } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { isInside, resolveAllowedCwd } from "../paths.ts";
+import { isInside, resolveAllowedCwd } from "../kernel/index.ts";
 
 export interface DirEntry {
   name: string;

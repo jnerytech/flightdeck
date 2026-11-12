@@ -8,7 +8,7 @@ import {
   type KnowledgeEntry,
   type KnowledgeListResult,
 } from "@flightdeck/protocol";
-import { samePath } from "../paths.ts";
+import { samePath } from "../kernel/index.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { parseKnowledge } from "./parse.ts";
 
