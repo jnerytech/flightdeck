@@ -21,7 +21,6 @@ export { ExternalSessionsSlice } from "./external.ts";
 export {
   type Finish,
   FinishedSlice,
-  loadFinished,
   sinceLastLook,
 } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";

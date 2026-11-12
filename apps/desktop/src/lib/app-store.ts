@@ -131,7 +131,6 @@ import {
   HISTORY_LIST_LIMIT,
   hubRows,
   initialSessionsState,
-  loadFinished,
   NewSessionPrefs,
   type SessionCommandsSlice,
   type SessionListsSlice,
@@ -348,6 +347,7 @@ export class AppStore {
   readonly external: ExternalSessionsSlice;
   /** What the Sessions screen lists from the online hosts (#1596). */
   private readonly sessionLists: SessionListsSlice;
+  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
   private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
@@ -890,8 +890,7 @@ export class AppStore {
 
   async init(): Promise<void> {
     this.inbox.load();
-    const kept = loadFinished(this.platform.storage);
-    this.update({ finished: kept.list, finishedLook: kept.lastLook });
+    this.finished.load();
     this.inbox.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();

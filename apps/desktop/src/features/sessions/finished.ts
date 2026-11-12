@@ -111,7 +111,7 @@ export interface FinishedCore {
   state(): FinishedSliceState;
   update(patch: Partial<Pick<AppState, "finished" | "finishedLook">>): void;
   /** Where the list is kept between runs. */
-  storage: { setItem(key: string, value: string): void };
+  storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
   /** Milliseconds now. */
   now(): number;
   /** Whether the app's window has the focus. */
@@ -129,6 +129,12 @@ export interface FinishedCore {
  */
 export class FinishedSlice {
   constructor(private readonly core: FinishedCore) {}
+
+  /** The list and the last look kept from the previous run. */
+  load(): void {
+    const kept = loadFinished(this.core.storage);
+    this.core.update({ finished: kept.list, finishedLook: kept.lastLook });
+  }
 
   /** The person looked at Needs you: what finished before now is no longer new. */
   seen(): void {
