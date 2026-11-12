@@ -8,114 +8,134 @@ import type { Handlers } from "../dispatch.ts";
 export const agentsHandlers = {
   "mcp.list": async (payload, { server }) => {
     return {
-      servers: await server.need("mcp").list(server.projectPath(payload.projectId)),
+      servers: await server.needIn("agentSetup", "mcp").list(server.projectPath(payload.projectId)),
     };
   },
   "mcp.test": async (payload, { server }) => {
     const { projectId, name, confirm } = payload;
-    return await server.need("mcp").test(server.projectPath(projectId), name, confirm === true);
+    return await server
+      .needIn("agentSetup", "mcp")
+      .test(server.projectPath(projectId), name, confirm === true);
   },
   "mcp.save": async (payload, { server }) => {
     const path = server.projectPath(payload.projectId);
-    await server.need("mcp").save(path, payload.server, payload.confirm === true);
-    return { servers: await server.need("mcp").list(path) };
+    await server.needIn("agentSetup", "mcp").save(path, payload.server, payload.confirm === true);
+    return { servers: await server.needIn("agentSetup", "mcp").list(path) };
   },
   "mcp.remove": async (payload, { server }) => {
     const path = server.projectPath(payload.projectId);
-    await server.need("mcp").remove(path, payload.name, payload.confirm === true);
-    return { servers: await server.need("mcp").list(path) };
+    await server.needIn("agentSetup", "mcp").remove(path, payload.name, payload.confirm === true);
+    return { servers: await server.needIn("agentSetup", "mcp").list(path) };
   },
   "mcp.toggle": async (payload, { server }) => {
     const { projectId, name, enabled, confirm, sessionId } = payload;
     const path = server.projectPath(projectId);
-    await server.need("mcp").toggle(path, name, enabled, confirm === true);
+    await server.needIn("agentSetup", "mcp").toggle(path, name, enabled, confirm === true);
     if (sessionId) await server.manager.toggleMcpServer(sessionId, name, enabled);
-    return { servers: await server.need("mcp").list(path) };
+    return { servers: await server.needIn("agentSetup", "mcp").list(path) };
   },
   "mcp.status": async (payload, { server }) => {
     return { servers: await server.manager.mcpStatus(payload.sessionId) };
   },
   "agentcfg.list": async (payload, { server }) => {
     const { projectId, kind } = payload;
-    return { items: await server.need("agentcfg").list(server.projectPath(projectId), kind) };
+    return {
+      items: await server
+        .needIn("agentSetup", "agentcfg")
+        .list(server.projectPath(projectId), kind),
+    };
   },
   "agentcfg.read": async (payload, { server }) => {
     const { projectId, kind, path, origin } = payload;
-    return await server.need("agentcfg").read(server.projectPath(projectId), kind, path, origin);
+    return await server
+      .needIn("agentSetup", "agentcfg")
+      .read(server.projectPath(projectId), kind, path, origin);
   },
   "agentcfg.write": async (payload, { server }) => {
     const { projectId, confirm, ...input } = payload;
-    const written = await server.need("agentcfg").write(server.projectPath(projectId), {
-      ...input,
-      confirm: confirm === true,
-    });
+    const written = await server
+      .needIn("agentSetup", "agentcfg")
+      .write(server.projectPath(projectId), {
+        ...input,
+        confirm: confirm === true,
+      });
     return written;
   },
   "plugins.list": async (_payload, { server }) => {
-    return await server.need("plugins").list();
+    return await server.needIn("agentSetup", "plugins").list();
   },
   "plugins.detail": async (payload, { server }) => {
-    return await server.need("plugins").detail(payload.plugin);
+    return await server.needIn("agentSetup", "plugins").detail(payload.plugin);
   },
   "plugins.preview": async (payload, { server }) => {
     const { plugin, dir } = payload;
     return await server
-      .need("plugins")
+      .needIn("agentSetup", "plugins")
       .preview(dir !== undefined ? { dir } : { plugin: plugin as string });
   },
   "plugins.previewUpdate": async (payload, { server }) => {
-    return await server.need("plugins").previewUpdate(payload.plugin);
+    return await server.needIn("agentSetup", "plugins").previewUpdate(payload.plugin);
   },
   "plugins.install": async (payload, { server }) => {
-    return await server.need("plugins").install(payload);
+    return await server.needIn("agentSetup", "plugins").install(payload);
   },
   "plugins.update": async (payload, { server }) => {
-    return await server.need("plugins").update(payload);
+    return await server.needIn("agentSetup", "plugins").update(payload);
   },
   "plugins.uninstall": async (payload, { server }) => {
     const { confirm, ...input } = payload;
-    return await server.need("plugins").uninstall({ ...input, confirm: confirm === true });
+    return await server
+      .needIn("agentSetup", "plugins")
+      .uninstall({ ...input, confirm: confirm === true });
   },
   "plugins.pin": async (payload, { server }) => {
-    return await server.need("plugins").pin(payload.plugin, payload.pinned);
+    return await server.needIn("agentSetup", "plugins").pin(payload.plugin, payload.pinned);
   },
   "plugins.marketplaceAdd": async (payload, { server }) => {
     const { confirm, ...input } = payload;
-    return await server.need("plugins").marketplaceAdd({ ...input, confirm: confirm === true });
+    return await server
+      .needIn("agentSetup", "plugins")
+      .marketplaceAdd({ ...input, confirm: confirm === true });
   },
   "plugins.marketplaceRemove": async (payload, { server }) => {
     const { confirm, ...input } = payload;
-    return await server.need("plugins").marketplaceRemove({ ...input, confirm: confirm === true });
+    return await server
+      .needIn("agentSetup", "plugins")
+      .marketplaceRemove({ ...input, confirm: confirm === true });
   },
   "plugins.marketplaceUpdate": async (payload, { server }) => {
-    return await server.need("plugins").marketplaceUpdate(payload.name);
+    return await server.needIn("agentSetup", "plugins").marketplaceUpdate(payload.name);
   },
   "memory.list": async (payload, { server }) => {
-    return await server.need("memory").list(server.projectPath(payload.projectId));
+    return await server.needIn("agentSetup", "memory").list(server.projectPath(payload.projectId));
   },
   "memory.read": async (payload, { server }) => {
     const { projectId, name } = payload;
-    return await server.need("memory").read(server.projectPath(projectId), name);
+    return await server.needIn("agentSetup", "memory").read(server.projectPath(projectId), name);
   },
   "memory.write": async (payload, { server }) => {
     const { projectId, confirm, ...input } = payload;
     return await server
-      .need("memory")
+      .needIn("agentSetup", "memory")
       .write(server.projectPath(projectId), { ...input, confirm: confirm === true });
   },
   "memory.delete": async (payload, { server }) => {
     const { projectId, confirm, ...input } = payload;
     await server
-      .need("memory")
+      .needIn("agentSetup", "memory")
       .remove(server.projectPath(projectId), { ...input, confirm: confirm === true });
     return { name: input.name };
   },
   "memory.budget": async (payload, { server }) => {
-    return await server.need("memory").budget(server.projectPath(payload.projectId));
+    return await server
+      .needIn("agentSetup", "memory")
+      .budget(server.projectPath(payload.projectId));
   },
   "memory.suggest": async (payload, { server }) => {
     return {
-      suggestions: await server.need("memory").suggest(server.projectPath(payload.projectId)),
+      suggestions: await server
+        .needIn("agentSetup", "memory")
+        .suggest(server.projectPath(payload.projectId)),
     };
   },
   "snippets.list": async (payload, { server }) => {

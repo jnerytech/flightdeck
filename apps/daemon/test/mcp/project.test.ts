@@ -92,7 +92,7 @@ async function daemon(mcp?: McpConfig) {
   const server = startServer({
     manager,
     board,
-    ...(mcp ? { mcp } : {}),
+    ...(mcp ? { agentSetup: { mcp } } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,
@@ -254,7 +254,7 @@ describe("mcp-projeto", () => {
     const server = startServer({
       manager,
       board,
-      mcp: new McpConfig({ userConfigPath: join(tempDir(), ".claude.json") }),
+      agentSetup: { mcp: new McpConfig({ userConfigPath: join(tempDir(), ".claude.json") }) },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

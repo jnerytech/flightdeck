@@ -66,8 +66,10 @@ async function run() {
     allowedRoots: [root],
     ui: { mode: "simple", locked: false },
     onUiSettings: async () => {},
-    templates: async () => ({ templates: [...BUILTIN_TEMPLATES, NOTE], problems: [] }),
-    tasks,
+    agentSetup: {
+      templates: async () => ({ templates: [...BUILTIN_TEMPLATES, NOTE], problems: [] }),
+      tasks,
+    },
   });
   const client = new FrameClient(server.url);
   try {

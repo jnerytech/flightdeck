@@ -171,6 +171,22 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** #1593: the Agent setup's part of the server, each service optional. */
+interface AgentSetupServer {
+  /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
+  agentcfg?: AgentConfig;
+  /** Phase 12: the project's MCP servers (`mcp.*`). */
+  mcp?: McpConfig;
+  /** Phase 26: the Claude Code plugins (`plugins.*`). */
+  plugins?: Plugins;
+  /** Phase 26: the project's auto memory (`memory.*`). */
+  memory?: ProjectMemory;
+  /** What tasks started from templates produced, behind `task.results` (phase 33). */
+  tasks?: TaskTracker;
+  /** The templates behind `template.list` (phase 33): the built-ins and the host's own files. */
+  templates?: () => Promise<LoadedTemplates>;
+}
+
 /** #1593: the host's checks (`deps/`), each service optional. */
 interface HostChecksServer {
   /** Runs the host's self-check for `doctor.run`. */
@@ -386,14 +402,8 @@ export interface ServerOptions {
   issues?: Issues;
   /** Phase 13: the projects' automatic approval (`autoapprove.*`). */
   autoApprove?: AutoApprover;
-  /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
-  agentcfg?: AgentConfig;
-  /** Phase 26: the project's auto memory (`memory.*`). */
-  memory?: ProjectMemory;
-  /** Phase 26: the Claude Code plugins (`plugins.*`). */
-  plugins?: Plugins;
-  /** Phase 12: the project's MCP servers (`mcp.*`). */
-  mcp?: McpConfig;
+  /** What Claude Code's agents are set up with (phases 12, 26 and 33, #1593). */
+  agentSetup?: AgentSetupServer;
   /** Phase 12: `session.fork`. */
   forker?: Forker;
   /** Phase 12: going back to a turn (`rewind.*`). */
@@ -456,10 +466,6 @@ export interface ServerOptions {
   review?: ReviewServer;
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
-  /** The templates behind `template.list` (phase 33): the built-ins and the host's own files. */
-  templates?: () => Promise<LoadedTemplates>;
-  /** What tasks started from templates produced, behind `task.results` (phase 33). */
-  tasks?: TaskTracker;
   /** The host's default mode and lock (phase 33); changed by `ui.set`, which `onUiSettings` keeps. */
   ui?: UiSettings;
   onUiSettings?: (ui: UiSettings) => void | Promise<void>;
@@ -714,7 +720,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     },
     stop: () => {
       stopHeartbeat();
-      opts.plugins?.close();
+      opts.agentSetup?.plugins?.close();
       return server.stop(true);
     },
   };

@@ -153,9 +153,9 @@ describe("protocolo-compat", () => {
     };
     expect(await featuresOf({ snapshots, rewinder, forker })).toEqual(["checkpoints"]);
     expect(await featuresOf({ snapshots, rewinder })).toEqual([]);
-    expect(await featuresOf({ agentcfg: new AgentConfig(), mcp: new McpConfig() })).toEqual([
-      "agentcfg",
-    ]);
-    expect(await featuresOf({ agentcfg: new AgentConfig() })).toEqual([]);
+    expect(
+      await featuresOf({ agentSetup: { agentcfg: new AgentConfig(), mcp: new McpConfig() } }),
+    ).toEqual(["agentcfg"]);
+    expect(await featuresOf({ agentSetup: { agentcfg: new AgentConfig() } })).toEqual([]);
   });
 });

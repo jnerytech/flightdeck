@@ -1193,7 +1193,9 @@ describe("plugins: protocolo", () => {
     const server = startServer({
       manager,
       board,
-      ...(withPlugins ? { plugins: new Plugins({ cli: claudeCli(), pins: filePins(pins) }) } : {}),
+      ...(withPlugins
+        ? { agentSetup: { plugins: new Plugins({ cli: claudeCli(), pins: filePins(pins) }) } }
+        : {}),
       features: undefined,
       hostName: "h",
       bind: "127.0.0.1",

@@ -55,7 +55,7 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     const server = startServer({
       manager,
       board,
-      memory,
+      agentSetup: { memory },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

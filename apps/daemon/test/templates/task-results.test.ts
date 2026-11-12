@@ -107,8 +107,10 @@ describe("task-results: over the protocol, after a template starts", () => {
       token: TOKEN,
       allowedRoots: [root],
       manager,
-      templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
-      tasks: tracker,
+      agentSetup: {
+        templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
+        tasks: tracker,
+      },
     });
     cleanups.push(() => server.stop());
     const client = new FrameClient(server.url);

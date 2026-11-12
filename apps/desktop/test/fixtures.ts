@@ -561,12 +561,6 @@ export function daemon(
           }
         : {}),
       ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
-      ...(options.simple
-        ? {
-            templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
-            tasks: new TaskTracker({ dir: join(root, `tasks-${++taskDirs}`) }),
-          }
-        : {}),
       ...(options.knowledge ? { knowledge: { list: listKnowledge } } : {}),
       ...(githubService ? { github: githubService } : {}),
       ...(boardSyncService ? { boardsync: boardSyncService } : {}),
@@ -633,9 +627,17 @@ export function daemon(
       ...(budgets ? { budgets } : {}),
       ...(review ? { review } : {}),
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
-      ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
-      ...(memory ? { memory } : {}),
-      ...(plugins ? { plugins } : {}),
+      agentSetup: {
+        ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
+        ...(memory ? { memory } : {}),
+        ...(plugins ? { plugins } : {}),
+        ...(options.simple
+          ? {
+              templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
+              tasks: new TaskTracker({ dir: join(root, `tasks-${++taskDirs}`) }),
+            }
+          : {}),
+      },
       ...(issues ? { issues } : {}),
       ...(options.issues && issues ? { issues } : {}),
       ...(automations ? { automations } : {}),

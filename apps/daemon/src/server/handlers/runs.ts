@@ -84,13 +84,12 @@ export const runsHandlers = {
     return await server.need("webhook").send(payload, ws.data.origin);
   },
   "template.list": async (_payload, { server }) => {
-    if (!server.opts.templates) throw featureOff("templates");
-    return await server.opts.templates();
+    return await server.needIn("agentSetup", "templates")();
   },
   "template.start": async (payload, { server }) => {
-    if (!server.opts.templates) throw featureOff("templates");
+    const templates = server.needIn("agentSetup", "templates");
     const { templateId, language, values, name } = payload;
-    const template = (await server.opts.templates()).templates.find((t) => t.id === templateId);
+    const template = (await templates()).templates.find((t) => t.id === templateId);
     if (!template) {
       throw new FlightdeckError(
         "not_found",
@@ -106,18 +105,16 @@ export const runsHandlers = {
       {
         allowedRoots: server.opts.allowedRoots,
         create: (payload) => server.manager.create(payload),
-        ...(server.opts.tasks ? { tasks: server.opts.tasks } : {}),
+        ...(server.opts.agentSetup?.tasks ? { tasks: server.opts.agentSetup.tasks } : {}),
       },
       name,
     );
   },
   "task.preview": async (payload, { server }) => {
-    if (!server.opts.tasks) throw featureOff("tasks");
-    return await server.opts.tasks.preview(payload.sessionId, payload.path);
+    return await server.needIn("agentSetup", "tasks").preview(payload.sessionId, payload.path);
   },
   "task.results": async (payload, { server }) => {
-    if (!server.opts.tasks) throw featureOff("tasks");
-    return await server.opts.tasks.results(payload.sessionId);
+    return await server.needIn("agentSetup", "tasks").results(payload.sessionId);
   },
   "runenv.config": async (payload, { server }) => {
     return await server
