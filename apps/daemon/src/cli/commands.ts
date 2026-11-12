@@ -3,7 +3,7 @@ import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { runActionCli, runSnippetCli } from "../actions/index.ts";
-import { runCardCli } from "../card-cli.ts";
+import { runCardCli } from "../board/index.ts";
 import { runClaude, sendSessionStart, startChannel } from "../central/index.ts";
 import { defaultConfigPath, expandHome, loadConfig } from "../config.ts";
 import { runStatusline } from "../costs/index.ts";
