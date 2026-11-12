@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { EventEnvelope, SessionSubscribeResult } from "@flightdeck/protocol";
 import { SessionStreamSlice } from "../../src/features/sessions/index.ts";
-import { emptySession, type SessionState } from "../../src/lib/session-state.ts";
+import { emptySession, type SessionState } from "../../src/features/sessions/session-state.ts";
 
 const said = (seq: number, sessionId = "s1"): EventEnvelope =>
   ({

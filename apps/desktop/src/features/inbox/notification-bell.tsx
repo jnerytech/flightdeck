@@ -2,12 +2,12 @@ import { Bell } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { sessionKey } from "@/features/sessions/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { needsYou } from "../../lib/app-state.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { parseRequestLink } from "../../lib/request-link.ts";
 import type { Route } from "../../lib/router.ts";
-import { sessionKey } from "../../lib/session-key.ts";
 import {
   describeRequest,
   type InboxEntry,

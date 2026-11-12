@@ -86,19 +86,29 @@ import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import {
   type ExternalSessionsSlice,
+  type Finish,
+  finishOutcome,
   HISTORY_LIST_LIMIT,
+  hubRows,
   initialSessionsState,
+  loadFinished,
+  recordFinish,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
   type SessionsSlice,
+  SessionViews,
   type SummariesSlice,
+  saveFinished,
+  sessionKey,
+  takeHubHost,
   wireExternalSessions,
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
   wireSessions,
   wireSummaries,
+  withFiles,
 } from "../features/sessions/index.ts";
 import {
   initialSettingsState,
@@ -157,17 +167,8 @@ import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
-import {
-  type Finish,
-  finishOutcome,
-  loadFinished,
-  recordFinish,
-  saveFinished,
-  withFiles,
-} from "./finished.ts";
 import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
-import { hubRows, takeHubHost } from "./hub.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
@@ -177,8 +178,6 @@ import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { RoiSettings } from "./roi-settings.ts";
-import { sessionKey } from "./session-key.ts";
-import { SessionViews } from "./session-views.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import {
   effectiveMode,

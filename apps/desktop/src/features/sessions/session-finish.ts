@@ -1,5 +1,5 @@
 import type { ChangesCommitted, DiffFile } from "@flightdeck/protocol";
-import type { T } from "../i18n/index.ts";
+import type { T } from "../../i18n/index.ts";
 
 /** What `changes.get` sends for a file over its size limit: shown, never committed from the app. */
 const TOO_LARGE = "too-large";

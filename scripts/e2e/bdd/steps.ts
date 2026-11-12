@@ -8,12 +8,12 @@ import { dirname, join } from "node:path";
 import { formatPairingLink } from "@flightdeck/protocol";
 import { DEMO_BACKUP_FOLDER, DEMO_BACKUP_FOLDER_KEY } from "../../../apps/desktop/src/demo/boot.ts";
 import { HOSTS_KEY } from "../../../apps/desktop/src/features/hosts/hosts.ts";
+import { VIEW_LABEL } from "../../../apps/desktop/src/features/sessions/session-views.ts";
 import { en } from "../../../apps/desktop/src/i18n/en.ts";
 import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { AWAY_KEY } from "../../../apps/desktop/src/lib/away.ts";
 import { SCHEDULE_KEY } from "../../../apps/desktop/src/lib/backup-schedule.ts";
 import { TOKEN_MASK } from "../../../apps/desktop/src/lib/pairing-mask.ts";
-import { VIEW_LABEL } from "../../../apps/desktop/src/lib/session-views.ts";
 import {
   DEMO_ACTIVE_TEAM,
   DEMO_AWAY_FAILING_CARD,

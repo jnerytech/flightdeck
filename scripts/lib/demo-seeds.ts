@@ -1,5 +1,5 @@
 /** What the prints seed into the page's storage: the bell's notifications and the Finished list. */
-import type { Finish } from "../../apps/desktop/src/lib/finished.ts";
+import type { Finish } from "../../apps/desktop/src/features/sessions/finished.ts";
 import { requestLink } from "../../apps/desktop/src/lib/request-link.ts";
 
 /**

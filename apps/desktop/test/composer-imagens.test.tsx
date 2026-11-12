@@ -5,7 +5,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { SessionView } = await import("../src/features/sessions/session-view.tsx");
-const { emptySession, applyEnvelope } = await import("../src/lib/session-state.ts");
+const { emptySession, applyEnvelope } = await import("../src/features/sessions/session-state.ts");
 
 afterEach(cleanup);
 

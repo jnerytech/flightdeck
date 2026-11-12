@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { loadFinished, sinceLastLook } from "../../../apps/desktop/src/lib/finished.ts";
+import {
+  loadFinished,
+  sinceLastLook,
+} from "../../../apps/desktop/src/features/sessions/finished.ts";
 import { parseRequestLink } from "../../../apps/desktop/src/lib/request-link.ts";
 import { demoFinished, demoInbox } from "../../lib/demo-seeds.ts";
 

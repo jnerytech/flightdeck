@@ -7,9 +7,9 @@ import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
 import { requestLink } from "../../lib/request-link.ts";
-import { sessionKey } from "../../lib/session-key.ts";
 import type { InboxSlice } from "../inbox/index.ts";
 import { externalRequestNotification } from "../inbox/notify.ts";
+import { sessionKey } from "./session-key.ts";
 
 type ExternalState = Pick<AppState, "hosts" | "externals" | "meta" | "externalRequests" | "hub">;
 type ExternalPatch = Partial<Pick<AppState, "externals" | "meta" | "externalRequests">>;

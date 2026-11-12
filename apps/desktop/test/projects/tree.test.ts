@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card, Project } from "@flightdeck/protocol";
-import type { HubRow } from "../../src/lib/hub.ts";
+import type { HubRow } from "../../src/features/sessions/hub.ts";
 import {
   activeWorktreeFilter,
   cardInFilter,

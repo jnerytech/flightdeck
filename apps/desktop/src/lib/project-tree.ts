@@ -1,8 +1,8 @@
 import type { Card, Project } from "@flightdeck/protocol";
 import { basename, isInside, statusTone } from "@/shared/lib/index.ts";
 import type { StateTone } from "@/shared/status/index.ts";
+import type { HubRow } from "../features/sessions/index.ts";
 import type { AppState } from "./app-store.ts";
-import type { HubRow } from "./hub.ts";
 
 /** One line under a project in the sidebar: its main checkout or one card's worktree. */
 export interface TreeNode {

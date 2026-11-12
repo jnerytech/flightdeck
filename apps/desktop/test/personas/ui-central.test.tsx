@@ -6,7 +6,7 @@ import {
   hubGroups,
   loadHubFilter,
   saveHubFilter,
-} from "../../src/lib/hub.ts";
+} from "../../src/features/sessions/hub.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { unfoldAll } from "../unfold.ts";
