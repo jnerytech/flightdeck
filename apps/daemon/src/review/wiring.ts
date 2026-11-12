@@ -103,7 +103,10 @@ export function createReview(deps: ReviewDeps) {
 /** The diffs, a plain session's commit and PR, the files viewer and who wrote each file. */
 type ChangeSet = ReturnType<typeof createChanges>;
 
-/** What the diffs of the sessions and cards, and a plain session's commit and PR, are built from. */
+/**
+ * What the diffs of the sessions and cards, a plain session's commit and PR, the files viewer and
+ * who wrote each file are built from.
+ */
 export interface ChangesDeps {
   db: Database;
   board: NonNullable<ChangesOptions["board"]>;
