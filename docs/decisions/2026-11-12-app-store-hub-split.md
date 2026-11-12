@@ -117,7 +117,8 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   (`SystemSlice` in `system.ts`; whether a host is local is a dep, so the shell imports no
   terminal entry); the UI mode and tab methods (`uiMode`, `toggleUiMode`,
   `setUiChoice`, `setHostUi`, `openNewTab`, `uiHostId`) to the host tabs; the palette
-  (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette; the runs (`runEnvConfig`,
+  (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette (`PaletteSlice` in
+  `features/palette/palette-store.ts`; the stores it loads from are deps); the runs (`runEnvConfig`,
   `runTrust`, `runStart`, `runStop`, `onRun`, `onRunEnv`) to their wire; messaging (`relayDeps`,
   `onTeams`, `onTeamsUpdated`, `onMessageUpdated`, `startPeersSync`) to messaging; the requests
   (`onOpenRequest`, `openRequest`, `decideOldest`, `respondTo`, `respond`, with the open-request
