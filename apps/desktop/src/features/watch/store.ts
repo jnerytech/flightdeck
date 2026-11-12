@@ -7,9 +7,9 @@ import type {
   WatchSettings,
 } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import type { NotifySource } from "../../lib/notify-policy.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
+import type { NotifySource } from "../notifications/index.ts";
 
 /** The commands a card's watch and a PR link are made of. */
 type WatchCommand =

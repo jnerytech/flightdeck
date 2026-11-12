@@ -142,10 +142,10 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Issue #93: `teams.create` and `addMember` take a permission mode per member.
     ...when(opts.messaging?.teams, "teams", "teams.permissions"),
     // Phase 22: watching a card's PR and fixing it.
-    ...when(opts.watch, "watch"),
+    ...when(opts.prWatch?.watch, "watch"),
     // Issue #77: a card's watch takes more rounds.
-    ...when(opts.watch, "watch.extend"),
-    ...when(opts.watch, "watch.resolveHeld"),
+    ...when(opts.prWatch?.watch, "watch.extend"),
+    ...when(opts.prWatch?.watch, "watch.resolveHeld"),
     ...when(opts.names, "names"),
   ];
 }
@@ -154,7 +154,7 @@ export function featuresOf(opts: ServerOptions): string[] {
 export async function hostInfo(server: ServerContext, origin: string) {
   const { opts } = server;
   // `update` once the daemon has checked its manifest.
-  const update = opts.updates?.status();
+  const update = opts.updates?.check?.status();
   return {
     hostName: opts.hostName,
     os: process.platform,
@@ -180,7 +180,7 @@ export async function hostInfo(server: ServerContext, origin: string) {
       ...when(opts.opencode?.info().available, "opencode"),
       ...when(opts.assistant, ASSISTANT_FEATURE),
       ...when(opts.teleport?.packages || opts.teleport?.inbox, "teleport"),
-      ...when(opts.autoUpdate, "autoUpdate"),
+      ...when(opts.updates?.auto, "autoUpdate"),
     ],
     ...present({
       terminal: opts.terminals?.settings(),
@@ -191,7 +191,7 @@ export async function hostInfo(server: ServerContext, origin: string) {
       pause: opts.hostPause?.status(),
       runtimes: opts.opencode && [hostRuntime(opts.opencode.info())],
       update,
-      autoUpdate: opts.autoUpdate?.status(),
+      autoUpdate: opts.updates?.auto?.status(),
     }),
     ...(opts.fileLog ? logPathFor(opts.fileLog, origin) : {}),
     ...opts.terminal,

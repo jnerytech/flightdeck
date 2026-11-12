@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/layout/states";
 import { ViewToggle } from "@/components/layout/view-toggle";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { ScopeMenu } from "@/components/shell/scope-menu";
-import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +27,7 @@ import { WorktreeChip } from "@/features/projects/index.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";
+import { StatusDot } from "@/shared/status/index.ts";
 import { InlineNotice } from "../../components/feedback/inline-notice.tsx";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";

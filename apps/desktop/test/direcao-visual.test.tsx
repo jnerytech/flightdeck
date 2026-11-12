@@ -14,7 +14,7 @@ const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { StatusDot } = await import("../src/components/status/status-dot.tsx");
+const { StatusDot } = await import("../src/shared/status/index.ts");
 
 setDefaultTimeout(20_000);
 

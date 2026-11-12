@@ -1,8 +1,8 @@
 import type { PendingPermission, SessionStatus } from "@flightdeck/protocol";
+import type { NotifyEvent } from "../features/notifications/index.ts";
 import { type T, translator } from "../i18n/index.ts";
 import type { Notification } from "../platform/types.ts";
 import { describeRequest, type InboxAbout } from "./inbox.ts";
-import type { NotifyEvent } from "./notify-policy.ts";
 
 /** A notification, with what it is about for the notification center. */
 export type AboutNotification = Notification & { about?: InboxAbout; event?: NotifyEvent };

@@ -1,4 +1,4 @@
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** What a notification is about; each of the first five has its own switch. */
 export type NotifyEvent =

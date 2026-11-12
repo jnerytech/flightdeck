@@ -32,9 +32,7 @@ export const hostHandlers = {
     // It lets the host download and run a new binary by itself: only from a near connection,
     // like host.bypass. Turning it off only lowers risk, but it is the same switch.
     requireVaultTransport(ws.data.origin, "host.updates.set", server.opts.log);
-    const { autoUpdate } = server.opts;
-    if (!autoUpdate) throw featureOff("autoUpdate");
-    return await autoUpdate.set(payload.auto);
+    return await server.needIn("updates", "auto").set(payload.auto);
   },
   "host.bypass": async (payload, { ws, server }) => {
     requireVaultTransport(ws.data.origin, "host.bypass", server.opts.log);
@@ -57,10 +55,10 @@ export const hostHandlers = {
     return keepAwake.status();
   },
   "daemon.update.apply": async (payload, { server }) => {
-    return await server.need("updater").apply(payload.confirm === true);
+    return await server.needIn("updates", "apply").apply(payload.confirm === true);
   },
   "daemon.update.check": async (_payload, { server }) => {
-    return await server.need("updates").checkNow();
+    return await server.needIn("updates", "check").checkNow();
   },
   "daemon.shutdown": (_payload, { server }) => {
     const { onShutdown } = server.opts;

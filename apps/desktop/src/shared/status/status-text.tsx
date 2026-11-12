@@ -1,5 +1,5 @@
-import type { StateTone } from "./status-dot";
-import { StatusDot } from "./status-dot";
+import type { StateTone } from "./status-dot.tsx";
+import { StatusDot } from "./status-dot.tsx";
 
 /** A state as its dot and its word, side by side (the word is the dot's name). */
 export function StatusText(props: Readonly<{ tone: StateTone; children: string }>) {
