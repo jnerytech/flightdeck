@@ -66,7 +66,7 @@ are in the glossary test's baseline until #1594 and #1601 move their parts into 
   `files/` (`fs-dirs`); `server/` (`ws-send`, `delta-coalescer`), the transport; `deps/` (`doctor`)
   and `service/`, `wsl/`, host operations; `board/` (`card-cli`, `create-inside`); `workflows/`
   (`references`); `agentcfg/` (`mcp`); `runtime/` (`claude-probe`) and `history/`
-  (`transcript-text`). Left at the root: `main.ts` (the wiring), `bin.ts`, `config.ts`, `server.ts`
+  (`transcript-text`). Left at the root: `main.ts` (the wiring), `bin.ts`, `config.ts`, `text-modules.d.ts`, `server.ts`
   and `server-options.ts` (what `startServer` takes; `server/` imports it, not `server.ts`, #1611).
 - **Customer and supplier.** Board is the customer of Session (it launches and watches sessions),
   of Permission, of Agent setup (personas, snippets) and of Usage (quota holds the queue).
