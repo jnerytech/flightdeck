@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { createInside } from "../../src/create-inside.ts";
+import { createInside } from "../../src/board/create-inside.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /** #75, #78: the harness apply and a card's spec template create files in a project this way. */
