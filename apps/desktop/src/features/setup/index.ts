@@ -2,7 +2,6 @@
 export { SetupProbes } from "./probes.ts";
 export {
   missingTools,
-  probeAfter,
   type SetupProbe,
   SetupSettings,
   setupProgress,
