@@ -6,8 +6,8 @@ import { realTempDir, testHome } from "../../../../scripts/test/temp-dir.ts";
 import { Config, defaultConfigPath, expandHome, userHome } from "../../src/config.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { RuntimeEvent } from "../../src/runtime/types.ts";
-import { osServiceContext, processPath } from "../../src/service-os.ts";
-import { stopServiceDaemon } from "../../src/update.ts";
+import { osServiceContext, processPath } from "../../src/service/os.ts";
+import { stopServiceDaemon } from "../../src/service/update.ts";
 import { shortPath } from "./short-path.ts";
 import { volumeHas83Names } from "./short-path-probe.ts";
 

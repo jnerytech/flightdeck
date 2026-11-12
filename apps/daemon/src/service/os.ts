@@ -1,10 +1,10 @@
 import { appendFile, mkdir, readlink as readLink, rm, writeFile } from "node:fs/promises";
 import { tmpdir, userInfo } from "node:os";
 import { dirname } from "node:path";
-import { userHome } from "./config.ts";
-import { type Exec, spawnExec } from "./exec.ts";
-import { daemonCommand, type ServiceContext } from "./service.ts";
-import { whichOnPath } from "./which.ts";
+import { userHome } from "../config.ts";
+import { type Exec, spawnExec } from "../exec.ts";
+import { whichOnPath } from "../which.ts";
+import { daemonCommand, type ServiceContext } from "./install.ts";
 
 /** The OS programs that install, start or stop services. */
 const CONTROLLERS = new Set(["systemctl", "schtasks", "loginctl", "systemd-run"]);

@@ -3,7 +3,7 @@
  * `~/.flightdeck/bin/flightdeckd(.exe)`, and only the fake home of the tests may see that.
  */
 import { existsSync, statSync } from "node:fs";
-import { stableBinPath } from "../../apps/daemon/src/update.ts";
+import { stableBinPath } from "../../apps/daemon/src/service/update.ts";
 
 export interface BinaryGuard {
   /** The stable binary and its `.old`/`.new` neighbours under the real home, as found. */

@@ -2,11 +2,11 @@ import { access, chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, posix, resolve, win32 } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
-import { loadConfig, updateConfigFile } from "./config.ts";
-import { parseJsonWith } from "./json-text.ts";
-import type { Logger } from "./logger.ts";
+import { loadConfig, updateConfigFile } from "../config.ts";
+import { parseJsonWith } from "../json-text.ts";
+import type { Logger } from "../logger.ts";
+import { WSL_PORT_OFFSET } from "../wsl/index.ts";
 import { compareVersions, swapBinary } from "./update.ts";
-import { WSL_PORT_OFFSET } from "./wsl/index.ts";
 
 export interface SetupDeps {
   /** Free-text question; an empty answer means "nothing". */

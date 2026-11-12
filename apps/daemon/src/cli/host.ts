@@ -9,25 +9,26 @@ import { acquireLock, readLockPid } from "../lock.ts";
 import type { Logger } from "../logger.ts";
 import { daemonUrl } from "../mcp.ts";
 import {
+  binDir,
   installService,
+  killProcess,
+  osServiceContext,
+  processPath,
+  removeFromUserPath,
+  requestShutdown,
   resolveServiceClaude,
+  runUpdate,
   type ServiceCommand,
   type ServiceContext,
+  type StopDeps,
   serviceCommand,
   serviceStatus,
-  startService,
-  uninstallService,
-} from "../service.ts";
-import { killProcess, osServiceContext, processPath } from "../service-os.ts";
-import {
-  requestShutdown,
-  runUpdate,
-  type StopDeps,
   stableBinPath,
+  startService,
   stopServiceDaemon,
+  uninstallService,
   waitHealthy,
-} from "../update.ts";
-import { binDir, removeFromUserPath } from "../user-path.ts";
+} from "../service/index.ts";
 import { DAEMON_VERSION } from "../version.ts";
 import { type CliArgs, configPath } from "./args.ts";
 

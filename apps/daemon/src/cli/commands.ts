@@ -10,7 +10,7 @@ import { runStatusline } from "../costs/index.ts";
 import type { Logger } from "../logger.ts";
 import { daemonUrl, identityOf, startMcp } from "../mcp.ts";
 import { runMessageCli } from "../messaging/index.ts";
-import { daemonCommand } from "../service.ts";
+import { daemonCommand } from "../service/index.ts";
 import { settled } from "../settled.ts";
 import { runAskpass } from "../ssh/index.ts";
 import { DAEMON_VERSION } from "../version.ts";

@@ -8,7 +8,7 @@ import type { AutoUpdateStatus, DaemonManifest } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { realTimers, type Timers } from "../quota/quota.ts";
-import { compareVersions } from "../update.ts";
+import { compareVersions } from "../service/index.ts";
 
 export interface AutoUpdaterOptions {
   enabled(): boolean;

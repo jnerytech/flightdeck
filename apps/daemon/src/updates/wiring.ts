@@ -1,7 +1,7 @@
 import type { Config } from "../config.ts";
 import { present } from "../present.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
-import { osServiceContext } from "../service-os.ts";
+import { osServiceContext } from "../service/index.ts";
 import { DAEMON_VERSION } from "../version.ts";
 import { DaemonUpdater } from "./apply.ts";
 import { AutoUpdater, autoUpdateOf } from "./auto.ts";
