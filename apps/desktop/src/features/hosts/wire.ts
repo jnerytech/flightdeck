@@ -1,7 +1,7 @@
-import type { HostConnection } from "../../lib/host-connection.ts";
 import type { AppKernel } from "../../lib/kernel.ts";
 import { APP_VERSION } from "../../lib/version.ts";
 import { type HealthCore, HealthSlice } from "./health-store.ts";
+import type { HostConnection } from "./host-connection.ts";
 import { type HostUpdateCore, HostUpdateSlice, type HostUpdateView } from "./update-store.ts";
 
 /** The hosts as a wire file of this domain reads them from the app's state. */

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { hostColorVar } from "../../src/features/hosts/host-color.ts";
 import { TAB_ICONS, tabFacts, tabTitle } from "../../src/features/tabs/tab-facts.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState, AppStore } from "../../src/lib/app-store.ts";
-import { hostColorVar } from "../../src/lib/host-color.ts";
 import { type Route, Router } from "../../src/lib/router.ts";
 import type { Tab } from "../../src/lib/tabs.ts";
 

@@ -1,4 +1,4 @@
-import { RequestError } from "../../lib/host-connection.ts";
+import { RequestError } from "@/features/hosts/index.ts";
 import type { AppKernel } from "../../lib/kernel.ts";
 import { type ProjectsCore, ProjectsSlice } from "./store.ts";
 

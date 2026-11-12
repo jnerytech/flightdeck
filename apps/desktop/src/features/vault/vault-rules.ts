@@ -1,4 +1,4 @@
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /**
  * Phase 19: the usage rules of each secret, kept by the app with the vault. The daemon only holds

@@ -1,8 +1,8 @@
 import type { RiskLevel } from "@flightdeck/protocol";
+import type { VaultAnswer } from "@/features/vault/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Answer, AppState, PendingItem } from "../../lib/app-store.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
-import type { VaultAnswer } from "../../lib/vault-approval.ts";
 
 /** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
 function permissionResponse(requestId: string, decision: "allow" | "deny", answer: Answer) {

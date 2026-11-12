@@ -1,5 +1,5 @@
 import { useT } from "@/i18n/context";
-import type { SecretMeta, SecretType } from "@/lib/vault";
+import type { SecretMeta, SecretType } from "./vault";
 
 export interface SecretPickerProps {
   /** The vault's list (`Vault.list()`): metadata only, never a value. */

@@ -5,7 +5,7 @@ import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import { Stack } from "@/shared/layout/index.ts";
 import type { HostView } from "../../lib/app-store.ts";
-import { mayBeRefusedAddress, offlineHint } from "../../lib/host-offline.ts";
+import { mayBeRefusedAddress, offlineHint } from "./host-offline.ts";
 
 const COMMAND = "rounded bg-muted px-1 font-mono text-xs";
 // Commands, not prose: the same in every language.

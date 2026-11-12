@@ -1,5 +1,5 @@
 import type { VaultUsed } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 import type { VaultOutcome } from "./vault-requests.ts";
 
 /** What happened to a request: it was delivered, it was refused, or the daemon reported the use. */

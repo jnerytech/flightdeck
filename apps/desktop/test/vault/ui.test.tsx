@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { SecretMeta } from "../../src/lib/vault.ts";
+import type { SecretMeta } from "../../src/features/vault/vault.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();

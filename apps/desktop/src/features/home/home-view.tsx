@@ -10,10 +10,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { ConnectionStatus } from "@/features/hosts/index.ts";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, FieldRow, NativeSelect, Note } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { ConnectionStatus } from "../../lib/host-connection.ts";
 import type { TaskState } from "../../lib/simple-task.ts";
 
 export interface HomeTask {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultUsed } from "@flightdeck/protocol";
-import type { VaultOutcome } from "../../src/lib/vault-requests.ts";
-import { VaultUsageLog } from "../../src/lib/vault-usage.ts";
+import type { VaultOutcome } from "../../src/features/vault/vault-requests.ts";
+import { VaultUsageLog } from "../../src/features/vault/vault-usage.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
 const VALUE = "usage-test-value-456";

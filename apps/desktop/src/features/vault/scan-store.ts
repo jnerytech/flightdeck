@@ -1,5 +1,5 @@
 import { inSequence } from "@flightdeck/protocol";
-import type { Vault } from "../../lib/vault.ts";
+import type { Vault } from "./vault.ts";
 
 /** What the scan reads through the app's store: the vault, to learn its values. */
 export interface VaultScanCore {

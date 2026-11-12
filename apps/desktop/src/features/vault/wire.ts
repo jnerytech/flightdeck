@@ -1,8 +1,8 @@
 import type { AppKernel } from "../../lib/kernel.ts";
-import type { SecretMeta } from "../../lib/vault.ts";
 import { type VaultApprovalsCore, VaultApprovalsSlice } from "./approvals-store.ts";
 import { type VaultRulesCore, VaultRulesSlice } from "./rules-store.ts";
 import { type VaultSecretsCore, VaultSecretsSlice } from "./secrets-store.ts";
+import type { SecretMeta } from "./vault.ts";
 
 /** The app's state as the vault's slices read it. */
 interface VaultState {

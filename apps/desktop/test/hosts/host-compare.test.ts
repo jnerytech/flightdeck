@@ -8,7 +8,7 @@ import {
   type HostFacts,
   hasFix,
   hostFacts,
-} from "../../src/lib/host-compare.ts";
+} from "../../src/features/hosts/host-compare-model.ts";
 
 const NONE: CompareValues = {
   os: null,
