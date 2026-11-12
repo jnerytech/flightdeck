@@ -14,7 +14,7 @@ import {
   SecretScanner,
 } from "@flightdeck/protocol";
 import type { AssistantKeyProvider, AssistantPlatform } from "@/platform/types";
-import { RunGate } from "../components/assistant/wand-state.ts";
+import { RunGate } from "../features/assistant/wand-state.ts";
 import {
   type AssistantPrefs,
   confirmHost,

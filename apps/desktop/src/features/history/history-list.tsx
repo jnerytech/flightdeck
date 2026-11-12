@@ -15,11 +15,11 @@ import {
   LoadingState,
   NativeSelect,
 } from "@/shared/layout/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";
 import type { Density } from "../../lib/density.ts";
 import type { HubView } from "../../lib/hub.ts";
-import { basename } from "../../lib/paths.ts";
 import { projectLabel } from "../../lib/usage-rows.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { HistoryCard } from "./history-card.tsx";

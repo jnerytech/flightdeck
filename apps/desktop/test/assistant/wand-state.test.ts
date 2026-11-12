@@ -5,7 +5,7 @@ import {
   type WandEvent,
   type WandState,
   wandReduce,
-} from "../../src/components/assistant/wand-state.ts";
+} from "../../src/features/assistant/wand-state.ts";
 
 const IDLE: WandState = { kind: "idle" };
 const run = (state: WandState, ...events: WandEvent[]) =>

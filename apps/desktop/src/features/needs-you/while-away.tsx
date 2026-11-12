@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Inline, Stack } from "@/shared/layout/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import type { AwayNews, AwayView } from "../../features/activity/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { reasonText } from "../../lib/notice-text.ts";
-import { basename } from "../../lib/paths.ts";
 import type { Route } from "../../lib/router.ts";
 
 /** Lines shown per group; the rest is counted ("and 3 more"), and the host's own screens hold it. */

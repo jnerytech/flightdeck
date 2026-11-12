@@ -1,4 +1,4 @@
-import { trimTrailingSeparators } from "./paths.ts";
+import { trimTrailingSeparators } from "@/shared/lib/index.ts";
 
 /** One day of one project in a host's usage table. */
 export interface UsageRow {

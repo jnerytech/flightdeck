@@ -1,8 +1,8 @@
 import type { ChangesResult } from "@flightdeck/protocol";
 import { useId, useState } from "react";
-import { AssistField } from "@/components/assistant/assist-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistField } from "@/features/assistant/index.ts";
 import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";

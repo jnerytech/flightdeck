@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { T } from "@/i18n/index";
 
+const optionClass = (active: boolean) =>
+  `cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${active ? "bg-accent" : ""}`;
+
 export interface ModelPickerProps {
   t: T;
   label: string;
@@ -114,7 +117,7 @@ export function ModelPicker(props: Readonly<ModelPickerProps>) {
                 role="option"
                 aria-selected={row.id === value}
                 tabIndex={-1}
-                className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${index === active ? "bg-accent" : ""}`}
+                className={optionClass(index === active)}
                 onClick={() => props.onChange(row.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") props.onChange(row.id);

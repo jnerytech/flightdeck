@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
+import { formatBytes } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { formatBytes } from "../../lib/format-bytes.ts";
 
 /**
  * The host's Claude Code setup templates (`harness.templates.*`, #75): the ones shared from a

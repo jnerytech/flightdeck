@@ -1,7 +1,7 @@
+import { basename } from "@/shared/lib/index.ts";
 import { formatDuration } from "../i18n/format.ts";
 import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
-import { basename } from "./paths.ts";
 import { sessionLabel } from "./session-label.ts";
 
 export { QUIET_SNOOZE_MS } from "./app-store.ts";
