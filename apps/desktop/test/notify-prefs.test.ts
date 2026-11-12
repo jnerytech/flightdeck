@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { type InboxEntry, markUnread, unreadCount } from "../src/features/inbox/inbox.ts";
 import {
   browserSound,
   DEFAULT_NOTIFY_PREFS,
@@ -8,7 +9,6 @@ import {
   type NotifySource,
   playNotifySound,
 } from "../src/features/notifications/index.ts";
-import { type InboxEntry, markUnread, unreadCount } from "../src/lib/inbox.ts";
 import type { Platform } from "../src/platform/types.ts";
 
 const NOW = Date.parse("2026-11-04T10:00:00.000Z");
