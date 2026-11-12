@@ -4,8 +4,8 @@
  */
 import type { Database } from "bun:sqlite";
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
+import { promptText } from "../history/index.ts";
 import { parseJsonText } from "../json-text.ts";
-import { promptText } from "../transcript-text.ts";
 
 export interface PendingQuestion {
   kind: "permission" | "question";
