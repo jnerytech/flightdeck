@@ -26,6 +26,16 @@ try {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EPERM") lock = null;
   }
+  // #2270: the baselines' merge driver, written once to the repository's config (shared by every
+  // worktree), first and on its own: a slow or failed context below never skips it.
+  try {
+    registerMergeDriver((args) => {
+      const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
+      return { status: proc.status ?? 1, stdout: proc.stdout ?? "" };
+    });
+  } catch {
+    // Without the driver, git's line merge runs, as before #2270.
+  }
   const git = (args: string[]) => {
     const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
     return proc.status === 0 ? proc.stdout : null;
@@ -47,11 +57,6 @@ try {
       }),
     );
   }
-  // #2270: the baselines' merge driver, written once to the repository's config after the context is out (shared by every worktree).
-  registerMergeDriver((args) => {
-    const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
-    return { status: proc.status ?? 1, stdout: proc.stdout ?? "" };
-  });
 } catch {
   // The context is a convenience; a session never fails to start because of it.
 }
