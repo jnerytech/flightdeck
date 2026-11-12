@@ -4,11 +4,11 @@ import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Button } from "@/components/ui/button";
 import { MissingToolsCards } from "@/features/deps/index.ts";
 import { useT } from "@/i18n/context";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import { newSessionHost } from "../lib/new-session-host.ts";
-import { basename } from "../lib/paths.ts";
-import type { Route } from "../lib/router.ts";
-import { useStoreSlice } from "../lib/use-store.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import { newSessionHost } from "../../lib/new-session-host.ts";
+import { basename } from "../../lib/paths.ts";
+import type { Route } from "../../lib/router.ts";
+import { useStoreSlice } from "../../lib/use-store.ts";
 
 const RECENT = 5;
 const SHORTCUTS = [
