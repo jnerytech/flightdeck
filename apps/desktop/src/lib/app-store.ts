@@ -1847,7 +1847,7 @@ export class AppStore {
     if (status !== "online") this.terminals.tellOffline(hostId);
     if (status === "connecting") {
       this.stream.dropPartialText(hostId);
-      // The requests that waited on the old connection cannot be answered on the new one.
+      // The cards that waited on the old connection are denied: the new one never saw them.
       this.vaultApprovals.hostGone(hostId);
     }
   }
