@@ -95,6 +95,7 @@ export const refusals = {
     name_blank: "O nome não pode ficar em branco.",
     session_unnamed: "A sessão {id} não tem nome.",
     terminal_disabled: "O terminal está desligado neste host: ligue nas configurações dele.",
+    terminal_stopping: "O daemon deste host está parando: nenhum terminal abre agora.",
     terminal_missing: "O terminal {id} não existe.",
     terminal_ended: "O terminal {id} já terminou.",
     terminal_limit: "Este host permite {max} terminais: feche um para abrir outro.",

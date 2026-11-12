@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { type Config, claudeSettingsPath, updateConfigFile, userHome } from "../config.ts";
+import type { DomainModule } from "../server/index.ts";
 import { stableBinPath } from "../update.ts";
 import { claudeSettingsEnv } from "./claude-settings-env.ts";
 import { terminalEnabled } from "./policy.ts";
@@ -19,8 +20,9 @@ export interface TerminalsDeps {
 }
 
 /**
- * The host's embedded terminals (issue #1593): the manager and the app's switch for them, kept in
- * the config file like the rest of the host settings.
+ * The host's embedded terminals (issue #1593): the manager, and its module (#2094) that serves it
+ * with the app's switch for them, kept in the config file like the rest of the host settings, and
+ * stops every terminal.
  */
 export function createTerminals({
   config,
@@ -43,15 +45,20 @@ export function createTerminals({
     claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
     log,
   });
-  return {
-    terminals,
-    // Turned on or off from the app: kept in the config file, like the rest of the host settings.
-    onTerminalSettings: (enabled: boolean) =>
-      updateConfigFile(configFile, (raw) => ({
-        ...raw,
-        terminal: { ...(raw.terminal as object | undefined), enabled },
-      })),
+  const module: DomainModule<"terminals" | "onTerminalSettings"> = {
+    server: {
+      terminals,
+      // Turned on or off from the app: kept in the config file, like the rest of the host settings.
+      onTerminalSettings: (enabled: boolean) =>
+        updateConfigFile(configFile, (raw) => ({
+          ...raw,
+          terminal: { ...(raw.terminal as object | undefined), enabled },
+        })),
+    },
+    // None outlives the daemon.
+    stop: () => terminals.stop(),
   };
+  return { modules: [module] as const, terminals };
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */

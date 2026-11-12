@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { useState } from "react";
-import { liveScreen, registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { ApprovalCard } = await import("../../src/features/permissions/approval-card.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

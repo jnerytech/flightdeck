@@ -63,7 +63,11 @@ function setup(
   } as unknown as ReviewDeps["board"];
   const deps: ReviewDeps = {
     db: store.db,
-    changes: { changes: {} } as ReviewDeps["changes"],
+    log: () => undefined,
+    terminals: {} as ReviewDeps["terminals"],
+    allowedRoots: ["/w"],
+    scanner: { scan: () => [] },
+    dataDir: "/data",
     manager: {} as ReviewDeps["manager"],
     board,
     central: undefined,
@@ -75,14 +79,12 @@ function setup(
             subtype: "success",
             tokens,
           }),
-    spec: async () => undefined,
-    redact: (t) => t,
-    persona: () => "You review code.",
+    heldValues: () => [],
     gates: { hostPause: { blocked: open }, quota: { blocked: open }, memory: { blocked: open } },
     usage: { record: (entry) => void recorded.push(entry) },
   };
   deps.gates = { ...deps.gates, ...over.gates };
-  return { built: createReview(deps), recorded };
+  return { built: createReview(deps).review, recorded };
 }
 
 const refusal = async (run: Promise<unknown>) =>
@@ -219,37 +221,34 @@ describe("changes-wiring: the diffs, a plain session's commit and PR, and the fi
 });
 
 describe("review-wiring: the review's part of the server (#1593)", () => {
-  test("the group carries the change set's services and comments on the same diffs", () => {
-    const set = {
-      changes: { name: "changes" },
-      sessionCommits: { name: "commits" },
-      sessionPrs: { name: "prs" },
-      files: { name: "files" },
-      sessionFiles: { name: "sessionFiles" },
-    } as unknown as ReviewDeps["changes"];
+  test("the module serves the group, and its comments, commits and PRs read the same diffs", () => {
     const store = new EventStore(":memory:");
     stores.push(store);
-    const group = createReview({
+    const built = createReview({
       db: store.db,
-      changes: set,
+      log: () => undefined,
+      terminals: {} as ReviewDeps["terminals"],
+      allowedRoots: ["/w"],
+      scanner: { scan: () => [] },
+      dataDir: "/data",
       manager: {} as ReviewDeps["manager"],
       board: {} as ReviewDeps["board"],
       central: undefined,
       complete: undefined,
-      spec: async () => undefined,
-      redact: (t) => t,
-      persona: () => "",
+      heldValues: () => [],
       gates: { hostPause: { blocked: open }, quota: { blocked: open }, memory: { blocked: open } },
       usage: { record: () => undefined },
     });
+    const { review } = built;
     expect([
-      group.changes === set.changes,
-      group.sessionCommits === set.sessionCommits,
-      group.sessionPrs === set.sessionPrs,
-      group.files === set.files,
-      group.sessionFiles === set.sessionFiles,
-      group.comments.opts.changes === set.changes,
-      "cardReview" in group,
-    ]).toEqual([true, true, true, true, true, true, false]);
+      built.modules.length,
+      built.modules[0].server?.review === review,
+      review.comments.opts.changes === review.changes,
+      review.sessionCommits.deps.changes === review.changes,
+      review.sessionPrs.deps.changes === review.changes,
+      review.files.opts.changes === review.changes,
+      review.sessionFiles.opts.db === store.db,
+      "cardReview" in review,
+    ]).toEqual([1, true, true, true, true, true, true, false]);
   });
 });

@@ -3,3 +3,4 @@
  * rules behind them. Another domain imports from here, never a file inside.
  */
 export { historyExcludes } from "./auto-approve.ts";
+export { credential } from "./sensitive-paths.ts";
