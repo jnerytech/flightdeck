@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { ReleaseNote } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 const note = (tag: string): ReleaseNote => ({
   tag,

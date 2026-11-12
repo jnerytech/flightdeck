@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { backupFileName, loadSchedule } from "../../src/features/backup/backup-schedule.ts";
 import { BackupScheduler } from "../../src/features/backup/backup-scheduler.ts";
-import { REFRESH_TOKEN_ID } from "../../src/lib/google-oauth.ts";
+import { REFRESH_TOKEN_ID } from "../../src/features/backup/google-oauth.ts";
 import { fakeGoogle } from "../fake-google.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

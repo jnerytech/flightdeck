@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { acquireLock, LOCK_FILE, readLockPid } from "../../src/lock.ts";
+import { acquireLock, LOCK_FILE, readLockPid } from "../../src/kernel/lock.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
 import { tempDir } from "../support/helpers.ts";
 

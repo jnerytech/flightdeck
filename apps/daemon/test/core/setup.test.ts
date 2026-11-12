@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
+import { acquireLock } from "../../src/kernel/lock.ts";
 import { DAEMON_VERSION } from "../../src/kernel/version.ts";
-import { acquireLock } from "../../src/lock.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
 import {
   createPrompt,

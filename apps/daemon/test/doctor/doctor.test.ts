@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type DoctorDeps, runDoctor } from "../../src/doctor.ts";
+import { type DoctorDeps, runDoctor } from "../../src/deps/doctor.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
 import { tempDir } from "../support/helpers.ts";
 

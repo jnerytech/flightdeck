@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { en } from "../src/i18n/en.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { en } from "../../src/i18n/en.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 afterEach(() => cleanup());
 
@@ -99,8 +99,8 @@ for (const [lang, t] of [
     });
 
     test("the tray lists a gate by its step, not by the internal tool name", async () => {
-      const { trayMenu } = await import("../src/features/tray/tray.ts");
-      const { needsYou } = await import("../src/lib/app-store.ts");
+      const { trayMenu } = await import("../../src/features/tray/tray.ts");
+      const { needsYou } = await import("../../src/lib/app-store.ts");
       const store = await withGate(lang);
       const labels = trayMenu(needsYou(store.getState()), translator(lang)).items.map(
         (i) => i.label,
@@ -144,7 +144,7 @@ describe("needs-you-rows: every button that stacks lines gives them its width", 
   // The cause is the browser's style for <button> (align-items: flex-start), which Tailwind's reset
   // leaves: any button with flex-col and a cut line ran past its box. The base layer resets it.
   test("the base layer sets align-items: stretch on buttons", async () => {
-    const css = readStyles(new URL("../src/styles.css", import.meta.url));
+    const css = readStyles(new URL("../../src/styles.css", import.meta.url));
     const base = css.slice(
       css.indexOf("@layer base {"),
       css.indexOf("\n}\n", css.indexOf("@layer base {")),

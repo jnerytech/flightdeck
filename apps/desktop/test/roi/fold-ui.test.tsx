@@ -9,7 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { RoiCard } = await import("../../src/features/roi/roi-card.tsx");
-const { EMPTY_PERIOD } = await import("../../src/lib/roi.ts");
+const { EMPTY_PERIOD } = await import("../../src/features/roi/roi.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

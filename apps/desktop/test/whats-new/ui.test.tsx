@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ReleaseNote } from "@flightdeck/protocol";
-import { seedDemoHosts } from "../src/demo/boot.ts";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { WHATS_NEW_KEY } = await import("../src/features/appupdate/whats-new.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
-const { WhatsNewDialog } = await import("../src/features/appupdate/whats-new-dialog.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { WHATS_NEW_KEY } = await import("../../src/features/appupdate/whats-new.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
+const { WhatsNewDialog } = await import("../../src/features/appupdate/whats-new-dialog.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
