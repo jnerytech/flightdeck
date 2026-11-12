@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Template, TemplateListResult } from "@flightdeck/protocol";
-import { runDoctor } from "../../src/doctor.ts";
+import { runDoctor } from "../../src/deps/doctor.ts";
 import { startDaemon } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { BUILTIN_TEMPLATES } from "../../src/templates/builtin.ts";

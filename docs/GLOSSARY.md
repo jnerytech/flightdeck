@@ -175,7 +175,7 @@ test's baseline, with the issue that renames them.
 | `cli` | command line | The `flightdeckd` command line: its words, flags and usage, parsed with no effect |
 | `clients` | client | The clients that group projects across hosts: their rules, colors, month budget, hourly rate and defaults, the switcher that scopes the app, the selection the work screens filter by (kept across starts) and the client of each project |
 | `costs` | cost | Estimated costs from the transcripts, price table, budgets and the status line |
-| `deps` | dependency | The tools a host needs (git, gh, claude...), probed and reported |
+| `deps` | dependency | The tools a host needs (git, gh, claude...), probed and reported, and the doctor's checks of the daemon's own setup |
 | `files` | file | The files of a session or a card: the explorer, the search, the viewer, a session's files tab and a card's files panel |
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
 | `harness` | harness | A project's Markdown harness shared as a host template |

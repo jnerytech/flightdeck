@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DOCTOR_CHECK_IDS } from "@flightdeck/protocol";
-import { type DoctorDeps, opencodeCheck, runDoctor } from "../../src/doctor.ts";
+import { type DoctorDeps, opencodeCheck, runDoctor } from "../../src/deps/doctor.ts";
 
 const verified = { available: true, path: "/bin/opencode", version: "2.2.5", verified: true };
 
