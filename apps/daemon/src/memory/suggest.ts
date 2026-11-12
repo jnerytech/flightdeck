@@ -5,9 +5,9 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
+import type { MemorySuggestion } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { exists } from "./exists.ts";
-import type { MemorySuggestion } from "./memory.ts";
 
 const STALE_AFTER_MS = 90 * 86_400_000;
 const NEGATIONS = new Set(["not", "never", "dont", "don", "nunca", "não", "nao", "jamais", "sem"]);

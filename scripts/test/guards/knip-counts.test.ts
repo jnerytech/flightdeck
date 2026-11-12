@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { knipCounts } from "../../lib/knip-counts.ts";
+import { knipCounts } from "../../lib/arch/knip-counts.ts";
 
 const row = (file: string, over: Record<string, { name: string }[]> = {}) => ({
   file,
