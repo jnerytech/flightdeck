@@ -62,8 +62,8 @@ describe("ci-paths: which jobs a path starts", () => {
     const near = [
       "scripts/lib/demo/deeper/nested.ts",
       "scripts/e2e/journeys.e2e.ts",
-      "scripts/lib/axe-more.ts",
-      "scripts/lib/visual-more.ts",
+      "scripts/lib/browser/axe-more.ts",
+      "scripts/lib/browser/visual-more.ts",
       "scripts/lib/shots/deeper/nested.ts",
       "scripts/lib/other.ts",
       "scripts/demo/nested.ts",
