@@ -50,9 +50,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
 ## Decision
 
 - **`features/hosts/link.ts`: `HostLink`**, the store's connections. It owns the `connections`
-  map, `connect(config, token)`, the status handling, `loadHostInfo`, `reloadHostInfo`, the wake
-  listener, `hostCommand`, `hostRequest`, `dispatch`, `connection(hostId)`, `watchChanges`, the
-  latencies, `openConnection`, and the stop and removal of one host's connection.
+  map, `connect(config, token)`, `loadHostInfo`, `reloadHostInfo`, the wake listener,
+  `connection(hostId)`, `watchChanges`, the latencies, `open(hostId)`, and the stop and removal
+  of one host's connection (the status and the requests: below).
 - **What changes outside the store's host methods, named**: `AppKernel` has no `connect`,
   `onStatus` or `loadHostInfo`, and there is no roster wire file: the roster slice is built in the
   constructor with `stop` and `detach` closures over the `connections` map, and `wireHostUpdate`'s
@@ -64,28 +64,37 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   bar), `watchChanges` (`file-explorer.tsx`, `changes-panel.tsx`) and `refreshSetup` (the GitHub
   panel, the hosts and setup pages). A move PR edits no screen.
 - **Frames go through an explicit route table**, `HostRoutes`, built once in the store from the
-  slices and passed to `HostLink` as a dep. Its type is derived from `HostConnectionOptions`, not
-  written a second time: a mapped type over every key matching `on${string}` except `onStatus`,
-  made required (`-?`), each callback given the host id and the connection before the frame's own
-  arguments. Most frame callbacks there are optional (`onCardUpdated?`, `onQuotaUpdated?`, ...);
-  a key list written by hand (`Required<Pick<..., "onA" | "onB">>`) would let a new one through
-  silently, the mapped type does not: a frame kind added to `HostConnectionOptions` is a type error
-  in the store's table literal until the table names its slice. The routes get the connection
-  because `onPing` reads its state today (`latencyMs`). The link knows the protocol; the table
-  knows which slice takes a frame.
-- **The status has one owner, the link.** On every status, `HostLink` updates its own state
-  first (the latency, the drop, the retry), then calls the table's `onStatusChanged(hostId, status,
-  conn)` (`updateHost` from `conn.lastDrop`, `conn.info`, `conn.incompatibility` and `conn.retry`,
-  the app log line, `terminals.tellOffline`, `stream.dropPartialText`, `quota.get` on `online`),
-  then, on `online` only, runs `loadHostInfo` with `connect = true`: today's order.
+  slices and read by `HostLink` through a dep at each connect. Its type is derived from
+  `HostConnectionOptions`, not written a second time: a mapped type over every key matching
+  `on${string}` except `onStatus`, `onPing` and `onChangesUpdated` (the link keeps those), each
+  key required, each callback given the host's config before the frame's own arguments (the
+  vault request needs the host's URL, not only its id). Most frame callbacks there are optional
+  (`onCardUpdated?`, `onQuotaUpdated?`, ...); a key list written by hand
+  (`Required<Pick<..., "onA" | "onB">>`) would let a new one through silently, the mapped type does
+  not: a frame kind added to `HostConnectionOptions` is a type error in the store's table literal
+  until the table names its slice. The type gives no key list at run time: the link binds the
+  table's own entries to the host. The link knows the protocol; the table knows which slice takes
+  a frame.
+- **The status stays the store's own route.** On every status the link calls the store's
+  `onStatus(hostId, conn, status)` (the app log line, `updateHost` from `conn.lastDrop`,
+  `conn.info`, `conn.incompatibility` and `conn.retry`, then on `online` `loadHostInfo` (the
+  link's, once the on-line steps move) with `connect = true` and `quota.get`, `terminals.tellOffline` on any other status,
+  `stream.dropPartialText` on `connecting`). Its order is behavior: `loadHostInfo` sends
+  `host.info` before its first wait, so `host.info` goes out before `quota.get`, and a split
+  where the link ran the store's status work first and its own on-line steps after would swap
+  them. The link keeps the latency (the ping) itself.
 - **What else the link reads of the rest of the app is a dep, named here**: the token is
   remembered for the scan (`scan.rememberToken`); the sessions to subscribe on connect (the
-  selected one and the watched ones); `lastSeqFor`; the handlers `dispatch` feeds with the cards
-  and runs of a result. The changes and latency listener sets move with the link.
+  selected one and the watched ones); `lastSeqFor`. The changes and latency listener sets move
+  with the link. `hostCommand`, `hostRequest` and `dispatch` stay in the store for now: they
+  report to the banner (`fail`) and feed the cards and runs of a result to `onCard` and `onRun`,
+  both still store methods; they move with those.
 - **The on-line steps are one ordered list**, `OnlineStep[]`, built in the store next to the route
-  table, in today's order, each step `{ gate?: HostFeature; run(ctx: { hostId, conn, hostInfo,
-  connect }): void | Promise<void> }`. `HostLink.loadHostInfo` runs the steps whose gate the host
-  has, every one started without waiting except the last, awaited; `connect` reaches the setup
+  table, in today's order, each step `{ gate?: string; run(ctx: { hostId, conn, hostInfo,
+  connect }): void | Promise<void> }`, the gate a feature name of `host.info`. The first step
+  records the answer on the host (and ends a daemon update that reached its target).
+  `HostLink.loadHostInfo` asks for `host.info` and runs the steps whose gate the host has, every
+  one started without waiting except a step marked `awaited` (the budgets), awaited when it runs; `connect` reaches the setup
   step, which passes it to `refreshSetup`, and nothing else. `refreshSetup` stays a store method;
   it runs no on-line step. The order lives in one place a reviewer reads top to bottom.
 - **Session methods go to the sessions domain** (`features/sessions/`): history (`historyGet`,

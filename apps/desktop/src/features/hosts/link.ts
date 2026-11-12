@@ -1,4 +1,5 @@
-import type { ChangesUpdated } from "@flightdeck/protocol";
+import type { ChangesUpdated, HostInfoResult } from "@flightdeck/protocol";
+import { hasFeature } from "../../lib/version.ts";
 import {
   type ConnectionStatus,
   HostConnection,
@@ -10,24 +11,54 @@ import type { HostConfig } from "./hosts.ts";
 const wakeTarget = (): Partial<Window> =>
   ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
 
-/** The frame callbacks the rest of the app handles; the link keeps the status, the ping and the changes. */
-export type HostFrames = Omit<
-  HostConnectionOptions,
-  | "url"
-  | "token"
-  | "clientName"
-  | "hostId"
-  | "baseDelayMs"
-  | "wakeDebounceMs"
-  | "maxDelayMs"
-  | "staleMs"
-  | "connectTimeoutMs"
-  | "watchdog"
-  | "lastSeqFor"
-  | "onStatus"
-  | "onPing"
-  | "onChangesUpdated"
+/** The frame kinds the rest of the app takes; the link keeps the status, the ping and the changes. */
+type FrameKey = Exclude<
+  Extract<keyof HostConnectionOptions, `on${string}`>,
+  "onStatus" | "onPing" | "onChangesUpdated"
 >;
+
+/**
+ * Where each frame kind of a host goes (#1596): one entry per frame callback of
+ * `HostConnectionOptions`, each given the host it came from. A frame kind added there is a type
+ * error in the table until the table names the slice that takes it.
+ */
+export type HostRoutes = {
+  [K in FrameKey]: (
+    host: HostConfig,
+    ...args: Parameters<NonNullable<HostConnectionOptions[K]>>
+  ) => void;
+};
+
+/** The routes as one connection's callbacks, bound to its host; the table is a plain object literal. */
+function framesFor(routes: HostRoutes, host: HostConfig): Pick<HostConnectionOptions, FrameKey> {
+  const bound = Object.entries(routes).map(([kind, route]) => [
+    kind,
+    (...args: unknown[]) =>
+      (route as (host: HostConfig, ...rest: unknown[]) => void)(host, ...args),
+  ]);
+  return Object.fromEntries(bound) as Pick<HostConnectionOptions, FrameKey>;
+}
+
+/** What an on-line step gets: the host, its connection and the `host.info` it answered. */
+interface OnlineContext {
+  hostId: string;
+  conn: HostConnection;
+  /** Null for a daemon without `host.info` (phase 1). */
+  hostInfo: HostInfoResult | null;
+  /** True when the host has just come online, false on a reload of its info. */
+  connect: boolean;
+}
+
+/**
+ * One thing done when a host comes online or its info is reloaded (#1596). A step with a `gate`
+ * runs only on a host that announces that feature.
+ */
+export interface OnlineStep {
+  gate?: string;
+  /** Awaited by `loadHostInfo` (and so by a reload of the host's info); the others are not. */
+  awaited?: true;
+  run(ctx: OnlineContext): void | Promise<void>;
+}
 
 /** What the link reads of the rest of the app. */
 export interface HostLinkDeps {
@@ -40,7 +71,10 @@ export interface HostLinkDeps {
   /** The watched sessions, by `hostId/sessionId`, subscribed on connect. */
   watched(): Iterable<string>;
   onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void;
-  frames(config: HostConfig): HostFrames;
+  /** The route table, read at each connect (the store builds it after the link). */
+  routes(): HostRoutes;
+  /** The on-line steps in their order, read at each load (the store builds them after the link). */
+  onlineSteps(): readonly OnlineStep[];
   /** Runs after every connection was woken (the window came back). */
   onWake(): void;
 }
@@ -96,7 +130,7 @@ export class HostLink {
       lastSeqFor: (sessionId) => this.deps.lastSeqFor(config.id, sessionId),
       onStatus: (status) => this.deps.onStatus(config.id, conn, status),
       onPing: () => this.setLatency(config.id, conn.latencyMs),
-      ...this.deps.frames(config),
+      ...framesFor(this.deps.routes(), config),
       onChangesUpdated: (update) => {
         for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
           listener(update);
@@ -120,6 +154,22 @@ export class HostLink {
     conn.watchBudgets();
     conn.watchVault();
     conn.connect();
+  }
+
+  /**
+   * Asks the host for its `host.info` (daemons without it answer with an error: null) and runs the
+   * on-line steps it has the features for, in order. Every step starts without waiting for the one
+   * before; only a step marked `awaited` is waited for.
+   */
+  async loadHostInfo(hostId: string, conn: HostConnection, connect = false): Promise<void> {
+    const hostInfo = await conn.request("host.info", {}).catch(() => null);
+    const ctx: OnlineContext = { hostId, conn, hostInfo, connect };
+    for (const step of this.deps.onlineSteps()) {
+      if (step.gate && !hasFeature(hostInfo?.features, step.gate, false)) continue;
+      const done = step.run(ctx);
+      if (step.awaited) await done;
+      else void done;
+    }
   }
 
   getLatency = (hostId: string): number | null => this.latencies.get(hostId) ?? null;

@@ -37,7 +37,7 @@ export { HostTabs } from "./host-tabs.ts";
 export { HostVersionTip, hostVersionText } from "./host-version.tsx";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 export { HostsBanner } from "./hosts-banner.tsx";
-export { type HostFrames, HostLink } from "./link.ts";
+export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";
 export { RenameHostDialog } from "./rename-host-dialog.tsx";
 export { HostRosterSlice, type NewHost } from "./roster-store.ts";
 export {

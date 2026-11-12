@@ -84,14 +84,15 @@ import {
   type HealthSlice,
   type HostConfig,
   type HostConnection,
-  type HostFrames,
   HostLink,
   HostRosterSlice,
+  type HostRoutes,
   HostTabs,
   type HostUpdateSlice,
   initialHealthState,
   loadHosts,
   type NewHost,
+  type OnlineStep,
   RequestError,
   saveHosts,
   statusLine,
@@ -331,7 +332,10 @@ export class AppStore {
     selected: () => this.state.selected,
     watched: () => this.watched.keys(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
-    frames: (config) => this.frames(config),
+    // Read at connect: the table is a field declared after this one.
+    routes: () => this.routes,
+    // Read at load, after the `host.info` answer: also declared after this field.
+    onlineSteps: () => this.onlineSteps,
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
@@ -1575,7 +1579,7 @@ export class AppStore {
   /** Asks the host for its `host.info` again (after a change of its settings). */
   async reloadHostInfo(hostId: string): Promise<void> {
     const conn = this.link.connection(hostId);
-    if (conn) await this.loadHostInfo(hostId, conn);
+    if (conn) await this.link.loadHostInfo(hostId, conn);
   }
 
   /** Runs `fn` after `ms` (the store's timers, which tests drive); returns the function that cancels. */
@@ -1824,56 +1828,112 @@ export class AppStore {
 
   // -- internals ------------------------------------------------------------
 
-  /** The frames of a host's connection, each to the slice that takes it. */
-  private frames(config: HostConfig): HostFrames {
-    return {
-      onSubscribed: (sessionId, result) => this.stream.onSubscribed(config.id, sessionId, result),
-      onEvent: (envelope) => this.stream.onEvent(config.id, envelope),
-      onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
-      onCardUpdated: (card) => this.onCard(config.id, card),
-      onExternal: (frame) => this.external.onExternal(config.id, frame),
-      onVaultRequest: (request) => void this.vaultApprovals.onRequest(config, request),
-      onVaultUsed: (used) => {
-        this.usage.recordUsed(config.id, used);
-        this.keepUsage();
+  /** The frames of a host's connection, each to the slice that takes it (#1596). */
+  private readonly routes: HostRoutes = {
+    onSubscribed: (config, sessionId, result) =>
+      this.stream.onSubscribed(config.id, sessionId, result),
+    onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
+    onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
+    onCardUpdated: (config, card) => this.onCard(config.id, card),
+    onExternal: (config, frame) => this.external.onExternal(config.id, frame),
+    onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
+    onVaultUsed: (config, used) => {
+      this.usage.recordUsed(config.id, used);
+      this.keepUsage();
+    },
+    // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
+    onTeams: (config, frame) => this.onTeams(config.id, frame),
+    onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
+    onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
+    onMessages: (config, frame) => {
+      if (frame.type === "messages.updated") {
+        for (const listener of this.messageListeners) listener(config.id, frame.message);
+      }
+      const deps = this.relayDeps();
+      if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
+      else void relayUpdate(deps, config.id, frame.message);
+    },
+    onVaultAlert: (_config, alert) => {
+      const notice: Notice = {
+        id: ++this.noticeSeq,
+        kind: "error",
+        code: "vault_alert",
+        text: alert.message,
+      };
+      this.update({ notices: [...this.state.notices, notice] });
+      this.inbox.notify({
+        title: this.i18n.t("vaultAudit.alertTitle"),
+        body: alert.message,
+      });
+    },
+    onRunUpdated: (config, run) => this.onRun(config.id, run),
+    onRunEnvUpdated: (config, state) => this.onRunEnv(config.id, state),
+    onQuotaUpdated: (config, state) => this.quota.updated(config.id, state),
+    onAccountUpdated: (config, state) => this.account.updated(config.id, state),
+    onBudgetUpdated: (config, update) => this.budgets.onUpdated(config.id, update),
+    onTerminal: (config, frame) => this.terminals.deliver(config.id, frame),
+    onHistoryChanged: (config, change) => {
+      for (const listener of this.historyListeners) listener(config.id, change);
+    },
+    onAskpass: (config, request) => void this.ssh.onAskpass(config.id, request),
+  };
+
+  /** What runs when a host comes online or its info is reloaded, in this order (#1596). */
+  private readonly onlineSteps: readonly OnlineStep[] = [
+    {
+      run: ({ hostId, hostInfo }) =>
+        this.updateHost(hostId, (h) => {
+          // Back on the version it was updating to: the update is over.
+          const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
+          if (done) this.hostUpdate.settled(hostId);
+          return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
+        }),
+    },
+    // The setup checklist reads what this host has: its hooks, GitHub, projects.
+    { run: ({ hostId, connect }) => void this.refreshSetup(hostId, { connect }) },
+    // Issue #1344: a host that can say what happened while the app was closed is asked once.
+    { gate: "activity", run: () => void this.activity.loadAway() },
+    // ssh asks for passwords through the daemon: this app is who answers.
+    { gate: "ssh", run: ({ conn }) => void conn.request("askpass.watch", {}).catch(() => null) },
+    // Phase 21: this app carries the host's messages for the other hosts.
+    { gate: "watch", run: ({ conn }) => void conn.request("watch.watch", {}).catch(() => null) },
+    {
+      gate: "teams",
+      run: ({ hostId, conn }) => {
+        void conn.request("teams.watch", {}).catch(() => null);
+        // The sessions that belong to teams, so the workers' notifications can be folded.
+        void conn
+          .request("teams.list", {})
+          .then((result) => {
+            for (const team of result.teams) this.summaries.rememberTeam(hostId, team);
+          })
+          .catch(() => null);
       },
-      // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-      onTeams: (frame) => this.onTeams(config.id, frame),
-      onMessagingAlert: (alert) => this.messaging.onLoopAlert(config.id, alert),
-      onWatch: (frame) => this.prWatch.keep(config.id, frame.watch),
-      onMessages: (frame) => {
-        if (frame.type === "messages.updated") {
-          for (const listener of this.messageListeners) listener(config.id, frame.message);
-        }
-        const deps = this.relayDeps();
-        if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
-        else void relayUpdate(deps, config.id, frame.message);
+    },
+    {
+      gate: "messaging",
+      run: ({ conn }) => {
+        void conn.request("messages.watch", {}).catch(() => null);
+        this.startPeersSync();
       },
-      onVaultAlert: (alert) => {
-        const notice: Notice = {
-          id: ++this.noticeSeq,
-          kind: "error",
-          code: "vault_alert",
-          text: alert.message,
-        };
-        this.update({ notices: [...this.state.notices, notice] });
-        this.inbox.notify({
-          title: this.i18n.t("vaultAudit.alertTitle"),
-          body: alert.message,
-        });
+    },
+    // Phase 19: the daemon decides a request with the rules the app hands it.
+    { gate: "actions", run: ({ hostId, conn }) => this.vaultRules.onConnect(hostId, conn) },
+    { run: ({ hostId }) => void this.health.check(hostId) },
+    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
+    {
+      gate: FEATURE_RESUME_OFFER,
+      run: ({ hostId, conn }) => void this.sessions.offerResume(hostId, conn),
+    },
+    {
+      gate: "costs",
+      awaited: true,
+      run: async ({ hostId, conn }) => {
+        const list = await conn.request("budget.list", {}).catch(() => null);
+        if (list) this.budgets.replace(hostId, list.budgets);
       },
-      onRunUpdated: (run) => this.onRun(config.id, run),
-      onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
-      onQuotaUpdated: (state) => this.quota.updated(config.id, state),
-      onAccountUpdated: (state) => this.account.updated(config.id, state),
-      onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
-      onTerminal: (frame) => this.terminals.deliver(config.id, frame),
-      onHistoryChanged: (change) => {
-        for (const listener of this.historyListeners) listener(config.id, change);
-      },
-      onAskpass: (request) => void this.ssh.onAskpass(config.id, request),
-    };
-  }
+    },
+  ];
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
     const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
@@ -1887,7 +1947,7 @@ export class AppStore {
       retry: conn.retry,
     }));
     if (status === "online") {
-      void this.loadHostInfo(hostId, conn, true);
+      void this.link.loadHostInfo(hostId, conn, true);
       // Daemons before phase 7 have no quota: quietly nothing.
       void conn.request("quota.get", {}).then(
         (state) => this.quota.updated(hostId, state),
@@ -1896,53 +1956,6 @@ export class AppStore {
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
     if (status === "connecting") this.stream.dropPartialText(hostId);
-  }
-
-  /** Daemons without `host.info` (phase 1) answer with an error: the page says so. */
-  private async loadHostInfo(hostId: string, conn: HostConnection, connect = false): Promise<void> {
-    const hostInfo = await conn.request("host.info", {}).catch(() => null);
-    this.updateHost(hostId, (h) => {
-      // Back on the version it was updating to: the update is over.
-      const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
-      if (done) this.hostUpdate.settled(hostId);
-      return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
-    });
-    // The setup checklist reads what this host has: its hooks, GitHub, projects.
-    void this.refreshSetup(hostId, { connect });
-    // Issue #1344: a host that can say what happened while the app was closed is asked once.
-    if (hasFeature(hostInfo?.features, "activity", false)) void this.activity.loadAway();
-    // ssh asks for passwords through the daemon: this app is who answers.
-    if (hasFeature(hostInfo?.features, "ssh", false)) {
-      void conn.request("askpass.watch", {}).catch(() => null);
-    }
-    // Phase 21: this app carries the host's messages for the other hosts.
-    if (hasFeature(hostInfo?.features, "watch", false)) {
-      void conn.request("watch.watch", {}).catch(() => null);
-    }
-    if (hasFeature(hostInfo?.features, "teams", false)) {
-      void conn.request("teams.watch", {}).catch(() => null);
-      // The sessions that belong to teams, so the workers' notifications can be folded.
-      void conn
-        .request("teams.list", {})
-        .then((result) => {
-          for (const team of result.teams) this.summaries.rememberTeam(hostId, team);
-        })
-        .catch(() => null);
-    }
-    if (hasFeature(hostInfo?.features, "messaging", false)) {
-      void conn.request("messages.watch", {}).catch(() => null);
-      this.startPeersSync();
-    }
-    // Phase 19: the daemon decides a request with the rules the app hands it.
-    if (hasFeature(hostInfo?.features, "actions", false)) this.vaultRules.onConnect(hostId, conn);
-    void this.health.check(hostId);
-    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
-    if (hasFeature(hostInfo?.features, FEATURE_RESUME_OFFER, false))
-      void this.sessions.offerResume(hostId, conn);
-    if (hasFeature(hostInfo?.features, "costs", false)) {
-      const list = await conn.request("budget.list", {}).catch(() => null);
-      if (list) this.budgets.replace(hostId, list.budgets);
-    }
   }
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
