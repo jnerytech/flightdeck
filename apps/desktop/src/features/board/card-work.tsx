@@ -9,8 +9,7 @@ import { issueLabel, issueUrl } from "../../lib/issues.ts";
 import type { SessionState } from "../../lib/session-state.ts";
 import { ExternalSeal } from "../issues/index.ts";
 import { CardReview, ChangesPanel, PrComments } from "../review/index.ts";
-import { StatusBadge } from "../sessions/index.ts";
-import { SessionView } from "../sessions/session-view.tsx";
+import { SessionView, StatusBadge } from "../sessions/index.ts";
 import { TerminalButton } from "../terminal/index.ts";
 import { CardSecondOpinion } from "./card-second-opinion.tsx";
 

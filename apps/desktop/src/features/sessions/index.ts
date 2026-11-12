@@ -34,6 +34,7 @@ export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
 export { rowRoute } from "./row-route.ts";
+export { SessionView } from "./session-view.tsx";
 export { StatusBadge } from "./status-badge.tsx";
 export {
   initialSessionsState,
