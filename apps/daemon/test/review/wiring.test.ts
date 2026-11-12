@@ -63,7 +63,7 @@ function setup(
   } as unknown as ReviewDeps["board"];
   const deps: ReviewDeps = {
     db: store.db,
-    changes: {} as ReviewDeps["changes"],
+    changes: { changes: {} } as ReviewDeps["changes"],
     manager: {} as ReviewDeps["manager"],
     board,
     central: undefined,
@@ -94,12 +94,12 @@ const refusal = async (run: Promise<unknown>) =>
 describe("review-wiring: the card review the daemon builds (#1593)", () => {
   test("a runtime with no one-shot call has the comments and no card review", () => {
     const { built } = setup({ complete: undefined });
-    expect([built.reviewComments !== undefined, built.cardReviews]).toEqual([true, undefined]);
+    expect([built.comments !== undefined, built.cardReview]).toEqual([true, undefined]);
   });
 
   test("each host gate holds the review under its own name, the budget last", async () => {
     const held = async (over: Parameters<typeof setup>[0]) =>
-      refusal(setup(over).built.cardReviews?.start("c1") ?? Promise.resolve());
+      refusal(setup(over).built.cardReview?.start("c1") ?? Promise.resolve());
     expect(await held({ gates: { hostPause: { blocked: shut } } })).toEqual([
       "card_review_held",
       { hold: "paused" },
@@ -117,7 +117,7 @@ describe("review-wiring: the card review the daemon builds (#1593)", () => {
 
   test("a queued card, or one whose session starts, runs or waits on a permission, is busy", async () => {
     const busy = async (card: { queued?: boolean; sessionStatus?: string | null }) =>
-      refusal(setup({ card }).built.cardReviews?.start("c1") ?? Promise.resolve());
+      refusal(setup({ card }).built.cardReview?.start("c1") ?? Promise.resolve());
     const asked = [
       { queued: true },
       { sessionStatus: "starting" },
@@ -132,7 +132,7 @@ describe("review-wiring: the card review the daemon builds (#1593)", () => {
 
   test("a review's call is recorded against the card's worktree as a card call", async () => {
     const { built, recorded } = setup();
-    await built.cardReviews?.start("c1");
+    await built.cardReview?.start("c1");
     expect(recorded.length).toBe(1);
     expect([
       recorded[0]?.origin,
@@ -161,6 +161,7 @@ describe("changes-wiring: a plain session's commit and PR the daemon builds (#15
       terminals,
       allowedRoots: ["/w"],
       scanner,
+      dataDir: "/data",
     });
     return { ...made, scanner, board, terminals, db: store.db };
   }
@@ -204,5 +205,51 @@ describe("changes-wiring: a plain session's commit and PR the daemon builds (#15
       sessionCommits.deps.scanner === scanner,
       sessionPrs.deps.scanner === scanner,
     ]).toEqual([true, true, true, true, true]);
+  });
+
+  test("the files viewer reads the same diffs inside the allowed roots, its undo kept under the data folder", () => {
+    const { changes, files, sessionFiles, db } = built();
+    expect([
+      files?.opts.changes === changes,
+      files?.opts.allowedRoots,
+      files?.opts.dataDir,
+      sessionFiles?.opts.db === db,
+    ]).toEqual([true, ["/w"], "/data", true]);
+  });
+});
+
+describe("review-wiring: the review's part of the server (#1593)", () => {
+  test("the group carries the change set's services and comments on the same diffs", () => {
+    const set = {
+      changes: { name: "changes" },
+      sessionCommits: { name: "commits" },
+      sessionPrs: { name: "prs" },
+      files: { name: "files" },
+      sessionFiles: { name: "sessionFiles" },
+    } as unknown as ReviewDeps["changes"];
+    const store = new EventStore(":memory:");
+    stores.push(store);
+    const group = createReview({
+      db: store.db,
+      changes: set,
+      manager: {} as ReviewDeps["manager"],
+      board: {} as ReviewDeps["board"],
+      central: undefined,
+      complete: undefined,
+      spec: async () => undefined,
+      redact: (t) => t,
+      persona: () => "",
+      gates: { hostPause: { blocked: open }, quota: { blocked: open }, memory: { blocked: open } },
+      usage: { record: () => undefined },
+    });
+    expect([
+      group.changes === set.changes,
+      group.sessionCommits === set.sessionCommits,
+      group.sessionPrs === set.sessionPrs,
+      group.files === set.files,
+      group.sessionFiles === set.sessionFiles,
+      group.comments?.opts.changes === set.changes,
+      "cardReview" in group,
+    ]).toEqual([true, true, true, true, true, true, false]);
   });
 });
