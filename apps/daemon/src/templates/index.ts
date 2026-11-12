@@ -4,3 +4,4 @@
  */
 export { BUILTIN_TEMPLATES } from "./builtin.ts";
 export { loadTemplates } from "./files.ts";
+export { TaskTracker } from "./tasks.ts";
