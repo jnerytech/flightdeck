@@ -39,6 +39,8 @@ function slice(
       events.push("changed");
     },
     workFactor: () => over.workFactor ?? 4,
+    copyText: async () => true,
+    clearClipboardIn: () => {},
     saveFile: async (name, text) => {
       saved.push({ name, text });
       return over.save ?? true;
