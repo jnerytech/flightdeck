@@ -114,7 +114,7 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
     const notice = messaging
       .list({})
       .filter((m) => m.kind === "system" && m.text.includes("Entrou"));
-    expect(notice.at(-1)?.text).toContain("esforço xhigh");
+    expect(notice.at(-1)?.text).toContain("effort xhigh");
     expect(await added(null)).toBeNull();
     expect(await added()).toBeNull();
   });
