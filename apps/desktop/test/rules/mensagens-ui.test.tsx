@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { DEFAULT_POLICY, validatePolicy } from "../../daemon/src/messaging/policy.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { DEFAULT_POLICY, validatePolicy } from "../../../daemon/src/messaging/policy.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
