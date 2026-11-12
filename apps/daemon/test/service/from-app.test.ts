@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { ServiceContext } from "../../src/service.ts";
-import { installService } from "../../src/service.ts";
-import { appCanInstallService, installServiceFromApp } from "../../src/service-from-app.ts";
+import { appCanInstallService, installServiceFromApp } from "../../src/service/from-app.ts";
+import type { ServiceContext } from "../../src/service/install.ts";
+import { installService } from "../../src/service/install.ts";
 
 const STABLE_LINUX = "/home/dev/.flightdeck/bin/flightdeckd";
 const STABLE_WIN = "C:\\Users\\dev\\.flightdeck\\bin\\flightdeckd.exe";

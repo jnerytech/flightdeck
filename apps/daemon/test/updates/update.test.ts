@@ -23,8 +23,8 @@ import {
   serviceCommand,
   systemdUnit,
   windowsTaskXml,
-} from "../../src/service.ts";
-import { killProcess, processPath } from "../../src/service-os.ts";
+} from "../../src/service/install.ts";
+import { killProcess, processPath } from "../../src/service/os.ts";
 import {
   compareVersions,
   requestShutdown,
@@ -33,7 +33,7 @@ import {
   swapBinary,
   type UpdateDeps,
   waitHealthy,
-} from "../../src/update.ts";
+} from "../../src/service/update.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
