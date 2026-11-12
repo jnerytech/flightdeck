@@ -48,12 +48,12 @@ describe("simple-exit-ui: simple mode has a visible way out (issue #132)", () =>
     });
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText("This shows the technical screens.")).toBeTruthy();
-    expect(store.uiMode(hostId).mode).toBe("simple");
+    expect(store.uiModes.mode(hostId).mode).toBe("simple");
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Show everything" }));
     });
     await waitFor(() => screen.getByRole("button", { name: "Board" }));
-    expect(store.uiMode(hostId).mode).toBe("full");
+    expect(store.uiModes.mode(hostId).mode).toBe("full");
   });
 
   test("Given a locked simple host, Then the nav says why there is no way out, and offers none", async () => {
@@ -80,7 +80,7 @@ describe("simple-exit-ui: simple mode has a visible way out (issue #132)", () =>
       );
     });
     await waitFor(() => nav());
-    expect(store.uiMode(hostId).mode).toBe("simple");
+    expect(store.uiModes.mode(hostId).mode).toBe("simple");
     await act(async () => {
       fireEvent.click(within(nav()).getByRole("button", { name: "Full app" }));
     });
@@ -104,16 +104,16 @@ describe("simple-exit-ui: simple mode has a visible way out (issue #132)", () =>
     const { store, hostId } = await open({ mode: "full", locked: false });
     await waitFor(() => screen.getByRole("button", { name: "Board" }), { timeout: 10_000 });
     await key({});
-    await waitFor(() => expect(store.uiMode(hostId).mode).toBe("simple"));
+    await waitFor(() => expect(store.uiModes.mode(hostId).mode).toBe("simple"));
     await key({});
-    await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
+    await waitFor(() => expect(store.uiModes.mode(hostId).mode).toBe("full"));
   });
 
   test("Ctrl+Shift+M on a locked host does nothing", async () => {
     const { store, hostId } = await open({ mode: "full", locked: true });
     await waitFor(() => screen.getByRole("button", { name: "Board" }), { timeout: 10_000 });
     await key({});
-    expect(store.uiMode(hostId).mode).toBe("full");
+    expect(store.uiModes.mode(hostId).mode).toBe("full");
   });
 
   test("the shortcut is in the sheet and the palette has an entry that follows the mode", async () => {

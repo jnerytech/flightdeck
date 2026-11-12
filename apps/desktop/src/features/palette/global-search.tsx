@@ -312,8 +312,8 @@ export function GlobalSearch(
 
 /** The mode the palette offers to go to, when the host in view allows a change. */
 function modeSwitch(store: AppStore): "simple" | "full" | null {
-  const hostId = store.uiHostId();
-  const now = hostId ? store.uiMode(hostId) : null;
+  const hostId = store.uiModes.hostId();
+  const now = hostId ? store.uiModes.mode(hostId) : null;
   if (!now?.canSwitch) return null;
   return now.mode === "simple" ? "full" : "simple";
 }

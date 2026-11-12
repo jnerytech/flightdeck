@@ -116,7 +116,7 @@ describe("plain-title: the window title", () => {
 
   test("Given the person switches the host to full mode, Then the title goes back to the plain name", () => {
     const { titles, store } = setup("simple", 2);
-    store.setUiChoice("h1", "full");
+    store.uiModes.choose("h1", "full");
     expect(titles.at(-1)).toBe("Flightdeck");
   });
 });

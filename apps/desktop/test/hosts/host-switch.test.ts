@@ -177,7 +177,10 @@ describe("host-switch: the window says the switch, with a way back", () => {
     store.select("h1", null);
     const before = store.getState().notices.length;
     store.router.push(project("h1", "p-api"));
-    expect({ named: store.uiHostId(), said: store.getState().notices.length - before }).toEqual({
+    expect({
+      named: store.uiModes.hostId(),
+      said: store.getState().notices.length - before,
+    }).toEqual({
       named: "h1",
       said: 0,
     });

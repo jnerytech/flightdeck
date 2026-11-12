@@ -184,7 +184,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await click("Try again");
     await chip("Could not finish");
     await click("Show details");
-    await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
+    await waitFor(() => expect(store.uiModes.mode(hostId).mode).toBe("full"));
     expect(store.router.current.name).toBe("session");
   });
 
@@ -215,7 +215,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
       fireEvent.click(within(nav()).getByRole("button", { name: "Full app" }));
     });
     await click("Cancel");
-    expect(store.uiMode(hostId).mode).toBe("simple");
+    expect(store.uiModes.mode(hostId).mode).toBe("simple");
   });
 
   test("Given Settings, When a folder is chosen and added, Then the host lists it among the folders tasks may use", async () => {
@@ -251,13 +251,13 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await waitFor(() => expect(store.getState().settings.notifyUpdates).toBe(false));
     await click("Show everything");
     await click("Cancel");
-    expect(store.uiMode(hostId).mode).toBe("simple");
+    expect(store.uiModes.mode(hostId).mode).toBe("simple");
     await click("Show everything");
     await act(async () => {
       fireEvent.click(
         within(screen.getByRole("alertdialog")).getByRole("button", { name: "Show everything" }),
       );
     });
-    await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
+    await waitFor(() => expect(store.uiModes.mode(hostId).mode).toBe("full"));
   });
 });
