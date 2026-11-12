@@ -8,6 +8,7 @@ const dirs = [
   "apps/desktop/src/components/feedback",
   "apps/desktop/src/shared/feedback",
   "apps/desktop/src/components/layout",
+  "apps/desktop/src/shared/markdown",
   "apps/desktop/src/shared/status",
   // Screens move into their feature folder (#1597): a domain's folder is swept like the rest.
   ...readdirSync(FEATURES, { withFileTypes: true })
