@@ -202,6 +202,16 @@ interface ProjectsServer {
   find?: boolean;
 }
 
+/** Phase 12, #1593: the checkpoints domain's part of the server, each service optional. */
+interface CheckpointsServer {
+  /** The git snapshots behind `snapshots.list` and `snapshots.files`. */
+  snapshots?: Snapshots;
+  /** Going back to a turn (`rewind.*`). */
+  rewinder?: Rewinder;
+  /** `session.fork`. */
+  forker?: Forker;
+}
+
 /** Phase 22, #1593: the cards' PR watch, each service optional. */
 interface PrWatchServer {
   /** Phase 22: the PR watch of the cards. */
@@ -478,12 +488,8 @@ export interface ServerOptions {
   autoApprove?: AutoApprover;
   /** What Claude Code's agents are set up with (phases 12, 26 and 33, #1593). */
   agentSetup?: AgentSetupServer;
-  /** Phase 12: `session.fork`. */
-  forker?: Forker;
-  /** Phase 12: going back to a turn (`rewind.*`). */
-  rewinder?: Rewinder;
-  /** Phase 12: the git snapshots behind `snapshots.list`. */
-  snapshots?: Snapshots;
+  /** Phase 12, #1593: the turns' snapshots, the rewind and the fork. */
+  checkpoints?: CheckpointsServer;
   /** The daemon's own update: its check, its apply and the automatic update (#1593). */
   updates?: UpdatesServer;
   /** Called after acking `daemon.shutdown`; without it the command is refused. */

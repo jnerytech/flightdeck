@@ -3,7 +3,7 @@
  * trace, and the history index.
  */
 import { withTurnUuids } from "../../checkpoints/turn-uuid.ts";
-import { FlightdeckError, featureOff } from "../../errors.ts";
+import { FlightdeckError } from "../../errors.ts";
 import { preparePersonas } from "../../personas/prepare.ts";
 import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
@@ -13,27 +13,28 @@ export const reviewHandlers = {
     return {
       // A terminal turn's uuid is found in the indexed transcript, when it can be told.
       snapshots: withTurnUuids(
-        server.opts.snapshots?.list(payload.claudeSessionId) ?? [],
+        server.opts.checkpoints?.snapshots?.list(payload.claudeSessionId) ?? [],
         server.opts.history?.userPrompts(payload.claudeSessionId) ?? [],
       ),
     };
   },
   "snapshots.files": async (payload, { server }) => {
-    if (!server.opts.snapshots) throw featureOff("snapshots");
     const { claudeSessionId, n } = payload;
-    return await server.opts.snapshots.files(claudeSessionId, n);
+    return await server.needIn("checkpoints", "snapshots").files(claudeSessionId, n);
   },
   "rewind.preview": async (payload, { server }) => {
     const { claudeSessionId, turn } = payload;
-    return await server.need("rewinder").preview(claudeSessionId, turn);
+    return await server.needIn("checkpoints", "rewinder").preview(claudeSessionId, turn);
   },
   "rewind.apply": async (payload, { server }) => {
     const { claudeSessionId, turn, confirm } = payload;
-    return await server.need("rewinder").apply(claudeSessionId, turn, confirm === true);
+    return await server
+      .needIn("checkpoints", "rewinder")
+      .apply(claudeSessionId, turn, confirm === true);
   },
   "rewind.undo": async (payload, { server }) => {
     const { claudeSessionId, confirm } = payload;
-    return await server.need("rewinder").undo(claudeSessionId, confirm === true);
+    return await server.needIn("checkpoints", "rewinder").undo(claudeSessionId, confirm === true);
   },
   "history.get": async (payload, { server }) => {
     const { claudeSessionId, cursor, limit, tail } = payload;
