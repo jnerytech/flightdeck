@@ -36,7 +36,7 @@ async function open() {
   });
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
   await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   return { d, store, hostId };

@@ -37,8 +37,8 @@ async function setup(options: { canBrowse?: boolean } = {}) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
   store.i18n.start();
   cleanups.push(() => store.dispose());
-  const from = await store.addHost({ name: "alfa", url: alfa.listen().url, token: TOKEN });
-  const to = await store.addHost({ name: "beta", url: beta.listen().url, token: TOKEN });
+  const from = await store.roster.add({ name: "alfa", url: alfa.listen().url, token: TOKEN });
+  const to = await store.roster.add({ name: "beta", url: beta.listen().url, token: TOKEN });
   await waitFor(() =>
     expect(store.getState().hosts.every((h) => h.status === "online")).toBe(true),
   );

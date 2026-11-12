@@ -44,7 +44,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+    const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
     await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
 
     // Start a task from a card.
@@ -158,7 +158,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     });
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+    const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
     await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
     const folder = join(d.root, "notes");
     mkdirSync(folder, { recursive: true });
@@ -195,7 +195,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+    const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
     await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
     await act(async () => {
       fireEvent.click(within(nav()).getByRole("button", { name: "Settings" }));

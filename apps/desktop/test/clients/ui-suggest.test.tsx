@@ -54,7 +54,7 @@ async function open(clients: unknown[] = [], overrides: Record<string, string | 
   render(<App store={store} />);
   const daemon = legacyDaemon(cleanups);
   daemon.hub.managed = ["s1", "s2", "s3"].map(managed);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await settle(() => store.getState().hub[store.getState().hosts[0]?.id ?? ""] !== undefined);
   await act(async () => store.router.push({ name: "clients" }));

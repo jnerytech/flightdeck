@@ -20,7 +20,7 @@ async function setup(platform = memoryPlatform().platform) {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push("actions");
-  const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   const here = await store.secrets.add({
     name: "staging",
@@ -97,7 +97,7 @@ describe("regras-armazenamento: the app keeps each secret's rules and hands them
     await store.vaultRules.set(here.id, ALLOW);
     const other = legacyDaemon(cleanups);
     other.features.push("actions");
-    const otherId = await store.addHost({ name: "pi", url: other.url, token: TOKEN });
+    const otherId = await store.roster.add({ name: "pi", url: other.url, token: TOKEN });
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     store.secrets.update(here.id, { allowedHosts: [store.getState().hosts[0]?.id ?? "", otherId] });
     other.refuse.set("vault.rules.set", "regra inválida");

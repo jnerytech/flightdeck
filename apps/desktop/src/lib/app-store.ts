@@ -65,7 +65,6 @@ import {
   type HostUpdateSlice,
   initialHealthState,
   loadHosts,
-  type NewHost,
   type OnlineStep,
   RequestError,
   saveHosts,
@@ -934,11 +933,6 @@ export class AppStore {
     }
   }
 
-  /** Adds a host and connects; the roster does the work (kept here: most screens' tests start from it). */
-  addHost(input: NewHost): Promise<string> {
-    return this.roster.add(input);
-  }
-
   /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
   githubTicker(tick: () => void): () => void {
     if (this.options.githubTicker) return this.options.githubTicker(tick);
@@ -1234,11 +1228,6 @@ export class AppStore {
         { id: ++this.noticeSeq, kind: "success", code: "", text, ...(link ? { link } : {}) },
       ],
     });
-  }
-
-  /** Adds a folder to a host's allowed folders; the roster does the work. */
-  allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
-    return this.roster.allowRoot(hostId, folder, retry);
   }
 
   /** A toast closed (or shown, for successes): it leaves the list. */

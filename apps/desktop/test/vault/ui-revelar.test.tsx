@@ -33,7 +33,7 @@ async function open() {
   };
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
-  await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+  await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
   await store.secrets.add({ name: "github", type: "password", value: VALUE });
   render(<VaultPage store={store} revealMs={REVEAL_MS} clearMs={CLEAR_MS} />);
   return { store, copied };

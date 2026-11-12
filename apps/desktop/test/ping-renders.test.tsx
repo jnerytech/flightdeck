@@ -28,7 +28,7 @@ async function pinged() {
       <App store={store} />
     </Profiler>,
   );
-  await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull(), {
     timeout: 8000,
   });

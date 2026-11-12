@@ -41,7 +41,7 @@ async function open(selection: string) {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   const daemon = legacyDaemon(cleanups);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   for (const [name, tags] of [
     ["s-acme", ["client:acme"]],

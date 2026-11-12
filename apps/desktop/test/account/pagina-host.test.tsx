@@ -58,7 +58,7 @@ async function setup(hosts: Array<{ name: string; email: string | null }>) {
     const d = makeDaemon(cleanups, made ? { quota: made.quota, account: made.account } : {});
     const server = d.listen();
     accounts[name] = made?.account;
-    ids[name] = await act(() => store.addHost({ name, url: server.url, token: TOKEN }));
+    ids[name] = await act(() => store.roster.add({ name, url: server.url, token: TOKEN }));
   }
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   const open = async (name: string) => {

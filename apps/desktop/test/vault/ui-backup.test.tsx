@@ -75,7 +75,7 @@ async function open(picked: string | null = null) {
     picked === null ? null : { path: "x.fdvault", text: picked };
   const store = new AppStore(platform, { baseDelayMs: 60_000, vaultWorkFactor: 4 });
   const daemon = legacyDaemon(cleanups);
-  await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+  await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
   render(<VaultPage store={store} />);
   const tab = screen.queryByRole("tab", { name: "Backup" });
   expect(tab).not.toBeNull();
@@ -205,7 +205,7 @@ describe("cofre-ui: backup", () => {
       });
     const store = new AppStore(platform, { baseDelayMs: 60_000, vaultWorkFactor: 4 });
     const daemon = legacyDaemon(cleanups);
-    await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+    await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
     render(<VaultPage store={store} />);
     const tab = screen.getByRole("tab", { name: "Backup" });
     await act(async () => {

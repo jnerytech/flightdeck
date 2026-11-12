@@ -131,7 +131,7 @@ describe("hub-cartoes: the hub as a grid", () => {
     render(<App store={store} />);
     if (!daemon) {
       await act(async () => {
-        await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+        await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
       });
     }
     await settle(() => store.getState().hosts[0]?.status === "online");

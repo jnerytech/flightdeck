@@ -38,7 +38,7 @@ async function open() {
   };
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
-  await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+  await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
   const view = render(<VaultPage store={store} />);
   return { store, removed, copied, view };
 }

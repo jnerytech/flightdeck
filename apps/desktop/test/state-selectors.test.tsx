@@ -29,9 +29,9 @@ async function threeHosts() {
   const alfa = legacyDaemon(cleanups);
   const beta = legacyDaemon(cleanups);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: alfa.url, token: TOKEN });
-    await store.addHost({ name: "beta", url: beta.url, token: TOKEN });
-    await store.addHost({ name: "gama", url: "ws://127.0.0.1:1/", token: TOKEN });
+    await store.roster.add({ name: "alfa", url: alfa.url, token: TOKEN });
+    await store.roster.add({ name: "beta", url: beta.url, token: TOKEN });
+    await store.roster.add({ name: "gama", url: "ws://127.0.0.1:1/", token: TOKEN });
   });
   await settle(() => store.getState().hosts.filter((h) => h.status === "online").length >= 2);
   return { store, alfa, beta };
@@ -236,7 +236,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
     cleanups.push(() => store.dispose());
     await act(async () => {
-      await store.addHost({ name: "gama", url: "ws://127.0.0.1:1/", token: TOKEN });
+      await store.roster.add({ name: "gama", url: "ws://127.0.0.1:1/", token: TOKEN });
     });
     /** The store as the page sees it, with a translator that counts its calls: a page translates on every render. */
     const seen = { calls: 0 };

@@ -126,7 +126,7 @@ async function setup() {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000, searchTimeoutMs: 3000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(
     () =>
@@ -340,7 +340,7 @@ describe("paleta", () => {
     const d = makeDaemon(cleanups);
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
-    await store.addHost({
+    await store.roster.add({
       name: "alfa",
       url: d.listen(0, undefined, ["central", "workflows", "costs"]).url,
       token: TOKEN,

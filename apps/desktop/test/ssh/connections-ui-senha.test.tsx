@@ -37,7 +37,7 @@ async function open(feature = true) {
   const platform = memoryPlatform(false, "pt-BR");
   const store = new AppStore(platform.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+  await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
   await settle(() => d.sent("askpass.watch").length > 0 || !feature);
   await uiIdle();
@@ -164,7 +164,7 @@ describe("conexoes-ui: ssh asks for a password", () => {
     });
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
-    await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+    await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
     render(<App store={store} />);
     await settle(() => d.sent("askpass.watch").length > 0);
     await settle(() => store.getState().hosts[0]?.status === "online");

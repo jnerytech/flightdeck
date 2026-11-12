@@ -53,7 +53,7 @@ async function open(initial: unknown, hosts = ["alfa"]) {
   for (const name of hosts) {
     const daemon = legacyDaemon(cleanups);
     daemon.hub.managed = ["s1", "s2", "s3"].map(managed);
-    await act(() => store.addHost({ name, url: daemon.url, token: TOKEN }));
+    await act(() => store.roster.add({ name, url: daemon.url, token: TOKEN }));
   }
   await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
   await settle(() =>

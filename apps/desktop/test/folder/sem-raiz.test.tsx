@@ -20,7 +20,7 @@ describe("pasta-sem-raiz: a host that allows no folder says so and offers to add
       ok: true,
       data: { path: null, dirs: [], truncated: false },
     });
-    (store as unknown as Record<string, unknown>).allowRoot = async (
+    (store.roster as unknown as Record<string, unknown>).allowRoot = async (
       host: string,
       path: string,
     ) => {
