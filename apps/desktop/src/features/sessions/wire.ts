@@ -1,6 +1,7 @@
 import type { AppKernel } from "../../lib/kernel.ts";
 import { type SessionCommandsCore, SessionCommandsSlice } from "./commands.ts";
 import { type ExternalSessionsCore, ExternalSessionsSlice } from "./external.ts";
+import { type FinishedCore, FinishedSlice } from "./finished.ts";
 import { type SessionListsCore, SessionListsSlice } from "./lists.ts";
 import { type SessionsCore, SessionsSlice, type SessionsSliceState } from "./store.ts";
 import { type SessionStreamCore, SessionStreamSlice } from "./stream.ts";
@@ -57,6 +58,22 @@ export function wireExternalSessions(
     notify: deps.notify,
     feedSession: deps.feedSession,
     feedPermission: deps.feedPermission,
+  });
+}
+
+/** The sessions that finished, kept for Needs you, with their file counts asked of the host. */
+export function wireFinished(
+  kernel: AppKernel<ReturnType<FinishedCore["state"]>>,
+  deps: Pick<FinishedCore, "storage" | "isFocused" | "shown">,
+): FinishedSlice {
+  return new FinishedSlice({
+    state: () => kernel.state(),
+    update: (patch) => kernel.update(patch),
+    storage: deps.storage,
+    now: () => kernel.now(),
+    isFocused: deps.isFocused,
+    shown: deps.shown,
+    changes: (hostId, target) => kernel.hostRequest(hostId, "changes.get", { target }),
   });
 }
 
