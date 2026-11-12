@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { packageOf, reachedPackages, slashed, staticImports } from "../../lib/bundle-reach.ts";
+import {
+  packageOf,
+  reachedPackages,
+  slashed,
+  staticImports,
+} from "../../lib/bundle/bundle-reach.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 describe("bundle-lazy: what an entry point loads at start-up", () => {
