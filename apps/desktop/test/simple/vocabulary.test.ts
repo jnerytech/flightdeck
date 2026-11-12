@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { type Key, LANGS, translator } from "../src/i18n/index.ts";
-import { SIMPLE_RENAMES } from "../src/i18n/simple.ts";
-import { HIDDEN_TERMS, hiddenTermsIn } from "../src/lib/simple-words.ts";
+import { type Key, LANGS, translator } from "../../src/i18n/index.ts";
+import { SIMPLE_RENAMES } from "../../src/i18n/simple.ts";
+import { HIDDEN_TERMS, hiddenTermsIn } from "../../src/lib/simple-words.ts";
 
 describe("simple-vocabulary: the words of simple mode", () => {
   test("Given the table of renames, When a key is asked in simple mode, Then the plain word answers and full mode is untouched", () => {

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { effectiveMode, loadChoices, saveChoice, UI_CHOICES_KEY } from "../src/lib/simple-mode.ts";
+import {
+  effectiveMode,
+  loadChoices,
+  saveChoice,
+  UI_CHOICES_KEY,
+} from "../../src/lib/simple-mode.ts";
 
 const memory = (initial?: string) => {
   const data = new Map<string, string>(initial ? [[UI_CHOICES_KEY, initial]] : []);
