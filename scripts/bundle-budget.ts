@@ -4,8 +4,8 @@
  */
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ENTRY_GZIP_LIMIT, overBudget } from "./lib/bundle-budget.ts";
-import { bundleChunks, entryFile } from "./lib/perf-baseline.ts";
+import { ENTRY_GZIP_LIMIT, overBudget } from "./lib/bundle/bundle-budget.ts";
+import { bundleChunks, entryFile } from "./lib/bundle/perf-baseline.ts";
 
 const DIST = resolve(import.meta.dir, "../apps/desktop/dist");
 const chunks = bundleChunks(DIST);
