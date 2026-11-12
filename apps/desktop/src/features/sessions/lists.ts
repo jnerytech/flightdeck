@@ -6,6 +6,7 @@ import type {
   SessionSummary,
 } from "@flightdeck/protocol";
 import type { HostConnection } from "@/features/hosts/index.ts";
+import { nullOnError } from "@/shared/lib/index.ts";
 import type { AppState, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { sessionKey } from "./session-key.ts";
@@ -18,9 +19,6 @@ type ListsPatch = Partial<Pick<AppState, "hub" | "names" | "meta" | "externals" 
 
 /** Whether two values hold the same data (the answers of a host are plain JSON). */
 const sameJson = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
-
-/** A request whose failure only means less to show (an older daemon, a host without history). */
-const quiet = <T>(promise: Promise<T>) => promise.catch(() => null);
 
 /** What the session lists read and ask through the app's store. */
 export interface SessionListsCore {
@@ -62,11 +60,11 @@ export class SessionListsSlice {
     const named = hasFeature(host.hostInfo?.features, "names", false);
     const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
     const [managed, history, external, standard, background] = await Promise.all([
-      quiet(conn.request("session.list", {})),
-      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-      quiet(conn.request("external.list", {})),
-      named ? quiet(conn.request("names.list", {})) : null,
-      withBackground ? quiet(conn.request("bg.list", {})) : null,
+      nullOnError(conn.request("session.list", {})),
+      nullOnError(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
+      nullOnError(conn.request("external.list", {})),
+      named ? nullOnError(conn.request("names.list", {})) : null,
+      withBackground ? nullOnError(conn.request("bg.list", {})) : null,
     ]);
     const state = this.core.state();
     const patch: ListsPatch = this.changedMeta(host.id, managed, history, external);
