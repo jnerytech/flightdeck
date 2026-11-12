@@ -58,13 +58,16 @@ are in the glossary test's baseline until #1594 and #1601 move their parts into 
 ## Relations at each border
 
 - **Shared kernel.** `packages/protocol` between the desktop and the daemon: a change there is a
-  change on both sides, so it moves with the version test. Inside the daemon, the loose files every
-  context uses (`errors`, `ulid`, `paths`, `which`, `exec`, `atomic-write`, `json-text`, `trim`,
-  `settled`, `read-regular`, `env`, `ntfs-name`, `lines`, `async-queue`, `logger`, `version`) are a kernel, grouped by
-  #1594. The rest of the loose files belong to a context: `pairing`, `token`, `networks`,
-  `roots`, `project-find`, `fs-dirs`, `present`, `ws-send`, `delta-coalescer`, `server` to the
-  transport; `doctor`, `lock`, `config` to host operations (`service/` and `wsl/` since #1594); `card-cli`, `create-inside`, `references` to the board; `mcp`,
-  `claude-probe`, `transcript-text` to the session.
+  change on both sides, so it moves with the version test. Inside the daemon, the files every
+  context uses live in `kernel/` since #1594: `errors`, `ulid`, `paths`, `which`, `exec`,
+  `atomic-write`, `json-text`, `trim`, `settled`, `read-regular`, `env`, `ntfs-name`, `lines`,
+  `async-queue`, `logger`, `version`, and with them `token`, `networks`, `present` and `lock`. The
+  other once-loose files went to their context: `pairing/`; `projects/` (`roots`, `project-find`);
+  `files/` (`fs-dirs`); `server/` (`ws-send`, `delta-coalescer`), the transport; `deps/` (`doctor`)
+  and `service/`, `wsl/`, host operations; `board/` (`card-cli`, `create-inside`); `workflows/`
+  (`references`); `agentcfg/` (`mcp`); `runtime/` (`claude-probe`) and `history/`
+  (`transcript-text`). Left at the root: `main.ts` (the wiring), `bin.ts`, `config.ts`, `server.ts`
+  and `server-options.ts` (what `startServer` takes; `server/` imports it, not `server.ts`, #1611).
 - **Customer and supplier.** Board is the customer of Session (it launches and watches sessions),
   of Permission, of Agent setup (personas, snippets) and of Usage (quota holds the queue).
   Collaboration is a customer of Session. Usage and Observation are suppliers to everyone and depend
