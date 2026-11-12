@@ -29,7 +29,7 @@ async function setup() {
   // init registers the tray's handler.
   await store.init();
   const daemon = legacyDaemon(cleanups);
-  const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => daemon.asked.includes("vault.watch"));
   const meta = await store.secrets.add({
     name: "prod-key",

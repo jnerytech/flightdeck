@@ -57,7 +57,7 @@ async function setup() {
     maxDelayMs: 20,
   });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   const project = await store.hostCommand(hostId, "project.add", { path: inside });
   const created = await store.hostCommand(hostId, "card.create", {
@@ -132,7 +132,7 @@ describe("run-ui: o preview em uma aba", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
     });
     return { store, opened, items: mem.items };
   }

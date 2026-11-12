@@ -62,7 +62,7 @@ async function open(features = ["bg", "terminal"], sessions: unknown[] = [BLOCKE
   daemon.roots.push("/work");
   daemon.bg.list = { supported: true, sessions };
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   return { store, daemon, hostId };
 }
@@ -137,7 +137,9 @@ describe("bg-ui: the hub follows them", () => {
     daemon.features.push("bg");
     daemon.bg.list = { supported: true, sessions: [BLOCKED] };
     const { unmount } = render(<App store={store} />);
-    const hostId = await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+    const hostId = await act(() =>
+      store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }),
+    );
     await settle(() => store.getState().hosts[0]?.hostInfo != null);
     await act(async () => {
       store.router.push({ name: "hub" });

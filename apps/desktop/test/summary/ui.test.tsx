@@ -36,7 +36,7 @@ async function online(language: string, options: { legacy?: boolean; plain?: boo
   if (options.legacy) {
     const legacy = legacyDaemon(cleanups);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: legacy.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: legacy.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     return { store, mem };
@@ -81,7 +81,7 @@ async function online(language: string, options: { legacy?: boolean; plain?: boo
     )
     .run(SESSION);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.hostInfo !== null);
   return { store, mem };
@@ -274,7 +274,7 @@ describe("resumo-ui", () => {
     const server = d.listen();
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
     const managed = await d.manager.create({ cwd: d.project, prompt: "oi" });

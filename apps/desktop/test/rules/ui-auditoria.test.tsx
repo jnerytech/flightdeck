@@ -33,7 +33,7 @@ async function setup() {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.features.push("actions");
-  const hostId = await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   const deploy = await store.secrets.add({
     name: "deploy",
@@ -155,7 +155,7 @@ describe("regras-ui-auditoria: what the rules decided", () => {
     const { store, daemon } = await setup();
     const other = legacyDaemon(cleanups);
     other.features.push("actions");
-    await store.addHost({ name: "pi", url: other.url, token: TOKEN });
+    await store.roster.add({ name: "pi", url: other.url, token: TOKEN });
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     await report(store);
     await settle(() => daemon.asked.includes("vault.report"));

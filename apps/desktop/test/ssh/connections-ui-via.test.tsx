@@ -29,8 +29,8 @@ async function open(via: SshDaemonOptions = {}, vpsOnline = true) {
   const vps = sshDaemon(cleanups, via);
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const pcId = await store.addHost({ name: "pc", url: pc.url, token: TOKEN });
-  const vpsId = await store.addHost({
+  const pcId = await store.roster.add({ name: "pc", url: pc.url, token: TOKEN });
+  const vpsId = await store.roster.add({
     name: "vps",
     url: vpsOnline ? vps.url : "ws://127.0.0.1:9/",
     token: TOKEN,

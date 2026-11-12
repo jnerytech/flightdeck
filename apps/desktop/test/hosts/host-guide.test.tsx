@@ -54,7 +54,7 @@ async function secondHostPage(language: keyof typeof TEXT) {
   const store = new AppStore(platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "one", url: server.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "one", url: server.url, token: TOKEN }));
   await act(async () => {
     store.tabs.active.router.push({ name: "add-host" });
   });

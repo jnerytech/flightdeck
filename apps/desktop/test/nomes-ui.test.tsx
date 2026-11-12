@@ -69,7 +69,7 @@ async function open(features: string[], personas: Record<string, string> = {}) {
     named("m3", "geral", 1),
   ];
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     store.router.push({ name: "hub" });

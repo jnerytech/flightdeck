@@ -24,7 +24,7 @@ async function online(language: string) {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   return { d, store, hostId: store.getState().hosts[0]?.id ?? "" };
@@ -114,7 +114,7 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
   test("the host refusing the folder (a system folder) says why in a toast", async () => {
     const { store, hostId } = await online("en-US");
     await act(async () => {
-      expect(await store.allowRoot(hostId, SYSTEM_FOLDER)).toBe(false);
+      expect(await store.roster.allowRoot(hostId, SYSTEM_FOLDER)).toBe(false);
     });
     await settle(() => screen.queryAllByRole("alert").length >= 1);
     expect(screen.getAllByRole("alert")[0]?.textContent ?? "").toContain("is a system folder");

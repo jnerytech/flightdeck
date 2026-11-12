@@ -12,7 +12,7 @@ async function setup() {
   const server = d.listen();
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10, maxDelayMs: 20 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
   return { ...d, server, store, hostId };
 }

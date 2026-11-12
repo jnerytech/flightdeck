@@ -60,7 +60,7 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
     });
     cleanups.push(() => store.dispose());
     store.i18n.start();
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
     const id = (await store.createSession(hostId, {
       cwd: d.project,
@@ -103,7 +103,7 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
     });
     cleanups.push(() => store.dispose());
     store.i18n.start();
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
     const id = (await store.createSession(hostId, {
       cwd: d.project,

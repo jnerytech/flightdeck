@@ -1,4 +1,5 @@
 import type { Logger } from "../kernel/index.ts";
+import type { DomainModule } from "../server/index.ts";
 import { FileLog } from "./file-log.ts";
 import { createLogScanner } from "./scanner.ts";
 
@@ -21,9 +22,10 @@ export interface HostLogDeps {
 /**
  * The daemon's log (#255, #1593): each line to the console and, redacted, to a rotated file.
  * Never written: the daemon's tokens (the config's, the rotated one, the hooks') and what the
- * vault holds, read at each line.
+ * vault holds, read at each line. Its module hands the server the file log as `fileLog`; `main.ts`
+ * flushes it itself, as the last thing the daemon does.
  */
-export function createHostLog(deps: HostLogDeps): { logger: Logger; fileLog: FileLog } {
+export function createHostLog(deps: HostLogDeps) {
   const { config } = deps;
   const fileLog = new FileLog({
     dir: deps.dir,
@@ -43,5 +45,6 @@ export function createHostLog(deps: HostLogDeps): { logger: Logger; fileLog: Fil
       fileLog.write("error", message);
     },
   };
-  return { logger, fileLog };
+  const module: DomainModule<"fileLog"> = { server: { fileLog } };
+  return { modules: [module] as const, logger, fileLog };
 }

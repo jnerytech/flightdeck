@@ -175,7 +175,7 @@ export async function startDaemon(
   // holds. The vault is made further down; until then there is nothing held.
   let currentToken = config.token;
   let heldValues: () => string[] = () => [];
-  const { logger, fileLog } = createHostLog({
+  const hostLog = createHostLog({
     console: console_,
     dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
     home: userHome(env),
@@ -183,6 +183,7 @@ export async function startDaemon(
     currentToken: () => currentToken,
     heldValues: () => heldValues(),
   });
+  const { logger, fileLog } = hostLog;
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
@@ -207,6 +208,7 @@ export async function startDaemon(
   );
   // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
   const domains = createModuleRunner();
+  await domains.add(hostLog);
   await domains.add(createOpenCodeServer(opencode));
   const { quota, onQuota } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
@@ -480,21 +482,23 @@ export async function startDaemon(
     history: { home: userHome(env), appData: process.env.APPDATA, platform: process.platform },
   });
 
-  const { vault, actions } = createVault({
-    db: store.db,
-    log: logger.log.bind(logger),
-    runtimeKind,
-    actions: {
-      projects: (id) => board.getProject(id),
-      // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
-      ssh: ssh.exec,
-      sshTags: ssh.tagsOf,
-      sshKey: ssh.vaultKeyOf,
-      hostName: config.hostName,
-      risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
-      projectKey: (id) => keys.known(board.getProject(id).path),
-    },
-  });
+  const { vault, actions } = await domains.add(
+    createVault({
+      db: store.db,
+      log: logger.log.bind(logger),
+      runtimeKind,
+      actions: {
+        projects: (id) => board.getProject(id),
+        // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
+        ssh: ssh.exec,
+        sshTags: ssh.tagsOf,
+        sshKey: ssh.vaultKeyOf,
+        hostName: config.hostName,
+        risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
+        projectKey: (id) => keys.known(board.getProject(id).path),
+      },
+    }),
+  );
   heldValues = () => vault.heldValues();
   await domains.add(
     await createTeams({
@@ -634,13 +638,10 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    vault,
     log: logger.log.bind(logger),
-    actions,
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    fileLog,
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,

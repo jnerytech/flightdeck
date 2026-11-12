@@ -41,7 +41,7 @@ export interface RosterCore {
 }
 
 /** What a host is added with. */
-export interface NewHost {
+interface NewHost {
   name: string;
   url: string;
   token: string;

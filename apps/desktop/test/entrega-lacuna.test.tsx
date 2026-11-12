@@ -31,7 +31,7 @@ async function follow() {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.streams.s1 = [1, 2, 3, 4].map(said);
-  const hostId = await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.status === "online");
   store.select(hostId, "s1");
   const key = `${hostId}/s1`;
