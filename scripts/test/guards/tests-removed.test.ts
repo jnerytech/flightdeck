@@ -200,6 +200,33 @@ describe("tests-removed (#2176)", () => {
     ]);
   });
 
+  test("a modifier chained before .each counts each table as a test", () => {
+    const text = 'test.concurrent.each([1])("a", () => {});\nit.skip.each`x`("b", () => {});';
+    expect(countTests(text)).toEqual({ tests: 2, expects: 0 });
+  });
+
+  test("the first dash of any style ends the paths; a rename is waived by its new path too", () => {
+    const dashed = removalVerdict(
+      input([{ status: "M", path: FILE }], { [FILE]: FULL }, { [FILE]: CUT }, [
+        `x\n\nTests-Removed: ${FILE} - moved to b — see #12`,
+      ]),
+    );
+    expect(dashed.waived).toEqual([`${CUT_LINE} (waived: moved to b — see #12)`]);
+    const to = "apps/desktop/test/layout/cabecalho.test.tsx";
+    const renamed = removalVerdict(
+      input([{ status: "R", path: to, from: FILE }], { [FILE]: FULL }, { [to]: CUT }, [
+        `x\n\nTests-Removed: ${to} — cut`,
+      ]),
+    );
+    expect(renamed.problems).toEqual([]);
+  });
+
+  test("over git: a diff git cannot list fails, since nothing was checked", () => {
+    const git = (args: string[]) =>
+      args[0] === "merge-base" ? "base1\n" : args[0] === "log" ? "" : null;
+    expect(runTestsRemoved({ git }).code).toBe(1);
+  });
+
   test("over git: no merge-base with main fails, since nothing was checked", () => {
     expect(runTestsRemoved({ git: () => null }).code).toBe(1);
   });
