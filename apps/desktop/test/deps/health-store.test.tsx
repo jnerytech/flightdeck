@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { DepsResult, DoctorResult } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 import {
   daemonRefusal,
   daemon as makeDaemon,
   memoryPlatform,
   waitFor as pollFor,
   TOKEN,
-} from "./fixtures.ts";
+} from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

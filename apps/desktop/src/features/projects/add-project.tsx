@@ -12,12 +12,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { FolderPicker } from "@/features/hosts/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { shortPath } from "@/lib/approval";
 import { suggestFolders } from "@/lib/project-suggestions";
 import { hasFeature } from "@/lib/version";
-import { FolderPicker } from "@/ui/FolderPicker";
 
 /** How many characters of a suggested folder fit a row of the dialog at 390 px. */
 const SUGGESTED_MAX = 40;
