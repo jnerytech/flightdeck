@@ -19,6 +19,7 @@
   "apps/desktop/src/features/shell/sidebar-groups.ts": 1,
   "apps/desktop/src/features/shell/tree-fold.ts": 2,
   "apps/desktop/src/features/snippets/global-snippets.ts": 1,
+  "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 2,
   "apps/desktop/src/lib/assistant-prefs.ts": 1,
   "apps/desktop/src/lib/backup-bundle.ts": 2,
@@ -37,6 +38,5 @@
   "apps/desktop/src/lib/vault-rules.ts": 1,
   "apps/desktop/src/lib/vault-usage.ts": 2,
   "apps/desktop/src/lib/vault.ts": 1,
-  "apps/desktop/src/lib/webhook-targets.ts": 1,
   "packages/protocol/src/index.ts": 1
 }

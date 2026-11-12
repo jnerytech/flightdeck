@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionRecap } from "@flightdeck/protocol";
-import type { WebhookKind } from "../../src/lib/webhook-format.ts";
-import { type WebhookSource, Webhooks } from "../../src/lib/webhooks.ts";
+import type { WebhookKind } from "../../src/features/webhook/webhook-format.ts";
+import { type WebhookSource, Webhooks } from "../../src/features/webhook/webhooks.ts";
 import type { WebhookRequest } from "../../src/platform/types.ts";
 
 const RECAP: SessionRecap = {
