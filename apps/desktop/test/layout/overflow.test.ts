@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const read = (file: string) => readFileSync(join(import.meta.dir, "../src", file), "utf8");
+const read = (file: string) => readFileSync(join(import.meta.dir, "../../src", file), "utf8");
 
 /**
  * Cheap guards, not proofs: these read the class names and the CSS text, so they only say the
