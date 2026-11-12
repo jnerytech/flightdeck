@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { TeleportOutcome, TeleportSummary } from "../src/lib/teleport.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { settleMaybe, waiter } from "./wait.ts";
+import type { TeleportOutcome, TeleportSummary } from "../../src/lib/teleport.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settleMaybe, waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TeleportDialog } = await import("../src/features/teleport/teleport-dialog.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
-const { RequestError } = await import("../src/lib/host-connection.ts");
+const { TeleportDialog } = await import("../../src/features/teleport/teleport-dialog.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
+const { RequestError } = await import("../../src/lib/host-connection.ts");
 
 /**
  * Issue #100, slice 3b: the dialog that moves a session to another host. The person picks the host

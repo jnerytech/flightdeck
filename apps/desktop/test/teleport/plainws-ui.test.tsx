@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 
 registerDom();
 const {
@@ -12,10 +12,10 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { isPlainRemote } = await import("../src/lib/teleport.ts");
-const { TeleportMove } = await import("../src/features/teleport/teleport-move.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { isPlainRemote } = await import("../../src/lib/teleport.ts");
+const { TeleportMove } = await import("../../src/features/teleport/teleport-move.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 /**
  * Issue #100: the transcript and the code travel through the app, so a move warns when either host
