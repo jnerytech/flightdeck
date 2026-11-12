@@ -46,8 +46,10 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   longer reads the tabs) and `use-start-elsewhere` to `features/sessions/`, each behind its index. Two stay in
   `hooks/` for now: `use-project-labels` (it reads the costs index, which reaches the store) and
   `use-start-ask` (it reads the board index, which reaches the projects and sessions indexes): moving them
-  adds import cycles, and the cycle count only goes down (#1624). The domain-free hooks (`use-now`,
-  `use-busy`, `use-breakpoint`, `use-in-flight` and the rest) stay in `hooks/` too.
+  adds import cycles, and the cycle count only goes down (#1624). The domain-free hooks (`use-busy`, `use-breakpoint`, `use-in-flight` and the rest) stay in `hooks/` too.
+- Hooks that only one feature reads moved into it (#1597): `use-move-focus` to `features/board/`,
+  `use-board-transition` to `features/activity/` and `use-now` to `features/hosts/`, each imported by file
+  from inside its own folder.
 
 ## `components/`
 
