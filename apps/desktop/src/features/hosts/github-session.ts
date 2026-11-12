@@ -1,5 +1,5 @@
-import type { AppStore, HostView } from "./app-store.ts";
-import { hostsWith } from "./version.ts";
+import type { AppStore, HostView } from "../../lib/app-store.ts";
+import { hostsWith } from "../../lib/version.ts";
 
 /** A host whose `gh` is signed in to GitHub and can sign out from the app. */
 export interface GithubHost {
