@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { type Config, claudeSettingsPath, updateConfigFile, userHome } from "../config.ts";
 import type { DomainModule } from "../server/index.ts";
-import { stableBinPath } from "../update.ts";
+import { stableBinPath } from "../service/index.ts";
 import { claudeSettingsEnv } from "./claude-settings-env.ts";
 import { terminalEnabled } from "./policy.ts";
 import { bunPty, type PtyFactory } from "./pty.ts";

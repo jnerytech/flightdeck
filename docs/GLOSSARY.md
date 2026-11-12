@@ -205,6 +205,7 @@ test's baseline, with the issue that renames them.
 | `roi` | return on cost | Delivered work, its estimated value and the return on cost |
 | `runenv` | run environment | A card's `run.yaml`: setup, processes, port block and Preview |
 | `runtime` | runtime | The engines that run a session: the Claude Code SDK and OpenCode over ACP |
+| `service` | service | Installs, updates and removes flightdeckd as an OS service (systemd, Task Scheduler), with its stable binary and the user's PATH |
 | `sessions` | session | The Flightdeck sessions of a host: start, state, stall and sleep |
 | `settings` | setting | The app's own choices on this machine: tray, autostart, global shortcut, update and preview switches |
 | `setup` | setup | The first-day setup screen: the steps a person does in order (host, hooks, project, first session) and the one to do next |

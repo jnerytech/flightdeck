@@ -1,4 +1,4 @@
-import type { ServiceContext } from "./service.ts";
+import type { ServiceContext } from "./install.ts";
 
 /** Whether `loginctl` says the user's systemd survives logout: the daemon starts at boot only if it does. */
 export async function lingerState(

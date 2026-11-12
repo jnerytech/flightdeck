@@ -11,8 +11,8 @@ import {
   reconcileStableBinary,
   runSetup,
   type SetupDeps,
-} from "../../src/setup.ts";
-import { stableBinPath } from "../../src/update.ts";
+} from "../../src/service/setup.ts";
+import { stableBinPath } from "../../src/service/update.ts";
 import { DAEMON_VERSION } from "../../src/version.ts";
 import {
   defaultHostName,

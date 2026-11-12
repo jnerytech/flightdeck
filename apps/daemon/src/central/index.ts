@@ -8,6 +8,7 @@ export { startChannel } from "./channel.ts";
 export { sendSessionStart } from "./hook-command.ts";
 export {
   type HooksStatus,
+  type HookTarget,
   hooksStatus,
   hookTarget,
   installHooks,

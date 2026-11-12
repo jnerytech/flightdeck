@@ -1,6 +1,6 @@
 import { posix, win32 } from "node:path";
-import type { ServiceContext } from "./service.ts";
-import { trimEndOf } from "./trim.ts";
+import { trimEndOf } from "../trim.ts";
+import type { ServiceContext } from "./install.ts";
 
 /** What the PATH helpers need of the OS: the platform, the home and a way to run commands. */
 export type PathEnv = Pick<ServiceContext, "platform" | "home" | "exec"> & {

@@ -17,16 +17,26 @@ import {
 import { runDoctor } from "../doctor.ts";
 import { type Exec, spawnExec } from "../exec.ts";
 import { linesOf } from "../lines.ts";
-import { lingerState } from "../linger.ts";
 import { mcpReachable } from "../mcp.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "../pairing.ts";
 import { openCodeState } from "../runtime/index.ts";
-import { daemonCommand, serviceCommand } from "../service.ts";
-import { osServiceContext } from "../service-os.ts";
-import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "../setup.ts";
+import {
+  addToUserPath,
+  binaryVersion,
+  binDir,
+  createPrompt,
+  daemonCommand,
+  installStableBinary,
+  lingerState,
+  osServiceContext,
+  reconcileStableBinary,
+  refusedAddress,
+  runSetup,
+  serviceCommand,
+  stableBinPath,
+  waitHealthy,
+} from "../service/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
-import { binaryVersion, refusedAddress, stableBinPath, waitHealthy } from "../update.ts";
-import { addToUserPath, binDir } from "../user-path.ts";
 import { DAEMON_VERSION } from "../version.ts";
 import { whichOnPath } from "../which.ts";
 import { detectWsl, readProcVersion } from "../wsl/index.ts";

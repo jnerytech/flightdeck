@@ -4,13 +4,17 @@ import { hooksStatus, hookTarget } from "../central/index.ts";
 import { type Config, claudeSettingsPath } from "../config.ts";
 import { runDoctor } from "../doctor.ts";
 import { spawnExec } from "../exec.ts";
-import { lingerState } from "../linger.ts";
 import { mcpReachable } from "../mcp.ts";
 import { tailscaleIp } from "../pairing.ts";
 import { openCodeState } from "../runtime/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
-import { daemonCommand, type ServiceContext, serviceCommand } from "../service.ts";
-import { osServiceContext } from "../service-os.ts";
+import {
+  daemonCommand,
+  lingerState,
+  osServiceContext,
+  type ServiceContext,
+  serviceCommand,
+} from "../service/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
 import { DAEMON_VERSION } from "../version.ts";
 import { whichOnPath } from "../which.ts";
