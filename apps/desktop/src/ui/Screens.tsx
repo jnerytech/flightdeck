@@ -27,6 +27,7 @@ import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { NeedsYou } from "../features/needs-you/page.tsx";
 import { QuotaPanel } from "../features/quota/index.ts";
+import { SetupPage } from "../features/setup/index.ts";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
 import {
   type AppState,
@@ -54,7 +55,6 @@ import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
-import { SetupPage } from "./SetupPage.tsx";
 import { StartScreen } from "./StartScreen.tsx";
 
 /**
