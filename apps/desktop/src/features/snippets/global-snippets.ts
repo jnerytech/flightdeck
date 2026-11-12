@@ -5,10 +5,12 @@ import {
   SecretScanner,
   type Snippet,
   type SnippetContext,
-  type SnippetDef,
   type SnippetInput,
   SnippetModelError,
+  SnippetVar,
 } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 /** A snippet the screen and the palette show: the daemon's, or a global one kept by the app. */
@@ -28,13 +30,21 @@ export interface GlobalSnippetsOptions {
   newId?: () => string;
 }
 
-interface Kept {
-  id: string;
-  def: SnippetDef;
-  favorite: boolean;
-  uses: number;
-  lastUsedAt: string | null;
-}
+const Kept = z.object({
+  id: z.string(),
+  def: z.object({
+    name: z.string(),
+    type: z.enum(["command", "prompt"]),
+    run: z.string().nullable(),
+    text: z.string().nullable(),
+    vars: z.record(z.string(), SnippetVar),
+    tags: z.array(z.string()),
+  }),
+  favorite: z.boolean(),
+  uses: z.number(),
+  lastUsedAt: z.string().nullable(),
+});
+type Kept = z.infer<typeof Kept>;
 
 const KEY = "flightdeck.snippets";
 
@@ -48,8 +58,7 @@ export class GlobalSnippets {
   ) {}
 
   private read(): Kept[] {
-    const raw = this.platform.storage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Kept[]) : [];
+    return readStored(this.platform.storage, KEY, validItems(Kept), []);
   }
 
   private write(all: Kept[]): void {
