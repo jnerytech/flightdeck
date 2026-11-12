@@ -32,7 +32,11 @@ describe("what the shell kept on this computer is not trusted (#1609)", () => {
 
   test("the folded groups are the known ones in their order; the old infra group is machines", () => {
     const read = (value: string) => loadFolded(planted(SIDEBAR_FOLDED_KEY, value));
-    expect(read('["library","work","nope",3,null,"infra"]')).toEqual(["work", "library", "machines"]);
+    expect(read('["library","work","nope",3,null,"infra"]')).toEqual([
+      "work",
+      "library",
+      "machines",
+    ]);
     for (const value of NOT_A_LIST) expect(read(value)).toEqual([]);
   });
 
