@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { uiIdle, waiter } from "./wait.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { uiIdle, waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { hubRows } = await import("../src/lib/hub.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { SplitView } = await import("../src/shared/layout/split-view.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { hubRows } = await import("../../src/lib/hub.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { SplitView } = await import("../../src/shared/layout/split-view.tsx");
 
 setDefaultTimeout(20_000);
 

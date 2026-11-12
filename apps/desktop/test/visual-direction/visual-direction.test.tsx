@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { unfoldAll } from "./unfold.ts";
-import { waiter } from "./wait.ts";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { unfoldAll } from "../unfold.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { StatusDot } = await import("../src/shared/status/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { StatusDot } = await import("../../src/shared/status/index.ts");
 
 setDefaultTimeout(20_000);
 
@@ -26,7 +26,7 @@ afterEach(async () => {
 
 const settle = waiter(4000);
 
-const DESKTOP = resolve(import.meta.dir, "..");
+const DESKTOP = resolve(import.meta.dir, "../..");
 const css = readStyles(resolve(DESKTOP, "src/styles.css"));
 
 /** The declarations inside the first `selector { … }` block of the stylesheet. */
