@@ -3,6 +3,11 @@
  * hold a high-risk allow needs, the always-allow control of a request's card and the allow rules of a
  * project. Another domain imports from here, never a file inside.
  */
+
 export { AlwaysAllow } from "./always-allow.tsx";
+export { ApprovalActions } from "./approval-actions.tsx";
+export { ApprovalCard, type ApprovalRequest, RiskSeal } from "./approval-card.tsx";
+export { GateText } from "./gate-text.tsx";
+export { HoldButton } from "./hold-button.tsx";
 export { RulesSection } from "./project-rules.tsx";
 export { PermissionsSlice } from "./store.ts";

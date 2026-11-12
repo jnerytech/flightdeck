@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ApprovalActions } = await import("../src/components/approval/approval-actions.tsx");
+const { ApprovalActions } = await import("../src/features/permissions/approval-actions.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 

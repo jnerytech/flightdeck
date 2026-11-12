@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { createHarness } from "../../src/harness/wiring.ts";
 import type { CompleteOptions } from "../../src/runtime/types.ts";
+import { createModuleRunner } from "../../src/server/index.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /**
@@ -38,14 +39,14 @@ function harness(options: { oneShot: boolean; allowApiKey?: boolean; text?: stri
         },
       }
     : {};
-  const built = createHarness({
+  const { harness: built, modules } = createHarness({
     runtime,
     quota: { blocked: () => null },
     scanner: new SecretScanner(() => [VAULT]),
     cwd,
     config: { dataDir, allowApiKey: options.allowApiKey ?? false },
   });
-  return { built, asked, cwd, dataDir };
+  return { built, module: modules[0], asked, cwd, dataDir };
 }
 
 async function outcome(run: Promise<unknown>): Promise<string> {
@@ -58,6 +59,13 @@ async function outcome(run: Promise<unknown>): Promise<string> {
 }
 
 describe("harness-wiring: the host's harness, built from its runtime and data folder (#1593)", () => {
+  test("its module serves the harness to the server (#2094)", async () => {
+    const { built, module } = harness({ oneShot: false });
+    const runner = createModuleRunner();
+    await runner.add({ modules: [module] });
+    expect(runner.server().harness === built).toBe(true);
+  });
+
   test("a runtime that cannot run a one-shot offers no draft", () => {
     const { built } = harness({ oneShot: false });
     expect("draft" in built).toBe(false);

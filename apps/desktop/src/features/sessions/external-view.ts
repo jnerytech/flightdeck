@@ -1,6 +1,6 @@
 import type { ExternalPermissionFrame } from "@flightdeck/protocol";
+import type { ApprovalRequest } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
-import type { ApprovalRequest } from "../../components/approval/approval-card.tsx";
 
 /**
  * What a session opened outside Flightdeck shows as its title: the name the person gave it,
