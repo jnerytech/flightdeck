@@ -28,8 +28,7 @@ import {
 } from "./config.ts";
 import { createCosts } from "./costs/wiring.ts";
 import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
-import { listAlerts } from "./github/alerts.ts";
-import { runGh, runGhIn } from "./github/gh.ts";
+import { runGh } from "./github/gh.ts";
 import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { createHistory } from "./history/wiring.ts";
@@ -428,6 +427,7 @@ export async function startDaemon(
   await domains.add(createSummary({ db: store.db, scanner: snippetScanner }));
   await domains.add(createWebhook({ log: logger.log.bind(logger) }));
   await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
+  await domains.add(createGithub({ config, board, issues, manager }));
   await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
   const central = new Central({
     risk,
@@ -627,9 +627,7 @@ export async function startDaemon(
         updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
       picker: true,
     }),
-    alerts: (cwd) => listAlerts(runGhIn, cwd),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    github: createGithub({ config, board, issues, manager }),
     names,
     vault,
     log: logger.log.bind(logger),
