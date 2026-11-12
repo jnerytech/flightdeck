@@ -1,6 +1,6 @@
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
 import { parseChecks, parsePrUrl } from "./gh-json.ts";

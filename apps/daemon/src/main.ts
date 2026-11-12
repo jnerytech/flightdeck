@@ -28,13 +28,12 @@ import {
 } from "./config.ts";
 import { createCosts } from "./costs/wiring.ts";
 import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
-import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
 import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { createHistory } from "./history/wiring.ts";
-import { DAEMON_VERSION, type Logger, present } from "./kernel/index.ts";
+import { DAEMON_VERSION, type Logger, present, spawnExec } from "./kernel/index.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import { createHostLog } from "./logs/wiring.ts";

@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import { parseJsonOr } from "../json-text.ts";
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 
 export type IssuesResult =
   | { count: number }

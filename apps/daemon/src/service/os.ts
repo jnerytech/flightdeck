@@ -2,8 +2,7 @@ import { appendFile, mkdir, readlink as readLink, rm, writeFile } from "node:fs/
 import { tmpdir, userInfo } from "node:os";
 import { dirname } from "node:path";
 import { userHome } from "../config.ts";
-import { type Exec, spawnExec } from "../exec.ts";
-import { whichOnPath } from "../which.ts";
+import { type Exec, spawnExec, whichOnPath } from "../kernel/index.ts";
 import { daemonCommand, type ServiceContext } from "./install.ts";
 
 /** The OS programs that install, start or stop services. */

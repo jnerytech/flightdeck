@@ -4,13 +4,10 @@ import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protoc
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import type { Config } from "../config.ts";
-import type { Exec } from "../exec.ts";
-import { spawnExec } from "../exec.ts";
 import { parseJsonOr } from "../json-text.ts";
-import { type Logger, ulid } from "../kernel/index.ts";
+import { type Exec, type Logger, spawnExec, ulid, whichOnPath } from "../kernel/index.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
-import { whichOnPath } from "../which.ts";
 
 /** What the daemon publishes about the receiver it runs: where it listens. */
 const Published = z.object({ url: z.string() });
