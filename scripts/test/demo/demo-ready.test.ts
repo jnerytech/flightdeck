@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type UsageLoad, waitUsageLoaded } from "../../lib/demo-ready.ts";
+import { type UsageLoad, waitUsageLoaded } from "../../lib/demo/ready.ts";
 
 const load = (state: string, filesDone: number): UsageLoad => ({
   state,

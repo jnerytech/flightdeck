@@ -252,7 +252,7 @@
   "scripts/lib/coverage-check.ts",
   "scripts/lib/coverage-funcs.ts",
   "scripts/lib/css-theme.ts",
-  "scripts/lib/demo-ready.ts",
+  "scripts/lib/demo/ready.ts",
   "scripts/lib/deploy.ts",
   "scripts/lib/e2e-config.ts",
   "scripts/lib/e2e-demo.ts",

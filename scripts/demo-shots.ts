@@ -13,8 +13,8 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
-import { DEMO_CARD_TEMPLATE } from "./lib/demo-card-templates.ts";
-import { demoFinished, demoInbox } from "./lib/demo-seeds.ts";
+import { DEMO_CARD_TEMPLATE } from "./lib/demo/card-templates.ts";
+import { demoFinished, demoInbox } from "./lib/demo/seeds.ts";
 import {
   DEMO_AWAY_SINCE,
   DEMO_PR_CARD,

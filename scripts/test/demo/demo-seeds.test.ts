@@ -4,7 +4,7 @@ import {
   loadFinished,
   sinceLastLook,
 } from "../../../apps/desktop/src/features/sessions/finished.ts";
-import { demoFinished, demoInbox } from "../../lib/demo-seeds.ts";
+import { demoFinished, demoInbox } from "../../lib/demo/seeds.ts";
 
 type Entry = { id: string; ask?: string; link?: string; group?: string };
 const inbox = (lang: string, request?: { hostId: string; requestId: string }) =>
