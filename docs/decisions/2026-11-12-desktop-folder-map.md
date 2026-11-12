@@ -102,7 +102,7 @@ prefix. Tests move with their file in the same PR.
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` |
 | `automations.ts` | `features/automations/` (**moved**) |
 | `check-loop.ts` | `features/board/`: its only reader is `check-loop-panel.tsx`, which lives there, so it goes with the board and not with `features/automations` |
-| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` (**moved**: `backup-bundle`, `backup-error`, `backup-schedule`, `backup-scheduler`, `backup-target`, `drive-target`; the index adds `BackupError` and `BackupScheduler`, and `backup-bundle` stays out of it, a lazy chunk. `google-config` and `google-oauth` handle tokens: they stay in `lib/` for their own slice with the security review) |
+| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` (**moved**: `backup-bundle`, `backup-error`, `backup-schedule`, `backup-scheduler`, `backup-target`, `drive-target`; the index adds `BackupError` and `BackupScheduler`, and `backup-bundle` stays out of it, a lazy chunk. `google-config` and `google-oauth` moved in their own slice, with the security review, since only the backup uses them; the index adds `googleConfig` and the `GoogleConfig` type) |
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
