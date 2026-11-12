@@ -31,7 +31,9 @@ import {
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
 import {
   HostVersionTip,
+  hostInitial,
   hostNeedsAttention,
+  hostRailLabel,
   hostVersionText,
   RenameHostDialog,
 } from "@/features/hosts/index.ts";
@@ -387,10 +389,7 @@ export function Sidebar(
   const hostsList = collapsed ? (
     <div className="rail-hosts">
       {state.hosts.map((host) => (
-        <IconTip
-          key={host.id}
-          label={[host.name, versionOf(host)].filter((part) => part !== null).join(" · ")}
-        >
+        <IconTip key={host.id} label={hostRailLabel(host.name, versionOf(host))}>
           <button
             type="button"
             aria-label={t("sidebar.openHost", { host: host.name })}
@@ -399,7 +398,7 @@ export function Sidebar(
             onClick={() => go({ name: "host", host: host.id })}
           >
             <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
-              {[...host.name][0]?.toUpperCase() ?? "?"}
+              {hostInitial(host.name)}
             </span>
             <span className="rail-host-status">
               <HostDot host={host} t={t} />
