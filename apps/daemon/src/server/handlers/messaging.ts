@@ -86,12 +86,10 @@ export const messagingHandlers = {
     };
   },
   "messaging.rules.get": (_payload, { server }) => {
+    const messages = server.needIn("messaging", "messages");
     return {
-      policy: server.needIn("messaging", "messages").getPolicy() as unknown as Record<
-        string,
-        unknown
-      >,
-      paused: server.needIn("messaging", "messages").pausedPairs(),
+      policy: messages.getPolicy() as unknown as Record<string, unknown>,
+      paused: messages.pausedPairs(),
     };
   },
   "messaging.rules.set": (payload, { server }) => {
