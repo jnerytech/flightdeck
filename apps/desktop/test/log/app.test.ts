@@ -8,8 +8,8 @@ import {
   LOG_QUEUE,
   reactErrorLine,
   reactRootErrorHandlers,
-} from "../src/lib/app-log.ts";
-import type { LogSink } from "../src/platform/types.ts";
+} from "../../src/lib/app-log.ts";
+import type { LogSink } from "../../src/platform/types.ts";
 
 const NOW = Date.parse("2026-11-05T12:00:00Z");
 const SECRETS = [
