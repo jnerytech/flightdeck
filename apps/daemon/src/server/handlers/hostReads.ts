@@ -40,7 +40,7 @@ export const hostReadsHandlers = {
     };
   },
   "idle.subscribe": (payload, { server }) => {
-    return server.need("idle").subscribe(payload);
+    return server.needIn("messaging", "idle").subscribe(payload);
   },
   "roi.summary": async (payload, { server }) => {
     return await server.need("roi").summaryWithSignals(roiPeriod(payload));

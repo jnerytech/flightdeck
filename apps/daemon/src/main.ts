@@ -641,10 +641,8 @@ export async function startDaemon(
     ),
     hostChecks: serverGroup<"hostChecks">()(hostChecks),
     sessionSettings: true,
-    messaging,
+    messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
-    idle,
-    teams,
     watch: prWatch,
     // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
     checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),

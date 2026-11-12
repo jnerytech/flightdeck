@@ -130,7 +130,8 @@ const GROUPED: Record<string, Record<string, string>> = {
     memory: "memory",
     tasks: "tasks",
     templates: "templates",
-  },  // The messages between sessions keep `messaging`; the idle notices and the teams keep theirs.
+  },
+  // The messages between sessions keep `messaging`; the idle notices and the teams keep theirs.
   messaging: {
     messages: "messaging",
     idle: "idle",

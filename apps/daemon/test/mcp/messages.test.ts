@@ -30,8 +30,7 @@ async function boot(env: Record<string, string> = { FLIGHTDECK_SESSION: "s1" }) 
   const { manager } = newManager();
   const server = startServer({
     manager,
-    messaging: base.messaging,
-    idle,
+    messaging: { messages: base.messaging, idle },
     hostName: "pc",
     bind: "127.0.0.1",
     port: 0,

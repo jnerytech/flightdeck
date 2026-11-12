@@ -23,7 +23,7 @@ function boot(options: { messaging?: boolean } = {}) {
   const { manager } = newManager();
   const server = startServer({
     manager,
-    ...(options.messaging === false ? {} : { messaging: base.messaging, idle }),
+    ...(options.messaging === false ? {} : { messaging: { messages: base.messaging, idle } }),
     hostName: "pc",
     bind: "127.0.0.1",
     port: 0,
