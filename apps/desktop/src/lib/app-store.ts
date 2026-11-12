@@ -1203,13 +1203,9 @@ export class AppStore {
     return this.hostTabs.hostId;
   }
 
-  /** A new tab: the Overview of a host; with no host at all, the one Home tab is brought forward. */
+  /** A new tab; the host tabs choose where (`HostTabs.openNew`). */
   openNewTab(): void {
-    const { hosts } = this.state;
-    const host =
-      this.hostTabs.hostId ?? hosts.find((h) => h.status === "online")?.id ?? hosts[0]?.id ?? null;
-    if (host) this.hostTabs.open({ name: "host", host });
-    else this.hostTabs.show({ name: "home" });
+    this.hostTabs.openNew(this.state.hosts);
   }
 
   /** The host whose mode the window shows; the mode slice answers. */

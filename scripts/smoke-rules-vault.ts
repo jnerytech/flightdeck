@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
  * no secret is in any file, log or reply.
  */
 import { type Ack, byCodeUnit, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
-import { awaitListenUrl } from "./lib/smoke-daemon.ts";
+import { awaitListenUrl } from "./lib/smoke/daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";

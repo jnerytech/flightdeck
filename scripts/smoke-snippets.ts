@@ -13,8 +13,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { defaultHistorySources } from "../apps/daemon/src/snippets/history.ts";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
-import { type Pending, pollUntil } from "./lib/smoke-poll";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke/poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,

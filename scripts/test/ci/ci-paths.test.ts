@@ -76,7 +76,9 @@ describe("ci-paths: the rules", () => {
   });
 
   test("scripts plan no Windows on a PR (#534: Windows left the PR path), and the journeys only for a helper the demo loads", () => {
-    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot/slot.test.ts"])).toEqual(NONE);
+    expect(ciPlan(PR, ["scripts/lib/slot/index.ts", "scripts/test/slot/slot.test.ts"])).toEqual(
+      NONE,
+    );
     // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review), and
     // the prints, which run the same demo (#724).
     expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({
@@ -90,7 +92,7 @@ describe("ci-paths: the rules", () => {
     for (const event of [PR, "push"]) {
       for (const changed of [
         ["docs/TDD.md"],
-        ["scripts/lib/slot.ts"],
+        ["scripts/lib/slot/index.ts"],
         ["apps/daemon/src/main.ts"],
         ["apps/desktop/src/ui/App.tsx"],
         ["package.json"],
@@ -122,7 +124,7 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, ["apps/daemon/test/support/workflow-helpers.ts"]).e2e).toBe(true);
     expect(ciPlan(PR, ["scripts/test/fake-cli.ts"]).e2e).toBe(true);
     expect(ciPlan(PR, ["scripts/test/slot/slot.test.ts"]).e2e).toBe(false);
-    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
+    expect(ciPlan(PR, ["scripts/lib/slot/index.ts"]).e2e).toBe(false);
   });
 
   test("demo:shots and every local file it imports plan the prints, so a change to the print guards runs them (#637)", () => {
@@ -131,7 +133,7 @@ describe("ci-paths: the rules", () => {
     for (const path of ["scripts/demo.ts", "scripts/demo-shots.ts", ...local]) {
       expect(`${path}: ${ciPlan(PR, [path]).screenshots}`).toBe(`${path}: true`);
     }
-    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).screenshots).toBe(false);
+    expect(ciPlan(PR, ["scripts/lib/slot/index.ts"]).screenshots).toBe(false);
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).screenshots).toBe(false);
     // The raw-utility ratchet is a bun test; demo-shots does not import it (#703 review).
     expect(ciPlan(PR, ["scripts/lib/layout-ratchet.ts"]).screenshots).toBe(false);
@@ -236,7 +238,7 @@ describe("ci-paths: the rules", () => {
   });
 
   test("a PR's Windows tests take one shard, three when the whole suite runs: a file every test reads changed, or a test went away (#444)", () => {
-    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).windowsShards).toBe(1);
+    expect(ciPlan(PR, ["scripts/lib/slot/index.ts"]).windowsShards).toBe(1);
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).windowsShards).toBe(1);
     for (const path of [
       "bun.lock",
