@@ -3,8 +3,9 @@
  * resumes or compacts (issue #169, D5): where it is, its TDD state and the slot. After a compact
  * the path-scoped rules are gone until a matching file is touched again, so it says so.
  */
+
+import { auditBase, parseCommits } from "../guards/tdd-audit.ts";
 import { describeHolder, parseHolder, type SlotHolder } from "../slot/index.ts";
-import { auditBase, parseCommits } from "../tdd-audit.ts";
 
 export interface SessionFacts {
   /** The checked-out branch, or null when detached. */

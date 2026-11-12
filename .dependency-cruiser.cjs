@@ -6,7 +6,7 @@
  * is on TypeScript 7, which dependency-cruiser's own TypeScript parser does not support. The
  * desktop's import cycles have no rule here: the known-violations entries are keyed by path and by
  * cycle, so every move or barrel read as a new one. `bun run arch` counts the files that sit in a
- * cycle instead (scripts/lib/cycle-files.ts, desktop-cycles-baseline.json) (#1624).
+ * cycle instead (scripts/lib/arch/cycle-files.ts, desktop-cycles-baseline.json) (#1624).
  */
 const DAEMON = "^apps/daemon/src/";
 const PROTOCOL = "^packages/protocol/src/";

@@ -23,15 +23,15 @@ describe("app-store-lacunas: the palette's recents", () => {
   test("a stored value that is not JSON gives an empty list", () => {
     const { store, items } = make();
     items.set(PALETTE_RECENTS_KEY, "{not json");
-    expect(store.paletteRecents()).toEqual([]);
+    expect(store.palette.recents()).toEqual([]);
   });
 
   test("a stored value that is not a list gives an empty list; a list keeps only its strings", () => {
     const { store, items } = make();
     items.set(PALETTE_RECENTS_KEY, '{"a":1}');
-    expect(store.paletteRecents()).toEqual([]);
+    expect(store.palette.recents()).toEqual([]);
     items.set(PALETTE_RECENTS_KEY, '["go:hub",3,"go:board",null]');
-    expect(store.paletteRecents()).toEqual(["go:hub", "go:board"]);
+    expect(store.palette.recents()).toEqual(["go:hub", "go:board"]);
   });
 });
 

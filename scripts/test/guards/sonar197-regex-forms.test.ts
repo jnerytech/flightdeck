@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { ciPlan } from "../../lib/ci/paths.ts";
-import { unguardedGitCalls } from "../../lib/git-args.ts";
 import { visibleTsLiterals } from "../../lib/guards/i18n-sweep.ts";
+import { unguardedGitCalls } from "../../lib/ratchets/git-args.ts";
 import { testTiers } from "../../lib/tests/test-tiers.ts";
 
 /**
@@ -21,7 +21,7 @@ describe("ci-paths: which jobs a path starts", () => {
       "scripts/lib/e2e/nested.ts",
       "scripts/lib/demo/nested.ts",
       "scripts/lib/browser.ts",
-      "scripts/lib/layout-guards.ts",
+      "scripts/lib/styles/layout-guards.ts",
       "scripts/demo-seed.ts",
       "playwright.config.ts",
       "apps/daemon/src/server.ts",
@@ -49,8 +49,8 @@ describe("ci-paths: which jobs a path starts", () => {
       "scripts/demo-shots.ts",
       "scripts/lib/axe.ts",
       "scripts/lib/browser.ts",
-      "scripts/lib/layout-guards.ts",
-      "scripts/lib/print-theme.ts",
+      "scripts/lib/styles/layout-guards.ts",
+      "scripts/lib/styles/print-theme.ts",
       "scripts/lib/shots-names.ts",
       "scripts/lib/shots/nested.ts",
       "scripts/lib/visual.ts",

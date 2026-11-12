@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle } from "../wait.ts";
@@ -38,7 +38,7 @@ function world(over: Record<string, unknown> = {}) {
   const mem = memoryPlatform(false, "en");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  store.loadPalette = (async () => {}) as never;
+  store.palette.load = (async () => {}) as never;
   const base = {
     ...store.getState(),
     hosts: [
@@ -350,7 +350,7 @@ describe("paleta-mais-ui: it reads in Portuguese too", () => {
     const mem = memoryPlatform(false, "pt-BR");
     const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
     store.i18n.start();
-    store.loadPalette = (async () => {}) as never;
+    store.palette.load = (async () => {}) as never;
     store.router.push({ name: "board", host: "h1", projectId: "p-api" } as never);
     const w = world();
     render(

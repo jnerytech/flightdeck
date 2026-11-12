@@ -35,7 +35,7 @@ export function PullRequestsPage(props: Readonly<{ store: AppStore; go(route: Ro
   const hostKey = state.hosts.map((h) => `${h.id}:${h.status}`).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the set of hosts or their status changes
   useEffect(() => {
-    void store.loadPalette().finally(() => setLoaded(true));
+    void store.palette.load().finally(() => setLoaded(true));
   }, [store, hostKey]);
 
   // The watch of each card comes with the page, for the cards whose host watches and has none yet.

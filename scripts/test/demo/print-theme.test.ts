@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { luminance, themeProblem } from "../../lib/print-theme.ts";
+import { luminance, themeProblem } from "../../lib/styles/print-theme.ts";
 
 describe("luminance", () => {
   test("black is 0 and white is 1", () => {

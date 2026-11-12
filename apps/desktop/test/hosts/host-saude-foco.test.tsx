@@ -62,7 +62,7 @@ function setup(
     doctor: { h1: options.doctor ?? { ok: true, checks: [] } },
     healthAt: { h1: Date.now() },
   });
-  store.loadPalette = async () => {};
+  store.palette.load = async () => {};
   store.refreshHub = (async () => {}) as never;
   store.health.check = (async () => {}) as never;
   const asked: string[] = [];
