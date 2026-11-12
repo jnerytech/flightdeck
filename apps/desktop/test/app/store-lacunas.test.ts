@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { seedDemoHosts } from "../src/demo/boot.ts";
-import { AppStore, PALETTE_RECENTS_KEY } from "../src/lib/app-store.ts";
-import { SHORTCUT_KEY } from "../src/lib/shortcut.ts";
-import { memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
+import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { AppStore, PALETTE_RECENTS_KEY } from "../../src/lib/app-store.ts";
+import { SHORTCUT_KEY } from "../../src/lib/shortcut.ts";
+import { memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
