@@ -32,10 +32,10 @@ import { type CommandResult, killTree, runCommand } from "../board/command.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
-import type { Changes } from "./changes.ts";
+import type { ChangesReader } from "./target.ts";
 
 export interface SessionCommitDeps {
-  changes: Pick<Changes, "resolve" | "get">;
+  changes: ChangesReader;
   /** The host's scanner (the vault's values among them): the branch is one push from public. */
   scanner: Pick<SecretScanner, "scan">;
   /** Whether `root` is a card's worktree: the board owns that branch, never this commit. */
