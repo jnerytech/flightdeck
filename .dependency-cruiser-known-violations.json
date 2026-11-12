@@ -715,27 +715,6 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/memory/memory.ts",
-    "to": "apps/daemon/src/memory/suggest.ts",
-    "unresolvedTo": "./suggest.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/memory/suggest.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/memory/memory.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "apps/daemon/src/runtime/opencode-preflight.ts",
     "to": "apps/daemon/src/runtime/opencode-serve.ts",
     "unresolvedTo": "./opencode-serve.ts",
