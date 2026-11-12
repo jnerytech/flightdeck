@@ -10,7 +10,7 @@ import {
   type SlotEnv,
   type SlotHolder,
   status,
-} from "../../lib/slot.ts";
+} from "../../lib/slot/index.ts";
 
 const PATH = "/tmp/flightdeck-slot.lock";
 const holder = (pid: number, label: string, command: string): string =>
