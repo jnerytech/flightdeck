@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import type { AppState } from "../src/lib/app-store.ts";
-import { type PaletteScope, paletteSections } from "../src/lib/palette.ts";
+import { translator } from "../../src/i18n/index.ts";
+import type { AppState } from "../../src/lib/app-store.ts";
+import { type PaletteScope, paletteSections } from "../../src/lib/palette.ts";
 
 const host = (id: string, name: string, over: object = {}) => ({
   id,

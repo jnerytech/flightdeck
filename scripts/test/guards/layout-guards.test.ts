@@ -829,7 +829,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
   const sources = [
     "components/approval/approval-card.tsx",
     "ui/Sidebar.tsx",
-    "ui/BoardView.tsx",
+    "features/board/board-view.tsx",
     "components/layout/form.tsx",
   ].map((file) => readFileSync(join(import.meta.dir, "../../../apps/desktop/src", file), "utf8"));
 

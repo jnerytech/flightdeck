@@ -60,6 +60,7 @@ import {
   type MessagingSlice,
   wireMessaging,
 } from "../features/messaging/index.ts";
+import { NotifyPreferences } from "../features/notifications/index.ts";
 import { PermissionsSlice } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
@@ -160,7 +161,6 @@ import { hubRows, takeHubHost } from "./hub.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { NotifyPreferences } from "./notify-policy.ts";
 import { basename, isInside } from "./paths.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";

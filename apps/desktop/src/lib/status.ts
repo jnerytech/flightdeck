@@ -1,5 +1,5 @@
 import type { ExternalStatus, SessionStatus } from "@flightdeck/protocol";
-import type { StateTone } from "@/components/status/status-dot";
+import type { StateTone } from "@/shared/status/index.ts";
 
 /** A session status as the state tone of the theme (its badge color). */
 export function statusTone(status: SessionStatus): StateTone {

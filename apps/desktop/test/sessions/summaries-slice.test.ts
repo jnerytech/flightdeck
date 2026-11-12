@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionEventOf, TeamInfo } from "@flightdeck/protocol";
+import { NotifyPreferences } from "../../src/features/notifications/index.ts";
 import { SummariesSlice } from "../../src/features/sessions/index.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { SidebarSession } from "../../src/lib/app-store.ts";
-import { NotifyPreferences } from "../../src/lib/notify-policy.ts";
 
 const t = translator("en");
 
