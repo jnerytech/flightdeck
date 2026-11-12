@@ -1,6 +1,7 @@
 import { statfs } from "node:fs/promises";
 import { cpus, freemem, loadavg, totalmem } from "node:os";
 import { type Config, updateConfigFile } from "../config.ts";
+import type { DomainModule } from "../server/index.ts";
 import { MemoryGate, type MemoryReading, osMemoryReading } from "./memory-gate.ts";
 import { procfsReader } from "./procfs.ts";
 import { type ProcReader, Resources } from "./resources.ts";
@@ -153,20 +154,22 @@ export function createMemoryGate({ config, configFile, reading }: MemoryGateDeps
     pauseAt: config.resources.pauseAt,
     read: reading ?? (() => osMemoryReading({ platform: process.platform, totalmem, freemem })),
   });
-  return {
-    memoryGate,
-    memoryPause: {
-      pauseAt: () => memoryGate.pauseAt(),
-      holding: () => memoryGate.holds(),
-      set: async (pauseAt: number | null) => {
-        // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
-        await updateConfigFile(configFile, (raw) => ({
-          ...raw,
-          resources: { ...(raw.resources as object | undefined), pauseAt },
-        }));
-        config.resources.pauseAt = pauseAt;
-        memoryGate.setPauseAt(pauseAt);
+  const module: DomainModule<"memoryPause"> = {
+    server: {
+      memoryPause: {
+        pauseAt: () => memoryGate.pauseAt(),
+        holding: () => memoryGate.holds(),
+        set: async (pauseAt: number | null) => {
+          // The file first: when it cannot be written the hold stays as it was, for the client and the daemon.
+          await updateConfigFile(configFile, (raw) => ({
+            ...raw,
+            resources: { ...(raw.resources as object | undefined), pauseAt },
+          }));
+          config.resources.pauseAt = pauseAt;
+          memoryGate.setPauseAt(pauseAt);
+        },
       },
     },
   };
+  return { modules: [module] as const, memoryGate };
 }
