@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionRecap } from "@flightdeck/protocol";
-import { recapPreview } from "../src/features/summary/recap-preview.ts";
+import { recapPreview } from "../../src/features/summary/recap-preview.ts";
 
 const recap = (over: Partial<SessionRecap> = {}): SessionRecap => ({
   asked: "Add a retry to the queue",

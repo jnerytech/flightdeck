@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { legacyDaemon } from "./legacy-daemon.ts";
-import { stays, waiter } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { legacyDaemon } from "../legacy-daemon.ts";
+import { stays, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { RecapPanel } = await import("../src/features/summary/recap-panel.tsx");
-const { SessionPane } = await import("../src/features/sessions/parts.tsx");
-const { ExternalView } = await import("../src/features/sessions/external-session-view.tsx");
-const { App } = await import("../src/ui/App.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { RecapPanel } = await import("../../src/features/summary/recap-panel.tsx");
+const { SessionPane } = await import("../../src/features/sessions/parts.tsx");
+const { ExternalView } = await import("../../src/features/sessions/external-session-view.tsx");
+const { App } = await import("../../src/ui/App.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];
