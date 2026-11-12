@@ -7,7 +7,7 @@ import { realTempDir } from "../temp-dir.ts";
 const ROOT = resolve(import.meta.dir, "../../..");
 const OUT = "/tmp/istanbul-out";
 const TRACKED = [
-  "scripts/lib/shots-holds.ts",
+  "scripts/lib/shots/holds.ts",
   "scripts/test/demo/shots-holds.test.ts",
   "scripts/test/other.test.ts",
   "apps/desktop/src/features/hosts/page.tsx",
@@ -41,14 +41,14 @@ function fakes(changed: string[] | null, run = { exit: 0, log: " 3 pass\n 0 fail
 describe("istanbul-changed (#1493)", () => {
   test("only the changed test files run, under the istanbul shard's command, over every source", async () => {
     const f = fakes([
-      "scripts/lib/shots-holds.ts",
+      "scripts/lib/shots/holds.ts",
       "scripts/test/demo/shots-holds.test.ts",
       "apps/desktop/test/host-ui.test.tsx",
       "apps/desktop/test/dom.ts",
       "scripts/test/gone.test.ts",
     ]);
     const code = await istanbulChanged("abc123", OUT, f.deps);
-    const sources = ["scripts/lib/shots-holds.ts", "apps/desktop/src/features/hosts/page.tsx"];
+    const sources = ["scripts/lib/shots/holds.ts", "apps/desktop/src/features/hosts/page.tsx"];
     const expected = shardRun(
       "istanbul",
       ["apps/desktop/test/host-ui.test.tsx", "scripts/test/demo/shots-holds.test.ts"],
@@ -59,7 +59,7 @@ describe("istanbul-changed (#1493)", () => {
   });
 
   test("with no changed test file nothing runs: a bare bun test would run the whole suite", async () => {
-    const f = fakes(["scripts/lib/shots-holds.ts"]);
+    const f = fakes(["scripts/lib/shots/holds.ts"]);
     const code = await istanbulChanged("abc123", OUT, f.deps);
     expect([code, f.spawned.length, f.printed]).toEqual([
       0,

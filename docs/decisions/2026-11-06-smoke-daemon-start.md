@@ -12,7 +12,7 @@
 - **What CI shows.** 300 daemon starts in ten Windows runs: median 1.2 s, 90th percentile 1.8 s,
   95th 2.3 s; the slow ones came in runs where the whole runner was slow (13-17 s in one run).
 - **So the work stays where it is, and the wait changes.** Every smoke reads the announcement
-  through `scripts/lib/smoke-daemon.ts` (`readListenUrl` for a pipe, `awaitListenUrl` for a smoke
+  through `scripts/lib/smoke/daemon.ts` (`readListenUrl` for a pipe, `awaitListenUrl` for a smoke
   that collects the output itself) with `DAEMON_START_MS` = 30 s, about twice the worst start seen,
   instead of the 10 s step limit. The other steps of a smoke keep their 10 s.
 - **A failure says what happened.** The error names the limit and the last 300 characters the

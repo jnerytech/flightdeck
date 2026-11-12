@@ -49,7 +49,7 @@ const TAURI = /^apps\/desktop\/src-tauri\//;
  */
 const E2E = [
   /^scripts\/e2e\//,
-  /^scripts\/lib\/(?:(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$/,
+  /^scripts\/lib\/(?:(?:e2e|demo)\/[^/]+|(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$/,
   /^scripts\/demo[^/]*\.ts$/,
   /^playwright[^/]*$/,
   /^apps\/daemon\//,
@@ -63,7 +63,7 @@ const E2E = [
  */
 const SHOTS = [
   /^scripts\/demo[^/]*\.ts$/,
-  /^scripts\/lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual|(?:e2e|demo)[^/]*)\.ts$/,
+  /^scripts\/lib\/(?:axe|browser|layout-guards|print-theme|shots(?:-[^/]*|\/[^/]+)|visual|(?:e2e|demo)\/[^/]+|(?:e2e|demo)[^/]*)\.ts$/,
   /^scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$/,
 ];
 

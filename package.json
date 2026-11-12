@@ -100,6 +100,7 @@
     "@types/pngjs": "6.0.5",
     "axe-core": "4.10.2",
     "dependency-cruiser": "18.7.2",
+    "fast-check": "4.10.2",
     "ignore": "7.0.14",
     "istanbul-lib-instrument": "6.0.3",
     "knip": "6.44.1",

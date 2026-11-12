@@ -18,7 +18,7 @@ import {
   type ServerMessage,
   type TeamInfo,
 } from "@flightdeck/protocol";
-import { awaitListenUrl } from "./lib/smoke-daemon.ts";
+import { awaitListenUrl } from "./lib/smoke/daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";

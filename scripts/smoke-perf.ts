@@ -14,8 +14,8 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
-import { pollUntil } from "./lib/smoke-poll";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
+import { pollUntil } from "./lib/smoke/poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,

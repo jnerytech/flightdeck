@@ -24,7 +24,7 @@ import {
   DEMO_PR_URL,
   DEMO_TEAM_OUTCOME,
   DEMO_TEAM_REPORT,
-} from "../../lib/e2e-journeys.ts";
+} from "../../lib/e2e/journeys.ts";
 import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 

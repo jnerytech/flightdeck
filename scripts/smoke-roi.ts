@@ -13,7 +13,7 @@ import {
   parseServerMessage,
   type RoiSummaryResult,
 } from "@flightdeck/protocol";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,

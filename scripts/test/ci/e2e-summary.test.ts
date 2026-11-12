@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { e2eSummary } from "../../lib/e2e-summary.ts";
+import { e2eSummary } from "../../lib/e2e/summary.ts";
 
 /** A Playwright JSON report: one spec per entry, its tests' statuses and result durations in ms. */
 function report(specs: Array<{ title: string; status: string; ms: number[] }>): string {

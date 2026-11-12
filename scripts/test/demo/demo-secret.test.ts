@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { DEMO_CREDENTIAL_FILE, DEMO_FAKE_KEY, DEMO_SECRET_FILE } from "../../lib/demo-secret.ts";
+import { DEMO_CREDENTIAL_FILE, DEMO_FAKE_KEY, DEMO_SECRET_FILE } from "../../lib/demo/secret.ts";
 
 const scanner = new SecretScanner();
 
@@ -21,7 +21,7 @@ describe("demo-secret: the key the demo's repository holds for the Files panel (
   });
 
   test("no source file holds the key as one piece, so a secret scan of the repository stays quiet", () => {
-    const source = readFileSync(join(import.meta.dir, "../../lib/demo-secret.ts"), "utf8");
+    const source = readFileSync(join(import.meta.dir, "../../lib/demo/secret.ts"), "utf8");
     // The key's own shape, not the line's `apiKey = ` (that is the file's text, not a token).
     expect(scanner.scan(DEMO_FAKE_KEY)).toContain("sk_key");
     expect(scanner.scan(source)).not.toContain("sk_key");
