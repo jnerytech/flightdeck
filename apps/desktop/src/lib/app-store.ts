@@ -4,11 +4,8 @@ import type {
   CommandResults,
   EffortLevel,
   HistoryChanged,
-  HistoryGetResult,
-  HistoryListResult,
   MessageInfo,
   SessionImage,
-  SessionMeta,
   SessionRecap,
   SettableMode,
   TeamsUpdatedFrame,
@@ -163,7 +160,6 @@ import type {
   AppState,
   AppStoreOptions,
   GateRef,
-  HistoryFilter,
   HostView,
   Notice,
   ReleaseNotesResult,
@@ -264,13 +260,13 @@ export class AppStore {
   /** What a host tells about the Claude sessions started in a terminal (#1596). */
   readonly external: ExternalSessionsSlice;
   /** What the Sessions screen lists from the online hosts (#1596). */
-  private readonly sessionLists: SessionListsSlice;
+  readonly sessionLists: SessionListsSlice;
   /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
   private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** The sessions that keep their full event stream: the open one and the followed (#1596). */
-  private readonly subscriptions: SessionSubscriptions;
+  readonly subscriptions: SessionSubscriptions;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -1012,14 +1008,6 @@ export class AppStore {
     this.subscriptions.select(hostId, sessionId);
   }
 
-  /**
-   * Follows a session's full event stream without opening it, for as long as the returned function
-   * has not been called (the tiles of a project follow several at once).
-   */
-  watchSession(hostId: string, sessionId: string): () => void {
-    return this.subscriptions.watchSession(hostId, sessionId);
-  }
-
   /** Puts an idle session to sleep now and says, in a toast, what came of it. */
   sleepSession(hostId: string, sessionId: string): Promise<void> {
     return this.commands.sleep(hostId, sessionId);
@@ -1083,27 +1071,6 @@ export class AppStore {
       }
     }
     area.close(tabId);
-  }
-
-  /** A host's indexed sessions; errors go to the banner and give `null`. */
-  historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
-    return this.history.list(hostId, filter);
-  }
-
-  /** One page of a host's transcript; errors go to the banner and give `null`. */
-  historyGet(
-    hostId: string,
-    claudeSessionId: string,
-    cursor?: string,
-    tail = false,
-    refused?: (reason: string | undefined) => void,
-  ): Promise<HistoryGetResult | null> {
-    return this.history.get(hostId, claudeSessionId, cursor, tail, refused);
-  }
-
-  /** Continues an indexed transcript as a managed session and opens it. */
-  resumeHistory(hostId: string, claudeSessionId: string, force: boolean): Promise<string | null> {
-    return this.history.resume(hostId, claudeSessionId, force);
   }
 
   /**
@@ -1177,11 +1144,6 @@ export class AppStore {
    */
   refreshHub(): Promise<void> {
     return this.sessionLists.refresh();
-  }
-
-  /** Renames, pins or archives a session (managed or external) of a host. */
-  setMeta(hostId: string, claudeSessionId: string, patch: Partial<SessionMeta>): Promise<void> {
-    return this.sessionLists.setMeta(hostId, claudeSessionId, patch);
   }
 
   /**

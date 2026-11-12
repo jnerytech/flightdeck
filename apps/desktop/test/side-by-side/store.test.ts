@@ -24,8 +24,8 @@ describe("lado-a-lado: following several sessions at once", () => {
     const b = (await store.createSession(hostId, { cwd: d.project, prompt: "b" })) as string;
     await waitFor(() => store.getState().sessions[sessionKey(hostId, b)]?.status === "idle");
 
-    const releaseA = store.watchSession(hostId, a);
-    const releaseB = store.watchSession(hostId, b);
+    const releaseA = store.subscriptions.watchSession(hostId, a);
+    const releaseB = store.subscriptions.watchSession(hostId, b);
     await store.sendTo(hostId, a, "para A");
     await waitFor(() => said(store, hostId, a).includes("para A"), "A streams while B is open");
 
