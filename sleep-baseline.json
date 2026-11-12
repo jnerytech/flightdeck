@@ -88,7 +88,7 @@
   "apps/desktop/test/question-card-ui.test.tsx": 1,
   "apps/desktop/test/reader/leitor.test.tsx": 1,
   "apps/desktop/test/refusals/daemon.test.ts": 1,
-  "apps/desktop/test/relay-store.test.ts": 1,
+  "apps/desktop/test/relay/store.test.ts": 1,
   "apps/desktop/test/retomada-turnos.test.tsx": 1,
   "apps/desktop/test/risk/ui-fluxo.test.tsx": 1,
   "apps/desktop/test/risk/ui-lista.test.tsx": 1,

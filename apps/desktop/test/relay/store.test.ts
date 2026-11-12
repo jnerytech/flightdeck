@@ -2,12 +2,12 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { realTempDir } from "../../../scripts/test/temp-dir.ts";
-import { runCli } from "../../daemon/src/main.ts";
-import { FrameClient } from "../../daemon/test/support/history-helpers.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
+import { runCli } from "../../../daemon/src/main.ts";
+import { FrameClient } from "../../../daemon/test/support/history-helpers.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 setDefaultTimeout(60_000);
 const cleanups: Array<() => unknown> = [];

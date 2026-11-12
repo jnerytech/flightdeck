@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { switcherHosts } from "../src/features/tabs/tab-scope.ts";
+import { switcherHosts } from "../src/features/hosts/switcher-hosts.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 

@@ -1,5 +1,6 @@
 import type { InterruptedSession } from "@flightdeck/protocol";
-import { basename } from "@/shared/lib/index.ts";
+import { z } from "zod";
+import { basename, readStored } from "@/shared/lib/index.ts";
 
 /** What resume sends to a resumed session: the original request is never sent again. */
 export const CONTINUATION = "Continue where you left off.";
@@ -12,14 +13,22 @@ type Storage = {
   setItem(key: string, value: string): void;
 };
 
-const read = <T>(storage: Pick<Storage, "getItem">, key: string): Record<string, T> => {
-  try {
-    const parsed = JSON.parse(storage.getItem(key) ?? "{}");
-    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-};
+const Keys = z.array(z.string());
+
+/** What is kept by host: a host whose value is not a list of text is dropped, the others stay. */
+const Handled = z.record(z.string(), z.unknown()).transform((all) =>
+  Object.fromEntries(
+    Object.entries(all).flatMap(([host, keys]) => {
+      const list = Keys.safeParse(keys);
+      return list.success ? [[host, list.data]] : [];
+    }),
+  ),
+);
+
+/** The hosts set to resume by themselves: only a stored `true` counts. */
+const Auto = z
+  .record(z.string(), z.unknown())
+  .transform((all) => Object.fromEntries(Object.entries(all).filter(([, on]) => on === true)));
 
 /** One interruption of a session: the same session interrupted again by another restart is a new one. */
 export const offerKey = (session: InterruptedSession): string =>
@@ -27,7 +36,7 @@ export const offerKey = (session: InterruptedSession): string =>
 
 /** The interruptions the person has already answered ("Not now" or "Dismiss all", or resumed), by host. */
 export function loadHandled(storage: Pick<Storage, "getItem">): Record<string, string[]> {
-  return read<string[]>(storage, HANDLED_KEY);
+  return readStored(storage, HANDLED_KEY, Handled, {});
 }
 
 export function markHandled(storage: Storage, hostId: string, keys: string[]): void {
@@ -48,11 +57,11 @@ export function unanswered(
 }
 
 export function loadAutoResume(storage: Pick<Storage, "getItem">, hostId: string): boolean {
-  return read<boolean>(storage, AUTO_KEY)[hostId] === true;
+  return readStored(storage, AUTO_KEY, Auto, {})[hostId] === true;
 }
 
 export function saveAutoResume(storage: Storage, hostId: string, on: boolean): void {
-  const all = read<boolean>(storage, AUTO_KEY);
+  const all: Record<string, unknown> = readStored(storage, AUTO_KEY, Auto, {});
   if (on) all[hostId] = true;
   else delete all[hostId];
   storage.setItem(AUTO_KEY, JSON.stringify(all));
