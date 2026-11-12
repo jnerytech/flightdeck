@@ -2,10 +2,10 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { useBusy } from "@/shared/hooks/index.ts";
 import { Form, FormActions } from "@/shared/layout/index.ts";
 import type { SecretType } from "./vault";
 

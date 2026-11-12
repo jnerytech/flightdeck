@@ -70,7 +70,6 @@ import {
 } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
 import { elsewhereNotice, waitingCards } from "@/features/sessions/index.ts";
-import { useMinLoading } from "@/hooks/use-min-loading";
 import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
 import { useStartAsk } from "@/hooks/use-start-ask";
 import { useStartElsewhere } from "@/hooks/use-start-elsewhere";
@@ -79,6 +78,7 @@ import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, Inline, LoadingState, Page, Toolbar } from "@/shared/layout/index.ts";
 import { statusTone, useWidth } from "@/shared/lib/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";

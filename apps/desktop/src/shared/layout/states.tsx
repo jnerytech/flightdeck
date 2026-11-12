@@ -2,8 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IN_FLIGHT, useAfter } from "@/hooks/use-in-flight";
 import { cn } from "@/lib/utils";
+import { IN_FLIGHT, useAfter } from "@/shared/hooks/index.ts";
 
 /** An empty list or panel: a large soft icon, one sentence and one action. */
 export function EmptyState(

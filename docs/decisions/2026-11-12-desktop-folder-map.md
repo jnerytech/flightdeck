@@ -32,8 +32,8 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   `shared/` (decision of fd-coordinator, 2026-11-12). `bun run arch` now cruises `apps/desktop/src`, so
   the rule gates the desktop too.
 - Widened by fd-coordinator's ack of #2126 (2026-11-12): `shared/` may also import `i18n/context.tsx`
-  (the translation hook, domain-free) and `hooks/use-in-flight.ts` (the in-flight stage hook), which the
-  feedback and layout primitives need. `components/layout/form.tsx` was a third exception only until the
+  (the translation hook, domain-free), which the feedback and layout primitives need; the in-flight stage
+  hook they also need moved into `shared/hooks/` (#1597), so that exception is gone. `components/layout/form.tsx` was a third exception only until the
   layout move (the field-row context now lives in `shared/layout/field-row-context.ts`, a leaf). The three
   helpers `lib/list-width.ts`, `lib/use-width.ts` and `lib/scroll-edge.ts` were allowed only until the
   `shared/lib/` move (they live there now, so that entry is gone). Each exception is a path in the rule, so
@@ -42,6 +42,9 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way
   (`use-project-cards.ts`, `use-project-labels.ts` to `projects`, and so on) in a later PR.
+- Hooks with no domain moved to `shared/hooks/` behind an `index.ts` (#1597, fd-coordinator, 2026-11-12):
+  `use-busy`, `use-min-loading`, `use-in-flight`, `use-breakpoint`, `use-media-query`, `use-page-focus` and
+  `real-timers`.
 
 ## `components/`
 
