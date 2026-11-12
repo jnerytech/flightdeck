@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createServer, type Server } from "node:net";
-import { DEFAULT_DEMO_PORT, demoPort, freePort } from "../../lib/demo-port.ts";
+import { DEFAULT_DEMO_PORT, demoPort, freePort } from "../../lib/demo/port.ts";
 
 const free = async () => 40_123;
 
