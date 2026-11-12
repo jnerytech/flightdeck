@@ -6,4 +6,5 @@
 export { TabBar } from "./tab-bar.tsx";
 export { tabFacts } from "./tab-facts.ts";
 export { tabIntent } from "./tab-shortcut.ts";
+export type { TabOrder } from "./tab-switcher.ts";
 export { TabSwitcherHost } from "./tab-switcher.tsx";

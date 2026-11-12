@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { PlainInfo, TaskResultsResult } from "@flightdeck/protocol";
-import type { WandBinding } from "../src/features/assistant/use-wand.ts";
-import { emptySession, type SessionState } from "../src/features/sessions/session-state.ts";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
+import type { WandBinding } from "../../src/features/assistant/use-wand.ts";
+import { emptySession, type SessionState } from "../../src/features/sessions/session-state.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { fakeAssistant, memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TaskView } = await import("../src/features/home/task-view.tsx");
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { TaskView } = await import("../../src/features/home/task-view.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 
 afterEach(cleanup);
 

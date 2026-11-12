@@ -4,8 +4,8 @@ import {
   pendingQuestion,
   recentTools,
   taskState,
-} from "../src/features/home/simple-task.ts";
-import { emptySession, type SessionState } from "../src/features/sessions/session-state.ts";
+} from "../../src/features/home/simple-task.ts";
+import { emptySession, type SessionState } from "../../src/features/sessions/session-state.ts";
 
 const session = (over: Partial<SessionState> = {}): SessionState => ({
   ...emptySession(),

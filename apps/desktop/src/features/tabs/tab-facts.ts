@@ -9,9 +9,9 @@ import {
 import { hostColorVar } from "@/features/hosts/index.ts";
 import { breadcrumb, NAV_ICONS } from "@/features/shell/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { type TabKind, tabBadge, tabIdleSince, tabKind } from "../../lib/tab-badge.ts";
-import type { Tab } from "../../lib/tabs.ts";
 import { isProd } from "../ssh/index.ts";
+import { type TabKind, tabBadge, tabIdleSince, tabKind } from "./tab-badge.ts";
+import type { Tab } from "./tabs.ts";
 
 export const TAB_ICONS: Record<TabKind, LucideIcon> = {
   session: MessageSquare,

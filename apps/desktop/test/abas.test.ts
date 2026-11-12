@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { CLOSED_LIMIT, Tabs } from "../src/features/tabs/tabs.ts";
 import type { Route } from "../src/lib/router.ts";
-import { CLOSED_LIMIT, Tabs } from "../src/lib/tabs.ts";
 
 const hub: Route = { name: "hub" };
 const costs: Route = { name: "costs" };

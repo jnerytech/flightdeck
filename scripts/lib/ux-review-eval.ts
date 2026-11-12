@@ -195,7 +195,7 @@ export function reviewPrompt(base: string, diff: string): string {
 
 /** The checks a review may run: the four the agent names, each with no flag of its own. */
 const REVIEW_CHECKS = [
-  "apps/desktop/test/textos.test.tsx",
+  "apps/desktop/test/texts/texts.test.tsx",
   "apps/desktop/test/i18n-missing.test.ts",
   "apps/desktop/test/layout/layout-ratchet.test.ts",
   "apps/desktop/test/state-selectors-ratchet.test.ts",

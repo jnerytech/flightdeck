@@ -104,7 +104,7 @@ import {
 import { AwayClock } from "../features/needs-you/away.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
-import { PermissionsSlice } from "../features/permissions/index.ts";
+import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
   type PersonasSlice,
@@ -155,6 +155,9 @@ import {
   wireSnippets,
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { TabScopeController } from "../features/tabs/tab-scope.ts";
+import { TabOrderController } from "../features/tabs/tab-switcher.ts";
+import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import {
   type TeleportOutcome,
   type TeleportRequest,
@@ -211,9 +214,6 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import { TabScopeController } from "./tab-scope.ts";
-import { TabOrderController } from "./tab-switcher.ts";
-import type { Navigation, Tabs } from "./tabs.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -672,17 +672,11 @@ export class AppStore {
         this.router.push({ name: "session", host: hostId, id: sessionId });
       },
     });
-    this.permissions = new PermissionsSlice({
+    this.permissions = wirePermissions(this.kernel, {
       needsYou: () => needsYou(this.state, this.i18n.t),
-      sessions: () => this.state.sessions,
-      selectedHostId: () => this.state.selected?.hostId,
       settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
-      sendOn: (hostId, response) =>
-        this.connections.get(hostId)?.request("permission.respond", response),
       sendSelected: (response) =>
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
-      fail: (error, text) => this.fail(error, text),
-      t: () => this.i18n.t,
     });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),

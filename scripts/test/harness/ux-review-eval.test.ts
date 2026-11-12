@@ -158,7 +158,7 @@ describe("ux-review-eval (#983)", () => {
     // #986 security review: a test run takes no flag of its own (no outfile, no other folder).
     expect(allowed).toEqual([
       "Read(./**)",
-      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/textos.test.tsx)",
+      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/texts/texts.test.tsx)",
       "Bash(bun --config=bunfig.area.toml test apps/desktop/test/i18n-missing.test.ts)",
       "Bash(bun --config=bunfig.area.toml test apps/desktop/test/layout/layout-ratchet.test.ts)",
       "Bash(bun --config=bunfig.area.toml test apps/desktop/test/state-selectors-ratchet.test.ts)",

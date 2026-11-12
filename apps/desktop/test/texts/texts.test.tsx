@@ -1,22 +1,22 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { visibleLiterals } from "../../../scripts/lib/i18n-sweep.ts";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { uiIdle } from "./wait.ts";
+import { visibleLiterals } from "../../../../scripts/lib/i18n-sweep.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { uiIdle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { useT, TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { useT, TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
 setDefaultTimeout(20_000);
 
@@ -26,7 +26,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-const ROOT = resolve(import.meta.dir, "../../..");
+const ROOT = resolve(import.meta.dir, "../../../..");
 
 /** Every screen and component with text: all of it comes from the dictionary. */
 const SOURCES = [
@@ -39,14 +39,14 @@ const SOURCES = [
 ]
   .flatMap(
     (dir) =>
-      readdirSync(resolve(import.meta.dir, "..", dir))
+      readdirSync(resolve(import.meta.dir, "../..", dir))
         .filter((file) => file.endsWith(".tsx"))
-        .map((file) => resolve(import.meta.dir, "..", dir, file)),
+        .map((file) => resolve(import.meta.dir, "../..", dir, file)),
     // Screens move into their feature folder (#1597): a domain's folder is swept like the rest.
   )
   .concat(
-    [...new Bun.Glob("src/features/*/*.tsx").scanSync(resolve(import.meta.dir, ".."))].map((file) =>
-      resolve(import.meta.dir, "..", file),
+    [...new Bun.Glob("src/features/*/*.tsx").scanSync(resolve(import.meta.dir, "../.."))].map(
+      (file) => resolve(import.meta.dir, "../..", file),
     ),
   );
 /** Names and ids that are not translated. */
