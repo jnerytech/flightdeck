@@ -73,12 +73,12 @@ import {
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
-  effectiveMode,
   HomeCache,
+  type HostUiPatch,
   loadChoices,
   type ModeAnswer,
-  saveChoice,
   type UiMode,
+  UiModeSlice,
 } from "../features/home/index.ts";
 import {
   type ConnectionStatus,
@@ -469,6 +469,18 @@ export class AppStore {
       platform,
       onShortcut: () => this.history.openSearch(),
     });
+    this.uiModes = new UiModeSlice({
+      hosts: () => this.state.hosts,
+      selectedHostId: () => this.state.selected?.hostId ?? null,
+      choices: () => this.state.uiChoices,
+      storage: platform.storage,
+      setChoices: (uiChoices) => this.update({ uiChoices }),
+      setHostUi: (hostId, patch) => this.hostCommand(hostId, "ui.set", { ...patch, confirm: true }),
+      recordHostUi: (hostId, ui) =>
+        this.updateHost(hostId, (h) =>
+          h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h,
+        ),
+    });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
       undefined,
@@ -665,6 +677,13 @@ export class AppStore {
       },
       setName: (hostId, name) => this.updateHost(hostId, (h) => ({ ...h, name })),
       rememberToken: (token) => this.scan.rememberToken(token),
+      addRoot: (hostId, path) => this.hostCommand(hostId, "roots.add", { path, confirm: true }),
+      setAllowedRoots: (hostId, allowedRoots) => {
+        const conn = this.link.connection(hostId);
+        if (conn?.info) conn.info = { ...conn.info, allowedRoots };
+        this.updateHost(hostId, (h) => (h.info ? { ...h, info: { ...h.info, allowedRoots } } : h));
+      },
+      success: (text) => this.success(text),
       t: () => this.i18n.t,
     });
     this.inbox = wireInbox(this.kernel, {
@@ -836,6 +855,8 @@ export class AppStore {
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
   readonly roster: HostRosterSlice;
+  /** Which mode the window shows, simple or full, per host (phase 33). */
+  readonly uiModes: UiModeSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
   readonly terminals: TerminalsSlice;
   /** How the person left the windows: widths, folds, hub view and filter, tile layout (#1596). */
@@ -1161,10 +1182,9 @@ export class AppStore {
     return this.system.revealPath(hostId, path);
   }
 
-  /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
+  /** The mode a host opens in; the mode slice answers. */
   uiMode(hostId: string): ModeAnswer {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
+    return this.uiModes.mode(hostId);
   }
 
   /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
@@ -1181,38 +1201,24 @@ export class AppStore {
     else this.hostTabs.show({ name: "home" });
   }
 
-  /** The host whose mode the window shows: the selected one, else the first that is online. */
+  /** The host whose mode the window shows; the mode slice answers. */
   uiHostId(): string | null {
-    const { hosts, selected } = this.state;
-    return (
-      hosts.find((h) => h.id === selected?.hostId)?.id ??
-      hosts.find((h) => h.status === "online")?.id ??
-      null
-    );
+    return this.uiModes.hostId();
   }
 
   /** Switches the window between simple and full mode; false when the host is locked or none shows. */
   toggleUiMode(): boolean {
-    const hostId = this.uiHostId();
-    if (!hostId) return false;
-    const now = this.uiMode(hostId);
-    if (!now.canSwitch) return false;
-    this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
-    return true;
+    return this.uiModes.toggle();
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
   setUiChoice(hostId: string, mode: UiMode | null): void {
-    saveChoice(this.platform.storage, hostId, mode);
-    this.update({ uiChoices: loadChoices(this.platform.storage) });
+    this.uiModes.choose(hostId, mode);
   }
 
   /** Changes the host's default mode and lock (full mode's Settings of that host). */
-  async setHostUi(hostId: string, patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
-    const ui = await this.hostCommand(hostId, "ui.set", { ...patch, confirm: true });
-    if (!ui) return false;
-    this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
-    return true;
+  setHostUi(hostId: string, patch: HostUiPatch): Promise<boolean> {
+    return this.uiModes.setHostUi(hostId, patch);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
@@ -1557,19 +1563,9 @@ export class AppStore {
     });
   }
 
-  /** Adds a folder to a host's allowed folders; `retry` runs once the host has accepted it. */
-  async allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
-    const result = await this.hostCommand(hostId, "roots.add", { path: folder, confirm: true });
-    if (!result) return false;
-    const conn = this.link.connection(hostId);
-    if (conn?.info) conn.info = { ...conn.info, allowedRoots: result.allowedRoots };
-    this.updateHost(hostId, (h) =>
-      h.info ? { ...h, info: { ...h.info, allowedRoots: result.allowedRoots } } : h,
-    );
-    const host = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-    this.success(this.i18n.t("toast.rootAdded", { folder, host }));
-    retry?.();
-    return true;
+  /** Adds a folder to a host's allowed folders; the roster does the work. */
+  allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
+    return this.roster.allowRoot(hostId, folder, retry);
   }
 
   /** A toast closed (or shown, for successes): it leaves the list. */

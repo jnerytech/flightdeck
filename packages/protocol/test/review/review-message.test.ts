@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type ReviewItem, reviewMessage } from "../src/review-message.ts";
+import { type ReviewItem, reviewMessage } from "../../src/review-message.ts";
 
 const item = (over: Partial<ReviewItem> = {}): ReviewItem => ({
   path: "app.ts",

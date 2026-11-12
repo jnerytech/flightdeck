@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SECRET_KINDS, SecretScanner } from "../src/snippets.ts";
+import { SECRET_KINDS, SecretScanner } from "../../src/snippets.ts";
 
 /**
  * Issue #714: the scanner names what it finds with stable kinds, never with a label in one

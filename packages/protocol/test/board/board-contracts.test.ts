@@ -14,7 +14,7 @@ import {
   pinnedDocProblem,
   specExpectedPath,
   specPathProblem,
-} from "../src/index.ts";
+} from "../../src/index.ts";
 
 const card = (
   over: Partial<{

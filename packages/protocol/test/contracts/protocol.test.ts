@@ -16,7 +16,7 @@ import {
   SessionInterruptedResult,
   TELEPORT_PART_MAX_BYTES,
   TeleportManifestSchema,
-} from "../src/index.ts";
+} from "../../src/index.ts";
 
 /** A manifest as the source host sends it (issue #100). */
 const TELEPORT_MANIFEST = {

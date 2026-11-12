@@ -13,8 +13,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { useMinLoading } from "@/hooks/use-min-loading";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { useMinLoading } from "@/shared/hooks/index.ts";
 import { EmptyState, ErrorState, LoadingState, NativeSelect } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { filterIssues, issueLabel, issueNumber } from "./issues.ts";

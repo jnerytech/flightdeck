@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hasControl } from "../src/snippets.ts";
+import { hasControl } from "../../src/snippets.ts";
 
 /** #197 (Sonar S7758): which characters count as control, edges included, astral ones too. */
 describe("sonar197-codepoint: hasControl", () => {
