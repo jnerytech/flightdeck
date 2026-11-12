@@ -6,9 +6,9 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { checkLoopLine } from "@/lib/check-loop";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
+import { checkLoopLine } from "./check-loop.ts";
 
 /**
  * Issue #1361: "Keep going until the checks pass" on a card. Turning it on asks the host; outside
