@@ -5,7 +5,7 @@ import { Field, NativeSelect } from "@/shared/layout/index.ts";
 export const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** How hard the model works, from the lightest. */
-export const EFFORTS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
+const EFFORTS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 
 /**
  * Whether a model takes an effort. `model` is an alias of `MODELS` or "" (the persona's model);
