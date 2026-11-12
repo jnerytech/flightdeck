@@ -34,7 +34,7 @@ import {
   type WatchUpdatedFrame,
   type WorkflowRun,
 } from "@flightdeck/protocol";
-import { backoffDelay } from "../shared/lib/backoff.ts";
+import { backoffDelay } from "../../shared/lib/backoff.ts";
 import type { RetryState } from "./host-offline.ts";
 
 /** Fire-and-forget commands: failures surface through the connection status instead. */

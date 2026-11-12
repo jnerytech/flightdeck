@@ -2,7 +2,7 @@ import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import type { T } from "@/i18n/index";
 import type { HostView } from "@/lib/app-store";
-import { hostsBanner } from "@/lib/host-status";
+import { hostsBanner } from "./host-status";
 import { HostStatusBadge } from "./host-status-badge.tsx";
 
 /**

@@ -10,8 +10,6 @@ import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/ind
 import { FieldRow, Page, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import type { HostNameError } from "../../lib/host-name.ts";
-import { hostUptime } from "../../lib/host-offline.ts";
 import type { HubRow } from "../../lib/hub.ts";
 import type { ProjectCard } from "../../lib/project-cards.ts";
 import type { UsageHistoryTarget } from "../../lib/usage-rows.ts";
@@ -29,6 +27,8 @@ import { HostCompare } from "./host-compare.tsx";
 import { hostDownReason } from "./host-down-reason.ts";
 import { HostHealth } from "./host-health.tsx";
 import { HostLogs } from "./host-logs.tsx";
+import type { HostNameError } from "./host-name.ts";
+import { hostUptime } from "./host-offline.ts";
 import { HostOfflineBanner } from "./host-offline-banner.tsx";
 import { HostOverview } from "./host-overview.tsx";
 import { HostPausePanel } from "./host-pause-panel.tsx";

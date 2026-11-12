@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { HostTabs, routeHost } from "../../src/lib/host-tabs.ts";
+import { HostTabs, routeHost } from "../../src/features/hosts/host-tabs.ts";
 import type { Route } from "../../src/lib/router.ts";
 import type { Tab } from "../../src/lib/tabs.ts";
 

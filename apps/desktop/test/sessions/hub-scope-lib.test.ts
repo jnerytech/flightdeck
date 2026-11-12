@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
 import {
   ALL_SCOPE,
@@ -6,7 +7,6 @@ import {
   DataScopeController,
   hubHostScope,
 } from "../../src/lib/data-scope.ts";
-import { HOSTS_KEY } from "../../src/lib/hosts.ts";
 import { HUB_FILTER_KEY, loadHubFilter, saveHubFilter, takeHubHost } from "../../src/lib/hub.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { TeleportManifest } from "@flightdeck/protocol";
-import { RequestError } from "../../src/lib/host-connection.ts";
+import { RequestError } from "../../src/features/hosts/host-connection.ts";
 import {
   plainText,
   type TeleportRequest,

@@ -6,7 +6,7 @@ import {
   type HostConnectionOptions,
   RequestError,
   statusLine,
-} from "../../src/lib/host-connection.ts";
+} from "../../src/features/hosts/host-connection.ts";
 import { daemon as makeDaemon, TOKEN, waitFor } from "../fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];

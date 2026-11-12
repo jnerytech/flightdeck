@@ -1,12 +1,12 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { ConflictChoice } from "@/features/vault/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import type { RestorePreview } from "@/lib/backup-bundle";
-import type { ConflictChoice } from "@/lib/vault-backup";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
 

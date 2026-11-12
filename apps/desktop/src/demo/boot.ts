@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { saveHosts } from "@/features/hosts/index.ts";
 import { LANG_KEY, LANGS, type Lang } from "../i18n/index.ts";
-import { saveHosts } from "../lib/hosts.ts";
 import type { Route } from "../lib/router.ts";
 import { THEME_KEY, type ThemeMode } from "../lib/theme.ts";
 import { WORKSPACE_KEY } from "../lib/workspace.ts";

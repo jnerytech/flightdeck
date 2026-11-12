@@ -11,7 +11,7 @@ import {
   type TeleportManifest,
   TeleportManifestSchema,
 } from "@flightdeck/protocol";
-import { RequestError } from "./host-connection.ts";
+import { RequestError } from "../features/hosts/index.ts";
 import { isLocalUrl } from "./terminal.ts";
 
 /** One host's command channel: a connection's `request`, injected so tests use fakes. */

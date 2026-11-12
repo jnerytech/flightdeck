@@ -3,6 +3,7 @@ import { Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { SecretMeta } from "@/features/vault/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
@@ -10,7 +11,6 @@ import { actionIssueText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { ActionSeed } from "../../lib/snippets.ts";
-import type { SecretMeta } from "../../lib/vault.ts";
 import { isProd } from "../ssh/index.ts";
 import { ActionForm } from "./action-form.tsx";
 

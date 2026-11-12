@@ -10,7 +10,7 @@ const screen = liveScreen(within);
 const { TeleportDialog } = await import("../../src/features/teleport/teleport-dialog.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
-const { RequestError } = await import("../../src/lib/host-connection.ts");
+const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
 
 /**
  * Issue #100, slice 3b: the dialog that moves a session to another host. The person picks the host

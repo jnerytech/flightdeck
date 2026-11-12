@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { TerminalData, TerminalExited, TerminalResync } from "@flightdeck/protocol";
-import { HostConnection } from "../../src/lib/host-connection.ts";
+import { HostConnection } from "../../src/features/hosts/host-connection.ts";
 import { daemon as makeDaemon, TOKEN, waitFor } from "../fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];

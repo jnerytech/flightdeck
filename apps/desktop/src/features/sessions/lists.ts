@@ -5,8 +5,8 @@ import type {
   SessionMeta,
   SessionSummary,
 } from "@flightdeck/protocol";
+import type { HostConnection } from "@/features/hosts/index.ts";
 import type { AppState, HostView } from "../../lib/app-store.ts";
-import type { HostConnection } from "../../lib/host-connection.ts";
 import { sessionKey } from "../../lib/session-key.ts";
 import { hasFeature } from "../../lib/version.ts";
 

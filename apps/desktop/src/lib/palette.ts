@@ -1,10 +1,10 @@
 import { basename, isInside } from "@/shared/lib/index.ts";
+import { hostStatusView } from "../features/hosts/index.ts";
 import type { AppSnippet } from "../features/snippets/index.ts";
 import type { T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
 import { ALL_CLIENTS, selectedClient, tagsFirst } from "./client-scope.ts";
 import { UNASSIGNED } from "./clients.ts";
-import { hostStatusView } from "./host-status.ts";
 import type { Route } from "./router.ts";
 import { sessionLabel } from "./session-label.ts";
 import { type SessionView, VIEW_LABEL } from "./session-views.ts";

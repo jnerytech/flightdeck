@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Vault } from "../../src/lib/vault.ts";
+import { Vault } from "../../src/features/vault/vault.ts";
 import { tauriPlatform } from "../../src/platform/tauri/index.ts";
 import { createWebPlatform } from "../../src/platform/web/index.ts";
 

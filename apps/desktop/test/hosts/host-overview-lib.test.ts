@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hostProjectCards, hostSessionRows } from "../../src/lib/host-overview.ts";
+import { hostProjectCards, hostSessionRows } from "../../src/features/hosts/host-overview-model.ts";
 import type { HubRow } from "../../src/lib/hub.ts";
 import type { ProjectCard } from "../../src/lib/project-cards.ts";
 
