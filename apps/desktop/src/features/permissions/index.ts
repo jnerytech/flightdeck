@@ -5,6 +5,7 @@
  */
 
 export { AlwaysAllow } from "./always-allow.tsx";
+export { fields, shortPath } from "./approval.ts";
 export { ApprovalActions } from "./approval-actions.tsx";
 export { ApprovalCard, type ApprovalRequest, RiskSeal } from "./approval-card.tsx";
 export { GateText } from "./gate-text.tsx";

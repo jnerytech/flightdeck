@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { FolderPicker } from "@/features/hosts/index.ts";
+import { shortPath } from "@/features/permissions/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { shortPath } from "@/lib/approval";
 import { hasFeature } from "@/lib/version";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { suggestFolders } from "./project-suggestions";
