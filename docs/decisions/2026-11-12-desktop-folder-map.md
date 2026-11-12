@@ -121,7 +121,7 @@ prefix. Tests move with their file in the same PR.
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` |
 | `github-session.ts` | `features/hosts/` (the GitHub panel) |
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (`board-shortcut.ts` stays with the board) |
-| `palette.ts` | `features/palette/` |
+| `palette.ts` | `features/palette/` (**moved**) |
 | `project-*.ts` | `features/projects/` |
 | `quota*.ts` | `features/quota/` |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
