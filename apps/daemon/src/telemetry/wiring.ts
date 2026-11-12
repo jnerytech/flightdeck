@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type { Config } from "../config.ts";
 import type { Logger } from "../logger.ts";
+import type { DomainModule } from "../server/index.ts";
+import { serverGroup } from "../server.ts";
 import { TelemetryOptIn, type TelemetryOptInOptions } from "./optin.ts";
 import { startTelemetry } from "./service.ts";
 import { TelemetryStore } from "./store.ts";
@@ -38,9 +40,14 @@ export async function createTelemetry({
       telemetryStore.prune(config.telemetry.retentionDays, Date.now());
     },
   });
-  return {
-    telemetryStore,
-    telemetry,
-    telemetryOptIn: new TelemetryOptIn({ configFile, settingsPath }),
+  const module: DomainModule<"telemetry"> = {
+    server: {
+      telemetry: serverGroup<"telemetry">()({
+        store: telemetryStore,
+        optIn: new TelemetryOptIn({ configFile, settingsPath }),
+      }),
+    },
+    stop: () => telemetry.stop(),
   };
+  return { modules: [module] as const, telemetryStore };
 }
