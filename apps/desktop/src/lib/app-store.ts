@@ -1,5 +1,4 @@
 import type {
-  Card,
   ChangesUpdated,
   CommandPayload,
   CommandResults,
@@ -39,7 +38,7 @@ import {
   googleConfig,
   wireBackup,
 } from "../features/backup/index.ts";
-import { BoardWidth } from "../features/board/index.ts";
+import { BoardCardsSlice, BoardWidth } from "../features/board/index.ts";
 import {
   type ClientScopeSlice,
   Clients,
@@ -137,10 +136,10 @@ import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
 import {
+  SessionMover,
   type TeleportOutcome,
   type TeleportRequest,
   type TeleportRunArgs,
-  teleportSession,
 } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
@@ -209,16 +208,6 @@ const AWAY_MARK_MS = 60_000;
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
-
-const isCard = (value: unknown): value is Card =>
-  typeof value === "object" && value !== null && "column" in value && "projectId" in value;
-
-/** Cards inside a command result: a card, a whole board or none. */
-function cardsIn(result: unknown): Card[] {
-  if (isCard(result)) return [result];
-  const columns = (result as { columns?: Array<{ cards: Card[] }> } | undefined)?.columns ?? [];
-  return columns.flatMap((column) => column.cards);
-}
 
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
@@ -701,6 +690,15 @@ export class AppStore {
       show: (notification) => this.platform.notify(notification),
       setBadge: (count) => this.platform.setBadge?.(count),
     });
+    // Built here, not in a board wire: a wire importing the kernel would join its import cycle (#1624).
+    this.boardCards = new BoardCardsSlice({
+      cards: () => this.kernel.state().cards,
+      setCards: (cards) => this.kernel.update({ cards }),
+      connection: (hostId) => this.kernel.connection(hostId),
+      notify: (notification, route, fallbackUrl) =>
+        this.inbox.notify(notification, route, fallbackUrl),
+      t: () => this.kernel.t(),
+    });
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
       onAttention: (kind) => this.onBackupAttention(kind),
@@ -816,6 +814,10 @@ export class AppStore {
   readonly notifyPrefs: NotifyPreferences;
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
+  /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
+  private readonly boardCards: BoardCardsSlice;
+  /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
+  private readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
@@ -1117,23 +1119,8 @@ export class AppStore {
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
-  async sendTo(
-    hostId: string,
-    sessionId: string,
-    text: string,
-    images?: SessionImage[],
-  ): Promise<void> {
-    const conn = this.link.connection(hostId);
-    if (!conn) return;
-    try {
-      await conn.request("session.send", {
-        sessionId,
-        text,
-        ...(images?.length ? { images } : {}),
-      });
-    } catch (error) {
-      this.fail(error);
-    }
+  sendTo(hostId: string, sessionId: string, text: string, images?: SessionImage[]): Promise<void> {
+    return this.commands.sendTo(hostId, sessionId, text, images);
   }
 
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
@@ -1142,11 +1129,8 @@ export class AppStore {
   }
 
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
-  async loadBoard(hostId: string, projectId: string): Promise<void> {
-    const conn = this.link.connection(hostId);
-    if (!conn) return;
-    const board = await nullOnError(conn.request("board.get", { projectId }));
-    for (const card of cardsIn(board)) this.onCard(hostId, card);
+  loadBoard(hostId: string, projectId: string): Promise<void> {
+    return this.boardCards.load(hostId, projectId);
   }
 
   /**
@@ -1278,7 +1262,7 @@ export class AppStore {
     const conn = this.link.connection(hostId);
     if (!conn) throw new RequestError("offline", "unknown host");
     const result = await conn.request(type, payload);
-    for (const card of cardsIn(result)) this.onCard(hostId, card);
+    this.boardCards.onResult(hostId, result);
     if (isRun(result)) this.onRun(hostId, result);
     return result;
   }
@@ -1292,18 +1276,8 @@ export class AppStore {
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
-  async setMeta(
-    hostId: string,
-    claudeSessionId: string,
-    patch: Partial<SessionMeta>,
-  ): Promise<void> {
-    const result = await this.hostCommand(hostId, "session.meta.set", {
-      claudeSessionId,
-      ...patch,
-    });
-    if (!result) return;
-    const { claudeSessionId: _id, ...meta } = result;
-    this.update({ meta: { ...this.state.meta, [sessionKey(hostId, claudeSessionId)]: meta } });
+  setMeta(hostId: string, claudeSessionId: string, patch: Partial<SessionMeta>): Promise<void> {
+    return this.sessionLists.setMeta(hostId, claudeSessionId, patch);
   }
 
   /**
@@ -1540,13 +1514,7 @@ export class AppStore {
 
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
   teleportRequest(hostId: string): TeleportRequest {
-    // Straight to the connection: a host's teleport answer is checked by the relay, and never
-    // reaches the board's card or run state on the way.
-    return ((type, payload) => {
-      const conn = this.link.connection(hostId);
-      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
-      return conn.request(type, payload);
-    }) as TeleportRequest;
+    return this.mover.request(hostId);
   }
 
   /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
@@ -1555,15 +1523,7 @@ export class AppStore {
     sessionId: string,
     args: TeleportRunArgs,
   ): Promise<TeleportOutcome> {
-    return teleportSession({
-      source: this.teleportRequest(sourceHost),
-      target: this.teleportRequest(args.target),
-      sessionId,
-      repo: args.repo,
-      confirm: args.confirm,
-      onProgress: args.onProgress,
-      signal: args.signal,
-    });
+    return this.mover.move(sourceHost, sessionId, args);
   }
 
   /** The session a move made, opened on its new host. */
@@ -1580,7 +1540,7 @@ export class AppStore {
       this.stream.onSubscribed(config.id, sessionId, result),
     onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
     onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
-    onCardUpdated: (config, card) => this.onCard(config.id, card),
+    onCardUpdated: (config, card) => this.boardCards.onCard(config.id, card),
     onExternal: (config, frame) => this.external.onExternal(config.id, frame),
     onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
     onVaultUsed: (config, used) => {
@@ -1822,12 +1782,8 @@ export class AppStore {
   }
 
   /** Issue #1478: interrupts any session of a host, open or not. */
-  async interruptSession(hostId: string, sessionId: string): Promise<void> {
-    try {
-      await this.link.connection(hostId)?.request("session.interrupt", { sessionId });
-    } catch (error) {
-      this.fail(error);
-    }
+  interruptSession(hostId: string, sessionId: string): Promise<void> {
+    return this.commands.interruptOn(hostId, sessionId);
   }
 
   /** Phase 21: told each time a team of a host changes. */
@@ -1842,23 +1798,6 @@ export class AppStore {
 
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });
-  }
-
-  private onCard(hostId: string, card: Card): void {
-    const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
-    // Phase 31: a card the app already knew has just lost its last blocker.
-    if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      this.inbox.notify(
-        {
-          title: this.i18n.t("deps.notifyTitle"),
-          body: this.i18n.t("deps.notifyBody", { title: card.title }),
-        },
-        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
-        card.prUrl,
-      );
-    }
-    const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
-    this.update({ cards });
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {
