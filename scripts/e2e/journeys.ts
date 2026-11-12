@@ -46,7 +46,7 @@ import {
   SCROLL_SIZES,
   SINGLE_SCROLL,
   waitForStable,
-} from "../lib/layout-guards.ts";
+} from "../lib/styles/layout-guards.ts";
 
 const ALFA = "demo-alfa";
 /** The name of the second demo host, as the sidebar and the forms show it. */

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { git } from "../../../daemon/test/support/board-helpers.ts";
 import { must } from "../../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "../dom.ts";

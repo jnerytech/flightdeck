@@ -10,7 +10,7 @@ import {
   type RatchetRow,
   ratchetRows,
   shapeShares,
-} from "../../lib/arch-report.ts";
+} from "../../lib/arch/arch-report.ts";
 
 const known = (rules: Record<string, number>) =>
   JSON.stringify(

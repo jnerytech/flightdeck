@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { readStyles } from "../../lib/styles-source.ts";
+import { readStyles } from "../../lib/styles/styles-source.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const dir = realTempDir("styles-source-");

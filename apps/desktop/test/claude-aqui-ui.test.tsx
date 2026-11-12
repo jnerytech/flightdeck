@@ -168,7 +168,7 @@ describe("claude-aqui: no app", () => {
     await act(async () => {
       store.history.openSearch();
       // Its own load of the hosts' data, awaited: the palette asks for the same when it opens.
-      await store.loadPalette();
+      await store.palette.load();
     });
     await act(async () =>
       inject(store, hostId, { ...external("claude-9", "launch-x"), cwd: root }),

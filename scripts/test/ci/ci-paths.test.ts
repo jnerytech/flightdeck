@@ -129,7 +129,7 @@ describe("ci-paths: the rules", () => {
 
   test("demo:shots and every local file it imports plan the prints, so a change to the print guards runs them (#637)", () => {
     const local = localImports(["scripts/demo-shots.ts"]);
-    expect(local).toContain("scripts/lib/layout-guards.ts");
+    expect(local).toContain("scripts/lib/styles/layout-guards.ts");
     for (const path of ["scripts/demo.ts", "scripts/demo-shots.ts", ...local]) {
       expect(`${path}: ${ciPlan(PR, [path]).screenshots}`).toBe(`${path}: true`);
     }
@@ -144,7 +144,7 @@ describe("ci-paths: the rules", () => {
       .filter((name) => name.endsWith(".ts"))
       .map((name) => `scripts/e2e/${name}`);
     const local = localImports(journeys);
-    expect(local).toContain("scripts/lib/layout-guards.ts");
+    expect(local).toContain("scripts/lib/styles/layout-guards.ts");
     for (const path of local) expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
   });
 
