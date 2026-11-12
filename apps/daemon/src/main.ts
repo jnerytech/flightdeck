@@ -397,12 +397,10 @@ export async function startDaemon(
   });
   // The issues, the GitHub Projects' boards, the PR watch and the automations around the cards.
   const {
+    modules: [boardWorkModule],
     issues,
-    boardSync,
-    watcher: prWatcher,
-    watch: prWatch,
-    automations,
-  } = createBoardWork({
+  } = await domains.add(
+    createBoardWork({
     store,
     board,
     autoApprove,
@@ -415,8 +413,9 @@ export async function startDaemon(
     checks: boundedCheckRunner(),
     config,
     log: logger.log.bind(logger),
-  });
-  automations.start();
+    checkLoopOf: (watcher) => checkLoop.switchOf({ board, watcher, manager }),
+  }),
+  );
   const {
     modules: [maintenanceModule],
   } = await domains.add(createMaintenance({ db: store.db, config, snapshots }));
@@ -515,7 +514,6 @@ export async function startDaemon(
       quota,
     }),
   );
-  prWatch.start();
   // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
   const runEnv = createRunEnv({
     db: store.db,
@@ -628,7 +626,6 @@ export async function startDaemon(
       keyOf: (path) => keys.known(path),
       signals: new RoiSignals(),
     }),
-    boardsync: boardSync.service,
     github: createGithub({ config, board, issues, manager }),
     serviceInstall: appServiceInstall(
       args.config ?? null,
@@ -641,17 +638,10 @@ export async function startDaemon(
       commands: true,
     }),
     names,
-    prWatch: serverGroup<"prWatch">()({
-      watch: prWatch,
-      // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
-      checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
-    }),
     vault,
     log: logger.log.bind(logger),
     actions,
     autoApprove,
-    issues,
-    automations,
     board,
     runenv: { configs: runEnv.configs, manager: runEnv.manager },
     usage,
@@ -723,7 +713,7 @@ export async function startDaemon(
   logger.log(
     `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
   );
-  boardSync.loop.start();
+  await domains.started();
   warnIfNoRoots(config, logger);
 
   let stopped: Promise<void> | null = null;
@@ -737,14 +727,12 @@ export async function startDaemon(
         // First: whatever stops slowly after must not keep the computer awake meanwhile.
         await keepAwakeModule.stop?.();
         await wsl?.stop();
-        automations.stop();
         await teamsModule.stop?.();
         actions.stop();
         vault.stop();
-        await automations.idle();
-        prWatch.stop();
         for (const unwatch of runEnv.unwatch) unwatch();
-        boardSync.loop.stop();
+        // The automations, the watch and the board sync use the board: they stop before it.
+        await boardWorkModule.stop?.();
         board.stop();
         terminals.stop();
         await central.stop();

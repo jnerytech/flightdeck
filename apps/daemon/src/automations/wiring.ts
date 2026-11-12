@@ -3,6 +3,7 @@ import type { Board } from "../board/index.ts";
 import { type BoardSyncDeps, createBoardSync } from "../boardsync/index.ts";
 import type { Config } from "../config.ts";
 import { Issues } from "../issues/index.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { createWatch, type WatchDeps } from "../watch/index.ts";
 import { Automations, type AutomationsOptions } from "./automations.ts";
 
@@ -39,6 +40,9 @@ export function automationsOptions({
   };
 }
 
+/** The PR watch's `startServer` group. */
+type PrWatchGroup = NonNullable<NonNullable<DomainModule<"prWatch">["server"]>["prWatch"]>;
+
 /** What the board's work around its cards is built from. */
 export interface BoardWorkDeps extends Omit<WatchDeps, "board"> {
   board: Board;
@@ -46,6 +50,8 @@ export interface BoardWorkDeps extends Omit<WatchDeps, "board"> {
   gh: BoardSyncDeps["gh"];
   config: AutomationsWiringDeps["config"];
   log: (message: string) => void;
+  /** Issue #1361: the check loop's switch, on the watch's checks. */
+  checkLoopOf: (watcher: ReturnType<typeof createWatch>["watcher"]) => NonNullable<PrWatchGroup["checkLoop"]>;
 }
 
 /**
@@ -53,7 +59,10 @@ export interface BoardWorkDeps extends Omit<WatchDeps, "board"> {
  * Projects read through the host's gh (phase 38), the watch that fixes the cards' PRs inside their
  * limits (phase 22), and the automations that listen to the board's PR polling for `ci_failed` and
  * run the schedule (phase 13). The watch is built before the automations: a watched PR is the
- * watch's alone (#77). The caller starts and stops each one, in its own boot and shutdown order.
+ * watch's alone (#77). Its module (#2094) serves the `boardsync`, `prWatch`, `issues` and
+ * `automations` groups; starts the automations and the watch; starts the board sync's loop once the
+ * server listens; and stops the automations (waiting for a tick or an issue search in flight), the
+ * watch and the board sync's loop. The caller stops the board after it: all of them use the board.
  */
 export function createBoardWork({
   board,
@@ -61,6 +70,7 @@ export function createBoardWork({
   gh,
   config,
   log,
+  checkLoopOf,
   ...watchDeps
 }: BoardWorkDeps) {
   const { store } = watchDeps;
@@ -70,5 +80,24 @@ export function createBoardWork({
   const automations = new Automations(
     automationsOptions({ db: store.db, board, issues, autoApprove, config, log, fixer }),
   );
-  return { issues, boardSync, watcher, fixer, watch, automations };
+  const module: DomainModule<"boardsync" | "prWatch" | "issues" | "automations"> = {
+    server: {
+      boardsync: boardSync.service,
+      prWatch: serverGroup<"prWatch">()({ watch, checkLoop: checkLoopOf(watcher) }),
+      issues,
+      automations,
+    },
+    start: () => {
+      automations.start();
+      watch.start();
+    },
+    started: () => boardSync.loop.start(),
+    stop: async () => {
+      automations.stop();
+      await automations.idle();
+      watch.stop();
+      boardSync.loop.stop();
+    },
+  };
+  return { modules: [module] as const, issues, boardSync, watcher, fixer, watch, automations };
 }
