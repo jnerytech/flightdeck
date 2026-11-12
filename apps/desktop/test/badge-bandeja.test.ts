@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { PendingPermission, SessionSummary } from "@flightdeck/protocol";
 import { trayStatus } from "../src/features/tray/tray.ts";
-import { BADGE_SIZE, badgeRgba } from "../src/lib/badge-icon.ts";
+import { BADGE_SIZE, badgeRgba } from "../src/platform/tauri/badge-icon.ts";
 
 const pending = (n: number): PendingPermission[] =>
   Array.from({ length: n }, (_, i) => ({

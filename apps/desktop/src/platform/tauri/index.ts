@@ -13,9 +13,9 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { parseRequestLink } from "@/features/hosts/index.ts";
-import { badgeRgba } from "../../lib/badge-icon.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
+import { badgeRgba } from "./badge-icon.ts";
 
 export interface BrowserWindow extends FilePickerWindow {
   localStorage: Platform["storage"];
