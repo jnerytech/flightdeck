@@ -30,7 +30,7 @@ describe("externos-lista-velha: a list answered late does not undo a newer frame
     });
     const internals = store as unknown as {
       state: { hosts: unknown[] };
-      connections: Map<string, unknown>;
+      link: { connections: Map<string, unknown> };
     };
     internals.state.hosts = [
       {
@@ -42,7 +42,7 @@ describe("externos-lista-velha: a list answered late does not undo a newer frame
         attempt: 0,
       },
     ];
-    internals.connections.set("h", {
+    internals.link.connections.set("h", {
       request: async (type: string) => {
         if (type === "external.list") {
           // The host read its list before the hook; the answer travels slowly.
