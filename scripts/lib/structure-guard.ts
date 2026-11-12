@@ -58,12 +58,12 @@ function body(text: string): string {
     .join("\n");
 }
 
-/** A name's camelCase words, lower case, a plural `s` left out: `checkClientBudgets` is check, client, budget. */
+/** A name's camelCase words, lower case: `checkClientBudgets` is check, client, budgets. */
 function words(name: string): string[] {
   return name
     .split(/(?=[A-Z])|_/)
     .filter((word) => word !== "")
-    .map((word) => word.toLowerCase().replace(/s$/, ""));
+    .map((word) => word.toLowerCase());
 }
 
 /** Whether every item of `part` is in `whole`, counting repeats. */
@@ -71,38 +71,78 @@ function within(part: string[], whole: string[]): boolean {
   return minus(part, whole).length === 0;
 }
 
-/** A string literal, a word or one sign: the whitespace between them is the formatter's. */
-const TOKEN = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\w+|[^\w\s]/g;
+/** A comment, a string or template literal, a word, `++`/`--`, or one sign, from the start of the text. */
+const LEXEME =
+  /^(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`|\w+|\+\+|--|[^\w\s])/;
+/** A regex literal, from the start of the text. */
+const REGEX = /^\/(?:[^/\\\n[]|\\.|\[(?:[^\]\\\n]|\\.)*\])+\/\w*/;
 const WORD = /^\w+$/;
-/** The app's store as a test reads it: `store`, `appStore`, or `getState()`. */
-const STORE = /^\w*[sS]tore$/;
+/** The words after which a `/` divides; after anything else it starts a regex. */
+const DIVIDES = /^(?:\w+|\)|\])$/;
+const KEYWORDS = new Set(["return", "typeof", "case", "do", "else", "in", "of", "void", "yield"]);
+/** The words a line break after ends the statement (automatic semicolon insertion). */
+const RESTRICTED = new Set(["return", "throw", "break", "continue", "yield"]);
+const OPENING = new Set([",", "[", "(", "{"]);
 
-/** A body's tokens, a trailing comma before a closing bracket left out (the formatter adds it on a wrap). */
+/**
+ * A body's tokens. The whitespace between them is the formatter's, but a literal (a string, a
+ * template, a regex) or a comment stays one token, a line break after `return` stays, and a
+ * trailing comma before a closing bracket is dropped (the formatter adds it on a wrap) unless it
+ * makes an array hole.
+ */
 function tokens(text: string): string[] {
-  const all = text.match(TOKEN) ?? [];
-  return all.filter((token, k) => token !== "," || !/^[)\]}]$/.test(all[k + 1] ?? ""));
+  const out: string[] = [];
+  let rest = text;
+  while (rest !== "") {
+    const space = /^\s+/.exec(rest)?.[0] ?? "";
+    if (space !== "") {
+      const last = out.at(-1) ?? "";
+      if (space.includes("\n") && RESTRICTED.has(last)) out.push("\n");
+      rest = rest.slice(space.length);
+      continue;
+    }
+    const last = out.at(-1) ?? "";
+    const regex =
+      rest.startsWith("/") && (!DIVIDES.test(last) || KEYWORDS.has(last)) ? REGEX.exec(rest) : null;
+    const token = regex?.[0] ?? LEXEME.exec(rest)?.[0] ?? rest.charAt(0);
+    out.push(token);
+    rest = rest.slice(token.length);
+  }
+  return out.filter(
+    (token, k) =>
+      token !== "," || !/^[)\]}]$/.test(out[k + 1] ?? "") || OPENING.has(out[k - 1] ?? ""),
+  );
 }
 
-/** Whether the tokens before index `i` read `<store>.`. */
+/** Whether the tokens before index `i` read `store.` or `store.getState().`, the app's store in a test. */
 function onStore(a: string[], i: number): boolean {
   if (a[i - 1] !== ".") return false;
-  if (STORE.test(a[i - 2] ?? "")) return true;
-  return a[i - 2] === ")" && a[i - 3] === "(" && a[i - 4] === "getState";
+  if (a[i - 2] === "store") return a[i - 3] !== ".";
+  const read = a.slice(i - 6, i - 1).join(" ");
+  return read === "store . getState ( )" && a[i - 7] !== ".";
 }
 
 /**
- * Whether a store member moved under a slice: the same member under any slice (`refresh` became
- * `board.refresh`), or the old name split into the slice and the member (`checkClientBudgets` became
- * `clientBudgets.check`).
+ * Whether a store method moved under a slice: the same method under any slice (`refresh` became
+ * `board.refresh`), or the old name split into the slice and the method (`checkClientBudgets` became
+ * `clientBudgets.check`, `addCard` became `cards.add`). Only a call: a field read under a new slice may read nothing.
  */
-function sliceOf(member: string, slice: string, called: string): boolean {
-  if (![member, slice, called].every((token) => WORD.test(token))) return false;
+function sliceOf(member: string, slice: string, called: string, next: string): boolean {
+  if (next !== "(" || ![member, slice, called].every((token) => WORD.test(token))) return false;
   if (called === member) return true;
-  const parts = [...words(slice), ...words(called)];
+  const rest = minus(words(member), words(called));
+  if (!within(words(called), words(member))) return false;
+  // The slice may name the member's words in the plural (`addCard` became `cards.add`), never the reverse.
+  const slices = words(slice).map((word) =>
+    rest.find((part) => part === word || `${part}s` === word),
+  );
   return (
-    within(words(slice), words(member)) &&
-    within(words(member), parts) &&
-    within(parts, words(member))
+    slices.length === rest.length &&
+    slices.every((part) => part !== undefined) &&
+    within(
+      slices.filter((part) => part !== undefined),
+      rest,
+    )
   );
 }
 
@@ -124,7 +164,9 @@ function sameBody(was: string, is: string): boolean {
       continue;
     }
     const moved =
-      onStore(a, i) && b[j + 1] === "." && sliceOf(a[i] ?? "", b[j] ?? "", b[j + 2] ?? "");
+      onStore(a, i) &&
+      b[j + 1] === "." &&
+      sliceOf(a[i] ?? "", b[j] ?? "", b[j + 2] ?? "", b[j + 3] ?? "");
     if (!moved) return false;
     i++;
     j += 3;
