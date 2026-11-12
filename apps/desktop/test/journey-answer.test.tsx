@@ -3,7 +3,7 @@ import { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { poll } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { stays, waiter } from "./wait.ts";
 
 registerDom();

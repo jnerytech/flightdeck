@@ -3,7 +3,7 @@ import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import pkg from "../package.json";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.

@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { GithubStatusResult } from "@flightdeck/protocol";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/ui/Sidebar.tsx");
-const { githubSignedIn } = await import("../src/lib/github-session.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { githubSignedIn } = await import("../../src/lib/github-session.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

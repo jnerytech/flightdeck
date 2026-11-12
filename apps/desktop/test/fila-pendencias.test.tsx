@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { plainWaiter } from "./wait.ts";
 
 registerDom();
