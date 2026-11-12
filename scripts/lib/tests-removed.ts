@@ -29,14 +29,14 @@ export interface RemovalVerdict {
 }
 
 const TEST_FILE = /\.test\.tsx?$/;
-/** A test: `test(`, `it(`, a modifier that takes the test next (`.skipIf(`, `.if(`), or `.each` with a table. */
+/** A test: `test(` or `it(`, after any modifiers (`.skipIf(`, `.concurrent`), or `.each` with a table. */
 const TEST =
-  /(?<![\w$.])(?:test|it)(?:\.(?:skipIf|if|only|skip|todo|failing|serial|concurrent))?\(|(?<![\w$.])(?:test|it)\.each[(`]/g;
+  /(?<![\w$.])(?:test|it)(?:\.(?:skipIf|if|only|skip|todo|failing|serial|concurrent))*(?:\(|\.each[(`])/g;
 const EXPECT = /(?<![\w$.])expect\(/g;
 /** `Tests-Removed: <paths> — <why>`, the key in any case as git reads trailers. */
 const TRAILER = /^tests-removed:[^\S\n]*(.*)$/gim;
-/** The dash that ends the paths: the first em or en dash, else the first hyphen with a space on each side. */
-const DASHES = [/[^\S\n]*[—–][^\S\n]*/, /[^\S\n]+--?[^\S\n]+/];
+/** The dash that ends the paths: the first em or en dash, or hyphen with a space on each side. */
+const DASH = /[^\S\n]*[—–][^\S\n]*|[^\S\n]+--?[^\S\n]+/;
 
 /** A test file's tests and `expect(` calls. */
 export function countTests(text: string): TestCount {
@@ -48,7 +48,7 @@ function waivers(messages: string[]): Map<string, string> {
   const named = new Map<string, string>();
   for (const message of messages)
     for (const [, value = ""] of message.matchAll(TRAILER)) {
-      const dash = DASHES.map((pattern) => pattern.exec(value)).find((found) => found);
+      const dash = DASH.exec(value);
       if (!dash) continue;
       const why = value.slice(dash.index + dash[0].length).trim();
       if (why === "") continue;
@@ -91,7 +91,7 @@ export function removalVerdict(input: RemovalInput): RemovalVerdict {
     const was = countTests(base);
     if (typeof is !== "string" && is.tests >= was.tests && is.expects >= was.expects) continue;
     const line = `${name}: ${counted(was)} at the base; ${typeof is === "string" ? is : `${counted(is)} at the head`}`;
-    const why = named.get(from);
+    const why = named.get(from) ?? named.get(change.path);
     if (why === undefined) problems.push(line);
     else waived.push(`${line} (waived: ${why})`);
   }
@@ -112,8 +112,14 @@ export function runTestsRemoved(deps: { git: (args: string[]) => string | null }
       code: 1,
       output: "tests-removed: no merge-base with main, so nothing was checked; fetch main",
     };
+  const diff = git(["diff", "--name-status", "-M", `${base}..HEAD`]);
+  if (diff === null)
+    return {
+      code: 1,
+      output: "tests-removed: git could not list the diff, so nothing was checked",
+    };
   const verdict = removalVerdict({
-    changes: parseChanges(git(["diff", "--name-status", "-M", `${base}..HEAD`]) ?? ""),
+    changes: parseChanges(diff),
     messages: (git(["log", "--format=%B%x00", `${base}..HEAD`]) ?? "").split("\0"),
     before: (path) => git(["show", `${base}:${path}`]),
     after: (path) => git(["show", `HEAD:${path}`]),
