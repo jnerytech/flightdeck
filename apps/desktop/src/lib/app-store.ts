@@ -115,7 +115,12 @@ import {
   type PersonasSlice,
   wirePersonas,
 } from "../features/personas/index.ts";
-import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts";
+import {
+  ProjectKeys,
+  type ProjectsSlice,
+  type WorktreeFilter,
+  wireProjects,
+} from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import { RoiSettings } from "../features/roi/roi-settings.ts";
@@ -215,8 +220,6 @@ import type {
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { ProjectKeys } from "./project-keys.ts";
-import type { WorktreeFilter } from "./project-tree.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */

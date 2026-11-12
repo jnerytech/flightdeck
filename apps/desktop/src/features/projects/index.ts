@@ -5,7 +5,19 @@
  */
 export { AddProject } from "./add-project.tsx";
 export { ProjectCardTile } from "./project-card-tile.tsx";
+export { buildProjectCards, type ProjectCard } from "./project-cards.ts";
+export { knownProjectKeys, ProjectKeys } from "./project-keys.ts";
 export { ProjectTree } from "./project-tree.tsx";
+export {
+  activeWorktreeFilter,
+  cardInFilter,
+  projectTree,
+  rowInFilter,
+  type TreeNode,
+  type TreeProject,
+  type WorktreeFilter,
+  worktreeOfProject,
+} from "./project-tree-model.ts";
 export { RailFlyout } from "./rail-flyout.tsx";
 export { ProjectsSlice } from "./store.ts";
 export { wireProjects } from "./wire.ts";

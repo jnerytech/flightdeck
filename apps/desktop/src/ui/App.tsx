@@ -13,6 +13,7 @@ import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/i
 import { SimpleApp } from "@/features/home/index.ts";
 import { draftFromLink, pairingErrorText } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
+import { activeWorktreeFilter } from "@/features/projects/index.ts";
 import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
 import {
   AppShell,
@@ -40,7 +41,6 @@ import { TabSwitcherHost, tabIntent } from "../features/tabs/index.ts";
 import { TerminalCloseDialog } from "../features/terminal/index.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { typing } from "../lib/keys.ts";
-import { activeWorktreeFilter } from "../lib/project-tree.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
 import { useStoreState } from "../lib/use-store.ts";

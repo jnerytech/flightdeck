@@ -45,6 +45,7 @@ import type {
 import type { InboxEntry } from "../features/inbox/index.ts";
 import type { MessagingSliceState } from "../features/messaging/index.ts";
 import type { PersonasSliceState } from "../features/personas/index.ts";
+import type { WorktreeFilter } from "../features/projects/index.ts";
 import type { QuotaSliceState } from "../features/quota/index.ts";
 import {
   type Finish,
@@ -61,7 +62,6 @@ import type { ClosingTerminal } from "../features/terminal/index.ts";
 import type { TerminalEnv } from "../features/terminal/terminal.ts";
 import type { SecretMeta, UsageEntry, VaultPolicy } from "../features/vault/index.ts";
 import type { T } from "../i18n/index.ts";
-import type { WorktreeFilter } from "./project-tree.ts";
 import type { Route } from "./router.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
