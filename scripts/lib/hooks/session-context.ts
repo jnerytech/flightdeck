@@ -16,7 +16,7 @@ export interface SessionFacts {
   /** Who holds the slot, or null when it is free. */
   slot: SlotHolder | null;
   now: number;
-  /** #1246: the red main's line with its claim (lib/main-red.ts), null or absent when green. */
+  /** #1246: the red main's line with its claim (lib/pr/main-red.ts), null or absent when green. */
   mainRed?: string | null;
 }
 

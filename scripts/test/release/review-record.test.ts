@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseReviewLog } from "../../lib/review-record.ts";
+import { parseReviewLog } from "../../lib/pr/review-record.ts";
 
 describe("review record (#1707)", () => {
   test("reads the sha each value of a review trailer names, from the commits of the branch log", () => {

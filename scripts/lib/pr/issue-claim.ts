@@ -6,7 +6,7 @@
  * It is a collaboration guard, not access control: the session names are self-declared and anyone
  * who can comment can write a marker, so it only changes who the tool says owns an issue.
  */
-import type { GhResult } from "./ci/branch.ts";
+import type { GhResult } from "../ci/branch.ts";
 
 export type ClaimStatus = "progress" | "reassign" | "ready" | "done" | "todo";
 

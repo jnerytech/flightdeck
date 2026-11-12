@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { runHandoff, STEPS, stampProblem } from "../../lib/handoff.ts";
+import { runHandoff, STEPS, stampProblem } from "../../lib/pr/handoff.ts";
 
 const HEAD = "0123456789abcdef0123456789abcdef01234567";
 

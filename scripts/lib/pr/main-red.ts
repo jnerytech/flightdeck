@@ -5,7 +5,7 @@
  * opens one issue per red, refused when another owner already claimed one of its failing tests.
  * The SessionStart hook and `bun run pr -- open/update` print the one-line warning.
  */
-import type { GhResult } from "./ci/branch.ts";
+import type { GhResult } from "../ci/branch.ts";
 
 export interface MainRedDeps {
   /** Runs `gh <args>` in the repository; stderr is how a missing label is told apart. */

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { checkIssue, type IssueDeps, runIssue } from "../../lib/issue-spec.ts";
+import { checkIssue, type IssueDeps, runIssue } from "../../lib/pr/issue-spec.ts";
 
 /**
  * Issue #1918: the issue body is the spec. Every `gh` here is a fake that records what was asked;
