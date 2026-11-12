@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { StartFromGithub } = await import("../src/features/projects/start-from-github.tsx");
-const { GithubPanel } = await import("../src/features/hosts/github-panel.tsx");
+const { StartFromGithub } = await import("../../src/features/projects/start-from-github.tsx");
+const { GithubPanel } = await import("../../src/features/hosts/github-panel.tsx");
 
 afterEach(cleanup);
 
