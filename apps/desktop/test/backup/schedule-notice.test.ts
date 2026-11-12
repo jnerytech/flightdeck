@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { SCHEDULE_KEY } from "../../src/features/backup/backup-schedule.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
-import { SCHEDULE_KEY } from "../../src/lib/backup-schedule.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";
 
 /**

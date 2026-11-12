@@ -7,7 +7,7 @@ import {
   fixFor,
   fixNoteFor,
   fixPageFor,
-} from "../../lib/deps-summary.ts";
+} from "../deps/index.ts";
 
 /** The dependency that already says what a doctor check says (the check is then shown once, as the dependency). */
 const COVERED_BY: Record<string, string> = {
