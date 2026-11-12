@@ -356,8 +356,7 @@ describe("session-pr: a plain session's branch pushed and its PR opened (#1133)"
       token: TOKEN,
       allowedRoots: [made.ctx.root],
       allowedNetworks: ["0.0.0.0/0", "::/0"],
-      changes: made.changes,
-      sessionPrs: made.prs,
+      review: { changes: made.changes, sessionPrs: made.prs },
     };
     const servers = [startServer(base), startServer({ ...base, peerOf: () => "8.8.8.8" })];
     const clients = servers.map((server) => new FrameClient(server.url));

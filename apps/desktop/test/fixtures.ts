@@ -417,7 +417,7 @@ export function daemon(
   const review = changes
     ? {
         changes,
-        review: new ReviewComments({ db: store.db, changes, manager, board, central }),
+        comments: new ReviewComments({ db: store.db, changes, manager, board, central }),
         sessionFiles: new SessionFiles({ db: store.db }),
         files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: roots }),
       }
@@ -631,7 +631,7 @@ export function daemon(
       ...(options.bg ? { bg: options.bg } : {}),
       ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
       ...(budgets ? { budgets } : {}),
-      ...(review ?? {}),
+      ...(review ? { review } : {}),
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
       ...(memory ? { memory } : {}),

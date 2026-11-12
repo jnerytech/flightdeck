@@ -192,7 +192,7 @@ describe("mudancas", () => {
     const changes = new Changes({ db: store.db, watch: fake.watch, timers: time.timers });
     const server = startServer({
       manager,
-      changes,
+      review: { changes },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

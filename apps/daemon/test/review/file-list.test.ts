@@ -174,7 +174,7 @@ describe("file-list: one folder of the session's repository, for the file explor
     writeFileSync(join(ctx.repo, "a.txt"), "x\n");
     const server = startServer({
       manager: ctx.manager,
-      files: ctx.files,
+      review: { files: ctx.files },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

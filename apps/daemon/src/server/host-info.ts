@@ -53,7 +53,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.hostPause, "hostPause"),
     // Issue #1478: a running session that says nothing is marked quiet (`quietSince`).
     ...when(opts.stall, "stall"),
-    ...when(opts.cardReview, "cardReview"),
+    ...when(opts.review?.cardReview, "cardReview"),
     // Budgets can be a share of a plan quota window (issue #1248).
     ...when(opts.budgets?.opts.quota, "quotaBudgets"),
     ...when(opts.hostChecks?.deps, "depsCheck"),
@@ -100,11 +100,11 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.summary, "summary"),
     ...when(opts.webhook, "webhook"),
     ...when(opts.bg, "bg"),
-    ...when(opts.changes, "review"),
+    ...when(opts.review?.changes, "review"),
     // Issue #506: the file explorer lists the folders of a session's repository.
-    ...when(opts.files, "file.list"),
+    ...when(opts.review?.files, "file.list"),
     // Issue #797: and searches the whole repository, by name or by content.
-    ...when(opts.files, "file.search"),
+    ...when(opts.review?.files, "file.search"),
     // Issue #606: a stored tool call opens to its input and result, read from its transcript.
     ...when(opts.history, "history.tool"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
@@ -173,7 +173,7 @@ export async function hostInfo(server: ServerContext, origin: string) {
       ...(opts.features ?? server.features),
       ...when(opts.terminals?.enabled, "terminal", "terminal.session"),
       // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
-      ...when(opts.terminals?.enabled && opts.files, "file.terminal"),
+      ...when(opts.terminals?.enabled && opts.review?.files, "file.terminal"),
       ...when(opts.ui, "ui.mode"),
       ...when(opts.templates, "templates"),
       ...when(opts.tasks, "tasks"),

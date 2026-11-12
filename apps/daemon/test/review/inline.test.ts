@@ -318,8 +318,7 @@ describe("revisao-inline", () => {
     const ctx = await session();
     const server = startServer({
       manager: ctx.manager,
-      changes: ctx.changes,
-      review: ctx.review,
+      review: { changes: ctx.changes, comments: ctx.review },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

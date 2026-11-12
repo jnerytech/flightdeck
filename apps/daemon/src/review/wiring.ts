@@ -4,7 +4,9 @@ import { ulid } from "../ulid.ts";
 import { type CardReviewDeps, CardReviews, reviewHold } from "./card-review.ts";
 import { Changes, type ChangesOptions } from "./changes.ts";
 import { ReviewComments, type ReviewCommentsOptions } from "./comments.ts";
+import { ReviewFiles } from "./files.ts";
 import { type SessionCommitDeps, SessionCommits } from "./session-commit.ts";
+import { SessionFiles } from "./session-files.ts";
 import { SessionPrs } from "./session-pr.ts";
 
 /** A gate that holds new work: null when it lets it through. */
@@ -15,7 +17,8 @@ interface Gate {
 /** What the review of the cards and sessions is built from: the ports its classes read. */
 export interface ReviewDeps {
   db: Database;
-  changes: ReviewCommentsOptions["changes"];
+  /** The diffs and what is built on them (`createChanges`); the comments read the same diffs. */
+  changes: ChangeSet;
   manager: ReviewCommentsOptions["manager"];
   board: NonNullable<ReviewCommentsOptions["board"]>;
   central: ReviewCommentsOptions["central"];
@@ -38,11 +41,12 @@ export interface ReviewDeps {
 }
 
 /**
- * Issue #1439 (issue #1593): the review's comments, and the card review when the runtime can
- * answer a one-shot call.
+ * Issue #1439 (issue #1593): the review's part of the server: the change set's services, the
+ * comments, and the card review when the runtime can answer a one-shot call.
  */
 export function createReview(deps: ReviewDeps) {
-  const { db, changes, manager, board, central, complete, gates, usage } = deps;
+  const { db, manager, board, central, complete, gates, usage } = deps;
+  const { changes, sessionCommits, sessionPrs, files, sessionFiles } = deps.changes;
   const reviewComments = new ReviewComments({ db, changes, manager, board, central });
   const cardReviews = complete
     ? new CardReviews({
@@ -85,8 +89,19 @@ export function createReview(deps: ReviewDeps) {
           }),
       })
     : undefined;
-  return { reviewComments, cardReviews };
+  return {
+    changes,
+    sessionCommits,
+    sessionPrs,
+    comments: reviewComments,
+    ...(cardReviews ? { cardReview: cardReviews } : {}),
+    files,
+    sessionFiles,
+  };
 }
+
+/** The diffs, a plain session's commit and PR, the files viewer and who wrote each file. */
+type ChangeSet = ReturnType<typeof createChanges>;
 
 /** What the diffs of the sessions and cards, and a plain session's commit and PR, are built from. */
 export interface ChangesDeps {
@@ -99,14 +114,18 @@ export interface ChangesDeps {
   allowedRoots: readonly string[];
   /** The host's scanner: a session's branch and its PR go public. */
   scanner: SessionCommitDeps["scanner"];
+  /** The files viewer copies a reverted file under it (`review-trash/`), for its undo. */
+  dataDir: string;
 }
 
 /**
  * Issue #1593: the diff of every session and card, for the review (phase 11), and a plain
  * session's changes committed on a new branch in its own checkout, pushed and opened as a PR
- * (#1133). A card's worktree is the board's: it commits and opens its own PR.
+ * (#1133). A card's worktree is the board's: it commits and opens its own PR. The files viewer
+ * reads, reverts and edits on the same diffs, inside the allowed roots.
  */
-export function createChanges({ db, board, log, terminals, allowedRoots, scanner }: ChangesDeps) {
+export function createChanges(deps: ChangesDeps) {
+  const { db, board, log, terminals, allowedRoots, scanner, dataDir } = deps;
   const changes = new Changes({ db, board, log, terminals, allowedRoots });
   const isCardWorktree = (root: string) => board.projectForCwd(root)?.card != null;
   const sessionCommits = new SessionCommits({ changes, scanner, isCardWorktree });
@@ -117,5 +136,7 @@ export function createChanges({ db, board, log, terminals, allowedRoots, scanner
     isCardWorktree,
     projectProvider: (root) => board.projectForCwd(root)?.project.prProvider ?? null,
   });
-  return { changes, sessionCommits, sessionPrs };
+  const files = new ReviewFiles({ changes, dataDir, allowedRoots });
+  const sessionFiles = new SessionFiles({ db });
+  return { changes, sessionCommits, sessionPrs, files, sessionFiles };
 }

@@ -40,7 +40,7 @@ async function server(peer?: string) {
     token: TOKEN,
     allowedRoots: [repo],
     allowedNetworks: ["0.0.0.0/0", "::/0"],
-    cardReview: { start: async (id) => (asked.push(id), RESULT) },
+    review: { cardReview: { start: async (id) => (asked.push(id), RESULT) } },
     ...(peer ? { peerOf: () => peer } : {}),
   });
   cleanups.push(() => running.stop());
