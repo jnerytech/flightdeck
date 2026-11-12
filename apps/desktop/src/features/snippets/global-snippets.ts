@@ -41,7 +41,7 @@ const Kept = z.object({
     tags: z.array(z.string()),
   }),
   favorite: z.boolean(),
-  uses: z.number(),
+  uses: z.number().int().nonnegative(),
   lastUsedAt: z.string().nullable(),
 });
 type Kept = z.infer<typeof Kept>;
