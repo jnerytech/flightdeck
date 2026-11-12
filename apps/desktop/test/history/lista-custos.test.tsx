@@ -31,7 +31,7 @@ function fakeStore(opts: { sessions: unknown[]; features?: string[]; view?: "car
     i18n,
     getState: () => ({ hosts: [{ id: "h", hostInfo: { features: opts.features } }] }),
     viewPrefs: { hubView: () => opts.view ?? "cards", saveHubView: () => {} },
-    historyList: () => Promise.resolve({ sessions: opts.sessions, automatedCount: 0 }),
+    history: { list: () => Promise.resolve({ sessions: opts.sessions, automatedCount: 0 }) },
     hostCommand: (_h: string, command: string, args: unknown) => {
       asked.push({ command, args });
       return Promise.resolve({ costs: { "s-1": 1.25 } });

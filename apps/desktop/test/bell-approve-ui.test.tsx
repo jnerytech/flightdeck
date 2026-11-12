@@ -310,7 +310,7 @@ describe("bell-approve-ui: a click on the OS notification opens that request (#1
       entries: [entry("r1"), entry("r2")],
     });
     await act(async () => {
-      store.openRequestLink(requestLink("h", "r2"));
+      store.permissions.openLink(requestLink("h", "r2"));
     });
     expect(
       await settleMaybe(() => {

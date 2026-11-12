@@ -6,7 +6,7 @@
  */
 import { runCommand } from "../apps/daemon/src/board/command.ts";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
-import { runBounded } from "./lib/bounded-run.ts";
+import { runBounded } from "./lib/machine/bounded-run.ts";
 import { mainRedWithin } from "./lib/pr/main-red.ts";
 import { prFlow } from "./lib/pr/pr-flow.ts";
 

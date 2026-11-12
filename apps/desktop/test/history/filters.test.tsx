@@ -19,10 +19,10 @@ async function emptyHistory(automated: number) {
   const store = new AppStore(memoryPlatform(false, "en").platform);
   await store.i18n.setLang("en");
   const asked: unknown[] = [];
-  store.historyList = (async (_host: string, filter: unknown) => {
+  store.history.list = (async (_host: string, filter: unknown) => {
     asked.push(filter);
     return { sessions: [], automatedCount: automated, nextCursor: null };
-  }) as unknown as typeof store.historyList;
+  }) as unknown as typeof store.history.list;
   render(
     <TContext.Provider value={store.i18n.t}>
       <HistoryList
