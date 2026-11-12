@@ -5,7 +5,7 @@ import {
   MEASURE_NAMES,
   MEASURES_FLAG,
   startMeasure,
-} from "../src/features/costs/measures.ts";
+} from "../src/lib/measures.ts";
 import { registerDom } from "./dom.ts";
 
 registerDom();
