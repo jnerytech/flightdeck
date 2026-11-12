@@ -5,7 +5,7 @@
  * `bun run test:shards -- record <junit.xml>...` refreshes it from the JUnit files a CI run keeps.
  */
 
-import { testArgs } from "../test/timeout.ts";
+import { testArgs } from "../../test/timeout.ts";
 import { TIERS } from "./test-tiers.ts";
 
 /** Seconds per test file, keyed by repository-relative path. */

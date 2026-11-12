@@ -7,8 +7,8 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { ciPlan, planOutputs, selectionBase } from "./lib/ci/paths.ts";
-import { planRelated } from "./lib/test-related.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { planRelated } from "./lib/tests/test-related.ts";
+import { testTiers } from "./lib/tests/test-tiers.ts";
 
 const event = process.env.GITHUB_EVENT_NAME ?? "";
 const lines = (args: string[]): string[] | null => {

@@ -10,8 +10,8 @@ import {
   WHOLE_SUITE_IGNORED,
   wholeSuiteCheck,
   wholeSuiteVerdict,
-} from "../../lib/related-coverage.ts";
-import { planRelated } from "../../lib/test-related.ts";
+} from "../../lib/tests/related-coverage.ts";
+import { planRelated } from "../../lib/tests/test-related.ts";
 
 /** An lcov record the way Bun writes it: totals and one DA line per executable line. */
 const record = (file: string, fn: [number, number], lines: Array<[number, number]>) =>
@@ -31,7 +31,7 @@ describe("related-coverage: which changed files the rule covers", () => {
       "apps/daemon/src/board/board.ts",
       "apps/desktop/src/ui/Card.tsx",
       "packages/protocol/src/index.ts",
-      "scripts/lib/test-related.ts",
+      "scripts/lib/tests/test-related.ts",
     ]) {
       expect(isCoverageSource(path)).toBe(true);
     }

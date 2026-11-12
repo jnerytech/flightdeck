@@ -24,8 +24,8 @@ import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { CONFIG, KNOWN, newRules } from "./lib/ratchets/arch.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
-import { flatTestCounts } from "./lib/test-layout.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { flatTestCounts } from "./lib/tests/test-layout.ts";
+import { testTiers } from "./lib/tests/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const git = (args: string[]): string | null => {
