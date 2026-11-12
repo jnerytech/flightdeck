@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { HubRow } from "../src/features/sessions/hub.ts";
 import { emptySession, type SessionState } from "../src/features/sessions/session-state.ts";
-import { lastLines, pendingOf, pickTiles } from "../src/lib/tiles.ts";
+import { lastLines, pendingOf, pickTiles } from "../src/features/sessions/tiles.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
   key: `h/m/s${n}`,

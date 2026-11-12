@@ -1,5 +1,5 @@
 import type { SlashCommandInfo } from "@flightdeck/protocol";
-import type { MenuGroup, MenuItem } from "../../lib/prompt-menu.ts";
+import type { MenuGroup, MenuItem } from "./prompt-menu.ts";
 
 /** The menu group of each kind of command the daemon names. */
 const GROUP_OF_KIND: Record<SlashCommandInfo["kind"], MenuGroup> = {

@@ -1,11 +1,11 @@
 import type { TelemetrySummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { formatMs } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import { Panel, Stack } from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { projectLabel } from "../../lib/costs.ts";
-import { formatMs } from "../../lib/timing.ts";
 
 /**
  * In Custos: per project, the time people kept Claude waiting for a permission and the slowest

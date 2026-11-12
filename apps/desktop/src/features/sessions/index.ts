@@ -8,6 +8,13 @@
  * Another domain imports from here, never a file inside.
  */
 
+export { awaitingApproval } from "./awaiting-approval.ts";
+export {
+  browserClockDeps,
+  CacheTimerSettings,
+  type CacheTtl,
+  SharedClock,
+} from "./cache-timer-model.ts";
 export { SessionCommandsSlice } from "./commands.ts";
 export { ExternalSessionsSlice } from "./external.ts";
 export {
@@ -19,6 +26,8 @@ export {
   sinceLastLook,
   withFiles,
 } from "./finished.ts";
+export { toolLoader } from "./history-tool.ts";
+export { HIGH_RISK_HOLD_MS } from "./hold.ts";
 export {
   groupName,
   type HubFilter,
@@ -39,6 +48,10 @@ export {
   takeHubHost,
 } from "./hub.ts";
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
+export { newSessionHost } from "./new-session-host.ts";
+export { NewSessionPrefs } from "./new-session-prefs.ts";
+export { pendingText, pendingWhere } from "./pending-text.ts";
+export { filterMenu, highlight, type MenuItem } from "./prompt-menu.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
 export { rowRoute } from "./row-route.ts";
@@ -47,6 +60,16 @@ export { sessionLabel } from "./session-label.ts";
 export type { SessionState } from "./session-state.ts";
 export { SessionView } from "./session-view.tsx";
 export { type SessionView as SessionViewName, SessionViews, VIEW_LABEL } from "./session-views.ts";
+export {
+  type Elsewhere,
+  type ElsewhereAsk,
+  type ElsewhereOutcome,
+  elsewhereNotice,
+  type HostFacts,
+  offeredHosts,
+  startElsewhere,
+  waitingCards,
+} from "./start-elsewhere.ts";
 export { StatusBadge } from "./status-badge.tsx";
 export {
   initialSessionsState,
@@ -58,10 +81,25 @@ export {
 export { SessionStreamSlice } from "./stream.ts";
 export { SummariesSlice } from "./summaries.ts";
 export { sessionTabOffers } from "./tab-offers.ts";
+export {
+  hiddenTiles,
+  lastLines,
+  loadTileLayout,
+  pendingOf,
+  pickTiles,
+  saveTileLayout,
+  TILE_LAYOUTS,
+  type TileLayout,
+  tileColumns,
+} from "./tiles.ts";
+export { formatMs } from "./timing.ts";
 export { inputSummary } from "./tool-input.ts";
 export { messageParts } from "./tool-line.ts";
 export { type Turn, turnsOf } from "./turns.ts";
+export { useDraft } from "./use-draft.ts";
+export { useFollow } from "./use-follow.ts";
 export { useLiveElsewhereAsk, useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
+export { useSessionCost } from "./use-session-cost.ts";
 export { ViewToggle } from "./view-toggle.tsx";
 export {
   wireExternalSessions,

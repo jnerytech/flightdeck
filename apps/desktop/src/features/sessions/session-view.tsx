@@ -24,8 +24,6 @@ import { translateError } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Answer } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";
-import { nextMode } from "../../lib/mode-menu.ts";
-import type { MenuItem } from "../../lib/prompt-menu.ts";
 import { ActivityLine } from "./activity-line";
 import { commandItemsOf, slashFill } from "./command-menu.ts";
 import { composerModeMenu, offersModelPicker } from "./composer-pickers.ts";
@@ -33,6 +31,7 @@ import { queueStep, submitAction } from "./composer-queue.ts";
 import { EndWithChangesDialog } from "./end-with-changes-dialog.tsx";
 import { MessageActions } from "./message-actions";
 import { ModeChip } from "./mode-chip";
+import { nextMode } from "./mode-menu.ts";
 import { ModelChip } from "./model-chip";
 import { ModelOptions } from "./model-options.tsx";
 import {
@@ -44,6 +43,7 @@ import {
   SessionPane,
   Timeline,
 } from "./parts";
+import type { MenuItem } from "./prompt-menu.ts";
 import { RuntimeBadge } from "./runtime-badge";
 import { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
 import { activityOf } from "./session-activity.ts";

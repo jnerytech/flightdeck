@@ -1,8 +1,8 @@
 import type { RiskLevel } from "@flightdeck/protocol";
 import { Button } from "@/components/ui/button";
+import { HIGH_RISK_HOLD_MS } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
-import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
 import { HoldButton } from "./hold-button.tsx";
 
 export { HIGH_RISK_HOLD_MS };
