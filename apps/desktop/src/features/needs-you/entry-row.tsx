@@ -7,9 +7,9 @@ import type { Key, T } from "@/i18n/index";
 import type { AppStore, PendingItem } from "@/lib/app-store";
 import type { ClientColor } from "@/lib/clients";
 import { pendingText, pendingWhere } from "@/lib/pending-text";
-import { type QuietAlert, quietText } from "@/lib/quiet";
 import type { WatchAlert } from "@/lib/watch-alerts";
 import { StatusDot } from "@/shared/status/index.ts";
+import { type QuietAlert, quietText } from "./quiet.ts";
 
 /**
  * The rows of Needs you (#1191): one line per thing that waits for the person, its own module so
