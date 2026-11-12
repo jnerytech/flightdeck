@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
+import { requiredMissing } from "@/features/deps/index.ts";
 import type { HostNameError } from "@/features/hosts/index.ts";
 import {
   HostVersionTip,
@@ -40,7 +41,6 @@ import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
-import { requiredMissing } from "@/lib/deps-summary.ts";
 import { type GithubHost, githubSignedIn } from "@/lib/github-session.ts";
 import { activeWorktreeFilter, projectTree } from "@/lib/project-tree.ts";
 import type { Route } from "@/lib/router.ts";
