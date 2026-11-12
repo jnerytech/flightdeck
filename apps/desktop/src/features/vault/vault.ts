@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 export type SecretType = "ssh-key" | "password" | "token" | "env";
@@ -14,6 +16,18 @@ export interface SecretMeta {
   /** The hosts the secret may be delivered to; the local host only by default. */
   allowedHosts: string[];
 }
+
+/** What a stored or imported secret must look like: the identity and the hosts are required, the rest has a default. */
+export const SecretMetaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["ssh-key", "password", "token", "env"]),
+  description: z.string().catch(""),
+  tags: z.array(z.string()).catch([]),
+  createdAt: z.number().catch(0),
+  lastUsedAt: z.number().nullable().catch(null),
+  allowedHosts: z.array(z.string()),
+});
 
 export interface NewSecret {
   name: string;
@@ -47,8 +61,7 @@ export class Vault {
   ) {}
 
   list(): SecretMeta[] {
-    const raw = this.platform.storage.getItem(LIST_KEY);
-    return raw ? (JSON.parse(raw) as SecretMeta[]) : [];
+    return readStored(this.platform.storage, LIST_KEY, validItems(SecretMetaSchema), []);
   }
 
   private save(list: SecretMeta[]): void {

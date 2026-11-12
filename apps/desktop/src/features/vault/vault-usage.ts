@@ -1,4 +1,6 @@
 import type { VaultUsed } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 import type { VaultOutcome } from "./vault-requests.ts";
 
@@ -32,6 +34,18 @@ export interface UsageLogOptions {
 }
 
 const LOG_KEY = "flightdeck.vault-usage";
+
+/** One stored line; a line that does not fit is left out of the log. */
+const UsageLine = z.object({
+  secretId: z.string(),
+  hostId: z.string(),
+  purpose: z.string(),
+  requester: z.string(),
+  at: z.number(),
+  kind: z.enum(["delivered", "denied", "used"]),
+  detail: z.string(),
+});
+const Stored = validItems(UsageLine);
 const DEFAULT_LIMIT = 500;
 
 /** Phase 16: the vault's usage log in `storage`; what was asked of which secret, never its value. */
@@ -43,8 +57,7 @@ export class VaultUsageLog {
 
   /** Newest first. */
   list(filter: UsageFilter = {}): UsageEntry[] {
-    const raw = this.platform.storage.getItem(LOG_KEY);
-    const all = raw ? (JSON.parse(raw) as UsageEntry[]) : [];
+    const all = readStored(this.platform.storage, LOG_KEY, Stored, []);
     return all
       .filter((e) =>
         (Object.keys(filter) as Array<keyof UsageFilter>).every(
@@ -55,8 +68,7 @@ export class VaultUsageLog {
   }
 
   private append(entry: UsageEntry): UsageEntry {
-    const raw = this.platform.storage.getItem(LOG_KEY);
-    const all = raw ? (JSON.parse(raw) as UsageEntry[]) : [];
+    const all = readStored(this.platform.storage, LOG_KEY, Stored, []);
     const kept = [...all, entry].slice(-(this.options.limit ?? DEFAULT_LIMIT));
     this.platform.storage.setItem(LOG_KEY, JSON.stringify(kept));
     return entry;

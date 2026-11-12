@@ -19,7 +19,7 @@ function storageWith(entries: Record<string, string>) {
 const META = {
   id: "s1",
   name: "deploy",
-  type: "token",
+  type: "token" as const,
   description: "",
   tags: ["prod"],
   createdAt: 1,
@@ -69,7 +69,7 @@ describe("the vault's stored values are parsed, not trusted (#1609)", () => {
     purpose: "ssh",
     requester: "claude",
     at: 5,
-    kind: "delivered",
+    kind: "delivered" as const,
     detail: "",
   };
 
