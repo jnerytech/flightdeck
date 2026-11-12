@@ -727,12 +727,12 @@ export async function startDaemon(
         // First: whatever stops slowly after must not keep the computer awake meanwhile.
         await keepAwakeModule.stop?.();
         await wsl?.stop();
+        // The automations, the watch and the board sync use the board: they stop before it.
+        await boardWorkModule.stop?.();
         await teamsModule.stop?.();
         actions.stop();
         vault.stop();
         for (const unwatch of runEnv.unwatch) unwatch();
-        // The automations, the watch and the board sync use the board: they stop before it.
-        await boardWorkModule.stop?.();
         board.stop();
         terminals.stop();
         await central.stop();
