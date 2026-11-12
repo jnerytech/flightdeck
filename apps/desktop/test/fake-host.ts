@@ -20,7 +20,8 @@ export type HostHandler = (payload: never) => unknown;
  * A real `AppStore` over a fake host (#1870): the store, its slices and the screens on it run as
  * they do in the app, and only the host's end of the wire is faked. Each command goes to the
  * handler of its type; one with no handler fails the test unless `fallback` is given. The calls are kept in
- * order. Load it after `registerDom()`: the store reads the DOM when it is imported.
+ * order. Load it after `registerDom()`: the store reads the DOM when it is imported. `platform` is
+ * the store's own, the other seam a test may replace (the vault, the clipboard, the updater).
  */
 export async function fakeHostStore(
   handlers: Record<string, HostHandler> = {},
@@ -35,7 +36,8 @@ export async function fakeHostStore(
 ) {
   const { AppStore: Store } = await import("../src/lib/app-store.ts");
   const hostId = options.hostId ?? "h";
-  const store: AppStore = new Store(memoryPlatform(false, options.language ?? "pt-BR").platform);
+  const { platform } = memoryPlatform(false, options.language ?? "pt-BR");
+  const store: AppStore = new Store(platform);
   seedHosts(store, [{ id: hostId, name: "alfa", features: options.features ?? [] }]);
   const calls: Array<{ type: string; payload: unknown }> = [];
   const connection = {
@@ -66,7 +68,7 @@ export async function fakeHostStore(
     });
     secretIds.push(meta.id);
   }
-  return { store, hostId, calls, secretIds };
+  return { store, hostId, calls, secretIds, platform };
 }
 
 /**

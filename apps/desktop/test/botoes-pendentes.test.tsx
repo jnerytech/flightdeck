@@ -21,8 +21,6 @@ const { RulesPreview } = await import("../src/features/vault/rules-preview.tsx")
 const { RulesEditor } = await import("../src/features/vault/rules-editor.tsx");
 const { VaultReport } = await import("../src/features/vault/vault-report.tsx");
 
-import type { AppStore } from "../src/lib/app-store.ts";
-
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
@@ -62,19 +60,16 @@ async function expectBusyOnce(name: string, calls: unknown[][], settle: () => Pr
 }
 
 describe("botoes-pendentes: a click is answered before the work is done", () => {
-  test("Abrir Claude aqui and Abrir no terminal go busy and start once", async () => {
+  test("Abrir Claude aqui and Copiar comando go busy and start once", async () => {
     const here = slow();
-    const open = slow();
-    const store = {
-      terminals: {
-        launch: () => ({ kind: "spawn" }),
-        embedded: () => true,
-        openClaude: here.call,
-        openIn: open.call,
-      },
-      getState: () => ({ hosts: [] }),
-      clientScope: { get: () => ({ defaultPersona: () => "" }) },
-    } as unknown as AppStore;
+    const copy = slow();
+    // A host that opens terminals in the app, behind the wire; the person's own terminal is the
+    // platform's clipboard here, since a spawn needs a Windows host (a host elsewhere gets its command copied).
+    const { store, platform } = await fakeHostStore(
+      { "terminal.open": onWire(here.call) },
+      { features: ["terminal"] },
+    );
+    platform.copyText = copy.call as never;
     render(
       <TContext.Provider value={t}>
         <TerminalButton
@@ -85,23 +80,23 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
       </TContext.Provider>,
     );
     await expectBusyOnce("Abrir Claude aqui (terminal)", here.calls, () => here.settle());
-    await expectBusyOnce("Abrir no terminal", open.calls, () => open.settle());
+    await expectBusyOnce("Copiar comando", copy.calls, () => copy.settle());
   });
 
   test("Instalar atualização goes busy and installs once", async () => {
     const install = slow();
-    const state = {
-      appUpdate: { offer: { version: "1.2.3", notes: "" }, error: null, ready: null },
-      hosts: [],
-      // The manual banner (Install and restart); updating by itself has its own test (#280).
-      settings: { autoUpdate: false },
+    const { store, platform } = await fakeHostStore();
+    // The manual banner (Install and restart); updating by itself has its own test (#280).
+    store.settings.setAutoUpdate(false);
+    // The platform's updater is the seam: the offer comes from its check, the install is the slow call.
+    platform.updater = {
+      supported: true,
+      check: async () => ({ version: "1.2.3", notes: "" }),
+      download: async () => {},
+      installDownloaded: async () => {},
+      install: install.call as never,
     };
-    const store = {
-      i18n: { t },
-      appUpdates: { install: install.call, dismiss: () => {} },
-      subscribe: () => () => {},
-      getState: () => state,
-    } as unknown as AppStore;
+    await act(async () => store.appUpdates.check());
     render(<UpdateBanner store={store} />);
     await expectBusyOnce("Instalar e reiniciar", install.calls, () => install.settle());
   });

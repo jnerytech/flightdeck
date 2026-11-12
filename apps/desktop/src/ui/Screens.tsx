@@ -7,9 +7,16 @@ import { EmptyState, LoadingState } from "@/components/layout/states";
 import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
-import { draftUrl, type HostDraft, HostForm, HostOfflineBanner } from "@/features/hosts/index.ts";
+import {
+  awaitedHost,
+  draftUrl,
+  type HostDraft,
+  HostForm,
+  HostOfflineBanner,
+} from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
+import { rowRoute, sessionTabOffers } from "@/features/sessions/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
@@ -29,7 +36,7 @@ import {
   sessionKey,
 } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
-import { type HubRow, isOver } from "../lib/hub.ts";
+import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename, holdsFolder } from "../lib/paths.ts";
@@ -78,43 +85,6 @@ const TeamsPage = lazyScreen(() => import("../features/teams/page.tsx"), "TeamsP
 const VaultPage = lazyScreen(() => import("../features/vault/page.tsx"), "VaultPage");
 const WorkflowsPage = lazyScreen(() => import("../features/workflows/page.tsx"), "WorkflowsPage");
 const Settings = lazyScreen(() => import("../features/settings/page.tsx"), "Settings");
-
-/** The host a route's screen loads from when it opens, if any. */
-function hostToWait(route: Route): string | null {
-  switch (route.name) {
-    case "reader":
-      return route.target.hostId;
-    case "external":
-    case "history":
-    case "projects":
-    case "project":
-    case "board":
-    case "card":
-    case "workflows":
-    case "agent":
-    case "automations":
-    case "actions":
-    case "auto-approvals":
-    case "terminal":
-      return route.host;
-    default:
-      return null;
-  }
-}
-
-/** From the Sessões screen: the conversation, the live terminal view or the reader. */
-export function rowRoute(row: HubRow): Route {
-  const id = row.claudeSessionId as string;
-  if (row.sessionId) return { name: "session", host: row.hostId, id: row.sessionId };
-  if (row.origin === "terminal" && !isOver(row.state)) {
-    return { name: "external", host: row.hostId, claudeSessionId: id };
-  }
-  // A background session: its screen when the host knows its Claude session, else the hub.
-  if (row.origin === "background") {
-    return id ? { name: "external", host: row.hostId, claudeSessionId: id } : { name: "hub" };
-  }
-  return { name: "reader", target: { hostId: row.hostId, claudeSessionId: id } };
-}
 
 /** The folder picker the composer opens to mention a file or folder of the host; none once it is gone. */
 const pathPicker =
@@ -173,31 +143,6 @@ function useFork(
   );
 }
 
-/**
- * What the tabs of a session's page offer: the host's features, and Phase 39: these tabs read Claude
- * Code's transcript, so OpenCode sessions stay out of them and out of messaging. Issue #107: a shell
- * in the session's folder, where the host opens one for a session.
- */
-function tabsFor(
-  host: HostView | undefined,
-  opencode: boolean,
-  sessionId: string,
-  embedded: boolean,
-) {
-  const claudeHas = (feature: string) =>
-    !opencode && hasFeature(host?.hostInfo?.features, feature, false);
-  return {
-    ...(embedded && hasFeature(host?.hostInfo?.features, "terminal.session", false)
-      ? { terminal: { session: sessionId } }
-      : {}),
-    enabled: claudeHas("review"),
-    messagingId: claudeHas("messaging") ? sessionId : null,
-    telemetry: claudeHas("telemetry"),
-    trace: claudeHas("trace"),
-    files: claudeHas("file.list"),
-  };
-}
-
 /** A managed session's conversation; selecting it subscribes to its full event stream. */
 function ManagedSession(
   props: Readonly<{
@@ -244,7 +189,7 @@ function ManagedSession(
       claudeSessionId={claudeId}
       // This page's message box takes a review handed over from Changes.
       reviewToComposer
-      {...tabsFor(host, opencode, sessionId, store.terminals.embedded(hostId))}
+      {...sessionTabOffers(host, opencode, sessionId, store.terminals.embedded(hostId))}
     >
       <SessionView
         t={store.i18n.t}
@@ -454,7 +399,7 @@ export function Screen(props: ScreenProps) {
     if (action) endMeasure(action);
   }, [props.route]);
   // A host removed while its screen was open: back to the hub.
-  const waiting = hostToWait(props.route);
+  const waiting = awaitedHost(props.route);
   const removed =
     waiting !== null && state.hostsLoaded && !state.hosts.some((h) => h.id === waiting);
   const route: Route = removed ? { name: "hub" } : props.route;
@@ -489,7 +434,7 @@ function historySplit(props: ScreenProps, route: HistoryRoute, detail: ReactNode
   const { t } = store.i18n;
   const hostId = route.name === "history" ? route.host : route.target.hostId;
   // A host that is not online yet shows its own loading screen, without the list.
-  if (hostToWait(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
+  if (awaitedHost(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
     return detail;
   }
   return (
@@ -672,7 +617,7 @@ type HostInfo = AppState["hosts"][number];
  */
 function hostWaitScreen(props: ScreenProps): ReactNode {
   const { route, store, state } = props;
-  const waiting = hostToWait(route);
+  const waiting = awaitedHost(route);
   if (!waiting) return undefined;
   const waitHost = state.hosts.find((h) => h.id === waiting);
   // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
