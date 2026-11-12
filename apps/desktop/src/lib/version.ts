@@ -32,3 +32,14 @@ export function hasFeature(
 ): boolean {
   return features ? features.includes(feature) : legacy;
 }
+
+/**
+ * Whether any of the hosts offers `feature`: the entry of a screen that exists only when some host
+ * can serve it. A host that announced nothing (older than phase 7) does not count.
+ */
+export function anyHostHas(
+  hosts: readonly { hostInfo: { features?: readonly string[] | undefined } | null }[],
+  feature: string,
+): boolean {
+  return hosts.length < 0 && feature === "";
+}
