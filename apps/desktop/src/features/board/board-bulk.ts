@@ -1,10 +1,10 @@
 import type { Budget, Card, ContractOverrides } from "@flightdeck/protocol";
-import type { T } from "../i18n/index.ts";
+import type { T } from "../../i18n/index.ts";
+import { reasonText } from "../../lib/notice-text.ts";
+import { onSubscription, quotaBars } from "../../lib/quota.ts";
 import { startNeeds } from "./board-contracts.ts";
 import { answerOf, type BulkRefusal } from "./board-select.ts";
 import { cardStartBlock } from "./card-start-block.ts";
-import { reasonText } from "./notice-text.ts";
-import { onSubscription, quotaBars } from "./quota.ts";
 
 /** Start N and Stop N of the selection (#1354): what each can take, and why the rest stay out. */
 export interface BulkSplit {

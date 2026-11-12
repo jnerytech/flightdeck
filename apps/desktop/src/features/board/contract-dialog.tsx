@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { T } from "../../i18n/index.ts";
-import type { Lacking } from "../../lib/board-contracts.ts";
+import type { Lacking } from "./board-contracts.ts";
 import { needsText } from "./needs-badge.tsx";
 
 /**
