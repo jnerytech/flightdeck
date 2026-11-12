@@ -1,10 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { WorkflowsPage } = await import("../src/features/workflows/page.tsx");
+const { WorkflowsPage } = await import("../../src/features/workflows/page.tsx");
 
 afterEach(cleanup);
 
