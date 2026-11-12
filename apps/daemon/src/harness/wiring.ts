@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { Config } from "../config.ts";
 import { featureOff } from "../errors.ts";
 import { present } from "../present.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { type ApplyOptions, applyHarness } from "./apply.ts";
 import { commitHarness } from "./commit.ts";
 import { type DraftDeps, HarnessDrafts } from "./draft.ts";
@@ -35,7 +36,7 @@ export function createHarness({ runtime, quota, scanner, cwd, config }: HarnessD
     cwd,
     allowApiKey: config.allowApiKey,
   });
-  return {
+  const harness = {
     stack: detectStack,
     preview: previewHarness,
     apply: (
@@ -52,4 +53,8 @@ export function createHarness({ runtime, quota, scanner, cwd, config }: HarnessD
       commitHarness(path, digests, { scanner }),
     templates: new HarnessTemplates(join(config.dataDir, "harness-templates"), scanner),
   };
+  const module: DomainModule<"harness"> = {
+    server: { harness: serverGroup<"harness", "draft">()(harness) },
+  };
+  return { modules: [module] as const, harness };
 }

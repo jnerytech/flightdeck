@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { type Config, expandHome, updateConfigFile } from "../config.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { createKnowledgeDoc } from "./create.ts";
 import { listKnowledge } from "./list.ts";
 import { knowledgeFeedFor } from "./serve.ts";
@@ -22,7 +23,7 @@ export interface KnowledgeDeps {
 export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
   // The feed and its switch read the same list of folders that are off, under the same trust.
   const gate = { off: () => config.knowledge.feedOff, trust };
-  return {
+  const knowledge = {
     list: listKnowledge,
     status: setKnowledgeStatus,
     create: createKnowledgeDoc,
@@ -42,4 +43,8 @@ export function createKnowledge({ config, configFile, trust }: KnowledgeDeps) {
       },
     }),
   };
+  const module: DomainModule<"knowledge"> = {
+    server: { knowledge: serverGroup<"knowledge">()(knowledge) },
+  };
+  return { modules: [module] as const };
 }
