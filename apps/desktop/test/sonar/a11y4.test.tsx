@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { createWebPlatform } from "../src/platform/web/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { createWebPlatform } from "../../src/platform/web/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
-const { hubRows } = await import("../src/features/sessions/hub.ts");
-const { useStoreState } = await import("../src/lib/use-store.ts");
-const { SessionTiles } = await import("../src/features/projects/session-tiles.tsx");
-const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore, sessionKey } = await import("../../src/lib/app-store.ts");
+const { hubRows } = await import("../../src/features/sessions/hub.ts");
+const { useStoreState } = await import("../../src/lib/use-store.ts");
+const { SessionTiles } = await import("../../src/features/projects/session-tiles.tsx");
+const { ApprovalCard } = await import("../../src/features/permissions/approval-card.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
