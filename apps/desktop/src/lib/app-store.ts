@@ -1,5 +1,4 @@
 import type {
-  Card,
   ChangesUpdated,
   CommandPayload,
   CommandResults,
@@ -27,23 +26,11 @@ import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
-import {
-  type ActivitySlice,
-  initialActivityState,
-  wireActivity,
-} from "../features/activity/index.ts";
-import {
-  type AppUpdateSlice,
-  initialAppUpdateState,
-  wireAppUpdates,
-} from "../features/appupdate/index.ts";
+import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
+import { type AppUpdateSlice, wireAppUpdates } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import {
-  type BackgroundSlice,
-  initialBackgroundState,
-  wireBackground,
-} from "../features/background/index.ts";
+import { type BackgroundSlice, wireBackground } from "../features/background/index.ts";
 import {
   type Attention,
   BackupScheduler,
@@ -51,12 +38,11 @@ import {
   googleConfig,
   wireBackup,
 } from "../features/backup/index.ts";
-import { BoardWidth } from "../features/board/index.ts";
+import { BoardCardsSlice, BoardWidth } from "../features/board/index.ts";
 import {
   type ClientScopeSlice,
   Clients,
   knownProjects,
-  loadSelection,
   UNASSIGNED,
   wireClientScope,
 } from "../features/clients/index.ts";
@@ -65,17 +51,14 @@ import {
   type ClientBudgetsSlice,
   DataScopeController,
   hubHostScope,
-  initialBudgetsState,
-  initialClientBudgetsState,
   localDay,
   wireBudgets,
   wireClientBudgets,
 } from "../features/costs/index.ts";
-import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
+import { type HistorySlice, wireHistory } from "../features/history/index.ts";
 import {
   HomeCache,
   type HostUiPatch,
-  loadChoices,
   type ModeAnswer,
   type UiMode,
   UiModeSlice,
@@ -101,20 +84,12 @@ import {
   wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
-import {
-  initialMessagingState,
-  type MessagingSlice,
-  wireMessaging,
-} from "../features/messaging/index.ts";
+import { type MessagingSlice, wireMessaging } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
-import { loadQuietSnooze, QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
+import { QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
-import {
-  initialPersonasState,
-  type PersonasSlice,
-  wirePersonas,
-} from "../features/personas/index.ts";
+import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import {
   ProjectKeys,
   type ProjectsSlice,
@@ -132,11 +107,11 @@ import {
   type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
-  initialSessionsState,
   NewSessionPrefs,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
+  type SessionSubscriptions,
   type SessionsSlice,
   SessionViews,
   SharedClock,
@@ -148,30 +123,23 @@ import {
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
+  wireSessionSubscriptions,
   wireSessions,
   wireSummaries,
 } from "../features/sessions/index.ts";
-import {
-  initialSettingsState,
-  type SettingsSlice,
-  wireSettings,
-} from "../features/settings/index.ts";
+import { type SettingsSlice, wireSettings } from "../features/settings/index.ts";
 import { probeAfter, SetupSettings } from "../features/setup/index.ts";
-import {
-  initialSnippetsState,
-  type SnippetsSlice,
-  wireSnippets,
-} from "../features/snippets/index.ts";
-import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
+import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
 import {
+  SessionMover,
   type TeleportOutcome,
   type TeleportRequest,
   type TeleportRunArgs,
-  teleportSession,
 } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
@@ -199,7 +167,7 @@ import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
 import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
-import { I18n, type Key } from "../i18n/index.ts";
+import { I18n } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { AppLog } from "./app-log.ts";
 import type {
@@ -213,7 +181,7 @@ import type {
   PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
-import { needsYou } from "./app-state.ts";
+import { initialAppState, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -240,16 +208,6 @@ const AWAY_MARK_MS = 60_000;
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
-
-const isCard = (value: unknown): value is Card =>
-  typeof value === "object" && value !== null && "column" in value && "projectId" in value;
-
-/** Cards inside a command result: a card, a whole board or none. */
-function cardsIn(result: unknown): Card[] {
-  if (isCard(result)) return [result];
-  const columns = (result as { columns?: Array<{ cards: Card[] }> } | undefined)?.columns ?? [];
-  return columns.flatMap((column) => column.cards);
-}
 
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
@@ -317,7 +275,7 @@ export class AppStore {
     lastSeqFor: (hostId, sessionId) =>
       this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
     selected: () => this.state.selected,
-    watched: () => this.watched.keys(),
+    watched: () => this.subscriptions.followed(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
     // Read at connect: the table is a field declared after this one.
     routes: () => this.routes,
@@ -326,8 +284,6 @@ export class AppStore {
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
-  /** Sessions followed without being open (the project page's tiles), with how many follow each. */
-  private readonly watched = new Map<string, number>();
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
   /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
@@ -343,6 +299,8 @@ export class AppStore {
   private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
+  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
+  private readonly subscriptions: SessionSubscriptions;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -732,6 +690,15 @@ export class AppStore {
       show: (notification) => this.platform.notify(notification),
       setBadge: (count) => this.platform.setBadge?.(count),
     });
+    // Built here, not in a board wire: a wire importing the kernel would join its import cycle (#1624).
+    this.boardCards = new BoardCardsSlice({
+      cards: () => this.kernel.state().cards,
+      setCards: (cards) => this.kernel.update({ cards }),
+      connection: (hostId) => this.kernel.connection(hostId),
+      notify: (notification, route, fallbackUrl) =>
+        this.inbox.notify(notification, route, fallbackUrl),
+      t: () => this.kernel.t(),
+    });
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
       onAttention: (kind) => this.onBackupAttention(kind),
@@ -771,6 +738,7 @@ export class AppStore {
     this.sessionLists = wireSessionLists(this.kernel, {
       backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
     });
+    this.subscriptions = wireSessionSubscriptions(this.kernel);
     this.stream = wireSessionStream(this.kernel, {
       summary: (hostId, event) => this.summaries.apply(hostId, [event]),
     });
@@ -801,57 +769,12 @@ export class AppStore {
       timers: options.timers ?? REAL_TIMERS,
     });
     this.i18n.subscribe(() => this.onLanguage());
-    this.state = {
-      hosts: [],
-      sessions: {},
-      selected: null,
-      error: null,
-      ...initialHistoryState,
-      closingTerminal: null,
-      runEnvs: {},
-      unread: {},
-      cards: {},
-      runs: {},
-      ...initialQuotaState(),
-      ...initialAccountState(),
-      ...initialHealthState(),
-      setupProbes: {},
-      ...initialSnippetsState(),
-      ...initialBackgroundState(),
-      ...initialMessagingState(),
-      ...initialBudgetsState(),
-      ...initialClientBudgetsState(),
-      ...initialPersonasState(),
-      ...initialSshState(),
-      quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
-      watches: {},
-      names: {},
-      secrets: new Vault(platform).list(),
+    this.state = initialAppState(platform, {
+      now: (options.now ?? Date.now)(),
       vaultUsage: this.usage.list(),
-      vaultApprovals: [],
-      externals: {},
-      externalRequests: {},
-      meta: {},
-      uiChoices: loadChoices(platform.storage),
-      ...initialSessionsState(),
-      hub: {},
-      terminalEnv: null,
-      projects: {},
       clientList: this.clients.list(),
-      roiRevision: 0,
-      worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
-      clientSelection: loadSelection(platform.storage, this.clients.list()),
-      notices: [],
-      ...initialActivityState(),
-      inbox: [],
-      composerFill: {},
-      finished: [],
-      finishedLook: null,
-      hostsLoaded: false,
-      appUpdate: initialAppUpdateState(),
-      ...initialSettingsState(platform),
-    };
+    });
   }
 
   /** Light, dark or the system's (phase 10). */
@@ -891,6 +814,10 @@ export class AppStore {
   readonly notifyPrefs: NotifyPreferences;
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
+  /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
+  private readonly boardCards: BoardCardsSlice;
+  /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
+  private readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
@@ -1124,16 +1051,7 @@ export class AppStore {
 
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
-    const previous = this.state.selected;
-    if (
-      previous?.sessionId &&
-      previous.sessionId !== sessionId &&
-      !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
-    ) {
-      this.link.connection(previous.hostId)?.unsubscribe(previous.sessionId);
-    }
-    if (sessionId) this.link.connection(hostId)?.subscribe(sessionId);
-    this.update({ selected: { hostId, sessionId } });
+    this.subscriptions.select(hostId, sessionId);
   }
 
   /**
@@ -1141,29 +1059,12 @@ export class AppStore {
    * has not been called (the tiles of a project follow several at once).
    */
   watchSession(hostId: string, sessionId: string): () => void {
-    const key = `${hostId}/${sessionId}`;
-    this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
-    this.link.connection(hostId)?.subscribe(sessionId);
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      const left = (this.watched.get(key) ?? 1) - 1;
-      if (left > 0) {
-        this.watched.set(key, left);
-        return;
-      }
-      this.watched.delete(key);
-      const open = this.state.selected;
-      if (open?.hostId === hostId && open.sessionId === sessionId) return;
-      this.link.connection(hostId)?.unsubscribe(sessionId);
-    };
+    return this.subscriptions.watchSession(hostId, sessionId);
   }
 
   /** Puts an idle session to sleep now and says, in a toast, what came of it. */
-  async sleepSession(hostId: string, sessionId: string): Promise<void> {
-    const answer = await this.hostCommand(hostId, "session.sleep", { sessionId });
-    if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
+  sleepSession(hostId: string, sessionId: string): Promise<void> {
+    return this.commands.sleep(hostId, sessionId);
   }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
@@ -1217,23 +1118,8 @@ export class AppStore {
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
-  async sendTo(
-    hostId: string,
-    sessionId: string,
-    text: string,
-    images?: SessionImage[],
-  ): Promise<void> {
-    const conn = this.link.connection(hostId);
-    if (!conn) return;
-    try {
-      await conn.request("session.send", {
-        sessionId,
-        text,
-        ...(images?.length ? { images } : {}),
-      });
-    } catch (error) {
-      this.fail(error);
-    }
+  sendTo(hostId: string, sessionId: string, text: string, images?: SessionImage[]): Promise<void> {
+    return this.commands.sendTo(hostId, sessionId, text, images);
   }
 
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
@@ -1242,11 +1128,8 @@ export class AppStore {
   }
 
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
-  async loadBoard(hostId: string, projectId: string): Promise<void> {
-    const conn = this.link.connection(hostId);
-    if (!conn) return;
-    const board = await nullOnError(conn.request("board.get", { projectId }));
-    for (const card of cardsIn(board)) this.onCard(hostId, card);
+  loadBoard(hostId: string, projectId: string): Promise<void> {
+    return this.boardCards.load(hostId, projectId);
   }
 
   /**
@@ -1378,7 +1261,7 @@ export class AppStore {
     const conn = this.link.connection(hostId);
     if (!conn) throw new RequestError("offline", "unknown host");
     const result = await conn.request(type, payload);
-    for (const card of cardsIn(result)) this.onCard(hostId, card);
+    this.boardCards.onResult(hostId, result);
     if (isRun(result)) this.onRun(hostId, result);
     return result;
   }
@@ -1392,18 +1275,8 @@ export class AppStore {
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
-  async setMeta(
-    hostId: string,
-    claudeSessionId: string,
-    patch: Partial<SessionMeta>,
-  ): Promise<void> {
-    const result = await this.hostCommand(hostId, "session.meta.set", {
-      claudeSessionId,
-      ...patch,
-    });
-    if (!result) return;
-    const { claudeSessionId: _id, ...meta } = result;
-    this.update({ meta: { ...this.state.meta, [sessionKey(hostId, claudeSessionId)]: meta } });
+  setMeta(hostId: string, claudeSessionId: string, patch: Partial<SessionMeta>): Promise<void> {
+    return this.sessionLists.setMeta(hostId, claudeSessionId, patch);
   }
 
   /**
@@ -1640,13 +1513,7 @@ export class AppStore {
 
   /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
   teleportRequest(hostId: string): TeleportRequest {
-    // Straight to the connection: a host's teleport answer is checked by the relay, and never
-    // reaches the board's card or run state on the way.
-    return ((type, payload) => {
-      const conn = this.link.connection(hostId);
-      if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
-      return conn.request(type, payload);
-    }) as TeleportRequest;
+    return this.mover.request(hostId);
   }
 
   /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
@@ -1655,15 +1522,7 @@ export class AppStore {
     sessionId: string,
     args: TeleportRunArgs,
   ): Promise<TeleportOutcome> {
-    return teleportSession({
-      source: this.teleportRequest(sourceHost),
-      target: this.teleportRequest(args.target),
-      sessionId,
-      repo: args.repo,
-      confirm: args.confirm,
-      onProgress: args.onProgress,
-      signal: args.signal,
-    });
+    return this.mover.move(sourceHost, sessionId, args);
   }
 
   /** The session a move made, opened on its new host. */
@@ -1680,7 +1539,7 @@ export class AppStore {
       this.stream.onSubscribed(config.id, sessionId, result),
     onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
     onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
-    onCardUpdated: (config, card) => this.onCard(config.id, card),
+    onCardUpdated: (config, card) => this.boardCards.onCard(config.id, card),
     onExternal: (config, frame) => this.external.onExternal(config.id, frame),
     onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
     onVaultUsed: (config, used) => {
@@ -1922,12 +1781,8 @@ export class AppStore {
   }
 
   /** Issue #1478: interrupts any session of a host, open or not. */
-  async interruptSession(hostId: string, sessionId: string): Promise<void> {
-    try {
-      await this.link.connection(hostId)?.request("session.interrupt", { sessionId });
-    } catch (error) {
-      this.fail(error);
-    }
+  interruptSession(hostId: string, sessionId: string): Promise<void> {
+    return this.commands.interruptOn(hostId, sessionId);
   }
 
   /** Phase 21: told each time a team of a host changes. */
@@ -1942,23 +1797,6 @@ export class AppStore {
 
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });
-  }
-
-  private onCard(hostId: string, card: Card): void {
-    const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
-    // Phase 31: a card the app already knew has just lost its last blocker.
-    if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      this.inbox.notify(
-        {
-          title: this.i18n.t("deps.notifyTitle"),
-          body: this.i18n.t("deps.notifyBody", { title: card.title }),
-        },
-        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
-        card.prUrl,
-      );
-    }
-    const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
-    this.update({ cards });
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {

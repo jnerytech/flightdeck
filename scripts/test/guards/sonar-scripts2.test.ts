@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { grade, type RunFacts, sessionArgs } from "../../lib/harness-eval.ts";
-import { splitShards, testFiles } from "../../lib/test-shards.ts";
+import { grade, type RunFacts, sessionArgs } from "../../lib/evals/harness-eval.ts";
+import { splitShards, testFiles } from "../../lib/tests/test-shards.ts";
 
 const LIMIT_MS = 250;
 

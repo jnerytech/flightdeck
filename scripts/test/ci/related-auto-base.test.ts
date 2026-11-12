@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { planRelated } from "../../lib/test-related.ts";
+import { planRelated } from "../../lib/tests/test-related.ts";
 
 const HEAD = "f".repeat(40);
 const ORIGIN = "0".repeat(40);

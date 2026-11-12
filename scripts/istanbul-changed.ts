@@ -2,12 +2,12 @@
 /**
  * `bun run scripts/istanbul-changed.ts <base> <out>` (issue #1493): a PR's changed and added test
  * files under istanbul, as the full run's istanbul shards run them. The logic is in
- * lib/istanbul-changed.ts. <out> is outside the checkout (the counters are written there).
+ * lib/tests/istanbul-changed.ts. <out> is outside the checkout (the counters are written there).
  */
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { istanbulChanged } from "./lib/istanbul-changed.ts";
-import { spawnLogged } from "./lib/shard-gate.ts";
+import { istanbulChanged } from "./lib/tests/istanbul-changed.ts";
+import { spawnLogged } from "./lib/tests/shard-gate.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const git = (args: string[]) => Bun.spawnSync(["git", ...args], { cwd: ROOT }); // NOSONAR: git comes from the PATH of the developer or the CI runner running the script

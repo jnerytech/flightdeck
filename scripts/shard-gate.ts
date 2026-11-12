@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * The sharded whole-suite run (#296); the logic is in lib/shard-gate.ts (`runShard`, `mergeShards`),
+ * The sharded whole-suite run (#296); the logic is in lib/tests/shard-gate.ts (`runShard`, `mergeShards`),
  * this wires the real effects.
  * - `run <i>/<n> <bun|istanbul> <out>`: runs shard i of n, split as `test:shards` splits it, and
  *   writes `marker.json` next to the lcov (bun) or the function counters (istanbul). <out> is
@@ -26,10 +26,10 @@ import {
   type Selection,
   selectionOf,
   spawnLogged,
-} from "./lib/shard-gate.ts";
-import { planRelated } from "./lib/test-related.ts";
-import type { Timings } from "./lib/test-shards.ts";
-import { shardTiers, testTiers } from "./lib/test-tiers.ts";
+} from "./lib/tests/shard-gate.ts";
+import { planRelated } from "./lib/tests/test-related.ts";
+import type { Timings } from "./lib/tests/test-shards.ts";
+import { shardTiers, testTiers } from "./lib/tests/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const tracked = Bun.spawnSync(["git", "ls-files"], { cwd: ROOT }) // NOSONAR: git comes from the PATH of the developer or the CI runner running the script

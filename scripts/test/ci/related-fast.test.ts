@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { planRelated, selectRelated } from "../../lib/test-related.ts";
+import { planRelated, selectRelated } from "../../lib/tests/test-related.ts";
 
 // a.ts <- b.ts <- b.test.ts (through b), a.ts <- a.test.ts (directly), c.test.ts changed itself.
 const SOURCES = new Map([

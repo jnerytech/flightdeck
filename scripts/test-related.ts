@@ -14,10 +14,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { COVERAGE_GATE } from "./lib/coverage-gate/check.ts";
-import { localPyramid } from "./lib/pyramid-table.ts";
-import { checkChanged, wholeSuiteCheck } from "./lib/related-coverage.ts";
-import { keepCoverageProblem, listSelection, planRelated } from "./lib/test-related.ts";
-import { type Tier, testTiers } from "./lib/test-tiers.ts";
+import { localPyramid } from "./lib/tests/pyramid-table.ts";
+import { checkChanged, wholeSuiteCheck } from "./lib/tests/related-coverage.ts";
+import { keepCoverageProblem, listSelection, planRelated } from "./lib/tests/test-related.ts";
+import { type Tier, testTiers } from "./lib/tests/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 
@@ -33,7 +33,7 @@ const fast = args.includes("--fast");
 // --tier: only the tests of these tiers (#261), for a session on a small machine; CI runs them all.
 const tierFlag = args.indexOf("--tier");
 const tiers = tierFlag >= 0 ? (args[tierFlag + 1] ?? "").split(",").filter(Boolean) : undefined;
-// The tiers are computed from the code on every call (lib/test-tiers.ts), never read from a file.
+// The tiers are computed from the code on every call (lib/tests/test-tiers.ts), never read from a file.
 // --pr (#309): the PR's check on CI.
 const pyramid = args.includes("--pr");
 // The tiers also give the table a run ends with (#1854), so they are read on every run.

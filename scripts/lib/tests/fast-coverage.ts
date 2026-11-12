@@ -4,7 +4,7 @@
  * never moves quietly from the cheap tiers to the slow ones.
  */
 import { byCodeUnit } from "@flightdeck/protocol";
-import { belowGate, parseLcov } from "./coverage-gate/check.ts";
+import { belowGate, parseLcov } from "../coverage-gate/check.ts";
 
 /** The source files an lcov report covers at the gate (80% of lines and functions), sorted. */
 export function fullyCovered(lcov: string, sources: readonly string[]): string[] {

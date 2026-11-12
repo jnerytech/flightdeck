@@ -1,5 +1,12 @@
-import type { CommandPayload, EffortLevel, SessionImage, SettableMode } from "@flightdeck/protocol";
+import type {
+  CommandPayload,
+  CommandResults,
+  EffortLevel,
+  SessionImage,
+  SettableMode,
+} from "@flightdeck/protocol";
 import { type HostConnection, RequestError } from "@/features/hosts/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
 import type { Selection } from "../../lib/app-store.ts";
 import { endMeasure, startMeasure } from "../../lib/measures.ts";
 
@@ -13,12 +20,19 @@ export interface SessionCommandsCore {
   fail(error: unknown, text?: string, retry?: () => void): void;
   /** Opens a session the host just made: selects it, closes the search and shows it. */
   opened(hostId: string, sessionId: string): void;
+  /** Puts a session to sleep on its host; a refusal goes to the banner and gives `null`. */
+  sleep(hostId: string, sessionId: string): Promise<CommandResults["session.sleep"] | null>;
+  /** Shows a success notice. */
+  success(text: string): void;
+  /** The current translator, read at each call so a language change reaches the notice. */
+  t(): T;
 }
 
 /**
  * What a person asks of a session (#1596: a slice of the store): make one, send it a message,
  * interrupt it, change its mode, model or effort, close it, resume it. Each command goes to the
- * host of the open session; a refusal reaches the person through `fail`, never as a throw.
+ * host of the open session, except `sendTo`, `interruptOn` and `sleep`, which name the session; a refusal
+ * reaches the person through `fail` (a `sleep` refusal goes to the banner through the core), never as a throw.
  */
 export class SessionCommandsSlice {
   constructor(private readonly core: SessionCommandsCore) {}
@@ -79,6 +93,41 @@ export class SessionCommandsSlice {
 
   resume(): Promise<void> {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
+  }
+
+  /** Sends a message to a session of a host, whether it is the open one or not. */
+  async sendTo(
+    hostId: string,
+    sessionId: string,
+    text: string,
+    images?: SessionImage[],
+  ): Promise<void> {
+    const conn = this.core.connection(hostId);
+    if (!conn) return;
+    try {
+      await conn.request("session.send", {
+        sessionId,
+        text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (error) {
+      this.core.fail(error);
+    }
+  }
+
+  /** Issue #1478: interrupts any session of a host, open or not. */
+  async interruptOn(hostId: string, sessionId: string): Promise<void> {
+    try {
+      await this.core.connection(hostId)?.request("session.interrupt", { sessionId });
+    } catch (error) {
+      this.core.fail(error);
+    }
+  }
+
+  /** Puts an idle session to sleep now and says, in a toast, what came of it. */
+  async sleep(hostId: string, sessionId: string): Promise<void> {
+    const answer = await this.core.sleep(hostId, sessionId);
+    if (answer) this.core.success(this.core.t()(`sleep.result.${answer.result}` as Key));
   }
 
   /** Runs `action` on the open session's host; nothing happens when no session is open. */

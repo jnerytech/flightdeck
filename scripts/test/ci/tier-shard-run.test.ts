@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { runShard, type ShardMarker } from "../../lib/shard-gate.ts";
-import type { Tier } from "../../lib/test-tiers.ts";
-import { TIER_SHARDS } from "../../lib/tier-shards.ts";
+import { runShard, type ShardMarker } from "../../lib/tests/shard-gate.ts";
+import type { Tier } from "../../lib/tests/test-tiers.ts";
+import { TIER_SHARDS } from "../../lib/tests/tier-shards.ts";
 
 const TIERS: Record<string, Tier> = {
   "u.test.ts": "unit",

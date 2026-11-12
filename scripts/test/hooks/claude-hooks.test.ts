@@ -6,7 +6,7 @@ import {
   checkoutRoot,
   commandViolation,
   generatedViolation,
-} from "../../lib/claude-hooks.ts";
+} from "../../lib/hooks/claude-hooks.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 describe("claude-hooks", () => {

@@ -2,12 +2,12 @@
 /**
  * `bun run test:shards -- plan|run <i>/<n>` and `record <junit.xml>...` (issue #292): the Windows
  * unit-test shards, split by the seconds each test file took (`scripts/test-timings.json`). The
- * logic is in lib/test-shards.ts; this wires the real effects.
+ * logic is in lib/tests/test-shards.ts; this wires the real effects.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { shards, type Timings } from "./lib/test-shards.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { shards, type Timings } from "./lib/tests/test-shards.ts";
+import { testTiers } from "./lib/tests/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const TIMINGS = resolve(import.meta.dir, "test-timings.json");

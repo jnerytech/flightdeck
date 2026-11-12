@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Card, Project } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
 import { whichOnPath } from "../kernel/index.ts";
+import type { DomainModule } from "../server/index.ts";
 import { BgService, type BgServiceOptions } from "./service.ts";
 
 /** What the daemon hands Claude Code's background sessions (issue #1593). */
@@ -51,7 +52,8 @@ export function bgOptions({
   };
 }
 
-/** Claude Code's background sessions (`claude --bg`), wired to this daemon. */
-export function createBgService(deps: BgDeps): BgService {
-  return new BgService(bgOptions(deps));
+/** Claude Code's background sessions (`claude --bg`), wired to this daemon, as the module the server takes `bg` from. */
+export function createBg(deps: BgDeps) {
+  const module: DomainModule<"bg"> = { server: { bg: new BgService(bgOptions(deps)) } };
+  return { modules: [module] as const };
 }

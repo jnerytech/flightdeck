@@ -140,8 +140,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   screens; the quiet snooze (`snoozeQuiet`) to a `QuietSnoozeSlice` in
   `features/needs-you/quiet-snooze.ts`, next to the snoozes' storage (Needs you lists the quiet
   sessions, not the session screens).
-- **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(...)`, next to
-  `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
+- **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(platform, held)`
+  (`held`: what the store holds when it is built, the clock's start, the vault's usage log and the
+  clients), next to `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
   its own; it is a recorded exception to the folders-by-domain rule, as `app-store.ts` is, and
   leaves `lib/` with it. Each top-level helper moves with the only group that uses it.
 - The store keeps `init`, `dispose`, `update`, the notices, the route table and the on-line steps:
@@ -194,12 +195,16 @@ remaining short methods); it is never a new hub.
 
 ## Open questions
 
-- **Where the selection and the session actions go.** `select` and `watchSession` subscribe and
-  unsubscribe on the host connections and set `selected`. `SessionStreamSlice` does not handle
-  subscriptions today; it takes the frames. Either it grows the subscriptions, or a new
-  `SessionSelection` slice owns them and keeps the stream to frames. `moveSession`, `closeTab`,
-  `sendTo`, `setMeta`, `sessionRecap` and `onCard` follow from that choice. Decided in that PR,
-  after reading `stream.ts`, and recorded in its body.
+- **Where the session actions go.** `moveSession`, `closeTab`, `sendTo`, `setMeta`, `sessionRecap`
+  and `onCard` follow, one group per PR, each decided in its PR and recorded in its body.
+
+Decided: the subscriptions (`select`, `watchSession` and the followed sessions' count) are a slice
+of their own, `SessionSubscriptions` in `features/sessions/subscriptions.ts`, not a part of
+`SessionStreamSlice`: the stream applies frames, the subscriptions decide which sessions the hosts
+send in full; the two change for different reasons. `selected` stays in the app state, read and
+written through the kernel (host removal and the reset write it too). `HostLink` keeps the replay
+for a host that connects later and reads the followed keys from the slice. Not named "watch": the
+glossary gives that word to the rounds that watch a PR.
 
 ## Consequences
 
@@ -213,3 +218,8 @@ remaining short methods); it is never a new hub.
   `wireHostUpdate`'s `open` dep are the parts outside the host methods that change.
 - The six listener sets move with the link or the slice that owns their frames; their subscribers
   do not change.
+
+Decided: the board cards (`onCard`, the cards in a command result, `loadBoard`) are a
+`BoardCardsSlice` in `features/board/board-cards.ts`, in the board domain, not the sessions'. The
+store builds it itself: the desktop's import-cycle ratchet (#1624) counts a board wire importing the
+kernel, so the slice types only the connection's `board.get` and the notification's two keys.

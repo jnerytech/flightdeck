@@ -1,9 +1,9 @@
 import { posix } from "node:path";
-import { testArgs } from "../test/timeout.ts";
-import { COVERAGE_GATE } from "./coverage-gate/check.ts";
+import { testArgs } from "../../test/timeout.ts";
+import { COVERAGE_GATE } from "../coverage-gate/check.ts";
+import { SLOT_TEST_FILES } from "../slot/index.ts";
+import { auditBase } from "../tdd-audit.ts";
 import { coverageTargets, loadedTargets } from "./related-coverage.ts";
-import { SLOT_TEST_FILES } from "./slot/index.ts";
-import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
   path: string;
@@ -118,7 +118,7 @@ export interface PlanDeps {
   junit?: string;
   /** `--tier unit,component`: only the tests of these tiers (#261); the coverage gate stays in CI. */
   tiers?: string[];
-  /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
+  /** A test file's tier (lib/tests/test-tiers.ts); undefined for a file it does not classify. */
   tierOf?: (path: string) => string | undefined;
   /**
    * `--pr` (#309): every unit and component test, plus the related tests of the other tiers, with

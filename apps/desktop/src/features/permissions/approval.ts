@@ -1,5 +1,5 @@
 import { trimTrailingSeparators } from "@/shared/lib/index.ts";
-import { type DiffLine, toolDiff } from "../../lib/diff.ts";
+import { type DiffLine, toolDiff } from "./diff.ts";
 
 /** What an approval shows, by tool: a command, a file with its preview or diff, or plain fields. */
 export type ApprovalView =

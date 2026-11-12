@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { pyramidOf, renderPyramid } from "../../lib/pyramid-table.ts";
-import type { ShardMarker } from "../../lib/shard-gate.ts";
-import type { Tier } from "../../lib/test-tiers.ts";
+import { pyramidOf, renderPyramid } from "../../lib/tests/pyramid-table.ts";
+import type { ShardMarker } from "../../lib/tests/shard-gate.ts";
+import type { Tier } from "../../lib/tests/test-tiers.ts";
 
 const TIERS: Record<string, Tier> = {
   "a/u1.test.ts": "unit",

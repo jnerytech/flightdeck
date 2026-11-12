@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { mergeShards } from "../../lib/shard-gate.ts";
-import type { Tier } from "../../lib/test-tiers.ts";
+import { mergeShards } from "../../lib/tests/shard-gate.ts";
+import type { Tier } from "../../lib/tests/test-tiers.ts";
 
 const TIERS: Record<string, Tier> = { "a/u.test.ts": "unit", "b/i.test.ts": "integration" };
 const MARKER = {

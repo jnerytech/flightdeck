@@ -11,7 +11,7 @@ import {
   slowReport,
   slowVerdict,
   TEST_LIMIT_S,
-} from "../../lib/slow-tests.ts";
+} from "../../lib/tests/slow-tests.ts";
 
 /** A JUnit report as bun writes it: a suite per file, nested suites per describe. */
 const junit = [

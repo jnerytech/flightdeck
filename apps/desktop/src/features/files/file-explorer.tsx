@@ -7,7 +7,7 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import { Inline, Stack, TreeBranch, TreeItem } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { affectedDirs } from "../../lib/file-changes.ts";
+import { affectedDirs } from "./file-changes.ts";
 import { FileSearch } from "./file-search.tsx";
 
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first open.

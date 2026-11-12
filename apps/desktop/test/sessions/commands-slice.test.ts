@@ -34,6 +34,10 @@ function commands(
       if (retry) retries.push(retry);
     },
     opened: (hostId, sessionId) => void opened.push(`${hostId}/${sessionId}`),
+    // Not asked by these tests: the store tests cover the sleep.
+    sleep: async () => null,
+    success: () => {},
+    t: () => ((key: string) => key) as never,
   });
   return { slice, sent, failures, opened, retries };
 }

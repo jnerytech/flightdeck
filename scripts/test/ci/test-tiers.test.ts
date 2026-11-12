@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { shardTiers, TIERS, type Tier, testTiers, tierCounts } from "../../lib/test-tiers.ts";
+import { shardTiers, TIERS, type Tier, testTiers, tierCounts } from "../../lib/tests/test-tiers.ts";
 
 // repo-wide (#1108): reads every tracked source file, so CI's quick job runs it on every PR.
 
