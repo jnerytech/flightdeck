@@ -3,9 +3,8 @@ import { FolderGit2, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSwitcherHosts } from "@/features/hosts/index.ts";
 import type { HubRowState } from "@/features/sessions/index.ts";
-import { useProjectCards } from "@/hooks/use-project-cards";
-import { useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { NewProject } from "./new-project.tsx";
@@ -16,6 +15,7 @@ import {
   type ProjectSort,
   sortProjectCards,
 } from "./project-cards.ts";
+import { useProjectCards } from "./use-project-cards.ts";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 
