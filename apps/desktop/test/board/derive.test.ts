@@ -286,8 +286,11 @@ describe("board derive: the refusals named", () => {
 
   test("a reason code is said in the app's language", () => {
     const coded = [refusal("A", { reason: "card_running" })];
-    expect(refusalNames(coded, translator("pt-BR"))).not.toBe(
-      refusalNames(coded, translator("en")),
+    expect(refusalNames(coded, translator("en"))).toBe(
+      "A (The card is running: wait for the agent to finish.)",
+    );
+    expect(refusalNames(coded, translator("pt-BR"))).toBe(
+      "A (O card está em execução: espere o agente terminar.)",
     );
   });
 
