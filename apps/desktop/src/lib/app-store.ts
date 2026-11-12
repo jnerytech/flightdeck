@@ -154,6 +154,11 @@ import {
   teleportSession,
 } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
+import { isLocalUrl } from "../features/terminal/terminal.ts";
+import {
+  TerminalFontController,
+  TerminalReaderSetting,
+} from "../features/terminal/terminal-view.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
   checkDelivery,
@@ -204,8 +209,6 @@ import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
-import { isLocalUrl } from "./terminal.ts";
-import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
