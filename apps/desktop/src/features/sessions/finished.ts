@@ -1,8 +1,6 @@
-import type { CommandResults, SessionStatus } from "@flightdeck/protocol";
+import type { CommandResults, SessionStatus, SessionSummary } from "@flightdeck/protocol";
 import { z } from "zod";
 import { basename } from "@/shared/lib/index.ts";
-import type { AppState, SidebarSession } from "../../lib/app-store.ts";
-import type { HostResult } from "../../lib/kernel.ts";
 import { sessionKey } from "./session-key.ts";
 
 /** How a session finished: its turn ended well, ended in an error, or the session itself ended. */
@@ -103,13 +101,27 @@ export function saveFinished(
   storage.setItem(FINISHED_KEY, JSON.stringify(state));
 }
 
-type FinishedSliceState = Pick<AppState, "finished" | "finishedLook" | "sessions" | "hub">;
+/** What the slice reads of a sidebar session: the store's `SidebarSession` fits it. */
+interface FinishingSession {
+  id: string;
+  name: string | null;
+  cwd: string;
+  status: SessionStatus;
+}
+
+/** What the slice reads of the app's state: the store's `AppState` fits it. */
+interface FinishedSliceState {
+  finished: Finish[];
+  finishedLook: string | null;
+  sessions: Record<string, { claudeSessionId?: string }>;
+  hub: Record<string, { managed: SessionSummary[] }>;
+}
 
 /** What the finished list reads and asks through the app's store. */
 export interface FinishedCore {
   /** The finished list, the conversations and the hub's sessions the app holds. */
   state(): FinishedSliceState;
-  update(patch: Partial<Pick<AppState, "finished" | "finishedLook">>): void;
+  update(patch: Partial<Pick<FinishedSliceState, "finished" | "finishedLook">>): void;
   /** Where the list is kept between runs. */
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
   /** Milliseconds now. */
@@ -118,8 +130,11 @@ export interface FinishedCore {
   isFocused(): boolean;
   /** The sessions an area shows right now, by session key. */
   shown(): Set<string>;
-  /** Asks a host what a session changed; a refusal comes back with its code. */
-  changes(hostId: string, target: string): Promise<HostResult<CommandResults["changes.get"]>>;
+  /** Asks a host what a session changed; a refusal comes back as not ok. */
+  changes(
+    hostId: string,
+    target: string,
+  ): Promise<{ ok: true; data: CommandResults["changes.get"] } | { ok: false }>;
 }
 
 /**
@@ -142,7 +157,7 @@ export class FinishedSlice {
   }
 
   /** A turn, a failure or an end is a finish for Needs you, unless the person watched it happen. */
-  record(hostId: string, prev: SidebarSession | undefined, next: SidebarSession): void {
+  record(hostId: string, prev: FinishingSession | undefined, next: FinishingSession): void {
     const outcome = finishOutcome(prev?.status, next.status);
     if (!outcome) return;
     const key = sessionKey(hostId, next.id);
