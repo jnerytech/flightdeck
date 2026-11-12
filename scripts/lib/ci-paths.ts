@@ -63,7 +63,7 @@ const E2E = [
  */
 const SHOTS = [
   /^scripts\/demo[^/]*\.ts$/,
-  /^scripts\/lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual|(?:e2e|demo)\/[^/]+|(?:e2e|demo)[^/]*)\.ts$/,
+  /^scripts\/lib\/(?:axe|browser|layout-guards|print-theme|shots(?:-[^/]*|\/[^/]+)|visual|(?:e2e|demo)\/[^/]+|(?:e2e|demo)[^/]*)\.ts$/,
   /^scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$/,
 ];
 

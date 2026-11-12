@@ -4,7 +4,7 @@
   merge waits for the screenshots check.
 - **The split.** `screenshots-prints` is a matrix of the two themes and the two languages, with
   `fail-fast: false`. Each job runs `bun run demo:shots` with `SHOTS_THEME` and `SHOTS_LANG`
-  (`scripts/lib/shots-variants.ts`: all four pairs when unset, so a local run prints them all) and
+  (`scripts/lib/shots/variants.ts`: all four pairs when unset, so a local run prints them all) and
   uploads its own `prints-<theme>-<lang>` artifact. A filter that names no known pair refuses the
   run instead of printing nothing. The required `screenshots (prints, axe e e2e)` aggregate is
   unchanged: the matrix job's result is every pair's. The filter is checked before Chrome starts. For the visual
