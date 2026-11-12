@@ -56,7 +56,7 @@ function setup(options: { costs?: Record<string, CostsSummary | null>; language?
   // The app starts its language from the platform; the screen is rendered without the shell.
   store.i18n.start();
   const asked: string[] = [];
-  store.loadPalette = async () => {};
+  store.palette.load = async () => {};
   store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
     asked.push(`${hostId}:${type}:${JSON.stringify(payload)}`);
     return options.costs?.[hostId] ?? null;
