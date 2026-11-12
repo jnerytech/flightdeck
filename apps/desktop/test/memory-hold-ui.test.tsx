@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { BoardView } = await import("../src/features/board/board-view.tsx");
 const { HostResources } = await import("../src/features/hosts/host-resources.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 

@@ -49,8 +49,11 @@ const DOMAIN_OF: Record<string, string> = {
   PreviewPage: "runenv",
 };
 
-/** A screen that is a file of its domain, not the domain's `page.tsx`: a card's detail is a board file. */
-const FILE_OF: Record<string, string> = { CardDetail: "board/card-detail.tsx" };
+/** A screen that is a file of its domain, not the domain's `page.tsx`: a card's detail and the board itself are board files. */
+const FILE_OF: Record<string, string> = {
+  BoardView: "board/board-view.tsx",
+  CardDetail: "board/card-detail.tsx",
+};
 
 const specifierOf = (name: string) => {
   const file = FILE_OF[name];

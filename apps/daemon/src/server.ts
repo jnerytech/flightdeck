@@ -171,6 +171,14 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Phase 23, #1593: the telemetry's part of the server, each service optional. */
+interface TelemetryServer {
+  /** The timing of terminal sessions, from Claude Code's OTLP telemetry. */
+  store?: TelemetryStore;
+  /** The settings.json opt-in for a plain `claude`. */
+  optIn?: TelemetryOptIn;
+}
+
 /** Phase 8, #1593: the costs' part of the server, each service optional. */
 interface CostsServer {
   /** Estimated costs behind the `costs.*` commands. */
@@ -472,10 +480,8 @@ export interface ServerOptions {
   usage?: UsageLedger;
   /** The estimated costs and their budgets (phase 8, #1593). */
   costs?: CostsServer;
-  /** Phase 23: the timing of terminal sessions, from Claude Code's OTLP telemetry. */
-  telemetry?: TelemetryStore;
-  /** The settings.json opt-in for a plain `claude` (phase 23). */
-  telemetryOptIn?: TelemetryOptIn;
+  /** The telemetry's timings and its opt-in (phase 23, #1593). */
+  telemetry?: TelemetryServer;
   /** Phase 25: the trace of a session, built from its transcript and its subagents'. */
   trace?: TraceService;
   /** Phase 30: the short summary of a session. */

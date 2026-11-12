@@ -13,7 +13,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { ProjectPage } = await import("../src/features/projects/project.tsx");
-const { BoardView } = await import("../src/ui/BoardView.tsx");
+const { BoardView } = await import("../src/features/board/board-view.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { Router } = await import("../src/lib/router.ts");
 

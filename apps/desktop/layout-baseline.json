@@ -12,6 +12,7 @@
   "src/features/board/arena-view.tsx": 21,
   "src/features/board/board-notice.tsx": 4,
   "src/features/board/board-sync.tsx": 13,
+  "src/features/board/board-view.tsx": 20,
   "src/features/board/bulk-discard-dialog.tsx": 5,
   "src/features/board/bulk-run-dialog.tsx": 5,
   "src/features/board/card-adjustment.tsx": 5,
@@ -151,7 +152,6 @@
   "src/features/workflows/workflow-templates.tsx": 5,
   "src/ui/App.tsx": 3,
   "src/ui/Areas.tsx": 4,
-  "src/ui/BoardView.tsx": 20,
   "src/ui/Screens.tsx": 9,
   "src/ui/SessionView.tsx": 3,
   "src/ui/Sidebar.tsx": 30

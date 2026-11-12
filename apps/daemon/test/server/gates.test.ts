@@ -42,8 +42,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   roi: "roi",
   runenv: "runEnv",
   summary: "summary",
-  telemetry: "telemetry",
-  telemetryOptIn: "telemetry",
   terminals: "terminals",
   trace: "trace",
   usage: "usage",
@@ -149,6 +147,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     costs: "costs",
     budgets: "budgets",
   },
+  // The telemetry's timings and its opt-in (#1593): both keep `telemetry`.
+  telemetry: {
+    store: "telemetry",
+    optIn: "telemetry",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -205,6 +208,7 @@ describe("server-gates", () => {
       teleport: {},
       personas: {},
       costs: {},
+      telemetry: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
