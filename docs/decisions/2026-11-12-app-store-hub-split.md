@@ -51,7 +51,7 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
 
 - **`features/hosts/link.ts`: `HostLink`**, the store's connections. It owns the `connections`
   map, `connect(config, token)`, `loadHostInfo`, `reloadHostInfo`, the wake listener,
-  `connection(hostId)`, `watchChanges`, the latencies, `openConnection`, and the stop and removal
+  `connection(hostId)`, `watchChanges`, the latencies, `open(hostId)`, and the stop and removal
   of one host's connection (the status and the requests: below).
 - **What changes outside the store's host methods, named**: `AppKernel` has no `connect`,
   `onStatus` or `loadHostInfo`, and there is no roster wire file: the roster slice is built in the
@@ -66,8 +66,8 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
 - **Frames go through an explicit route table**, `HostRoutes`, built once in the store from the
   slices and read by `HostLink` through a dep at each connect. Its type is derived from
   `HostConnectionOptions`, not written a second time: a mapped type over every key matching
-  `on${string}` except `onStatus`, `onPing` and `onChangesUpdated` (the link keeps those), made
-  required (`-?`), each callback given the host's config before the frame's own arguments (the
+  `on${string}` except `onStatus`, `onPing` and `onChangesUpdated` (the link keeps those), each
+  key required, each callback given the host's config before the frame's own arguments (the
   vault request needs the host's URL, not only its id). Most frame callbacks there are optional
   (`onCardUpdated?`, `onQuotaUpdated?`, ...); a key list written by hand
   (`Required<Pick<..., "onA" | "onB">>`) would let a new one through silently, the mapped type does
@@ -77,8 +77,8 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   a frame.
 - **The status stays the store's own route.** On every status the link calls the store's
   `onStatus(hostId, conn, status)` (the app log line, `updateHost` from `conn.lastDrop`,
-  `conn.info`, `conn.incompatibility` and `conn.retry`, then on `online` `loadHostInfo` with
-  `connect = true` and `quota.get`, `terminals.tellOffline` on any other status,
+  `conn.info`, `conn.incompatibility` and `conn.retry`, then on `online` `loadHostInfo` (the
+  link's, once the on-line steps move) with `connect = true` and `quota.get`, `terminals.tellOffline` on any other status,
   `stream.dropPartialText` on `connecting`). Its order is behavior: `loadHostInfo` sends
   `host.info` before its first wait, so `host.info` goes out before `quota.get`, and a split
   where the link ran the store's status work first and its own on-line steps after would swap
