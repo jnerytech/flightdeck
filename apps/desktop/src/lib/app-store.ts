@@ -113,7 +113,7 @@ import {
   wireMessaging,
 } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
-import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
+import { loadQuietSnooze, QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import {
@@ -268,9 +268,6 @@ export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";
 
 export { sessionKey };
 
-/** Issue #1478: how long "Not stuck" keeps a quiet session out of Needs you. */
-export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
-
 const REAL_TIMERS = {
   setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms),
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -383,6 +380,8 @@ export class AppStore {
   readonly quota: QuotaSlice;
   /** The Claude account each host is signed in to (phase 34, #1596). */
   readonly account: AccountSlice;
+  /** "Not stuck" on a quiet session (`features/needs-you/quiet-snooze.ts`). */
+  readonly quietSnooze: QuietSnoozeSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
   readonly hostUpdate: HostUpdateSlice;
   readonly settings: SettingsSlice;
@@ -455,6 +454,16 @@ export class AppStore {
         }),
     });
     this.account = wireAccount(this.kernel);
+    this.quietSnooze = new QuietSnoozeSlice({
+      snoozes: () => this.state.quietSnooze,
+      setSnoozes: (quietSnooze) => this.update({ quietSnooze }),
+      storage: platform.storage,
+      now: () => this.now(),
+      key: sessionKey,
+      t: () => this.i18n.t,
+      formatTime: (iso) => this.formatTime(iso),
+      success: (text) => this.success(text),
+    });
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
@@ -1954,16 +1963,7 @@ export class AppStore {
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {
-    const until = this.now() + QUIET_SNOOZE_MS;
-    const quietSnooze = { ...this.state.quietSnooze, [sessionKey(hostId, sessionId)]: until };
-    this.update({ quietSnooze });
-    saveQuietSnooze(this.platform.storage, quietSnooze);
-    // The row is gone from the list: say when it comes back (#1554).
-    this.success(
-      this.i18n.t("needsYou.quietSnoozed", {
-        time: this.formatTime(new Date(until).toISOString()),
-      }),
-    );
+    this.quietSnooze.snooze(hostId, sessionId);
   }
 
   /** Issue #1478: interrupts any session of a host, open or not. */
