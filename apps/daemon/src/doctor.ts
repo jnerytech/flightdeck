@@ -1,4 +1,4 @@
-import { loopbackOnly } from "./pairing.ts";
+import { loopbackOnly } from "./pairing/index.ts";
 import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { findingText, type ScopeFinding } from "./runtime/opencode-scope.ts";
