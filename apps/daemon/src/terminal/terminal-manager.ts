@@ -204,7 +204,8 @@ export class TerminalManager {
 
   /** After `stop` no PTY starts: nothing would kill it before the daemon exits. */
   private assertRunning(): void {
-    if (this.stopped) throw new FlightdeckError("invalid_state", "the daemon is stopping");
+    if (this.stopped)
+      throw new FlightdeckError("invalid_state", "the daemon is stopping", "terminal_stopping");
   }
 
   /** Every terminal command goes through here: a host with the terminal off refuses them. */
