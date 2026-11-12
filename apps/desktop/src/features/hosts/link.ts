@@ -55,6 +55,8 @@ interface OnlineContext {
  */
 export interface OnlineStep {
   gate?: string;
+  /** Awaited by `loadHostInfo` (and so by a reload of the host's info); the others are not. */
+  awaited?: true;
   run(ctx: OnlineContext): void | Promise<void>;
 }
 
@@ -157,16 +159,15 @@ export class HostLink {
   /**
    * Asks the host for its `host.info` (daemons without it answer with an error: null) and runs the
    * on-line steps it has the features for, in order. Every step starts without waiting for the one
-   * before; only the last of the list is awaited.
+   * before; only a step marked `awaited` is waited for.
    */
   async loadHostInfo(hostId: string, conn: HostConnection, connect = false): Promise<void> {
     const hostInfo = await conn.request("host.info", {}).catch(() => null);
     const ctx: OnlineContext = { hostId, conn, hostInfo, connect };
-    const steps = this.deps.onlineSteps();
-    for (const [index, step] of steps.entries()) {
+    for (const step of this.deps.onlineSteps()) {
       if (step.gate && !hasFeature(hostInfo?.features, step.gate, false)) continue;
       const done = step.run(ctx);
-      if (index === steps.length - 1) await done;
+      if (step.awaited) await done;
       else void done;
     }
   }

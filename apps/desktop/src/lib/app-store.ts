@@ -334,6 +334,7 @@ export class AppStore {
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
     // Read at connect: the table is a field declared after this one.
     routes: () => this.routes,
+    // Read at load, after the `host.info` answer: also declared after this field.
     onlineSteps: () => this.onlineSteps,
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
@@ -1926,6 +1927,7 @@ export class AppStore {
     },
     {
       gate: "costs",
+      awaited: true,
       run: async ({ hostId, conn }) => {
         const list = await conn.request("budget.list", {}).catch(() => null);
         if (list) this.budgets.replace(hostId, list.budgets);
