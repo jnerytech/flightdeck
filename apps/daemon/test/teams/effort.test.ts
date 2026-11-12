@@ -44,7 +44,7 @@ async function setup(over: Partial<TeamsOptions> = {}) {
     ...over,
   });
   cleanups.push(() => teams.stop());
-  return { ...ctx, project, teams };
+  return { ...ctx, project, teams, messaging };
 }
 
 const NEW = { goal: "Review the login.", workers: 2 };
@@ -87,7 +87,7 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
     ).toEqual([null, null]);
   });
 
-  test("the coordinator of the host's own starter reaches the session manager with the effort", async () => {
+  test("the coordinator of the default starter reaches the session manager with the effort", async () => {
     const efforts: Array<string | undefined> = [];
     const { teams, project, manager } = await setup({ startWorker: async () => {} });
     const create = manager.create.bind(manager);
@@ -100,7 +100,7 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
   });
 
   test("a worker added to a running team opens with the effort asked, and one with none keeps none", async () => {
-    const { teams, project, board } = await setup({ startWorker: async () => {} });
+    const { teams, project, board, messaging } = await setup({ startWorker: async () => {} });
     const team = await teams.create({ ...NEW, workers: 1, projectId: project.id });
     const added = async (effort?: "xhigh" | null) => {
       const next = await teams.update({
@@ -111,6 +111,10 @@ describe("times-esforco: an effort per member (issue #2310)", () => {
       return board.getCard(member?.cardId as string).variant?.effort ?? null;
     };
     expect(await added("xhigh")).toBe("xhigh");
+    const notice = messaging
+      .list({})
+      .filter((m) => m.kind === "system" && m.text.includes("Entrou"));
+    expect(notice.at(-1)?.text).toContain("esforço xhigh");
     expect(await added(null)).toBeNull();
     expect(await added()).toBeNull();
   });

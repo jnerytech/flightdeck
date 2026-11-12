@@ -5,7 +5,7 @@ import { Central } from "../../src/central/central.ts";
 import { ProjectKeys } from "../../src/central/project-key.ts";
 import { Names } from "../../src/names/names.ts";
 import { packPersonas } from "../../src/personas/pack.ts";
-import { withoutPersonas } from "../../src/personas/prepare.ts";
+import { type Prepare, withoutPersonas } from "../../src/personas/prepare.ts";
 import { Personas } from "../../src/personas/store.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { createTeams } from "../../src/teams/wiring.ts";
@@ -17,56 +17,61 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
+async function build(prepare: Prepare = withoutPersonas) {
+  const { board, manager, store, repo } = newBoard({}, 1);
+  cleanups.push(() => board.stop());
+  const dir = tempDir("fd-teams-");
+  const configFile = join(dir, "config.json");
+  writeFileSync(configFile, "{}");
+  const central = new Central({
+    db: store.db,
+    manager,
+    hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
+    dataDir: join(dir, "data"),
+    hostName: "h",
+    configFile,
+    selfCommand: ["flightdeckd"],
+    settingsPath: () => join(dir, "settings.json"),
+  });
+  cleanups.push(() => central.stop());
+  const personaStore = new Personas({
+    db: store.db,
+    allowedRoots: [dirname(repo)],
+    scanner: new SecretScanner(),
+    pack: packPersonas,
+  });
+  const watching: string[] = [];
+  const quota = {
+    blocked: () => null,
+    watch: () => {
+      watching.push("on");
+      return () => {
+        watching.push("off");
+      };
+    },
+  };
+  const {
+    modules: [module],
+  } = await createTeams({
+    db: store.db,
+    config: { hostName: "h", allowBypassPermissions: false },
+    manager,
+    board,
+    central,
+    keys: new ProjectKeys("h"),
+    autoApprove: undefined,
+    names: new Names(store.db),
+    personaStore,
+    prepare,
+    quota,
+  });
+  cleanups.push(() => module.stop?.());
+  return { board, manager, module, watching, repo, personaStore };
+}
+
 describe("teams-wiring: the sessions that work together, as the daemon builds them (#2094)", () => {
   test("its module serves the messages, the idle notices, the teams and the personas, sweeps the messages every 5 minutes, and its stop lets go of the sweep and the quota", async () => {
-    const { board, manager, store, repo } = newBoard({}, 1);
-    cleanups.push(() => board.stop());
-    const dir = tempDir("fd-teams-");
-    const configFile = join(dir, "config.json");
-    writeFileSync(configFile, "{}");
-    const central = new Central({
-      db: store.db,
-      manager,
-      hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
-      dataDir: join(dir, "data"),
-      hostName: "h",
-      configFile,
-      selfCommand: ["flightdeckd"],
-      settingsPath: () => join(dir, "settings.json"),
-    });
-    cleanups.push(() => central.stop());
-    const personaStore = new Personas({
-      db: store.db,
-      allowedRoots: [dirname(repo)],
-      scanner: new SecretScanner(),
-      pack: packPersonas,
-    });
-    const watching: string[] = [];
-    const quota = {
-      blocked: () => null,
-      watch: () => {
-        watching.push("on");
-        return () => {
-          watching.push("off");
-        };
-      },
-    };
-    const {
-      modules: [module],
-    } = await createTeams({
-      db: store.db,
-      config: { hostName: "h", allowBypassPermissions: false },
-      manager,
-      board,
-      central,
-      keys: new ProjectKeys("h"),
-      autoApprove: undefined,
-      names: new Names(store.db),
-      personaStore,
-      prepare: withoutPersonas,
-      quota,
-    });
-    cleanups.push(() => module.stop?.());
+    const { board, manager, module, watching, personaStore } = await build();
     const messaging = module.server?.messaging;
     const personas = module.server?.personas;
     const every = spyOn(globalThis, "setInterval");
@@ -93,5 +98,28 @@ describe("teams-wiring: the sessions that work together, as the daemon builds th
       sweeps.length,
       cleared,
     ]).toEqual([true, 0, true, true, true, ["on"], ["on", "off"], 1, true]);
+  });
+
+  test("the coordinator the host starts gets the effort asked for the team (#2310)", async () => {
+    const { manager, module, repo, board } = await build(async () => ({
+      persona: null,
+      agents: {},
+    }));
+    const project = await board.addProject({ path: repo, promptTemplate: "" });
+    const efforts: Array<string | undefined> = [];
+    // The session manager is the edge under test: the effort asked must arrive there, nothing more.
+    manager.create = (payload) => {
+      efforts.push(payload.effort);
+      throw new Error("stop here");
+    };
+    await expect(
+      module.server?.messaging?.teams?.create({
+        goal: "Review the login.",
+        workers: 1,
+        projectId: project.id,
+        coordinatorEffort: "high",
+      }),
+    ).rejects.toThrow("stop here");
+    expect(efforts).toEqual(["high"]);
   });
 });
