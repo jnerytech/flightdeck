@@ -7,7 +7,7 @@ import {
   type TeleportSummary,
   teleportSession,
   teleportSummary,
-} from "../../src/lib/teleport.ts";
+} from "../../src/features/teleport/teleport.ts";
 import { settleMaybe, stays } from "../wait.ts";
 
 /**

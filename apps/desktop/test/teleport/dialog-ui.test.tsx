@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import type { TeleportOutcome, TeleportSummary } from "../../src/lib/teleport.ts";
+import type { TeleportOutcome, TeleportSummary } from "../../src/features/teleport/teleport.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { settleMaybe, waiter } from "../wait.ts";
 
