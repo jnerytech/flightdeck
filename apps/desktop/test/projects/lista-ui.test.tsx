@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CostsSummary } from "@flightdeck/protocol";
-import { emptySummary } from "../src/lib/client-costs.ts";
-import type { ProjectCard } from "../src/lib/project-cards.ts";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { emptySummary } from "../../src/lib/client-costs.ts";
+import type { ProjectCard } from "../../src/lib/project-cards.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within, waitFor } = await import(
   "@testing-library/react"
 );
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectsOverview } = await import("../src/features/projects/overview.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ProjectsOverview } = await import("../../src/features/projects/overview.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
