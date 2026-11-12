@@ -4,7 +4,7 @@ import { Quota } from "../../daemon/src/quota/quota.ts";
 import { poll } from "../../daemon/test/support/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { waiter } from "./wait.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 

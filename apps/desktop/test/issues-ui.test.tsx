@@ -4,7 +4,7 @@ import { filterIssues, issueLabel, issueNumber, issueUrl } from "../src/lib/issu
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { ghIssue, ghRules, issuesDaemon } from "./issues-fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();

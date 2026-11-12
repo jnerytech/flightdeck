@@ -5,7 +5,7 @@ import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import { hasFeature } from "@/lib/version";
+import { hostsWith } from "@/lib/version";
 
 const DAYS = 30;
 const SELECT =
@@ -21,9 +21,7 @@ export const VaultReport = memo(function VaultReport(props: { store: AppStore })
   const t = useT();
   const { store } = props;
   const state = useStoreSlice(store, VAULTREPORT_KEYS);
-  const hosts = state.hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "actions", false),
-  );
+  const hosts = hostsWith(state.hosts, "actions");
   const [hostId, setHostId] = useState("");
   const host = hosts.find((h) => h.id === hostId) ?? hosts[0];
   const [rows, setRows] = useState<VaultReportRow[]>([]);

@@ -5,7 +5,7 @@ import { colorOf, contrast, tokensOf } from "../../../scripts/lib/theme-contrast
 import { activeNav } from "../src/lib/nav-active.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();

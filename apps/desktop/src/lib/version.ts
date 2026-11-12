@@ -32,3 +32,29 @@ export function hasFeature(
 ): boolean {
   return features ? features.includes(feature) : legacy;
 }
+
+/**
+ * Whether any of the hosts offers `feature`: the entry of a screen that exists only when some host
+ * can serve it. A host that announced nothing (older than phase 7) does not count.
+ */
+export function anyHostHas(
+  hosts: readonly { hostInfo: { features?: readonly string[] | undefined } | null }[],
+  feature: string,
+): boolean {
+  return hosts.some((host) => hasFeature(host.hostInfo?.features, feature, false));
+}
+
+/**
+ * The hosts that are online and offer `feature`: the ones a screen can ask for that feature. A host
+ * that announced nothing (older than phase 7) does not count.
+ */
+export function hostsWith<
+  H extends {
+    status: string;
+    hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
+  },
+>(hosts: readonly H[], feature: string): H[] {
+  return hosts.filter(
+    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, feature, false),
+  );
+}

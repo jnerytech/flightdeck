@@ -4,7 +4,7 @@ import { userLine, writeTranscript } from "../../daemon/test/support/history-hel
 import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../../lib/clients.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { anyHostHas } from "../../lib/version.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { ClientBudget } from "./client-budget.tsx";
 import { ClientDefaults } from "./client-defaults.tsx";
@@ -30,7 +30,7 @@ export function ClientsPage(
   const { store, state } = props;
   const { t } = store.i18n;
   const clients = state.clientList;
-  const withRoi = state.hosts.some((h) => hasFeature(h.hostInfo?.features, "roi", false));
+  const withRoi = anyHostHas(state.hosts, "roi");
   const [name, setName] = useState("");
   const [renaming, setRenaming] = useState<Client | null>(null);
   const [removing, setRemoving] = useState<Client | null>(null);

@@ -54,7 +54,7 @@ import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";
 import type { Route } from "../lib/router.ts";
 import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import { type SidebarGroup, toggleGroup } from "../lib/sidebar-groups.ts";
-import { APP_VERSION, hasFeature } from "../lib/version.ts";
+import { APP_VERSION, anyHostHas, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 const ITEM =
@@ -677,7 +677,7 @@ export function Sidebar(
               disabled={!navHost}
               onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
             />
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
+            {anyHostHas(state.hosts, "teams") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
@@ -688,7 +688,7 @@ export function Sidebar(
               />
             )}
             {/* Hosts from phase 21 carry messages between sessions. */}
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
+            {anyHostHas(state.hosts, "messaging") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
@@ -706,7 +706,7 @@ export function Sidebar(
             onToggle={() => toggle("observability")}
           >
             {/* Hosts from phase 8 on read their costs from the transcripts. */}
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
+            {anyHostHas(state.hosts, "costs") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="costs" aria-hidden="true" className={icon} />}
@@ -738,7 +738,7 @@ export function Sidebar(
             onToggle={() => toggle("library")}
           >
             {/* Hosts from phase 20 keep engineering personas. */}
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "personas", false)) && (
+            {anyHostHas(state.hosts, "personas") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
@@ -748,7 +748,7 @@ export function Sidebar(
               />
             )}
             {/* Hosts from phase 18 keep saved commands and prompts. */}
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "snippets", false)) && (
+            {anyHostHas(state.hosts, "snippets") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
@@ -758,7 +758,7 @@ export function Sidebar(
               />
             )}
             {/* Hosts from phase 26 keep Claude Code's plugins. */}
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "plugins", false)) && (
+            {anyHostHas(state.hosts, "plugins") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
@@ -803,7 +803,7 @@ export function Sidebar(
           >
             {hostsList}
             {/* Hosts from phase 15 keep ssh destinos. */}
-            {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "ssh", false)) && (
+            {anyHostHas(state.hosts, "ssh") && (
               <NavButton
                 collapsed={collapsed}
                 icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}

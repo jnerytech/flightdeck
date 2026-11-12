@@ -11,7 +11,7 @@ import { Router } from "../src/lib/router.ts";
 import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { stays, waiter } from "./wait.ts";
 
 registerDom();
