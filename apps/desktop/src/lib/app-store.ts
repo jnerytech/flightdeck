@@ -647,6 +647,7 @@ export class AppStore {
       stop: (hostId) => this.link.stop(hostId),
       detach: (hostId) => {
         this.hostTabs.removeHost(hostId);
+        this.vaultApprovals.hostGone(hostId);
         this.link.remove(hostId);
       },
       forget: (hostId) => {
@@ -1844,7 +1845,11 @@ export class AppStore {
       );
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") this.stream.dropPartialText(hostId);
+    if (status === "connecting") {
+      this.stream.dropPartialText(hostId);
+      // The requests that waited on the old connection cannot be answered on the new one.
+      this.vaultApprovals.hostGone(hostId);
+    }
   }
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */

@@ -118,7 +118,7 @@ describe("vault approvals slice", () => {
     // The other host's request still waits, and its answer still goes through.
     expect(approvals.settle("r2", { scope: "once", via: "app" })).toBe(true);
     await kept;
-    expect(sent.some((c) => c.type === "vault.deliver")).toBe(true);
+    expect(sent.filter((c) => c.type === "vault.approve")).toHaveLength(1);
   });
 
   test("an answer to a request the vault never asked about is not taken", () => {
