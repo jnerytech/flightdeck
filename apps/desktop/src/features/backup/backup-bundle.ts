@@ -1,6 +1,7 @@
 import { inSequence } from "@flightdeck/protocol";
 import { Decrypter, Encrypter } from "age-encryption";
 import { z } from "zod";
+import { parseJsonText, readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 import { HOSTS_KEY, type HostConfig, loadHosts } from "../hosts/index.ts";
 import { Vault } from "../vault/index.ts";
@@ -114,14 +115,9 @@ type Bundle = z.infer<typeof Bundle>;
 /** The decrypted bundle of a preview stays here, so the preview itself can be shown and logged. */
 const held = new WeakMap<RestorePreview, Bundle>();
 
-const readList = (platform: BackupPlatform, key: string): Item[] => {
-  try {
-    const parsed = z.array(Item).safeParse(JSON.parse(platform.storage.getItem(key) ?? "[]"));
-    return parsed.success ? parsed.data : [];
-  } catch {
-    return [];
-  }
-};
+/** A list of the app's own items; one that is not an item is left out, the others stay. */
+const readList = (platform: BackupPlatform, key: string): Item[] =>
+  readStored(platform.storage, key, validItems(Item), []);
 
 const personaName = (item: Item) => String(item.name ?? item.id);
 const snippetName = (item: Item) =>
@@ -172,12 +168,13 @@ async function readBundle(text: string, passphrase: string): Promise<Bundle> {
   try {
     const decrypter = new Decrypter();
     decrypter.addPassphrase(passphrase);
-    const body = JSON.parse(await decrypter.decrypt(fromFdvault(text), "text"));
-    return Bundle.parse(body);
+    const body = parseJsonText(await decrypter.decrypt(fromFdvault(text), "text"), Bundle, null);
+    if (body) return body;
   } catch {
-    // A wrong passphrase, a tampered file and a file that is no backup look the same, on purpose.
-    throw new BackupError("unreadable");
+    // Handled below: it looks the same as a bundle that does not fit.
   }
+  // A wrong passphrase, a tampered file and a file that is no backup look the same, on purpose.
+  throw new BackupError("unreadable");
 }
 
 type Status = "added" | "same" | "conflicting";
