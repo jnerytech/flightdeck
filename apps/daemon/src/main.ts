@@ -9,7 +9,7 @@ import { activitySince } from "./activity/since.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
-import { createBgService } from "./bg/wiring.ts";
+import { createBg } from "./bg/wiring.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -591,6 +591,17 @@ export async function startDaemon(
       locks: folderLocks,
     }),
   );
+  await domains.add(
+    createBg({
+      db: store.db,
+      config,
+      channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
+      projectTrust,
+      board,
+      self: selfCommand,
+      configFile,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -624,15 +635,6 @@ export async function startDaemon(
     actions,
     autoApprove,
     usage,
-    bg: createBgService({
-      db: store.db,
-      config,
-      channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
-      projectTrust,
-      board,
-      self: selfCommand,
-      configFile,
-    }),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
