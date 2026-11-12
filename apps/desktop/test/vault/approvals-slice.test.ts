@@ -39,6 +39,7 @@ function slice(over: { policy?: VaultPolicy; now?: number; denyFails?: boolean }
       pending = items;
     },
     hostName: (id) => (id === "h" ? "alfa" : null),
+    hostUrl: () => "ws://127.0.0.1:7777",
     dispatch: (async (_host: string, type: string, payload: Record<string, unknown>) => {
       sent.push({ type, payload });
       if (over.denyFails && type === "vault.deny") throw new Error("the host is gone");

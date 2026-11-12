@@ -18,12 +18,17 @@ export interface VaultSecretsCore {
   pickFile(): Promise<{ text: string } | null>;
   /** A failure for the person to read. */
   fail(error: unknown): void;
+  /** Copies a text to the clipboard and tells the person; false when it failed. */
+  copyText(text: string): Promise<boolean>;
+  /** Empties the clipboard `ms` from now. */
+  clearClipboardIn(ms: number): void;
 }
 
 /**
  * The secrets of the vault (phase 16; #1596: a slice of the store): created, generated, imported
  * from a key file, edited and removed, and the encrypted `.fdvault` file that carries them between
- * machines. Values never come back from here, only metadata; an error never carries a value.
+ * machines. Values never come back from here, only metadata; an error never carries a value. `copy`
+ * reads one value and hands it only to the clipboard.
  */
 export class VaultSecretsSlice {
   constructor(private readonly core: VaultSecretsCore) {}
@@ -63,6 +68,14 @@ export class VaultSecretsSlice {
     const meta = this.core.vault.update(id, patch);
     this.core.secretsChanged();
     return meta;
+  }
+
+  /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
+  async copy(id: string, clearMs: number): Promise<boolean> {
+    const value = await this.core.vault.value(id);
+    if (value === null || !(await this.core.copyText(value))) return false;
+    this.core.clearClipboardIn(clearMs);
+    return true;
   }
 
   async remove(id: string): Promise<void> {

@@ -1,6 +1,6 @@
 import type { CommandResults, SessionStatus, SessionSummary } from "@flightdeck/protocol";
 import { z } from "zod";
-import { basename } from "@/shared/lib/index.ts";
+import { basename, readStored } from "@/shared/lib/index.ts";
 import { sessionKey } from "./session-key.ts";
 
 /** How a session finished: its turn ended well, ended in an error, or the session itself ended. */
@@ -87,11 +87,7 @@ const Stored = z.object({
 });
 
 export function loadFinished(storage: { getItem(key: string): string | null }): FinishedState {
-  try {
-    return Stored.parse(JSON.parse(storage.getItem(FINISHED_KEY) ?? "null"));
-  } catch {
-    return { list: [], lastLook: null };
-  }
+  return readStored(storage, FINISHED_KEY, Stored, { list: [], lastLook: null });
 }
 
 export function saveFinished(

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { type ProjectCard, ProjectCardTile } from "@/features/projects/index.ts";
+import { type ProjectCard, ProjectCardTile, useProjectCards } from "@/features/projects/index.ts";
 import {
   groupName,
   type HubRow,
@@ -8,7 +8,6 @@ import {
   hubRows,
   sessionLineText,
 } from "@/features/sessions/index.ts";
-import { useProjectCards } from "@/hooks/use-project-cards";
 import { CardGrid, Inline, Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";

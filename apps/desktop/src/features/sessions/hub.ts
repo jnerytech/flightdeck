@@ -7,7 +7,8 @@ import type {
   SessionPersona,
   SessionStatus,
 } from "@flightdeck/protocol";
-import { basename } from "@/shared/lib/index.ts";
+import { z } from "zod";
+import { basename, readStored } from "@/shared/lib/index.ts";
 import { type Key, type T, translator } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
 import { rowTitle } from "./hub-title.ts";
@@ -79,37 +80,36 @@ export const DEFAULT_HUB_FILTER: HubFilter = {
   showArchived: false,
 };
 
-const ORIGINS: readonly string[] = ["", "flightdeck", "terminal", "history", "background"];
-const STATES: readonly string[] = ["", "running", "needs_you", "idle", "ended", "failed"];
+/** The hub's kept filter, field by field: a field that is missing or unreadable falls back to its default. */
+const StoredFilter = z.object({
+  origin: z.enum(["", "flightdeck", "terminal", "history", "background"]).catch(""),
+  state: z.enum(["", "running", "needs_you", "idle", "ended", "failed"]).catch(""),
+  persona: z.string().catch(""),
+  pinnedOnly: z.boolean().catch(false),
+  showArchived: z.boolean().catch(false),
+  /** The host kept before #126 (an older version's value that takeHubHost has not read yet). */
+  host: z.string().catch(""),
+});
 
-/** The hub's kept filter as stored, or nothing when it is not a JSON object. */
-function storedFilter(storage: { getItem(key: string): string | null }): Record<string, unknown> {
-  try {
-    const stored: unknown = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}");
-    // A stored null, number or list is no filter.
-    return typeof stored === "object" && stored !== null && !Array.isArray(stored)
-      ? (stored as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
+type StoredHubFilter = z.infer<typeof StoredFilter>;
+
+const NO_FILTER: StoredHubFilter = {
+  origin: "",
+  state: "",
+  persona: "",
+  pinnedOnly: false,
+  showArchived: false,
+  host: "",
+};
+
+/** The hub's kept filter as stored: a stored null, number or list is no filter. */
+const storedFilter = (storage: { getItem(key: string): string | null }): StoredHubFilter =>
+  readStored(storage, HUB_FILTER_KEY, StoredFilter, NO_FILTER);
 
 /** The stored filters, field by field: anything unreadable falls back to its default. */
 export function loadHubFilter(storage: { getItem(key: string): string | null }): HubFilter {
-  const stored = storedFilter(storage);
-  const text = (key: string, allowed?: readonly string[]) => {
-    const value = stored[key];
-    return typeof value === "string" && (!allowed || allowed.includes(value)) ? value : "";
-  };
-  return {
-    text: "",
-    origin: text("origin", ORIGINS) as HubFilter["origin"],
-    state: text("state", STATES) as HubFilter["state"],
-    persona: text("persona"),
-    pinnedOnly: stored.pinnedOnly === true,
-    showArchived: stored.showArchived === true,
-  };
+  const { host: _legacy, ...stored } = storedFilter(storage);
+  return { ...stored, text: "" };
 }
 
 /** The host the hub kept in its own filter before #126, taken out of it: "" when there is none. */
@@ -117,16 +117,14 @@ export function takeHubHost(storage: {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }): string {
+  const { host, ...rest } = storedFilter(storage);
+  if (host === "") return "";
   try {
-    const stored = JSON.parse(storage.getItem(HUB_FILTER_KEY) ?? "{}") as Record<string, unknown>;
-    const { host, ...rest } = stored;
-    if (typeof host !== "string" || host === "") return "";
     storage.setItem(HUB_FILTER_KEY, JSON.stringify(rest));
-    return host;
   } catch {
-    // Not JSON, or a storage that refuses: nothing to take.
-    return "";
+    // A storage that refuses: the host is still the one to use.
   }
+  return host;
 }
 
 export function saveHubFilter(
@@ -135,9 +133,8 @@ export function saveHubFilter(
 ): void {
   const { text: _typed, ...kept } = filter;
   // A host kept by an older version that takeHubHost has not read yet stays for it (#886).
-  const legacy = storedFilter(storage).host;
-  const host = typeof legacy === "string" && legacy !== "" ? { host: legacy } : {};
-  storage.setItem(HUB_FILTER_KEY, JSON.stringify({ ...kept, ...host }));
+  const { host } = storedFilter(storage);
+  storage.setItem(HUB_FILTER_KEY, JSON.stringify({ ...kept, ...(host === "" ? {} : { host }) }));
 }
 
 /** How the hub draws its sessions: one line each, or one card each. */
@@ -589,21 +586,22 @@ export const HUB_ROW_CAP = 200;
 /** Where the open or folded state of each project is kept (issue #111). */
 export const HUB_OPEN_KEY = "flightdeck.hubOpen";
 
+/** What is kept by project: a project whose value is not a boolean is dropped, the others stay. */
+const StoredOpen = z
+  .record(z.string(), z.unknown())
+  .transform((all) =>
+    Object.fromEntries(
+      Object.entries(all).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
+      ),
+    ),
+  );
+
 /** The projects the person opened or folded last time, by project key; anything unreadable is none. */
 export function loadHubOpen(storage: {
   getItem(key: string): string | null;
 }): Record<string, boolean> {
-  try {
-    const stored = JSON.parse(storage.getItem(HUB_OPEN_KEY) ?? "{}") as unknown;
-    if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return {};
-    return Object.fromEntries(
-      Object.entries(stored).filter(
-        (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
-      ),
-    );
-  } catch {
-    return {};
-  }
+  return readStored(storage, HUB_OPEN_KEY, StoredOpen, {});
 }
 
 export function saveHubOpen(
