@@ -179,7 +179,7 @@ export async function hostInfo(server: ServerContext, origin: string) {
       ...when(opts.agentSetup?.tasks, "tasks"),
       ...when(opts.opencode?.info().available, "opencode"),
       ...when(opts.assistant, ASSISTANT_FEATURE),
-      ...when(opts.teleport || opts.teleportInbox, "teleport"),
+      ...when(opts.teleport?.packages || opts.teleport?.inbox, "teleport"),
       ...when(opts.autoUpdate, "autoUpdate"),
     ],
     ...present({
