@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hasChecklistItem } from "../src/board-contracts.ts";
+import { hasChecklistItem } from "../../src/board-contracts.ts";
 
 /**
  * Issue #363 (Sonar S8786): whether a card's description has a checklist item is read in one pass.

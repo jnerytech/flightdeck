@@ -84,6 +84,19 @@ describe("session stream slice", () => {
     expect(resyncs).toEqual(["h1/s1", "h1/s1"]);
   });
 
+  test("a connection drop forgets the asks that went with it, and only that host's", () => {
+    const { slice, resyncs } = stream({
+      "h1/s1": { ...emptySession(), lastSeq: 4 },
+      "h2/s1": { ...emptySession(), lastSeq: 4 },
+    });
+    slice.onEvent("h1", said(6));
+    slice.onEvent("h2", said(6));
+    slice.dropPartialText("h1");
+    slice.onEvent("h1", said(6));
+    slice.onEvent("h2", said(6));
+    expect(resyncs).toEqual(["h1/s1", "h2/s1", "h1/s1"]);
+  });
+
   test("a hole the host answered and could not fill is marked in the conversation", () => {
     const { slice, held } = stream(following(4));
     slice.onEvent("h1", said(6));

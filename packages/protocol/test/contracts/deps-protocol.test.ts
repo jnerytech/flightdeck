@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Card, Command, type CommandType } from "../src/index.ts";
+import { Card, Command, type CommandType } from "../../src/index.ts";
 
 /** A card as a daemon from before phase 31 sends it. */
 const OLD_CARD = {

@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type HubView, ViewToggle } from "@/features/sessions/index.ts";
 import type { Density } from "@/features/shell/index.ts";
-import { useMinLoading } from "@/hooks/use-min-loading";
 import { cn } from "@/lib/utils";
+import { useMinLoading } from "@/shared/hooks/index.ts";
 import {
   CardGrid,
   CheckField,

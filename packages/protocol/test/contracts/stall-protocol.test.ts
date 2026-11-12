@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SessionEvent, SessionSummary } from "../src/index.ts";
+import { SessionEvent, SessionSummary } from "../../src/index.ts";
 
 const summary = {
   id: "s1",

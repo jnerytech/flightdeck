@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { useInFlight } from "@/hooks/use-in-flight";
 import { useT } from "@/i18n/context";
+import { useInFlight } from "@/shared/hooks/index.ts";
 import { useFieldRow } from "@/shared/layout/field-row-context.ts";
 import { Spinner } from "./busy.tsx";
 

@@ -2,11 +2,11 @@ import type { Budget, BudgetInput, QuotaBudgetInput } from "@flightdeck/protocol
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { useBusy } from "@/shared/hooks/index.ts";
 import {
   Field,
   Form,

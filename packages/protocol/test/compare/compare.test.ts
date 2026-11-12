@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { byCodeUnit } from "../src/compare.ts";
+import { byCodeUnit } from "../../src/compare.ts";
 
 const MIXED = ["beta", "Alpha", "alpha", "Zulu", "_x", "10", "9", "é", "e", "Éa"];
 

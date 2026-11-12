@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { EventEnvelope, PlainInfo } from "../src/index.ts";
+import { EventEnvelope, PlainInfo } from "../../src/index.ts";
 import {
   type PlainQuestion,
   plainInfo,
@@ -7,7 +7,7 @@ import {
   type QuestionLanguage,
   type QuestionRequest,
   questionPolicy,
-} from "../src/question.ts";
+} from "../../src/question.ts";
 
 const ask = (request: QuestionRequest, language: QuestionLanguage = "en"): PlainQuestion =>
   plainQuestion(request, language);
