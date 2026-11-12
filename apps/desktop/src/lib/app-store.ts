@@ -105,10 +105,6 @@ import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import {
   initialMessagingState,
   type MessagingSlice,
-  type RelayDeps,
-  relayMessage,
-  relayUpdate,
-  syncPeers,
   wireMessaging,
 } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
@@ -171,6 +167,7 @@ import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.t
 import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
+import { TeamsSlice } from "../features/teams/store.ts";
 import {
   type TeleportOutcome,
   type TeleportRequest,
@@ -361,6 +358,8 @@ export class AppStore {
   readonly sessions: SessionsSlice;
   /** The messages between sessions: the loops a host paused (phase 21, #1596). */
   readonly messaging: MessagingSlice;
+  /** The teams of the hosts: their changes, told and notified (`features/teams/store.ts`). */
+  readonly teams: TeamsSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
   /** What each client with a month limit spent against it (phase 9, #1596). */
@@ -481,6 +480,19 @@ export class AppStore {
     });
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
+      // Phase 21: only an online host with messaging takes part in the relay.
+      relayHosts: () =>
+        this.state.hosts.map((h) => ({
+          id: h.id,
+          hostName: h.hostInfo?.hostName ?? "",
+          online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
+        })),
+      peersSyncMs: this.options.peersSyncMs,
+    });
+    this.teams = new TeamsSlice({
+      remember: (hostId, team) => this.summaries.rememberTeam(hostId, team),
+      notify: (notification, route) => this.inbox.notify(notification, route),
+      t: () => this.i18n.t,
     });
     this.settings = wireSettings(this.kernel, {
       platform,
@@ -1641,8 +1653,7 @@ export class AppStore {
   }
 
   dispose(): void {
-    if (this.peersTimer) clearInterval(this.peersTimer);
-    this.peersTimer = null;
+    this.messaging.dispose();
     if (this.awayTimer) clearInterval(this.awayTimer);
     this.awayTimer = null;
     this.link.dispose();
@@ -1707,17 +1718,10 @@ export class AppStore {
       this.keepUsage();
     },
     // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-    onTeams: (config, frame) => this.onTeams(config.id, frame),
+    onTeams: (config, frame) => this.teams.onFrame(config.id, frame),
     onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
     onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
-    onMessages: (config, frame) => {
-      if (frame.type === "messages.updated") {
-        for (const listener of this.messageListeners) listener(config.id, frame.message);
-      }
-      const deps = this.relayDeps();
-      if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
-      else void relayUpdate(deps, config.id, frame.message);
-    },
+    onMessages: (config, frame) => this.messaging.onFrame(config.id, frame),
     onVaultAlert: (_config, alert) => {
       const notice: Notice = {
         id: ++this.noticeSeq,
@@ -1779,7 +1783,7 @@ export class AppStore {
       gate: "messaging",
       run: ({ conn }) => {
         void conn.request("messages.watch", {}).catch(() => null);
-        this.startPeersSync();
+        this.messaging.startPeersSync();
       },
     },
     // Phase 19: the daemon decides a request with the rules the app hands it.
@@ -1825,20 +1829,6 @@ export class AppStore {
       // The cards that waited on the old connection leave the queue: the new one never saw them.
       // The deny may not reach the daemon; it ends the request at its own deadline.
       this.vaultApprovals.hostGone(hostId);
-    }
-  }
-
-  /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
-  private onTeams(hostId: string, frame: TeamsUpdatedFrame): void {
-    this.summaries.rememberTeam(hostId, frame.team);
-    for (const listener of this.teamListeners) listener(hostId, frame);
-    // #1220: the coordinator reported the goal done; the host sends it once per final report.
-    const body = frame.event === "report_done" ? this.i18n.t("teamsUi.reportDone") : frame.reason;
-    if (body) {
-      this.inbox.notify(
-        { title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }), body },
-        { name: "teams", host: hostId, team: frame.team.id },
-      );
     }
   }
 
@@ -1916,10 +1906,6 @@ export class AppStore {
     this.update({ vaultUsage: this.usage.list() });
   }
 
-  private peersTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
-  private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
-
   /**
    * Phase 30: posts a webhook through an online host that can (the URL goes there for this one use,
    * over the vault's transport). A request the host refuses counts as a permanent 400.
@@ -1976,39 +1962,12 @@ export class AppStore {
 
   /** Phase 21: told each time a team of a host changes. */
   onTeamsUpdated(listener: (hostId: string, frame: TeamsUpdatedFrame) => void): () => void {
-    this.teamListeners.add(listener);
-    return () => {
-      this.teamListeners.delete(listener);
-    };
+    return this.teams.onUpdated(listener);
   }
 
   /** Phase 21: told each time a message between sessions changes on a host. */
   onMessageUpdated(listener: (hostId: string, message: MessageInfo) => void): () => void {
-    this.messageListeners.add(listener);
-    return () => {
-      this.messageListeners.delete(listener);
-    };
-  }
-
-  /** Phase 21: the hosts as the relay sees them; only an online one with messaging takes part. */
-  private relayDeps(): RelayDeps {
-    return {
-      hosts: () =>
-        this.state.hosts.map((h) => ({
-          id: h.id,
-          hostName: h.hostInfo?.hostName ?? "",
-          online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
-        })),
-      call: (hostId, type, payload) =>
-        this.dispatch(hostId, type as HostCommandType, payload as never),
-    };
-  }
-
-  /** Keeps every daemon told of the other hosts' sessions, so a message can name them. */
-  private startPeersSync(): void {
-    const sync = () => void syncPeers(this.relayDeps()).catch(() => {});
-    sync();
-    this.peersTimer ??= setInterval(sync, this.options.peersSyncMs ?? 5000);
+    return this.messaging.onUpdated(listener);
   }
 
   private onRun(hostId: string, run: WorkflowRun): void {
