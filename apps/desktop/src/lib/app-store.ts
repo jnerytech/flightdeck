@@ -653,6 +653,13 @@ export class AppStore {
       },
       setName: (hostId, name) => this.updateHost(hostId, (h) => ({ ...h, name })),
       rememberToken: (token) => this.scan.rememberToken(token),
+      addRoot: (hostId, path) => this.hostCommand(hostId, "roots.add", { path, confirm: true }),
+      setAllowedRoots: (hostId, allowedRoots) => {
+        const conn = this.link.connection(hostId);
+        if (conn?.info) conn.info = { ...conn.info, allowedRoots };
+        this.updateHost(hostId, (h) => (h.info ? { ...h, info: { ...h.info, allowedRoots } } : h));
+      },
+      success: (text) => this.success(text),
       t: () => this.i18n.t,
     });
     this.inbox = wireInbox(this.kernel, {
@@ -1585,19 +1592,9 @@ export class AppStore {
     });
   }
 
-  /** Adds a folder to a host's allowed folders; `retry` runs once the host has accepted it. */
-  async allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
-    const result = await this.hostCommand(hostId, "roots.add", { path: folder, confirm: true });
-    if (!result) return false;
-    const conn = this.link.connection(hostId);
-    if (conn?.info) conn.info = { ...conn.info, allowedRoots: result.allowedRoots };
-    this.updateHost(hostId, (h) =>
-      h.info ? { ...h, info: { ...h.info, allowedRoots: result.allowedRoots } } : h,
-    );
-    const host = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
-    this.success(this.i18n.t("toast.rootAdded", { folder, host }));
-    retry?.();
-    return true;
+  /** Adds a folder to a host's allowed folders; the roster does the work. */
+  allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
+    return this.roster.allowRoot(hostId, folder, retry);
   }
 
   /** A toast closed (or shown, for successes): it leaves the list. */
