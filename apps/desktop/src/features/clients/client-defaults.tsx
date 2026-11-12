@@ -5,9 +5,9 @@ import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { generatedScopeRules, vaultFindings } from "../../lib/client-vault.ts";
-import type { Client } from "../../lib/clients.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { generatedScopeRules, vaultFindings } from "./client-vault.ts";
+import type { Client } from "./clients.ts";
 
 /**
  * What a client pre-fills: the persona its sessions open in, the tag its snippets carry, and the

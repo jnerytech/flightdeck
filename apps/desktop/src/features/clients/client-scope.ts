@@ -1,6 +1,6 @@
 import { byCodeUnit } from "@flightdeck/protocol";
 import { isInside } from "@/shared/lib/index.ts";
-import { type KnownProject, resolveClient, ruleMatches } from "./client-rules.ts";
+import { type KnownProject, resolveClient, ruleMatches } from "./client-rules-model.ts";
 import {
   type Client,
   type ClientColor,

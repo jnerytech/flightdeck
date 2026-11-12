@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** Where the clients are kept (phase 29). */
 export const CLIENTS_KEY = "flightdeck.clients";

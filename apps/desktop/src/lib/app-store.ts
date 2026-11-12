@@ -50,7 +50,14 @@ import {
   wireBackup,
 } from "../features/backup/index.ts";
 import { BoardWidth } from "../features/board/index.ts";
-import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
+import {
+  type ClientScopeSlice,
+  Clients,
+  knownProjects,
+  loadSelection,
+  UNASSIGNED,
+  wireClientScope,
+} from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
   type ClientBudgetsSlice,
@@ -197,9 +204,6 @@ import type {
   SidebarSession,
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
-import { knownProjects } from "./client-rules.ts";
-import { loadSelection } from "./client-scope.ts";
-import { Clients, UNASSIGNED } from "./clients.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";

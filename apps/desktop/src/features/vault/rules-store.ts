@@ -1,14 +1,14 @@
 import type { CommandPayload, CommandResults, RuleIssue, VaultVerdict } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import type { T } from "../../i18n/index.ts";
 import {
+  type Client,
   effectiveRules,
   isGeneratedRule,
   SCOPE_RULE_PREFIX,
   scopingClient,
   stripGenerated,
-} from "../../lib/client-vault.ts";
-import type { Client } from "../../lib/clients.ts";
+} from "@/features/clients/index.ts";
+import type { T } from "../../i18n/index.ts";
 import type { SecretMeta } from "./vault.ts";
 import type { VaultRules } from "./vault-rules.ts";
 

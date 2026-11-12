@@ -14,11 +14,11 @@ import { type HubRowState, hubRows } from "@/features/sessions/index.ts";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { Inline } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, PendingItem } from "../../lib/app-store.ts";
-import { ALL_CLIENTS } from "../../lib/client-scope.ts";
-import { switcherCounts } from "../../lib/client-switcher.ts";
-import { UNASSIGNED } from "../../lib/clients.ts";
 import type { Route } from "../../lib/router.ts";
 import { ClientDot } from "./client-dot";
+import { ALL_CLIENTS } from "./client-scope.ts";
+import { switcherCounts } from "./client-switcher-model.ts";
+import { UNASSIGNED } from "./clients.ts";
 
 const Count = ({ n }: Readonly<{ n: number }>) =>
   n > 0 ? <span className="ml-auto text-muted-foreground text-xs tabular-nums">{n}</span> : null;

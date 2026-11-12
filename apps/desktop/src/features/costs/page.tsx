@@ -3,6 +3,7 @@ import { Coins } from "lucide-react";
 import { memo, useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ALL_CLIENTS, costByClient, loadCostsSummary } from "@/features/clients/index.ts";
 import { RoiPeople } from "@/features/roi/roi-people.tsx";
 import { RoiSettingsPanel } from "@/features/roi/roi-settings-panel.tsx";
 import { RoiTable } from "@/features/roi/roi-table.tsx";
@@ -25,8 +26,6 @@ import {
 import { basename } from "@/shared/lib/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
-import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
 import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "./costs.ts";

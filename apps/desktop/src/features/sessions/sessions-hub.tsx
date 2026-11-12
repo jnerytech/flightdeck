@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
+import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
 import { HostsBanner } from "@/features/hosts/index.ts";
 import { WorktreeChip } from "@/features/projects/index.ts";
 import type { Density } from "@/features/shell/index.ts";
@@ -25,8 +26,6 @@ import { CardGrid, EmptyState, NativeSelect, Page, Toolbar } from "@/shared/layo
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { ALL_CLIENTS } from "../../lib/client-scope.ts";
-import { UNASSIGNED } from "../../lib/clients.ts";
 import { typing } from "../../lib/keys.ts";
 import { activeWorktreeFilter } from "../../lib/project-tree.ts";
 import { hasFeature } from "../../lib/version.ts";
