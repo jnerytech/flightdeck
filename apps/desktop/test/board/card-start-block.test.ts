@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cardStartBlock } from "../../src/lib/card-start-block.ts";
+import { cardStartBlock } from "../../src/features/board/card-start-block.ts";
 
 const card = (over: { queued?: boolean; sessionStatus?: string | null }) =>
   ({ queued: false, sessionStatus: null, ...over }) as never;

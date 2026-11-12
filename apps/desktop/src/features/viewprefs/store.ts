@@ -23,7 +23,7 @@ import {
   saveTreePinned,
 } from "@/features/shell/index.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "@/shared/lib/index.ts";
-import { loadLastBoards, saveLastBoard } from "../../lib/board-shortcut.ts";
+import { loadLastBoards, saveLastBoard } from "../board/index.ts";
 
 /** Where the Activity board keeps whether it shows its Idle column. */
 const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";

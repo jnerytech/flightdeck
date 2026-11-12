@@ -8,9 +8,9 @@ import {
   offeredHosts,
   startElsewhere,
 } from "@/features/sessions/index.ts";
+import { cardStartBlock } from "../features/board/index.ts";
 import type { T } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { cardStartBlock } from "../lib/card-start-block.ts";
 
 /** What another host said when the Start N confirm opened: its projects and its limit. */
 interface Listed {

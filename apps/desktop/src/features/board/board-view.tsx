@@ -80,6 +80,11 @@ import { StatusDot } from "@/shared/status/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";
+import { radarBadge } from "../../lib/conflict-radar.ts";
+import { issueNumber } from "../../lib/issues.ts";
+import { activeWorktreeFilter, worktreeOfProject } from "../../lib/project-tree.ts";
+import { ExternalSeal, IssuesPanel } from "../issues/index.ts";
+import { quietAlerts } from "../needs-you/index.ts";
 import {
   bulkRunOutcome,
   bulkSkipReason,
@@ -94,11 +99,11 @@ import {
   startQuotaLines,
   updateMany,
   updateSummary,
-} from "../../lib/board-bulk.ts";
-import { cardKey } from "../../lib/board-card-keys.ts";
-import { askAbout, dragNeeds, type Lacking, missingFor } from "../../lib/board-contracts.ts";
-import { boardFiles, filesPanelOpen } from "../../lib/board-files.ts";
-import type { BoardKeyAction } from "../../lib/board-keys.ts";
+} from "./board-bulk.ts";
+import { cardKey } from "./board-card-keys.ts";
+import { askAbout, dragNeeds, type Lacking, missingFor } from "./board-contracts.ts";
+import { boardFiles, filesPanelOpen } from "./board-files.ts";
+import type { BoardKeyAction } from "./board-keys.ts";
 import {
   type BulkRefusal,
   COLUMN_GAP,
@@ -112,14 +117,9 @@ import {
   rangeSelection,
   shownSelection,
   toggleSelection,
-} from "../../lib/board-select.ts";
-import { cardStartBlock } from "../../lib/card-start-block.ts";
-import { radarBadge } from "../../lib/conflict-radar.ts";
-import { issueNumber } from "../../lib/issues.ts";
-import { activeWorktreeFilter, worktreeOfProject } from "../../lib/project-tree.ts";
-import { ExternalSeal, IssuesPanel } from "../issues/index.ts";
-import { quietAlerts } from "../needs-you/index.ts";
+} from "./board-select.ts";
 import { BulkRunDialog } from "./bulk-run-dialog.tsx";
+import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";

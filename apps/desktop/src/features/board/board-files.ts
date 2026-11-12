@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
-import type { WorktreeFilter } from "./project-tree.ts";
-import { hasFeature } from "./version.ts";
+import type { WorktreeFilter } from "../../lib/project-tree.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 /**
  * What the board's files panel shows (#117): the tree of the checkout the sidebar picked. A
