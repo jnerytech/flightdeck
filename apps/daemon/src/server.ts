@@ -171,6 +171,16 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** The allowed folders' services around `allowedRoots` (#1593). */
+interface RootsServer {
+  /** Keeps the allowed folders in the config file after `roots.add`. */
+  persist?: (roots: readonly string[]) => void | Promise<void>;
+  /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
+  platform?: PlatformInfo;
+  /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
+  picker?: boolean;
+}
+
 /** #1593: the host's projects, each service optional. */
 interface ProjectsServer {
   /** Looks up the project of a folder before a session is created in it (without blocking). */
@@ -398,12 +408,8 @@ export interface ServerOptions {
   alerts?: (cwd: string) => Promise<AlertList>;
   /** Issue #76: the project's library of documents; each part is announced by `host.info` on its own. */
   knowledge?: KnowledgeServer;
-  /** Keeps the allowed folders in the config file after `roots.add`. */
-  persistRoots?: (roots: readonly string[]) => void | Promise<void>;
-  /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
-  rootsPlatform?: PlatformInfo;
-  /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
-  fsDirs?: boolean;
+  /** The allowed folders' services: keeping them, the system folders refused, the picker (#1593). */
+  roots?: RootsServer;
   /** The host's self-check and its dependencies (#1593); each service absent is refused and not announced. */
   hostChecks?: HostChecksServer;
   /**

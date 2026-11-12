@@ -40,7 +40,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
-    ...when(opts.fsDirs, "fs.dirs", "fs.files"),
+    ...when(opts.roots?.picker, "fs.dirs", "fs.files"),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
     ...when(opts.sessionSettings?.commands, "session.settings", "session.effort"),
     // A message may carry images (`session.send` with `images`).

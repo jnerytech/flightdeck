@@ -22,8 +22,10 @@ async function serve(extra: object = {}) {
     port: 0,
     token: TOKEN,
     allowedRoots: roots,
-    persistRoots: (list) => void saved.push([...list]),
-    rootsPlatform: testRootsPlatform(),
+    roots: {
+      persist: (list) => void saved.push([...list]),
+      platform: testRootsPlatform(),
+    },
     ...extra,
   });
   cleanups.push(() => server.stop());
@@ -119,7 +121,9 @@ describe("roots.add", () => {
     expect((await plain.client.request("roots.add", { path: secret, confirm: true })).ok).toBe(
       true,
     );
-    const given = await serve({ rootsPlatform: { platform: process.platform, env: {}, home } });
+    const given = await serve({
+      roots: { platform: { platform: process.platform, env: {}, home } },
+    });
     const ack = await given.client.request("roots.add", { path: secret, confirm: true });
     expect(refusal(ack).reason).toBe("root_system");
   });

@@ -531,7 +531,7 @@ export function daemon(
       ...(pingIntervalMs ? { pingIntervalMs } : {}),
       ...(features ? { features } : {}),
       // The folder picker is on, like in the real daemon.
-      fsDirs: true,
+      roots: { picker: true, platform: testRootsPlatform() },
       ...(options.teleport
         ? {
             teleport: {
@@ -572,7 +572,6 @@ export function daemon(
               activitySince({ db: store.db }, since, limit),
           }
         : {}),
-      rootsPlatform: testRootsPlatform(),
       ...(options.opencode
         ? {
             opencode: {
