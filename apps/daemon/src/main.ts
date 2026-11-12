@@ -92,7 +92,7 @@ import { readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
-import { createWorktrees } from "./worktrees/wiring.ts";
+import { createWorktreesModule } from "./worktrees/wiring.ts";
 import { createWsl, type WslItem } from "./wsl/index.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
@@ -572,6 +572,16 @@ export async function startDaemon(
       ...present({ proc: options.resourcesProc }),
     }),
   );
+  await domains.add(
+    createWorktreesModule({
+      board,
+      sessions: manager,
+      runs,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -631,14 +641,6 @@ export async function startDaemon(
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
-    worktrees: createWorktrees({
-      board,
-      sessions: manager,
-      runs,
-      terminals,
-      externals: central.external,
-      locks: folderLocks,
-    }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
