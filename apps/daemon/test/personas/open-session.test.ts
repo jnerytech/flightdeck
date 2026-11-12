@@ -290,7 +290,7 @@ describe("personas-sessao-aberta: pelo protocolo", () => {
   async function connect(s: Awaited<ReturnType<typeof setup>> | null, root: string) {
     const server = startServer({
       manager: s?.manager ?? newManager().manager,
-      ...(s ? { personaSessions: s.switcher } : {}),
+      ...(s ? { personas: { sessions: s.switcher } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

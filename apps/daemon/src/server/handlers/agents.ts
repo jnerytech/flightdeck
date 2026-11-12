@@ -176,21 +176,21 @@ export const agentsHandlers = {
     return { ...preview, ...done };
   },
   "personas.list": async (payload, { server }) => {
-    return await server.need("personas").list(payload);
+    return await server.needIn("personas", "store").list(payload);
   },
   "personas.save": async (payload, { server }) => {
-    return await server.need("personas").save(payload);
+    return await server.needIn("personas", "store").save(payload);
   },
   "personas.subagents": async (payload, { server }) => {
     const { projectPath, language } = payload;
-    return await server.need("personas").subagents({ projectPath, language });
+    return await server.needIn("personas", "store").subagents({ projectPath, language });
   },
   "personas.publishAgent": async (payload, { server }) => {
-    return await server.need("personas").publishAgent(payload);
+    return await server.needIn("personas", "store").publishAgent(payload);
   },
   "personas.resolve": async (payload, { server }) => {
     const { ref, projectPath } = payload;
-    const store = server.need("personas");
+    const store = server.needIn("personas", "store");
     try {
       return await store.resolve(ref, { projectPath, language: ref.language });
     } catch (error) {
@@ -202,13 +202,15 @@ export const agentsHandlers = {
     }
   },
   "personas.reset": (payload, { server }) => {
-    return server.need("personas").reset(payload.id, { language: payload.language });
+    return server.needIn("personas", "store").reset(payload.id, { language: payload.language });
   },
   "personas.remove": async (payload, { server }) => {
-    await server.need("personas").remove(payload.scope, payload.id, payload.projectPath);
+    await server.needIn("personas", "store").remove(payload.scope, payload.id, payload.projectPath);
   },
   "personas.trust": async (payload, { server }) => {
-    return await server.need("personas").trust(payload.projectPath, payload.id, payload.hash);
+    return await server
+      .needIn("personas", "store")
+      .trust(payload.projectPath, payload.id, payload.hash);
   },
   "snippets.render": async (payload, { server }) => {
     return await server.needIn("snippets", "use").render(payload);

@@ -171,6 +171,14 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Phase 20, #1593: the personas' part of the server, each service optional. */
+interface PersonasServer {
+  /** The personas behind `personas.*`. */
+  store?: Personas;
+  /** Applying a persona to an open session, behind `session.applyPersona` and `session.clearPersona`. */
+  sessions?: OpenSessionPersonas;
+}
+
 /** Issue #100, #1593: the teleport's part of the server, each service optional. */
 interface TeleportServer {
   /** The packages of the sessions this host teleports to another. */
@@ -476,10 +484,8 @@ export interface ServerOptions {
   log?: (message: string) => void;
   /** The snippets and what the server offers of them (phase 18, #1593). */
   snippets?: SnippetsServer;
-  /** The personas behind `personas.*` (phase 20). */
-  personas?: Personas;
-  /** Applying a persona to an open session, behind `session.applyPersona` and `session.clearPersona` (phase 20). */
-  personaSessions?: OpenSessionPersonas;
+  /** The personas and applying one to an open session (phase 20, #1593). */
+  personas?: PersonasServer;
   /** The review of sessions and cards and their files (phase 11, #1593). */
   review?: ReviewServer;
   /** The host's terminals behind `terminal.*` (phase 14). */

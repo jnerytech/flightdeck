@@ -56,7 +56,7 @@ async function terminalHost(dataParts: string[]) {
   });
   const server = startServer({
     manager: newManager().manager,
-    personas,
+    personas: { store: personas },
     knowledge: { feed: async () => INDEX },
     hostName: "h",
     bind: "127.0.0.1",

@@ -276,7 +276,7 @@ describe("personas-integracoes: na central", () => {
     mkdirSync(dataDir, { recursive: true });
     const server = startServer({
       manager: newManager().manager,
-      personas,
+      personas: { store: personas },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

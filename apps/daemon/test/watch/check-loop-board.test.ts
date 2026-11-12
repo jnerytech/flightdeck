@@ -295,7 +295,7 @@ describe("check-loop: the person's input over the protocol", () => {
     const server = startServer({
       manager: ctx.manager,
       board: ctx.board,
-      personaSessions: { apply: async () => ({}), clear: async () => ({}) } as never,
+      personas: { sessions: { apply: async () => ({}), clear: async () => ({}) } as never },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

@@ -136,7 +136,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Phase 18: saved commands and prompts of the host and its projects.
     ...when(opts.snippets?.library, "snippets"),
     // Phase 20: the engineering personas of the host and its projects.
-    ...when(opts.personas, "personas"),
+    ...when(opts.personas?.store, "personas"),
     // Phase 21: messages between sessions, teams and the standard session names.
     ...when(opts.messaging?.messages, "messaging"),
     // Issue #93: `teams.create` and `addMember` take a permission mode per member.

@@ -27,8 +27,6 @@ export const GATES = {
   resources: "resources",
   worktrees: "worktrees",
   names: "names",
-  personaSessions: "personaSessions",
-  personas: "personas",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   releases: "releases",
@@ -131,6 +129,11 @@ export const GROUP_GATES = {
     packages: "teleport",
     inbox: "teleport",
     imports: "teleport",
+  },
+  // The personas and applying one to an open session keep their flat names.
+  personas: {
+    store: "personas",
+    sessions: "personaSessions",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<

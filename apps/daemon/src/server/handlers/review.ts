@@ -69,7 +69,7 @@ export const reviewHandlers = {
         "session_maybe_active",
       );
     }
-    const { agents } = await preparePersonas(server.opts.personas, undefined, session.cwd);
+    const { agents } = await preparePersonas(server.opts.personas?.store, undefined, session.cwd);
     return await server.manager.createResumed({
       cwd: session.cwd,
       claudeSessionId,
