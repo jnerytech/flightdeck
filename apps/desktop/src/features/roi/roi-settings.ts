@@ -130,7 +130,7 @@ function parse(raw: unknown): RoiSettingsData | null {
 const Whole = z.unknown().transform((raw, ctx) => {
   const data = parse(raw);
   if (data) return data;
-  ctx.addIssue({ code: "custom", message: "not ROI settings" });
+  ctx.addIssue({ code: "custom" });
   return z.NEVER;
 });
 
