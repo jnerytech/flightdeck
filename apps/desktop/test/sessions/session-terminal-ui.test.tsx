@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { ExternalSession } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "../dom.ts";
 import { interceptWire } from "../fake-host.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
@@ -38,7 +37,6 @@ async function onSessionPage(terminals: true | "off" = true) {
     maxDelayMs: 20,
   });
   cleanups.push(() => store.dispose());
-  store.health.check = async () => {};
   render(<App store={store} />);
   const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
@@ -293,22 +291,16 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
   });
 
   test("a host that does not announce shells for sessions has no Terminal view", async () => {
-    const { store } = await onSessionPage();
+    const { store, hostId } = await onSessionPage();
     await settle(() => tab("Terminal") !== null);
-    const host = store.getState().hosts[0];
-    await act(async () => {
-      (store as unknown as { update(patch: object): void }).update({
-        hosts: [
-          {
-            ...host,
-            hostInfo: {
-              ...host?.hostInfo,
-              features: (host?.hostInfo?.features ?? []).filter((f) => f !== "terminal.session"),
-            },
-          },
-        ],
-      });
+    // The host's info, as an older daemon answers it: the terminal is on, but no shell for sessions.
+    interceptWire(store, hostId, async (type, _payload, next) => {
+      const info = (await next()) as { features: string[] };
+      return type === "host.info"
+        ? { ...info, features: info.features.filter((f) => f !== "terminal.session") }
+        : info;
     });
+    await act(async () => store.reloadHostInfo(hostId));
     await settle(() => tab("Terminal") === null);
     expect(tab("Conversa")).not.toBeNull();
   });
@@ -320,7 +312,6 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
       maxDelayMs: 20,
     });
     cleanups.push(() => store.dispose());
-    store.health.check = async () => {};
     render(<App store={store} />);
     const hostId = await act(() =>
       store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }),
@@ -328,24 +319,15 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     await settle(() => store.getState().hosts[0]?.hostInfo != null);
     await store.terminals.openClaude(hostId, { cwd: d.root, claudeSessionId: null });
     const [started] = await store.terminals.host(hostId).list();
-    const external: ExternalSession = {
-      claudeSessionId: "claude-1",
+    expect(started?.launchId).toBeTruthy();
+    // The host's hook reports the Claude session of that launch; the app learns it from the host.
+    d.central.external.apply("SessionStart", {
+      session_id: "claude-1",
       cwd: "/repo",
-      transcriptPath: null,
-      source: null,
-      status: "idle",
-      statusReason: null,
-      launchId: started?.launchId ?? null,
-      controllable: true,
-      projectKey: null,
-      startedAt: "2026-10-30T12:00:00Z",
-      lastEventAt: "2026-10-30T12:00:00Z",
-      endedAt: null,
-    };
+      launch_id: started?.launchId,
+    });
     await act(async () => {
-      (store as unknown as { update(patch: object): void }).update({
-        externals: { [`${hostId}/claude-1`]: external },
-      });
+      await store.refreshHub();
       store.router.push({ name: "external", host: hostId, claudeSessionId: "claude-1" });
     });
     await settle(() => tab("Terminal") !== null);
