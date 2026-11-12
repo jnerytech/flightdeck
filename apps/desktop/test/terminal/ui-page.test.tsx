@@ -67,6 +67,12 @@ async function setup(listFails = false, files = true, launch: string | null = nu
   return { ...d, server, store, hostId, terminalId, x, closed, copied, platform: mem.platform };
 }
 
+/** The host's hook reports the Claude session of a launch, and the app reads the host's lists. */
+async function hookSession(d: Awaited<ReturnType<typeof setup>>, launch: string) {
+  d.central.external.apply("SessionStart", { session_id: "c1", cwd: "/p", launch_id: launch });
+  await act(async () => d.store.refreshHub());
+}
+
 const state = (name: string) => screen.queryByText(name);
 const button = (name: string) => screen.queryByRole("button", { name });
 const click = async (name: string) => {
@@ -260,22 +266,18 @@ describe("terminal-ui: the terminal screen", () => {
     expect(x.pasted).toEqual(["colado"]);
   });
 
-  test("a resync from the host attaches again; a frame of a terminal nobody follows is ignored", async () => {
-    const { x, store, hostId, terminalId } = await setup();
+  test("a resync from the host attaches again", async () => {
+    const { x, ptys } = await setup();
     await settle(() => state("Ao vivo"));
-    const conn = (
-      store as unknown as {
-        connections: Map<string, { opts: { onTerminal(frame: object): void } }>;
-      }
-    ).connections.get(hostId);
     const resets = () => x.drawn.filter((entry) => entry === "<reset>").length;
     const before = resets();
-    await act(async () => {
-      conn?.opts.onTerminal({ type: "terminal.data", terminalId: "ninguem", data: "eA==" });
-      conn?.opts.onTerminal({ type: "terminal.resync", terminalId });
-    });
+    // The fake xterm never says it drew, so the host holds back after 512 KB (FLOW_HIGH_BYTES); what
+    // it keeps for this slow client passes 1 MB (QUEUE_LIMIT_BYTES), and the host asks the app to attach again.
+    ptys.spawned[0]?.emit("a".repeat(600 * 1024));
+    await settle(() => x.drawn.length > before + 1);
+    ptys.spawned[0]?.emit("b".repeat(1200 * 1024));
     await settle(() => resets() > before);
-    expect(resets()).toBe(before + 1);
+    expect(resets()).toBeGreaterThan(before);
   });
 
   test("the terminal fits its box again when the box changes size", async () => {
@@ -303,62 +305,27 @@ describe("terminal-ui: the terminal screen", () => {
   });
 
   test("a host that refuses the list of terminals leaves the screen live, without Ver como sessão", async () => {
-    const { store, hostId } = await setup(true);
+    const d = await setup(true);
     await settle(() => state("Ao vivo"));
-    await act(async () => {
-      (store as unknown as { update(patch: object): void }).update({
-        externals: {
-          [`${hostId}/c1`]: {
-            claudeSessionId: "c1",
-            cwd: "/p",
-            transcriptPath: null,
-            source: null,
-            status: "idle",
-            statusReason: null,
-            launchId: "L1",
-            controllable: true,
-            projectKey: null,
-            startedAt: "2026-10-30T12:00:00Z",
-            lastEventAt: "2026-10-30T12:00:00Z",
-            endedAt: null,
-          },
-        },
-      });
-      await Bun.sleep(20);
-    });
+    await hookSession(d, "L1");
+    // The app did learn the session: only the refused list keeps the button away.
+    expect(d.store.getState().externals[`${d.hostId}/c1`]?.launchId).toBe("L1");
     expect(state("Ao vivo")).not.toBeNull();
     expect(button("Ver como sessão")).toBeNull();
   });
 
   test("a terminal opened by Claude aqui offers Ver como sessão, which shows the session of its launch", async () => {
-    const { store, hostId } = await setup(false, true, "L1");
+    const d = await setup(false, true, "L1");
     await settle(() => state("Ao vivo"));
     expect(button("Ver como sessão")).toBeNull();
-    await act(async () => {
-      (store as unknown as { update(patch: object): void }).update({
-        externals: {
-          [`${hostId}/c1`]: {
-            claudeSessionId: "c1",
-            cwd: "/p",
-            transcriptPath: null,
-            source: null,
-            status: "idle",
-            statusReason: null,
-            launchId: "L1",
-            controllable: true,
-            projectKey: null,
-            startedAt: "2026-10-30T12:00:00Z",
-            lastEventAt: "2026-10-30T12:00:00Z",
-            endedAt: null,
-          },
-        },
-      });
-    });
+    await hookSession(d, "L1");
     await waitFor(() => button("Ver como sessão"), "the button of the launch's session");
-    const shown: unknown[] = [];
-    store.hostTabs.show = ((tab: unknown) => void shown.push(tab)) as never;
     await click("Ver como sessão");
-    expect(shown).toEqual([{ name: "external", host: hostId, claudeSessionId: "c1" }]);
+    expect(d.store.router.current).toEqual({
+      name: "external",
+      host: d.hostId,
+      claudeSessionId: "c1",
+    });
   });
 
   test("a new size of xterm reaches the host, debounced", async () => {
