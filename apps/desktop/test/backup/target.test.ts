@@ -4,7 +4,7 @@ import {
   type BackupTarget,
   folderTarget,
   keepNewest,
-} from "../../src/lib/backup-target.ts";
+} from "../../src/features/backup/backup-target.ts";
 
 /**
  * Issue #1444: a backup target puts, lists, gets and removes backups by name. The folder of #1264

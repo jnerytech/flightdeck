@@ -1,5 +1,5 @@
 import { inSequence } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 /** Issue #1444: where a backup goes. The folder of #1264 and Google Drive both implement it. */
 export interface BackupTarget {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DriveError } from "../src/lib/drive-target.ts";
+import { DriveError } from "../src/features/backup/drive-target.ts";
 import { googleSignIn, REFRESH_TOKEN_ID } from "../src/lib/google-oauth.ts";
 import { fakeOAuth } from "./fake-google.ts";
 

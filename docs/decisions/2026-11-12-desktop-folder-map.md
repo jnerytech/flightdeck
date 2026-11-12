@@ -101,7 +101,7 @@ prefix. Tests move with their file in the same PR.
 | `approval.ts`, `ask-question.ts`, `vault-approval.ts` | `features/permissions/` (`vault-approval.ts` went to `features/vault/` instead: it implements the vault's `VaultPolicy` and `features/vault` calls it, so keeping it in `permissions` made a cycle between the two domains; `permissions/store.ts` takes the `VaultAnswer` type from the vault index) |
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` (**moved**) |
 | `automations.ts`, `check-loop.ts` | `features/automations/` |
-| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` |
+| `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` (**moved**: `backup-bundle`, `backup-error`, `backup-schedule`, `backup-scheduler`, `backup-target`, `drive-target`; the index adds `BackupError` and `BackupScheduler`, and `backup-bundle` stays out of it, a lazy chunk. `google-config` and `google-oauth` handle tokens: they stay in `lib/` for their own slice with the security review) |
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
@@ -132,7 +132,7 @@ prefix. Tests move with their file in the same PR.
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |
 | `trace.ts` | `features/trace/`: **moved** |
 | `tray.ts` | `features/tray/`: **moved** |
-| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `lib/backup-bundle.ts`, a lazy chunk, imports it from the file) |
+| `vault*.ts` | `features/vault/` (**moved**, `vault-approval.ts` included; `vault-backup.ts` stays out of the index because it imports `age`, and `features/backup/backup-bundle.ts`, a lazy chunk, imports it from the file) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/` |
