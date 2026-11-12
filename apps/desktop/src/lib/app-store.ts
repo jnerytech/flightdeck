@@ -1929,7 +1929,7 @@ export class AppStore {
   /** What the app's log and the screens must never show: the hosts' tokens and the vault's values. */
   readonly scan: VaultScanSlice;
   /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
-  private readonly system: SystemSlice;
+  readonly system: SystemSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
