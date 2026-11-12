@@ -2,7 +2,7 @@ import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { COVERAGE_GATE } from "./coverage-check.ts";
 import { coverageTargets, loadedTargets } from "./related-coverage.ts";
-import { SLOT_TEST_FILES } from "./slot.ts";
+import { SLOT_TEST_FILES } from "./slot/index.ts";
 import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
