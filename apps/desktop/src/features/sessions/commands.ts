@@ -24,6 +24,7 @@ export interface SessionCommandsCore {
   sleep(hostId: string, sessionId: string): Promise<CommandResults["session.sleep"] | null>;
   /** Shows a success notice. */
   success(text: string): void;
+  /** The current translator, read at each call so a language change reaches the notice. */
   t(): T;
 }
 
@@ -31,7 +32,7 @@ export interface SessionCommandsCore {
  * What a person asks of a session (#1596: a slice of the store): make one, send it a message,
  * interrupt it, change its mode, model or effort, close it, resume it. Each command goes to the
  * host of the open session, except `sendTo`, `interruptOn` and `sleep`, which name the session; a refusal
- * reaches the person through `fail`, never as a throw.
+ * reaches the person through `fail` (a `sleep` refusal goes to the banner through the core), never as a throw.
  */
 export class SessionCommandsSlice {
   constructor(private readonly core: SessionCommandsCore) {}

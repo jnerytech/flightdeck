@@ -58,10 +58,13 @@ import { UsageLedger } from "./quota/usage.ts";
 import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
-import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
+import {
+  createMemoryGate,
+  createResourcesModule,
+  type MemoryGateDeps,
+} from "./resources/wiring.ts";
 import { createReview } from "./review/wiring.ts";
-import { RoiSignals } from "./roi/signals.ts";
-import { RoiSummarizer } from "./roi/summary.ts";
+import { createRoi } from "./roi/wiring.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
@@ -89,7 +92,7 @@ import { readWatchSettings } from "./watch/watch.ts";
 import { createWebhook } from "./webhook/wiring.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
-import { createWorktrees } from "./worktrees/wiring.ts";
+import { createWorktreesModule } from "./worktrees/wiring.ts";
 import { createWsl, type WslItem } from "./wsl/index.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
@@ -423,6 +426,7 @@ export async function startDaemon(
   );
   await domains.add(createSummary({ db: store.db, scanner: snippetScanner }));
   await domains.add(createWebhook({ log: logger.log.bind(logger) }));
+  await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   const central = new Central({
     risk,
     autoApprove,
@@ -567,6 +571,26 @@ export async function startDaemon(
       options,
     }),
   );
+  await domains.add(
+    await createResourcesModule({
+      dataDir: config.dataDir,
+      sessions: manager.list.bind(manager),
+      // With the terminal off there are none to list, and the read must not fail on it (#937).
+      terminals: () => (terminals.enabled ? terminals.list() : []),
+      pidOf: terminals.pidOf.bind(terminals),
+      ...present({ proc: options.resourcesProc }),
+    }),
+  );
+  await domains.add(
+    createWorktreesModule({
+      board,
+      sessions: manager,
+      runs,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -587,11 +611,6 @@ export async function startDaemon(
     // Issue #1344: "While you were away": what happened since a time, from what is stored.
     activity: (since, limit) =>
       activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
-    roi: new RoiSummarizer({
-      db: store.db,
-      keyOf: (path) => keys.known(path),
-      signals: new RoiSignals(),
-    }),
     github: createGithub({ config, board, issues, manager }),
     serviceInstall: appServiceInstall(
       args.config ?? null,
@@ -620,22 +639,6 @@ export async function startDaemon(
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
-    resources: await createResources({
-      dataDir: config.dataDir,
-      sessions: manager.list.bind(manager),
-      // With the terminal off there are none to list, and the read must not fail on it (#937).
-      terminals: () => (terminals.enabled ? terminals.list() : []),
-      pidOf: terminals.pidOf.bind(terminals),
-      ...present({ proc: options.resourcesProc }),
-    }),
-    worktrees: createWorktrees({
-      board,
-      sessions: manager,
-      runs,
-      terminals,
-      externals: central.external,
-      locks: folderLocks,
-    }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
