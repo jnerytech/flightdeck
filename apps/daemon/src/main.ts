@@ -39,7 +39,7 @@ import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
 import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
-import { HistoryIndexer } from "./history/indexer.ts";
+import { createHistory } from "./history/wiring.ts";
 import { Issues } from "./issues/issues.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
@@ -51,7 +51,6 @@ import { exists } from "./memory/exists.ts";
 import { decisionLog, ProjectMemory } from "./memory/memory.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
-import { adoptTitles } from "./names/track.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
@@ -320,14 +319,12 @@ export async function startDaemon(
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
-  const history = new HistoryIndexer({
+  const history = createHistory({
     db: store.db,
-    roots: config.history.roots,
-    excludeCwds: historyExcludes(config),
+    config,
+    names,
+    manager,
     log: (m) => logger.log(m),
-    // Issue #605: the name Claude Code gave a session (`--name`, `/rename`) is its name here too.
-    onTitle: adoptTitles(names, manager),
-    ...present({ scanIntervalMs: config.history.scanIntervalMs || undefined }),
   });
   history.start();
   // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
