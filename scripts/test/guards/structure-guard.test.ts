@@ -102,6 +102,38 @@ describe("structure-guard: a store member moved under a slice (#1732)", () => {
     expect(verdicts).toEqual(heads.map(() => [`${TEST}: changed beyond its import paths`]));
   });
 
+  test("a change inside a regex, a read moved under a slice, another store, a hole, a return split or a plural still fails", () => {
+    const base = [
+      'test("t", () => {',
+      "  expect(s).toMatch(/a b/);",
+      "  expect(q).toMatch(/'/); expect(w).toBe('( )');",
+      "  expect(store.error).toBeUndefined();",
+      "  vaultStore.get(); store.getState().refresh();",
+      "  expect(list).toEqual([,]);",
+      "  const f = () => { return x; }; const n = a - --b;",
+      "  store.addCards([c]);",
+      "});",
+    ].join("\n");
+    const heads = [
+      base.replace("/a b/", "/a  b/"),
+      base.replace("toBe('( )')", "toBe('()')"),
+      base.replace("store.error", "store.cards.error"),
+      base.replace("vaultStore.get()", "vaultStore.secrets.get()"),
+      base.replace("[,]", "[]"),
+      base.replace("return x;", "return\n    x;"),
+      base.replace("a - --b", "a-- - b"),
+      base.replace("store.addCards(", "store.card.add("),
+    ];
+    const verdicts = heads.map(
+      (head) => structureVerdict(pr(MOVE, { [TEST]: base }, { [TEST]: head }, change)).problems,
+    );
+    expect(verdicts).toEqual(heads.map(() => [`${TEST}: changed beyond its import paths`]));
+    const sliced = base.replace("store.getState().refresh()", "store.getState().board.refresh()");
+    expect(
+      structureVerdict(pr(MOVE, { [TEST]: base }, { [TEST]: sliced }, change)).problems,
+    ).toEqual([]);
+  });
+
   test("a slice move next to a changed assertion, or a member that is not the old one, still fails", () => {
     const assertion = STORE_SLICED.replace("toBe(1)", "toBe(2)");
     const otherMember = STORE_BEFORE.replace("store.addCard(card)", "store.cards.remove(card)");
