@@ -5,13 +5,13 @@ import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
 import { Grid, Inline, Stack } from "@/components/layout/stack";
-import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
+import { Meter } from "@/shared/status/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { periodRange } from "../../lib/costs.ts";

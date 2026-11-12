@@ -26,7 +26,6 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline, Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +76,7 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { StatusDot } from "@/shared/status/index.ts";
 import { BulkRunDialog } from "../features/board/bulk-run-dialog.tsx";
 import { CardStartDialog } from "../features/board/card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "../features/board/card-template-field.tsx";

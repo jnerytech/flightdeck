@@ -1,8 +1,8 @@
 import { Moon } from "lucide-react";
 import type { ReactNode } from "react";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
-import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
+import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import type { HubState } from "../../lib/hub.ts";
 
 /** The tone of the dot of each state of a session, in every list that shows them. */

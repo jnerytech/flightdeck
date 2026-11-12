@@ -4,7 +4,7 @@ import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { StatusDot } = await import("../src/components/status/status-dot.tsx");
+const { StatusDot } = await import("../src/shared/status/index.ts");
 
 setDefaultTimeout(20_000);
 afterEach(cleanup);
