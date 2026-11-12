@@ -50,8 +50,9 @@ export interface DomainModule<K extends keyof ServerOptions = never> {
   them (`{ modules: [module], quota, onQuota }`). The module is the seam to `main.ts`, not the only export.
 - The type and the runner (`createModuleRunner()`, with `add`, `server`, `started` and `stop`) live
   in `apps/daemon/src/server/module.ts`, exported by `server/index.ts`, with their own output test
-  (`apps/daemon/test/server/module.test.ts`). Domains import the type with `import type`, so no domain gains a
-  runtime edge to `server.ts`.
+  (`apps/daemon/test/server/module.test.ts`). `serverGroup<K>()` lives there too. Domains import
+  the type and `serverGroup` from `server/index.ts`; `module.ts` imports `server.ts` with
+  `import type` only, so no domain gains a runtime edge to `server.ts`.
 
 ### 2. Dependencies between domains
 
