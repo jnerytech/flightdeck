@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from "react";
-import { switcherHosts } from "../features/tabs/index.ts";
+import { switcherHosts } from "../features/tabs/tab-scope.ts";
 import type { AppStore } from "../lib/app-store.ts";
 
 /**

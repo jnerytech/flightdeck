@@ -1,5 +1,5 @@
 import type { Route } from "@/lib/router.ts";
-import { tabKind } from "../tabs/index.ts";
+import { tabKind } from "../tabs/tab-badge.ts";
 import type { NavKey } from "./nav-icons.ts";
 
 /** The sidebar item a route belongs to, so the bar can mark where the user is. */
