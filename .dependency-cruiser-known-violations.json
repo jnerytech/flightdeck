@@ -694,52 +694,6 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/board/pr-details.ts",
-    "to": "apps/daemon/src/board/types.ts",
-    "unresolvedTo": "./types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/types.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/pr.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/pr-details.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/board/pr.ts",
-    "to": "apps/daemon/src/board/types.ts",
-    "unresolvedTo": "./types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/board/types.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/pr.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "apps/daemon/src/central/external-permissions.ts",
     "to": "apps/daemon/src/permissions/auto-approve.ts",
     "unresolvedTo": "../permissions/auto-approve.ts",
