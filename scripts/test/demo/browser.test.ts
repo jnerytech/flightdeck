@@ -7,7 +7,7 @@ import {
   browserLaunch,
   launchFirst,
   whichOnNodePath,
-} from "../../lib/browser.ts";
+} from "../../lib/browser/browser.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const realPath = process.env.PATH;

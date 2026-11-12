@@ -113,7 +113,7 @@ describe("acoes-ui-aprovacao: the card of a request for a secret", () => {
     });
     const [item] = needsYou(store.getState());
     await act(async () => {
-      store.openRequestLink(requestLink(item?.hostId ?? "", "r1"));
+      store.permissions.openLink(requestLink(item?.hostId ?? "", "r1"));
     });
     await settle(() => screen.queryByRole("heading", { name: "Precisa de você" }) !== null);
     expect(store.router.current.name).toBe("needs-you");

@@ -40,8 +40,8 @@ describe("app-store-lacunas: following sessions without opening them", () => {
     const { store } = make();
     const watched = (store as unknown as { subscriptions: { watched: Map<string, number> } })
       .subscriptions.watched;
-    const first = store.watchSession("h", "s1");
-    const second = store.watchSession("h", "s1");
+    const first = store.subscriptions.watchSession("h", "s1");
+    const second = store.subscriptions.watchSession("h", "s1");
     expect(watched.get("h/s1")).toBe(2);
     first();
     first();
@@ -58,7 +58,7 @@ describe("app-store-lacunas: following sessions without opening them", () => {
     ]);
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
-    store.watchSession("h1", "s-early");
+    store.subscriptions.watchSession("h1", "s-early");
     await store.init();
     await waitFor(
       () =>

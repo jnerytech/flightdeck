@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { visibleLiterals } from "./lib/i18n-sweep.ts";
+import { visibleLiterals } from "./lib/guards/i18n-sweep.ts";
 
 const FEATURES = "apps/desktop/src/features";
 const dirs = [

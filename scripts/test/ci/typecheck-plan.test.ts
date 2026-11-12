@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { PROJECTS, runAll, typecheckJobs, typecheckPlan } from "../../lib/typecheck.ts";
+import { PROJECTS, runAll, typecheckJobs, typecheckPlan } from "../../lib/typecheck/typecheck.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 

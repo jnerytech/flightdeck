@@ -161,7 +161,7 @@ describe("historico-host", () => {
 
   test("host sem conexão: a lista vira erro no banner", async () => {
     const { store } = await setup();
-    const result = await store.historyList("host-removido", {}).catch(() => "rejeitou");
+    const result = await store.history.list("host-removido", {}).catch(() => "rejeitou");
     expect(result).toBeNull();
     expect(store.getState().error ?? "").toContain("offline");
   });

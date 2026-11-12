@@ -4,7 +4,7 @@
 import { afterAll, setDefaultTimeout } from "bun:test";
 import { existsSync, readdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { offerToOomKiller } from "../lib/oom-guard.ts";
+import { offerToOomKiller } from "../lib/machine/oom-guard.ts";
 import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
 import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from "./check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";

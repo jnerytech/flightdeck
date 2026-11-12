@@ -294,7 +294,7 @@ export function SessionsHub(
     store.viewPrefs.saveHubFilter(next);
   };
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
-    void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
+    void store.sessionLists.setMeta(row.hostId, row.claudeSessionId as string, patch);
 
   // The row menu reads the mutes: a change of them draws it again.
   useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);

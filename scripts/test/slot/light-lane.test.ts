@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type LaneDeps, runInLane } from "../../lib/lane.ts";
+import { type LaneDeps, runInLane } from "../../lib/machine/lane.ts";
 import type { SlotEnv } from "../../lib/slot/index.ts";
 
 const ME = 100;
