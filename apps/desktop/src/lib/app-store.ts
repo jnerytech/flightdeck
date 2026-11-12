@@ -56,13 +56,7 @@ import {
   wireClientBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, wireHistory } from "../features/history/index.ts";
-import {
-  HomeCache,
-  type HostUiPatch,
-  type ModeAnswer,
-  type UiMode,
-  UiModeSlice,
-} from "../features/home/index.ts";
+import { HomeCache, UiModeSlice } from "../features/home/index.ts";
 import {
   type ConnectionStatus,
   type HealthSlice,
@@ -459,7 +453,7 @@ export class AppStore {
     this.hostTabs.onSwitch((left, to) => {
       // With no tabs' host yet (after a reload), the switcher named the window's host: the same
       // host is no switch. With no host at all (a first page, a deep link), nothing was left.
-      const from = left ?? this.uiHostId();
+      const from = left ?? this.uiModes.hostId();
       if (!from || from === to) return;
       const { t } = this.i18n;
       const name = (id: string) => this.state.hosts.find((host) => host.id === id)?.name ?? id;
@@ -745,7 +739,7 @@ export class AppStore {
       setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
       shown: () => this.shownSessions(),
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
-      isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
+      isSimple: (hostId) => this.uiModes.mode(hostId).mode === "simple",
       isFocused: () => this.platform.isFocused(),
       prefs: () => this.notifyPrefs.value,
       notify: (...args) => this.inbox.notify(...args),
@@ -756,8 +750,8 @@ export class AppStore {
     this.tray = wireTray(this.kernel, {
       platform,
       needsYou: () => needsYou(this.state, this.i18n.t),
-      uiHostId: () => this.uiHostId(),
-      isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
+      uiHostId: () => this.uiModes.hostId(),
+      isSimple: (hostId) => this.uiModes.mode(hostId).mode === "simple",
       answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
       open: (item) => this.permissions.open(item),
       timers: options.timers ?? REAL_TIMERS,
@@ -1078,11 +1072,6 @@ export class AppStore {
     return this.system.revealPath(hostId, path);
   }
 
-  /** The mode a host opens in; the mode slice answers. */
-  uiMode(hostId: string): ModeAnswer {
-    return this.uiModes.mode(hostId);
-  }
-
   /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
   activeHostId(): string | null {
     return this.hostTabs.hostId;
@@ -1091,26 +1080,6 @@ export class AppStore {
   /** A new tab; the host tabs choose where (`HostTabs.openNew`). */
   openNewTab(): void {
     this.hostTabs.openNew(this.state.hosts);
-  }
-
-  /** The host whose mode the window shows; the mode slice answers. */
-  uiHostId(): string | null {
-    return this.uiModes.hostId();
-  }
-
-  /** Switches the window between simple and full mode; false when the host is locked or none shows. */
-  toggleUiMode(): boolean {
-    return this.uiModes.toggle();
-  }
-
-  /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
-  setUiChoice(hostId: string, mode: UiMode | null): void {
-    this.uiModes.choose(hostId, mode);
-  }
-
-  /** Changes the host's default mode and lock (full mode's Settings of that host). */
-  setHostUi(hostId: string, patch: HostUiPatch): Promise<boolean> {
-    return this.uiModes.setHostUi(hostId, patch);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
