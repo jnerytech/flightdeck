@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { azText, sanitizeAzArgs } from "../../src/board/az-text.ts";
 import { stripRemote } from "../../src/central/project-key.ts";
+import { trimEndOf, trimStartOf } from "../../src/kernel/trim.ts";
 import { projectName } from "../../src/names/format.ts";
-import { trimEndOf, trimStartOf } from "../../src/trim.ts";
 
 /**
  * Issue #363 (Sonar S8786): text cut at its end or at its line breaks (a remote, a folder, a card's

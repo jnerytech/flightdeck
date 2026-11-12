@@ -8,8 +8,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
+import { buildChildEnv } from "../kernel/index.ts";
 import { type MaskedSecret, maskOutput } from "./mask.ts";
 import { type ActionDef, paramRegex, REFERENCE, secretsOf } from "./schema.ts";
 

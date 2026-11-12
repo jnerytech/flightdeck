@@ -4,8 +4,8 @@
  * Anything the rules do not know is medium, never low.
  */
 import { join, resolve } from "node:path";
+import { trimEndOf, trimStartOf } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
-import { trimEndOf, trimStartOf } from "../trim.ts";
 import { credential } from "./sensitive-paths.ts";
 
 export { credential };

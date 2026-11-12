@@ -8,7 +8,7 @@ import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { PrProviderKind } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import { parseJsonOr } from "../json-text.ts";
-import { settled } from "../settled.ts";
+import { settled } from "../kernel/index.ts";
 import { ulid } from "../ulid.ts";
 import type { BoundedCheckRunner } from "../workflows/check-runner.ts";
 import { MAX_VALUE } from "../workflows/interpolate.ts";

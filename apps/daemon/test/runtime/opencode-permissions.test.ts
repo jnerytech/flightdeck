@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../../scripts/test/temp-dir.ts";
-import { AsyncQueue } from "../../src/async-queue.ts";
 import { FlightdeckError } from "../../src/errors.ts";
+import { AsyncQueue } from "../../src/kernel/async-queue.ts";
 import { OpenCodeRuntime } from "../../src/runtime/opencode-runtime.ts";
 import type {
   AgentRun,

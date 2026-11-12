@@ -1,7 +1,7 @@
 /** Phase 21, standard session names: `project · persona · number` and its alias. */
 
 import { NAME_GENERAL, NAME_NO_PROJECT } from "@flightdeck/protocol";
-import { trimEndOf } from "../trim.ts";
+import { trimEndOf } from "../kernel/index.ts";
 
 /** The persona of a session that has none. */
 export const GENERAL = NAME_GENERAL;

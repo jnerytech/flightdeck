@@ -7,7 +7,7 @@
 
 import { z } from "zod";
 import { parseJsonWith } from "../../json-text.ts";
-import { linesOf } from "../../lines.ts";
+import { linesOf } from "../../kernel/index.ts";
 
 /** The JSON-RPC codes this client sends or produces itself. */
 export const ACP_METHOD_NOT_FOUND = -32601;

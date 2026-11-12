@@ -1,7 +1,7 @@
 import type { TerminalData, TerminalExited, TerminalResync } from "@flightdeck/protocol";
 import { TERMINAL_LAUNCH_VAR } from "../central/wrapper.ts";
-import { buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
+import { buildChildEnv } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
 import { ulid } from "../ulid.ts";
