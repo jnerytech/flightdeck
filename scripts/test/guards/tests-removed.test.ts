@@ -152,6 +152,58 @@ describe("tests-removed (#2176)", () => {
     expect(waived.problems).toEqual([]);
   });
 
+  test("a comment or a spaced call is no test; one test reads in the singular", () => {
+    const text = "// call it (once), mark it `x`\ntest('a', () => expect(1).toBe(1));";
+    expect(countTests(text)).toEqual({ tests: 1, expects: 1 });
+    const one = removalVerdict(input([{ status: "D", path: FILE }], { [FILE]: text }, {}));
+    expect(one.problems).toEqual([`${FILE}: 1 test, 1 expect at the base; deleted`]);
+  });
+
+  test("a test file renamed to a name that does not run, or a text git cannot read, fails", () => {
+    const fixture = "apps/desktop/test/visual-direction/cabecalho.fixture.tsx";
+    const renamed = removalVerdict(
+      input([{ status: "R", path: fixture, from: FILE }], { [FILE]: FULL }, { [fixture]: FULL }),
+    );
+    expect(renamed.problems).toEqual([
+      `${fixture} (was ${FILE}): 4 tests, 5 expects at the base; not a test file at the head`,
+    ]);
+    const unread = [
+      removalVerdict(input([{ status: "M", path: FILE }], { [FILE]: FULL }, {})),
+      removalVerdict(input([{ status: "M", path: FILE }], {}, { [FILE]: FULL })),
+    ];
+    expect(unread.map((verdict) => verdict.problems)).toEqual([
+      [`${FILE}: git could not read it at the head`],
+      [`${FILE}: git could not read it at the base`],
+    ]);
+  });
+
+  test("a trailer key in any case, a path in backticks, a dash with no space after or a reason with a dash waives", () => {
+    const trailers = [
+      `tests-removed: \`${FILE}\` —moved`,
+      `Tests-Removed: ${FILE} – moved`,
+      `Tests-Removed: ${FILE} - moved - twice`,
+      `Tests-Removed: ${FILE} — moved - twice`,
+    ];
+    const reasons = trailers.map(
+      (trailer) =>
+        removalVerdict(
+          input([{ status: "M", path: FILE }], { [FILE]: FULL }, { [FILE]: CUT }, [
+            `x\n\n${trailer}`,
+          ]),
+        ).waived,
+    );
+    expect(reasons).toEqual([
+      [`${CUT_LINE} (waived: moved)`],
+      [`${CUT_LINE} (waived: moved)`],
+      [`${CUT_LINE} (waived: moved - twice)`],
+      [`${CUT_LINE} (waived: moved - twice)`],
+    ]);
+  });
+
+  test("over git: no merge-base with main fails, since nothing was checked", () => {
+    expect(runTestsRemoved({ git: () => null }).code).toBe(1);
+  });
+
   test("over git: the net diff from the merge-base, every commit's message, exit 1 on a loss", () => {
     const answers: Record<string, string> = {
       "merge-base HEAD origin/main": "base1\n",
