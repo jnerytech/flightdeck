@@ -109,11 +109,7 @@ import {
 import { AwayClock } from "../features/needs-you/away.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
-import {
-  type PermissionsSlice,
-  parseRequestLink,
-  wirePermissions,
-} from "../features/permissions/index.ts";
+import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
   type PersonasSlice,
@@ -357,7 +353,6 @@ export class AppStore {
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   private offQuit: (() => void) | null = null;
-  private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   /** The history read from every host (#1596): its global search. */
   readonly history: HistorySlice;
@@ -757,6 +752,8 @@ export class AppStore {
       settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
       sendSelected: (response) =>
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
+      showWindow: () => void this.platform.showMainWindow(),
+      act: (action) => this.tray.act(action),
     });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
@@ -794,7 +791,7 @@ export class AppStore {
       uiHostId: () => this.uiHostId(),
       isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
       answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
-      open: (item) => this.openRequest(item),
+      open: (item) => this.permissions.open(item),
       timers: options.timers ?? REAL_TIMERS,
     });
     this.i18n.subscribe(() => this.onLanguage());
@@ -1039,42 +1036,17 @@ export class AppStore {
 
   /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
   onOpenRequest(listener: (item: PendingItem) => void): () => void {
-    this.openRequestListeners.add(listener);
-    return () => this.openRequestListeners.delete(listener);
+    return this.permissions.onOpen(listener);
   }
 
-  /**
-   * A `flightdeck://request` link (a notification click): brings the window up on the request.
-   * False for any other link, which the caller handles (pairing).
-   */
+  /** A `flightdeck://request` link: the window comes up on it; false for any other link. */
   openRequestLink(url: string): boolean {
-    const link = parseRequestLink(url);
-    if (!link) return false;
-    const item = needsYou(this.state, this.i18n.t).find(
-      (i) => i.hostId === link.hostId && i.requestId === link.requestId,
-    );
-    // Already answered: the window still comes up.
-    if (item) this.openRequest(item);
-    else void this.platform.showMainWindow();
-    return true;
+    return this.permissions.openLink(url);
   }
 
-  /**
-   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
-   * `shown` is the `host/request` the command named: when that one has gone in between, the one
-   * now oldest is opened to be seen, never answered unseen (#245).
-   */
+  /** Approves or denies the oldest waiting request, if it is still the one shown (#245). */
   decideOldest(decision: "approve" | "deny", shown: string): void {
-    const item = needsYou(this.state, this.i18n.t)[0];
-    if (!item) return;
-    if (`${item.hostId}/${item.requestId}` !== shown) {
-      this.openRequest(item);
-      return;
-    }
-    // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
-    // palette is not the tray, so a vault grant is never logged as the tray's.
-    if (item.gate || item.vault) this.openRequest(item);
-    else this.tray.act({ key: `${item.hostId}/${item.requestId}`, action: decision });
+    this.permissions.decideOldest(decision, shown);
   }
 
   /** What the palette was used for lately, most recent first. */
@@ -1085,11 +1057,6 @@ export class AppStore {
   /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
   recordPaletteUse(id: string): void {
     this.palette.recordUse(id);
-  }
-
-  private openRequest(item: PendingItem): void {
-    void this.platform.showMainWindow();
-    for (const listener of this.openRequestListeners) listener(item);
   }
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
