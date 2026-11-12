@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { Config } from "../config.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { Budgets, type BudgetsOptions } from "./budgets.ts";
 import { Costs } from "./costs.ts";
 import { resolvePricing } from "./pricing.ts";
@@ -50,5 +51,14 @@ export function createCosts(deps: CostsDeps) {
   budgets.start();
   deps.history.onChange(() => usageIndex.request());
   usageIndex.start();
-  return { costs, usageIndex, budgets };
+  const module: DomainModule<"costs"> = {
+    server: { costs: serverGroup<"costs">()({ costs, budgets }) },
+    stop: async () => {
+      await usageIndex.stop();
+      budgets.stop();
+    },
+    // It stops after the server today (#2094).
+    stopPhase: "late",
+  };
+  return { modules: [module] as const, costs, usageIndex, budgets };
 }
