@@ -1,23 +1,17 @@
+import { z } from "zod";
 import type { WorktreeFilter } from "@/features/projects/index.ts";
+import { readStored, validValues } from "@/shared/lib/index.ts";
 
 type Storage = { getItem(key: string): string | null; setItem(key: string, value: string): void };
 
 /** Where the board last opened on each host is kept, by host id (#669). */
 const LAST_BOARDS_KEY = "flightdeck.lastBoards";
 
+const Boards = validValues(z.string());
+
 /** The board last opened on each host, by host id; a broken entry reads as nothing kept. */
 export function loadLastBoards(storage: Storage): Record<string, string> {
-  try {
-    const kept: unknown = JSON.parse(storage.getItem(LAST_BOARDS_KEY) ?? "{}");
-    if (kept === null || typeof kept !== "object" || Array.isArray(kept)) return {};
-    return Object.fromEntries(
-      Object.entries(kept).filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string",
-      ),
-    );
-  } catch {
-    return {};
-  }
+  return readStored(storage, LAST_BOARDS_KEY, Boards, {});
 }
 
 /** Keeps the board just opened on a host. */

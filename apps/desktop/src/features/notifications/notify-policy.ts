@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { parseJsonText } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 /** What a notification is about; each of the first five has its own switch. */
@@ -116,15 +118,7 @@ const clamp = (n: number) => Math.min(1, Math.max(0, n));
 
 /** The stored preferences, field by field: whatever is unreadable falls back to its default. */
 function readPrefs(raw: string | null): NotifyPrefs {
-  let stored: Record<string, unknown> = {};
-  try {
-    const parsed: unknown = JSON.parse(raw ?? "{}");
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      stored = parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Not JSON: the defaults.
-  }
+  const stored = parseJsonText(raw ?? "{}", z.record(z.string(), z.unknown()), {});
   const defaults = DEFAULT_NOTIFY_PREFS;
   const events = (stored.events ?? {}) as Record<string, unknown>;
   const sound = (stored.sound ?? {}) as Record<string, unknown>;

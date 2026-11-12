@@ -6,6 +6,8 @@ import {
   KIND_SPECS,
   ModelId,
 } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored } from "@/shared/lib/index.ts";
 
 /** Where the preferences live in `platform.storage`: one JSON value, nothing secret in it. */
 export const ASSISTANT_PREFS_KEY = "flightdeck.assistant";
@@ -47,13 +49,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 /** What is stored, field by field: a value that is not ours reads as the default of that field. */
 export function readPrefs(storage: Storage): AssistantPrefs {
   const prefs = defaultPrefs();
-  let raw: unknown;
-  try {
-    raw = JSON.parse(storage.getItem(ASSISTANT_PREFS_KEY) ?? "null");
-  } catch {
-    return prefs;
-  }
-  if (!isObject(raw) || raw.version !== 1) return prefs;
+  const raw = readStored(storage, ASSISTANT_PREFS_KEY, z.record(z.string(), z.unknown()), null);
+  if (!raw || raw.version !== 1) return prefs;
   if (typeof raw.enabled === "boolean") prefs.enabled = raw.enabled;
   const provider = AssistantProvider.safeParse(raw.provider);
   if (provider.success) prefs.provider = provider.data;
