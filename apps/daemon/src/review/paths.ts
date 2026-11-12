@@ -1,7 +1,6 @@
 import { lstat, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
-import { FlightdeckError } from "../errors.ts";
-import { ntfsName } from "../kernel/index.ts";
+import { FlightdeckError, ntfsName } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 import { maskedConfig } from "../permissions/mask-config.ts";
 import { credential } from "../permissions/sensitive-paths.ts";

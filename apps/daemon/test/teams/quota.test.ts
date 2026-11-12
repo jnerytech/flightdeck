@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { ExternalSessions } from "../../src/central/external.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Messaging } from "../../src/messaging/messages.ts";
 import { Quota } from "../../src/quota/quota.ts";

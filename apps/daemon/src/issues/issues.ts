@@ -7,7 +7,7 @@ import type { Issue } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import type { Card } from "../board/types.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { AzureIssues, GithubIssues, type IssueProvider, parseIssueRef } from "./providers.ts";
 import { azureCoords, githubCoords } from "./remote.ts";

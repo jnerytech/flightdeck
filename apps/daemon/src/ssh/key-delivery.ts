@@ -1,7 +1,6 @@
 import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { FlightdeckError } from "../errors.ts";
-import { type Exec, ulid } from "../kernel/index.ts";
+import { type Exec, FlightdeckError, ulid } from "../kernel/index.ts";
 
 /** A private key made available to one `ssh` run, and how to take it away again. */
 export interface DeliveredKey {

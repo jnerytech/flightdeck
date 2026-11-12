@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { createKnowledgeDoc } from "../../src/knowledge/create.ts";
 import { listKnowledge } from "../../src/knowledge/list.ts";
 import { tempDir } from "../support/helpers.ts";

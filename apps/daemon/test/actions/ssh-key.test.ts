@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { VaultRequestFrame } from "@flightdeck/protocol";
 import { Actions, type ActionsFrame } from "../../src/actions/actions.ts";
 import type { SshJob } from "../../src/actions/run.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
 import { gitRepo } from "../support/board-helpers.ts";

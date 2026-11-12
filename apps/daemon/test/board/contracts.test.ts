@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { BoardColumn, type BoardColumn as Column } from "@flightdeck/protocol";
 import { manageCard } from "../../src/board/manage.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { PrWatch } from "../../src/watch/service.ts";
 import { item } from "../boardsync/contract.ts";
 import { syncSetup } from "../boardsync/setup.ts";

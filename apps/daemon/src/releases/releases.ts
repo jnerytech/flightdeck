@@ -1,6 +1,6 @@
 import type { ReleaseList, ReleaseNote } from "@flightdeck/protocol";
 import { z } from "zod";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 export interface ReleaseFeedOptions {
   /** The GitHub API's list of the repository's releases. */

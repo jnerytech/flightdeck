@@ -9,7 +9,7 @@ import {
 import { assistantService } from "../../src/assistant/factory.ts";
 import { assistantDir } from "../../src/assistant/paths.ts";
 import { AssistantService } from "../../src/assistant/service.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { startDaemon } from "../../src/main.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../../src/runtime/types.ts";

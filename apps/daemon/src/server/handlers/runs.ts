@@ -2,7 +2,7 @@
  * Issue #248: the runs domain: run environments and runs, workflows, templates and their tasks,
  * automations, and webhooks.
  */
-import { FlightdeckError, featureOff } from "../../errors.ts";
+import { FlightdeckError, featureOff } from "../../kernel/index.ts";
 import { startTemplate } from "../../templates/start.ts";
 import { isVaultTransport, requireVaultTransport } from "../../vault/vault.ts";
 import { workflowTemplates } from "../../workflows/templates.ts";

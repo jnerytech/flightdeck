@@ -6,7 +6,7 @@ import type {
   PullResult,
   StatusField,
 } from "../../src/boardsync/provider.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import type { ContractHarness } from "./contract.ts";
 
 export const BOARD: ExternalBoard = {

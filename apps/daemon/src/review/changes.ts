@@ -8,7 +8,7 @@ import { cardDiff, workingDiff } from "../board/diff.ts";
 import { aheadBehind } from "../board/merge.ts";
 import { HEAD, type Rev, refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
 import { commitHooks, withDigests } from "./session-commit.ts";

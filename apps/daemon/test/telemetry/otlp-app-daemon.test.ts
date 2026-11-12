@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { startServer } from "../../src/server.ts";
 import { TelemetryOptIn } from "../../src/telemetry/optin.ts";
 import { newManager, tempDir } from "../support/helpers.ts";

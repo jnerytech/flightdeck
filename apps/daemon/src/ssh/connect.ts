@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { SshTarget, SshTestResult, TerminalInfo } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { envInput, remoteCommand } from "../actions/ssh-command.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { Timers } from "../quota/quota.ts";
 import type { TerminalManager } from "../terminal/terminal-manager.ts";
 import { type HostKeys, knownHostsLines, ScanFailed } from "./hostkey.ts";
