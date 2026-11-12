@@ -202,12 +202,12 @@ export class TerminalManager {
     return { enabled: this.on, max: this.opts.max ?? DEFAULT_MAX, shell: programOf(shell) };
   }
 
-  /** Every terminal command goes through here: a host with the terminal off refuses them. */
   /** After `stop` no PTY starts: nothing would kill it before the daemon exits. */
   private assertRunning(): void {
     if (this.stopped) throw new FlightdeckError("invalid_state", "the daemon is stopping");
   }
 
+  /** Every terminal command goes through here: a host with the terminal off refuses them. */
   private assertOn(): void {
     if (!this.on)
       throw new FlightdeckError(
