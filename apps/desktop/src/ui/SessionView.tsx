@@ -52,6 +52,7 @@ import {
   slashFill,
   submitAction,
 } from "../features/sessions/index.ts";
+import { ToolCall } from "../features/sessions/tool-call.tsx";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import type { Answer } from "../lib/app-store.ts";
@@ -62,7 +63,6 @@ import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
-import { ToolCall } from "./ToolCall.tsx";
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, ScrollPosition>();
