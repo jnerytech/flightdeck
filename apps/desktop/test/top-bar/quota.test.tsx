@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { en } from "../../src/i18n/en.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { QuotaGlanceButton } = await import("../src/features/shell/status-bar.tsx");
+const { QuotaGlanceButton } = await import("../../src/features/shell/status-bar.tsx");
 
 afterEach(() => cleanup());
 
@@ -85,7 +85,7 @@ for (const [lang, dict] of [
 
 describe("status-bar: the slot over the app's state (issue #491)", () => {
   test("the quota glance reads the online hosts' quota, names the host and opens it", async () => {
-    const { StatusBarSlot } = await import("../src/features/shell/status-bar.tsx");
+    const { StatusBarSlot } = await import("../../src/features/shell/status-bar.tsx");
     const routes: unknown[] = [];
     const state = {
       hosts: [
