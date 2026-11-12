@@ -1,7 +1,10 @@
 import type { AppKernel, HostCommandType } from "../../lib/kernel.ts";
 import { type MessagingCore, MessagingSlice } from "./store.ts";
 
-/** Builds the messaging slice from the store's kernel (#1596): a host's `messaging.rules.*`. */
+/**
+ * Builds the messaging slice from the store's kernel (#1596): a host's `messaging.rules.*`, the
+ * relay's call and the peers' sync interval.
+ */
 export function wireMessaging(
   kernel: AppKernel<ReturnType<MessagingCore["state"]>>,
   deps: {
