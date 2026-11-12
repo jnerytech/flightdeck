@@ -4,7 +4,6 @@ import { FolderOpen, Home, LayoutDashboard, Settings as SettingsIcon } from "luc
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Notices } from "@/components/feedback/notices";
 import { Button } from "@/components/ui/button";
-import { HomeView, SettingsView, TaskView } from "@/features/home/index.ts";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import { translator } from "../../i18n/index.ts";
@@ -16,6 +15,9 @@ import {
 } from "../../lib/app-store.ts";
 import { type TaskState, taskState } from "../../lib/simple-task.ts";
 import { useSessionState } from "../../lib/use-store.ts";
+import { HomeView } from "./home-view.tsx";
+import { SettingsView } from "./settings-view.tsx";
+import { TaskView } from "./task-view.tsx";
 
 type Screen =
   | { name: "home" }

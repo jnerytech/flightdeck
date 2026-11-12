@@ -11,6 +11,7 @@ import { Notices } from "@/components/feedback/notices";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
+import { SimpleApp } from "@/features/home/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
@@ -46,7 +47,6 @@ import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { Sidebar } from "./Sidebar.tsx";
-import { SimpleApp } from "./simple/SimpleApp.tsx";
 
 /** A card from an issue the palette named: by its full reference, else by its number in the project. */
 async function createFromIssue(
