@@ -695,9 +695,9 @@ export async function startDaemon(
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
-        // The modules' stops in the record's phases (keep-awake first; the board work, built after
-        // the board, before it; the teleport, the history, the costs and the quota after the
-        // server), around the domains still wired by hand.
+        // The modules' stops in the record's phases, around the domains still wired by hand:
+        // keep-awake first; the rest in reverse construction order (the board work, built after the
+        // board, before it); then the server; then the late ones (costs, teleport, history, quota).
         await domains.stop(async () => {
           await wsl?.stop();
           actions.stop();
