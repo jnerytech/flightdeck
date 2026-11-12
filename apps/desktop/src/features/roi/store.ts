@@ -1,8 +1,8 @@
 import type { RoiSummaryResult } from "@flightdeck/protocol";
 import type { AppState, HostResult } from "../../lib/app-store.ts";
-import type { RoiMoney } from "../../lib/roi.ts";
-import type { RoiSettings } from "../../lib/roi-settings.ts";
 import { hostsWith } from "../../lib/version.ts";
+import type { RoiMoney } from "./roi.ts";
+import type { RoiSettings } from "./roi-settings.ts";
 
 /** What the ROI reads and asks through the app's store. */
 export interface RoiCore {

@@ -7,5 +7,6 @@
  */
 export { CardHours } from "./card-hours.tsx";
 export { RoiCard } from "./roi-card.tsx";
+export { RoiSettingsError } from "./roi-settings.ts";
 export { RoiSlice } from "./store.ts";
 export { wireRoi } from "./wire.ts";
