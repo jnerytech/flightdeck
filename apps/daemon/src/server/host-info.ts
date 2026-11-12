@@ -12,7 +12,7 @@ import {
 import { DAEMON_VERSION, present } from "../kernel/index.ts";
 import { logPathFor } from "../logs/serve.ts";
 import type { OpenCodeInfo } from "../runtime/opencode-discovery.ts";
-import type { ServerOptions } from "../server.ts";
+import type { ServerOptions } from "../server-options.ts";
 import { isVaultTransport } from "../vault/vault.ts";
 import type { ServerContext } from "./context.ts";
 
