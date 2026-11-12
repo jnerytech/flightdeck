@@ -25,7 +25,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { TabOverflow } from "@/components/tabs/tab-overflow";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,6 +42,7 @@ import { revealTab } from "../../lib/reveal-tab.ts";
 import { badgePulses, type TabBadge, tabKind } from "../../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../../lib/tabs.ts";
 import { TAB_ICONS, tabFacts, tabTitle } from "./tab-facts.ts";
+import { TabOverflow } from "./tab-overflow.tsx";
 
 /** Past this many tabs the badges shrink to dots and the strip offers a menu of all of them. */
 const COMPACT_AT = 8;
