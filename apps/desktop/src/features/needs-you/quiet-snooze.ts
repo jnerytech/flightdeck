@@ -10,7 +10,7 @@ export const QUIET_SNOOZE_KEY = "flightdeck.quietSnooze";
 
 type Storage = Platform["storage"];
 
-const Snoozes = validValues(z.number().finite());
+const Snoozes = validValues(z.number());
 
 /** The snoozes still running at `nowMs`; anything unreadable or past is left out. */
 export function loadQuietSnooze(storage: Storage, nowMs: number): Record<string, number> {
