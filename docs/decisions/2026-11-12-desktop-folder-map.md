@@ -42,6 +42,9 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way
   (`use-project-cards.ts`, `use-project-labels.ts` to `projects`, and so on) in a later PR.
+- Hooks that only one feature reads moved into it (#1597): `use-move-focus` to `features/board/`,
+  `use-board-transition` to `features/activity/` and `use-now` to `features/hosts/`, each imported by file
+  from inside its own folder.
 
 ## `components/`
 
