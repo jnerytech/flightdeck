@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { tabIdleSince } from "../src/features/tabs/tab-badge.ts";
 import type { AppState } from "../src/lib/app-store.ts";
-import { tabIdleSince } from "../src/lib/tab-badge.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
