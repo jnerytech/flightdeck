@@ -2,7 +2,7 @@ import { isPreviewUrl } from "@flightdeck/protocol";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Button } from "@/components/ui/button";
-import type { AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /**
  * A card's running app in a frame. Only the loopback addresses the run.yaml allows open: the
