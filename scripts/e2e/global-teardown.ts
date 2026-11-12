@@ -1,7 +1,7 @@
 /** Stops the demo and everything under it, whether or not the setup got to the end. */
 import { execFileSync } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
-import { stopDemo } from "../lib/e2e-demo.ts";
+import { stopDemo } from "../lib/e2e/demo.ts";
 import { STATE_DIR } from "./global-setup.ts";
 
 export default async function globalTeardown() {

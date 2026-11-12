@@ -14,7 +14,7 @@ import {
   JOURNEYS,
   LANGUAGES,
   VIEWPORTS,
-} from "../../../../scripts/lib/e2e-journeys.ts";
+} from "../../../../scripts/lib/e2e/journeys.ts";
 
 const ROOT = resolve(import.meta.dir, "../../../..");
 const read = (file: string) => readFileSync(resolve(ROOT, file), "utf8");

@@ -681,6 +681,7 @@ export class AppStore {
       stop: (hostId) => this.link.stop(hostId),
       detach: (hostId) => {
         this.hostTabs.removeHost(hostId);
+        this.vaultApprovals.hostGone(hostId);
         this.link.remove(hostId);
       },
       forget: (hostId) => {
@@ -1817,7 +1818,12 @@ export class AppStore {
       );
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") this.stream.dropPartialText(hostId);
+    if (status === "connecting") {
+      this.stream.dropPartialText(hostId);
+      // The cards that waited on the old connection leave the queue: the new one never saw them.
+      // The deny may not reach the daemon; it ends the request at its own deadline.
+      this.vaultApprovals.hostGone(hostId);
+    }
   }
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */

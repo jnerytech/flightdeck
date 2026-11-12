@@ -16,10 +16,10 @@
   file did.
 - **The journeys (E).** The path plan has an `e2e` output. It is true for what the screens read
   (the app, the protocol, the dependencies, the workflow), for `scripts/e2e/`, for
-  `scripts/lib/e2e*.ts` and `scripts/lib/demo*.ts`, for `scripts/demo*.ts`, and for `playwright*`.
+  `scripts/lib/e2e/` and `scripts/lib/demo*.ts` (and, since the concern folders of #1603, `scripts/lib/demo/`), for `scripts/demo*.ts`, and for `playwright*`.
   It is always true off a PR. The `screenshots (prints, axe e e2e)` check then needs the journeys
   green when they were planned, and skipped when not. A failing journey gets Playwright's one CI
-  retry (`scripts/lib/e2e-config.ts`) and nothing more; the workflow adds no rerun.
+  retry (`scripts/lib/e2e/config.ts`) and nothing more; the workflow adds no rerun.
 - **Cost**, measured on green runs of 2026-11-06:
   - The PR's critical path is the suite plus SonarCloud, about 9.3 minutes.
   - Windows: most PRs add 0 to 2 minutes a shard. A global change runs the whole suite there,

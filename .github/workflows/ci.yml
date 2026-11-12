@@ -805,7 +805,7 @@ jobs:
     needs: [quick]
     # On main, nightly and by hand always; on a PR when it changes what the journeys read (#399:
     # the screens, the journeys, their config, the demo). A failing journey gets Playwright's one
-    # CI retry (scripts/lib/e2e-config.ts) and nothing more.
+    # CI retry (scripts/lib/e2e/config.ts) and nothing more.
     if: needs.quick.outputs.e2e == 'true'
     strategy:
       fail-fast: false

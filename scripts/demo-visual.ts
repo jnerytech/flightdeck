@@ -7,7 +7,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
-import { isCompleteRun, printedPairs } from "./lib/shots-variants.ts";
+import { isCompleteRun, printedPairs } from "./lib/shots/variants.ts";
 import { checkShots, type VisualIO, type VisualMode } from "./lib/visual.ts";
 
 export const BASELINE_DIR = resolve(import.meta.dir, "../apps/desktop/visual-baseline");

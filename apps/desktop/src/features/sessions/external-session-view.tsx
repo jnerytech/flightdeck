@@ -8,6 +8,7 @@ import { ApprovalCard } from "@/features/permissions/index.ts";
 import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
+import { Stack } from "@/shared/layout/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -124,7 +125,7 @@ export function ExternalView(
         />
       </RecapSlot>
       {requests.length > 0 && (
-        <div className="flex flex-col gap-3 border-b p-3">
+        <Stack gap={3} className="max-h-[60vh] overflow-y-auto border-b p-3">
           {requests.map((request) => (
             <ApprovalCard
               key={request.requestId}
@@ -143,7 +144,7 @@ export function ExternalView(
               }
             />
           ))}
-        </div>
+        </Stack>
       )}
       {session?.controllable && (
         <div className="relative">
