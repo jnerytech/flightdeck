@@ -1,5 +1,5 @@
 import { isAbsolute, join, normalize, relative } from "node:path";
-import { isInside } from "../paths.ts";
+import { isInside } from "../kernel/index.ts";
 import {
   NETWORK_TOOLS,
   RANK,

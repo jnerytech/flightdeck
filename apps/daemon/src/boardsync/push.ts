@@ -1,5 +1,5 @@
 /** Phase 38: switching push on for a board. Pushing itself happens in the engine's sync. */
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { BoardProvider } from "./provider.ts";
 import type { BoardLink, BoardSyncStore } from "./store.ts";
 

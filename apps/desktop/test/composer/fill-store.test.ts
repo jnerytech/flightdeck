@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { AppStore } from "../src/lib/app-store.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 const store = () => new AppStore(memoryPlatform(false, "en").platform);
 

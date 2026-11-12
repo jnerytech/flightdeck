@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
-import type { FlightdeckError } from "../errors.ts";
+import type { FlightdeckError } from "../kernel/index.ts";
 import type { SshTargets } from "./targets.ts";
 
 /** Why one alias was not imported: the English text, and a key with values for the app. */

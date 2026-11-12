@@ -1,5 +1,5 @@
 import type { AccountState, AccountStatus } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { Quota, Timers } from "../quota/quota.ts";
 import type { AccountInfoReading, AuthStatus, UsageReading } from "./readers.ts";
 

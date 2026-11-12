@@ -17,7 +17,13 @@ import {
 } from "../deps/index.ts";
 import { DAEMON_VERSION, type Exec, linesOf, spawnExec, whichOnPath } from "../kernel/index.ts";
 import { mcpReachable } from "../mcp.ts";
-import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "../pairing.ts";
+import {
+  loopbackOnly,
+  pairingAddress,
+  renderQr,
+  rotateToken,
+  tailscaleIp,
+} from "../pairing/index.ts";
 import { openCodeState } from "../runtime/index.ts";
 import {
   addToUserPath,

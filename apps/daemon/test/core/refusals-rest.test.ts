@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BgService } from "../../src/bg/service.ts";
 import { Central } from "../../src/central/central.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { PermissionBroker } from "../../src/permissions/permission-broker.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";

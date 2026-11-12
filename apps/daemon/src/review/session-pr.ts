@@ -8,7 +8,7 @@ import { git } from "../board/command.ts";
 import { type PrProvider, prProvider } from "../board/pr.ts";
 import { assertNoSecretInPr, publishPr, withoutCredentials } from "../board/publish-pr.ts";
 import { assertBranchName } from "../board/ref-arg.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { Changes } from "./changes.ts";
 import type { SessionCommits } from "./session-commit.ts";
 

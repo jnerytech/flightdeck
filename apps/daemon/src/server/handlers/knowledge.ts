@@ -2,7 +2,7 @@
  * Issue #1288: the knowledge domain: the project's knowledge files, their index, status, creation
  * and the feed switch. Each command asks for a folder the host allows before it reads one.
  */
-import { resolveAllowedCwd } from "../../paths.ts";
+import { resolveAllowedCwd } from "../../kernel/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const knowledgeHandlers = {

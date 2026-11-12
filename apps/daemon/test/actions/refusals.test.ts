@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolveParams, runAction } from "../../src/actions/run.ts";
 import type { ActionDef } from "../../src/actions/schema.ts";
 import { envInput } from "../../src/actions/ssh-command.ts";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { tempDir } from "../support/helpers.ts";
 
 const action = (extra: Partial<ActionDef> = {}): ActionDef =>

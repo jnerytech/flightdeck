@@ -3,7 +3,7 @@
  * trace, and the history index.
  */
 import { withTurnUuids } from "../../checkpoints/turn-uuid.ts";
-import { FlightdeckError } from "../../errors.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 import { preparePersonas } from "../../personas/prepare.ts";
 import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";

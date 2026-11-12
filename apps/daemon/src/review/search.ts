@@ -14,9 +14,7 @@ import {
 } from "@flightdeck/protocol";
 import { z } from "zod";
 import { type CommandResult, gitLimitedFor, runLimited } from "../board/command.ts";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr, whichOnPath } from "../kernel/index.ts";
-import { isInside } from "../paths.ts";
+import { FlightdeckError, isInside, parseJsonOr, whichOnPath } from "../kernel/index.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 import { firstStep, isGitDir } from "./paths.ts";
 

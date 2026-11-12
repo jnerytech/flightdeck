@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { TelemetryStore } from "../../src/telemetry/store.ts";

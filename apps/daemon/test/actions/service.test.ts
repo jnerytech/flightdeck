@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { VaultRequestFrame, VaultUsed } from "@flightdeck/protocol";
 import { Actions, type ActionsFrame, type ActionsOptions } from "../../src/actions/actions.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { Vault } from "../../src/vault/vault.ts";
 import { git, gitRepo } from "../support/board-helpers.ts";

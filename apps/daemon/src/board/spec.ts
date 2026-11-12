@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { lstat, open, realpath, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { specPathProblem } from "@flightdeck/protocol";
-import { isInside } from "../paths.ts";
+import { isInside } from "../kernel/index.ts";
 
 /** What the daemon learns of a card's spec file: that it is there, and its first heading. */
 export interface SpecFound {

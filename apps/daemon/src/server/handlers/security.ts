@@ -2,7 +2,7 @@
  * Issue #248: the security domain: the vault and its actions, askpass, SSH targets, a project's
  * rules, and the automatic approval.
  */
-import { FlightdeckError } from "../../errors.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 

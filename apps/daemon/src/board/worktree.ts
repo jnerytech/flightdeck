@@ -1,8 +1,7 @@
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../kernel/index.ts";
+import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
 import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";

@@ -5,7 +5,7 @@
 import { tmpdir } from "node:os";
 import { runCommand } from "../board/command.ts";
 import { cli } from "../board/pr.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 export interface GhResult {
   code: number;

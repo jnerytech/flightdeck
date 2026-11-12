@@ -4,8 +4,7 @@
  * exists). Flightdeck relays the code and the page; it never sees the token.
  */
 import { killTree } from "../board/command.ts";
-import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../kernel/index.ts";
+import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 
 /** The narrowest scopes the features here need; `project` (write) is not asked for. */
 export const GITHUB_SCOPES = ["repo", "read:project"];

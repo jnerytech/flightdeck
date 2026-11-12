@@ -12,7 +12,7 @@ import { Panel, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import type { DepLook } from "../../lib/deps-summary.ts";
+import type { DepLook } from "../deps/index.ts";
 import {
   type Confirming,
   checkRow,

@@ -2,7 +2,7 @@
  * Issue #248: the agents domain: personas, plugins, MCP servers, project memory, agent files, and
  * snippets.
  */
-import { FlightdeckError } from "../../errors.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const agentsHandlers = {

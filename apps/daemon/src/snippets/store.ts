@@ -4,9 +4,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Snippet, type SnippetFileInfo, SnippetInput, SnippetVar } from "@flightdeck/protocol";
 import { z } from "zod";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr, ulid } from "../kernel/index.ts";
-import { resolveAllowedCwd } from "../paths.ts";
+import { FlightdeckError, parseJsonOr, resolveAllowedCwd, ulid } from "../kernel/index.ts";
 import { fieldsOf, normalizeSnippet, type SecretScanner, type SnippetDef } from "./model.ts";
 
 export interface SnippetsOptions {

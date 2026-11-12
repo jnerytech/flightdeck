@@ -10,9 +10,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { userHome } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
-import { layoutLike, parseJsonText, writeFileAtomic } from "../kernel/index.ts";
-import { samePath } from "../paths.ts";
+import {
+  FlightdeckError,
+  layoutLike,
+  parseJsonText,
+  samePath,
+  writeFileAtomic,
+} from "../kernel/index.ts";
 
 /** What secrets (env and headers values) look like in the app. */
 export const MASK = "••••••";

@@ -1,5 +1,5 @@
 import type { ToolInput } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { canonical } from "./permission-updates.ts";
 
 const changed = () =>

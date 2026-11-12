@@ -6,11 +6,13 @@
 export { AsyncQueue } from "./async-queue.ts";
 export { writeFileAtomic } from "./atomic-write.ts";
 export { API_KEY_VARS, buildChildEnv } from "./env.ts";
+export { FlightdeckError, featureOff, refusalOf } from "./errors.ts";
 export { type Exec, spawnExec } from "./exec.ts";
 export { layoutLike, parseJsonOr, parseJsonText, parseJsonWith } from "./json-text.ts";
 export { linesOf } from "./lines.ts";
 export type { Logger } from "./logger.ts";
 export { ntfsName } from "./ntfs-name.ts";
+export { isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
 export { present } from "./present.ts";
 export { readRegular, readRegularSized } from "./read-regular.ts";
 export { settled } from "./settled.ts";

@@ -5,7 +5,7 @@
  * in the terminal. The files can be rewound to the turn first.
  */
 
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";

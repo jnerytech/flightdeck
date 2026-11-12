@@ -1,8 +1,7 @@
 import { lstat, readdir, realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProjectsCloneResult, ProjectsScanResult } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { isInside } from "../paths.ts";
+import { FlightdeckError, isInside } from "../kernel/index.ts";
 
 export interface ScanOptions {
   /** How many levels below a root are looked at (2 by default). */

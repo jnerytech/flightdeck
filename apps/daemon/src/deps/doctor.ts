@@ -1,4 +1,4 @@
-import { loopbackOnly } from "../pairing.ts";
+import { loopbackOnly } from "../pairing/index.ts";
 import {
   findingText,
   type OpenCodeState,

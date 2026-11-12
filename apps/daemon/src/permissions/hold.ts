@@ -1,4 +1,4 @@
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { RiskLevel } from "./risk.ts";
 
 /**

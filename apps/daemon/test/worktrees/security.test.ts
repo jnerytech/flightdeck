@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { git as run, type runCommand } from "../../src/board/command.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { FolderLocks } from "../../src/worktrees/locks.ts";
 import { createWorktrees, gitWithin } from "../../src/worktrees/wiring.ts";
 import {
