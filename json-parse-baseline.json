@@ -28,10 +28,6 @@
   "apps/desktop/src/features/shell/sidebar-groups.ts": 1,
   "apps/desktop/src/features/shell/tree-fold.ts": 2,
   "apps/desktop/src/features/snippets/global-snippets.ts": 1,
-  "apps/desktop/src/features/vault/vault-backup.ts": 1,
-  "apps/desktop/src/features/vault/vault-rules.ts": 1,
-  "apps/desktop/src/features/vault/vault-usage.ts": 2,
-  "apps/desktop/src/features/vault/vault.ts": 1,
   "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 2,
   "packages/protocol/src/index.ts": 1
