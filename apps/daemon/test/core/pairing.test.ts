@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatPairingLink, parsePairingLink } from "@flightdeck/protocol";
 import { type CliDeps, runCli, startDaemon } from "../../src/main.ts";
-import { pairingAddress } from "../../src/pairing.ts";
+import { pairingAddress } from "../../src/pairing/pairing.ts";
 import { poll, tempDir } from "../support/helpers.ts";
 
 const stops: Array<() => Promise<void>> = [];
