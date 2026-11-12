@@ -15,7 +15,7 @@ import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
 import { FieldRow } from "@/shared/layout/index.ts";
 import { breadcrumbSteps, isInside } from "@/shared/lib/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { isLocalUrl } from "../../lib/terminal.ts";
+import { isLocalUrl } from "../terminal/index.ts";
 import { AllowedFolders } from "./allowed-folders.tsx";
 
 /** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */

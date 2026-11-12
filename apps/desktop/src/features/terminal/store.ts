@@ -8,14 +8,14 @@ import type {
   TerminalInfo,
   TerminalResync,
 } from "@flightdeck/protocol";
+import { hasFeature } from "../../lib/version.ts";
 import {
   type TerminalEnv,
   type TerminalLaunch,
   type TerminalTarget,
   terminalLaunch,
-} from "../../lib/terminal.ts";
-import type { TerminalHost } from "../../lib/terminal-session.ts";
-import { hasFeature } from "../../lib/version.ts";
+} from "./terminal.ts";
+import type { TerminalHost } from "./terminal-session.ts";
 
 /** What a host's terminals say to the one following them. */
 export interface TerminalListener {

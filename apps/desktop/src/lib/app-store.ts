@@ -45,8 +45,9 @@ import {
 import {
   type Attention,
   BackupScheduler,
-  BackupSlice,
+  type BackupSlice,
   googleConfig,
+  wireBackup,
 } from "../features/backup/index.ts";
 import { BoardWidth } from "../features/board/index.ts";
 import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
@@ -154,6 +155,11 @@ import {
   teleportSession,
 } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
+import { isLocalUrl } from "../features/terminal/terminal.ts";
+import {
+  TerminalFontController,
+  TerminalReaderSetting,
+} from "../features/terminal/terminal-view.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
   checkDelivery,
@@ -204,8 +210,6 @@ import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
-import { isLocalUrl } from "./terminal.ts";
-import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -649,26 +653,10 @@ export class AppStore {
       google: options.google ?? { config: googleConfig() },
       ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
     });
-    this.backup = new BackupSlice({
-      createText: async (passphrase, confirmation) => {
-        const { createBackup } = await import("../features/backup/backup-bundle.ts");
-        return createBackup(platform, passphrase, confirmation, {
-          ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
-        });
-      },
-      saveFile: (name, text) => platform.saveFile(name, text),
-      pickFile: () => platform.vault.pickFile(),
-      previewText: async (text, passphrase) => {
-        const { previewRestore } = await import("../features/backup/backup-bundle.ts");
-        return previewRestore(platform, text, passphrase);
-      },
-      applyPreview: async (preview, onConflict) => {
-        const { applyRestore } = await import("../features/backup/backup-bundle.ts");
-        return applyRestore(platform, preview, onConflict);
-      },
-      driveNames: () => this.backupScheduler.driveBackups(),
-      driveText: (name) => this.backupScheduler.driveBackupText(name),
-      fail: (error) => this.fail(error),
+    this.backup = wireBackup(this.kernel, {
+      platform,
+      scheduler: this.backupScheduler,
+      vaultWorkFactor: options.vaultWorkFactor,
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });

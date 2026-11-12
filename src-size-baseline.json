@@ -5,7 +5,6 @@
   "apps/daemon/src/history/indexer.ts": 841,
   "apps/daemon/src/main.ts": 1202,
   "apps/daemon/src/messaging/messages.ts": 965,
-  "apps/daemon/src/sessions/session-manager.ts": 1115,
   "apps/daemon/src/teams/teams.ts": 818,
   "apps/desktop/src/features/board/board-view.tsx": 1537,
   "apps/desktop/src/features/sessions/session-view.tsx": 1119,
