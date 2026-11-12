@@ -2,7 +2,7 @@
 import { mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { EventStore } from "../../apps/daemon/src/store/event-store.ts";
+import { EventStore } from "../../../apps/daemon/src/store/event-store.ts";
 
 export interface Measure {
   /** The question of the spec's "Baseline first" list (1 to 9). */
