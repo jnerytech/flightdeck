@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { SshImportEntry } from "@flightdeck/protocol";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { sshDaemon, sshTarget } from "./ssh/daemon.ts";
-import { uiIdle, waiter } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { uiIdle, waiter } from "../wait.ts";
+import { sshDaemon, sshTarget } from "./daemon.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(20_000);
 
