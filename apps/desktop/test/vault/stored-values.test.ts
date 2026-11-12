@@ -63,6 +63,14 @@ describe("the vault's stored values are parsed, not trusted (#1609)", () => {
     }
   });
 
+  test("saving a secret's rules over a damaged store keeps the good ones and drops the rest", () => {
+    const rules = new VaultRules(
+      storageWith({ "flightdeck.vaultRules": '{"a":"oops","b":[{"allow":true}]}' }),
+    );
+    rules.set("c", [{ allow: false }]);
+    expect(rules.all()).toEqual({ b: [{ allow: true }], c: [{ allow: false }] });
+  });
+
   const LINE = {
     secretId: "s1",
     hostId: "h1",
