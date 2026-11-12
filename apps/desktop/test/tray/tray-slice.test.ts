@@ -226,4 +226,15 @@ describe("tray (#1596)", () => {
     slice.stop();
     expect(listeners()).toBe(0);
   });
+
+  test("stop cancels the submenu wait, so a closed app sends no menu after it", () => {
+    const { slice, log, world, fire, waiting } = tray();
+    world.items = [item("r1")];
+    slice.changed({ externalRequests: {} });
+    expect(waiting()).toBe(true);
+    slice.stop();
+    expect(waiting()).toBe(false);
+    fire();
+    expect(log).toEqual([]);
+  });
 });

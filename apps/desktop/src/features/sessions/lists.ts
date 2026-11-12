@@ -116,7 +116,12 @@ export class SessionListsSlice {
       // A list read before a hook but answered after its frame is older than what the
       // frame put in the state: it must not undo it.
       const held = externals[key];
-      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
+      // A time that cannot be read (NaN) compares false with everything: an entry with one is
+      // older than a frame whose time can be read, never newer.
+      const answered = Date.parse(s.lastEventAt);
+      const framed = Date.parse(held?.lastEventAt ?? "");
+      const older =
+        held !== undefined && (Number.isNaN(answered) ? !Number.isNaN(framed) : answered < framed);
       if (!older && !sameJson(held, s)) {
         externals[key] = s;
         externalsChanged = true;
