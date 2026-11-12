@@ -1,7 +1,7 @@
-import { testArgs } from "../test/timeout.ts";
-import type { FunctionCoverage } from "./coverage-funcs-hooks.ts";
-import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
-import { type Plan, SLOT_ABOVE, selectRelated } from "./test-related.ts";
+import { testArgs } from "../../test/timeout.ts";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "../slot-heavy.ts";
+import { type Plan, SLOT_ABOVE, selectRelated } from "../test-related.ts";
+import type { FunctionCoverage } from "./funcs-hooks.ts";
 
 export {
   COVERAGE_VAR,
@@ -9,7 +9,7 @@ export {
   type FunctionCoverage,
   type Instrumenter,
   onLoadFor,
-} from "./coverage-funcs-hooks.ts";
+} from "./funcs-hooks.ts";
 
 export const PRELOAD = "./scripts/test/coverage-funcs-preload.ts";
 

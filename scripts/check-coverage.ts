@@ -8,7 +8,7 @@ import {
   hasRuntimeCode,
   isCoverageSource,
   parseLcov,
-} from "./lib/coverage-check.ts";
+} from "./lib/coverage-gate/check.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 
