@@ -68,6 +68,7 @@ describe("createBoardWork: the board's work around its cards, as the daemon buil
       context: () => null,
     });
     const checkLoop = { the: "check loop switch" } as unknown as CheckLoopSwitch;
+    const loopWatchers: unknown[] = [];
     const built = createBoardWork({
       store,
       board,
@@ -81,26 +82,31 @@ describe("createBoardWork: the board's work around its cards, as the daemon buil
       checks: boundedCheckRunner(),
       config: { automations: { issuePollIntervalMs: 60_000 } },
       log: () => {},
-      checkLoopOf: () => checkLoop,
+      checkLoopOf: (watcher) => {
+        loopWatchers.push(watcher);
+        return checkLoop;
+      },
     });
     const [module] = built.modules;
     cleanups.push(() => module.stop?.());
-    return { ...built, module, checkLoop };
+    return { ...built, module, checkLoop, loopWatchers };
   }
 
   test("its module serves the board sync, the PR watch with the check loop's switch, the issues and the automations", () => {
-    const { module, boardSync, watch, issues, automations, checkLoop } = boardWork();
+    const { module, boardSync, watch, watcher, issues, automations, checkLoop, loopWatchers } =
+      boardWork();
     expect([
+      loopWatchers.length === 1 && loopWatchers[0] === watcher,
       module.server?.boardsync === boardSync.service,
       module.server?.prWatch?.watch === watch,
       module.server?.prWatch?.checkLoop === checkLoop,
       module.server?.issues === issues,
       module.server?.automations === automations,
-    ]).toEqual([true, true, true, true, true]);
+    ]).toEqual([true, true, true, true, true, true]);
   });
 
-  test("its stop waits for a tick or an issue search in flight, so the board stops after them (5e36c5cbb)", async () => {
-    const { module, automations } = boardWork();
+  test("its stop waits for a tick or an issue search in flight before it stops the watch and the board sync, so the board stops after them (5e36c5cbb)", async () => {
+    const { module, automations, watch, boardSync } = boardWork();
     await module.start?.();
     let finish = () => {};
     const inFlight = new Promise<void>((resolve) => {
@@ -108,15 +114,25 @@ describe("createBoardWork: the board's work around its cards, as the daemon buil
     });
     const idle = spyOn(automations, "idle").mockImplementation(() => inFlight);
     cleanups.push(() => idle.mockRestore());
+    const watchStop = spyOn(watch, "stop");
+    const loopStop = spyOn(boardSync.loop, "stop");
+    cleanups.push(() => {
+      watchStop.mockRestore();
+      loopStop.mockRestore();
+    });
     let stopped = false;
     const stopping = Promise.resolve(module.stop?.()).then(() => {
       stopped = true;
     });
     await Promise.resolve();
     await Promise.resolve();
-    const before = stopped;
+    const before = [stopped, watchStop.mock.calls.length, loopStop.mock.calls.length];
     finish();
     await stopping;
-    expect([idle.mock.calls.length, before, stopped]).toEqual([1, false, true]);
+    expect([
+      idle.mock.calls.length,
+      before,
+      [stopped, watchStop.mock.calls.length, loopStop.mock.calls.length],
+    ]).toEqual([1, [false, 0, 0], [true, 1, 1]]);
   });
 });
