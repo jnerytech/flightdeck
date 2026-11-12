@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isSystemFolder, type PlatformInfo } from "../../src/roots.ts";
+import { isSystemFolder, type PlatformInfo } from "../../src/projects/roots.ts";
 
 const win: PlatformInfo = {
   platform: "win32",
