@@ -167,6 +167,7 @@ import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.t
 import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
+import { TeamsSlice } from "../features/teams/store.ts";
 import {
   type TeleportOutcome,
   type TeleportRequest,
@@ -363,6 +364,8 @@ export class AppStore {
   readonly sessions: SessionsSlice;
   /** The messages between sessions: the loops a host paused (phase 21, #1596). */
   readonly messaging: MessagingSlice;
+  /** The teams of the hosts: their changes, told and notified (`features/teams/store.ts`). */
+  readonly teams: TeamsSlice;
   /** The spending limits of each host (phase 8, #1596). */
   readonly budgets: BudgetsSlice;
   /** What each client with a month limit spent against it (phase 9, #1596). */
@@ -479,6 +482,11 @@ export class AppStore {
           online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
         })),
       peersSyncMs: this.options.peersSyncMs,
+    });
+    this.teams = new TeamsSlice({
+      remember: (hostId, team) => this.summaries.rememberTeam(hostId, team),
+      notify: (notification, route) => this.inbox.notify(notification, route),
+      t: () => this.i18n.t,
     });
     this.settings = wireSettings(this.kernel, {
       platform,
@@ -1704,7 +1712,7 @@ export class AppStore {
       this.keepUsage();
     },
     // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
-    onTeams: (config, frame) => this.onTeams(config.id, frame),
+    onTeams: (config, frame) => this.teams.onFrame(config.id, frame),
     onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
     onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
     onMessages: (config, frame) => this.messaging.onFrame(config.id, frame),
@@ -1818,20 +1826,6 @@ export class AppStore {
     }
   }
 
-  /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
-  private onTeams(hostId: string, frame: TeamsUpdatedFrame): void {
-    this.summaries.rememberTeam(hostId, frame.team);
-    for (const listener of this.teamListeners) listener(hostId, frame);
-    // #1220: the coordinator reported the goal done; the host sends it once per final report.
-    const body = frame.event === "report_done" ? this.i18n.t("teamsUi.reportDone") : frame.reason;
-    if (body) {
-      this.inbox.notify(
-        { title: this.i18n.t("teamsUi.notifyTitle", { name: frame.team.name }), body },
-        { name: "teams", host: hostId, team: frame.team.id },
-      );
-    }
-  }
-
   /** `hostId/projectId` of the project whose folder holds `cwd`, if any. */
   private sessionProject(hostId: string, cwd: string | null | undefined): string | undefined {
     const project = cwd
@@ -1906,8 +1900,6 @@ export class AppStore {
     this.update({ vaultUsage: this.usage.list() });
   }
 
-  private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
-
   /**
    * Phase 30: posts a webhook through an online host that can (the URL goes there for this one use,
    * over the vault's transport). A request the host refuses counts as a permanent 400.
@@ -1973,10 +1965,7 @@ export class AppStore {
 
   /** Phase 21: told each time a team of a host changes. */
   onTeamsUpdated(listener: (hostId: string, frame: TeamsUpdatedFrame) => void): () => void {
-    this.teamListeners.add(listener);
-    return () => {
-      this.teamListeners.delete(listener);
-    };
+    return this.teams.onUpdated(listener);
   }
 
   /** Phase 21: told each time a message between sessions changes on a host. */
