@@ -23,7 +23,7 @@ function deps(issuePollIntervalMs: number) {
 describe("automationsOptions", () => {
   test("the watch's fixer decides which cards the automations leave alone", () => {
     const given = deps(1000);
-    expect(automationsOptions(given).prWatch === given.fixer).toBe(true);
+    expect(automationsOptions(given).prWatch).toBe(given.fixer);
   });
 
   test("the issues are searched at the config's interval", () => {
@@ -34,10 +34,10 @@ describe("automationsOptions", () => {
   test("they share the database, board, issues, automatic approval and log", () => {
     const given = deps(1000);
     const options = automationsOptions(given);
-    expect(options.db === given.db).toBe(true);
-    expect(options.board === given.board).toBe(true);
-    expect(options.issues === given.issues).toBe(true);
-    expect(options.autoApprove === given.autoApprove).toBe(true);
-    expect(options.log === given.log).toBe(true);
+    expect(options.db).toBe(given.db);
+    expect(options.board).toBe(given.board);
+    expect(options.issues).toBe(given.issues);
+    expect(options.autoApprove).toBe(given.autoApprove);
+    expect(options.log).toBe(given.log);
   });
 });
