@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { PlainInfo } from "@flightdeck/protocol";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { QuestionCard } = await import("../src/features/home/question-card.tsx");
+const { QuestionCard } = await import("../../src/features/home/question-card.tsx");
 
 afterEach(cleanup);
 
@@ -42,7 +42,7 @@ function setup(info: PlainInfo, lang: "en" | "pt-BR" = "en", locked = false, hol
   return calls;
 }
 
-const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
+const { ApprovalCard } = await import("../../src/features/permissions/approval-card.tsx");
 
 /** The key presses that must never approve: select-all and a held-down A. */
 const NOT_APPROVE = [

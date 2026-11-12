@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { en } from "../../src/i18n/en.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ApprovalActions } = await import("../src/features/permissions/approval-actions.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { ApprovalActions } = await import("../../src/features/permissions/approval-actions.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);
 
@@ -53,8 +53,8 @@ describe("approval-actions: one way to answer a request", () => {
   });
 
   test("a tile's pending request carries its risk, so a high-risk one is held there too", async () => {
-    const { pendingOf } = await import("../src/lib/tiles.ts");
-    const { emptySession } = await import("../src/lib/session-state.ts");
+    const { pendingOf } = await import("../../src/lib/tiles.ts");
+    const { emptySession } = await import("../../src/lib/session-state.ts");
     const session = {
       ...emptySession(),
       pending: ["r1"],
