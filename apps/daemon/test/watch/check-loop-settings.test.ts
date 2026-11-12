@@ -28,7 +28,7 @@ async function setup() {
   const base = {
     manager,
     board,
-    watch,
+    prWatch: { watch },
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

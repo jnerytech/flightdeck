@@ -142,10 +142,10 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Issue #93: `teams.create` and `addMember` take a permission mode per member.
     ...when(opts.messaging?.teams, "teams", "teams.permissions"),
     // Phase 22: watching a card's PR and fixing it.
-    ...when(opts.watch, "watch"),
+    ...when(opts.prWatch?.watch, "watch"),
     // Issue #77: a card's watch takes more rounds.
-    ...when(opts.watch, "watch.extend"),
-    ...when(opts.watch, "watch.resolveHeld"),
+    ...when(opts.prWatch?.watch, "watch.extend"),
+    ...when(opts.prWatch?.watch, "watch.resolveHeld"),
     ...when(opts.names, "names"),
   ];
 }

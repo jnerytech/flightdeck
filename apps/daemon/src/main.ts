@@ -634,9 +634,11 @@ export async function startDaemon(
     }),
     messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
-    watch: prWatch,
-    // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
-    checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
+    prWatch: serverGroup<"prWatch">()({
+      watch: prWatch,
+      // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
+      checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
+    }),
     vault,
     log: logger.log.bind(logger),
     actions,

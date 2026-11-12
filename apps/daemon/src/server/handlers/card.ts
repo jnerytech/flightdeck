@@ -39,7 +39,7 @@ export const cardHandlers = {
   "card.checkLoop": (payload, { ws, server }) => {
     const { cardId, on, confirm, rounds } = payload;
     if (on) requireVaultTransport(ws.data.origin, "card.checkLoop", server.opts.log);
-    return server.need("checkLoop").set(cardId, {
+    return server.needIn("prWatch", "checkLoop").set(cardId, {
       on,
       ...(confirm === undefined ? {} : { confirm }),
       ...(rounds === undefined ? {} : { rounds }),
