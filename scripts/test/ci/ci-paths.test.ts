@@ -108,8 +108,8 @@ describe("ci-paths: the rules", () => {
   test("the UI, the journeys, their config or the demo add the e2e journeys (#399)", () => {
     for (const path of [
       "scripts/e2e/define-journeys.ts",
-      "scripts/lib/e2e-config.ts",
-      "scripts/lib/e2e-demo.ts",
+      "scripts/lib/e2e/config.ts",
+      "scripts/lib/e2e/demo.ts",
       "scripts/demo.ts",
       "scripts/demo-seed.ts",
       "playwright.config.ts",

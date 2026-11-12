@@ -21,7 +21,7 @@ import {
   DEMO_PR_URL,
   DEMO_TEAM_REPORT,
   DEMO_UPDATE_CARDS,
-} from "./lib/e2e-journeys.ts";
+} from "./lib/e2e/journeys.ts";
 import {
   type Finding,
   GAP_BOXES,

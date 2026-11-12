@@ -7,7 +7,7 @@
 import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { e2eSummary } from "./lib/e2e-summary.ts";
+import { e2eSummary } from "./lib/e2e/summary.ts";
 
 const dir = join(process.env.RUNNER_TEMP ?? tmpdir(), "e2e-json");
 const reports = existsSync(dir)

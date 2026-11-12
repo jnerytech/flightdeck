@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ensureOnline, type OnlineProbe } from "../../../scripts/lib/e2e-online.ts";
+import { ensureOnline, type OnlineProbe } from "../../../scripts/lib/e2e/online.ts";
 
 /** A page whose hosts come online at `onlineAt` ms, or after the first reload when `afterReload`. */
 function page(options: { onlineAt?: number; afterReload?: boolean }) {
