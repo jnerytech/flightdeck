@@ -171,7 +171,7 @@ languages, re-measured at 1024, 640 and 390 by the narrow guard:
   390 the compact bar with Move to and Discard under ⋯ and "1 in another column".
 - `board-selecao-iniciar`: Start N's confirm on the same selection, with the host's queue, quota, and
   budget and memory holds (#1414). The demo's hosts read the machine's own memory and keep their budgets
-  far from the limit, so the print wraps the page's WebSocket with `scripts/lib/shots-holds.ts` from an
+  far from the limit, so the print wraps the page's WebSocket with `scripts/lib/shots/holds.ts` from an
   init script: the answer to `resources.get` reads 95% in use with the hold at 90%, and `budget.list`
   gains a host budget that holds new cards, at its limit. Playwright's `routeWebSocket` never saw the
   app's sockets under Bun, so the page's own WebSocket is wrapped instead.

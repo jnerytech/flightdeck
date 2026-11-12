@@ -4,7 +4,7 @@ import {
   pickVariants,
   printedPairs,
   shotVariants,
-} from "../../lib/shots-variants.ts";
+} from "../../lib/shots/variants.ts";
 
 describe("shots-variants (#291)", () => {
   test("with no filter, all four pairs, light first and pt-BR before en, as the prints always ran", () => {
