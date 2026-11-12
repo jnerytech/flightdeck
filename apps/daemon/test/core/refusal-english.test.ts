@@ -108,7 +108,11 @@ describe("refusal-english: the raw text of a refusal is English (#940)", () => {
 });
 
 /** Issue #957 (english-msgs2): the files and folders whose refusal, log and error text is English. */
-const MSGS2_FILES = ["../src/mcp.ts", "../src/daemon-client/client.ts", "../src/vault/rules.ts"];
+const MSGS2_FILES = [
+  "../src/mcp/server.ts",
+  "../src/daemon-client/client.ts",
+  "../src/vault/rules.ts",
+];
 const MSGS2_FOLDERS = ["../src/messaging", "../src/issues", "../src/automations"];
 
 /** Words and letters that only a Portuguese sentence has (found by reading the files above). */

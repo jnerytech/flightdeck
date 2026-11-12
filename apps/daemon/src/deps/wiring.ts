@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { hooksStatus, hookTarget } from "../central/index.ts";
 import { type Config, claudeSettingsPath } from "../config.ts";
 import { DAEMON_VERSION, spawnExec, whichOnPath } from "../kernel/index.ts";
-import { mcpReachable } from "../mcp.ts";
+import { mcpReachable } from "../mcp/index.ts";
 import { tailscaleIp } from "../pairing/index.ts";
 import { openCodeState } from "../runtime/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";

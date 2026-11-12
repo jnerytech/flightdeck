@@ -5,7 +5,7 @@
  * MCP tools answer, with the secrets masked.
  */
 import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
-import { runnableActions } from "../mcp.ts";
+import { runnableActions } from "../mcp/index.ts";
 
 export interface ActionCliArgs {
   action: "list" | "run";
