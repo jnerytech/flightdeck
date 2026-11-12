@@ -49,6 +49,45 @@ function pr(
 const MOVE = ["refactor(board): the totals move to cards.ts (#1523)"];
 const TEST = "apps/daemon/test/board/board.test.ts";
 
+/** A store test before a slice move (#1732, from #1731). */
+const STORE_BEFORE = [
+  'test("budgets", async () => {',
+  "  await act(() => store.checkClientBudgets());",
+  "  store.addCard(card); store.refresh();",
+  "  expect(store.clientBudgets.length).toBe(1);",
+  "});",
+].join("\n");
+
+/** Each slice move as the store test reads it after the move. */
+const STORE_SLICED = STORE_BEFORE.replace(
+  "store.checkClientBudgets()",
+  "store.clientBudgets.check()",
+).replace("store.addCard(card); store.refresh()", "store.cards.add(card); store.board.refresh()");
+
+describe("structure-guard: a store member moved under a slice (#1732)", () => {
+  const change: FileChange[] = [{ status: "M", path: TEST }];
+
+  test("a test whose lines only move store members under a slice passes", () => {
+    const verdict = structureVerdict(
+      pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: STORE_SLICED }, change),
+    );
+    expect(verdict).toEqual({ structural: true, problems: [] });
+  });
+
+  test("a slice move next to a changed assertion, or a member that is not the old one, still fails", () => {
+    const assertion = STORE_SLICED.replace("toBe(1)", "toBe(2)");
+    const otherMember = STORE_BEFORE.replace("store.addCard(card)", "store.cards.remove(card)");
+    const verdicts = [assertion, otherMember].map(
+      (head) =>
+        structureVerdict(pr(MOVE, { [TEST]: STORE_BEFORE }, { [TEST]: head }, change)).problems,
+    );
+    expect(verdicts).toEqual([
+      [`${TEST}: changed beyond its import paths`],
+      [`${TEST}: changed beyond its import paths`],
+    ]);
+  });
+});
+
 describe("structure-guard (#1602)", () => {
   test("a move whose tests change only in their import paths passes", () => {
     const verdict = structureVerdict(
