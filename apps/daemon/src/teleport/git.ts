@@ -4,8 +4,7 @@
  * with what it started.
  */
 import { killTree, runCommand } from "../board/command.ts";
-import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../kernel/index.ts";
+import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 
 export const TIMEOUT_MS = 120_000;
 /** The `core.hooksPath` that holds no hook, on this platform. */

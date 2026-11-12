@@ -1,5 +1,5 @@
 import { isBranchName } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 const invalid = (name: string) =>
   new FlightdeckError("bad_request", `${name} is not a valid branch name`, "branch_invalid", {

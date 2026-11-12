@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import {
   GATES,
   type GatedGroup,

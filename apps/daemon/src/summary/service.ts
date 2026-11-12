@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { readFile } from "node:fs/promises";
 import type { SecretScanner, SessionRecap } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { buildSummary, sessionCost } from "./summary.ts";
 
 export interface SummaryServiceOptions {

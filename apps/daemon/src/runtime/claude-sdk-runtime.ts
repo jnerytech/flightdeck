@@ -12,8 +12,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AssistantBlock, EffortLevel, PermissionMode } from "@flightdeck/protocol";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
-import { FlightdeckError } from "../errors.ts";
-import { AsyncQueue, buildChildEnv, whichOnPath } from "../kernel/index.ts";
+import { AsyncQueue, buildChildEnv, FlightdeckError, whichOnPath } from "../kernel/index.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { describeCommands, type SdkSlashCommand } from "./commands.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";

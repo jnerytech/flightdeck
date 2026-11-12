@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { installFakeCli } from "../../../../scripts/test/fake-cli.ts";
-import { FlightdeckError } from "../../src/errors.ts";
 import { Issues } from "../../src/issues/issues.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { git, newBoard } from "../support/board-helpers.ts";
 
 // Real git and a fake CLI (a Bun process each): more than the default 5 s.

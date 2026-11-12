@@ -1,6 +1,6 @@
 import { realpath, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
-import { FlightdeckError } from "./errors.ts";
+import { FlightdeckError } from "./kernel/index.ts";
 
 const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
 

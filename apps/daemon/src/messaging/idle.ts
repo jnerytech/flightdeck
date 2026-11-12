@@ -4,7 +4,7 @@
  * at once when it already is, and never a second time for the same subscription.
  */
 import type { SessionIdentity } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { Endpoints } from "./endpoints.ts";
 import type { Messaging } from "./messages.ts";
 import { addressOf } from "./policy.ts";

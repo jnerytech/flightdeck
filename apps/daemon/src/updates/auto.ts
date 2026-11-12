@@ -6,7 +6,7 @@
  */
 import type { AutoUpdateStatus, DaemonManifest } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { realTimers, type Timers } from "../quota/quota.ts";
 import { compareVersions } from "../service/index.ts";
 

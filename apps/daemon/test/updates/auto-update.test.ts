@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DaemonManifest } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { AutoUpdater } from "../../src/updates/auto.ts";
 
 const manifest = (version: string): DaemonManifest => ({

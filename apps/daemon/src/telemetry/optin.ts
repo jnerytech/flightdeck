@@ -1,6 +1,6 @@
 import type { TelemetryOptInStatus } from "@flightdeck/protocol";
 import { generateToken, loadConfig, updateConfigFile } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import {
   installTelemetry,
   telemetryConflicts,

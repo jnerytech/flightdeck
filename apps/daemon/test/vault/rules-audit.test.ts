@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { VaultAlertFrame, VaultRequestFrame } from "@flightdeck/protocol";
 import { Actions, type ActionsFrame, type ActionsOptions } from "../../src/actions/actions.ts";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { csvCell, toCsv } from "../../src/vault/report.ts";
 import { VaultRules } from "../../src/vault/rules-store.ts";

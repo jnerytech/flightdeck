@@ -7,7 +7,7 @@ import type {
   TemplateStartResult,
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import type { TaskTracker } from "./tasks.ts";
 

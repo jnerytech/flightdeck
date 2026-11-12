@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { ExternalSessions } from "../../src/central/external.ts";
 import { Forker } from "../../src/checkpoints/fork.ts";
-import { FlightdeckError } from "../../src/errors.ts";
 import { AsyncQueue } from "../../src/kernel/async-queue.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import type {

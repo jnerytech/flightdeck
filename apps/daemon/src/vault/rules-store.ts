@@ -4,7 +4,7 @@
  * the same way and to refuse at once what no rule or default lets through. After a restart the
  * app sends them again, and until then the safe defaults decide.
  */
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { type Rule, validateRules } from "./rules.ts";
 
 interface Held {

@@ -1,5 +1,5 @@
 import type { MessagingSession, SessionLine } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import type { EndpointInfo, Endpoints, ReadMessage } from "../../src/messaging/endpoints.ts";
 import {
   Messaging,

@@ -7,7 +7,7 @@ import {
   type SnippetInput,
   SnippetModelError,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 export {
   fieldsOf,

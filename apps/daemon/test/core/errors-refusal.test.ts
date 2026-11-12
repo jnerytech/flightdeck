@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FlightdeckError, refusalOf } from "../../src/errors.ts";
+import { FlightdeckError, refusalOf } from "../../src/kernel/errors.ts";
 
 // Issue #1523 (the board split): refusalOf moved from board.ts to errors.ts, shared by the board
 // and board/launch.ts. What the app shows of a refusal is its reason key and its parameters only.

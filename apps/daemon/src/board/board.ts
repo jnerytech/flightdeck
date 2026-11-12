@@ -11,8 +11,8 @@ import type {
   WorkflowTemplate,
   WorkflowTemplateAdded,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
 import { UNTRUSTED_MARK } from "../issues/issues.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import { shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";

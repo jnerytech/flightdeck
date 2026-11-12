@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { ProjectMemory } from "../../src/memory/memory.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
 import { Changes } from "../../src/review/changes.ts";

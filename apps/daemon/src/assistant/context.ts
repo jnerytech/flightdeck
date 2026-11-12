@@ -15,8 +15,7 @@ import {
 import { git } from "../board/command.ts";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
 import { refArg } from "../board/ref-arg.ts";
-import { FlightdeckError } from "../errors.ts";
-import { readRegular } from "../kernel/index.ts";
+import { FlightdeckError, readRegular } from "../kernel/index.ts";
 import { isCredentialPath } from "../permissions/risk.ts";
 import { REMOVED_LINE } from "../watch/trace.ts";
 
