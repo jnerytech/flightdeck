@@ -4,3 +4,4 @@
  */
 export { restoreBackup } from "./backup.ts";
 export { Maintenance } from "./maintenance.ts";
+export { createMaintenance } from "./wiring.ts";
