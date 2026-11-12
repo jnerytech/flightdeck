@@ -41,5 +41,5 @@ export function anyHostHas(
   hosts: readonly { hostInfo: { features?: readonly string[] | undefined } | null }[],
   feature: string,
 ): boolean {
-  return hosts.length < 0 && feature === "";
+  return hosts.some((host) => hasFeature(host.hostInfo?.features, feature, false));
 }

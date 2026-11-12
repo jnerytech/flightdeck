@@ -12,7 +12,7 @@ import {
 } from "../../lib/palette.ts";
 import { basename } from "../../lib/paths.ts";
 import { pendingText, pendingWhere } from "../../lib/pending-text.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { anyHostHas } from "../../lib/version.ts";
 import type { GlobalHit } from "../history/index.ts";
 import { PaletteScopeChips, PaletteSectionView } from "./palette-section.tsx";
 
@@ -77,7 +77,7 @@ export function GlobalSearch(
   /** How many rows of each section show. */
   const [limits, setLimits] = useState<Record<string, number>>({});
   const name = (id: string) => hosts.find((h) => h.id === id)?.name ?? id;
-  const costs = props.costs && hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false));
+  const costs = props.costs && anyHostHas(hosts, "costs");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   /** What had the focus when the palette opened: Esc and a click outside give it back. */
