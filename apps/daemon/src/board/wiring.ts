@@ -1,7 +1,11 @@
 import type { Database } from "bun:sqlite";
+import { SecretScanner } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
+import { present } from "../present.ts";
+import { Board } from "./board.ts";
 import { type CheckLoopDeps, CheckLoopSwitch, cardMode } from "./check-loop.ts";
 import { HostPause } from "./host-pause.ts";
+import { templateRootOf } from "./spec-template.ts";
 import type { BoardOptions } from "./types.ts";
 
 /** What the host's pause of new card runs is built from. */
@@ -67,4 +71,91 @@ export function createCheckLoop({ db, trust, readSettings, runner }: CheckLoopWi
       modeOf: (card) => cardMode(card, deps.manager),
     });
   return { board, switchOf };
+}
+
+/** What the daemon's board is built from (issue #1593). */
+export interface BoardDeps
+  extends Pick<
+    BoardOptions,
+    | "db"
+    | "manager"
+    | "preparePersonas"
+    | "folderLocks"
+    | "quota"
+    | "budgets"
+    | "memory"
+    | "pause"
+    | "checkLoop"
+    | "projectKeys"
+    | "cardCost"
+    | "idle"
+    | "suspendApproval"
+    | "log"
+  > {
+  config: Pick<Config, "allowedRoots" | "maxParallelRuns"> & {
+    board: Pick<Config["board"], "prPollIntervalMs">;
+  };
+  configFile: string;
+  /** A folder's trust, with its trusted checkout, as the library reads it. */
+  trustForKnowledge(cwd: string): Promise<Parameters<typeof templateRootOf>[0]>;
+  /** The vault's values, read at each scan. */
+  vaultValues(): string[];
+}
+
+/** The board's options as the daemon builds them. */
+export function boardOptions({
+  config,
+  configFile,
+  trustForKnowledge,
+  vaultValues,
+  db,
+  manager,
+  preparePersonas,
+  folderLocks,
+  quota,
+  budgets,
+  memory,
+  pause,
+  checkLoop,
+  projectKeys,
+  cardCost,
+  idle,
+  suspendApproval,
+  log,
+}: BoardDeps): BoardOptions {
+  return {
+    db,
+    manager,
+    // Named one by one: a deps object built elsewhere cannot slip another board option through.
+    ...present({
+      preparePersonas,
+      folderLocks,
+      quota,
+      budgets,
+      memory,
+      pause,
+      checkLoop,
+      projectKeys,
+      cardCost,
+      idle,
+      suspendApproval,
+      log,
+    }),
+    // Issue #78: a card's spec template comes from a trusted project's trusted checkout only.
+    specTemplateRoot: async (cwd, own) =>
+      templateRootOf(await trustForKnowledge(cwd), own ? cwd : undefined),
+    // What goes public from a card (a PR, a merge message) is also checked against the vault's values.
+    scanner: new SecretScanner(() => vaultValues()),
+    allowedRoots: config.allowedRoots,
+    maxParallelRuns: config.maxParallelRuns,
+    ...present({ prPollIntervalMs: config.board.prPollIntervalMs || undefined }),
+    // Changed from the app: kept in the config file, like the rest of the host settings.
+    onSettingsChange: ({ maxParallelRuns }) =>
+      updateConfigFile(configFile, (raw) => ({ ...raw, maxParallelRuns })),
+  };
+}
+
+/** The daemon's board; `start` and `warmProjectKeys` are left to the caller. */
+export function createBoard(deps: BoardDeps): Board {
+  return new Board(boardOptions(deps));
 }
