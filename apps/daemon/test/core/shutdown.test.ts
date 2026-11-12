@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Command } from "@flightdeck/protocol";
-import { acquireLock } from "../../src/lock.ts";
+import { acquireLock } from "../../src/kernel/lock.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { newManager, tempDir } from "../support/helpers.ts";

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Config } from "../../src/config.ts";
-import { acquireLock } from "../../src/lock.ts";
+import { acquireLock } from "../../src/kernel/lock.ts";
 import { runCli } from "../../src/main.ts";
 import { backupNow, keepLast, listBackups, restoreBackup } from "../../src/maintenance/backup.ts";
 import { Maintenance } from "../../src/maintenance/maintenance.ts";

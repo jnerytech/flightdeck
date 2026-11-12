@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { acquireLock } from "../../src/lock.ts";
+import { acquireLock } from "../../src/kernel/lock.ts";
 import { type CliDeps, parseArgs, runCli } from "../../src/main.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { poll, tempDir } from "../support/helpers.ts";

@@ -15,7 +15,7 @@ import {
 } from "../../../../scripts/test/binary-guard.ts";
 import { hookEntries, installHooks } from "../../src/central/hooks-install.ts";
 import { Config } from "../../src/config.ts";
-import { acquireLock, readLockPid } from "../../src/lock.ts";
+import { acquireLock, readLockPid } from "../../src/kernel/lock.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import {
