@@ -85,9 +85,7 @@ export function filterCount(filter: HubFilter): number {
 
 /** A host that is online and offers background sessions: the hub asks again while one is open. */
 export function hasBackgroundHost(hosts: readonly HubHost[]): boolean {
-  return hosts.some(
-    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "bg", false),
-  );
+  return hostsWith(hosts, "bg").length > 0;
 }
 
 /** No host at all, or none online and nothing cached to list: the list would be a dead end. */
