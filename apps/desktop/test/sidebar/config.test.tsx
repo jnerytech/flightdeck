@@ -8,7 +8,7 @@ import { settle } from "../wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { githubSignedIn } = await import("../../src/lib/github-session.ts");
 
 setDefaultTimeout(30_000);

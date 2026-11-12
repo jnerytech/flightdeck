@@ -159,7 +159,7 @@ describe("stall-ui: the Working card on the Activity board says it is quiet (iss
 describe("stall-ui: the Needs you badge counts the quiet rows (issue #1478)", () => {
   test("one quiet session is a 1 on the Needs you entry, and snoozing it takes the 1 away", async () => {
     const { store } = setup();
-    const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+    const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
     const tree = () => (
       <Sidebar
         store={store}

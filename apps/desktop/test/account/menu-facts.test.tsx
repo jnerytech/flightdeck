@@ -7,9 +7,9 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AccountFooter } = await import("../../src/features/shell/account-footer.tsx");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { App } = await import("../../src/ui/App.tsx");
-const { footAccount } = await import("../../src/lib/foot-account.ts");
+const { footAccount } = await import("../../src/features/shell/foot-account.ts");
 const { APP_VERSION } = await import("../../src/lib/version.ts");
 
 setDefaultTimeout(30_000);

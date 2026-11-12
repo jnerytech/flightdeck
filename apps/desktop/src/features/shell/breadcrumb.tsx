@@ -7,9 +7,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
-import type { Crumb } from "@/lib/breadcrumb";
 import type { Route } from "@/lib/router";
 import { IconTip } from "@/shared/feedback/index.ts";
+import type { Crumb } from "./crumbs.ts";
 
 /** More steps than this and the ones in between fold into a menu: the first and the last stay. */
 const FOLD_AT = 3;

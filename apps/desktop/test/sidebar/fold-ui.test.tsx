@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
+import { SIDEBAR_FOLD_KEY } from "../../src/features/shell/sidebar-fold.ts";
 import { ptBR } from "../../src/i18n/pt-BR.ts";
-import { SIDEBAR_FOLD_KEY } from "../../src/lib/sidebar-fold.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { waiter } from "../wait.ts";

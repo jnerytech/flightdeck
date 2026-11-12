@@ -1,4 +1,4 @@
-import type { TreeNode, TreeProject, WorktreeFilter } from "./project-tree.ts";
+import type { TreeNode, TreeProject, WorktreeFilter } from "@/lib/project-tree.ts";
 
 /** Checkouts a project lists before the rest wait behind "N more". */
 export const TREE_CAP = 8;
