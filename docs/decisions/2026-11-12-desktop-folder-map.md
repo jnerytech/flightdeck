@@ -62,7 +62,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `ConfirmDialog.tsx` | `components/feedback/`, then `shared/feedback/` | #2101 (in flight) does the first step; the second goes with the `feedback/` folder |
 | `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
-| `FolderPicker.tsx` | `features/projects/` | used by plugins, teleport, the new-session form and the screens: export it from the `projects` index |
+| `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
 | `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | the first step is **done** (#2099); the second goes with the `markdown/` folder |
 | `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | |
 | `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place |
