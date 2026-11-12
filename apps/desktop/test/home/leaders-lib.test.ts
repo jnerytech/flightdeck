@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { homeLeaders, type LeaderSource, sharePercent } from "../../src/lib/home-leaders.ts";
+import {
+  homeLeaders,
+  type LeaderSource,
+  sharePercent,
+} from "../../src/features/home/home-leaders.ts";
 
 const projects = (...rows: Array<[string, number, number?]>): LeaderSource => ({
   byProject: rows.map(([projectKey, tokens, costUsd = 0]) => ({ projectKey, tokens, costUsd })),
