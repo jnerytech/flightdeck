@@ -185,7 +185,7 @@ test's baseline, with the issue that renames them.
 | `hosts` | host | The machines the app talks to: what each reports about its health (dependencies and doctor), then its saved list and connection |
 | `inbox` | notification | The notification center: what the app sent, kept for the bell, read and unread, the taskbar badge, the system toast and the sound |
 | `issues` | issue | GitHub and Azure Boards issues of a project, through their CLIs |
-| `kernel` | shared kernel | The daemon's small helpers every domain uses and that know no domain: running a command, finding an executable, the daemon error and its refusals, writing a file atomically, reading a regular file, parsing JSON text, ids, the logger shape, the daemon version, queues, line reading, text trims, a child's environment, NTFS names, path containment and the allowed working folder, the allowed networks and the token comparison (#1594) |
+| `kernel` | shared kernel | The daemon's small helpers every domain uses and that know no domain: running a command, finding an executable, the daemon error and its refusals, writing a file atomically, reading a regular file, parsing JSON text, ids, the logger shape, the daemon version, queues, line reading, text trims, a child's environment, NTFS names, path containment and the allowed working folder, the allowed networks, the token comparison and the single-instance lock (#1594) |
 | `knowledge` | library | A project's document library and what a session is given from it |
 | `logs` | log | The daemon's own log files: rotation, scan and serve |
 | `maintenance` | maintenance | Backup and retention of the daemon's data |

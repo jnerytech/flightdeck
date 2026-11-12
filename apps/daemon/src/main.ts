@@ -33,9 +33,16 @@ import { runGh, runGhIn } from "./github/gh.ts";
 import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { createHistory } from "./history/wiring.ts";
-import { DAEMON_VERSION, type Logger, present, spawnExec } from "./kernel/index.ts";
+import {
+  AlreadyRunningError,
+  acquireLock,
+  DAEMON_VERSION,
+  EXIT_ALREADY_RUNNING,
+  type Logger,
+  present,
+  spawnExec,
+} from "./kernel/index.ts";
 import { createKnowledge } from "./knowledge/wiring.ts";
-import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import { createHostLog } from "./logs/wiring.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";

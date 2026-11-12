@@ -36,12 +36,18 @@ import {
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
+import { AssistantController, type HostAnswer } from "../features/assistant/assistant.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
   wireBackground,
 } from "../features/background/index.ts";
-import { type Attention, BackupScheduler, BackupSlice } from "../features/backup/index.ts";
+import {
+  type Attention,
+  BackupScheduler,
+  BackupSlice,
+  googleConfig,
+} from "../features/backup/index.ts";
 import { BoardWidth } from "../features/board/index.ts";
 import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
 import {
@@ -88,6 +94,7 @@ import {
 import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
+import { RoiSettings } from "../features/roi/roi-settings.ts";
 import {
   browserClockDeps,
   CacheTimerSettings,
@@ -173,13 +180,11 @@ import type {
   SidebarSession,
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
-import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
-import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
@@ -187,7 +192,6 @@ import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
-import { RoiSettings } from "./roi-settings.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import {
   effectiveMode,
