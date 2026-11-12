@@ -26,7 +26,7 @@ afterAll(async () => {
 });
 
 const { act, cleanup, render } = await import("@testing-library/react");
-const { SessionView } = await import("../src/ui/SessionView.tsx");
+const { SessionView } = await import("../src/features/sessions/session-view.tsx");
 const { emptySession } = await import("../src/lib/session-state.ts");
 
 afterEach(cleanup);
