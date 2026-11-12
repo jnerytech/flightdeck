@@ -5,8 +5,8 @@ import {
   projectsMatching,
   resolveClient,
   ruleMatches,
-} from "../../src/lib/client-rules.ts";
-import { type Client, type ClientRule, UNASSIGNED } from "../../src/lib/clients.ts";
+} from "../../src/features/clients/client-rules-model.ts";
+import { type Client, type ClientRule, UNASSIGNED } from "../../src/features/clients/clients.ts";
 
 const remote = (pattern: string): ClientRule => ({ id: `r:${pattern}`, kind: "remote", pattern });
 const folder = (path: string, host?: string): ClientRule => ({

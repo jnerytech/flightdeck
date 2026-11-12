@@ -1,9 +1,13 @@
 import type { CostsFilter, CostsSummary } from "@flightdeck/protocol";
 import { byCodeUnit } from "@flightdeck/protocol";
+import {
+  ALL_CLIENTS,
+  type Client,
+  type ClientScope,
+  costByClient,
+  loadCostsSummary,
+} from "@/features/clients/index.ts";
 import type { T } from "../../i18n/index.ts";
-import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
-import { ALL_CLIENTS, type ClientScope } from "../../lib/client-scope.ts";
-import type { Client } from "../../lib/clients.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,

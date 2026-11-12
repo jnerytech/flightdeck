@@ -6,9 +6,9 @@ import {
   type HostSummary,
   loadCostsSummary,
   mergeSummaries,
-} from "../../src/lib/client-costs.ts";
-import { ALL_CLIENTS, ClientScope } from "../../src/lib/client-scope.ts";
-import { type Client, UNASSIGNED } from "../../src/lib/clients.ts";
+} from "../../src/features/clients/client-costs.ts";
+import { ALL_CLIENTS, ClientScope } from "../../src/features/clients/client-scope.ts";
+import { type Client, UNASSIGNED } from "../../src/features/clients/clients.ts";
 
 const DAY = { from: "2026-10-10", to: "2026-10-12" };
 const tokens = (input: number) => ({

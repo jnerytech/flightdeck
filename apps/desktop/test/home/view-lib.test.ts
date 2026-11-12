@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CostsSummary } from "@flightdeck/protocol";
+import { emptySummary } from "../../src/features/clients/client-costs.ts";
 import type { T } from "../../src/i18n/index.ts";
-import { emptySummary } from "../../src/lib/client-costs.ts";
 import type { HomeHostData } from "../../src/lib/home-cache.ts";
 import {
   addUp,
