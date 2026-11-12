@@ -1,5 +1,5 @@
-import type { AppState, HostView } from "./app-store.ts";
-import type { Route } from "./router.ts";
+import type { AppState, HostView } from "@/lib/app-store.ts";
+import type { Route } from "@/lib/router.ts";
 
 /** What the status bar's right side says about the whole app (issue #491). */
 export interface StatusBarSummary {

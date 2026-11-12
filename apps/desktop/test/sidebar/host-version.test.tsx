@@ -6,7 +6,7 @@ import { settleMaybe, stays } from "../wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { APP_VERSION } = await import("../../src/lib/version.ts");
 
 setDefaultTimeout(30_000);

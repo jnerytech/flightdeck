@@ -1,4 +1,4 @@
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "@/platform/types.ts";
 
 /** Where the shell's switches are kept on this computer. */
 export const SHELL_PREFS_KEY = "flightdeck.shellPrefs";

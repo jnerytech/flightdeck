@@ -828,7 +828,7 @@ import { KEY_REGIONS, PAGE_AREA, SINGLE_SCROLL } from "../../lib/layout-guards.t
 describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
   const sources = [
     "features/permissions/approval-card.tsx",
-    "ui/Sidebar.tsx",
+    "features/shell/sidebar.tsx",
     "features/board/board-view.tsx",
     "shared/layout/form.tsx",
   ].map((file) => readFileSync(join(import.meta.dir, "../../../apps/desktop/src", file), "utf8"));

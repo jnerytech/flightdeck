@@ -13,9 +13,9 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { ActivityBoard } = await import("../../src/features/activity/board.tsx");
-const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
-const { breadcrumb } = await import("../../src/lib/breadcrumb.ts");
+const { breadcrumb } = await import("../../src/features/shell/crumbs.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

@@ -1,11 +1,5 @@
 import { Check, ChevronDown, Pin } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { type StateTone, StatusDot } from "@/shared/status/index.ts";
-import type { Key, T } from "../../i18n/index.ts";
-import type { AppStore } from "../../lib/app-store.ts";
-import type { TreeNode, TreeProject, WorktreeFilter } from "../../lib/project-tree.ts";
-import type { Route } from "../../lib/router.ts";
 import {
   foldedByDefault,
   liveTone,
@@ -15,7 +9,13 @@ import {
   shownProjects,
   TREE_CAP,
   visibleNodes,
-} from "../../lib/tree-fold.ts";
+} from "@/features/shell/index.ts";
+import { cn } from "@/lib/utils";
+import { type StateTone, StatusDot } from "@/shared/status/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import type { TreeNode, TreeProject, WorktreeFilter } from "../../lib/project-tree.ts";
+import type { Route } from "../../lib/router.ts";
 
 /** The dictionary's name of a state dot's tone: an error reads as idle, as the sidebar always did. */
 const toneKey = (tone: StateTone): string => {

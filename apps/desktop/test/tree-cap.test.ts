@@ -1,6 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { HubRow } from "../src/lib/hub.ts";
-import { projectTree, type TreeProject } from "../src/lib/project-tree.ts";
 import {
   FOLD_ABOVE,
   foldedByDefault,
@@ -14,7 +12,9 @@ import {
   shownProjects,
   TREE_OPENED_KEY,
   TREE_PINNED_KEY,
-} from "../src/lib/tree-fold.ts";
+} from "../src/features/shell/tree-fold.ts";
+import type { HubRow } from "../src/lib/hub.ts";
+import { projectTree, type TreeProject } from "../src/lib/project-tree.ts";
 
 const project = (name: string, lastActivityAt = 0, host = "h1"): TreeProject => ({
   hostId: host,
