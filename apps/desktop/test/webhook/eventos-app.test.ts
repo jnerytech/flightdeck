@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { ExternalPermissionFrame, ExternalSession, WatchInfo } from "@flightdeck/protocol";
-import type { SidebarSession } from "../src/lib/app-store.ts";
-import { WebhookFeed } from "../src/lib/webhook-feed.ts";
-import type { WebhookSource } from "../src/lib/webhooks.ts";
+import type { SidebarSession } from "../../src/lib/app-store.ts";
+import { WebhookFeed } from "../../src/lib/webhook-feed.ts";
+import type { WebhookSource } from "../../src/lib/webhooks.ts";
 
 const HOST = { id: "pi", name: "Pi" };
 

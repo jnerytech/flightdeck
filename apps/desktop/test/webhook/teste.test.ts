@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { Webhooks } from "../src/lib/webhooks.ts";
-import type { WebhookRequest, WebhookResponse } from "../src/platform/types.ts";
+import { Webhooks } from "../../src/lib/webhooks.ts";
+import type { WebhookRequest, WebhookResponse } from "../../src/platform/types.ts";
 
 function setup(answers: Array<WebhookResponse | "throw">) {
   const store = new Map<string, string>();
