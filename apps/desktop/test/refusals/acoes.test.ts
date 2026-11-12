@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { ACTION_ISSUE_CODES } from "@flightdeck/protocol";
-import { en } from "../src/i18n/en.ts";
-import { actionIssueText } from "../src/i18n/errors.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
+import { en } from "../../src/i18n/en.ts";
+import { actionIssueText } from "../../src/i18n/errors.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
 
 const enT = translator("en");
 const ptT = translator("pt-BR");
