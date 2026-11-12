@@ -34,7 +34,6 @@ const SOURCES = [
   "src/components/feedback",
   "src/shared/feedback",
   "src/shared/layout",
-  "src/components/layout",
   "src/shared/markdown",
   "src/shared/status",
 ]
