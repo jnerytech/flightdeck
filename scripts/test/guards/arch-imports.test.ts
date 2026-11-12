@@ -182,9 +182,25 @@ describe("arch-imports: the domain borders (#1591)", () => {
         "apps/desktop/src/features/board/b.ts":
           'import { i } from "./index.ts";\nimport { s } from "./b.ts";\nexport const b = [i, s];\n',
         "apps/desktop/src/features/board/c.ts": "export const c = 3;\n",
-        "apps/desktop/src/features/board/index.ts": 'export { c } from "./c.ts";\n',
+        "apps/desktop/src/features/board/index.ts":
+          'export { b } from "./b.ts";\nexport { c } from "./c.ts";\n',
       }),
     ).toEqual([]);
+  });
+
+  test("barrels that re-export barrels are followed to the files, and two that re-export each other end the walk (#1624)", () => {
+    const module = (source: string, ...deps: [string, string][]) => ({
+      source,
+      dependencies: deps.map(([resolved, type]) => ({ resolved, dependencyTypes: [type] })),
+    });
+    expect(
+      cycleFiles([
+        module("a.ts", ["x/index.ts", "import"]),
+        module("b.ts", ["a.ts", "import"]),
+        module("x/index.ts", ["y/index.ts", "export"]),
+        module("y/index.ts", ["b.ts", "export"], ["x/index.ts", "export"]),
+      ]),
+    ).toEqual(["a.ts", "b.ts"]);
   });
 
   test("an index.ts with code of its own is a file like any other, so a cycle through it counts it (#1624)", async () => {
