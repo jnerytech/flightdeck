@@ -18,7 +18,7 @@ function built(scanIntervalMs = 0) {
   const names = { adoptTitle: (...args: unknown[]) => adopted.push(args) } as unknown as Names;
   const manager = { list: () => [{ id: "fd-1", claudeSessionId: "c-1" }] };
   const store = new EventStore(":memory:");
-  const history = createHistory({
+  const { history } = createHistory({
     db: store.db,
     config: { ...config, history: { ...config.history, scanIntervalMs } },
     names,
