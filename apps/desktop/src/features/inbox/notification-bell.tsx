@@ -2,7 +2,7 @@ import { Bell } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
-import { parseRequestLink } from "@/features/hosts/index.ts";
+import { parseRequestLink } from "@/features/permissions/index.ts";
 import { sessionKey } from "@/features/sessions/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { needsYou } from "../../lib/app-state.ts";

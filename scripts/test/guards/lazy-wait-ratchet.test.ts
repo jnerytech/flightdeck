@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { overBaseline } from "../../lib/layout-ratchet.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
 import {
   actSleepCounts,
   fixedWaitCounts,
   fixedWaitSites,
   uncommentedActSleeps,
-} from "../../lib/lazy-wait-ratchet.ts";
+} from "../../lib/ratchets/lazy-wait.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");

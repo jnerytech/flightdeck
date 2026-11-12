@@ -1,7 +1,7 @@
 # No blocking IO in runtime code (issue #1711, moved from DECISIONS.md)
 
 The maintainer's rule: nothing in the daemon or the app waits on the disk or on a process while the
-event loop (or the window) has other work. `scripts/lib/no-sync-ratchet.ts` counts the fs `*Sync`,
+event loop (or the window) has other work. `scripts/lib/ratchets/no-sync.ts` counts the fs `*Sync`,
 `execSync`, `execFileSync` and `spawnSync` calls per file in `apps/daemon/src` and
 `apps/desktop/src`; `scripts/test/guards/no-sync-ratchet.test.ts` compares the counts with a baseline that
 only goes down, so a new call fails and a removed call forces the baseline down. Scripts and tests
