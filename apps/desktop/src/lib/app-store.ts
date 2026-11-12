@@ -1117,23 +1117,8 @@ export class AppStore {
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
-  async sendTo(
-    hostId: string,
-    sessionId: string,
-    text: string,
-    images?: SessionImage[],
-  ): Promise<void> {
-    const conn = this.link.connection(hostId);
-    if (!conn) return;
-    try {
-      await conn.request("session.send", {
-        sessionId,
-        text,
-        ...(images?.length ? { images } : {}),
-      });
-    } catch (error) {
-      this.fail(error);
-    }
+  sendTo(hostId: string, sessionId: string, text: string, images?: SessionImage[]): Promise<void> {
+    return this.commands.sendTo(hostId, sessionId, text, images);
   }
 
   /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
@@ -1822,12 +1807,8 @@ export class AppStore {
   }
 
   /** Issue #1478: interrupts any session of a host, open or not. */
-  async interruptSession(hostId: string, sessionId: string): Promise<void> {
-    try {
-      await this.link.connection(hostId)?.request("session.interrupt", { sessionId });
-    } catch (error) {
-      this.fail(error);
-    }
+  interruptSession(hostId: string, sessionId: string): Promise<void> {
+    return this.commands.interruptOn(hostId, sessionId);
   }
 
   /** Phase 21: told each time a team of a host changes. */
