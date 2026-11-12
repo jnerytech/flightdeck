@@ -5,7 +5,7 @@ import { waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render, screen } = await import("@testing-library/react");
-const { EarlierTurns } = await import("../src/components/session/earlier-turns.tsx");
+const { EarlierTurns } = await import("../src/features/sessions/earlier-turns.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
 afterEach(cleanup);

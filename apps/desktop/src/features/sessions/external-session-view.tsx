@@ -2,7 +2,6 @@ import { Radio } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { AssistField } from "@/components/assistant/assist-field";
-import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TranscriptReader } from "@/features/history/index.ts";
@@ -18,6 +17,7 @@ import { BgPanel } from "../background/bg-panel.tsx";
 import { CheckpointsButton } from "../checkpoints/index.ts";
 import { TerminalButton } from "../terminal/index.ts";
 import { approvalRequestOf, externalRequestsOf, externalTitle } from "./external-view.ts";
+import { Composer, RecapSlot, SessionHeader, SessionPane } from "./parts";
 
 /**
  * A live session opened outside Flightdeck: its transcript as it grows, its permission requests

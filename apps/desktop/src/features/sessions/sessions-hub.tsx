@@ -2,7 +2,6 @@ import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ViewToggle } from "@/components/layout/view-toggle";
-import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +75,7 @@ import {
   rowsInScope,
   scopeKeys,
 } from "./hub-scope.ts";
+import { RuntimeBadge } from "./runtime-badge";
 import { SessionCard, STATE_TONES } from "./session-card";
 
 /** How often the hub asks the hosts about their background sessions. */

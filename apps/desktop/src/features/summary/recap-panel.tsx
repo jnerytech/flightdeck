@@ -1,9 +1,9 @@
 import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdrDraftDialog } from "@/components/session/adr-draft-dialog";
-import { useTight } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
+import { AdrDraftDialog } from "@/features/sessions/adr-draft-dialog";
+import { useTight } from "@/features/sessions/parts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
