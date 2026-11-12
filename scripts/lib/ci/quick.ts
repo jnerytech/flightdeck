@@ -7,7 +7,7 @@
  * jobs start.
  */
 import { byCodeUnit } from "@flightdeck/protocol";
-import { isRepoWide } from "./repo-wide.ts";
+import { isRepoWide } from "../repo-wide.ts";
 
 const QUICK_TEST = /(?:-ratchet|(?:^|\/)protocol-surface)\.test\.tsx?$/;
 const TEST_FILE = /\.test\.tsx?$/;
