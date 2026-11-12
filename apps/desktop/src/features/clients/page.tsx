@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Briefcase } from "lucide-react";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
 import { Page } from "@/components/layout/page";
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../../lib/clients.ts";
 import { anyHostHas } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { ClientBudget } from "./client-budget.tsx";
 import { ClientDefaults } from "./client-defaults.tsx";
 import { ClientDot } from "./client-dot";

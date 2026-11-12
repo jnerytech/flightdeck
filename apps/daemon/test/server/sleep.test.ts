@@ -22,10 +22,12 @@ async function serve(withSleep = true) {
     manager: ctx.manager,
     ...(withSleep
       ? {
-          sleep: {
-            minutes: () => minutes,
-            set: (n: number) => {
-              minutes = n;
+          sessionSettings: {
+            sleep: {
+              minutes: () => minutes,
+              set: (n: number) => {
+                minutes = n;
+              },
             },
           },
         }

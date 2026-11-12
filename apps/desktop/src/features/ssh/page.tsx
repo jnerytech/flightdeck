@@ -1,6 +1,7 @@
 import type { SshHostKeyCheck, SshImportEntry, SshTarget } from "@flightdeck/protocol";
 import { Network } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -22,7 +23,6 @@ import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { ImportPanel } from "./import-panel";
 import { savePayload } from "./index.ts";
 import { TargetForm } from "./target-form";

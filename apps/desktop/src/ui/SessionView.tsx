@@ -13,6 +13,7 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { useWand, type WandBinding } from "@/components/assistant/use-wand";
 import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
 import { Markdown } from "@/components/markdown/markdown";
@@ -40,12 +41,15 @@ import { cn } from "@/lib/utils";
 import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
 import {
   commandItemsOf,
+  composerModeMenu,
   ModelOptions,
   missedAfter,
+  offersModelPicker,
   queueStep,
   rememberPosition,
   type ScrollPosition,
   StatusBadge,
+  slashFill,
   submitAction,
 } from "../features/sessions/index.ts";
 import { ToolCall } from "../features/sessions/tool-call.tsx";
@@ -53,13 +57,12 @@ import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
-import { modeRows, nextMode } from "../lib/mode-menu.ts";
+import { nextMode } from "../lib/mode-menu.ts";
 import type { MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, ScrollPosition>();
@@ -347,8 +350,7 @@ function offeredPrompts(
   if (!prompts && !slash) return undefined;
   return {
     list: async () => [...((await prompts?.list()) ?? []), ...commandItems],
-    fill: async (key) =>
-      key.startsWith("slash:") ? `/${key.slice(6)} ` : (prompts?.fill(key) ?? ""),
+    fill: async (key) => slashFill(key) ?? (await prompts?.fill(key)) ?? "",
   };
 }
 
@@ -359,7 +361,7 @@ interface PickerState {
   effort: EffortLevel | null;
   setEffort(level: EffortLevel | null): void;
   mode: PermissionMode | null;
-  modeMenu: ReturnType<typeof modeRows>;
+  modeMenu: ReturnType<typeof composerModeMenu>;
   chooseMode(next: SettableMode): void;
 }
 
@@ -372,7 +374,14 @@ function composerPickers(
   const { actions, session } = props;
   const opencode = props.runtime === "opencode";
   const pickers: { model?: ReactNode; mode?: ReactNode } = {};
-  if (props.settings && actions.setModel && (!opencode || props.models)) {
+  if (
+    offersModelPicker({
+      settings: Boolean(props.settings),
+      canSetModel: Boolean(actions.setModel),
+      opencode,
+      hasModels: Boolean(props.models),
+    })
+  ) {
     pickers.model = opencode ? (
       <NativeSelect
         compact
@@ -552,13 +561,12 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
   // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
-  // An unknown start blocks nothing as looser (the loosest mode is the base): the host refuses a
-  // looser mode itself, and the menu must not claim a start it does not know.
-  const modeMenu = modeRows({
+  const modeMenu = composerModeMenu({
     current: mode,
-    start: start ?? "bypassPermissions",
+    start,
     bypassAllowed: Boolean(props.bypass),
-  }).filter((row) => !opencode || row.mode !== "acceptEdits");
+    opencode,
+  });
   /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
   const chooseMode = (next: SettableMode) => {
     if (next === "bypassPermissions") {

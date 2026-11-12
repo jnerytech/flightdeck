@@ -1,5 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import { useId, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -8,7 +9,6 @@ import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { checkLoopLine } from "@/lib/check-loop";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /**
  * Issue #1361: "Keep going until the checks pass" on a card. Turning it on asks the host; outside

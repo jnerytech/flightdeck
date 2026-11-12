@@ -1,5 +1,6 @@
 import type { Budget, BudgetInput, QuotaBudgetInput } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
@@ -14,7 +15,6 @@ import { hasFeature } from "@/lib/version";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { periodRange } from "../../lib/costs.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { budgetLabel, budgetLine, projectName } from "./budgets.ts";
 
 /** What the client filter reads: the selection, the clients and where each project belongs. */
