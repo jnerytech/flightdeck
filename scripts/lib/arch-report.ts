@@ -14,6 +14,8 @@ export type ArchInputs = {
   knownHead: string | null;
   /** The rules the head's `.dependency-cruiser.cjs` adds to main's (`newRules`); today is their first baseline (#1624). */
   newRules?: ReadonlySet<string>;
+  /** The desktop's files in an import cycle today and in desktop-cycles-baseline.json (#1624); absent when not counted. */
+  desktopCycles?: { today: number; baseline: number };
   /** Source files over the size limit today and in src-size-baseline.json. */
   srcOversized: Record<string, number>;
   srcBaseline: Record<string, number>;

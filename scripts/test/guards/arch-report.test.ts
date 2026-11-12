@@ -3,6 +3,7 @@ import {
   type ArchInputs,
   formatTable,
   growing,
+  type RatchetRow,
   ratchetRows,
   shapeShares,
 } from "../../lib/arch-report.ts";
@@ -79,6 +80,20 @@ describe("arch-report (#1610)", () => {
       }),
     );
     expect(growing(old)).toEqual([{ ratchet: "depcruise shared-rule", baseline: 0, today: 1 }]);
+  });
+
+  test("the desktop's files in an import cycle get a row; one more file puts it above its baseline (#1624)", () => {
+    const row = (today: number) =>
+      ratchetRows(inputs({ desktopCycles: { today, baseline: 120 } })).find((r) =>
+        r.ratchet.startsWith("desktop-cycles"),
+      );
+    expect(row(118)).toEqual({
+      ratchet: "desktop-cycles files in a cycle",
+      baseline: 120,
+      today: 118,
+    });
+    expect(growing([row(121) as RatchetRow])).toHaveLength(1);
+    expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("desktop-cycles"))).toBe(false);
   });
 
   test("a workspace flat today but absent from its baseline is a row with baseline 0", () => {
