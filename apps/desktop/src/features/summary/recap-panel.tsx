@@ -9,9 +9,9 @@ import { useStoreSlice } from "@/lib/use-store";
 import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { recapPreview } from "../../lib/recap-preview.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { usd } from "../costs/index.ts";
+import { recapPreview } from "./recap-preview.ts";
 
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
