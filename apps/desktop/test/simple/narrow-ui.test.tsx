@@ -9,7 +9,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { HomeView } = await import("../../src/components/simple/home-view.tsx");
+const { HomeView } = await import("../../src/features/home/home-view.tsx");
 
 afterEach(cleanup);
 

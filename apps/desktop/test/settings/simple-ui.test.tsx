@@ -5,7 +5,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SettingsView } = await import("../../src/components/simple/settings-view.tsx");
+const { SettingsView } = await import("../../src/features/home/settings-view.tsx");
 
 afterEach(cleanup);
 
