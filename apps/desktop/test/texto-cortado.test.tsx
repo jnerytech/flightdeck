@@ -16,7 +16,7 @@ const { TContext } = await import("../src/i18n/context.tsx");
 const { Breadcrumb } = await import("../src/components/layout/breadcrumb.tsx");
 const { DayChart } = await import("../src/features/costs/day-chart.tsx");
 const { SessionTiles } = await import("../src/features/projects/session-tiles.tsx");
-const { FolderPicker } = await import("../src/ui/FolderPicker.tsx");
+const { FolderPicker } = await import("../src/features/hosts/folder-picker.tsx");
 const { App } = await import("../src/ui/App.tsx");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 

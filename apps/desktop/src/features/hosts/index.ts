@@ -9,6 +9,7 @@
 export { AllowedFolders } from "./allowed-folders.tsx";
 export { awaitedHost } from "./awaited-host.ts";
 export { FirstRun } from "./first-run.tsx";
+export { FolderPicker } from "./folder-picker.tsx";
 export {
   type HealthAnswer,
   type HealthCore,
