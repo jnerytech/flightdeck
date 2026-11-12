@@ -21,6 +21,7 @@ import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import { DensityController } from "@/features/shell/density.ts";
 import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
+import { SystemSlice } from "@/features/shell/system.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside } from "@/shared/lib/index.ts";
@@ -410,6 +411,16 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
+    this.system = new SystemSlice({
+      platform,
+      localHost: (hostId) => {
+        const host = this.state.hosts.find((h) => h.id === hostId);
+        return host !== undefined && isLocalUrl(host.url);
+      },
+      fail: (error, text) => this.fail(error, text),
+      success: (text) => this.success(text),
+      copiedText: () => this.i18n.t("toast.copied"),
+    });
     this.history = wireHistory(this.kernel, {
       searchTimeoutMs: options.searchTimeoutMs,
       select: (hostId, sessionId) => this.select(hostId, sessionId),
@@ -1133,40 +1144,17 @@ export class AppStore {
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return this.platform.openPath !== undefined && host !== undefined && isLocalUrl(host.url);
+    return this.system.canOpenPaths(hostId);
   }
 
   /** Opens a file the host made with the system's default app; false when it cannot. */
-  async openPath(hostId: string, path: string): Promise<boolean> {
-    return this.onLocalPath(hostId, path, (p) => this.platform.openPath?.(p));
+  openPath(hostId: string, path: string): Promise<boolean> {
+    return this.system.openPath(hostId, path);
   }
 
   /** Shows a file the host made in the system's file manager; false when it cannot. */
-  async revealPath(hostId: string, path: string): Promise<boolean> {
-    return this.onLocalPath(hostId, path, (p) => this.platform.revealPath?.(p));
-  }
-
-  private async onLocalPath(
-    hostId: string,
-    path: string,
-    act: (path: string) => Promise<void> | undefined,
-  ): Promise<boolean> {
-    // Only a host of this machine has files that are here, and only a full path says which.
-    if (
-      !this.canOpenPaths(hostId) ||
-      !/^([A-Za-z]:[\\/]|\/(?![\\/]))/.test(path) ||
-      path.includes("..")
-    ) {
-      return false;
-    }
-    try {
-      await act(path);
-      return true;
-    } catch (error) {
-      this.fail(error);
-      return false;
-    }
+  revealPath(hostId: string, path: string): Promise<boolean> {
+    return this.system.revealPath(hostId, path);
   }
 
   /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
@@ -1514,13 +1502,8 @@ export class AppStore {
   }
 
   /** Saves a file through the system dialog; errors go to the banner. */
-  async saveFile(name: string, text: string): Promise<boolean> {
-    try {
-      return await this.platform.saveFile(name, text);
-    } catch (error) {
-      this.fail(error, (error as Error).message);
-      return false;
-    }
+  saveFile(name: string, text: string): Promise<boolean> {
+    return this.system.saveFile(name, text);
   }
 
   /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
@@ -1533,38 +1516,26 @@ export class AppStore {
 
   /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
   canReadBackup(): boolean {
-    return this.platform.vault.canPick !== false;
+    return this.system.canReadBackup();
   }
 
   /** Whether this app can open the system's folder dialog (the desktop app, not a browser). */
   canPickFolder(): boolean {
-    return this.platform.pickFolder !== undefined;
+    return this.system.canPickFolder();
   }
 
   /** The folder the user picks in the system dialog; null when they cancel or there is none. */
-  async pickFolder(): Promise<string | null> {
-    try {
-      return (await this.platform.pickFolder?.()) ?? null;
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
+  pickFolder(): Promise<string | null> {
+    return this.system.pickFolder();
   }
 
   /** The shell's log file, when the app has one (not in a browser). */
   platformLogs(): Platform["logs"] {
-    return this.platform.logs;
+    return this.system.logs();
   }
 
-  async copyText(text: string): Promise<boolean> {
-    try {
-      await this.platform.copyText(text);
-      this.success(this.i18n.t("toast.copied"));
-      return true;
-    } catch (error) {
-      this.fail(error);
-      return false;
-    }
+  copyText(text: string): Promise<boolean> {
+    return this.system.copyText(text);
   }
 
   reportError(message: string): void {
@@ -1957,6 +1928,8 @@ export class AppStore {
   readonly vaultApprovals: VaultApprovalsSlice;
   /** What the app's log and the screens must never show: the hosts' tokens and the vault's values. */
   readonly scan: VaultScanSlice;
+  /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
+  private readonly system: SystemSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */
