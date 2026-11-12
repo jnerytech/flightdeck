@@ -234,3 +234,10 @@
     overflow: hidden;
   }
 }
+
+/* The refresh turns while it asks, unless the person asked for less motion. */
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

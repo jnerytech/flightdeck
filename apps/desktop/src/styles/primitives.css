@@ -1,0 +1,111 @@
+/* The vendored dialog and button get app-wide rules here, outside the layers and the vendored files (#1599). */
+
+/*
+ * A dialog sits centered by its own margins over a dimmed page. The vendored component keeps
+ * the CLI's classes (a transform is the part a webview can drop), so these rules sit outside it.
+ */
+[data-slot="dialog-overlay"] {
+  background-color: oklch(0 0 0 / 60%);
+  backdrop-filter: blur(1px);
+}
+[data-slot="dialog-content"] {
+  inset: 0;
+  margin: auto;
+  translate: none;
+  height: fit-content;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
+/*
+ * Below 640 px a dialog is a full-screen sheet (#641, responsive spec "Dialogs"): the body
+ * scrolls and the footer stays at the bottom, its buttons stacked with the primary last. A
+ * confirmation (alert-dialog) stays a centered box: a two-line question needs no whole screen.
+ */
+@media (width < 40rem) {
+  [data-slot="dialog-content"] {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: none;
+    max-width: none;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+    /* #1271: a field that takes focus under the sticky footer scrolls clear of it (WCAG 2.4.11):
+       room for the buttons (about 5rem) and a reason line or a wrapped row under them. */
+    scroll-padding-bottom: 8rem;
+  }
+  /* A form that holds the fields and the footer (New card) fills the sheet, as the content does. */
+  [data-slot="dialog-content"] > form {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    gap: 1rem;
+    /* The sheet's padding is the form's own, so the footer's bleed to the edges stays inside it (#1249). */
+    margin: 0 -1.5rem -1.5rem;
+    padding: 0 1.5rem 1.5rem;
+    /* A Form of variant "dialog" is w-full: auto lets it stretch to both edges with its margins. */
+    width: auto;
+  }
+  [data-slot="dialog-content"] [data-slot="dialog-footer"] {
+    position: sticky;
+    bottom: -1.5rem;
+    flex-direction: column;
+    margin: 0 -1.5rem -1.5rem;
+    margin-top: auto;
+    border-top-width: 1px;
+    background-color: var(--background);
+    /* Room under the stack for a button's reason, which hangs below it. */
+    padding: 1rem 1.5rem 1.5rem;
+  }
+  /* #1271: a Form's own buttons (FormActions) are the sheet's footer too: they rest on its bottom
+     edge and the fields scroll clear of them, as the footer above. Their row stays a row. */
+  [data-slot="dialog-content"] > form > :has(> [data-slot="form-actions"]) {
+    position: sticky;
+    bottom: -1.5rem;
+    z-index: 1;
+    margin: auto -1.5rem -1.5rem;
+    border-top-width: 1px;
+    background-color: var(--background);
+    padding: 1rem 1.5rem 1.5rem;
+  }
+  /* A button with a reason under it is as wide as the others in the stack. */
+  [data-slot="dialog-footer"] .action-button-box > button {
+    flex: 1;
+  }
+}
+
+/* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
+[data-slot="button"][data-variant="default"],
+[data-slot="button"][data-variant="destructive"] {
+  font-weight: var(--weight-strong);
+}
+
+[data-slot="button"][data-variant="outline"],
+[data-slot="button"][data-variant="secondary"],
+[data-slot="button"][data-variant="ghost"] {
+  font-weight: var(--weight-label);
+}
+
+/* A pressed toggle (#812): the accent's fill and a 2 px ring, twice the 1 px border, so on and
+   off differ in shape too. The ring is an outline, so the focus-visible ring (a box-shadow) still
+   shows on a pressed button. Only the toggle variants: a default or destructive button keeps its
+   own fill. Outside the layers, so it beats the variant's background and its hover. */
+[data-slot="button"][data-variant="outline"][aria-pressed="true"],
+[data-slot="button"][data-variant="ghost"][aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* #1063: a dialog's footer puts its last button at the dialog's right edge. Hung from the button's
+   left, the reason grew past that edge and was cut; here it hangs from the button's right and grows
+   inward. Only the last one: a button first in the row (the snippet dialog's Run) is at the left
+   edge and keeps hanging from its left. On a phone the footer is a column of full-width buttons. */
+[data-slot="dialog-footer"] > .action-button-box:last-child .action-reason {
+  left: auto;
+  right: 0;
+  text-align: right;
+}
