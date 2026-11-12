@@ -6,7 +6,7 @@ import {
   syncCallCount,
   syncCounts,
   withBaseline,
-} from "../../lib/no-sync-ratchet.ts";
+} from "../../lib/ratchets/no-sync.ts";
 
 const root = resolve(import.meta.dir, "../../..");
 

@@ -9,7 +9,7 @@ import {
   pushWaitCheck,
   pushWaitViolation,
   withBudget,
-} from "../../lib/claude-hooks.ts";
+} from "../../lib/hooks/claude-hooks.ts";
 
 // resolve: on Windows a `cd /repos/...` lands in D:\repos\..., and so must the expected folder (#534).
 const CWD = resolve("/repos/flightdeck-fix");

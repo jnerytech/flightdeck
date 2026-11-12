@@ -2,11 +2,11 @@
 /**
  * `bun run scripts/ci-paths.ts` (the first step of the CI's quick job, #264, #444): which jobs this run needs,
  * written to $GITHUB_OUTPUT. On a pull request it diffs against the merge-base with the target
- * branch; anything else, or a diff it cannot read, runs everything. The rules are in lib/ci-paths.ts.
+ * branch; anything else, or a diff it cannot read, runs everything. The rules are in lib/ci/paths.ts.
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
-import { ciPlan, planOutputs, selectionBase } from "./lib/ci-paths.ts";
+import { ciPlan, planOutputs, selectionBase } from "./lib/ci/paths.ts";
 import { planRelated } from "./lib/test-related.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 

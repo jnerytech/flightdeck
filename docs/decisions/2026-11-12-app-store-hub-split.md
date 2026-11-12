@@ -137,7 +137,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   listener set) to the `PermissionsSlice` (`onOpen`, `open`, `openLink`, `decideOldest`), after
   `request-link.ts` moved from `features/hosts/` to `features/permissions/`; the window and the
   tray's answer come from the store as deps, and the store keeps one-line forwarders for the
-  screens; the quiet snooze to sessions.
+  screens; the quiet snooze (`snoozeQuiet`) to a `QuietSnoozeSlice` in
+  `features/needs-you/quiet-snooze.ts`, next to the snoozes' storage (Needs you lists the quiet
+  sessions, not the session screens).
 - **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(platform, held)`
   (`held`: what the store holds when it is built, the clock's start, the vault's usage log and the
   clients), next to `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
@@ -216,3 +218,8 @@ glossary gives that word to the rounds that watch a PR.
   `wireHostUpdate`'s `open` dep are the parts outside the host methods that change.
 - The six listener sets move with the link or the slice that owns their frames; their subscribers
   do not change.
+
+Decided: the board cards (`onCard`, the cards in a command result, `loadBoard`) are a
+`BoardCardsSlice` in `features/board/board-cards.ts`, in the board domain, not the sessions'. The
+store builds it itself: the desktop's import-cycle ratchet (#1624) counts a board wire importing the
+kernel, so the slice types only the connection's `board.get` and the notification's two keys.

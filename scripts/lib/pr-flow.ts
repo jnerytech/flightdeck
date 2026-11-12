@@ -1,6 +1,6 @@
 import { inSequence } from "@flightdeck/protocol";
 import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "./branch-pr.ts";
-import { type PrRun, prRunFrom, pushWaitPass } from "./claude-hooks.ts";
+import { type PrRun, prRunFrom, pushWaitPass } from "./hooks/claude-hooks.ts";
 import { reviewProblem } from "./review-record.ts";
 import { heavyReasonGiven } from "./slot/heavy.ts";
 /**

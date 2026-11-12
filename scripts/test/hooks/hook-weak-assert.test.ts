@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { weakAssertViolation, weakerEscape } from "../../lib/claude-hooks.ts";
-import { summarizeHookLog } from "../../lib/hook-log.ts";
+import { weakAssertViolation, weakerEscape } from "../../lib/hooks/claude-hooks.ts";
+import { summarizeHookLog } from "../../lib/hooks/hook-log.ts";
 
 // Built by concatenation so this file's own matchers are not the fixtures.
 const m = (name: string, arg = "") => `.${name}(${arg})`;

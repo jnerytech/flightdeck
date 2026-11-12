@@ -16,6 +16,8 @@ export interface TerminalsDeps {
   pty?: PtyFactory;
   /** This daemon's own command line: "Claude aqui" runs it, with this config. */
   self: string[];
+  /** The environment `terminalInfo` reads (the home folder, the WSL distro). */
+  env: Record<string, string | undefined>;
   log: (message: string) => void;
 }
 
@@ -24,12 +26,13 @@ export interface TerminalsDeps {
  * with the app's switch for them, kept in the config file like the rest of the host settings, and
  * stops every terminal.
  */
-export function createTerminals({
+export async function createTerminals({
   config,
   configFile,
   folderLocks,
   pty,
   self,
+  env,
   log,
 }: TerminalsDeps) {
   const terminals = new TerminalManager({
@@ -45,7 +48,7 @@ export function createTerminals({
     claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
     log,
   });
-  const module: DomainModule<"terminals" | "onTerminalSettings"> = {
+  const module: DomainModule<"terminals" | "onTerminalSettings" | "terminal"> = {
     server: {
       terminals,
       // Turned on or off from the app: kept in the config file, like the rest of the host settings.
@@ -54,6 +57,8 @@ export function createTerminals({
           ...raw,
           terminal: { ...(raw.terminal as object | undefined), enabled },
         })),
+      // What "Abrir no terminal" needs from `host.info`.
+      terminal: await terminalInfo(env),
     },
     // None outlives the daemon.
     stop: () => terminals.stop(),
@@ -62,7 +67,7 @@ export function createTerminals({
 }
 
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
-export async function terminalInfo(env: Record<string, string | undefined>) {
+async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
   return {
     flightdeckdPath: (await stat(stable).then(

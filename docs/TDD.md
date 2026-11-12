@@ -93,7 +93,7 @@ with no `test(<area>)` commit. From phase 40 on the spec follows `docs/templates
 **Checked at commit time and in CI.** Without `--since` (or with `--since auto`) the audit starts
 at the merge-base with `main`, or at the last tag when `HEAD` is on `main`; CI runs it that way on
 every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard.ts`, rules in
-`scripts/lib/claude-hooks.ts`) checks the same things earlier:
+`scripts/lib/hooks/claude-hooks.ts`) checks the same things earlier:
 
 - it refuses a `git commit` whose subject is not `type(scope): text`, a `feat`/`fix` without a
   scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
@@ -347,7 +347,7 @@ em vez de depender de cuidado.
   with no PR yet (`bun run ci:branch`).
 - CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
   minutes. The heavy jobs need it. A new ratchet's test file ends in
-  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci/quick.ts).
   The quick job also runs every test marked with a `// repo-wide` comment line (#1068, #1108): a
   test that scans the whole repository (md-links, sort-compare, md-size, sonar-coverage…) checks
   files it does not import, so a PR's run would pick it only by chance, and a PR could merge green
@@ -371,7 +371,7 @@ em vez de depender de cuidado.
   `bun run pr -- merge <n>` (the coordinator only; the guard hook refuses it in a
   session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
   with how far behind it is printed as a note.
-- A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
+- A PR runs only the jobs its paths need (#264, scripts/lib/ci/paths.ts): docs or scripts only run
   the Linux tests and lint; the daemon or a smoke adds the smokes; the app, the
   protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
   skipped by path still reports under the ruleset's name. No PR and no push to `main` runs

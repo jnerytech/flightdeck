@@ -1677,7 +1677,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
         (modelBox?.height ?? Infinity) < lineHeight * 1.5,
       ]).toEqual([true, true]);
       // The row is two even columns: the persona on its own line, the model and the permission
-      // side by side with the same width, then Remove under them at the left (#1222, #1850).
+      // side by side with the same width (a third select, the effort, wraps to the next pair), then
+      // Remove on a line of its own at the left (#1222, #1850, #2310).
       const cells = await row.evaluate((el) =>
         [...el.children].map((one) => {
           const box = one.getBoundingClientRect();

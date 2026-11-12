@@ -4,7 +4,7 @@
  * the harness on a real headless session. For each sample it clones HEAD into a temporary folder
  * (origin removed, so nothing can be pushed back), runs `claude -p` on a small TDD task with the
  * repo's own CLAUDE.md, rules and hooks, and grades what the session left with deterministic
- * checks (scripts/lib/harness-eval.ts). The session's processes get no token or key from the
+ * checks (scripts/lib/evals/harness-eval.ts). The session's processes get no token or key from the
  * environment, and its files are scoped to the clone; the tests it writes still run as you, so
  * run it only where that is acceptable. It costs real quota: opt-in only, never in the suite or CI,
  * and never under the slot (the model's turn is not a heavy run).
@@ -23,7 +23,7 @@ import {
   savedFacts,
   scorecard,
   sessionArgs,
-} from "./lib/harness-eval.ts";
+} from "./lib/evals/harness-eval.ts";
 
 const TASKS: EvalTask[] = [
   {
