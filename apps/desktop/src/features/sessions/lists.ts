@@ -1,5 +1,7 @@
 import type {
   BgList,
+  CommandPayload,
+  CommandResults,
   ExternalSession,
   HistorySessionSummary,
   SessionMeta,
@@ -30,16 +32,36 @@ export interface SessionListsCore {
   connection(hostId: string): HostConnection | undefined;
   /** What the state needs to hold a background list the poll read: nothing when it is the same. */
   backgroundPatch(hostId: string, list: BgList): ListsPatch | null;
+  /** Writes a session's meta on its host; a refusal goes to the banner and gives `null`. */
+  setMeta(
+    hostId: string,
+    payload: CommandPayload<"session.meta.set">,
+  ): Promise<CommandResults["session.meta.set"] | null>;
 }
 
 /**
  * What the Sessions screen lists from the online hosts (#1596: a slice of the store): the managed
- * and the history sessions, the names a host gives, the terminal sessions and the background ones.
+ * and the history sessions, the names a host gives, the terminal sessions and the background ones,
+ * and the meta a person sets on a session (its name, pin and archive).
  * A list is folded into the state only when it differs from the one held, so a poll that finds the
  * same lists tells nobody (the screens compare by reference).
  */
 export class SessionListsSlice {
   constructor(private readonly core: SessionListsCore) {}
+
+  /** Renames, pins or archives a session (managed or external) of a host. */
+  async setMeta(
+    hostId: string,
+    claudeSessionId: string,
+    patch: Partial<SessionMeta>,
+  ): Promise<void> {
+    const result = await this.core.setMeta(hostId, { claudeSessionId, ...patch });
+    if (!result) return;
+    const { claudeSessionId: _id, ...meta } = result;
+    this.core.patch({
+      meta: { ...this.core.state().meta, [sessionKey(hostId, claudeSessionId)]: meta },
+    });
+  }
 
   /**
    * Loads what the Sessions screen lists from every online host. Quiet: a host without history or
