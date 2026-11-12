@@ -6,7 +6,7 @@ import {
   stopDemo,
   stopTree,
   waitForState,
-} from "../../lib/e2e-demo.ts";
+} from "../../lib/e2e/demo.ts";
 
 const state = { url: "http://localhost:1420/", ids: { project: "p" } } as unknown as DemoState;
 

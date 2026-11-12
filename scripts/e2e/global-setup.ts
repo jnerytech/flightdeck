@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { pidFile, waitForState } from "../lib/e2e-demo.ts";
+import { pidFile, waitForState } from "../lib/e2e/demo.ts";
 
 export const STATE_DIR = join(tmpdir(), "flightdeck-e2e-demo");
 const DEMO = resolve(import.meta.dirname, "../demo.ts");

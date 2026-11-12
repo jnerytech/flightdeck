@@ -1,6 +1,6 @@
 /** The demo the e2e runner starts: where it says it is ready, and how it is stopped. */
 import { join } from "node:path";
-import type { DemoIds } from "../demo-seed.ts";
+import type { DemoIds } from "../../demo-seed.ts";
 
 export interface DemoState {
   url: string;
