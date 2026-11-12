@@ -3,7 +3,7 @@
  * default, a client's, a project's), the plan price, the review-time switch, and the people with
  * their limits. It lives in the app's own storage, beside the clients; a daemon never sees it.
  */
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 export const ROI_KEY = "flightdeck.roi";
 
