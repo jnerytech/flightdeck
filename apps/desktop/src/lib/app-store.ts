@@ -36,7 +36,7 @@ import {
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
-import { AssistantController, type HostAnswer } from "../features/assistant/assistant.ts";
+import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -556,20 +556,10 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
-    this.assistant = new AssistantController({
+    this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
-      hosts: () =>
-        this.state.hosts.map((host) => ({
-          id: host.id,
-          name: host.name,
-          online: host.status === "online",
-          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
-        })),
-      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
       language: () => this.i18n.lang,
-      request: (hostId, type, payload) =>
-        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
     });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
