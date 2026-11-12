@@ -11,7 +11,7 @@ import {
   type PrFlowDeps,
   prFlow,
   VERSION_FILE,
-} from "../../lib/pr-flow.ts";
+} from "../../lib/pr/pr-flow.ts";
 
 const R = "repos/{owner}/{repo}";
 const REQUIRED = [

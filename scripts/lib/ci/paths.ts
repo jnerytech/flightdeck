@@ -7,7 +7,7 @@
  * Windows included, as a signal that gates nothing.
  */
 
-import { GLOBAL_FILE, TEST_FILE } from "../test-related.ts";
+import { GLOBAL_FILE, TEST_FILE } from "../tests/test-related.ts";
 
 export interface CiPlan {
   /** The Windows test shards and the Windows checks: the schedule's and a run by hand's only (#534). */

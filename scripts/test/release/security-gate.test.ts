@@ -8,7 +8,7 @@ import {
   riskyFiles,
   securityProblem,
   securityVerdict,
-} from "../../lib/security-gate.ts";
+} from "../../lib/pr/security-gate.ts";
 
 const DIFF = [
   "diff --git a/apps/daemon/src/run.ts b/apps/daemon/src/run.ts",
@@ -229,7 +229,7 @@ describe("security-gate", () => {
   test("the guards themselves are risky by path: a change that weakens a check needs a review (#273)", () => {
     const added = new Map(
       [
-        "scripts/lib/security-gate.ts",
+        "scripts/lib/pr/security-gate.ts",
         "scripts/lib/hooks/claude-hooks.ts",
         "scripts/handoff-check.ts",
         ".github/actions/setup/action.yml",
@@ -244,7 +244,7 @@ describe("security-gate", () => {
       ["scripts/handoff-check.ts", "guard"],
       ["scripts/lib/bounded-run.ts", "guard"],
       ["scripts/lib/hooks/claude-hooks.ts", "guard"],
-      ["scripts/lib/security-gate.ts", "guard"],
+      ["scripts/lib/pr/security-gate.ts", "guard"],
       ["scripts/pr-flow.ts", "guard"],
     ]);
   });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { localPyramid } from "../../lib/pyramid-table.ts";
-import type { Tier } from "../../lib/test-tiers.ts";
+import { localPyramid } from "../../lib/tests/pyramid-table.ts";
+import type { Tier } from "../../lib/tests/test-tiers.ts";
 
 // A local run ends with the same per-tier table as a PR's job summary (#1854 step 3).
 

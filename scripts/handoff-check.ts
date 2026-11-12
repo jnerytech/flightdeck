@@ -2,7 +2,7 @@
 /**
  * `bun run handoff:check`: typecheck, lint, tdd:audit and test:related --fast, in order, then one
  * stamp line to paste into the hand-off message, also kept in the worktree's git folder
- * (scripts/lib/handoff.ts). The stamp also says whether the required checks are green on HEAD
+ * (scripts/lib/pr/handoff.ts). The stamp also says whether the required checks are green on HEAD
  * (`ci=0`; push first), from its PR run or main's push run (#266); `--no-ci` writes `ci=skip`, which
  * vouches for nothing. `security=0` unless a change in a risk area (spawn, delete, secret,
  * permission, vault, pairing) has no `Security-Reviewed:` trailer after it (#273).
@@ -14,9 +14,9 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
-import { runHandoff, stampProblem } from "./lib/handoff.ts";
-import { headCi } from "./lib/pr-flow.ts";
-import { securityVerdict } from "./lib/security-gate.ts";
+import { runHandoff, stampProblem } from "./lib/pr/handoff.ts";
+import { headCi } from "./lib/pr/pr-flow.ts";
+import { securityVerdict } from "./lib/pr/security-gate.ts";
 
 const git = (args: string[]) => spawnSync("git", args, { encoding: "utf8" }).stdout?.trim() ?? ""; // NOSONAR: git from the PATH of the developer running the script
 const root = git(["rev-parse", "--show-toplevel"]) || resolve(import.meta.dir, "..");
@@ -37,7 +37,7 @@ if (process.argv.includes("--verify")) {
   process.exit(problem ? 1 : 0);
 }
 
-/** The security gate (#273, lib/security-gate.ts): "0", "unreviewed" or "unknown". */
+/** The security gate (#273, lib/pr/security-gate.ts): "0", "unreviewed" or "unknown". */
 function securityGate(): string {
   const run = (args: string[]) => {
     const proc = spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 2 ** 20 }); // NOSONAR: git from the PATH of the developer running the script

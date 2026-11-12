@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { type IstanbulChangedDeps, istanbulChanged } from "../../lib/istanbul-changed.ts";
-import { shardRun, spawnLogged } from "../../lib/shard-gate.ts";
+import { type IstanbulChangedDeps, istanbulChanged } from "../../lib/tests/istanbul-changed.ts";
+import { shardRun, spawnLogged } from "../../lib/tests/shard-gate.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { runCommand } from "../../apps/daemon/src/board/command.ts";
 import { registerMergeDriver } from "../../scripts/lib/baseline-merge.ts";
 import { gatherFacts, sessionContext } from "../../scripts/lib/hooks/session-context.ts";
-import { mainRedWithin } from "../../scripts/lib/main-red.ts";
+import { mainRedWithin } from "../../scripts/lib/pr/main-red.ts";
 
 try {
   const input = await Bun.stdin.json().catch(() => null);

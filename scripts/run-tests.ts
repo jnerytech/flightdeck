@@ -3,8 +3,8 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { localPyramid } from "./lib/pyramid-table.ts";
-import { testTiers } from "./lib/test-tiers.ts";
+import { localPyramid } from "./lib/tests/pyramid-table.ts";
+import { testTiers } from "./lib/tests/test-tiers.ts";
 import { testArgs } from "./test/timeout.ts";
 
 const ROOT = resolve(import.meta.dir, "..");

@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
  * `bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n> | --refs <n>] | next | update <n> |
- * auto <n> | merge <n>` (issue #260, GitHub Flow; auto #271). The logic is in lib/pr-flow.ts;
+ * auto <n> | merge <n>` (issue #260, GitHub Flow; auto #271). The logic is in lib/pr/pr-flow.ts;
  * merge needs FLIGHTDECK_COORDINATOR=1.
  */
 import { runCommand } from "../apps/daemon/src/board/command.ts";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { runBounded } from "./lib/bounded-run.ts";
-import { mainRedWithin } from "./lib/main-red.ts";
-import { prFlow } from "./lib/pr-flow.ts";
+import { mainRedWithin } from "./lib/pr/main-red.ts";
+import { prFlow } from "./lib/pr/pr-flow.ts";
 
 process.exit(
   await prFlow(

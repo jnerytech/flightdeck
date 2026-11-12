@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import type { Tier } from "../../lib/test-tiers.ts";
+import type { Tier } from "../../lib/tests/test-tiers.ts";
 import {
   FAST_SHARDS,
   TIER_GROUPS,
   TIER_SHARDS,
   tierShard,
   tierShardFiles,
-} from "../../lib/tier-shards.ts";
+} from "../../lib/tests/tier-shards.ts";
 
 const TIERS: Record<string, Tier> = {
   "a/unit-1.test.ts": "unit",

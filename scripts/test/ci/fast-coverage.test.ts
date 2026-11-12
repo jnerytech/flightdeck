@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fastCoverageVerdict, fullyCovered } from "../../lib/fast-coverage.ts";
+import { fastCoverageVerdict, fullyCovered } from "../../lib/tests/fast-coverage.ts";
 
 const record = (path: string, fn: [number, number], ln: [number, number]) =>
   [

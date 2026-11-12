@@ -22,7 +22,7 @@ export interface HandoffDeps {
   base?: string;
   /** The CI of HEAD: "0" when the required checks are green, else why not (#266). */
   ci?: () => Promise<string>;
-  /** The security gate (lib/security-gate.ts): "0", or "unreviewed" (#273). */
+  /** The security gate (lib/pr/security-gate.ts): "0", or "unreviewed" (#273). */
   security?: () => Promise<string>;
 }
 

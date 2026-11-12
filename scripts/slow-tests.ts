@@ -13,7 +13,7 @@ import {
   readAllowlist,
   reportPath,
   slowReport,
-} from "./lib/slow-tests.ts";
+} from "./lib/tests/slow-tests.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 // Only a report under the repository or a temp folder is read (#1022 Sonar S8707).

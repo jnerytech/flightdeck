@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { planRelated, selectByPath } from "../../lib/test-related.ts";
+import { planRelated, selectByPath } from "../../lib/tests/test-related.ts";
 
 const SOURCES = new Map([
   [
