@@ -1,4 +1,4 @@
-import type { Notice } from "./app-store";
+import type { Notice } from "../lib/app-store";
 
 /** How long a toast stays when nobody touches it. */
 export const SUCCESS_TOAST_MS = 5000;

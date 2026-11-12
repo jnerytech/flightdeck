@@ -24,6 +24,7 @@ import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { basename, isInside } from "@/shared/lib/index.ts";
+import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
@@ -213,7 +214,6 @@ import type {
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
-import { sameNotice } from "./notice-lifetime.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
