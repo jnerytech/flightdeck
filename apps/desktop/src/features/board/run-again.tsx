@@ -1,10 +1,10 @@
 import type { RunResumeCheck, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { runAgain } from "@/features/runenv/index.ts";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { runAgain } from "@/lib/runs";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 
