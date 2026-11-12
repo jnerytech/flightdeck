@@ -30,11 +30,6 @@ try {
     const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
     return proc.status === 0 ? proc.stdout : null;
   };
-  // #2270: the baselines' merge driver, written once to the repository's config (shared by every worktree).
-  registerMergeDriver((args) => {
-    const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
-    return { status: proc.status ?? 1, stdout: proc.stdout ?? "" };
-  });
   // The local facts first: a slow GitHub never costs the branch, TDD and slot lines.
   const facts = gatherFacts(git, lock, Date.now());
   // #1246: a red main and its claim, within one 6 s deadline; nothing when gh cannot answer.
@@ -52,6 +47,11 @@ try {
       }),
     );
   }
+  // #2270: the baselines' merge driver, written once to the repository's config after the context is out (shared by every worktree).
+  registerMergeDriver((args) => {
+    const proc = spawnSync("git", args, { cwd, encoding: "utf8", timeout: 2000 });
+    return { status: proc.status ?? 1, stdout: proc.stdout ?? "" };
+  });
 } catch {
   // The context is a convenience; a session never fails to start because of it.
 }

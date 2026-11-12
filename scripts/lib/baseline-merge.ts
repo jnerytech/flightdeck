@@ -15,12 +15,20 @@ export type BaselineMerge = { ok: true; text: string } | { ok: false; reason: st
 export const DRIVER_NAME = "baseline-json";
 
 /**
- * The driver's command line; git runs it through the shell in the worktree's top folder. When the
- * key merge refuses (a raised count, a file it cannot read), git's own line merge writes the
- * conflict markers, and the driver still reports a conflict.
+ * The driver's command line; git runs it through the shell in the worktree's top folder. A worktree
+ * whose branch predates the driver has no script: git's line merge runs there, as with no driver.
  */
 export const DRIVER_COMMAND =
-  "bun scripts/merge-baseline.ts %O %A %B || { git merge-file -L ours -L base -L theirs %A %O %B; exit 1; }";
+  "if [ -f scripts/merge-baseline.ts ]; then bun scripts/merge-baseline.ts %O %A %B; else git merge-file -L ours -L base -L theirs %A %O %B; fi";
+
+/**
+ * What the driver writes when it refuses: both versions whole between conflict markers, so a raise
+ * git's line merge would take cleanly still shows, and `git add` alone cannot take it unseen.
+ */
+export function conflictText(ours: string, theirs: string): string {
+  const line = (text: string) => (text.endsWith("\n") ? text : `${text}\n`);
+  return `<<<<<<< ours\n${line(ours)}=======\n${line(theirs)}>>>>>>> theirs\n`;
+}
 
 type Counts = Record<string, number>;
 
@@ -60,7 +68,7 @@ function mergePaths(base: string[], ours: string[], theirs: string[]): string[] 
     .sort(byCodeUnit);
 }
 
-/** Each key from the side that changed it; the lower count when both did; a raise refuses. */
+/** Each key from the side that changed it; the lower count when both lowered it; a raise refuses. */
 function mergeCounts(base: Counts, ours: Counts, theirs: Counts): BaselineMerge {
   const merged: Counts = {};
   const keys = new Set([...Object.keys(base), ...Object.keys(ours), ...Object.keys(theirs)]);
@@ -72,6 +80,15 @@ function mergeCounts(base: Counts, ours: Counts, theirs: Counts): BaselineMerge 
     }
     // A key one side deleted (a rename or a removal) stays deleted.
     if (was !== undefined && sides.includes(undefined)) continue;
+    // Both sides added it: the merged file holds both additions, so its count may be neither.
+    if (
+      was === undefined &&
+      sides[0] !== undefined &&
+      sides[1] !== undefined &&
+      sides[0] !== sides[1]
+    ) {
+      return { ok: false, reason: `${key} added with ${sides[0]} and ${sides[1]}` };
+    }
     const counts = sides.filter((count): count is number => count !== undefined);
     if (counts.length > 0) merged[key] = Math.min(...counts);
   }
