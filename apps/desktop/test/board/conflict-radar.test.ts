@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { radarBadge, radarMergeLine } from "../src/lib/conflict-radar.ts";
+import { radarBadge, radarMergeLine } from "../../src/features/board/conflict-radar.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 /**
  * #1405: the host says which cards of the project change the same files. The badge names the card

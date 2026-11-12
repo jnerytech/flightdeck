@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { requestLink } = await import("../src/features/hosts/request-link.ts");
+const { requestLink } = await import("../src/features/permissions/request-link.ts");
 
 const stores: Array<{ dispose(): void }> = [];
 afterEach(() => {

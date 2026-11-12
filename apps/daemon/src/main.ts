@@ -80,9 +80,10 @@ import { createSummary } from "./summary/wiring.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
-import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
+import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { createTrace } from "./trace/wiring.ts";
 import { createProjects, createProjectTrust } from "./trust/wiring.ts";
+import { createUi } from "./ui/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { readWatchSettings } from "./watch/watch.ts";
 import { createWebhook } from "./webhook/wiring.ts";
@@ -263,6 +264,9 @@ export async function startDaemon(
     createKeepAwake({ powerContext: options.powerContext, config, configFile }),
   );
 
+  // The host's default mode and lock (phase 33), kept in the config like the other settings.
+  await domains.add(createUi({ config, configFile }));
+
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
 
@@ -333,12 +337,13 @@ export async function startDaemon(
   });
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const { terminals } = await domains.add(
-    createTerminals({
+    await createTerminals({
       config,
       configFile,
       folderLocks,
       pty: options.pty,
       self: selfCommand,
+      env,
       log: (message) => logger.log(message),
     }),
   );
@@ -612,9 +617,6 @@ export async function startDaemon(
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    // The host's default mode and lock (phase 33), kept in the config like the other settings.
-    ui: { ...config.ui },
-    onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
@@ -642,7 +644,6 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
     ...present({ claude, account, onShutdown: options.onShutdown }),
-    terminal: await terminalInfo(env),
   });
 
   const wsl = createWsl(config, options);

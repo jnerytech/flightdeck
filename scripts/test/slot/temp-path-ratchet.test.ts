@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { bareTempUses, TEMP_PATH_ALLOWED, tempPathCounts } from "../../lib/temp-path-ratchet.ts";
+import { bareTempUses, TEMP_PATH_ALLOWED, tempPathCounts } from "../../lib/ratchets/temp-path.ts";
 
 const root = resolve(import.meta.dir, "../../..");
 

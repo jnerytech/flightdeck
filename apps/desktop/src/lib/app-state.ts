@@ -26,41 +26,55 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { basename } from "@/shared/lib/index.ts";
-import type { AccountSliceState } from "../features/account/index.ts";
-import type { ActivitySliceState } from "../features/activity/index.ts";
-import type { AppUpdateState } from "../features/appupdate/index.ts";
-import type { BackgroundSliceState } from "../features/background/index.ts";
+import { type AccountSliceState, initialAccountState } from "../features/account/index.ts";
+import { type ActivitySliceState, initialActivityState } from "../features/activity/index.ts";
+import { type AppUpdateState, initialAppUpdateState } from "../features/appupdate/index.ts";
+import { type BackgroundSliceState, initialBackgroundState } from "../features/background/index.ts";
 import type { GoogleConfig } from "../features/backup/index.ts";
-import type { Client } from "../features/clients/index.ts";
-import type { BudgetsSliceState, ClientBudgetsSliceState } from "../features/costs/index.ts";
-import type { HistorySliceState } from "../features/history/index.ts";
-import type { UiMode } from "../features/home/index.ts";
-import type {
-  ConnectionStatus,
-  HealthSliceState,
-  HostConfig,
-  RetryState,
+import { type Client, loadSelection } from "../features/clients/index.ts";
+import {
+  type BudgetsSliceState,
+  type ClientBudgetsSliceState,
+  initialBudgetsState,
+  initialClientBudgetsState,
+} from "../features/costs/index.ts";
+import { type HistorySliceState, initialHistoryState } from "../features/history/index.ts";
+import { loadChoices, type UiMode } from "../features/home/index.ts";
+import {
+  type ConnectionStatus,
+  type HealthSliceState,
+  type HostConfig,
+  initialHealthState,
+  type RetryState,
 } from "../features/hosts/index.ts";
 import type { InboxEntry } from "../features/inbox/index.ts";
-import type { MessagingSliceState } from "../features/messaging/index.ts";
-import type { PersonasSliceState } from "../features/personas/index.ts";
+import { initialMessagingState, type MessagingSliceState } from "../features/messaging/index.ts";
+import { loadQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
+import { initialPersonasState, type PersonasSliceState } from "../features/personas/index.ts";
 import type { WorktreeFilter } from "../features/projects/index.ts";
-import type { QuotaSliceState } from "../features/quota/index.ts";
+import { initialQuotaState, type QuotaSliceState } from "../features/quota/index.ts";
 import {
   type Finish,
+  initialSessionsState,
   type SessionState,
   type SessionsSliceState,
   sessionKey,
   sessionLabel,
 } from "../features/sessions/index.ts";
-import type { SettingsSliceState } from "../features/settings/index.ts";
+import { initialSettingsState, type SettingsSliceState } from "../features/settings/index.ts";
 import type { SetupProbe } from "../features/setup/index.ts";
-import type { SnippetsSliceState } from "../features/snippets/index.ts";
-import type { SshSliceState } from "../features/ssh/index.ts";
+import { initialSnippetsState, type SnippetsSliceState } from "../features/snippets/index.ts";
+import { initialSshState, type SshSliceState } from "../features/ssh/index.ts";
 import type { ClosingTerminal } from "../features/terminal/index.ts";
 import type { TerminalEnv } from "../features/terminal/terminal.ts";
-import type { SecretMeta, UsageEntry, VaultPolicy } from "../features/vault/index.ts";
+import {
+  type SecretMeta,
+  type UsageEntry,
+  Vault,
+  type VaultPolicy,
+} from "../features/vault/index.ts";
 import type { T } from "../i18n/index.ts";
+import type { Platform } from "../platform/types.ts";
 import type { Route } from "./router.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
@@ -430,6 +444,73 @@ export interface Answer {
    * screen that forgets the risk cannot approve one with a click.
    */
   held?: boolean;
+}
+
+/**
+ * The app's state when the store starts (#1596): one key, or one slice's initial state, per
+ * domain. What the store already holds when it is built (the clock's start, the vault's usage
+ * log, the clients) comes in `held`; the rest is read from the platform's storage.
+ */
+export function initialAppState(
+  platform: Platform,
+  held: {
+    now: number;
+    vaultUsage: AppState["vaultUsage"];
+    clientList: AppState["clientList"];
+    clientOverrides: AppState["clientOverrides"];
+  },
+): AppState {
+  return {
+    hosts: [],
+    sessions: {},
+    selected: null,
+    error: null,
+    ...initialHistoryState,
+    closingTerminal: null,
+    runEnvs: {},
+    unread: {},
+    cards: {},
+    runs: {},
+    ...initialQuotaState(),
+    ...initialAccountState(),
+    ...initialHealthState(),
+    setupProbes: {},
+    ...initialSnippetsState(),
+    ...initialBackgroundState(),
+    ...initialMessagingState(),
+    ...initialBudgetsState(),
+    ...initialClientBudgetsState(),
+    ...initialPersonasState(),
+    ...initialSshState(),
+    quietSnooze: loadQuietSnooze(platform.storage, held.now),
+    watches: {},
+    names: {},
+    secrets: new Vault(platform).list(),
+    vaultUsage: held.vaultUsage,
+    vaultApprovals: [],
+    externals: {},
+    externalRequests: {},
+    meta: {},
+    uiChoices: loadChoices(platform.storage),
+    ...initialSessionsState(),
+    hub: {},
+    terminalEnv: null,
+    projects: {},
+    clientList: held.clientList,
+    roiRevision: 0,
+    worktreeFilter: null,
+    clientOverrides: held.clientOverrides,
+    clientSelection: loadSelection(platform.storage, held.clientList),
+    notices: [],
+    ...initialActivityState(),
+    inbox: [],
+    composerFill: {},
+    finished: [],
+    finishedLook: null,
+    hostsLoaded: false,
+    appUpdate: initialAppUpdateState(),
+    ...initialSettingsState(platform),
+  };
 }
 
 export { HISTORY_PAGE, type HistoryFilter } from "../features/history/index.ts";

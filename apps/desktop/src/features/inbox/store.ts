@@ -1,4 +1,4 @@
-import { parseRequestLink } from "@/features/hosts/index.ts";
+import { parseRequestLink } from "@/features/permissions/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Route } from "../../lib/router.ts";
 import type { Notification } from "../../platform/types.ts";

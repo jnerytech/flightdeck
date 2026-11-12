@@ -3,7 +3,7 @@
  * SessionStart (startup|resume|compact): adds the session's branch, TDD state and slot to its
  * context, a red main with its claim (#1246), and after a compact a note that the path rules come
  * back only with a matching file. It also registers the baselines' merge driver (#2270).
- * The text comes from scripts/lib/session-context.ts, with its tests. Any error adds nothing.
+ * The text comes from scripts/lib/hooks/session-context.ts, with its tests. Any error adds nothing.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -11,8 +11,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCommand } from "../../apps/daemon/src/board/command.ts";
 import { registerMergeDriver } from "../../scripts/lib/baseline-merge.ts";
+import { gatherFacts, sessionContext } from "../../scripts/lib/hooks/session-context.ts";
 import { mainRedWithin } from "../../scripts/lib/main-red.ts";
-import { gatherFacts, sessionContext } from "../../scripts/lib/session-context.ts";
 
 try {
   const input = await Bun.stdin.json().catch(() => null);

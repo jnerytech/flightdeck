@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { commitViolation } from "../../lib/claude-hooks.ts";
+import { commitViolation } from "../../lib/hooks/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck";
 const HEAD = "f".repeat(40);

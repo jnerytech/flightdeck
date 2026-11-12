@@ -27,23 +27,11 @@ import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
-import {
-  type ActivitySlice,
-  initialActivityState,
-  wireActivity,
-} from "../features/activity/index.ts";
-import {
-  type AppUpdateSlice,
-  initialAppUpdateState,
-  wireAppUpdates,
-} from "../features/appupdate/index.ts";
+import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
+import { type AppUpdateSlice, wireAppUpdates } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import {
-  type BackgroundSlice,
-  initialBackgroundState,
-  wireBackground,
-} from "../features/background/index.ts";
+import { type BackgroundSlice, wireBackground } from "../features/background/index.ts";
 import {
   type Attention,
   BackupScheduler,
@@ -56,7 +44,6 @@ import {
   type ClientScopeSlice,
   Clients,
   knownProjects,
-  loadSelection,
   UNASSIGNED,
   wireClientScope,
 } from "../features/clients/index.ts";
@@ -65,17 +52,14 @@ import {
   type ClientBudgetsSlice,
   DataScopeController,
   hubHostScope,
-  initialBudgetsState,
-  initialClientBudgetsState,
   localDay,
   wireBudgets,
   wireClientBudgets,
 } from "../features/costs/index.ts";
-import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
+import { type HistorySlice, wireHistory } from "../features/history/index.ts";
 import {
   HomeCache,
   type HostUiPatch,
-  loadChoices,
   type ModeAnswer,
   type UiMode,
   UiModeSlice,
@@ -94,7 +78,6 @@ import {
   loadHosts,
   type NewHost,
   type OnlineStep,
-  parseRequestLink,
   RequestError,
   saveHosts,
   statusLine,
@@ -102,20 +85,12 @@ import {
   wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
-import {
-  initialMessagingState,
-  type MessagingSlice,
-  wireMessaging,
-} from "../features/messaging/index.ts";
+import { type MessagingSlice, wireMessaging } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
-import { loadQuietSnooze, QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
+import { QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
-import {
-  initialPersonasState,
-  type PersonasSlice,
-  wirePersonas,
-} from "../features/personas/index.ts";
+import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import {
   ProjectKeys,
   type ProjectsSlice,
@@ -133,11 +108,11 @@ import {
   type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
-  initialSessionsState,
   NewSessionPrefs,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
+  type SessionSubscriptions,
   type SessionsSlice,
   SessionViews,
   SharedClock,
@@ -149,21 +124,14 @@ import {
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
+  wireSessionSubscriptions,
   wireSessions,
   wireSummaries,
 } from "../features/sessions/index.ts";
-import {
-  initialSettingsState,
-  type SettingsSlice,
-  wireSettings,
-} from "../features/settings/index.ts";
+import { type SettingsSlice, wireSettings } from "../features/settings/index.ts";
 import { probeAfter, SetupSettings } from "../features/setup/index.ts";
-import {
-  initialSnippetsState,
-  type SnippetsSlice,
-  wireSnippets,
-} from "../features/snippets/index.ts";
-import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
+import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
@@ -214,7 +182,7 @@ import type {
   PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
-import { needsYou } from "./app-state.ts";
+import { initialAppState, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -318,7 +286,7 @@ export class AppStore {
     lastSeqFor: (hostId, sessionId) =>
       this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
     selected: () => this.state.selected,
-    watched: () => this.watched.keys(),
+    watched: () => this.subscriptions.followed(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
     // Read at connect: the table is a field declared after this one.
     routes: () => this.routes,
@@ -327,8 +295,6 @@ export class AppStore {
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
   });
-  /** Sessions followed without being open (the project page's tiles), with how many follow each. */
-  private readonly watched = new Map<string, number>();
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
   /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
@@ -344,11 +310,12 @@ export class AppStore {
   private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
+  /** The sessions that keep their full event stream: the open one and the followed (#1596). */
+  private readonly subscriptions: SessionSubscriptions;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   private offQuit: (() => void) | null = null;
-  private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   /** The history read from every host (#1596): its global search. */
   readonly history: HistorySlice;
@@ -760,6 +727,8 @@ export class AppStore {
       settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
       sendSelected: (response) =>
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
+      showWindow: () => void this.platform.showMainWindow(),
+      act: (action) => this.tray.act(action),
     });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
@@ -771,6 +740,7 @@ export class AppStore {
     this.sessionLists = wireSessionLists(this.kernel, {
       backgroundPatch: (hostId, list) => this.background.changed(hostId, list),
     });
+    this.subscriptions = wireSessionSubscriptions(this.kernel);
     this.stream = wireSessionStream(this.kernel, {
       summary: (hostId, event) => this.summaries.apply(hostId, [event]),
     });
@@ -797,61 +767,16 @@ export class AppStore {
       uiHostId: () => this.uiHostId(),
       isSimple: (hostId) => this.uiMode(hostId).mode === "simple",
       answer: (hostId, requestId, decision) => void this.respondTo(hostId, requestId, decision),
-      open: (item) => this.openRequest(item),
+      open: (item) => this.permissions.open(item),
       timers: options.timers ?? REAL_TIMERS,
     });
     this.i18n.subscribe(() => this.onLanguage());
-    this.state = {
-      hosts: [],
-      sessions: {},
-      selected: null,
-      error: null,
-      ...initialHistoryState,
-      closingTerminal: null,
-      runEnvs: {},
-      unread: {},
-      cards: {},
-      runs: {},
-      ...initialQuotaState(),
-      ...initialAccountState(),
-      ...initialHealthState(),
-      setupProbes: {},
-      ...initialSnippetsState(),
-      ...initialBackgroundState(),
-      ...initialMessagingState(),
-      ...initialBudgetsState(),
-      ...initialClientBudgetsState(),
-      ...initialPersonasState(),
-      ...initialSshState(),
-      quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
-      watches: {},
-      names: {},
-      secrets: new Vault(platform).list(),
+    this.state = initialAppState(platform, {
+      now: (options.now ?? Date.now)(),
       vaultUsage: this.usage.list(),
-      vaultApprovals: [],
-      externals: {},
-      externalRequests: {},
-      meta: {},
-      uiChoices: loadChoices(platform.storage),
-      ...initialSessionsState(),
-      hub: {},
-      terminalEnv: null,
-      projects: {},
       clientList: this.clients.list(),
-      roiRevision: 0,
-      worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
-      clientSelection: loadSelection(platform.storage, this.clients.list()),
-      notices: [],
-      ...initialActivityState(),
-      inbox: [],
-      composerFill: {},
-      finished: [],
-      finishedLook: null,
-      hostsLoaded: false,
-      appUpdate: initialAppUpdateState(),
-      ...initialSettingsState(platform),
-    };
+    });
   }
 
   /** Light, dark or the system's (phase 10). */
@@ -1042,42 +967,17 @@ export class AppStore {
 
   /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
   onOpenRequest(listener: (item: PendingItem) => void): () => void {
-    this.openRequestListeners.add(listener);
-    return () => this.openRequestListeners.delete(listener);
+    return this.permissions.onOpen(listener);
   }
 
-  /**
-   * A `flightdeck://request` link (a notification click): brings the window up on the request.
-   * False for any other link, which the caller handles (pairing).
-   */
+  /** A `flightdeck://request` link: the window comes up on it; false for any other link. */
   openRequestLink(url: string): boolean {
-    const link = parseRequestLink(url);
-    if (!link) return false;
-    const item = needsYou(this.state, this.i18n.t).find(
-      (i) => i.hostId === link.hostId && i.requestId === link.requestId,
-    );
-    // Already answered: the window still comes up.
-    if (item) this.openRequest(item);
-    else void this.platform.showMainWindow();
-    return true;
+    return this.permissions.openLink(url);
   }
 
-  /**
-   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
-   * `shown` is the `host/request` the command named: when that one has gone in between, the one
-   * now oldest is opened to be seen, never answered unseen (#245).
-   */
+  /** Approves or denies the oldest waiting request, if it is still the one shown (#245). */
   decideOldest(decision: "approve" | "deny", shown: string): void {
-    const item = needsYou(this.state, this.i18n.t)[0];
-    if (!item) return;
-    if (`${item.hostId}/${item.requestId}` !== shown) {
-      this.openRequest(item);
-      return;
-    }
-    // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
-    // palette is not the tray, so a vault grant is never logged as the tray's.
-    if (item.gate || item.vault) this.openRequest(item);
-    else this.tray.act({ key: `${item.hostId}/${item.requestId}`, action: decision });
+    this.permissions.decideOldest(decision, shown);
   }
 
   /** What the palette was used for lately, most recent first. */
@@ -1088,11 +988,6 @@ export class AppStore {
   /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
   recordPaletteUse(id: string): void {
     this.palette.recordUse(id);
-  }
-
-  private openRequest(item: PendingItem): void {
-    void this.platform.showMainWindow();
-    for (const listener of this.openRequestListeners) listener(item);
   }
 
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
@@ -1154,16 +1049,7 @@ export class AppStore {
 
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
-    const previous = this.state.selected;
-    if (
-      previous?.sessionId &&
-      previous.sessionId !== sessionId &&
-      !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
-    ) {
-      this.link.connection(previous.hostId)?.unsubscribe(previous.sessionId);
-    }
-    if (sessionId) this.link.connection(hostId)?.subscribe(sessionId);
-    this.update({ selected: { hostId, sessionId } });
+    this.subscriptions.select(hostId, sessionId);
   }
 
   /**
@@ -1171,23 +1057,7 @@ export class AppStore {
    * has not been called (the tiles of a project follow several at once).
    */
   watchSession(hostId: string, sessionId: string): () => void {
-    const key = `${hostId}/${sessionId}`;
-    this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
-    this.link.connection(hostId)?.subscribe(sessionId);
-    let released = false;
-    return () => {
-      if (released) return;
-      released = true;
-      const left = (this.watched.get(key) ?? 1) - 1;
-      if (left > 0) {
-        this.watched.set(key, left);
-        return;
-      }
-      this.watched.delete(key);
-      const open = this.state.selected;
-      if (open?.hostId === hostId && open.sessionId === sessionId) return;
-      this.link.connection(hostId)?.unsubscribe(sessionId);
-    };
+    return this.subscriptions.watchSession(hostId, sessionId);
   }
 
   /** Puts an idle session to sleep now and says, in a toast, what came of it. */
