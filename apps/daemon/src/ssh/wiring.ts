@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import { join } from "node:path";
 import type { Config } from "../config.ts";
 import { spawnExec } from "../exec.ts";
-import { present } from "../present.ts";
+import { present } from "../kernel/index.ts";
 import { whichOnPath } from "../which.ts";
 import { AskpassBroker, askpassHook } from "./askpass.ts";
 import {

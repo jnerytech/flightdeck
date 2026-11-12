@@ -6,8 +6,8 @@
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { HistoryIndexer } from "../history/index.ts";
+import type { Logger } from "../kernel/index.ts";
 import { AlreadyRunningError, acquireLock } from "../lock.ts";
-import type { Logger } from "../logger.ts";
 import { historyExcludes } from "../permissions/index.ts";
 import { EventStore } from "../store/index.ts";
 import { type CliArgs, configPath } from "./args.ts";

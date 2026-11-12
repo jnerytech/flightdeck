@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { SecretScanner } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
-import { present } from "../present.ts";
+import { present } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
 import { Board } from "./board.ts";
 import { type CheckLoopDeps, CheckLoopSwitch, cardMode } from "./check-loop.ts";

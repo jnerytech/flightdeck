@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { ulid } from "../ulid.ts";
+import { ulid } from "../kernel/index.ts";
 import type { BoardOptions, Card, Project, RunRow } from "./types.ts";
 
 const now = () => new Date().toISOString();

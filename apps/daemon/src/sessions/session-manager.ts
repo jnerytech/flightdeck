@@ -22,7 +22,7 @@ import { plainInfo } from "@flightdeck/protocol";
 import { summarizeInput } from "../central/external-permissions.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
-import { API_KEY_VARS, buildChildEnv } from "../kernel/index.ts";
+import { API_KEY_VARS, buildChildEnv, ulid } from "../kernel/index.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
@@ -40,7 +40,6 @@ import type {
   RuntimeEvent,
 } from "../runtime/types.ts";
 import { type EventStore, personaBadge } from "../store/event-store.ts";
-import { ulid } from "../ulid.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { ActivityClock, type ToolNote } from "./activity-clock.ts";
 import type { QuietInfo } from "./stall.ts";
