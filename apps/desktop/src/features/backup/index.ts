@@ -4,4 +4,6 @@
  */
 export { BackupError, type BackupErrorCode } from "./backup-error.ts";
 export { type Attention, BackupScheduler } from "./backup-scheduler.ts";
+export { googleConfig } from "./google-config.ts";
+export type { GoogleConfig } from "./google-oauth.ts";
 export { type BackupCore, BackupSlice } from "./store.ts";
