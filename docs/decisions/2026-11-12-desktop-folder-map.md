@@ -133,7 +133,7 @@ prefix. Tests move with their file in the same PR.
 | `trace.ts` | `features/trace/` |
 | `tray.ts` | `features/tray/` |
 | `vault*.ts` | `features/vault/` (`vault-approval.ts` goes to `features/permissions/`, listed above) |
-| `watch-*.ts` | `features/watch/` |
+| `watch-*.ts` | `features/watch/` (**moved**) |
 | `webhook*.ts` | `features/webhook/` |
 | `app-log.ts`, `kernel.ts` | `app/` |
 | `backoff.ts`, `format-bytes.ts`, `paths.ts`, `file-language.ts`, `contrast.ts`, `status.ts`, `list-width.ts`, `use-width.ts`, `scroll-edge.ts` | `shared/lib/` (**moved**, behind an `index.ts`; the last three are used by `shared/layout`). `lib/utils.ts` (`cn`) **stays** in `lib/` per the #1597 decision; `host-connection.ts` imports `shared/lib/backoff.ts` by a relative path because the daemon's heartbeat test loads it and the daemon tsconfig has no `@/` alias |

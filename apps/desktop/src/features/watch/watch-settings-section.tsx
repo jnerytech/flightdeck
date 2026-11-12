@@ -10,7 +10,7 @@ import {
   validateWatchDraft,
   watchDraftOf,
   watchPatchOf,
-} from "../../lib/watch-settings.ts";
+} from "./watch-settings.ts";
 
 const TEXTAREA =
   "rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
