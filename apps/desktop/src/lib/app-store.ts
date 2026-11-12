@@ -216,7 +216,7 @@ import type {
   PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
-import { HISTORY_PAGE, needsYou } from "./app-state.ts";
+import { needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -410,7 +410,13 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.history = wireHistory(this.kernel, { searchTimeoutMs: options.searchTimeoutMs });
+    this.history = wireHistory(this.kernel, {
+      searchTimeoutMs: options.searchTimeoutMs,
+      select: (hostId, sessionId) => this.select(hostId, sessionId),
+      listLimit: HISTORY_LIST_LIMIT,
+      offline: () => new RequestError("offline", "unknown host"),
+      reason: (error) => (error instanceof RequestError ? error.reason : undefined),
+    });
     this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
     this.sessions = wireSessions(this.kernel, { storage: platform.storage });
     this.personas = wirePersonas(this.kernel, {
@@ -1333,67 +1339,24 @@ export class AppStore {
   }
 
   /** A host's indexed sessions; errors go to the banner and give `null`. */
-  async historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
-    try {
-      const conn = this.link.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
+  historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
+    return this.history.list(hostId, filter);
   }
 
   /** One page of a host's transcript; errors go to the banner and give `null`. */
-  async historyGet(
+  historyGet(
     hostId: string,
     claudeSessionId: string,
     cursor?: string,
     tail = false,
-    /** Told why a read was refused (issue #227): the reader tells "not found" from a failure. */
     refused?: (reason: string | undefined) => void,
   ): Promise<HistoryGetResult | null> {
-    try {
-      const conn = this.link.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      return await conn.request("history.get", {
-        claudeSessionId,
-        limit: HISTORY_PAGE,
-        ...(cursor ? { cursor } : {}),
-        ...(tail && !cursor ? { tail: true } : {}),
-      });
-    } catch (error) {
-      refused?.(error instanceof RequestError ? error.reason : undefined);
-      // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
-      if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
-        this.fail(error);
-      }
-      return null;
-    }
+    return this.history.get(hostId, claudeSessionId, cursor, tail, refused);
   }
 
-  /**
-   * Continues an indexed transcript as a managed session and opens it. `force` is only sent after
-   * the user confirmed a possibly-in-use session.
-   */
-  async resumeHistory(
-    hostId: string,
-    claudeSessionId: string,
-    force: boolean,
-  ): Promise<string | null> {
-    try {
-      const conn = this.link.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      const { sessionId } = await conn.request("history.resume", {
-        claudeSessionId,
-        ...(force ? { force: true } : {}),
-      });
-      this.select(hostId, sessionId);
-      return sessionId;
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
+  /** Continues an indexed transcript as a managed session and opens it. */
+  resumeHistory(hostId: string, claudeSessionId: string, force: boolean): Promise<string | null> {
+    return this.history.resume(hostId, claudeSessionId, force);
   }
 
   /**
