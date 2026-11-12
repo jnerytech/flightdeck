@@ -3,9 +3,13 @@ import {
   costAsks,
   cursorMove,
   filterCount,
+  hasBackgroundHost,
+  hostlessHub,
   personasOf,
   refreshSignature,
   rowOffers,
+  rowSummary,
+  showsStateWord,
   worktreesOf,
 } from "../../src/features/sessions/hub-derive.ts";
 import { DEFAULT_HUB_FILTER } from "../../src/lib/hub.ts";
@@ -176,5 +180,75 @@ describe("filterCount", () => {
       }),
     ).toBe(5);
     expect(filterCount({ ...DEFAULT_HUB_FILTER, pinnedOnly: true })).toBe(1);
+  });
+});
+
+describe("hasBackgroundHost", () => {
+  const host = (status: string, features?: string[]) => ({
+    id: "h",
+    status,
+    sessions: [],
+    hostInfo: features ? { features } : null,
+  });
+
+  test("an online host that announces background sessions", () => {
+    expect(hasBackgroundHost([host("offline", ["bg"]), host("online", ["bg"])])).toBe(true);
+  });
+
+  test("not an offline one, one without the feature, one that announced nothing, or no host", () => {
+    expect(hasBackgroundHost([host("offline", ["bg"])])).toBe(false);
+    expect(hasBackgroundHost([host("online", ["teams"])])).toBe(false);
+    expect(hasBackgroundHost([host("online")])).toBe(false);
+    expect(hasBackgroundHost([])).toBe(false);
+  });
+});
+
+describe("hostlessHub", () => {
+  test("no host at all is a dead end, rows or not", () => {
+    expect(hostlessHub([], 0)).toBe(true);
+    expect(hostlessHub([], 3)).toBe(true);
+  });
+
+  test("hosts that are all down are a dead end only when nothing is cached to list", () => {
+    expect(hostlessHub([{ status: "offline" }], 0)).toBe(true);
+    expect(hostlessHub([{ status: "offline" }], 2)).toBe(false);
+  });
+
+  test("an online host is never one", () => {
+    expect(hostlessHub([{ status: "offline" }, { status: "online" }], 0)).toBe(false);
+  });
+});
+
+describe("showsStateWord", () => {
+  test("a working or waiting row of the compact list shows the word", () => {
+    expect(showsStateWord("compact", { origin: "flightdeck", state: "running" })).toBe(true);
+    expect(showsStateWord("compact", { origin: "terminal", state: "needs_you" })).toBe(true);
+    expect(showsStateWord("compact", { origin: "background", state: "running" })).toBe(true);
+  });
+
+  test("an idle or past row keeps its time, a history row never has the word", () => {
+    expect(showsStateWord("compact", { origin: "flightdeck", state: "idle" })).toBe(false);
+    expect(showsStateWord("compact", { origin: "flightdeck", state: "ended" })).toBe(false);
+    expect(showsStateWord("compact", { origin: "history", state: "running" })).toBe(false);
+  });
+
+  test("the comfortable list has room for the time and the word, so it shows no extra one", () => {
+    expect(showsStateWord("comfortable", { origin: "flightdeck", state: "running" })).toBe(false);
+  });
+});
+
+describe("rowSummary", () => {
+  test("the word and its detail, then the line, each part joined as the row reads", () => {
+    expect(rowSummary({ word: "Running", detail: "Bash" }, "editing a.ts")).toBe(
+      "Running · Bash — editing a.ts",
+    );
+  });
+
+  test("a part that is empty leaves no separator behind", () => {
+    expect(rowSummary({ word: "Running", detail: "" }, "editing a.ts")).toBe(
+      "Running — editing a.ts",
+    );
+    expect(rowSummary({ word: "Running", detail: "Bash" }, "")).toBe("Running · Bash");
+    expect(rowSummary({ word: "", detail: "" }, "")).toBe("");
   });
 });

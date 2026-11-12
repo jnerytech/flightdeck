@@ -4,7 +4,7 @@ import { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import type { TrayAction, TrayMenu } from "../src/platform/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar.ts";
+import { sidebarNav } from "./sidebar/helpers.ts";
 import { stays, waiter } from "./wait.ts";
 
 registerDom();

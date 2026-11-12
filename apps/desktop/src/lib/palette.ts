@@ -10,7 +10,7 @@ import { sessionLabel } from "./session-label.ts";
 import { type SessionView, VIEW_LABEL } from "./session-views.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
-import { hasFeature } from "./version.ts";
+import { anyHostHas, hasFeature } from "./version.ts";
 
 /** Where an entry of the Ctrl+K palette leads. */
 export type PaletteTarget =
@@ -526,7 +526,7 @@ export function paletteSections(
     (item.keywords?.toLowerCase().includes(needle) ?? false);
   const link = query.trim();
   const prLink: PaletteItem[] =
-    PR_LINK.test(link) && online.some((h) => hasFeature(h.hostInfo?.features, "watch", false))
+    PR_LINK.test(link) && anyHostHas(online, "watch")
       ? [action(`pr-link:${link}`, t("palette.openPrLink"), { kind: "pull-link", url: link }, link)]
       : [];
   const scope = options.scope;

@@ -13,7 +13,7 @@ import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { confirmHost, modelFor, needsHostConfirm, profileFor } from "@/lib/assistant-prefs";
 import { useStoreSlice } from "@/lib/use-store";
-import { hasFeature } from "@/lib/version";
+import { hostsWith } from "@/lib/version";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { KeyField } from "./key-field.tsx";
 import { ModelPicker } from "./model-picker.tsx";
@@ -79,9 +79,7 @@ export function AssistantSettings(props: Readonly<{ store: AppStore; t: T }>) {
   }, [setupNotice, store]);
   const models = useModels(store, prefs.provider);
 
-  const able = hosts.filter(
-    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "assistant", false),
-  );
+  const able = hostsWith(hosts, "assistant");
   const hostId = able.find((host) => host.id === prefs.hostId)?.id ?? able[0]?.id ?? null;
   const hostName = able.find((host) => host.id === hostId)?.name;
   const nameOf = (id: string) => hosts.find((host) => host.id === id)?.name ?? id;

@@ -1,6 +1,7 @@
+import type { Density } from "../../lib/density.ts";
 import type { HubFilter, HubRow } from "../../lib/hub.ts";
 import type { WorktreeFilter } from "../../lib/project-tree.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 
 /** What the hub reads of a host. */
 export interface HubHost {
@@ -46,12 +47,10 @@ export function costAsks(
   hosts: readonly HubHost[],
   rows: readonly Pick<HubRow, "hostId" | "claudeSessionId">[],
 ): Array<[string, string[]]> {
-  return hosts
-    .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-    .map((h) => [
-      h.id,
-      rows.flatMap((r) => (r.hostId === h.id && r.claudeSessionId ? [r.claudeSessionId] : [])),
-    ]);
+  return hostsWith(hosts, "costs").map((h) => [
+    h.id,
+    rows.flatMap((r) => (r.hostId === h.id && r.claudeSessionId ? [r.claudeSessionId] : [])),
+  ]);
 }
 
 /** Changes when a host comes online or goes offline, or when its session count or info changes. */
@@ -82,4 +81,32 @@ export function filterCount(filter: HubFilter): number {
     filter.pinnedOnly,
     filter.showArchived,
   ].filter(Boolean).length;
+}
+
+/** A host that is online and offers background sessions: the hub asks again while one is open. */
+export function hasBackgroundHost(hosts: readonly HubHost[]): boolean {
+  return hostsWith(hosts, "bg").length > 0;
+}
+
+/** No host at all, or none online and nothing cached to list: the list would be a dead end. */
+export function hostlessHub(hosts: readonly Pick<HubHost, "status">[], rowCount: number): boolean {
+  return hosts.length === 0 || (rowCount === 0 && !hosts.some((host) => host.status === "online"));
+}
+
+/**
+ * #1132: whether a row of the compact list shows its state in words where its time was. A working
+ * or waiting row does, and the time stays in the tooltip; a past row keeps its time, which says
+ * more there.
+ */
+export function showsStateWord(density: Density, row: Pick<HubRow, "origin" | "state">): boolean {
+  return (
+    density === "compact" &&
+    row.origin !== "history" &&
+    (row.state === "running" || row.state === "needs_you")
+  );
+}
+
+/** A row's summary text: its state in words and detail, then the line of what it is doing. */
+export function rowSummary(said: { word: string; detail: string }, line: string): string {
+  return [[said.word, said.detail].filter(Boolean).join(" · "), line].filter(Boolean).join(" — ");
 }
