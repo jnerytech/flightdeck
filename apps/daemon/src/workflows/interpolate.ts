@@ -1,4 +1,4 @@
-import { replaceReferences } from "../references.ts";
+import { replaceReferences } from "./references.ts";
 
 /** Interpolated values (and check outputs) longer than this are cut. */
 export const MAX_VALUE = 8 * 1024;
