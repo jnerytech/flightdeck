@@ -26,7 +26,10 @@ import {
   type HistorySessionSummary,
   parseServerMessage,
 } from "@flightdeck/protocol";
-import { type TeleportRun, teleportSession } from "../apps/desktop/src/lib/teleport.ts";
+import {
+  type TeleportRun,
+  teleportSession,
+} from "../apps/desktop/src/features/teleport/teleport.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
