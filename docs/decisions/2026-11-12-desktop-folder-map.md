@@ -26,6 +26,10 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   `shared/lib/` (formatting, keys, paths, width and draft helpers). Moving `components/layout`,
   `feedback`, `status` and `markdown` there is one PR per folder (the first PR of each folder
   adds the `GLOSSARY.md` row and the `index.ts`).
+- `shared/` may import `components/ui/` and `lib/utils.ts` (`cn`), the two domain-free leaves that stay where
+  they are; the depcruise rule `shared-depends-on-no-domain` allows them and nothing else outside
+  `shared/` (decision of fd-coordinator, 2026-11-12). `bun run arch` now cruises `apps/desktop/src`, so
+  the rule gates the desktop too.
 - `components/ui/` **stays**: it is the vendored shadcn folder (`components.json` alias,
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way
