@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { trayStatus } from "../src/features/tray/tray.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
-import { workflowDaemon } from "./workflow-fixtures.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { trayStatus } from "../../src/features/tray/tray.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
+import { workflowDaemon } from "../workflow-fixtures.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 // Real git under the in-process daemon: more than 5 s.
 setDefaultTimeout(30_000);

@@ -1,11 +1,11 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Toaster, toast } from "sonner";
+import { type NoticeAction, noticeAction, noticeLifetime } from "@/app/notice-lifetime";
 import { Button } from "@/components/ui/button";
 import { focusLost } from "@/hooks/use-page-focus";
 import { translateError } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { type NoticeAction, noticeAction, noticeLifetime } from "@/lib/notice-lifetime";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 
