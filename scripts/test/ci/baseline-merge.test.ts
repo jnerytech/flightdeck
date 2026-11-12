@@ -215,4 +215,24 @@ describe("baseline-merge: through git", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  test("a driver script that crashes leaves git's line merge, with its markers", () => {
+    const { root, git, write, commit } = repo();
+    try {
+      writeFileSync(join(root, "scripts/merge-baseline.ts"), 'throw new Error("broken");\n');
+      write(base);
+      commit("base");
+      git("checkout", "-q", "-b", "other");
+      write({ ...base, "apps/b.ts": 840 });
+      commit("lower b to 840");
+      git("checkout", "-q", "main");
+      write({ ...base, "apps/b.ts": 830 });
+      commit("lower b to 830");
+      const merge = git("merge", "-q", "--no-edit", "other");
+      expect(merge.exitCode).not.toBe(0);
+      expect(readFileSync(join(root, "src-size-baseline.json"), "utf8")).toContain("<<<<<<<");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
