@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
  * `bun run release vX.Y.Z` (issue #275): the version bump PR of a release, then the tag and the
- * close, the coordinator's only. The logic is in lib/release-cmd.ts; this wires the real effects.
+ * close, the coordinator's only. The logic is in lib/release/cmd.ts; this wires the real effects.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
-import { release } from "./lib/release-cmd.ts";
+import { release } from "./lib/release/cmd.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 

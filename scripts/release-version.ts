@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /** `bun run release:version <tag>`: fails unless the tag is v<version> of every package. */
 import { resolve } from "node:path";
-import { readProductVersions, tagProblems } from "./lib/release.ts";
+import { readProductVersions, tagProblems } from "./lib/release/index.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const tag = process.argv.slice(2).find((a) => a !== "--") ?? "";
