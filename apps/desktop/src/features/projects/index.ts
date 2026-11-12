@@ -5,7 +5,7 @@
  */
 export { AddProject } from "./add-project.tsx";
 export { ProjectCardTile } from "./project-card-tile.tsx";
-export { buildProjectCards, type ProjectCard } from "./project-cards.ts";
+export type { ProjectCard } from "./project-cards.ts";
 export { knownProjectKeys, ProjectKeys } from "./project-keys.ts";
 export { ProjectTree } from "./project-tree.tsx";
 export {
@@ -20,5 +20,7 @@ export {
 } from "./project-tree-model.ts";
 export { RailFlyout } from "./rail-flyout.tsx";
 export { ProjectsSlice } from "./store.ts";
+export { useProjectCards } from "./use-project-cards.ts";
+export { useProjectLabels } from "./use-project-labels.ts";
 export { wireProjects } from "./wire.ts";
 export { WorktreeChip } from "./worktree-chip.tsx";

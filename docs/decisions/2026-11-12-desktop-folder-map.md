@@ -40,8 +40,11 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   it shows in `.dependency-cruiser.cjs`.
 - `components/ui/` **stays**: it is the vendored shadcn folder (`components.json` alias,
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
-- `hooks/` is outside the three folders this map covers; a hook follows its domain the same way
-  (`use-project-cards.ts`, `use-project-labels.ts` to `projects`, and so on) in a later PR.
+- `hooks/` is outside the three folders this map covers; a hook follows its domain the same way.
+  **Moved** (#1597): `use-project-cards`, `use-project-labels` to `features/projects/`,
+  `use-switcher-hosts` to `features/hosts/`, `use-start-elsewhere`, `use-start-ask` to
+  `features/sessions/`, each behind its index. The domain-free hooks (`use-now`, `use-busy`,
+  `use-breakpoint`, `use-in-flight` and the rest) stay in `hooks/`.
 
 ## `components/`
 

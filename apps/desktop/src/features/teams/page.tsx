@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AssistField } from "@/features/assistant/index.ts";
+import { useSwitcherHostId } from "@/features/hosts/index.ts";
 import {
   ModelSelect,
   type PermissionChoice,
@@ -23,7 +24,6 @@ import {
 } from "@/features/personas/index.ts";
 import { AddProject } from "@/features/projects/index.ts";
 import { sessionLabel, useDraft } from "@/features/sessions/index.ts";
-import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import {

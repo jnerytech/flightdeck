@@ -59,16 +59,7 @@ export { sessionLabel } from "./session-label.ts";
 export type { SessionState } from "./session-state.ts";
 export { SessionView } from "./session-view.tsx";
 export { type SessionView as SessionViewName, SessionViews, VIEW_LABEL } from "./session-views.ts";
-export {
-  type Elsewhere,
-  type ElsewhereAsk,
-  type ElsewhereOutcome,
-  elsewhereNotice,
-  type HostFacts,
-  offeredHosts,
-  startElsewhere,
-  waitingCards,
-} from "./start-elsewhere.ts";
+export { elsewhereNotice, waitingCards } from "./start-elsewhere.ts";
 export { StatusBadge } from "./status-badge.tsx";
 export {
   initialSessionsState,
@@ -99,6 +90,8 @@ export { useDraft } from "./use-draft.ts";
 export { useFollow } from "./use-follow.ts";
 export { useLiveElsewhereAsk, useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
 export { useSessionCost } from "./use-session-cost.ts";
+export { projectContracts, useStartAsk } from "./use-start-ask.tsx";
+export { useStartElsewhere } from "./use-start-elsewhere.ts";
 export { ViewToggle } from "./view-toggle.tsx";
 export {
   wireExternalSessions,
