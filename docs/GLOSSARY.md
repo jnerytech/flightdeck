@@ -227,6 +227,7 @@ test's baseline, with the issue that renames them.
 | `trace` | trace | The tree of a session's turns, tool calls and subagents, with time and cost |
 | `tray` | tray | The tray badge, its "needs you" submenu and the window title, and the answers given from the submenu |
 | `trust` | trusted | What a project's own files would load, read without running, and its trust |
+| `ui` | host presentation | The host's default mode (simple or full) and its lock, which `ui.set` changes and the config file keeps |
 | `updates` | update | Checks, verifies and applies the daemon's signed updates |
 | `vault` | vault | Secrets in the OS store, their usage rules, windows and requests |
 | `viewprefs` | view preferences | How the person left the windows on this computer: list width, sidebar and tree folds, hub view and filter, tile layout, the board last opened |
