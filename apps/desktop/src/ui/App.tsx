@@ -24,6 +24,7 @@ import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { TContext } from "@/i18n/context";
 import { GlobalSearch, paletteRoute } from "../features/palette/index.ts";
+import { ShortcutsSheet } from "../features/shortcuts/index.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
 import { tabIntent } from "../features/tabs/index.ts";
 import { TerminalCloseDialog } from "../features/terminal/index.ts";
@@ -41,7 +42,6 @@ import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { preloadMarkdown } from "./Markdown.tsx";
-import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 
