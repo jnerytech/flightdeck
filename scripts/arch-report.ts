@@ -20,10 +20,10 @@ import {
   shapeShares,
 } from "./lib/arch-report.ts";
 import { type CruiseModule, cycleFiles } from "./lib/cycle-files.ts";
+import { isMeasured, oversizedSources } from "./lib/guards/src-size.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { CONFIG, KNOWN, newRules } from "./lib/ratchets/arch.ts";
-import { isMeasured, oversizedSources } from "./lib/src-size.ts";
 import { flatTestCounts } from "./lib/tests/test-layout.ts";
 import { testTiers } from "./lib/tests/test-tiers.ts";
 

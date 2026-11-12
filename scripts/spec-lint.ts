@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /**
  * `bun run spec:lint <spec.md>...`: checks a phase spec against docs/templates/SPEC.md
- * (scripts/lib/spec-lint.ts). It checks the file it is given, linted or not; the suite checks
+ * (scripts/lib/guards/spec-lint.ts). It checks the file it is given, linted or not; the suite checks
  * every spec from phase 40 on.
  */
 import { readFileSync } from "node:fs";
-import { lintSpec } from "./lib/spec-lint.ts";
+import { lintSpec } from "./lib/guards/spec-lint.ts";
 
 const files = process.argv.slice(2).filter((a) => a !== "--");
 if (files.length === 0) {

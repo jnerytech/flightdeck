@@ -67,7 +67,7 @@ describe("ci-quick", () => {
     // #1108: it runs there through its // repo-wide marker, as every scan of the whole repo does.
     const real = (path: string) => readFileSync(join(ROOT, path), "utf8");
     expect(
-      quickTests(["scripts/test/guards/md-links.test.ts", "scripts/lib/md-links.ts"], real),
+      quickTests(["scripts/test/guards/md-links.test.ts", "scripts/lib/guards/md-links.ts"], real),
     ).toEqual(["scripts/test/guards/md-links.test.ts"]);
     expect(quickTests(["scripts/test/guards/md-links.test.ts"], () => "")).toEqual([]);
     // #1114 review: a file that cannot be read is not marked, and the job does not crash on it.

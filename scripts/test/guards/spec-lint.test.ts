@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { linted, lintSpec, SECTIONS, specAreas } from "../../lib/spec-lint.ts";
+import { linted, lintSpec, SECTIONS, specAreas } from "../../lib/guards/spec-lint.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const TEMPLATE = join(ROOT, "docs/templates/SPEC.md");
