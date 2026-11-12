@@ -32,7 +32,9 @@ async function online() {
   if (!actions) throw new Error("o daemon de teste não tem as ações");
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "alfa", url: d.server.url, token: TOKEN }));
+  const hostId = await act(() =>
+    store.roster.add({ name: "alfa", url: d.server.url, token: TOKEN }),
+  );
   const prod = await store.secrets.add({
     name: "chave-prod",
     type: "token",

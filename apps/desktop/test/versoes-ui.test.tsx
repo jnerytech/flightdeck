@@ -91,7 +91,7 @@ async function connect(url: string, label: string) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText(`pc: ${label}`)).not.toBeNull());
   return { store, hostId };
 }

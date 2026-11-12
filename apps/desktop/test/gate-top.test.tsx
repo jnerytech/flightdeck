@@ -37,7 +37,7 @@ describe("gate-top: a card's waiting gate is the first thing on the card", () =>
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.server.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const card = d.board.createCard(d.project.id, { title: "Somar", description: "x" });

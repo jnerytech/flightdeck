@@ -98,7 +98,7 @@ export async function pluginsHost(
     },
   ]);
   fakes.push(fake);
-  const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   const deadline = Date.now() + 5000;
   while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
     await Bun.sleep(10);

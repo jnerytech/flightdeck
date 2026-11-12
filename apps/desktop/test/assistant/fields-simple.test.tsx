@@ -59,7 +59,7 @@ async function finishedTask(configured: boolean) {
     await store.assistant.refreshKeys();
   }
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
   const folder = join(d.root, "notes");
   mkdirSync(folder, { recursive: true });

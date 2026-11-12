@@ -235,7 +235,7 @@ describe("abrir-terminal", () => {
       // programs' versions, which the suite never does.
       store.health.check = async () => {};
       try {
-        await store.addHost({ name: "pc", url: daemon.url, token: TOKEN });
+        await store.roster.add({ name: "pc", url: daemon.url, token: TOKEN });
         await poll(() => store.getState().hosts[0]?.hostInfo, 3000);
         const result = store.getState().hosts[0]?.hostInfo;
         return { flightdeckdPath: result?.flightdeckdPath, wslDistro: result?.wslDistro };
@@ -285,7 +285,7 @@ describe("abrir-terminal", () => {
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
     await store.init();
-    const hostId = await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     await poll(() => store.getState().hosts[0]?.hostInfo, 3000);
     await store.terminals.openIn(hostId, { cwd: d.project, claudeSessionId: null });
     expect(store.getState().error ?? "").toContain(
@@ -338,7 +338,7 @@ describe("abrir-terminal", () => {
     render(<App store={store} />);
     const url = d.listen().url;
     await act(async () => {
-      await store.addHost({ name: "alfa", url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url, token: TOKEN });
     });
     await settle(
       () => store.getState().hosts[0]?.hostInfo !== null && store.getState().terminalEnv !== null,
@@ -384,7 +384,7 @@ describe("abrir-terminal", () => {
     const copier = new AppStore(web.platform, { baseDelayMs: 60_000 });
     render(<App store={copier} />);
     await act(async () => {
-      await copier.addHost({ name: "alfa", url, token: TOKEN });
+      await copier.roster.add({ name: "alfa", url, token: TOKEN });
     });
     await settle(() => copier.getState().hosts[0]?.hostInfo !== null);
     await act(async () => copier.select(copier.getState().hosts[0]?.id ?? "", sessionId));

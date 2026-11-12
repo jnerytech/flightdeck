@@ -46,7 +46,9 @@ async function online() {
   const d = await workflowDaemon(cleanups, {}, [], { actions: true });
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "alfa", url: d.server.url, token: TOKEN }));
+  const hostId = await act(() =>
+    store.roster.add({ name: "alfa", url: d.server.url, token: TOKEN }),
+  );
   const secret = await store.secrets.add({
     name: "token-staging",
     type: "token",

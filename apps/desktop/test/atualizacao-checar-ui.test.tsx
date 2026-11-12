@@ -134,7 +134,7 @@ async function connect(url: string) {
   });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "pc", url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "pc", url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
   return store;
 }

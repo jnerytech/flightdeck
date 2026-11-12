@@ -40,7 +40,7 @@ async function open(
   const platform = memoryPlatform(false, "pt-BR");
   const store = new AppStore(platform.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "pc", url: d.url, token: TOKEN });
   const allowedHosts = input.allowed === false ? ["local"] : [hostId];
   const key = await store.secrets.add({
     name: "deploy key",

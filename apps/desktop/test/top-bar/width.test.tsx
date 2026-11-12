@@ -92,7 +92,9 @@ for (const [lang, dict] of [
       });
       cleanups.push(() => store.dispose());
       render(<App store={store} />);
-      await act(() => store.addHost({ name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }));
+      await act(() =>
+        store.roster.add({ name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }),
+      );
       const bar = () => within(screen.getByRole("banner"));
       expect(bar().queryByRole("button", { name: dict.nav.back })).not.toBeNull();
       expect(bar().queryByRole("button", { name: dict.nav.forward })).not.toBeNull();

@@ -49,7 +49,7 @@ async function connect() {
   await uiIdle();
   const before = counts.commits;
   for (const [h, url] of urls.entries()) {
-    await act(() => store.addHost({ name: hostId(h), url, token: TOKEN }));
+    await act(() => store.roster.add({ name: hostId(h), url, token: TOKEN }));
   }
   await settle(
     () =>

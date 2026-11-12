@@ -24,7 +24,7 @@ describe("desktop: estado do app", () => {
     const { store, server, items, platform, project } = setup();
     let notified = 0;
     const unsubscribe = store.subscribe(() => notified++);
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     expect(await platform.secrets.get(hostId)).toBe(TOKEN);
     expect(items.get(HOSTS_KEY)).not.toContain(TOKEN);
     await waitFor(() => host(store, hostId)?.status === "online", "online");
@@ -49,7 +49,7 @@ describe("desktop: estado do app", () => {
 
   test("permissão notifica fora de foco; allow e deny respondem pelo card", async () => {
     const { store, server, project, notifications } = setup(false);
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
     const sessionId = (await store.createSession(hostId, {
       cwd: project,
@@ -81,14 +81,14 @@ describe("desktop: estado do app", () => {
     const unfocused = memoryPlatform(false);
     const late = new AppStore(unfocused.platform, { baseDelayMs: 10 });
     cleanups.push(() => late.dispose());
-    await late.addHost({ name: "pc", url: d.server.url, token: TOKEN });
+    await late.roster.add({ name: "pc", url: d.server.url, token: TOKEN });
     const [request] = await waitFor(
       () => needsYou(late.getState()).length === 1 && needsYou(late.getState()),
       "pedido aberto",
     );
     expect(unfocused.notifications).toEqual([]);
 
-    await d.store.addHost({ name: "pc", url: d.server.url, token: TOKEN });
+    await d.store.roster.add({ name: "pc", url: d.server.url, token: TOKEN });
     await waitFor(() => needsYou(d.store.getState()).length === 1);
     d.manager.respondPermission({ requestId: request?.requestId ?? "", decision: "allow" });
     await waitFor(
@@ -103,7 +103,7 @@ describe("desktop: estado do app", () => {
 
   test("interrupt, close e resume pela sessão selecionada", async () => {
     const { store, server, project } = setup();
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
     const sessionId = (await store.createSession(hostId, {
       cwd: project,
@@ -129,7 +129,7 @@ describe("desktop: estado do app", () => {
     await store.interrupt();
     await store.respond("r", "allow");
     expect(store.getState().error).toBeNull();
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
     expect(await store.createSession(hostId, { cwd: "/nao/existe", prompt: "x" })).toBeNull();
     expect(store.getState().error).toContain("forbidden_cwd");
@@ -172,7 +172,7 @@ describe("desktop: estado do app", () => {
 
   test("reconexão limpa o texto parcial da sessão aberta", async () => {
     const { store, server, project } = setup();
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(() => host(store, hostId)?.status === "online");
     const sessionId = (await store.createSession(hostId, { cwd: project, prompt: "oi" })) as string;
     await waitFor(
