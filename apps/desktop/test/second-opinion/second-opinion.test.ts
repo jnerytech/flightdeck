@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import { findingsNote, openFindings } from "../src/lib/second-opinion.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { findingsNote, openFindings } from "../../src/lib/second-opinion.ts";
 
 /**
  * #1446: the Open PR confirm says how many reviewer findings are still open when a blocker or a
