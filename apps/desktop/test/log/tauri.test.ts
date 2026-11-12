@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
 
-const rust = readFileSync(join(import.meta.dir, "../src-tauri/src/lib.rs"), "utf8");
+const rust = readFileSync(join(import.meta.dir, "../../src-tauri/src/lib.rs"), "utf8");
 
 describe("log-tauri: the shell's log file (issue #255)", () => {
   test("the platform's log writes, reads and opens through the shell's own commands", async () => {
@@ -52,14 +52,14 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
   test("opening the folder goes through the opener plugin on a folder the shell made, and the webview still cannot open paths", () => {
     expect(rust).toMatch(/fn open_logs_dir[\s\S]{0,800}open_path\(/);
     const capability = readFileSync(
-      join(import.meta.dir, "../src-tauri/capabilities/default.json"),
+      join(import.meta.dir, "../../src-tauri/capabilities/default.json"),
       "utf8",
     );
     expect(capability).not.toContain("opener:allow-open-path");
   });
 
   test("the webview reports its own errors through the log, wired in the entry point", () => {
-    const entry = readFileSync(join(import.meta.dir, "../src/main.tsx"), "utf8");
+    const entry = readFileSync(join(import.meta.dir, "../../src/main.tsx"), "utf8");
     expect(entry).toContain("installGlobalLog");
     expect(entry).toContain("store.appLog");
   });
