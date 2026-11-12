@@ -1,4 +1,4 @@
-import type { NavKey } from "@/components/nav-icons";
+import type { NavKey } from "@/features/shell/index.ts";
 import { type AppState, needsYou, sessionKey } from "./app-store.ts";
 import type { Route } from "./router.ts";
 

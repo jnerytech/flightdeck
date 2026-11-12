@@ -1,3 +1,14 @@
+import {
+  loadFolded,
+  loadTreeFolded,
+  loadTreeOpened,
+  loadTreePinned,
+  type SidebarGroup,
+  saveFolded,
+  saveTreeFolded,
+  saveTreeOpened,
+  saveTreePinned,
+} from "@/features/shell/index.ts";
 import { loadLastBoards, saveLastBoard } from "../../lib/board-shortcut.ts";
 import {
   type HubFilter,
@@ -10,16 +21,7 @@ import {
   saveHubView,
 } from "../../lib/hub.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "../../lib/list-width.ts";
-import { loadFolded, type SidebarGroup, saveFolded } from "../../lib/sidebar-groups.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "../../lib/tiles.ts";
-import {
-  loadTreeFolded,
-  loadTreeOpened,
-  loadTreePinned,
-  saveTreeFolded,
-  saveTreeOpened,
-  saveTreePinned,
-} from "../../lib/tree-fold.ts";
 
 /** Where the Activity board keeps whether it shows its Idle column. */
 const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";

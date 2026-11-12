@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SIDEBAR_FOLD_KEY, SidebarFoldController } from "../../src/lib/sidebar-fold.ts";
+import { SIDEBAR_FOLD_KEY, SidebarFoldController } from "../../src/features/shell/sidebar-fold.ts";
 
 /** A storage that keeps what it is given. */
 function storage(initial?: string) {

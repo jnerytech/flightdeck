@@ -18,6 +18,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { ShellPrefs, SidebarFoldController } from "@/features/shell/index.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
@@ -171,8 +172,6 @@ import { RoiSettings } from "./roi-settings.ts";
 import { sessionKey } from "./session-key.ts";
 import { SessionViews } from "./session-views.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import { ShellPrefs } from "./shell-prefs.ts";
-import { SidebarFoldController } from "./sidebar-fold.ts";
 import {
   effectiveMode,
   loadChoices,
