@@ -1,6 +1,7 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -20,7 +21,6 @@ import type { HubRow } from "../../lib/hub.ts";
 import type { ProjectCard } from "../../lib/project-cards.ts";
 import type { UsageHistoryTarget } from "../../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { UsagePanel } from "../costs/usage-panel.tsx";
 import { MaintenanceSection } from "../maintenance/index.ts";
 import { TelemetrySection } from "../telemetry/index.ts";

@@ -1,8 +1,8 @@
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Button } from "@/components/ui/button";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /**
  * Phase 9: updating the host's daemon from the app. Behind a confirmation; "atualizando…" until

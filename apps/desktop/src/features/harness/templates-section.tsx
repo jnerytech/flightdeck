@@ -1,5 +1,6 @@
 import type { HarnessTemplateInfo } from "@flightdeck/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
 import { formatBytes } from "../../lib/format-bytes.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /**
  * The host's Claude Code setup templates (`harness.templates.*`, #75): the ones shared from a

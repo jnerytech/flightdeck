@@ -1,4 +1,5 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -11,7 +12,6 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import type { RestorePreview } from "@/lib/backup-bundle";
 import type { ConflictChoice } from "@/lib/vault-backup";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** What a conflicting entry gets on restore: kept as it is, or replaced by the bundle's. */
 const CHOICES = [
