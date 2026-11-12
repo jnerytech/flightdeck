@@ -39,11 +39,11 @@ describe("what the sessions kept on this computer is not trusted (#1609)", () =>
     expect(() => markHandled(storage, "h1", ["new@1"])).not.toThrow();
     markHandled(storage, "h2", ["new@2"]);
     expect(loadHandled(storage)).toEqual({ h1: ["new@1"], h2: ["old@1", "new@2"] });
-    const left = unanswered(
-      [{ sessionId: "new", interruptedAt: "2" } as Parameters<typeof unanswered>[0][number]],
-      loadHandled(storage).h2,
-    );
-    expect(left).toHaveLength(1);
+    const offers = [
+      { sessionId: "new", interruptedAt: "2" },
+      { sessionId: "fresh", interruptedAt: "3" },
+    ] as Parameters<typeof unanswered>[0];
+    expect(unanswered(offers, loadHandled(storage).h2).map((o) => o.sessionId)).toEqual(["fresh"]);
   });
 
   test("the automatic setting is on only for a host stored as true", () => {
