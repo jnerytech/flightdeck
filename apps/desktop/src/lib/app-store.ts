@@ -94,6 +94,7 @@ import {
 import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
+import { RoiSettings } from "../features/roi/roi-settings.ts";
 import {
   browserClockDeps,
   CacheTimerSettings,
@@ -191,7 +192,6 @@ import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
-import { RoiSettings } from "./roi-settings.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import {
   effectiveMode,
