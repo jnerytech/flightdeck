@@ -22,6 +22,7 @@ import type { Messaging } from "../messaging/messages.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
+import type { NewTeam, TeamPatch } from "./input.ts";
 import {
   coordinatorInstructions,
   INSTRUCTIONS_VERSION,
@@ -80,41 +81,6 @@ export interface TeamsOptions {
   warm?: (cwd: string) => Promise<unknown> | undefined;
   /** Tells a running session its persona changed. */
   applyPersona?: (sessionId: string, persona: string | null) => void;
-}
-
-export interface NewTeam {
-  projectId: string;
-  goal: string;
-  name?: string;
-  workers: number;
-  coordinatorPersona?: string;
-  workerPersonas?: string[];
-  /** The model of the coordinator and of each worker; none or null is the persona's own. */
-  coordinatorModel?: string;
-  workerModels?: Array<string | null>;
-  /** Issue #2310: the effort of the coordinator and of each worker; none or null is the persona's own. */
-  coordinatorEffort?: EffortLevel;
-  workerEfforts?: Array<EffortLevel | null>;
-  /** Issue #93: the permission mode of the coordinator and of each worker; none or null is the default. */
-  coordinatorPermission?: PermissionMode;
-  workerPermissions?: Array<PermissionMode | null>;
-  checks?: string[];
-}
-
-export interface TeamPatch {
-  team: string;
-  goal?: string;
-  checks?: string[];
-  persona?: { member: string; persona: string | null };
-  addWorkers?: number;
-  /** One more worker with the persona and model asked for (none or null is the default). */
-  addMember?: {
-    persona?: string | null;
-    model?: string | null;
-    effort?: EffortLevel | null;
-    permission?: PermissionMode | null;
-  };
-  removeMember?: string;
 }
 
 /** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
