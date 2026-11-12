@@ -6,7 +6,7 @@ import {
   type AxeViolation,
   blocking,
   describeViolation,
-} from "../../../scripts/lib/axe.ts";
+} from "../../../../scripts/lib/axe.ts";
 import {
   ACOES_POOL,
   acoesAction,
@@ -14,9 +14,9 @@ import {
   JOURNEYS,
   LANGUAGES,
   VIEWPORTS,
-} from "../../../scripts/lib/e2e-journeys.ts";
+} from "../../../../scripts/lib/e2e-journeys.ts";
 
-const ROOT = resolve(import.meta.dir, "../../..");
+const ROOT = resolve(import.meta.dir, "../../../..");
 const read = (file: string) => readFileSync(resolve(ROOT, file), "utf8");
 
 const violation = (

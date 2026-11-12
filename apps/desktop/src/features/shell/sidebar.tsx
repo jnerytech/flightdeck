@@ -14,7 +14,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
-import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +34,8 @@ import {
 import { pendingCount } from "@/features/needs-you/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { rowRoute } from "@/features/sessions/index.ts";
+import { ShortcutKeys } from "@/features/shortcuts/index.ts";
+
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";

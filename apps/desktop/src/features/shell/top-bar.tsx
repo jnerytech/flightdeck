@@ -10,7 +10,6 @@ import {
   Sun,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/index.ts";
+import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import type { Key, T } from "@/i18n/index";
 import { hostDotView } from "@/lib/host-status";
 import type { Theme } from "@/lib/theme";
