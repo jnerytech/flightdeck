@@ -69,7 +69,10 @@ journey measures the real browser and is the protection for the layout rows.
 
 | path | verdict | stays protected by |
 |---|---|---|
-| `tabs/look`, `tabs/largura`, `layout/overflow`, `margens-blocos`, `dialogo-centro`, `dialogo-compacto`, `bloco-pedido`, `linhas-bloco`, `movimento-tokens`, `css-utilities`, `simple/narrow-ui`, `sessions/hub-row-narrow`, `sessions/session-header`, `sidebar/target`, `sidebar/project-name`, `projects/tree-ui` (CSS regex only) | delete | e2e `layout` journey and `demo:shots`; `style-lint` for the rule-shaped ones |
+| `tabs/look`, `tabs/largura` (two tests), `layout/overflow`, `bloco-pedido`, `linhas-bloco` * | deleted, desktop slice | e2e `layout` journey (`tabWidthsProblem`, sideways scroll, active tab) and `layout-guards` (overflow, cut text in the narrow-window prints) |
+| `margens-blocos`, `css-utilities`, `movimento-tokens` * | keep: policy scans (no `mb-4` on a block, no duplicate `@utility`, motion token parity) | the scans themselves |
+| `dialogo-centro` * | keep for now | no browser guard checks a dialog's centering; `layout-guards` checks only sheet actions |
+| `dialogo-compacto`, `simple/narrow-ui`, `sessions/hub-row-narrow`, `sessions/session-header`, `sidebar/target`, `sidebar/project-name`, `projects/tree-ui` (render some cases, read CSS in others) | rewrite: drop the CSS case, keep the rendered ones | e2e `layout` journey and `demo:shots` |
 | `clients/ui-layout`, `visual-direction/telas` (L121-151), `keycap` (L85-93), `areas-container` (L125-141) (source scans of `.tsx`) | delete the scan | `scripts/lib/style-lint.ts` or a Biome rule |
 | `crumb-largura`, `icon-tip`, `tabela-larga`, `split-tabbar`, `ux-basicos`, `toggle-pressed`, `rolagem`, `botao-motivo-linha`, `palette/mais-ui`, `pagina-host`, `board/ui`, `hosts/host-health-ui`, `costs/table`, `costs/cost-chart` (one CSS or class case each in files that otherwise render) | rewrite: drop that case | the rendered cases beside it |
 | `layout/layout`, `layout/list-row`, `layout/compose`, `visual-direction/colunas` (class lists, `getByTestId`) | rewrite | role, text and open/closed state |
