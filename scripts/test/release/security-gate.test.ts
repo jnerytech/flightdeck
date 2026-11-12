@@ -233,7 +233,7 @@ describe("security-gate", () => {
         "scripts/lib/hooks/claude-hooks.ts",
         "scripts/handoff-check.ts",
         ".github/actions/setup/action.yml",
-        "scripts/lib/bounded-run.ts",
+        "scripts/lib/machine/bounded-run.ts",
         "scripts/pr-flow.ts",
         ".claude/agents/security-reviewer.md",
       ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
@@ -242,8 +242,8 @@ describe("security-gate", () => {
       [".claude/agents/security-reviewer.md", "guard"],
       [".github/actions/setup/action.yml", "guard"],
       ["scripts/handoff-check.ts", "guard"],
-      ["scripts/lib/bounded-run.ts", "guard"],
       ["scripts/lib/hooks/claude-hooks.ts", "guard"],
+      ["scripts/lib/machine/bounded-run.ts", "guard"],
       ["scripts/lib/pr/security-gate.ts", "guard"],
       ["scripts/pr-flow.ts", "guard"],
     ]);

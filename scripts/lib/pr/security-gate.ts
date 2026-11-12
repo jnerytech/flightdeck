@@ -188,7 +188,7 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   [
     "guard",
     [
-      /^scripts\/lib\/(?:pr\/(?:security-gate|handoff)|hooks\/claude-hooks|guards\/tdd-audit|bounded-run)\.ts$/,
+      /^scripts\/lib\/(?:pr\/(?:security-gate|handoff)|hooks\/claude-hooks|guards\/tdd-audit|machine\/bounded-run)\.ts$/,
       /^scripts\/(?:handoff-check|pr-flow)\.ts$/,
       /^\.github\/actions\//,
       /^\.claude\/agents\/security-reviewer\.md$/,
