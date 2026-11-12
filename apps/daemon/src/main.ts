@@ -471,21 +471,23 @@ export async function startDaemon(
     history: { home: userHome(env), appData: process.env.APPDATA, platform: process.platform },
   });
 
-  const { vault, actions } = createVault({
-    db: store.db,
-    log: logger.log.bind(logger),
-    runtimeKind,
-    actions: {
-      projects: (id) => board.getProject(id),
-      // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
-      ssh: ssh.exec,
-      sshTags: ssh.tagsOf,
-      sshKey: ssh.vaultKeyOf,
-      hostName: config.hostName,
-      risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
-      projectKey: (id) => keys.known(board.getProject(id).path),
-    },
-  });
+  const { vault, actions } = await domains.add(
+    createVault({
+      db: store.db,
+      log: logger.log.bind(logger),
+      runtimeKind,
+      actions: {
+        projects: (id) => board.getProject(id),
+        // `ssh:` actions run on the phase 15 destinos; a vault-key destino's key is asked of the app.
+        ssh: ssh.exec,
+        sshTags: ssh.tagsOf,
+        sshKey: ssh.vaultKeyOf,
+        hostName: config.hostName,
+        risk: (command, cwd) => risk.classify("Bash", { command }, cwd).level,
+        projectKey: (id) => keys.known(board.getProject(id).path),
+      },
+    }),
+  );
   heldValues = () => vault.heldValues();
   await domains.add(
     await createTeams({
@@ -629,9 +631,7 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    vault,
     log: logger.log.bind(logger),
-    actions,
     autoApprove,
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
