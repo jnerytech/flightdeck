@@ -5,7 +5,7 @@ import { QuotaGuard } from "@/features/quota/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import { hasFeature } from "@/lib/version";
+import { hostsWith } from "@/lib/version";
 import { QuotaBarList } from "./quota-bars";
 
 const QUOTA_DETAIL_KEYS = ["quota", "hosts"] as const;
@@ -20,9 +20,7 @@ export const QuotaDetail = memo(function QuotaDetail(
   const { store, onClose } = props;
   const t = useT();
   const state = useStoreSlice(store, QUOTA_DETAIL_KEYS);
-  const hosts = state.hosts.filter(
-    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "quota", false),
-  );
+  const hosts = hostsWith(state.hosts, "quota");
   const go = (route: Parameters<typeof store.router.push>[0]) => {
     store.router.push(route);
     onClose();

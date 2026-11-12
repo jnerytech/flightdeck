@@ -10,6 +10,7 @@ import { TranscriptReader } from "@/features/history/index.ts";
 import {
   awaitedHost,
   draftUrl,
+  FirstRun,
   type HostDraft,
   HostForm,
   HostOfflineBanner,
@@ -28,6 +29,7 @@ import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { NeedsYou } from "../features/needs-you/page.tsx";
 import { QuotaPanel } from "../features/quota/index.ts";
+import { SetupPage } from "../features/setup/index.ts";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
 import {
   type AppState,
@@ -47,14 +49,12 @@ import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
-import { FirstRun } from "./FirstRun.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
 import { lazyScreen } from "./lazy-screen.ts";
 import { NewSessionForm } from "./NewSessionForm.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
-import { SetupPage } from "./SetupPage.tsx";
 import { StartScreen } from "./StartScreen.tsx";
 
 /**

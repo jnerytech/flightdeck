@@ -4,10 +4,10 @@ import { Page, Section } from "@/components/layout/page";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import type { Key } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import type { Route } from "../lib/router.ts";
-import { type SetupStep, setupProgress, setupSteps } from "../lib/setup-steps.ts";
+import type { Key } from "../../i18n/index.ts";
+import type { AppState, AppStore } from "../../lib/app-store.ts";
+import type { Route } from "../../lib/router.ts";
+import { type SetupStep, setupProgress, setupSteps } from "../../lib/setup-steps.ts";
 
 /** A list of steps: a check or its number in a circle, one sentence, one action. */
 function StepList(
