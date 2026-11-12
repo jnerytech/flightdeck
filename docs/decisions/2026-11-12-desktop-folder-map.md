@@ -44,7 +44,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `feedback/` | `shared/feedback/` | `action-button`, `busy`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`, `notices`, and `confirm-dialog.tsx` (#2101 moves it from `ui/` to `components/feedback/`) |
 | `layout/` | `shared/layout/` | primitives with no domain; `app-shell.tsx` and `breadcrumb.tsx` move to `features/shell/` (below) |
 | `markdown/` | `shared/markdown/` | `markdown.tsx` and the lazy `markdown-body.tsx` (the lazy chunk must stay lazy: keep `bundle-reach` green) |
-| `notifications/` | `features/notifications/` (new domain, GLOSSARY row) | center and preferences |
+| `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
 | `session/` | **theirs** (`features/sessions/`) | activity line, message actions, parts, tool rows, finish dialogs |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
 | `shell/` | `features/shell/` (new domain, GLOSSARY row) | account footer, quota bars, scope menu, status bar, top bar; with `app-shell.tsx` and `breadcrumb.tsx` from `layout/` |
@@ -94,7 +94,12 @@ prefix. Tests move with their file in the same PR.
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` |
 | `automations.ts`, `check-loop.ts` | `features/automations/` |
 | `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` |
-| `badge-icon.ts`, `notify*.ts`, `notice-*.ts`, `incident-text.ts`, `quiet*.ts` | `features/notifications/` |
+| `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
+| `notify.ts` | `features/inbox/`: it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
+| `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
+| `notice-*.ts` | `shared/feedback/` (read by `feedback/notices.tsx`, the board, needs-you and the run timeline) |
+| `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
+| `quiet*.ts` | `features/needs-you/` (the quiet badge of the board and the needs-you rows) |
 | `away.ts` | `features/needs-you/` |
 | `keep-awake.ts` | `features/hosts/` |
 | `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `list-width.ts`, `use-width.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `scroll-edge.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`; `list-width.ts` and `use-width.ts` to `shared/lib/` if two domains use them) |

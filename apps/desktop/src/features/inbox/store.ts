@@ -10,11 +10,16 @@ import {
   unreadRows,
 } from "../../lib/inbox.ts";
 import type { AboutNotification } from "../../lib/notify.ts";
-import { decide, type NotifyPrefs, type NotifySource } from "../../lib/notify-policy.ts";
-import { browserSound, playNotifySound } from "../../lib/notify-sound.ts";
 import { parseRequestLink } from "../../lib/request-link.ts";
 import type { Route } from "../../lib/router.ts";
 import type { Notification } from "../../platform/types.ts";
+import {
+  browserSound,
+  decide,
+  type NotifyPrefs,
+  type NotifySource,
+  playNotifySound,
+} from "../notifications/index.ts";
 
 /** What the notification center reads and does through the app's store. */
 export interface InboxCore {

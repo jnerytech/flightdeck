@@ -74,6 +74,7 @@
   "src/features/needs-you/entry-row.tsx": 8,
   "src/features/needs-you/page.tsx": 22,
   "src/features/needs-you/while-away.tsx": 5,
+  "src/features/notifications/notification-prefs.tsx": 28,
   "src/features/palette/global-search.tsx": 17,
   "src/features/palette/palette-section.tsx": 19,
   "src/features/permissions/always-allow.tsx": 6,
