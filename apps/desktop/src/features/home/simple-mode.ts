@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { readStored } from "@/shared/lib/index.ts";
+
 /** The two ways the app presents itself (phase 33). */
 export type UiMode = "full" | "simple";
 
@@ -27,23 +30,21 @@ export function effectiveMode(choice: unknown, host: HostUi | null | undefined):
   return { mode: asMode(choice) ?? hostMode, canSwitch: true };
 }
 
+/** What is kept by host: a host whose value is not a mode is dropped, the others stay. */
+const Choices = z.record(z.string(), z.unknown()).transform((all) =>
+  Object.fromEntries(
+    Object.entries(all).flatMap(([host, value]) => {
+      const mode = asMode(value);
+      return mode ? [[host, mode]] : [];
+    }),
+  ),
+);
+
 /** The person's choices, by host; anything unreadable is no choice. */
 export function loadChoices(storage: {
   getItem(key: string): string | null;
 }): Record<string, UiMode> {
-  let stored: unknown;
-  try {
-    stored = JSON.parse(storage.getItem(UI_CHOICES_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return {};
-  const choices: Record<string, UiMode> = {};
-  for (const [host, value] of Object.entries(stored)) {
-    const mode = asMode(value);
-    if (mode) choices[host] = mode;
-  }
-  return choices;
+  return readStored(storage, UI_CHOICES_KEY, Choices, {});
 }
 
 /** Keeps one host's choice; `null` forgets it, so the host's default speaks again. */

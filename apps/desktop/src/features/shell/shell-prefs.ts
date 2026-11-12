@@ -1,4 +1,6 @@
+import { z } from "zod";
 import type { Platform } from "@/platform/types.ts";
+import { readStored } from "@/shared/lib/index.ts";
 
 /** Where the shell's switches are kept on this computer. */
 export const SHELL_PREFS_KEY = "flightdeck.shellPrefs";
@@ -12,19 +14,13 @@ export interface ShellPrefsValue {
 const NOTHING_HIDDEN: ShellPrefsValue = { hideBadges: false, hideWhatsNew: false };
 
 /** What is kept, read leniently: a key that is missing or not a boolean hides nothing. */
-function read(storage: Platform["storage"]): ShellPrefsValue {
-  try {
-    const kept: unknown = JSON.parse(storage.getItem(SHELL_PREFS_KEY) ?? "{}");
-    const flags =
-      typeof kept === "object" && kept !== null ? (kept as Record<string, unknown>) : {};
-    return {
-      hideBadges: flags.hideBadges === true,
-      hideWhatsNew: flags.hideWhatsNew === true,
-    };
-  } catch {
-    return NOTHING_HIDDEN;
-  }
-}
+const Stored = z.object({
+  hideBadges: z.boolean().catch(false),
+  hideWhatsNew: z.boolean().catch(false),
+});
+
+const read = (storage: Platform["storage"]): ShellPrefsValue =>
+  readStored(storage, SHELL_PREFS_KEY, Stored, NOTHING_HIDDEN);
 
 export class ShellPrefs {
   /** Replaced, never changed in place, so a reader can tell when it moved. */
