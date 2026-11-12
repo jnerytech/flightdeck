@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
  * stops the target, an address the daemon refuses, and that only the status comes back.
  */
 import { type Ack, byCodeUnit, parseServerMessage } from "@flightdeck/protocol";
-import { Webhooks } from "../apps/desktop/src/lib/webhooks.ts";
+import { Webhooks } from "../apps/desktop/src/features/webhook/webhooks.ts";
 import { readListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";

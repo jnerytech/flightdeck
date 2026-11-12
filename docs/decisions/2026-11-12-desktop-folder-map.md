@@ -113,7 +113,7 @@ prefix. Tests move with their file in the same PR.
 | `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`, **moved**; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`, `workspace.ts`, `density.ts`, `theme.ts`. Still in `lib/`: `router.ts` (to `app/`, last). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
 | `deps*.ts` | `features/deps/` |
-| `harness.ts` | `features/harness/` |
+| `harness.ts` | `features/harness/`: **moved** |
 | `home-*.ts`, `simple-*.ts` | `features/home/` |
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`) |
 | `inbox.ts` | `features/inbox/` (**moved**) |
@@ -134,7 +134,7 @@ prefix. Tests move with their file in the same PR.
 | `tray.ts` | `features/tray/`: **moved** |
 | `vault*.ts` | `features/vault/` (`vault-approval.ts` goes to `features/permissions/`, listed above) |
 | `watch-*.ts` | `features/watch/` (**moved**) |
-| `webhook*.ts` | `features/webhook/` |
+| `webhook*.ts` | `features/webhook/`: **moved** |
 | `app-log.ts`, `kernel.ts` | `app/` |
 | `backoff.ts`, `format-bytes.ts`, `paths.ts`, `file-language.ts`, `contrast.ts`, `status.ts`, `list-width.ts`, `use-width.ts`, `scroll-edge.ts` | `shared/lib/` (**moved**, behind an `index.ts`; the last three are used by `shared/layout`). `lib/utils.ts` (`cn`) **stays** in `lib/` per the #1597 decision; `host-connection.ts` imports `shared/lib/backoff.ts` by a relative path because the daemon's heartbeat test loads it and the daemon tsconfig has no `@/` alias |
 

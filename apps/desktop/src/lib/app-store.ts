@@ -135,6 +135,8 @@ import {
 } from "../features/vault/index.ts";
 import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { type WatchSlice, wireWatch } from "../features/watch/index.ts";
+import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
+import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
@@ -198,8 +200,6 @@ import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
 import { VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
-import { WebhookFeed } from "./webhook-feed.ts";
-import { Webhooks } from "./webhooks.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
 export type {
