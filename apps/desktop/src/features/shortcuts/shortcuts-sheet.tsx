@@ -1,8 +1,8 @@
 import { X } from "lucide-react";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Button } from "@/components/ui/button";
-import type { AppStore } from "../lib/app-store.ts";
-import { SHORTCUTS, type ShortcutGroup } from "../lib/shortcuts.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { SHORTCUTS, type ShortcutGroup } from "../../lib/shortcuts.ts";
 
 const GROUPS: ShortcutGroup[] = [
   "general",

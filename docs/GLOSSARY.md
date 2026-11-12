@@ -206,6 +206,7 @@ test's baseline, with the issue that renames them.
 | `runtime` | runtime | The engines that run a session: the Claude Code SDK and OpenCode over ACP |
 | `sessions` | session | The Flightdeck sessions of a host: start, state, stall and sleep |
 | `settings` | setting | The app's own choices on this machine: tray, autostart, global shortcut, update and preview switches |
+| `shortcuts` | keyboard shortcut | The `?` sheet that lists every shortcut of the registry, by group |
 | `snippets` | snippet | Saved commands and prompts with `{{name}}` places, and their use |
 | `ssh` | SSH destination | SSH destinations, server keys, key delivery and the ssh runs of actions |
 | `summary` | summary | A short summary of a session built from its transcript, with no model call |
