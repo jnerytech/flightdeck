@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createQuota } from "../../src/quota/wiring.ts";
+import { UsageLedger } from "../../src/quota/usage.ts";
+import { createQuota, createUsage } from "../../src/quota/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { tempDir } from "../support/helpers.ts";
 
@@ -48,5 +49,14 @@ describe("quota-wiring: the host's plan quota, its history and its pause (#1593)
     expect(failed).toBe(true);
     expect(config.quota.pauseAt).toBeNull();
     expect(built.quota.state().pauseAt).toBeNull();
+  });
+});
+
+describe("usage-wiring: the ledger of every turn, as the module the server takes `usage` from", () => {
+  test("the server and the sessions read one ledger, kept on the host's store", () => {
+    const { db } = new EventStore(":memory:");
+    const built = createUsage({ db, projectKey: (cwd) => `p:${cwd}` });
+    expect(built.usage instanceof UsageLedger).toBe(true);
+    expect(built.modules[0].server?.usage === built.usage).toBe(true);
   });
 });

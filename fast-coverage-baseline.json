@@ -258,6 +258,7 @@
   "scripts/lib/e2e/online.ts",
   "scripts/lib/gherkin-lite.ts",
   "scripts/lib/guards/spec-lint.ts",
+  "scripts/lib/guards/tdd-audit.ts",
   "scripts/lib/hooks/claude-hooks.ts",
   "scripts/lib/hooks/hook-log.ts",
   "scripts/lib/hooks/session-context.ts",
@@ -289,7 +290,6 @@
   "scripts/lib/styles/print-theme.ts",
   "scripts/lib/styles/style-lint.ts",
   "scripts/lib/styles/theme-contrast.ts",
-  "scripts/lib/tdd-audit.ts",
   "scripts/lib/tests/fast-coverage.ts",
   "scripts/lib/tests/related-coverage.ts",
   "scripts/lib/typecheck.ts"
