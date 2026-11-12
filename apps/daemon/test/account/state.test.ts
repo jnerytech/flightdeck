@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { Account, type AccountReaders } from "../../src/account/account.ts";
-import type { AccountInfoReading, AuthStatus, UsageReading } from "../../src/account/readers.ts";
+import { Account } from "../../src/account/account.ts";
+import type {
+  AccountInfoReading,
+  AccountReaders,
+  AuthStatus,
+  UsageReading,
+} from "../../src/account/readers.ts";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { Quota } from "../../src/quota/quota.ts";
 

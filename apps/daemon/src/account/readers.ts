@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { type Exec, FlightdeckError, parseJsonOr } from "../kernel/index.ts";
 import type { QuotaReading } from "../runtime/types.ts";
-import type { AccountReaders } from "./account.ts";
 
 /** What `claude auth status --json` says; a missing key is `null`. */
 export interface AuthStatus {
@@ -192,6 +191,12 @@ export async function withIdleQuery<T>(
   } finally {
     query.close?.();
   }
+}
+
+/** What the service asks; the daemon wires the real ones, tests wire fakes. */
+export interface AccountReaders {
+  status(): Promise<AuthStatus | null>;
+  sdk(): Promise<{ info: AccountInfoReading | null; usage: UsageReading }>;
 }
 
 /** The readers a daemon with the real runtime hands to the `Account`. */
