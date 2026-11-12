@@ -151,7 +151,7 @@ describe("resumo-lista", () => {
     });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     // Held by the receptor (only while an app watches) until answered: the session waits for Write.
@@ -200,7 +200,7 @@ describe("resumo-lista", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     const open = screen.queryByRole("button", { name: "Abrir Sessões" });

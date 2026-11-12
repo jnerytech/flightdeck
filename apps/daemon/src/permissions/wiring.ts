@@ -1,4 +1,5 @@
 import type { Config } from "../config.ts";
+import type { DomainModule } from "../server/index.ts";
 import {
   AutoApprover,
   type AutoApproverOptions,
@@ -24,7 +25,7 @@ export interface PermissionsDeps {
   usage: NonNullable<AutoApproverOptions["usage"]>;
 }
 
-/** The risk classifier and the projects' automatic approval. */
+/** The risk classifier and the projects' automatic approval, which the module hands the server as `autoApprove`. */
 export function createPermissions({
   db,
   runtime,
@@ -56,5 +57,6 @@ export function createPermissions({
     },
     usage,
   });
-  return { risk, autoApprove };
+  const module: DomainModule<"autoApprove"> = { server: { autoApprove } };
+  return { modules: [module] as const, risk, autoApprove };
 }

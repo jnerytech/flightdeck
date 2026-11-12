@@ -48,7 +48,7 @@ async function online() {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await uiIdle(200);
@@ -79,7 +79,7 @@ describe("orcamento-render: what a token costs", () => {
     render(<StateProbe store={store} />);
     const before = seen.renders;
     await act(async () => {
-      await store.addHost({ name: "beta", url: daemon.url, token: TOKEN });
+      await store.roster.add({ name: "beta", url: daemon.url, token: TOKEN });
     });
     expect(seen.renders - before).toBeGreaterThan(0);
     expect(screen.queryByText("2")).not.toBeNull();

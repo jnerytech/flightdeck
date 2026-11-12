@@ -701,27 +701,6 @@
     ]
   },
   {
-    "type": "cycle",
-    "from": "apps/daemon/src/server/context.ts",
-    "to": "apps/daemon/src/server/host-info.ts",
-    "unresolvedTo": "./host-info.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/server/host-info.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/server/context.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "apps/daemon/src/account/account.ts",
     "to": "apps/daemon/src/quota/quota.ts",

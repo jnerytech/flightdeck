@@ -100,7 +100,7 @@ describe("historico-cartoes: the history screen", () => {
     });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     await sidebar.hostAction("Histórico");

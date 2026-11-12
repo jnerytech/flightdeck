@@ -42,7 +42,7 @@ async function open(features = ["messaging", "teams"]) {
   const daemon = legacyDaemon(cleanups);
   daemon.features.push(...features);
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   return { store, daemon, mem };
 }

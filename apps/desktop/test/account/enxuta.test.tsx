@@ -54,7 +54,7 @@ describe("conta-enxuta: an account push renders the card and nothing else", () =
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
     await act(async () => {
-      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const host = store.getState().hosts[0];

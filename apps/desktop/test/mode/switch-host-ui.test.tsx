@@ -25,7 +25,7 @@ async function hostPage(ui: { mode: "full" | "simple"; locked: boolean }) {
   });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
   await act(async () => store.router.push({ name: "host", host: hostId }));
   return { store, hostId };
@@ -145,10 +145,10 @@ async function secondHostPage() {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   const one = await act(() =>
-    store.addHost({ name: "one", url: first.listen().url, token: TOKEN }),
+    store.roster.add({ name: "one", url: first.listen().url, token: TOKEN }),
   );
   const two = await act(() =>
-    store.addHost({ name: "two", url: second.listen().url, token: TOKEN }),
+    store.roster.add({ name: "two", url: second.listen().url, token: TOKEN }),
   );
   for (const id of [one, two]) {
     await pollFor(() => store.getState().hosts.find((h) => h.id === id)?.hostInfo, "host info");

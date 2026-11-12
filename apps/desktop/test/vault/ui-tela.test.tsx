@@ -26,7 +26,7 @@ async function open(setup?: (store: InstanceType<typeof AppStore>) => Promise<vo
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   // The app shows the add-host form until a host exists.
   const daemon = legacyDaemon(cleanups);
-  await store.addHost({ name: "h", url: daemon.url, token: TOKEN });
+  await store.roster.add({ name: "h", url: daemon.url, token: TOKEN });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await setup?.(store);
   render(<App store={store} />);

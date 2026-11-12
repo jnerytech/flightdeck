@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { visibleTsLiterals } from "../../../../scripts/lib/i18n-sweep.ts";
+import { visibleTsLiterals } from "../../../../scripts/lib/guards/i18n-sweep.ts";
 
 const SOURCE = [
   'const a = { label: "Abrir", detail: `${x} · ação`, id: "open" };',

@@ -33,7 +33,7 @@ async function projectsPage(language: string, firstRun = true) {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
@@ -188,7 +188,7 @@ describe("projetos-busca-app: find my projects", () => {
     const { d, store, hostId } = await projectsPage("en");
     const other = realTempDir("fd-other-");
     await act(async () => {
-      expect(await store.allowRoot(hostId, other)).toBe(true);
+      expect(await store.roster.allowRoot(hostId, other)).toBe(true);
     });
     await settle(() => screen.queryByRole("button", { name: "Find my projects" }) !== null);
     await act(async () => {

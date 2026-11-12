@@ -75,7 +75,7 @@ async function mount(kind: "in" | "out" = "in", cooldownMs = 50) {
   });
   cleanups.push(() => store.dispose());
   await act(async () => {
-    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const host = store.getState().hosts[0];

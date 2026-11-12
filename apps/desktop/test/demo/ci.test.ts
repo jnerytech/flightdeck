@@ -6,7 +6,7 @@ import {
   type AxeViolation,
   blocking,
   describeViolation,
-} from "../../../../scripts/lib/axe.ts";
+} from "../../../../scripts/lib/browser/axe.ts";
 import {
   ACOES_POOL,
   acoesAction,

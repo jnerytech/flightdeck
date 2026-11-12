@@ -147,7 +147,7 @@ describe("direcao-visual", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "Gerenciada" }) !== null);
