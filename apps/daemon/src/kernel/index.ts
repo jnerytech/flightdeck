@@ -12,6 +12,7 @@ export { layoutLike, parseJsonOr, parseJsonText, parseJsonWith } from "./json-te
 export { linesOf } from "./lines.ts";
 export type { Logger } from "./logger.ts";
 export { ntfsName } from "./ntfs-name.ts";
+export { isInside, resolveAllowedCwd, rootNames, samePath } from "./paths.ts";
 export { present } from "./present.ts";
 export { readRegular, readRegularSized } from "./read-regular.ts";
 export { settled } from "./settled.ts";

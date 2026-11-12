@@ -4,4 +4,4 @@
  * inside.
  */
 export { claudeVersionProbe } from "./claude-probe.ts";
-export { openCodeState } from "./opencode-wiring.ts";
+export { type OpenCodeState, openCodeState } from "./opencode-wiring.ts";

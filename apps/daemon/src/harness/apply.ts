@@ -8,8 +8,7 @@ import { constants } from "node:fs";
 import { type FileHandle, open, realpath } from "node:fs/promises";
 import type { HarnessApplied, HarnessPreview } from "@flightdeck/protocol";
 import { createInside } from "../board/index.ts";
-import { FlightdeckError, layoutLike } from "../kernel/index.ts";
-import { samePath } from "../paths.ts";
+import { FlightdeckError, layoutLike, samePath } from "../kernel/index.ts";
 import type { HarnessDrafts } from "./draft.ts";
 import {
   type Current,

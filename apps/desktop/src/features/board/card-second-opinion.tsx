@@ -5,10 +5,10 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { cardStartBlock } from "@/lib/card-start-block";
 import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { FindingSeverity } from "../review/index.ts";
+import { cardStartBlock } from "./card-start-block.ts";
 
 type Outcome = { kind: "result"; result: CardReviewResult } | { kind: "refused"; text: string };
 
