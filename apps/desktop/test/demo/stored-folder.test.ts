@@ -29,3 +29,14 @@ test("a stored demo folder with a wrong-typed part reads that part as empty (#16
     files: [],
   });
 });
+
+test("a wrong-typed part does not take the other part with it (#1609)", async () => {
+  expect(await state(JSON.stringify({ chosen: true, files: 7 }))).toEqual({
+    chosen: true,
+    files: [],
+  });
+  expect(await state(JSON.stringify({ files: { [NAME]: "text", other: 1 } }))).toEqual({
+    chosen: false,
+    files: [NAME],
+  });
+});
