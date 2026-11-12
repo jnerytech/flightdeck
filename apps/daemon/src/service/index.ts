@@ -4,7 +4,6 @@
  * imports from here, never a file inside.
  */
 
-export { appServiceInstall } from "./from-app.ts";
 export {
   daemonCommand,
   installService,

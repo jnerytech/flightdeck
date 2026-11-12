@@ -73,7 +73,8 @@ import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.
 import type { AgentRuntime } from "./runtime/types.ts";
 import { createModuleRunner, serverGroup } from "./server/index.ts";
 import { startServer } from "./server.ts";
-import { appServiceInstall, daemonCommand, osServiceContext } from "./service/index.ts";
+import { daemonCommand, osServiceContext } from "./service/index.ts";
+import { createServiceInstall } from "./service/wiring.ts";
 import { createSessionManager, createSessionSettings } from "./sessions/wiring.ts";
 import { SecretScanner } from "./snippets/model.ts";
 import { createSnippets } from "./snippets/wiring.ts";
@@ -602,6 +603,14 @@ export async function startDaemon(
       configFile,
     }),
   );
+  await domains.add(
+    createServiceInstall({
+      config: args.config ?? null,
+      configFile,
+      ctxOf: options.serviceContext ?? osServiceContext,
+      self: options.serviceSelf ?? selfCommand,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -623,12 +632,6 @@ export async function startDaemon(
     activity: (since, limit) =>
       activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
     github: createGithub({ config, board, issues, manager }),
-    serviceInstall: appServiceInstall(
-      args.config ?? null,
-      configFile,
-      options.serviceContext ?? osServiceContext,
-      options.serviceSelf ?? selfCommand,
-    ),
     names,
     vault,
     log: logger.log.bind(logger),
