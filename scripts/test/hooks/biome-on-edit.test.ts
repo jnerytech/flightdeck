@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { checkEditedFile } from "../../lib/claude-hooks.ts";
+import { checkEditedFile } from "../../lib/hooks/claude-hooks.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
