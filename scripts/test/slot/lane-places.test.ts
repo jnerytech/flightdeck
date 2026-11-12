@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { lanePlaces, runInLane } from "../../lib/lane.ts";
+import { lanePlaces, runInLane } from "../../lib/machine/lane.ts";
 import type { SlotEnv } from "../../lib/slot/index.ts";
 
 // /proc/meminfo gives whole kB.

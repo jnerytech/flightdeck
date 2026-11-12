@@ -9,7 +9,7 @@ import {
   runBounded,
   SYSTEM_KILL,
   SYSTEM_RUN,
-} from "../../lib/bounded-run.ts";
+} from "../../lib/machine/bounded-run.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const BUN = process.execPath;
