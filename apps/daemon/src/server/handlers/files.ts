@@ -2,7 +2,7 @@
  * Issue #1288: the files domain: the folders and files a host shows (the project picker, the
  * review's file tree, the editor and its search).
  */
-import { listDirs, listFiles } from "../../fs-dirs.ts";
+import { listDirs, listFiles } from "../../files/index.ts";
 import type { Handlers } from "../dispatch.ts";
 
 export const filesHandlers = {

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { type PendingPermission, plainInfo } from "@flightdeck/protocol";
+import { trayStatus } from "../src/features/tray/tray.ts";
 import { translator } from "../src/i18n/index.ts";
 import { AppStore } from "../src/lib/app-store.ts";
-import { trayStatus } from "../src/lib/tray.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 /**

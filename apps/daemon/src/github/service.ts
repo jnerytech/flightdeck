@@ -5,7 +5,7 @@
 import type { Issue } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import type { Issues } from "../issues/issues.ts";
-import { type GitRunner, spawnGit } from "../project-find.ts";
+import { type GitRunner, spawnGit } from "../projects/index.ts";
 import { type GhRunner, runGh } from "./gh.ts";
 import { Github, type GithubRepo } from "./github.ts";
 import { type DeviceCode, GithubLogin } from "./login.ts";

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { ErrorCode, type PendingPermission } from "@flightdeck/protocol";
 import { visibleLiterals } from "../../../scripts/lib/i18n-sweep.ts";
 import { summaryNotifications } from "../src/features/inbox/notify.ts";
+import { trayMenu, trayStatus } from "../src/features/tray/tray.ts";
 import { en } from "../src/i18n/en.ts";
 import { refusalText, translateError } from "../src/i18n/errors.ts";
 import {
@@ -15,7 +16,6 @@ import {
 } from "../src/i18n/format.ts";
 import { I18n, LANG_KEY, languageFor, translator } from "../src/i18n/index.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
-import { trayMenu, trayStatus } from "../src/lib/tray.ts";
 import type { TrayMenu, TrayStatus } from "../src/platform/types.ts";
 import { chooseFromAccountMenu } from "./account/menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
