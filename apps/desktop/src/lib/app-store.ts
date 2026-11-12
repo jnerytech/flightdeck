@@ -36,7 +36,7 @@ import {
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
-import { AssistantController, type HostAnswer } from "../features/assistant/assistant.ts";
+import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -110,7 +110,12 @@ import {
   type PersonasSlice,
   wirePersonas,
 } from "../features/personas/index.ts";
-import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts";
+import {
+  ProjectKeys,
+  type ProjectsSlice,
+  type WorktreeFilter,
+  wireProjects,
+} from "../features/projects/index.ts";
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import { RoiSettings } from "../features/roi/roi-settings.ts";
@@ -209,8 +214,6 @@ import type {
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { ProjectKeys } from "./project-keys.ts";
-import type { WorktreeFilter } from "./project-tree.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
@@ -556,20 +559,10 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
-    this.assistant = new AssistantController({
+    this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
-      hosts: () =>
-        this.state.hosts.map((host) => ({
-          id: host.id,
-          name: host.name,
-          online: host.status === "online",
-          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
-        })),
-      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
       language: () => this.i18n.lang,
-      request: (hostId, type, payload) =>
-        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
     });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);

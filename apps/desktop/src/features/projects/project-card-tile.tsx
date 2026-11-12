@@ -1,6 +1,6 @@
 import type { AppStore } from "../../lib/app-store.ts";
-import type { ProjectCard } from "../../lib/project-cards.ts";
 import { usd } from "../costs/index.ts";
+import type { ProjectCard } from "./project-cards.ts";
 
 /** One project as a card: its name, host, branch, live sessions, last activity and the week's cost. */
 export function ProjectCardTile(

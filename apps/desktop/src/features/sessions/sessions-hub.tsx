@@ -16,7 +16,7 @@ import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { ALL_CLIENTS, UNASSIGNED } from "@/features/clients/index.ts";
 import { HostsBanner } from "@/features/hosts/index.ts";
-import { WorktreeChip } from "@/features/projects/index.ts";
+import { activeWorktreeFilter, WorktreeChip } from "@/features/projects/index.ts";
 import type { Density } from "@/features/shell/index.ts";
 import { ScopeMenu } from "@/features/shell/index.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
@@ -26,7 +26,6 @@ import { CardGrid, EmptyState, NativeSelect, Page, Toolbar } from "@/shared/layo
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { activeWorktreeFilter } from "../../lib/project-tree.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { InlineNotice } from "../../shared/feedback/index.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope, usd } from "../costs/index.ts";
