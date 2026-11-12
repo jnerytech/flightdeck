@@ -6,6 +6,8 @@ import type { SecretMeta, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import {
   answerVaultRequest,
+  checkDelivery,
+  type DeliveryRefusal,
   type VaultOutcome,
   type VaultPolicy,
   type VaultRequestContext,
@@ -28,6 +30,8 @@ export interface VaultApprovalsCore {
   setPending(items: PendingItem[]): void;
   /** The name of a host, for the queue's card; null when it is not known. */
   hostName(hostId: string): string | null;
+  /** The address of a host, for the transport check; empty when it is not known. */
+  hostUrl(hostId: string): string;
   /** A command to a host (`vault.approve`, `vault.deliver`, `vault.deny`). */
   dispatch<C extends ApprovalCommand>(
     hostId: string,
@@ -47,8 +51,9 @@ export interface VaultApprovalsCore {
 /**
  * The daemon's requests for a secret (phases 17 and 19; #1596: a slice of the store): the policy
  * decides each one, a request that must ask waits in the "Precisa de você" queue, and what it ended
- * in goes to the usage log and the listeners. A secret's value never passes through here: it goes
- * from the vault to the daemon, in `answerVaultRequest`.
+ * in goes to the usage log and the listeners. A daemon's request never brings a value through
+ * here: it goes from the vault to the daemon, in `answerVaultRequest`. Only `secretFor`, the app's
+ * own use (ssh), hands a value back, to its caller.
  */
 export class VaultApprovalsSlice {
   private readonly listeners = new Set<(outcome: VaultOutcome) => void>();
@@ -82,6 +87,32 @@ export class VaultApprovalsSlice {
     // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
     if (!item?.vaultOnce || item.risk === "high") return;
     this.questions.get(requestId)?.({ scope: "session", via: "app" });
+  }
+
+  /**
+   * A secret of the vault for a use the app itself starts (ssh): the delivery rules are checked
+   * for the host that will use it and the use is logged, as "you". The value is handed to the
+   * caller and kept nowhere.
+   */
+  async secretFor(
+    hostId: string,
+    secretId: string,
+    purpose: string,
+  ): Promise<{ ok: true; value: string } | { ok: false; code: DeliveryRefusal }> {
+    const check = await checkDelivery(secretId, {
+      hostId,
+      hostUrl: this.core.hostUrl(hostId),
+      vault: this.core.vault,
+    });
+    this.core.recorded({
+      hostId,
+      secretId,
+      purpose,
+      requester: "you",
+      delivered: check.ok,
+      reason: check.ok ? "" : check.reason,
+    });
+    return check.ok ? { ok: true, value: check.value } : { ok: false, code: check.code };
   }
 
   /** A `vault.request` of the daemon: the policy decides, and nothing is delivered unless it says so. */

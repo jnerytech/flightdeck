@@ -27,7 +27,9 @@ The large methods fall into three groups by reason to change:
    `historyGet`, `historyList`, `resumeHistory`, `moveSession`, `closeTab`, `sendTo`, `setMeta`,
    `sessionRecap`, `recordFinished`, `countFinishedFiles`, `setFinished`, `onCard`. It changes when
    a session screen changes.
-3. **Vault work** (about 75 lines): `vaultSecretFor`, `allowRoot`, `copySecret`.
+3. **Vault work** (about 40 lines): `vaultSecretFor`, `copySecret`. `allowRoot`, first listed
+   here, is host work: it sends `roots.add` and changes the host's allowed folders, so it goes
+   with the domain groups, to the hosts.
 
 `onLocalPath` (23 lines) is not vault work: it is the guard on a local path a screen opens
 (absolute only, no `..`, the host's `canOpenPaths`), used by `openPath` and `revealPath`.
@@ -102,12 +104,13 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   type (`HISTORY_PAGE`, `HistoryFilter`), which `app-state.ts` re-exports (the slice takes the sessions domain's `HISTORY_LIST_LIMIT` and the connection's error from the store, so it imports neither entry and adds no cycle); the finished list (`recordFinished`,
   `countFinishedFiles`, `setFinished`) to a `FinishedSlice` next to `finished.ts`. The others
   (`select`, `watchSession`, `moveSession`, `closeTab`, `sendTo`, `setMeta`, `sessionRecap`,
-  `onCard`) have no home yet: see the open questions. **Vault methods go to the vault slices.**
+  `onCard`) have no home yet: see the open questions. **Vault methods go to the vault slices**: `vaultSecretFor` to
+  `VaultApprovalsSlice.secretFor`, `copySecret` to `VaultSecretsSlice.copy`.
   One slice per PR, through its wire file.
 - **Methods screens call stay on the store as forwarders** (`select`, `closeTab`, `moveSession`,
   `sendTo`, ...): the move puts the body in the slice and leaves a one-line forwarder, which
   fd-frontend removes per screen under the 2026-11-11 rule.
-- **The remaining methods go by domain** to the slice of their domain: the platform helpers
+- **The remaining methods go by domain** to the slice of their domain: `allowRoot` to the hosts; the platform helpers
   (`saveFile`, `copyText`, `pickFolder`, `openPath`, `revealPath`, ...) with the `onLocalPath`
   guard to `features/shell/`; the UI mode and tab methods (`uiMode`, `toggleUiMode`,
   `setUiChoice`, `setHostUi`, `openNewTab`, `uiHostId`) to the host tabs; the palette
@@ -134,9 +137,9 @@ The budget, from the 2,302 lines of 2026-11-12:
 | last wire blocks | -100 |
 | host link | -330 |
 | session history and finished list | -180 |
-| vault group | -75 |
+| vault group | -40 |
 | forwarders (fd-frontend) | -210 |
-| domain groups (above; estimate, some methods are longer than 14 lines) | -350 |
+| domain groups (above, with `allowRoot`; estimate, some methods are longer than 14 lines) | -385 |
 | initial state literal | -50 |
 | top-level helpers | -100 |
 | imports that leave with the moved code (estimate) | -100 |

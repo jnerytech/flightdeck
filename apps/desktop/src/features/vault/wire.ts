@@ -6,7 +6,7 @@ import type { SecretMeta } from "./vault.ts";
 
 /** The app's state as the vault's slices read it. */
 interface VaultState {
-  hosts: readonly { id: string; name: string }[];
+  hosts: readonly { id: string; name: string; url: string }[];
   secrets: SecretMeta[];
   vaultApprovals: ReturnType<VaultApprovalsCore["pending"]>;
 }
@@ -25,6 +25,7 @@ export function wireVaultApprovals(
     pending: () => kernel.state().vaultApprovals,
     setPending: (items) => kernel.update({ vaultApprovals: items }),
     hostName: (hostId) => kernel.state().hosts.find((h) => h.id === hostId)?.name ?? null,
+    hostUrl: (hostId) => kernel.state().hosts.find((h) => h.id === hostId)?.url ?? "",
     dispatch: (hostId, type, payload) => kernel.dispatch(hostId, type, payload),
     optionsPolicy: deps.optionsPolicy,
     now: () => kernel.now(),

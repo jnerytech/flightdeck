@@ -183,7 +183,6 @@ import {
 } from "../features/terminal/terminal-view.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
-  checkDelivery,
   type DeliveryRefusal,
   Vault,
   type VaultApprovalsSlice,
@@ -425,7 +424,7 @@ export class AppStore {
     });
     this.ssh = wireSsh(this.kernel, {
       hasSecret: (secretId) => this.vault.list().some((secret) => secret.id === secretId),
-      secretFor: (hostId, secretId) => this.vaultSecretFor(hostId, secretId, "ssh"),
+      secretFor: (hostId, secretId) => this.vaultApprovals.secretFor(hostId, secretId, "ssh"),
     });
     this.health = wireHealth(this.kernel);
     this.hostUpdate = wireHostUpdate(this.kernel, {
@@ -503,6 +502,10 @@ export class AppStore {
       saveFile: (name, text) => this.platform.saveFile(name, text),
       pickFile: () => this.platform.vault.pickFile(),
       fail: (error) => this.fail(error),
+      copyText: (text) => this.copyText(text),
+      clearClipboardIn: (ms) => {
+        setTimeout(() => void this.platform.copyText("").catch(() => {}), ms);
+      },
     });
     this.scan = new VaultScanSlice({ vault: this.vault });
     this.vaultRules = wireVaultRules(this.kernel, {
@@ -1524,11 +1527,8 @@ export class AppStore {
   }
 
   /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
-  async copySecret(id: string, clearMs: number): Promise<boolean> {
-    const value = await this.vault.value(id);
-    if (value === null || !(await this.copyText(value))) return false;
-    setTimeout(() => void this.platform.copyText("").catch(() => {}), clearMs);
-    return true;
+  copySecret(id: string, clearMs: number): Promise<boolean> {
+    return this.secrets.copy(id, clearMs);
   }
 
   /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
@@ -1918,32 +1918,13 @@ export class AppStore {
     this.update({ unread });
   }
 
-  /**
-   * A secret of the vault for a use the app itself starts (ssh): the delivery rules are checked
-   * for the host that will use it and the use is logged, as "you". The value is handed to the
-   * caller and kept nowhere.
-   */
-  async vaultSecretFor(
+  /** A secret of the vault for a use the app itself starts (ssh); see `VaultApprovalsSlice.secretFor`. */
+  vaultSecretFor(
     hostId: string,
     secretId: string,
     purpose: string,
   ): Promise<{ ok: true; value: string } | { ok: false; code: DeliveryRefusal }> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    const check = await checkDelivery(secretId, {
-      hostId,
-      hostUrl: host?.url ?? "",
-      vault: this.vault,
-    });
-    this.usage.recordOutcome({
-      hostId,
-      secretId,
-      purpose,
-      requester: "you",
-      delivered: check.ok,
-      reason: check.ok ? "" : check.reason,
-    });
-    this.keepUsage();
-    return check.ok ? { ok: true, value: check.value } : { ok: false, code: check.code };
+    return this.vaultApprovals.secretFor(hostId, secretId, purpose);
   }
 
   /** Phase 16: the vault, whose values live in the system keyring. */
