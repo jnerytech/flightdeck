@@ -10,9 +10,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { DEMO_ONLINE_HOSTS } from "../lib/demo-hosts.ts";
-import { DEMO_FAKE_KEY } from "../lib/demo-secret.ts";
-import { DEMO_TELEPORT_SESSIONS } from "../lib/demo-teleport.ts";
+import { DEMO_ONLINE_HOSTS } from "../lib/demo/hosts.ts";
+import { DEMO_FAKE_KEY } from "../lib/demo/secret.ts";
+import { DEMO_TELEPORT_SESSIONS } from "../lib/demo/teleport.ts";
 import {
   CONTRACT_CARD,
   DANGER_SESSION,

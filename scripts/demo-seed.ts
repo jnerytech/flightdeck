@@ -28,12 +28,12 @@ import { INSTRUCTIONS_VERSION } from "../apps/daemon/src/teams/instructions.ts";
 import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/support/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
-import { demoCardTemplates } from "./lib/demo-card-templates.ts";
-import { demoHostSetup } from "./lib/demo-hosts.ts";
-import { laggingBranches } from "./lib/demo-lagging.ts";
-import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
-import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo-secret.ts";
-import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo-teleport.ts";
+import { demoCardTemplates } from "./lib/demo/card-templates.ts";
+import { demoHostSetup } from "./lib/demo/hosts.ts";
+import { laggingBranches } from "./lib/demo/lagging.ts";
+import { type UsageLoad, waitUsageLoaded } from "./lib/demo/ready.ts";
+import { DEMO_CREDENTIAL_FILE, DEMO_SECRET_FILE } from "./lib/demo/secret.ts";
+import { DEMO_TELEPORT_SESSIONS, teleportReady } from "./lib/demo/teleport.ts";
 import {
   acoesActions,
   CONTRACT_CARD,
