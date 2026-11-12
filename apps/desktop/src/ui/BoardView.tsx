@@ -37,13 +37,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  boardFeatures,
   boardOrder,
   cardMoves,
   columnCards,
   dropPositions,
   idsByColumn,
+  refusalNames,
   showingColumn,
   shownCards,
+  showsQueuedBadge,
   startableWorkflows,
   stayingPicks,
   tabStops,
@@ -334,9 +337,7 @@ function CardTile(
       )}
       <div className="flex flex-wrap items-center gap-2">
         {/* A reason badge below says the card is queued, and why: one badge, not "queued" beside it. */}
-        {card.queued && !["quota", "memory", "paused"].includes(card.queueReason ?? "") && (
-          <Badge variant="outline">{t("kanban.queued")}</Badge>
-        )}
+        {showsQueuedBadge(card) && <Badge variant="outline">{t("kanban.queued")}</Badge>}
         {card.queueReason === "quota" && (
           <Badge variant="outline" className="text-status-needs-you">
             {card.quotaUntil
@@ -515,26 +516,12 @@ export const BoardView = memo(function BoardView(props: {
     () => store.boardWidth.value,
   );
   const chosen = useSyncExternalStore(store.boardWidth.subscribe, () => store.boardWidth.chosen);
-  const withDeps = hasFeature(
-    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-    "deps",
-    false,
-  );
-  const withRoi = hasFeature(
-    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-    "roi",
-    false,
-  );
-  const withSync = hasFeature(
-    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-    "boardsync",
-    false,
-  );
-  const withIssues = hasFeature(
-    state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-    "issues",
-    false,
-  );
+  const {
+    deps: withDeps,
+    roi: withRoi,
+    sync: withSync,
+    issues: withIssues,
+  } = boardFeatures(state.hosts.find((h) => h.id === hostId)?.hostInfo?.features);
   /** Files pressed for a checkout (#117): another checkout goes back to the default. */
   const [filesChoice, setFilesChoice] = useState<{ path: string; open: boolean } | null>(null);
   /** The board's width: under 900 px the panel would squeeze the columns, so it takes their place. */
@@ -633,10 +620,7 @@ export const BoardView = memo(function BoardView(props: {
     setBusy(false);
     boardRef.current?.focus();
   };
-  const nameRefusals = (refused: BulkRefusal[]) =>
-    refused
-      .map((r) => `${r.card.title} (${reasonText(t, r.message, r.reason, r.params)})`)
-      .join(", ");
+  const nameRefusals = (refused: BulkRefusal[]) => refusalNames(refused, t);
   /** Discards the started cards and deletes the others, one after the other. */
   const discardSelected = async () => {
     if (busy) return;
