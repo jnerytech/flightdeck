@@ -20,12 +20,8 @@ export { SessionCommandsSlice } from "./commands.ts";
 export { ExternalSessionsSlice } from "./external.ts";
 export {
   type Finish,
-  finishOutcome,
-  loadFinished,
-  recordFinish,
-  saveFinished,
+  FinishedSlice,
   sinceLastLook,
-  withFiles,
 } from "./finished.ts";
 export { toolLoader } from "./history-tool.ts";
 export {
@@ -95,6 +91,7 @@ export { useStartElsewhere } from "./use-start-elsewhere.ts";
 export { ViewToggle } from "./view-toggle.tsx";
 export {
   wireExternalSessions,
+  wireFinished,
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,

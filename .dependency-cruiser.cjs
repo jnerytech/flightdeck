@@ -3,7 +3,10 @@
  * `bun run arch`. Today's violations are in .dependency-cruiser-known-violations.json, a baseline
  * that only goes down (scripts/arch-ratchet.ts compares its counts with main). The domains are the
  * folders of the context map (docs/decisions/2026-11-10-context-map.md). The swc parser: the repo
- * is on TypeScript 7, which dependency-cruiser's own TypeScript parser does not support.
+ * is on TypeScript 7, which dependency-cruiser's own TypeScript parser does not support. The
+ * desktop's import cycles have no rule here: the known-violations entries are keyed by path and by
+ * cycle, so every move or barrel read as a new one. `bun run arch` counts the files that sit in a
+ * cycle instead (scripts/lib/cycle-files.ts, desktop-cycles-baseline.json) (#1624).
  */
 const DAEMON = "^apps/daemon/src/";
 const PROTOCOL = "^packages/protocol/src/";
@@ -24,14 +27,6 @@ module.exports = {
       severity: "error",
       from: { path: `${DAEMON}([^/]+)/` },
       to: { path: `${DAEMON}([^/]+)/(?!index\\.ts$)`, pathNot: `${DAEMON}$1/` },
-    },
-    {
-      name: "desktop-no-cycle",
-      comment:
-        "No import cycle in the desktop either (ADP); its own rule, so the daemon's count in the baseline stays what it was (#1624).",
-      severity: "error",
-      from: { path: DESKTOP },
-      to: { circular: true },
     },
     {
       name: "desktop-no-deep-cross-domain",
