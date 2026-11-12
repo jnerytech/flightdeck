@@ -30,7 +30,12 @@ function wired() {
     warmKeys: async () => {},
     quota: undefined,
     log: () => {},
-    history: { onChange: (listener) => listeners.push(listener) },
+    history: {
+      onChange: (listener) => {
+        listeners.push(listener);
+        return () => listeners.splice(listeners.indexOf(listener), 1);
+      },
+    },
   });
   stops.push(() => built.modules[0].stop?.());
   return { built, listeners, reads: () => reads };
@@ -69,6 +74,18 @@ describe("costs-wiring: the host's usage index, costs and budgets (#1593)", () =
     };
     await built.modules[0].stop?.();
     expect(calls).toEqual(["usage index", "budgets"]);
+  });
+
+  test("its module's stop lets go of the history index's changes first: none starts a pass on a stopped index (#2094)", async () => {
+    const { built, listeners } = wired();
+    let indexed = -1;
+    const indexStop = built.usageIndex.stop.bind(built.usageIndex);
+    built.usageIndex.stop = async () => {
+      indexed = listeners.length;
+      await indexStop();
+    };
+    await built.modules[0].stop?.();
+    expect([indexed, listeners.length]).toEqual([0, 0]);
   });
 
   test("a reprice reads the pricing again", async () => {
