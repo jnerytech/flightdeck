@@ -1,5 +1,12 @@
-import { describe, expect, test } from "bun:test";
-import { githubOptions } from "../../src/github/wiring.ts";
+import { afterEach, describe, expect, test } from "bun:test";
+import { realpathSync } from "node:fs";
+import { createGithub, githubOptions } from "../../src/github/wiring.ts";
+import { tempDir } from "../support/helpers.ts";
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
 
 /**
  * The `github.*` commands as main.ts builds them (issue #1593): the allowed roots are the
@@ -44,5 +51,30 @@ describe("github-wiring: the github commands the daemon builds (#1593)", () => {
       options.board === board,
       options.issues === issues,
     ]).toEqual([true, true, true]);
+  });
+
+  test("the module hands the server the github commands and the alerts of a folder, read with gh", async () => {
+    const before = process.env.PATH;
+    process.env.PATH = realpathSync.native(tempDir("fd-no-gh-"));
+    cleanups.push(() => {
+      process.env.PATH = before;
+    });
+    const { modules } = createGithub({
+      config: { allowedRoots: ["/w"] },
+      board: {} as never,
+      issues: {} as never,
+      manager: { create: async () => ({ sessionId: "s1" }) as never },
+    });
+    const server = modules[0].server;
+    expect([typeof server?.github, await server?.alerts?.(process.cwd())]).toEqual([
+      "object",
+      {
+        alerts: [],
+        unavailable: [
+          { kind: "code-scanning", reason: "gh_missing" },
+          { kind: "dependabot", reason: "gh_missing" },
+        ],
+      },
+    ]);
   });
 });
