@@ -27,23 +27,11 @@ import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
-import {
-  type ActivitySlice,
-  initialActivityState,
-  wireActivity,
-} from "../features/activity/index.ts";
-import {
-  type AppUpdateSlice,
-  initialAppUpdateState,
-  wireAppUpdates,
-} from "../features/appupdate/index.ts";
+import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
+import { type AppUpdateSlice, wireAppUpdates } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
-import {
-  type BackgroundSlice,
-  initialBackgroundState,
-  wireBackground,
-} from "../features/background/index.ts";
+import { type BackgroundSlice, wireBackground } from "../features/background/index.ts";
 import {
   type Attention,
   BackupScheduler,
@@ -56,7 +44,6 @@ import {
   type ClientScopeSlice,
   Clients,
   knownProjects,
-  loadSelection,
   UNASSIGNED,
   wireClientScope,
 } from "../features/clients/index.ts";
@@ -65,17 +52,14 @@ import {
   type ClientBudgetsSlice,
   DataScopeController,
   hubHostScope,
-  initialBudgetsState,
-  initialClientBudgetsState,
   localDay,
   wireBudgets,
   wireClientBudgets,
 } from "../features/costs/index.ts";
-import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
+import { type HistorySlice, wireHistory } from "../features/history/index.ts";
 import {
   HomeCache,
   type HostUiPatch,
-  loadChoices,
   type ModeAnswer,
   type UiMode,
   UiModeSlice,
@@ -101,20 +85,12 @@ import {
   wireHostUpdate,
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
-import {
-  initialMessagingState,
-  type MessagingSlice,
-  wireMessaging,
-} from "../features/messaging/index.ts";
+import { type MessagingSlice, wireMessaging } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
-import { loadQuietSnooze, QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
+import { QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
-import {
-  initialPersonasState,
-  type PersonasSlice,
-  wirePersonas,
-} from "../features/personas/index.ts";
+import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import {
   ProjectKeys,
   type ProjectsSlice,
@@ -132,7 +108,6 @@ import {
   type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
-  initialSessionsState,
   NewSessionPrefs,
   type SessionCommandsSlice,
   type SessionListsSlice,
@@ -151,18 +126,10 @@ import {
   wireSessions,
   wireSummaries,
 } from "../features/sessions/index.ts";
-import {
-  initialSettingsState,
-  type SettingsSlice,
-  wireSettings,
-} from "../features/settings/index.ts";
+import { type SettingsSlice, wireSettings } from "../features/settings/index.ts";
 import { probeAfter, SetupSettings } from "../features/setup/index.ts";
-import {
-  initialSnippetsState,
-  type SnippetsSlice,
-  wireSnippets,
-} from "../features/snippets/index.ts";
-import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
+import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
@@ -213,7 +180,7 @@ import type {
   PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
-import { needsYou } from "./app-state.ts";
+import { initialAppState, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -801,57 +768,12 @@ export class AppStore {
       timers: options.timers ?? REAL_TIMERS,
     });
     this.i18n.subscribe(() => this.onLanguage());
-    this.state = {
-      hosts: [],
-      sessions: {},
-      selected: null,
-      error: null,
-      ...initialHistoryState,
-      closingTerminal: null,
-      runEnvs: {},
-      unread: {},
-      cards: {},
-      runs: {},
-      ...initialQuotaState(),
-      ...initialAccountState(),
-      ...initialHealthState(),
-      setupProbes: {},
-      ...initialSnippetsState(),
-      ...initialBackgroundState(),
-      ...initialMessagingState(),
-      ...initialBudgetsState(),
-      ...initialClientBudgetsState(),
-      ...initialPersonasState(),
-      ...initialSshState(),
-      quietSnooze: loadQuietSnooze(platform.storage, (options.now ?? Date.now)()),
-      watches: {},
-      names: {},
-      secrets: new Vault(platform).list(),
+    this.state = initialAppState(platform, {
+      now: (options.now ?? Date.now)(),
       vaultUsage: this.usage.list(),
-      vaultApprovals: [],
-      externals: {},
-      externalRequests: {},
-      meta: {},
-      uiChoices: loadChoices(platform.storage),
-      ...initialSessionsState(),
-      hub: {},
-      terminalEnv: null,
-      projects: {},
       clientList: this.clients.list(),
-      roiRevision: 0,
-      worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
-      clientSelection: loadSelection(platform.storage, this.clients.list()),
-      notices: [],
-      ...initialActivityState(),
-      inbox: [],
-      composerFill: {},
-      finished: [],
-      finishedLook: null,
-      hostsLoaded: false,
-      appUpdate: initialAppUpdateState(),
-      ...initialSettingsState(platform),
-    };
+    });
   }
 
   /** Light, dark or the system's (phase 10). */
