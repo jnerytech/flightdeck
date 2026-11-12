@@ -10,7 +10,7 @@ import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import { actionIssueText } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import type { ActionSeed } from "../../lib/snippets.ts";
+import type { ActionSeed } from "../snippets/index.ts";
 import { isProd } from "../ssh/index.ts";
 import { ActionForm } from "./action-form.tsx";
 
