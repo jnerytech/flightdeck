@@ -1,4 +1,3 @@
-import type { Theme } from "@/features/shell/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 export type TerminalKeyAction =
@@ -88,6 +87,9 @@ export interface TerminalColors {
   cursor: string;
   selectionBackground: string;
 }
+
+/** The two palettes the terminal paints; the shell's resolved theme is one of them. */
+type Theme = "light" | "dark";
 
 const COLORS: Record<Theme, TerminalColors> = {
   light: {
