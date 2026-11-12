@@ -4,7 +4,10 @@
  */
 export {
   type GlobalHit,
+  HISTORY_LIST_LIMIT,
+  HISTORY_PAGE,
   type HistoryCore,
+  type HistoryFilter,
   HistorySlice,
   type HistorySliceState,
   initialHistoryState,

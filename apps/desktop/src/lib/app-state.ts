@@ -5,7 +5,6 @@
  */
 import type {
   Card,
-  CommandPayload,
   ExternalPermissionFrame,
   ExternalSession,
   HelloResult,
@@ -433,8 +432,4 @@ export interface Answer {
   held?: boolean;
 }
 
-/** Filters of the per-host history list. */
-export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
-
-/** Messages per `history.get` page in the transcript reader. */
-export const HISTORY_PAGE = 50;
+export { HISTORY_PAGE, type HistoryFilter } from "../features/history/index.ts";

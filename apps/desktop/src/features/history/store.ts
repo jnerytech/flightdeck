@@ -1,4 +1,20 @@
-import type { HistorySearchHit, HistorySearchResult } from "@flightdeck/protocol";
+import type {
+  CommandPayload,
+  HistoryGetResult,
+  HistoryListResult,
+  HistorySearchHit,
+  HistorySearchResult,
+} from "@flightdeck/protocol";
+import { type HostConnection, RequestError } from "../hosts/index.ts";
+
+/** Filters of the per-host history list. */
+export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
+
+/** Messages per `history.get` page in the transcript reader. */
+export const HISTORY_PAGE = 50;
+
+/** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
+export const HISTORY_LIST_LIMIT = 200;
 
 export interface GlobalHit extends HistorySearchHit {
   hostId: string;
@@ -34,6 +50,12 @@ export interface HistoryCore {
   request(hostId: string, query: string): Promise<HistorySearchResult> | undefined;
   /** How long the search waits for each host. */
   timeoutMs(): number;
+  /** A host's open connection, if it has one. */
+  connection(hostId: string): HostConnection | undefined;
+  /** Shows an error in the banner. */
+  fail(error: unknown): void;
+  /** Opens a session (a resumed transcript). */
+  select(hostId: string, sessionId: string): void;
 }
 
 /** Rejects when `promise` (absent when the host has no connection) takes longer than `ms`. */
@@ -47,7 +69,7 @@ function withTimeout<T>(promise: Promise<T> | undefined, ms: number): Promise<T>
   );
 }
 
-/** The history read from every host (#1596: the first slice of the app's store): its global search. */
+/** The history read from every host (#1596: the first slice of the app's store): its global search, each host's list and transcripts. */
 export class HistorySlice {
   private searchSeq = 0;
 
@@ -97,5 +119,65 @@ export class HistorySlice {
         this.core.update({ search: { ...search, waiting, hits } });
       }),
     );
+  }
+
+  /** A host's indexed sessions; errors go to the banner and give `null`. */
+  async list(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
+    try {
+      const conn = this.core.connection(hostId);
+      if (!conn) throw new RequestError("offline", "unknown host");
+      return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
+    } catch (error) {
+      this.core.fail(error);
+      return null;
+    }
+  }
+
+  /** One page of a host's transcript; errors go to the banner and give `null`. */
+  async get(
+    hostId: string,
+    claudeSessionId: string,
+    cursor?: string,
+    tail = false,
+    /** Told why a read was refused (issue #227): the reader tells "not found" from a failure. */
+    refused?: (reason: string | undefined) => void,
+  ): Promise<HistoryGetResult | null> {
+    try {
+      const conn = this.core.connection(hostId);
+      if (!conn) throw new RequestError("offline", "unknown host");
+      return await conn.request("history.get", {
+        claudeSessionId,
+        limit: HISTORY_PAGE,
+        ...(cursor ? { cursor } : {}),
+        ...(tail && !cursor ? { tail: true } : {}),
+      });
+    } catch (error) {
+      refused?.(error instanceof RequestError ? error.reason : undefined);
+      // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
+      if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
+        this.core.fail(error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Continues an indexed transcript as a managed session and opens it. `force` is only sent after
+   * the user confirmed a possibly-in-use session.
+   */
+  async resume(hostId: string, claudeSessionId: string, force: boolean): Promise<string | null> {
+    try {
+      const conn = this.core.connection(hostId);
+      if (!conn) throw new RequestError("offline", "unknown host");
+      const { sessionId } = await conn.request("history.resume", {
+        claudeSessionId,
+        ...(force ? { force: true } : {}),
+      });
+      this.core.select(hostId, sessionId);
+      return sessionId;
+    } catch (error) {
+      this.core.fail(error);
+      return null;
+    }
   }
 }

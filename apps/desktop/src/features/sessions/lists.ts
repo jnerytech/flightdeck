@@ -5,13 +5,11 @@ import type {
   SessionMeta,
   SessionSummary,
 } from "@flightdeck/protocol";
+import { HISTORY_LIST_LIMIT } from "@/features/history/index.ts";
 import type { HostConnection } from "@/features/hosts/index.ts";
 import type { AppState, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { sessionKey } from "./session-key.ts";
-
-/** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
-export const HISTORY_LIST_LIMIT = 200;
 
 type ListsState = Pick<AppState, "hosts" | "hub" | "names" | "meta" | "externals">;
 type ListsPatch = Partial<Pick<AppState, "hub" | "names" | "meta" | "externals" | "background">>;

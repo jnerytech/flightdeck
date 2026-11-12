@@ -47,7 +47,7 @@ export {
   sessionLineText,
   takeHubHost,
 } from "./hub.ts";
-export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
+export { SessionListsSlice } from "./lists.ts";
 export { newSessionHost } from "./new-session-host.ts";
 export { NewSessionPrefs } from "./new-session-prefs.ts";
 export { pendingText, pendingWhere } from "./pending-text.ts";
