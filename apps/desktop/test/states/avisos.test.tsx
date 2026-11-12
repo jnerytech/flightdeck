@@ -1,28 +1,28 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git } from "../../daemon/test/support/board-helpers.ts";
-import { userLine, writeTranscript } from "../../daemon/test/support/history-helpers.ts";
-import type { ConnectionStatus } from "../src/features/hosts/host-connection.ts";
-import { hostStatusView, hostsBanner } from "../src/features/hosts/host-status.ts";
-import { MIN_LOADING_MS, useMinLoading } from "../src/hooks/use-min-loading.ts";
-import { translator } from "../src/i18n/index.ts";
-import type { HostView } from "../src/lib/app-store.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { InstantClock } from "./in-flight-clock.tsx";
-import { unfoldAll } from "./unfold.ts";
-import { stays, waiter } from "./wait.ts";
+import { git } from "../../../daemon/test/support/board-helpers.ts";
+import { userLine, writeTranscript } from "../../../daemon/test/support/history-helpers.ts";
+import type { ConnectionStatus } from "../../src/features/hosts/host-connection.ts";
+import { hostStatusView, hostsBanner } from "../../src/features/hosts/host-status.ts";
+import { MIN_LOADING_MS, useMinLoading } from "../../src/hooks/use-min-loading.ts";
+import { translator } from "../../src/i18n/index.ts";
+import type { HostView } from "../../src/lib/app-store.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { InstantClock } from "../in-flight-clock.tsx";
+import { unfoldAll } from "../unfold.ts";
+import { stays, waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { HostStatusBadge } = await import("../src/features/hosts/host-status-badge.tsx");
-const { ActionButton } = await import("../src/shared/feedback/index.ts");
-const { ConfirmDialog } = await import("../src/shared/feedback/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { HostStatusBadge } = await import("../../src/features/hosts/host-status-badge.tsx");
+const { ActionButton } = await import("../../src/shared/feedback/index.ts");
+const { ConfirmDialog } = await import("../../src/shared/feedback/index.ts");
 
 setDefaultTimeout(20_000);
 

@@ -2,7 +2,7 @@
  * The quiet sessions the person marked "Not stuck" (#1478, #1554): `host/session` → the time (ms)
  * the row may come back. Kept in the app's storage so a reload does not bring it back early.
  */
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 
 export const QUIET_SNOOZE_KEY = "flightdeck.quietSnooze";
 

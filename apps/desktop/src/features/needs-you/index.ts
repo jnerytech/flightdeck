@@ -4,3 +4,4 @@
  */
 
 export { pendingCount } from "./pending-count.ts";
+export { type QuietAlert, quietAlerts, quietText } from "./quiet.ts";

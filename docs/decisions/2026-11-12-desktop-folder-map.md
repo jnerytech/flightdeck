@@ -107,8 +107,8 @@ prefix. Tests move with their file in the same PR.
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
 | `notice-*.ts` | `notice-lifetime.ts` goes to `app/` with `notices.tsx` (it reads the `Notice` type and the store); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) stays until `i18n` has a home |
 | `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
-| `quiet*.ts` | `features/needs-you/` (the quiet badge of the board and the needs-you rows) |
-| `away.ts` | `features/needs-you/` |
+| `quiet*.ts` | `features/needs-you/` (**moved**; the quiet badge of the board and the needs-you rows) |
+| `away.ts` | `features/needs-you/` (**moved**) |
 | `keep-awake.ts` | `features/hosts/` |
 | `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`, `workspace.ts`, `density.ts`, `theme.ts`. Still in `lib/`: `router.ts` (to `app/`, last). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
