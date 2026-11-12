@@ -14,7 +14,7 @@ import {
   savedFacts,
   scorecard,
   sessionArgs,
-} from "../../lib/harness-eval.ts";
+} from "../../lib/evals/harness-eval.ts";
 
 const TASK: EvalTask = {
   name: "slug-case",

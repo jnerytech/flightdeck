@@ -54,6 +54,8 @@ function lists(hosts: ReturnType<typeof host>[], answers: Record<string, Answers
       JSON.stringify(held.background[hostId]) === JSON.stringify(list)
         ? null
         : { background: { ...held.background, [hostId]: list } },
+    // The meta the store tests write; these tests only read the lists.
+    setMeta: async () => null,
   });
   return { slice, held: () => held, patches, asked };
 }

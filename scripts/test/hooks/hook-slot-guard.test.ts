@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { slotViolation } from "../../lib/claude-hooks.ts";
+import { slotViolation } from "../../lib/hooks/claude-hooks.ts";
 
 const outside = (command: string) => slotViolation(command, {});
 

@@ -230,7 +230,7 @@ describe("security-gate", () => {
     const added = new Map(
       [
         "scripts/lib/security-gate.ts",
-        "scripts/lib/claude-hooks.ts",
+        "scripts/lib/hooks/claude-hooks.ts",
         "scripts/handoff-check.ts",
         ".github/actions/setup/action.yml",
         "scripts/lib/bounded-run.ts",
@@ -243,7 +243,7 @@ describe("security-gate", () => {
       [".github/actions/setup/action.yml", "guard"],
       ["scripts/handoff-check.ts", "guard"],
       ["scripts/lib/bounded-run.ts", "guard"],
-      ["scripts/lib/claude-hooks.ts", "guard"],
+      ["scripts/lib/hooks/claude-hooks.ts", "guard"],
       ["scripts/lib/security-gate.ts", "guard"],
       ["scripts/pr-flow.ts", "guard"],
     ]);
@@ -309,15 +309,15 @@ describe("security-gate", () => {
 
   test("a deleted file keeps its path, so deleting a guard is risky (#284)", () => {
     const deleted = [
-      "diff --git a/scripts/lib/claude-hooks.ts b/scripts/lib/claude-hooks.ts",
+      "diff --git a/scripts/lib/hooks/claude-hooks.ts b/scripts/lib/hooks/claude-hooks.ts",
       "deleted file mode 100644",
-      "--- a/scripts/lib/claude-hooks.ts",
+      "--- a/scripts/lib/hooks/claude-hooks.ts",
       "+++ /dev/null",
       "@@ -1,2 +0,0 @@",
       "-export const x = 1;",
     ].join("\n");
     expect(riskyFiles(addedLines(deleted))).toEqual([
-      { path: "scripts/lib/claude-hooks.ts", why: ["guard"] },
+      { path: "scripts/lib/hooks/claude-hooks.ts", why: ["guard"] },
     ]);
   });
 
