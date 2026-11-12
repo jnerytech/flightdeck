@@ -1,4 +1,4 @@
-import type { PrMergeable, PrReview } from "./types.ts";
+import type { PrMergeable, PrReview } from "@flightdeck/protocol";
 
 /** What a PR host says of a PR beyond its state and checks (issue #1352). */
 export interface PrDetails {
