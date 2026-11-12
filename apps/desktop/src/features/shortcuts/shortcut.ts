@@ -1,4 +1,4 @@
-import { type T, translator } from "../i18n/index.ts";
+import { type T, translator } from "../../i18n/index.ts";
 
 /** System-wide shortcut that brings the app forward with the global search open. */
 export const DEFAULT_SHORTCUT = "Ctrl+Alt+F";

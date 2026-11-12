@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { TeamInfo } from "@flightdeck/protocol";
-import { AppStore, needsYou } from "../src/lib/app-store.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { AppStore, needsYou } from "../../src/lib/app-store.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 const T0 = Date.parse("2026-11-04T10:00:00.000Z");
 
