@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { styleViolations } from "../../../../scripts/lib/style-lint.ts";
+import { styleViolations } from "../../../../scripts/lib/styles/style-lint.ts";
 
 /**
  * The client components held to the design tokens; the screens beside them are not. The raw layout

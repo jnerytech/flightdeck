@@ -40,7 +40,7 @@ function setup(route: Route, hostCommand?: (type: string) => unknown) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   stores.push(store);
   store.i18n.start();
-  store.loadPalette = async () => {};
+  store.palette.load = async () => {};
   store.hostCommand = (async (_host: string, type: string) => hostCommand?.(type) ?? null) as never;
   const state = {
     ...store.getState(),

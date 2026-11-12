@@ -128,12 +128,7 @@ import { TabScopeController } from "../features/tabs/tab-scope.ts";
 import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
-import {
-  SessionMover,
-  type TeleportOutcome,
-  type TeleportRequest,
-  type TeleportRunArgs,
-} from "../features/teleport/teleport.ts";
+import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
 import {
@@ -806,7 +801,7 @@ export class AppStore {
   /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
   private readonly boardCards: BoardCardsSlice;
   /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
-  private readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
+  readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
@@ -971,16 +966,6 @@ export class AppStore {
     this.permissions.decideOldest(decision, shown);
   }
 
-  /** What the palette was used for lately, most recent first. */
-  paletteRecents(): string[] {
-    return this.palette.recents();
-  }
-
-  /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
-  recordPaletteUse(id: string): void {
-    this.palette.recordUse(id);
-  }
-
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
   fillComposer(key: string, text: string): void {
     const waiting = this.state.composerFill[key];
@@ -1094,14 +1079,6 @@ export class AppStore {
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
   loadBoard(hostId: string, projectId: string): Promise<void> {
     return this.boardCards.load(hostId, projectId);
-  }
-
-  /**
-   * What the palette lists besides live state: the Sessões lists, each host's projects and their
-   * cards. Quiet: a host without a board (or offline) just lists less.
-   */
-  loadPalette(): Promise<void> {
-    return this.palette.load();
   }
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
@@ -1271,11 +1248,6 @@ export class AppStore {
     return this.system.saveFile(name, text);
   }
 
-  /** Copies a secret's value and clears the clipboard `clearMs` later (phase 16). */
-  copySecret(id: string, clearMs: number): Promise<boolean> {
-    return this.secrets.copy(id, clearMs);
-  }
-
   /** Whether a backup file can be picked here: false in a browser, which has no file dialog (#1264). */
   canReadBackup(): boolean {
     return this.system.canReadBackup();
@@ -1430,20 +1402,6 @@ export class AppStore {
     this.clientBudgets.dispose();
     this.vaultRules.dispose();
     this.theme.stop();
-  }
-
-  /** A host's command channel for a teleport's relay (issue #100): refusals come back as errors. */
-  teleportRequest(hostId: string): TeleportRequest {
-    return this.mover.request(hostId);
-  }
-
-  /** Moves a session from `sourceHost` to the target the dialog picked (issue #100). */
-  moveSession(
-    sourceHost: string,
-    sessionId: string,
-    args: TeleportRunArgs,
-  ): Promise<TeleportOutcome> {
-    return this.mover.move(sourceHost, sessionId, args);
   }
 
   /** The session a move made, opened on its new host. */

@@ -73,7 +73,7 @@ describe("paleta-v2-ui: commands, hints and recents", () => {
     store.dispose();
     cleanup();
     const again = new AppStore(mem.platform, { baseDelayMs: 600_000 });
-    expect(again.paletteRecents()).toEqual(["go:all-projects"]);
+    expect(again.palette.recents()).toEqual(["go:all-projects"]);
     again.dispose();
   });
 

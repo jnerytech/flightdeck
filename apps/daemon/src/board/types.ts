@@ -25,15 +25,12 @@ export type {
   Card,
   CardDiff,
   CardRun,
-  ChecksState,
   DiffFile,
   DiffHunk,
   DiffLine,
   MayConflict,
-  PrMergeable,
   Project,
   PrProviderKind,
-  PrReview,
   PrState,
 } from "@flightdeck/protocol";
 

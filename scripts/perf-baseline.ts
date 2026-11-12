@@ -18,7 +18,7 @@ import {
   type Machine,
   machineTag,
   runSteps,
-} from "./lib/perf-baseline.ts";
+} from "./lib/bundle/perf-baseline.ts";
 
 const DIST = resolve(import.meta.dir, "../apps/desktop/dist");
 const out = process.argv.includes("--out") ? process.argv[process.argv.indexOf("--out") + 1] : null;

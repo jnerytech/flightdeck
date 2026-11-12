@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { themeBlocksProblem } from "../../lib/css-theme.ts";
-import { readStyles } from "../../lib/styles-source.ts";
+import { themeBlocksProblem } from "../../lib/styles/css-theme.ts";
+import { readStyles } from "../../lib/styles/styles-source.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 

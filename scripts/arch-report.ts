@@ -3,7 +3,7 @@
  * `bun run scripts/arch-report.ts [--json <file>]`: the table of every structure ratchet, each
  * baseline against today's count (issue #1610). It prints the table, appends it to the CI job
  * summary when GITHUB_STEP_SUMMARY is set, writes the rows as JSON with `--json`, and exits 1 when
- * any figure is above its baseline (it runs knip, about 7 s, for the dead-code rows). The logic is scripts/lib/arch-report.ts.
+ * any figure is above its baseline (it runs knip, about 7 s, for the dead-code rows). The logic is scripts/lib/arch/arch-report.ts.
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
@@ -18,12 +18,12 @@ import {
   isEntry,
   ratchetRows,
   shapeShares,
-} from "./lib/arch-report.ts";
-import { type CruiseModule, cycleFiles } from "./lib/cycle-files.ts";
+} from "./lib/arch/arch-report.ts";
+import { type CruiseModule, cycleFiles } from "./lib/arch/cycle-files.ts";
+import { knipCounts } from "./lib/arch/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/guards/src-size.ts";
-import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
-import { knipCounts } from "./lib/knip-counts.ts";
 import { CONFIG, KNOWN, newRules } from "./lib/ratchets/arch.ts";
+import { isScanned, rawJsonParseCounts } from "./lib/ratchets/json-parse.ts";
 import { flatTestCounts } from "./lib/tests/test-layout.ts";
 import { testTiers } from "./lib/tests/test-tiers.ts";
 

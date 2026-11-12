@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();

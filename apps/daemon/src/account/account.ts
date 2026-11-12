@@ -1,13 +1,7 @@
 import type { AccountState, AccountStatus } from "@flightdeck/protocol";
 import { FlightdeckError } from "../kernel/index.ts";
 import type { Quota, Timers } from "../quota/quota.ts";
-import type { AccountInfoReading, AuthStatus, UsageReading } from "./readers.ts";
-
-/** What the service asks; the daemon wires the real ones, tests wire fakes. */
-export interface AccountReaders {
-  status(): Promise<AuthStatus | null>;
-  sdk(): Promise<{ info: AccountInfoReading | null; usage: UsageReading }>;
-}
+import type { AccountInfoReading, AccountReaders, AuthStatus, UsageReading } from "./readers.ts";
 
 export interface AccountOptions {
   quota: Quota;

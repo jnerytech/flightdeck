@@ -51,7 +51,7 @@ const external = (id: string, cwd: string, status: string, at: string, hostName:
 function setup(forHost: "h1" | "h2" | "h3") {
   const store: Store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  store.loadPalette = async () => {};
+  store.palette.load = async () => {};
   store.hostCommand = (async () => null) as never;
   const state = {
     ...store.getState(),
@@ -169,7 +169,7 @@ describe("host-overview-ui: the Projects list filtered by a host", () => {
       baseDelayMs: 600_000,
     });
     store.i18n.start();
-    store.loadPalette = async () => {};
+    store.palette.load = async () => {};
     store.hostCommand = (async () => null) as never;
     const state = {
       ...store.getState(),

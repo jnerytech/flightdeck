@@ -10,7 +10,7 @@ import {
   RESPONSIVE_RULES,
   SPACING,
   SPACING_RULES,
-} from "../../lib/layout-guards.ts";
+} from "../../lib/styles/layout-guards.ts";
 
 registerDom();
 
@@ -771,7 +771,7 @@ describe("layout-guards: the baseline keeps heuristic findings quiet and only le
   });
 });
 
-import { judge, loadBaseline } from "../../lib/layout-guards.ts";
+import { judge, loadBaseline } from "../../lib/styles/layout-guards.ts";
 
 describe("layout-guards: what the findings mean for the build", () => {
   const clipped = { rule: "clipped" as const, path: "main > card", detail: "cut" };
@@ -823,7 +823,7 @@ describe("layout-guards: what the findings mean for the build", () => {
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { KEY_REGIONS, PAGE_AREA, SINGLE_SCROLL } from "../../lib/layout-guards.ts";
+import { KEY_REGIONS, PAGE_AREA, SINGLE_SCROLL } from "../../lib/styles/layout-guards.ts";
 
 describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
   const sources = [
@@ -869,7 +869,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
   });
 });
 
-import { GAP_BOXES, waitForStable } from "../../lib/layout-guards.ts";
+import { GAP_BOXES, waitForStable } from "../../lib/styles/layout-guards.ts";
 
 describe("layout-guards: a layout that settles late is waited for, not guessed with a fixed wait", () => {
   /** The page height the next frames will report, one entry per frame. */
@@ -986,7 +986,7 @@ import {
   loadCounts,
   type Ratchet,
   ratchetScreen,
-} from "../../lib/layout-guards.ts";
+} from "../../lib/styles/layout-guards.ts";
 
 describe("layout-guards: one screen against a ratchet of counts, as demo:shots runs it (#641)", () => {
   const S = "dark en 640x800 board";
@@ -1203,8 +1203,8 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
   });
 });
 
-import { confirmGaps, type Finding } from "../../lib/layout-guards.ts";
-import { readStyles } from "../../lib/styles-source.ts";
+import { confirmGaps, type Finding } from "../../lib/styles/layout-guards.ts";
+import { readStyles } from "../../lib/styles/styles-source.ts";
 
 describe("layout-guards: a gap read while a toast slides in is measured again (issue #747)", () => {
   const gap: Finding = { rule: "gap", path: "li", detail: "7 px above status-bar, at least 8" };
