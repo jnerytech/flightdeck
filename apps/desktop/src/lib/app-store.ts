@@ -105,10 +105,6 @@ import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import {
   initialMessagingState,
   type MessagingSlice,
-  type RelayDeps,
-  relayMessage,
-  relayUpdate,
-  syncPeers,
   wireMessaging,
 } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
@@ -475,6 +471,14 @@ export class AppStore {
     });
     this.messaging = wireMessaging(this.kernel, {
       notify: (notification) => this.inbox.notify(notification),
+      // Phase 21: only an online host with messaging takes part in the relay.
+      relayHosts: () =>
+        this.state.hosts.map((h) => ({
+          id: h.id,
+          hostName: h.hostInfo?.hostName ?? "",
+          online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
+        })),
+      peersSyncMs: this.options.peersSyncMs,
     });
     this.settings = wireSettings(this.kernel, {
       platform,
@@ -1635,8 +1639,7 @@ export class AppStore {
   }
 
   dispose(): void {
-    if (this.peersTimer) clearInterval(this.peersTimer);
-    this.peersTimer = null;
+    this.messaging.dispose();
     if (this.awayTimer) clearInterval(this.awayTimer);
     this.awayTimer = null;
     this.link.dispose();
@@ -1704,14 +1707,7 @@ export class AppStore {
     onTeams: (config, frame) => this.onTeams(config.id, frame),
     onMessagingAlert: (config, alert) => this.messaging.onLoopAlert(config.id, alert),
     onWatch: (config, frame) => this.prWatch.keep(config.id, frame.watch),
-    onMessages: (config, frame) => {
-      if (frame.type === "messages.updated") {
-        for (const listener of this.messageListeners) listener(config.id, frame.message);
-      }
-      const deps = this.relayDeps();
-      if (frame.type === "messages.relay") void relayMessage(deps, config.id, frame.message);
-      else void relayUpdate(deps, config.id, frame.message);
-    },
+    onMessages: (config, frame) => this.messaging.onFrame(config.id, frame),
     onVaultAlert: (_config, alert) => {
       const notice: Notice = {
         id: ++this.noticeSeq,
@@ -1773,7 +1769,7 @@ export class AppStore {
       gate: "messaging",
       run: ({ conn }) => {
         void conn.request("messages.watch", {}).catch(() => null);
-        this.startPeersSync();
+        this.messaging.startPeersSync();
       },
     },
     // Phase 19: the daemon decides a request with the rules the app hands it.
@@ -1910,8 +1906,6 @@ export class AppStore {
     this.update({ vaultUsage: this.usage.list() });
   }
 
-  private peersTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly messageListeners = new Set<(hostId: string, message: MessageInfo) => void>();
   private readonly teamListeners = new Set<(hostId: string, frame: TeamsUpdatedFrame) => void>();
 
   /**
@@ -1987,31 +1981,7 @@ export class AppStore {
 
   /** Phase 21: told each time a message between sessions changes on a host. */
   onMessageUpdated(listener: (hostId: string, message: MessageInfo) => void): () => void {
-    this.messageListeners.add(listener);
-    return () => {
-      this.messageListeners.delete(listener);
-    };
-  }
-
-  /** Phase 21: the hosts as the relay sees them; only an online one with messaging takes part. */
-  private relayDeps(): RelayDeps {
-    return {
-      hosts: () =>
-        this.state.hosts.map((h) => ({
-          id: h.id,
-          hostName: h.hostInfo?.hostName ?? "",
-          online: h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
-        })),
-      call: (hostId, type, payload) =>
-        this.dispatch(hostId, type as HostCommandType, payload as never),
-    };
-  }
-
-  /** Keeps every daemon told of the other hosts' sessions, so a message can name them. */
-  private startPeersSync(): void {
-    const sync = () => void syncPeers(this.relayDeps()).catch(() => {});
-    sync();
-    this.peersTimer ??= setInterval(sync, this.options.peersSyncMs ?? 5000);
+    return this.messaging.onUpdated(listener);
   }
 
   private onRun(hostId: string, run: WorkflowRun): void {

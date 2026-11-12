@@ -1,6 +1,13 @@
-import type { CommandResults, MessagingAlertFrame } from "@flightdeck/protocol";
+import type {
+  CommandResults,
+  MessageInfo,
+  MessagesRelayFrame,
+  MessagesUpdatedFrame,
+  MessagingAlertFrame,
+} from "@flightdeck/protocol";
 import { byCodeUnit } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
+import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
 export interface LoopAlert {
@@ -38,11 +45,48 @@ export interface MessagingCore {
   /** The OS notification and the bell entry. */
   notify(notification: { title: string; body: string }): void;
   t(): T;
+  /** Phase 21: the hosts as the relay sees them, and the call that carries a frame to one. */
+  relay: RelayDeps;
+  /** Runs `run` again at the peers' sync interval; the function given back stops it. */
+  repeat(run: () => void): () => void;
 }
 
 /** The messages between sessions of the hosts (phase 21; #1596: a slice of the store). */
 export class MessagingSlice {
+  private readonly listeners = new Set<(hostId: string, message: MessageInfo) => void>();
+  private stopPeersSync: (() => void) | null = null;
+
   constructor(private readonly core: MessagingCore) {}
+
+  /** Phase 21: a host's `messages.*` frame; the listeners hear an update, the relay carries both. */
+  onFrame(hostId: string, frame: MessagesRelayFrame | MessagesUpdatedFrame): void {
+    if (frame.type === "messages.updated") {
+      for (const listener of this.listeners) listener(hostId, frame.message);
+    }
+    if (frame.type === "messages.relay") void relayMessage(this.core.relay, hostId, frame.message);
+    else void relayUpdate(this.core.relay, hostId, frame.message);
+  }
+
+  /** Phase 21: told each time a message between sessions changes on a host. */
+  onUpdated(listener: (hostId: string, message: MessageInfo) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /** Keeps every daemon told of the other hosts' sessions, so a message can name them. */
+  startPeersSync(): void {
+    const sync = () => void syncPeers(this.core.relay).catch(() => {});
+    sync();
+    this.stopPeersSync ??= this.core.repeat(sync);
+  }
+
+  /** Stops the peers' sync. */
+  dispose(): void {
+    this.stopPeersSync?.();
+    this.stopPeersSync = null;
+  }
 
   /** Phase 21: a paused loop waits in "Precisa de você" (once per pair) and the OS shows it. */
   onLoopAlert(hostId: string, frame: MessagingAlertFrame): void {
