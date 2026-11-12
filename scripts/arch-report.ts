@@ -8,7 +8,7 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONFIG, KNOWN, ruleNames } from "./lib/arch-ratchet.ts";
+import { CONFIG, KNOWN, newRules } from "./lib/arch-ratchet.ts";
 import { formatTable, growing, ratchetRows, shapeShares } from "./lib/arch-report.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
@@ -71,7 +71,7 @@ for (const tier of Object.values(testTiers(new Map(allTs))))
 const rows = ratchetRows({
   knownBase: mergeBase ? git(["show", `${mergeBase}:${KNOWN}`]) : null,
   knownHead: read(KNOWN),
-  baseRules: ruleNames(mergeBase ? git(["show", `${mergeBase}:${CONFIG}`]) : null),
+  newRules: newRules(mergeBase ? git(["show", `${mergeBase}:${CONFIG}`]) : null, read(CONFIG)),
   srcOversized: oversizedSources(sources.filter(({ path }) => isMeasured(path))),
   srcBaseline: json("src-size-baseline.json"),
   flatCounts: flatTestCounts(tracked),

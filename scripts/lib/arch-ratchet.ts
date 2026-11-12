@@ -31,18 +31,25 @@ export function grownRules(base: Record<string, number>, head: Record<string, nu
     .map(([rule, count]) => `${rule}: ${base[rule] ?? 0} -> ${count}`);
 }
 
-/**
- * The names of the rules a `.dependency-cruiser.cjs` declares (`name: "<rule>"`), or null when the
- * file is unreadable, so a rule that main does not have yet can bring its first baseline (#1624).
- */
-export function ruleNames(config: string | null): Set<string> | null {
+/** The names a `.dependency-cruiser.cjs` declares (`name: "<rule>"`); null when none can be read. */
+function ruleNames(config: string | null): Set<string> | null {
   if (config === null) return null;
-  return new Set([...config.matchAll(/\bname:\s*"([^"]+)"/g)].map((found) => found[1] as string));
+  const names = new Set(
+    [...config.matchAll(/\bname:\s*"([^"]+)"/g)].map((found) => found[1] as string),
+  );
+  return names.size > 0 ? names : null;
 }
 
-/** The rules a PR's config adds to main's (#1624); stub. */
-export function newRules(_baseConfig: string | null, _headConfig: string | null): Set<string> {
-  return new Set();
+/**
+ * The rules the head's config adds to main's, which may bring their first baseline (#1624). Nothing
+ * is new when either config cannot be read or the head drops a rule main has: a rename must not
+ * give the renamed rule a free baseline.
+ */
+export function newRules(baseConfig: string | null, headConfig: string | null): Set<string> {
+  const base = ruleNames(baseConfig);
+  const head = ruleNames(headConfig);
+  if (!base || !head || [...base].some((rule) => !head.has(rule))) return new Set();
+  return new Set([...head].filter((rule) => !base.has(rule)));
 }
 
 /** The ratchet over git: the baseline at the merge-base with main against the working copy. */
@@ -64,10 +71,11 @@ export function runArchRatchet(deps: {
       output: `arch-ratchet: no ${KNOWN} on main yet; this one is the first baseline (${counts})`,
     };
   // A rule main does not declare has no baseline to grow: the PR that adds it records its first one.
-  const onMainRules = ruleNames(base ? deps.git(["show", `${base}:${CONFIG}`]) : null);
-  const known = Object.fromEntries(
-    Object.entries(head).filter(([rule]) => !onMainRules || onMainRules.has(rule)),
+  const added = newRules(
+    base ? deps.git(["show", `${base}:${CONFIG}`]) : null,
+    deps.readFile(CONFIG),
   );
+  const known = Object.fromEntries(Object.entries(head).filter(([rule]) => !added.has(rule)));
   const grown = grownRules(ruleCounts(onMain), known);
   if (grown.length > 0)
     return {
