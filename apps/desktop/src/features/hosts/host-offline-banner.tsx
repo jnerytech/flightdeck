@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import { Stack } from "@/shared/layout/index.ts";
 import type { HostView } from "../../lib/app-store.ts";
 import { mayBeRefusedAddress, offlineHint } from "./host-offline.ts";
+import { useNow } from "./use-now.ts";
 
 const COMMAND = "rounded bg-muted px-1 font-mono text-xs";
 // Commands, not prose: the same in every language.

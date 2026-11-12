@@ -1,4 +1,6 @@
 import type { CostsSummary, UsageSummary } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 import type { HomeCosts, HomeUsage } from "./home-kpis.ts";
 
@@ -64,22 +66,29 @@ const isHostData = (value: unknown): value is HomeHostData => {
   );
 };
 
-/** The stored entries; whatever is damaged or not a host's numbers is left out. */
-function read(storage: Platform["storage"]): Record<string, HomeSnapshot> {
-  try {
-    const parsed: unknown = JSON.parse(storage.getItem(KEY) ?? "{}");
-    return Object.fromEntries(
-      Object.entries((parsed ?? {}) as Record<string, Record<string, unknown>>).map(
-        ([key, hosts]) => [
-          key,
-          Object.fromEntries(Object.entries(hosts).filter(([, host]) => isHostData(host))),
-        ],
+/** One entry's hosts: a host whose value is not a host's numbers is left out. */
+const Hosts = z
+  .record(z.string(), z.unknown())
+  .transform((hosts) =>
+    Object.fromEntries(
+      Object.entries(hosts).filter((entry): entry is [string, HomeHostData] =>
+        isHostData(entry[1]),
       ),
-    ) as Record<string, HomeSnapshot>;
-  } catch {
-    return {};
-  }
-}
+    ),
+  );
+
+/** The stored entries: an entry that is not an object of hosts is dropped, the others stay. */
+const Entries = z.record(z.string(), z.unknown()).transform((all) =>
+  Object.fromEntries(
+    Object.entries(all).flatMap(([key, hosts]) => {
+      const kept = Hosts.safeParse(hosts);
+      return kept.success ? [[key, kept.data]] : [];
+    }),
+  ),
+);
+
+const read = (storage: Platform["storage"]): Record<string, HomeSnapshot> =>
+  readStored(storage, KEY, Entries, {});
 
 /**
  * Home's last numbers per period and set of hosts, in memory and in the app's local storage, so

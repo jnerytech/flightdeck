@@ -70,7 +70,6 @@ import {
 } from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
 import { elsewhereNotice, useStartElsewhere, waitingCards } from "@/features/sessions/index.ts";
-import { type MoveFocus, useMoveFocus } from "@/hooks/use-move-focus";
 import { useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
@@ -127,6 +126,7 @@ import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { NewCardDialog } from "./new-card-dialog.tsx";
+import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {

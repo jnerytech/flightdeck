@@ -1,4 +1,11 @@
+import { z } from "zod";
 import type { TreeNode, TreeProject, WorktreeFilter } from "@/features/projects/index.ts";
+import { readStored } from "@/shared/lib/index.ts";
+
+/** A stored list of project keys: the entries that are not text are dropped. */
+const Keys = z
+  .array(z.unknown())
+  .transform((stored) => stored.filter((key): key is string => typeof key === "string"));
 
 /** Checkouts a project lists before the rest wait behind "N more". */
 export const TREE_CAP = 8;
@@ -6,16 +13,8 @@ export const TREE_CAP = 8;
 export const TREE_FOLDED_KEY = "flightdeck.treeFolded";
 
 /** The projects folded last time (`hostId/projectId`); anything unreadable is none. */
-export function loadTreeFolded(storage: { getItem(key: string): string | null }): string[] {
-  try {
-    const stored = JSON.parse(storage.getItem(TREE_FOLDED_KEY) ?? "[]") as unknown;
-    return Array.isArray(stored)
-      ? stored.filter((key): key is string => typeof key === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
+export const loadTreeFolded = (storage: { getItem(key: string): string | null }): string[] =>
+  loadKeys(storage, TREE_FOLDED_KEY);
 
 export function saveTreeFolded(
   storage: { setItem(key: string, value: string): void },
@@ -57,14 +56,7 @@ export const TREE_PINNED_KEY = "flightdeck.treePinned";
 
 /** A stored list of project keys; anything unreadable is none. */
 function loadKeys(storage: { getItem(key: string): string | null }, name: string): string[] {
-  try {
-    const stored = JSON.parse(storage.getItem(name) ?? "[]") as unknown;
-    return Array.isArray(stored)
-      ? stored.filter((key): key is string => typeof key === "string")
-      : [];
-  } catch {
-    return [];
-  }
+  return readStored(storage, name, Keys, []);
 }
 
 /** The projects the person unfolded last time, against the default fold. */

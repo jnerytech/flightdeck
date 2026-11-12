@@ -47,6 +47,9 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   `hooks/` for now: `use-project-labels` (it reads the costs index, which reaches the store) and
   `use-start-ask` (it reads the board index, which reaches the projects and sessions indexes): moving them
   adds import cycles, and the cycle count only goes down (#1624).
+- Hooks that only one feature reads moved into it (#1597): `use-move-focus` to `features/board/`,
+  `use-board-transition` to `features/activity/` and `use-now` to `features/hosts/`, each imported by file
+  from inside its own folder.
 - Hooks with no domain moved to `shared/hooks/` behind an `index.ts` (#1597, fd-coordinator, 2026-11-12):
   `use-busy`, `use-min-loading`, `use-in-flight`, `use-breakpoint`, `use-media-query`, `use-page-focus` and
   `real-timers`.
