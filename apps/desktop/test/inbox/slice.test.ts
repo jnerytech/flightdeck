@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type { InboxEntry } from "../../src/features/inbox/inbox.ts";
 import { InboxSlice } from "../../src/features/inbox/index.ts";
 import { DEFAULT_NOTIFY_PREFS, type NotifyPrefs } from "../../src/features/notifications/index.ts";
-import type { InboxEntry } from "../../src/lib/inbox.ts";
 import { requestLink } from "../../src/lib/request-link.ts";
 
 /**
