@@ -3756,17 +3756,6 @@
   },
   {
     "type": "dependency",
-    "from": "apps/daemon/src/review/session-commit.ts",
-    "to": "apps/daemon/src/board/types.ts",
-    "unresolvedTo": "../board/types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "apps/daemon/src/review/session-files.ts",
     "to": "apps/daemon/src/history/indexer.ts",
     "unresolvedTo": "../history/indexer.ts",
@@ -3815,17 +3804,6 @@
     "to": "apps/daemon/src/board/ref-arg.ts",
     "unresolvedTo": "../board/ref-arg.ts",
     "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/review/target.ts",
-    "to": "apps/daemon/src/board/ref-arg.ts",
-    "unresolvedTo": "../board/ref-arg.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"

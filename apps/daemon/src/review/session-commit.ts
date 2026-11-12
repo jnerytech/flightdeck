@@ -25,17 +25,17 @@ import { join, resolve } from "node:path";
 import {
   byCodeUnit,
   type ChangesCommitted,
+  type DiffFile,
   inSequence,
   type SecretScanner,
 } from "@flightdeck/protocol";
 import { type CommandResult, killTree, runCommand } from "../board/command.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
-import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 import type { ChangesReader } from "./target.ts";
 
 export interface SessionCommitDeps {
-  changes: ChangesReader;
+  changes: Pick<ChangesReader, "resolve" | "get">;
   /** The host's scanner (the vault's values among them): the branch is one push from public. */
   scanner: Pick<SecretScanner, "scan">;
   /** Whether `root` is a card's worktree: the board owns that branch, never this commit. */
