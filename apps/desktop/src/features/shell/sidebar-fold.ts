@@ -1,4 +1,4 @@
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "@/platform/types.ts";
 
 /** Where the choice of a folded sidebar is kept; unfolded when absent. */
 export const SIDEBAR_FOLD_KEY = "flightdeck.sidebarFolded";

@@ -1,10 +1,11 @@
 import type { Database } from "bun:sqlite";
 import type { Config } from "../config.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { inspectProject } from "./inspect.ts";
 import { ProjectTrust } from "./project-trust.ts";
 
 /** What the `project.trust` service reads besides the trust records. */
-export interface TrustServerDeps {
+interface TrustServerDeps {
   projectTrust: ProjectTrust;
   manager: {
     /** The live sessions in the folder that loaded a setup it no longer trusts. */
@@ -14,7 +15,7 @@ export interface TrustServerDeps {
 }
 
 /** Issue #196 (issue #1593): the `project.trust` service: a folder's trust, read and set. */
-export function trustServer({ projectTrust, manager }: TrustServerDeps) {
+function trustServer({ projectTrust, manager }: TrustServerDeps) {
   /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
   const trustState = (path: string) => {
     const staleSessions = manager.staleSessions(path);
@@ -32,6 +33,28 @@ export function trustServer({ projectTrust, manager }: TrustServerDeps) {
       return trustState(path);
     },
   };
+}
+
+/** What the `projects` group is built from besides the trust service's deps (issue #1593). */
+interface ProjectsDeps extends TrustServerDeps {
+  /** A folder's project key, read through git once and kept. */
+  keys: { resolve(cwd: string): Promise<string> };
+}
+
+/**
+ * Issue #1593: the `projects` group as a module: a folder's project key (warmed and read), its
+ * trust, and "find my projects". No start and no stop.
+ */
+export function createProjects({ keys, ...trust }: ProjectsDeps): {
+  modules: readonly [DomainModule<"projects">];
+} {
+  const projects = serverGroup<"projects">()({
+    warmKey: (cwd) => keys.resolve(cwd),
+    keyOf: (cwd) => keys.resolve(cwd),
+    trust: trustServer(trust),
+    find: true,
+  });
+  return { modules: [{ server: { projects } }] as const };
 }
 
 /** What a folder's trust is built from (issue #1593). */

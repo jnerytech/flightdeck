@@ -18,6 +18,8 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
+import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { basename, isInside } from "@/shared/lib/index.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
@@ -170,8 +172,6 @@ import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts
 import { parseRequestLink } from "./request-link.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import { ShellPrefs } from "./shell-prefs.ts";
-import { SidebarFoldController } from "./sidebar-fold.ts";
 import {
   effectiveMode,
   loadChoices,

@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AccountFooter } = await import("../../src/features/shell/account-footer.tsx");
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 const { WHATS_NEW_KEY } = await import("../../src/lib/whats-new.ts");
 
 setDefaultTimeout(30_000);

@@ -14,7 +14,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
-import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,29 +31,31 @@ import {
   hostVersionText,
   RenameHostDialog,
 } from "@/features/hosts/index.ts";
+import { pendingCount } from "@/features/needs-you/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
-import { AccountFooter } from "@/features/shell/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
+
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
+import type { Key, T } from "@/i18n/index.ts";
+import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
+import { requiredMissing } from "@/lib/deps-summary.ts";
+import { type GithubHost, githubSignedIn } from "@/lib/github-session.ts";
+import type { HostNameError } from "@/lib/host-name.ts";
+import { hostDotView } from "@/lib/host-status.ts";
+import { activeWorktreeFilter, projectTree } from "@/lib/project-tree.ts";
+import type { Route } from "@/lib/router.ts";
+import { setupProgress, setupSteps } from "@/lib/setup-steps.ts";
 import { cn } from "@/lib/utils";
+import { APP_VERSION, anyHostHas, hasFeature } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
 import { ProgressRing, StatusDot } from "@/shared/status/index.ts";
-import { pendingCount } from "../features/needs-you/index.ts";
-import type { Key, T } from "../i18n/index.ts";
-import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
-import { requiredMissing } from "../lib/deps-summary.ts";
-import { footAccount } from "../lib/foot-account.ts";
-import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
-import type { HostNameError } from "../lib/host-name.ts";
-import { hostDotView } from "../lib/host-status.ts";
-import { activeNav } from "../lib/nav-active.ts";
-import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
-import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";
-import type { Route } from "../lib/router.ts";
-import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
-import { type SidebarGroup, toggleGroup } from "../lib/sidebar-groups.ts";
-import { APP_VERSION, anyHostHas, hasFeature } from "../lib/version.ts";
+import { AccountFooter } from "./account-footer.tsx";
+import { footAccount } from "./foot-account.ts";
+import { activeNav } from "./nav-active.ts";
+import { type NavBadgeKey, navBadge } from "./nav-badges.ts";
+import { NAV_ICONS, type NavKey } from "./nav-icons.ts";
+import { type SidebarGroup, toggleGroup } from "./sidebar-groups.ts";
 
 const ITEM =
   "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-normal text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
