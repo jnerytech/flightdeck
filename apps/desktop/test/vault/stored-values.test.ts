@@ -63,6 +63,69 @@ describe("the vault's stored values are parsed, not trusted (#1609)", () => {
     }
   });
 
+  test("a secret whose tags are not a list is left out, never given no tags", () => {
+    const vault = vaultOver(
+      storageWith({
+        "flightdeck.vault": JSON.stringify([META, { ...META, id: "s2", tags: "prod" }]),
+      }),
+    );
+    expect(vault.list()).toEqual([META]);
+  });
+
+  test("a secret missing its description, createdAt or lastUsedAt reads with the defaults", () => {
+    const { id, name, type, tags, allowedHosts } = META;
+    const bare = { id, name, type, tags, allowedHosts };
+    const vault = vaultOver(storageWith({ "flightdeck.vault": JSON.stringify([bare]) }));
+    expect(vault.list()).toEqual([{ ...META, description: "", createdAt: 0, lastUsedAt: null }]);
+  });
+
+  test("a write over a damaged list keeps the damaged text aside before it replaces it", async () => {
+    const damaged = JSON.stringify([META, { ...META, id: "s2", type: "kerberos" }]);
+    const storage = storageWith({ "flightdeck.vault": damaged });
+    const vault = new Vault(
+      { storage, vault: { set: async () => {} } as never },
+      { clock: () => 5, newId: () => "s3" },
+    );
+    await vault.create({ name: "new", type: "token", value: "v" });
+    expect(storage.getItem("flightdeck.vault.aside")).toBe(damaged);
+    expect(vault.list().map((s) => s.id)).toEqual(["s1", "s3"]);
+  });
+
+  test("a write over a healthy list keeps nothing aside", async () => {
+    const storage = storageWith({ "flightdeck.vault": JSON.stringify([META]) });
+    const vault = new Vault(
+      { storage, vault: { set: async () => {} } as never },
+      { clock: () => 5, newId: () => "s3" },
+    );
+    await vault.create({ name: "new", type: "token", value: "v" });
+    expect(storage.getItem("flightdeck.vault.aside")).toBeNull();
+  });
+
+  test("a usage report with a date that is not a date is logged at the time it arrived", () => {
+    const log = new VaultUsageLog({ storage: storageWith({}) }, { clock: () => 42 });
+    log.recordUsed("h1", {
+      type: "vault.used",
+      secretId: "s1",
+      purpose: "ssh",
+      requester: "claude",
+      action: "ssh box",
+      at: "garbage",
+    });
+    expect(log.list().map((e) => e.at)).toEqual([42]);
+  });
+
+  test("a backup of another version, or whose body is not JSON, is unreadable", async () => {
+    for (const body of [JSON.stringify({ version: 2, secrets: [] }), "not json at all"]) {
+      const encrypter = new Encrypter();
+      encrypter.setPassphrase("correct horse battery");
+      encrypter.setScryptWorkFactor(4);
+      const file = await encrypter.encrypt(body);
+      await expect(
+        previewImport(vaultOver(storageWith({})), file, "correct horse battery"),
+      ).rejects.toMatchObject({ code: "unreadable" });
+    }
+  });
+
   test("saving a secret's rules over a damaged store keeps the good ones and drops the rest", () => {
     const rules = new VaultRules(
       storageWith({ "flightdeck.vaultRules": '{"a":"oops","b":[{"allow":true}]}' }),
