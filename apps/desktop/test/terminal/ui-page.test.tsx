@@ -277,7 +277,7 @@ describe("terminal-ui: the terminal screen", () => {
     await settle(() => x.drawn.length > before + 1);
     ptys.spawned[0]?.emit("b".repeat(1200 * 1024));
     await settle(() => resets() > before);
-    expect(resets()).toBeGreaterThan(before);
+    expect(resets()).toBe(before + 1);
   });
 
   test("the terminal fits its box again when the box changes size", async () => {
