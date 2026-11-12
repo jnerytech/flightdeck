@@ -29,7 +29,7 @@ async function features(parts: {
     ...(parts.issues ? { issues: {} as Issues } : {}),
     ...(parts.automations ? { automations: {} as Automations } : {}),
     ...(parts.autoApprove ? { autoApprove: {} as AutoApprover } : {}),
-    ...(parts.stall ? { stall: { minutes: () => 15 } } : {}),
+    ...(parts.stall ? { sessionSettings: { stall: { minutes: () => 15 } } } : {}),
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

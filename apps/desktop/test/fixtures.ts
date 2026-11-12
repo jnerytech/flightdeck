@@ -535,12 +535,14 @@ export function daemon(
       fsDirs: true,
       ...(options.teleport
         ? {
-            teleportInbox: new TeleportInbox({
-              dir: join(root, "teleport-in"),
-              now: Date.now,
-              newId: () => crypto.randomUUID(),
-              timers: globalThis,
-            }),
+            teleport: {
+              inbox: new TeleportInbox({
+                dir: join(root, "teleport-in"),
+                now: Date.now,
+                newId: () => crypto.randomUUID(),
+                timers: globalThis,
+              }),
+            },
           }
         : {}),
       ...firstRunOptions,
@@ -572,7 +574,6 @@ export function daemon(
           }
         : {}),
       rootsPlatform: testRootsPlatform(),
-      sessionSettings: true,
       ...(options.opencode
         ? {
             opencode: {
@@ -584,10 +585,13 @@ export function daemon(
             },
           }
         : {}),
-      bypass: {
-        allowed: () => bypass,
-        set: (allow) => {
-          bypass = allow;
+      sessionSettings: {
+        commands: true,
+        bypass: {
+          allowed: () => bypass,
+          set: (allow) => {
+            bypass = allow;
+          },
         },
       },
       ...(awake
