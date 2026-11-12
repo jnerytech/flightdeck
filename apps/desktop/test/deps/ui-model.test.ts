@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
-import { refusalText } from "../src/i18n/errors.ts";
-import { translator } from "../src/i18n/index.ts";
-import { chainOf, pickable } from "../src/lib/deps.ts";
+import { refusalText } from "../../src/i18n/errors.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { chainOf, pickable } from "../../src/lib/deps.ts";
 
 let n = 0;
 const card = (id: string, extra: Partial<Card> = {}): Card =>
