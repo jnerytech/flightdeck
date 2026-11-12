@@ -62,7 +62,12 @@ import { RadarBadge } from "@/features/board/radar-badge";
 import { SelectionBar, SelectionSlot } from "@/features/board/selection-bar";
 import { BoardFilesPanel } from "@/features/files/index.ts";
 import { useSuggestedPersona } from "@/features/personas/index.ts";
-import { AddProject, WorktreeChip } from "@/features/projects/index.ts";
+import {
+  AddProject,
+  activeWorktreeFilter,
+  WorktreeChip,
+  worktreeOfProject,
+} from "@/features/projects/index.ts";
 import { RoiCard } from "@/features/roi/index.ts";
 import { elsewhereNotice, waitingCards } from "@/features/sessions/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
@@ -81,7 +86,6 @@ import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";
 import { radarBadge } from "../../lib/conflict-radar.ts";
-import { activeWorktreeFilter, worktreeOfProject } from "../../lib/project-tree.ts";
 import { ExternalSeal, IssuesPanel, issueNumber } from "../issues/index.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import {

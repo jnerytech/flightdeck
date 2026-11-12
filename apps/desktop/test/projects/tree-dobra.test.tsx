@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { TreeNode, TreeProject } from "../../src/lib/project-tree.ts";
+import type { TreeNode, TreeProject } from "../../src/features/projects/project-tree-model.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

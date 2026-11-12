@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { CostsSummary } from "@flightdeck/protocol";
 import { emptySummary } from "../../src/features/clients/client-costs.ts";
-import type { ProjectCard } from "../../src/lib/project-cards.ts";
+import type { ProjectCard } from "../../src/features/projects/project-cards.ts";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

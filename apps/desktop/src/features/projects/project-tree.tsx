@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import type { TreeNode, TreeProject, WorktreeFilter } from "../../lib/project-tree.ts";
 import type { Route } from "../../lib/router.ts";
+import type { TreeNode, TreeProject, WorktreeFilter } from "./project-tree-model.ts";
 
 /** The dictionary's name of a state dot's tone: an error reads as idle, as the sidebar always did. */
 const toneKey = (tone: StateTone): string => {
