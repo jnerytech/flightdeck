@@ -34,9 +34,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HostDot } from "@/features/hosts/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
-import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
 import { IconTip } from "@/shared/feedback/index.ts";
+import { useBreakpoint } from "@/shared/hooks/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { revealTab } from "./reveal-tab.ts";
 import { badgePulses, type TabBadge, tabKind } from "./tab-badge.ts";

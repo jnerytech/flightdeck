@@ -17,8 +17,8 @@ import {
   type TileLayout,
   tileColumns,
 } from "@/features/sessions/index.ts";
-import { useBusy } from "@/hooks/use-busy";
 import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
+import { useBusy } from "@/shared/hooks/index.ts";
 import { statusTone } from "@/shared/lib/index.ts";
 import { StatusText } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";

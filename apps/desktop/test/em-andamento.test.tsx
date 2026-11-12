@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { IN_FLIGHT, InFlightTimers, inFlightStage } from "../src/hooks/use-in-flight.ts";
-import { useMinLoading } from "../src/hooks/use-min-loading.ts";
 import { translator } from "../src/i18n/index.ts";
+import { IN_FLIGHT, InFlightTimers, inFlightStage } from "../src/shared/hooks/use-in-flight.ts";
+import { useMinLoading } from "../src/shared/hooks/use-min-loading.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
