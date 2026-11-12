@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type CiBranchDeps, ciBranch, type GhResult } from "../../lib/ci-branch.ts";
+import { type CiBranchDeps, ciBranch, type GhResult } from "../../lib/ci/branch.ts";
 
 const ROOT = join(import.meta.dir, "../../..");
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");

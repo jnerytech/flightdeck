@@ -1,13 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 
 const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
-const tabBar = readFileSync(
-  resolve(import.meta.dir, "../../src/features/tabs/tab-bar.tsx"),
-  "utf8",
-);
 
 /** The body of a named style of styles.css, or "" when there is none. */
 function utility(name: string): string {
@@ -16,30 +11,15 @@ function utility(name: string): string {
   return css.slice(start, css.indexOf("\n}\n", start));
 }
 
-// Issue #488: flat tabs as in VS Code. The prints show the look; these pin the rules it rests on.
-describe("tab-look: flat tabs that share the bar, the active one joined to the content", () => {
-  test("a tab is as wide as its title, between 6 and 13 rem, with no box of its own", () => {
-    const item = utility("tab-item");
-    expect(item).toContain("flex: 0 1 auto;");
-    expect(item).toContain("min-width: 6rem;");
-    expect(item).toContain("max-width: 13rem;");
-    expect(item).toContain("border-right: 1px solid var(--color-border);");
-    expect(tabBar.includes("rounded-t-md border border-b-0")).toBe(false);
-  });
-
-  test("the active tab has the content's background, full-contrast text and an accent line on top", () => {
+/**
+ * Issue #488: flat tabs as in VS Code. The e2e `layout` journey measures the widths, the borders, the
+ * colors and the line under the bar (`flatTabsProblem`, `activeTabProblem`); it does not read which
+ * color the active line takes, so that one rule stays pinned here.
+ */
+describe("tab-look: the active tab's line takes the host's color", () => {
+  test("the line is the host's color on a host's tab (#644), the accent on a shared one", () => {
     const item = utility("tab-item");
     const active = item.slice(item.indexOf('&:has([role="tab"][aria-selected="true"])'));
-    expect(active).toContain("background: var(--color-background);");
-    expect(active).toContain("color: var(--color-foreground);");
-    // The line is the host's color on a host's tab (#644), the accent on a shared one.
     expect(active).toContain("background: var(--host-color, var(--color-primary));");
-    expect(item).toContain("color: var(--color-muted-foreground);");
-  });
-
-  test("the bar's lower line is painted under the tabs, so the active one covers it and joins the content", () => {
-    const bar = utility("tab-bar");
-    expect(bar).toContain("box-shadow: inset 0 -1px 0 var(--color-border);");
-    expect(bar.includes("border-bottom")).toBe(false);
   });
 });

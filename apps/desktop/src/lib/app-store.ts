@@ -23,7 +23,7 @@ import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { SystemSlice } from "@/features/shell/system.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
-import { isInside } from "@/shared/lib/index.ts";
+import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
@@ -86,7 +86,7 @@ import {
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import { type MessagingSlice, wireMessaging } from "../features/messaging/index.ts";
 import { AwayClock } from "../features/needs-you/away.ts";
-import { saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
+import { QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
@@ -222,9 +222,6 @@ export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";
 
 export { sessionKey };
 
-/** Issue #1478: how long "Not stuck" keeps a quiet session out of Needs you. */
-export const QUIET_SNOOZE_MS = 60 * 60 * 1000;
-
 const REAL_TIMERS = {
   setTimeout: (fn: () => void, ms: number): unknown => setTimeout(fn, ms),
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
@@ -242,9 +239,6 @@ const newHostView = (config: HostConfig): HostView => ({
   updateCheck: null,
   sessions: [],
 });
-
-/** A request whose failure only means less to show (an older daemon, a host without a board). */
-const quiet = <T>(promise: Promise<T>) => promise.catch(() => null);
 
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
@@ -338,6 +332,8 @@ export class AppStore {
   readonly quota: QuotaSlice;
   /** The Claude account each host is signed in to (phase 34, #1596). */
   readonly account: AccountSlice;
+  /** "Not stuck" on a quiet session (`features/needs-you/quiet-snooze.ts`). */
+  readonly quietSnooze: QuietSnoozeSlice;
   /** A card's run environment: run.yaml, trust, start and stop (`features/runenv/store.ts`). */
   readonly runEnv: RunEnvSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
@@ -412,6 +408,16 @@ export class AppStore {
         }),
     });
     this.account = wireAccount(this.kernel);
+    this.quietSnooze = new QuietSnoozeSlice({
+      snoozes: () => this.state.quietSnooze,
+      setSnoozes: (quietSnooze) => this.update({ quietSnooze }),
+      storage: platform.storage,
+      now: () => this.now(),
+      key: sessionKey,
+      t: () => this.i18n.t,
+      formatTime: (iso) => this.formatTime(iso),
+      success: (text) => this.success(text),
+    });
     this.runEnv = new RunEnvSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -581,7 +587,7 @@ export class AppStore {
       loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
       loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
       loadPersonas: (hostId) => this.personas.load(hostId),
-      listSnippets: (hostId) => quiet(this.dispatch(hostId, "snippets.list", {})),
+      listSnippets: (hostId) => nullOnError(this.dispatch(hostId, "snippets.list", {})),
       keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
       refreshHub: () => this.refreshHub(),
     });
@@ -1784,16 +1790,7 @@ export class AppStore {
 
   /** Issue #1478: keeps a quiet session out of Needs you for an hour ("Not stuck"). */
   snoozeQuiet(hostId: string, sessionId: string): void {
-    const until = this.now() + QUIET_SNOOZE_MS;
-    const quietSnooze = { ...this.state.quietSnooze, [sessionKey(hostId, sessionId)]: until };
-    this.update({ quietSnooze });
-    saveQuietSnooze(this.platform.storage, quietSnooze);
-    // The row is gone from the list: say when it comes back (#1554).
-    this.success(
-      this.i18n.t("needsYou.quietSnoozed", {
-        time: this.formatTime(new Date(until).toISOString()),
-      }),
-    );
+    this.quietSnooze.snooze(hostId, sessionId);
   }
 
   /** Issue #1478: interrupts any session of a host, open or not. */

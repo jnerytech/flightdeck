@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ciPlan } from "../../lib/ci-paths.ts";
+import { ciPlan } from "../../lib/ci/paths.ts";
 import { unguardedGitCalls } from "../../lib/git-args.ts";
 import { visibleTsLiterals } from "../../lib/i18n-sweep.ts";
 import { testTiers } from "../../lib/test-tiers.ts";

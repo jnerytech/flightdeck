@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { takesEffort } from "../../src/features/personas/index.ts";
 import {
   bypassAsked,
   chosenProject,
   confirmCopy,
   createPayload,
+  effortOffered,
   memberPayload,
   type NewTeamForm,
   offeredChoice,
@@ -18,13 +20,16 @@ const form = (over: Partial<NewTeamForm> = {}): NewTeamForm => ({
   name: "",
   persona: "",
   model: "",
+  effort: "",
   permission: "",
   rows: [
-    { persona: null, model: "", permission: "" },
-    { persona: null, model: "", permission: "" },
+    { persona: null, model: "", effort: "" as const, permission: "" },
+    { persona: null, model: "", effort: "" as const, permission: "" },
   ],
   workerDefault: "",
   modes: { offered: true, allowBypass: true },
+  efforts: true,
+  personaModels: {},
   ...over,
 });
 
@@ -45,8 +50,8 @@ describe("new-team: what the form sends", () => {
       form({
         workerDefault: "dev",
         rows: [
-          { persona: "host:qa", model: "", permission: "" },
-          { persona: null, model: "", permission: "" },
+          { persona: "host:qa", model: "", effort: "" as const, permission: "" },
+          { persona: null, model: "", effort: "" as const, permission: "" },
         ],
       }),
     );
@@ -59,8 +64,8 @@ describe("new-team: what the form sends", () => {
         persona: "host:lead",
         model: "opus",
         rows: [
-          { persona: null, model: "sonnet", permission: "" },
-          { persona: null, model: "", permission: "" },
+          { persona: null, model: "sonnet", effort: "" as const, permission: "" },
+          { persona: null, model: "", effort: "" as const, permission: "" },
         ],
       }),
     );
@@ -71,8 +76,8 @@ describe("new-team: what the form sends", () => {
 
   test("permission modes go only to a host that takes them, an unset worker as null", () => {
     const rows = [
-      { persona: null, model: "", permission: "plan" as const },
-      { persona: null, model: "", permission: "" as const },
+      { persona: null, model: "", effort: "" as const, permission: "plan" as const },
+      { persona: null, model: "", effort: "" as const, permission: "" as const },
     ];
     const sent = createPayload(form({ permission: "acceptEdits", rows }));
     expect(sent.coordinatorPermission).toBe("acceptEdits");
@@ -100,8 +105,8 @@ describe("new-team: when Bypass asks again", () => {
     expect(bypassAsked(form({ permission: "bypassPermissions" }))).toBe(true);
     const worker = form({
       rows: [
-        { persona: null, model: "", permission: "" },
-        { persona: null, model: "", permission: "bypassPermissions" },
+        { persona: null, model: "", effort: "" as const, permission: "" },
+        { persona: null, model: "", effort: "" as const, permission: "bypassPermissions" },
       ],
     });
     expect(bypassAsked(worker)).toBe(true);
@@ -126,11 +131,13 @@ describe("new-team: the project and the member", () => {
   });
 
   test("a new member sends its persona and model as null when blank, a permission only when set", () => {
-    expect(memberPayload({ persona: "", model: "", permission: "" })).toEqual({
+    expect(memberPayload({ persona: "", model: "", effort: "" as const, permission: "" })).toEqual({
       persona: null,
       model: null,
     });
-    expect(memberPayload({ persona: "host:qa", model: "opus", permission: "plan" })).toEqual({
+    expect(
+      memberPayload({ persona: "host:qa", model: "opus", effort: "" as const, permission: "plan" }),
+    ).toEqual({
       persona: "host:qa",
       model: "opus",
       permission: "plan",
@@ -150,5 +157,92 @@ describe("new-team: what a member's confirm says", () => {
     const remove = confirmCopy({ kind: "remove", member: "worker-2" }, "Alpha", t);
     expect(remove.message).toContain("worker-2");
     expect(remove.label).toBe("Remove");
+  });
+});
+
+describe("new-team: the effort of each member (issue #2310)", () => {
+  test("opus and sonnet take an effort, haiku does not, and the default model follows the persona's", () => {
+    expect(takesEffort("opus", null)).toBe(true);
+    expect(takesEffort("sonnet", null)).toBe(true);
+    expect(takesEffort("haiku", null)).toBe(false);
+    // The persona's model is a full id, resolved by its family.
+    expect(takesEffort("", "claude-opus-5-5")).toBe(true);
+    expect(takesEffort("", "claude-sonnet-5-5")).toBe(true);
+    expect(takesEffort("", "claude-haiku-5-5")).toBe(false);
+    // No persona model: Claude Code's own default model takes an effort.
+    expect(takesEffort("", null)).toBe(true);
+    // A model picked on the row wins over the persona's.
+    expect(takesEffort("haiku", "claude-opus-5-5")).toBe(false);
+    expect(takesEffort("opus", "claude-haiku-5-5")).toBe(true);
+  });
+
+  test("the coordinator's effort and each worker's go along, none meaning the persona's", () => {
+    const sent = createPayload(
+      form({
+        effort: "max",
+        rows: [
+          { persona: null, model: "", effort: "low", permission: "" },
+          { persona: null, model: "", effort: "", permission: "" },
+        ],
+      }),
+    );
+    expect(sent.coordinatorEffort).toBe("max");
+    expect(sent.workerEfforts).toEqual(["low", null]);
+  });
+
+  test("no effort chosen sends no effort field", () => {
+    const sent = createPayload(form());
+    expect("coordinatorEffort" in sent).toBe(false);
+    expect("workerEfforts" in sent).toBe(false);
+  });
+
+  test("a host that does not announce the feature gets no effort, whatever the form holds", () => {
+    const sent = createPayload(
+      form({
+        efforts: false,
+        effort: "high",
+        rows: [{ persona: null, model: "", effort: "low", permission: "" }],
+      }),
+    );
+    expect("coordinatorEffort" in sent).toBe(false);
+    expect("workerEfforts" in sent).toBe(false);
+  });
+
+  test("a haiku row sends no effort, and neither does a row whose persona runs on haiku", () => {
+    const sent = createPayload(
+      form({
+        model: "haiku",
+        effort: "high",
+        personaModels: { "host:fast": "claude-haiku-5-5" },
+        rows: [
+          { persona: "host:fast", model: "", effort: "low", permission: "" },
+          { persona: null, model: "haiku", effort: "max", permission: "" },
+          { persona: null, model: "sonnet", effort: "medium", permission: "" },
+        ],
+      }),
+    );
+    expect("coordinatorEffort" in sent).toBe(false);
+    expect(sent.workerEfforts).toEqual([null, null, "medium"]);
+  });
+
+  test("a row with the default model takes the effort by its persona's model", () => {
+    const personaModels = { "host:lead": "claude-opus-5-5", "host:fast": "claude-haiku-5-5" };
+    const shown = (persona: string) => effortOffered({ efforts: true, personaModels }, "", persona);
+    expect(shown("host:lead")).toBe(true);
+    expect(shown("host:fast")).toBe(false);
+    // No persona and no model: shown.
+    expect(shown("")).toBe(true);
+    expect(effortOffered({ efforts: false, personaModels }, "opus", "")).toBe(false);
+  });
+
+  test("a worker added to a team carries its effort only when one is chosen", () => {
+    expect(memberPayload({ persona: "", model: "", effort: "high", permission: "" })).toEqual({
+      persona: null,
+      model: null,
+      effort: "high",
+    });
+    expect("effort" in memberPayload({ persona: "", model: "", effort: "", permission: "" })).toBe(
+      false,
+    );
   });
 });

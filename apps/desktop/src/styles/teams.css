@@ -52,8 +52,9 @@
 
 /* Issue #93: a worker row of the new-team form, in the same columns in every row. The form is at
    most about 560 px wide, so the row is two even columns at every width (#1222): the persona on its
-   own line, then model and permissions side by side (model and Remove on a host with no permission
-   modes), and Remove at the left. Fixed 7 and 10 rem columns wrapped the model's label even at 1280. */
+   own line, then the selects two by two, and Remove on a line of its own at the left (a third select,
+   the effort, would otherwise push Remove to the right column). Fixed 7 and 10 rem columns wrapped
+   the model's label even at 1280. */
 @utility worker-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -63,6 +64,7 @@
     grid-column: 1 / -1;
   }
   & > :last-child {
+    grid-column: 1 / -1;
     justify-self: start;
   }
 }

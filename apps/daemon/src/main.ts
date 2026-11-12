@@ -80,7 +80,7 @@ import { SummaryService } from "./summary/service.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
-import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
+import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
@@ -333,12 +333,13 @@ export async function startDaemon(
   });
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const { terminals } = await domains.add(
-    createTerminals({
+    await createTerminals({
       config,
       configFile,
       folderLocks,
       pty: options.pty,
       self: selfCommand,
+      env,
       log: (message) => logger.log(message),
     }),
   );
@@ -640,7 +641,6 @@ export async function startDaemon(
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
     ...present({ claude, account, onShutdown: options.onShutdown }),
-    terminal: await terminalInfo(env),
   });
 
   const wsl = createWsl(config, options);

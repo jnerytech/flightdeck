@@ -141,8 +141,8 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.personas?.store, "personas"),
     // Phase 21: messages between sessions, teams and the standard session names.
     ...when(opts.messaging?.messages, "messaging"),
-    // Issue #93: `teams.create` and `addMember` take a permission mode per member.
-    ...when(opts.messaging?.teams, "teams", "teams.permissions"),
+    // Issue #93: `teams.create` and `addMember` take a permission mode per member; issue #2310: an effort.
+    ...when(opts.messaging?.teams, "teams", "teams.permissions", "teams.effort"),
     // Phase 22: watching a card's PR and fixing it.
     ...when(opts.prWatch?.watch, "watch"),
     // Issue #77: a card's watch takes more rounds.

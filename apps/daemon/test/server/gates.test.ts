@@ -1,10 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { FlightdeckError } from "../../src/kernel/errors.ts";
 import {
-  GATES,
   type GatedGroup,
   type GatedOption,
-  GROUP_GATES,
   type GroupKey,
   need,
   needIn,
@@ -193,10 +191,6 @@ function outcome(opts: ServerOptions, key: GatedOption): unknown {
 }
 
 describe("server-gates", () => {
-  test("every gated option names the same feature as before the split", () => {
-    expect({ ...GATES } as Record<string, string>).toEqual(BEFORE_THE_SPLIT);
-  });
-
   test("an option the host does not run is refused as feature_off with its feature; one it runs is returned", () => {
     const off = {} as ServerOptions;
     const keys = Object.keys(BEFORE_THE_SPLIT) as GatedOption[];
@@ -208,7 +202,6 @@ describe("server-gates", () => {
   });
 
   test("a grouped service names the same feature as its flat option did, and one the host runs is returned", () => {
-    expect(JSON.parse(JSON.stringify(GROUP_GATES))).toEqual(GROUPED);
     const off = {} as ServerOptions;
     const offIn = {
       knowledge: {},

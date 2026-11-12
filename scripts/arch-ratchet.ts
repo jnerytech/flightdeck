@@ -2,12 +2,12 @@
 /**
  * `bun run scripts/arch-ratchet.ts`: fails when .dependency-cruiser-known-violations.json has more
  * violations of a rule than at the merge-base with main (issue #1591). `bun run arch` runs it after
- * dependency-cruiser. The logic is scripts/lib/arch-ratchet.ts.
+ * dependency-cruiser. The logic is scripts/lib/ratchets/arch.ts.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { runArchRatchet } from "./lib/arch-ratchet.ts";
+import { runArchRatchet } from "./lib/ratchets/arch.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const result = runArchRatchet({

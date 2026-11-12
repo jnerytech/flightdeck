@@ -4,7 +4,7 @@
  * the one of the latest full green run on the tag's commit.
  */
 
-import { isCoverageSource, parseLcov } from "../coverage-check.ts";
+import { isCoverageSource, parseLcov } from "../coverage-gate/check.ts";
 
 export interface CoverageSummary {
   linesPercent: number | null;

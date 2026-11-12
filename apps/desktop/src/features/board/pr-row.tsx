@@ -4,10 +4,10 @@ import { useId } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
-import { mergeStance, type PullRequestRow, prFacts } from "@/lib/pull-requests";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { canMergeCardPr } from "./card-merge-pr-model.ts";
+import { mergeStance, type PullRequestRow, prFacts } from "./pull-requests-model.ts";
 
 const CHECK_ICONS = { passing: CircleCheck, pending: CircleDashed, failing: CircleAlert } as const;
 

@@ -9,7 +9,6 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cruise } from "dependency-cruiser";
-import { CONFIG, KNOWN, newRules } from "./lib/arch-ratchet.ts";
 import {
   cycleBaseline,
   entryRows,
@@ -23,6 +22,7 @@ import {
 import { type CruiseModule, cycleFiles } from "./lib/cycle-files.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
+import { CONFIG, KNOWN, newRules } from "./lib/ratchets/arch.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
 import { flatTestCounts } from "./lib/test-layout.ts";
 import { testTiers } from "./lib/test-tiers.ts";
