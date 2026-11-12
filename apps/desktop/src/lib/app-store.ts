@@ -155,6 +155,9 @@ import {
   wireSnippets,
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { TabScopeController } from "../features/tabs/tab-scope.ts";
+import { TabOrderController } from "../features/tabs/tab-switcher.ts";
+import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import {
   type TeleportOutcome,
   type TeleportRequest,
@@ -211,9 +214,6 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import { TabScopeController } from "./tab-scope.ts";
-import { TabOrderController } from "./tab-switcher.ts";
-import type { Navigation, Tabs } from "./tabs.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
