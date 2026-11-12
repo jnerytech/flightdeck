@@ -1,5 +1,5 @@
 import { isCheckEnvName, isWatchCheck, type WatchSettings } from "@flightdeck/protocol";
-import type { T } from "../i18n/index.ts";
+import type { T } from "../../i18n/index.ts";
 
 /** The watch settings of a project as the form holds them: text, so a field can be half typed. */
 export interface WatchDraft {

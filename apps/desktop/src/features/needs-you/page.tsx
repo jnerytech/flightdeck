@@ -22,11 +22,11 @@ import { typing } from "../../lib/keys.ts";
 import { pendingWhere } from "../../lib/pending-text.ts";
 import { type QuietAlert, quietAlerts, quietText } from "../../lib/quiet.ts";
 import type { Route } from "../../lib/router.ts";
-import { type WatchAlert, watchAlerts } from "../../lib/watch-alerts.ts";
 import { awayView } from "../activity/index.ts";
 import { budgetAlerts } from "../costs/index.ts";
 import { type LoopAlert, loopPairKey } from "../messaging/index.ts";
 import { CONTINUATION } from "../sessions/index.ts";
+import { type WatchAlert, watchAlerts } from "../watch/index.ts";
 import { type Entry, EntryRow, hostNameOf, ROW_PAD } from "./entry-row.tsx";
 import { WhileAway } from "./while-away.tsx";
 
