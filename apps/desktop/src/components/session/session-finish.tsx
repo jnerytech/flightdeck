@@ -2,6 +2,7 @@ import type { ChangesResult } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { CheckField, Field } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -19,7 +20,6 @@ import {
   rememberCommit,
   whyNot,
 } from "@/lib/session-finish";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** The hooks a commit runs, in a line: none set, or not known. */
 function hooksText(t: ReturnType<typeof useT>, hooks: string[] | undefined): string {

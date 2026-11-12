@@ -1,4 +1,5 @@
 import { useReducer, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
@@ -14,7 +15,6 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import type { WebhookKind, WebhookType } from "../../lib/webhook-format.ts";
 import { type WebhookTarget, WebhookTargetError } from "../../lib/webhook-targets.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const HOSTS = ["hosts"] as const;
 const KINDS: WebhookKind[] = [

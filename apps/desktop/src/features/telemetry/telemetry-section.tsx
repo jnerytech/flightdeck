@@ -1,12 +1,12 @@
 import type { TelemetryOptInStatus } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { Inline, Stack } from "../../components/layout/stack.tsx";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const LABELS: Record<TelemetryOptInStatus["status"], Key> = {
   installed: "telemetry.optinInstalled",

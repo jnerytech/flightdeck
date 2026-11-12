@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FieldRow, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TContext } from "@/i18n/context";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { LANGS, type Lang, type T } from "../../i18n/index.ts";
 import type { ThemeMode } from "../../lib/theme.ts";
 

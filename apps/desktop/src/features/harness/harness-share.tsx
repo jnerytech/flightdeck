@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { templateIdFrom } from "@/lib/harness";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 export interface HarnessShareProps {
   store: AppStore;

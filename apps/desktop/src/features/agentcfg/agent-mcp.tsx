@@ -1,6 +1,7 @@
 import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
@@ -22,7 +23,6 @@ import {
   serverFromDraft,
 } from "../../lib/mcp-form.ts";
 import { isInside } from "../../lib/paths.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /** The protocol's names, which the screen shows as they are. */
 /** Sessions of a managed run that can still answer `mcp.status`. */

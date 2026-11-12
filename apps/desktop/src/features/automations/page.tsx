@@ -1,6 +1,7 @@
 import type { Automation, AutomationRun, WorkflowInfo } from "@flightdeck/protocol";
 import { Plus, Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,6 @@ import { useMinLoading } from "@/hooks/use-min-loading";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { actionText, confirmOnText, triggerText } from "../../lib/automations.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { AutomationForm } from "./automation-form.tsx";
 
 const RUN_TONE: Record<AutomationRun["status"], string> = {

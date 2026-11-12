@@ -14,6 +14,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
@@ -55,7 +56,6 @@ import type { Route } from "../lib/router.ts";
 import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import { type SidebarGroup, toggleGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, anyHostHas, hasFeature } from "../lib/version.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 const ITEM =
   "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-normal text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
