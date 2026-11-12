@@ -1,5 +1,20 @@
-import type { AppStore, HostView } from "./app-store.ts";
-import { hostsWith } from "./version.ts";
+import type { GithubStatusResult } from "@flightdeck/protocol";
+import { hostsWith } from "../../lib/version.ts";
+
+/** What the sign-out list reads of the app's store and hosts, as plain shapes: the store and `HostView` satisfy them. */
+interface GithubStatusAsker {
+  hostCommand(
+    hostId: string,
+    type: "github.status",
+    payload: Record<string, never>,
+  ): Promise<GithubStatusResult | null | undefined>;
+}
+interface GithubCandidate {
+  id: string;
+  name: string;
+  status: string;
+  hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
+}
 
 /** A host whose `gh` is signed in to GitHub and can sign out from the app. */
 export interface GithubHost {
@@ -12,8 +27,8 @@ export interface GithubHost {
  * that comes from an environment variable of the daemon is left out (it is removed there).
  */
 export async function githubSignedIn(
-  store: Pick<AppStore, "hostCommand">,
-  hosts: readonly HostView[],
+  store: GithubStatusAsker,
+  hosts: readonly GithubCandidate[],
 ): Promise<GithubHost[]> {
   const answers = await Promise.all(
     hostsWith(hosts, "github").map(async (h) => ({
