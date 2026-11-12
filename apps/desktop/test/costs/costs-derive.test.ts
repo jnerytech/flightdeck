@@ -61,7 +61,7 @@ describe("periodProjectKeys", () => {
 describe("labelledKeys", () => {
   test("the period's, the summary's and the top sessions' projects and the chosen one, each once", () => {
     const summary = {
-      ...byProject("p2", "p3"),
+      byProject: [{ projectKey: "p2" }, { projectKey: "p3" }],
       topSessions: [{ projectKey: "p3" }, { projectKey: "p4" }],
     } as never;
     expect(labelledKeys({ all: byProject("p1", "p2"), summary }, "p5")).toEqual([
