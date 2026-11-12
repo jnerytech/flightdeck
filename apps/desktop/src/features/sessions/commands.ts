@@ -1,7 +1,7 @@
 import type { CommandPayload, EffortLevel, SessionImage, SettableMode } from "@flightdeck/protocol";
 import { type HostConnection, RequestError } from "@/features/hosts/index.ts";
 import type { Selection } from "../../lib/app-store.ts";
-import { endMeasure, startMeasure } from "../costs/index.ts";
+import { endMeasure, startMeasure } from "../../lib/measures.ts";
 
 /** What the commands read and ask through the app's store. */
 export interface SessionCommandsCore {

@@ -31,7 +31,6 @@ import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index
 import { basename, holdsFolder, isBusy } from "@/shared/lib/index.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
-import { actionOfRoute, endMeasure } from "../features/costs/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";
 import { HistoryList } from "../features/history/history-list.tsx";
 import { FolderPicker } from "../features/hosts/index.ts";
@@ -51,6 +50,7 @@ import {
   type PendingItem,
   sessionKey,
 } from "../lib/app-store.ts";
+import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import type { Route } from "../lib/router.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
