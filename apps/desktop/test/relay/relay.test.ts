@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { MessageInfo, RelayMessage } from "@flightdeck/protocol";
-import { type RelayHost, relayMessage, relayUpdate, syncPeers } from "../src/lib/relay.ts";
+import { type RelayHost, relayMessage, relayUpdate, syncPeers } from "../../src/lib/relay.ts";
 
 const MESSAGE: RelayMessage = {
   id: "m1",
