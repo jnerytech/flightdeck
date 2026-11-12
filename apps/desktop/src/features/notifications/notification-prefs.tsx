@@ -10,6 +10,7 @@ import { SOUND_FILE_MAX_BYTES, SWITCHABLE, type SwitchableEvent } from "./notify
 
 const AUDIO_NAME = /\.(mp3|wav|ogg|m4a|aac|flac)$/i;
 const check = "flex items-center gap-2 text-sm";
+const nestedCheck = `${check} pl-6`;
 
 /**
  * Settings, Notifications (issue #149): what the person is told about and where, who is muted, the
@@ -101,7 +102,7 @@ export function NotificationPrefs(
             {(props.projects[host.id] ?? []).map((project) => {
               const key = `${host.id}/${project.id}`;
               return (
-                <label key={key} className={`${check} pl-6`}>
+                <label key={key} className={nestedCheck}>
                   <input
                     type="checkbox"
                     checked={prefs.mutedProjects.includes(key)}
