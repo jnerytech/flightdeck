@@ -1,7 +1,7 @@
 import type { SnippetField, TerminalInfo } from "@flightdeck/protocol";
 import { type Central, messageExternal } from "../central/central.ts";
 import { FlightdeckError } from "../errors.ts";
-import type { Exec } from "../exec.ts";
+import type { Exec } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { TerminalManager } from "../terminal/terminal-manager.ts";

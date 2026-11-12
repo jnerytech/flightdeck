@@ -2,10 +2,10 @@ import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Board, type BoardOptions } from "../../src/board/board.ts";
 import type { Card } from "../../src/board/types.ts";
+import { whichOnPath } from "../../src/kernel/which.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { SessionManager } from "../../src/sessions/session-manager.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { whichOnPath } from "../../src/which.ts";
 import { poll, tempDir } from "./helpers.ts";
 
 // The home guard hides ~/.gitconfig: commits in the temp repos need an identity of their own.

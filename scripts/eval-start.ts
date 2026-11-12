@@ -5,7 +5,7 @@
  * real effects live here; the logic is evalOptions and evalContext, tested with fakes.
  */
 import { spawnSync } from "node:child_process";
-import { whichOnPath } from "../apps/daemon/src/which.ts";
+import { whichOnPath } from "../apps/daemon/src/kernel/which.ts";
 import {
   type EvalContext,
   type EvalHost,

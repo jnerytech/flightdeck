@@ -3,8 +3,7 @@ import { join } from "node:path";
 import { hooksStatus, hookTarget } from "../central/index.ts";
 import { type Config, claudeSettingsPath } from "../config.ts";
 import { runDoctor } from "../doctor.ts";
-import { spawnExec } from "../exec.ts";
-import { DAEMON_VERSION } from "../kernel/index.ts";
+import { DAEMON_VERSION, spawnExec, whichOnPath } from "../kernel/index.ts";
 import { mcpReachable } from "../mcp.ts";
 import { tailscaleIp } from "../pairing.ts";
 import { openCodeState } from "../runtime/index.ts";
@@ -17,7 +16,6 @@ import {
   serviceCommand,
 } from "../service/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
-import { whichOnPath } from "../which.ts";
 import { checkDeps, type DepsEnv } from "./deps.ts";
 import { probeVersion } from "./probe.ts";
 

@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 
 export interface SnapshotRow {
   claudeSessionId: string;

@@ -13,7 +13,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
 import { runHandoff, stampProblem } from "./lib/handoff.ts";
 import { headCi } from "./lib/pr-flow.ts";
 import { securityVerdict } from "./lib/security-gate.ts";

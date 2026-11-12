@@ -74,7 +74,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   `HOME` with a temporary folder, so nothing reads or writes the real `~/.claude`. Other CLIs
   (`gh`, `az`, `ssh`, check commands) are fakes on the test PATH, with a `.cmd` version on
   Windows. No network, and services (`systemctl`, `schtasks`) go through an injected context. To
-  look up executables, use `whichOnPath` (`apps/daemon/src/which.ts`), never `Bun.which(name)`
+  look up executables, use `whichOnPath` (`apps/daemon/src/kernel/which.ts`), never `Bun.which(name)`
   without options.
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
