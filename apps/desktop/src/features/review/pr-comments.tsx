@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { isExternalAuthor } from "../../lib/review.ts";
+import { isExternalAuthor } from "./review.ts";
 
 /** `path:line` of a comment, or just `path` when it has no line. */
 function location(comment: PrComment): string {

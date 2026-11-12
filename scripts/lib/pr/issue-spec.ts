@@ -2,7 +2,7 @@
  * Issue #1918: an issue body is a mini-spec in a checked format (docs/issue-format.md). `checkIssue`
  * lists what is wrong with a body; `runIssue` is the CLI behind `bun run issue -- check|new|edit`.
  */
-import type { GhResult } from "./ci/branch.ts";
+import type { GhResult } from "../ci/branch.ts";
 
 export interface IssueDeps {
   /** Runs `gh <args>` in the repository. */
