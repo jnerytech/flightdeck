@@ -40,6 +40,11 @@ export function ruleNames(config: string | null): Set<string> | null {
   return new Set([...config.matchAll(/\bname:\s*"([^"]+)"/g)].map((found) => found[1] as string));
 }
 
+/** The rules a PR's config adds to main's (#1624); stub. */
+export function newRules(_baseConfig: string | null, _headConfig: string | null): Set<string> {
+  return new Set();
+}
+
 /** The ratchet over git: the baseline at the merge-base with main against the working copy. */
 export function runArchRatchet(deps: {
   git: (args: string[]) => string | null;

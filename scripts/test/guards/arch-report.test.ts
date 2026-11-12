@@ -64,7 +64,7 @@ describe("arch-report (#1610)", () => {
       inputs({
         knownBase: known({ "no-cycles": 4 }),
         knownHead: known({ "no-cycles": 4, "desktop-no-cycle": 5 }),
-        baseRules: new Set(["no-cycles"]),
+        newRules: new Set(["desktop-no-cycle"]),
       }),
     );
     expect(rows.filter((r) => r.ratchet.startsWith("depcruise"))).toEqual([
@@ -75,7 +75,7 @@ describe("arch-report (#1610)", () => {
       inputs({
         knownBase: known({ "no-cycles": 4 }),
         knownHead: known({ "no-cycles": 4, "shared-rule": 1 }),
-        baseRules: new Set(["no-cycles", "shared-rule"]),
+        newRules: new Set(),
       }),
     );
     expect(growing(old)).toEqual([{ ratchet: "depcruise shared-rule", baseline: 0, today: 1 }]);

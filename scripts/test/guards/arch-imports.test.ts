@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { cruise } from "dependency-cruiser";
-import { grownRules, KNOWN, ruleCounts, runArchRatchet } from "../../lib/arch-ratchet.ts";
+import { grownRules, KNOWN, newRules, ruleCounts, runArchRatchet } from "../../lib/arch-ratchet.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 // The real rules: a planted import is judged by what CI runs (`bun run arch`).
@@ -142,25 +142,74 @@ describe("arch-imports: the domain borders (#1591)", () => {
         [`show base1:${KNOWN}`]: known(["no-cycle"]),
         "show base1:.dependency-cruiser.cjs": config,
       })[args.join(" ")] ?? null;
-    const first = runArchRatchet({
+    // The head's baseline and its config; a config that keeps every rule of main and adds one.
+    const head = (
+      violations: string[],
+      headConfig: string | null = `${config}, { name: "desktop-no-cycle" }`,
+    ) => ({
       git,
-      readFile: () => known(["no-cycle", "desktop-no-cycle", "desktop-no-cycle"]),
+      readFile: (path: string) => (path === KNOWN ? known(violations) : headConfig),
     });
+    const first = runArchRatchet(head(["no-cycle", "desktop-no-cycle", "desktop-no-cycle"]));
     expect(first.code).toBe(0);
     expect(first.output).toContain("desktop-no-cycle 2");
-    const grew = runArchRatchet({
-      git,
-      readFile: () => known(["no-cycle", "no-cycle", "desktop-no-cycle"]),
-    });
+    const grew = runArchRatchet(head(["no-cycle", "no-cycle", "desktop-no-cycle"]));
     expect(grew.code).toBe(1);
     expect(grew.output).toContain("no-cycle: 1 -> 2");
     expect(grew.output).not.toContain("desktop-no-cycle:");
-    const empty = runArchRatchet({
-      git,
-      readFile: () => known(["no-cycle", "shared-depends-on-no-domain"]),
-    });
+    const empty = runArchRatchet(head(["no-cycle", "shared-depends-on-no-domain"]));
     expect(empty.code).toBe(1);
     expect(empty.output).toContain("shared-depends-on-no-domain: 0 -> 1");
+  });
+
+  test("a renamed rule does not launder its violations: nothing is exempt when a rule of main is gone (#1624)", () => {
+    const git = (args: string[]) =>
+      ({
+        "merge-base HEAD origin/main": "base1\n",
+        [`show base1:${KNOWN}`]: known(["no-cycle", "no-cycle"]),
+        "show base1:.dependency-cruiser.cjs": '{ name: "no-cycle" }',
+      })[args.join(" ")] ?? null;
+    const renamed = runArchRatchet({
+      git,
+      readFile: (path) =>
+        path === KNOWN ? known(["no-cycle-2", "no-cycle-2"]) : '{ name: "no-cycle-2" }',
+    });
+    expect(renamed.code).toBe(1);
+    expect(renamed.output).toContain("no-cycle-2: 0 -> 2");
+  });
+
+  test("a config the names cannot be read from exempts nothing, in main and at the head (#1624)", () => {
+    const git = (config: string) => (args: string[]) =>
+      ({
+        "merge-base HEAD origin/main": "base1\n",
+        [`show base1:${KNOWN}`]: known(["no-cycle"]),
+        "show base1:.dependency-cruiser.cjs": config,
+      })[args.join(" ")] ?? null;
+    const grown = known(["no-cycle", "no-cycle", "desktop-no-cycle"]);
+    // main's config in single quotes: no name is found, so no rule counts as new
+    const unreadableMain = runArchRatchet({
+      git: git("{ name: 'no-cycle' }"),
+      readFile: (path) => (path === KNOWN ? grown : '{ name: "no-cycle" }'),
+    });
+    expect(unreadableMain.code).toBe(1);
+    // the head's config unreadable: the same
+    const unreadableHead = runArchRatchet({
+      git: git('{ name: "no-cycle" }'),
+      readFile: (path) => (path === KNOWN ? grown : null),
+    });
+    expect(unreadableHead.code).toBe(1);
+  });
+
+  test("the rules new in a config: only those the head adds, when it keeps every rule of main (#1624)", () => {
+    const main = '{ name: "a" }, { name: "b" }';
+    expect(newRules(main, `${main}, { name: "c" }`)).toEqual(new Set(["c"]));
+    expect(newRules(main, main)).toEqual(new Set());
+    // a rule of main is gone (a rename): nothing is new
+    expect(newRules(main, '{ name: "a" }, { name: "c" }')).toEqual(new Set());
+    // a config no name can be read from, or none at all: nothing is new
+    expect(newRules("{ name: 'a' }", '{ name: "a" }, { name: "c" }')).toEqual(new Set());
+    expect(newRules(main, null)).toEqual(new Set());
+    expect(newRules(null, main)).toEqual(new Set());
   });
 
   test("the counts per rule of a known-violations file; an unreadable one counts nothing", () => {
