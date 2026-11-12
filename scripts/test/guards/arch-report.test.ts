@@ -59,6 +59,28 @@ describe("arch-report (#1610)", () => {
     ).toBe(false);
   });
 
+  test("a rule main does not declare yet is at its first baseline: today counts as the baseline (#1624)", () => {
+    const rows = ratchetRows(
+      inputs({
+        knownBase: known({ "no-cycles": 4 }),
+        knownHead: known({ "no-cycles": 4, "desktop-no-cycle": 5 }),
+        newRules: new Set(["desktop-no-cycle"]),
+      }),
+    );
+    expect(rows.filter((r) => r.ratchet.startsWith("depcruise"))).toEqual([
+      { ratchet: "depcruise desktop-no-cycle", baseline: 5, today: 5 },
+      { ratchet: "depcruise no-cycles", baseline: 4, today: 4 },
+    ]);
+    const old = ratchetRows(
+      inputs({
+        knownBase: known({ "no-cycles": 4 }),
+        knownHead: known({ "no-cycles": 4, "shared-rule": 1 }),
+        newRules: new Set(),
+      }),
+    );
+    expect(growing(old)).toEqual([{ ratchet: "depcruise shared-rule", baseline: 0, today: 1 }]);
+  });
+
   test("a workspace flat today but absent from its baseline is a row with baseline 0", () => {
     const rows = ratchetRows(inputs({ flatCounts: { "apps/daemon/test": 1 }, flatBaseline: {} }));
     expect(rows.find((r) => r.ratchet === "test-layout apps/daemon/test")).toEqual({
