@@ -15,7 +15,7 @@ import { SHOTS_DIR, takeShots } from "./demo-shots.ts";
 import { runVisual } from "./demo-visual.ts";
 import { demoPort, freePort } from "./lib/demo/port.ts";
 import { viteCommands } from "./lib/demo/vite.ts";
-import { stateFile } from "./lib/e2e-demo.ts";
+import { stateFile } from "./lib/e2e/demo.ts";
 import { visualMode } from "./lib/visual.ts";
 
 const DESKTOP = resolve(import.meta.dir, "../apps/desktop");

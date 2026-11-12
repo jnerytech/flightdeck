@@ -8,7 +8,7 @@
  */
 import { expect, test } from "@playwright/test";
 import { type Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
-import { JOURNEYS, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { JOURNEYS, VIEWPORTS } from "../lib/e2e/journeys.ts";
 import { type Context, journeys, layout, layoutAbas, layoutWindows } from "./journeys.ts";
 
 /** The demo's address and ids, which the global setup put in the environment. */

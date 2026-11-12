@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { E2E_TEST_DIR, E2E_TEST_MATCH, grepFor, runnerSettings } from "../../lib/e2e-config.ts";
-import { LANGUAGES } from "../../lib/e2e-journeys.ts";
+import { E2E_TEST_DIR, E2E_TEST_MATCH, grepFor, runnerSettings } from "../../lib/e2e/config.ts";
+import { LANGUAGES } from "../../lib/e2e/journeys.ts";
 
 /** The repo root, which the report folder hangs from (the config lives deeper, in scripts/e2e). */
 const ROOT = resolve("/repo", "root");
