@@ -41,7 +41,7 @@ import { createKnowledge } from "./knowledge/wiring.ts";
 import { AlreadyRunningError, acquireLock, EXIT_ALREADY_RUNNING } from "./lock.ts";
 import type { Logger } from "./logger.ts";
 import { createHostLog } from "./logs/wiring.ts";
-import { Maintenance } from "./maintenance/maintenance.ts";
+import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
@@ -86,8 +86,7 @@ import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { createProjectTrust, trustServer } from "./trust/wiring.ts";
-import { autoUpdateOf } from "./updates/auto.ts";
-import { createUpdates } from "./updates/wiring.ts";
+import { createUpdates } from "./updates/index.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
@@ -407,20 +406,18 @@ export async function startDaemon(
     log: logger.log.bind(logger),
   });
   automations.start();
-  // Retention at boot and every 24 h (backups join it in the same daily pass).
-  const maintenance = new Maintenance({
-    db: store.db,
-    dataDir: config.dataDir,
-    retention: config.retention,
-    backup: config.backup,
-    snapshots,
-  });
-  await maintenance.start();
-  const { updates, updater, autoUpdater } = createUpdates(config, {
-    idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
-    log: logger.log.bind(logger),
-  });
-  void updates?.start();
+  const {
+    modules: [maintenanceModule],
+  } = await domains.add(createMaintenance({ db: store.db, config, snapshots }));
+  const {
+    modules: [updatesModule],
+  } = await domains.add(
+    createUpdates(config, {
+      configFile,
+      idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
+      log: logger.log.bind(logger),
+    }),
+  );
   const {
     telemetryStore,
     modules: [telemetryModule],
@@ -685,7 +682,6 @@ export async function startDaemon(
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
     onTerminalSettings,
     central,
-    maintenance,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
     resources: await createResources({
@@ -709,14 +705,6 @@ export async function startDaemon(
       rewinder,
       forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
     }),
-    // A host without the update manifest runs none of them.
-    updates: serverGroup<"updates", "check" | "apply" | "auto">()(
-      present({
-        check: updates,
-        apply: updater,
-        auto: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
-      }),
-    ),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -776,11 +764,10 @@ export async function startDaemon(
         terminals.stop();
         await central.stop();
         await telemetryModule.stop?.();
-        maintenance.stop();
+        await maintenanceModule.stop?.();
         sleeper.stop();
         stall.stop();
-        updates?.stop();
-        autoUpdater?.stop();
+        await updatesModule.stop?.();
         await manager.shutdown();
         await server.stop();
         // Issue #100: no package of a transcript outlives the daemon.
