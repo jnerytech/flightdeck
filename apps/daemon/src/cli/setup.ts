@@ -29,7 +29,7 @@ import { binaryVersion, refusedAddress, stableBinPath, waitHealthy } from "../up
 import { addToUserPath, binDir } from "../user-path.ts";
 import { DAEMON_VERSION } from "../version.ts";
 import { whichOnPath } from "../which.ts";
-import { detectWsl, readProcVersion } from "../wsl-host.ts";
+import { detectWsl, readProcVersion } from "../wsl/index.ts";
 import { type CliArgs, configPath } from "./args.ts";
 import { type ClaudeSettingsCommandDeps, runHooks } from "./claude-settings.ts";
 import { type HostCommandDeps, healthUrl, runService, stopInstalledDaemon } from "./host.ts";

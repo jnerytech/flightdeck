@@ -1,6 +1,10 @@
 import type { BoardColumn, Card, WorkflowInfo } from "@flightdeck/protocol";
+import type { T } from "../../i18n/index.ts";
 import { COLUMNS, filterCards, positionsBefore } from "../../lib/board.ts";
+import type { BulkRefusal } from "../../lib/board-select.ts";
+import { reasonText } from "../../lib/notice-text.ts";
 import { cardInFilter, type WorktreeFilter } from "../../lib/project-tree.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 /** The cards the board shows: the text filter, "only blocked" and the branch picked in the sidebar tree. */
 export function shownCards(
@@ -107,4 +111,31 @@ export function cardMoves(here: Card[], card: Card): { index: number; moves: Car
       },
     ],
   };
+}
+
+/** What the board offers on a host, from the features it announces. */
+export function boardFeatures(features: readonly string[] | undefined): {
+  deps: boolean;
+  roi: boolean;
+  sync: boolean;
+  issues: boolean;
+} {
+  return {
+    deps: hasFeature(features, "deps", false),
+    roi: hasFeature(features, "roi", false),
+    sync: hasFeature(features, "boardsync", false),
+    issues: hasFeature(features, "issues", false),
+  };
+}
+
+/** A card shows "queued" only when no reason badge below says why it waits. */
+export function showsQueuedBadge(card: Pick<Card, "queued" | "queueReason">): boolean {
+  return card.queued && !["quota", "memory", "paused"].includes(card.queueReason ?? "");
+}
+
+/** The refused cards named for a notice: each title with the host's reason, in the app's language. */
+export function refusalNames(refused: readonly BulkRefusal[], t: T): string {
+  return refused
+    .map((r) => `${r.card.title} (${reasonText(t, r.message, r.reason, r.params)})`)
+    .join(", ");
 }
