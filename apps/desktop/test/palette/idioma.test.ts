@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { paletteSections } from "../../src/features/palette/palette.ts";
 import { translator } from "../../src/i18n/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
-import { paletteSections } from "../../src/lib/palette.ts";
 
 /** One online host with a live session, a terminal session, a card and a project. */
 const STATE = {
