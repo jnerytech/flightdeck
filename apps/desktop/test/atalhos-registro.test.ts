@@ -10,7 +10,7 @@ import {
   SHORTCUTS,
   type ShortcutAction,
   shortcutOf,
-} from "../src/lib/shortcuts.ts";
+} from "../src/features/shortcuts/shortcuts.ts";
 
 const key = (k: string, extra: Partial<KeyLike> = {}): KeyLike => ({
   key: k,

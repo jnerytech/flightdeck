@@ -214,7 +214,7 @@ test's baseline, with the issue that renames them.
 | `settings` | setting | The app's own choices on this machine: tray, autostart, global shortcut, update and preview switches |
 | `setup` | setup | The first-day setup screen: the steps a person does in order (host, hooks, project, first session) and the one to do next |
 | `shell` | shell | The app's frame: the page shell with its header slot, the top bar, the breadcrumb, the status bar, the quota bars, the scope menu and the account footer |
-| `shortcuts` | keyboard shortcut | The `?` sheet that lists every shortcut of the registry, by group |
+| `shortcuts` | keyboard shortcut | The registry of shortcuts and its two-key chords, the typing and grid keys, the check of the global shortcut, and the `?` sheet that lists every shortcut by group |
 | `snippets` | snippet | Saved commands and prompts with `{{name}}` places, and their use |
 | `ssh` | SSH destination | SSH destinations, server keys, key delivery and the ssh runs of actions |
 | `summary` | summary | A short summary of a session built from its transcript, with no model call |
