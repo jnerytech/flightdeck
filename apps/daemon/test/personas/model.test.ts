@@ -442,7 +442,7 @@ describe("personas-modelo: pelo protocolo", () => {
   async function connect(personas: Personas | null, root: string) {
     const server = startServer({
       manager: newManager().manager,
-      ...(personas ? { personas } : {}),
+      ...(personas ? { personas: { store: personas } } : {}),
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

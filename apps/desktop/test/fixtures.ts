@@ -671,8 +671,10 @@ export function daemon(
         : {}),
       ...(personaStore
         ? {
-            personas: personaStore,
-            personaSessions: new OpenSessionPersonas({ personas: personaStore, manager, central }),
+            personas: {
+              store: personaStore,
+              sessions: new OpenSessionPersonas({ personas: personaStore, manager, central }),
+            },
           }
         : {}),
       hostName: "h1",

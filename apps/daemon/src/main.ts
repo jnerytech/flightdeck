@@ -667,8 +667,7 @@ export async function startDaemon(
     review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
-    personas: personaStore,
-    personaSessions,
+    personas: serverGroup<"personas">()({ store: personaStore, sessions: personaSessions }),
     terminals,
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
