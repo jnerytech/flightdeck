@@ -2,12 +2,12 @@ import type { TaskFile, TaskResultsResult, Template } from "@flightdeck/protocol
 import { inSequence } from "@flightdeck/protocol";
 import { FolderOpen, Home, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Notices } from "@/components/feedback/notices";
 import { HomeView } from "@/components/simple/home-view";
 import { SettingsView } from "@/components/simple/settings-view";
 import { TaskView } from "@/components/simple/task-view";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { translator } from "../../i18n/index.ts";
 import {
   type AppStore,
