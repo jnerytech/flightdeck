@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settleMaybe, waiter } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { settleMaybe, waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { StatusBarSlot } = await import("../src/components/shell/status-bar.tsx");
-const { HostPage } = await import("../src/features/hosts/page.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { Router } = await import("../src/lib/router.ts");
-const { en } = await import("../src/i18n/en.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { StatusBarSlot } = await import("../../src/components/shell/status-bar.tsx");
+const { HostPage } = await import("../../src/features/hosts/page.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { Router } = await import("../../src/lib/router.ts");
+const { en } = await import("../../src/i18n/en.ts");
 
 setDefaultTimeout(20_000);
 const cleanups: Array<() => unknown> = [];

@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { en } from "../src/i18n/en.ts";
-import { translator } from "../src/i18n/index.ts";
-import { ptBR } from "../src/i18n/pt-BR.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { en } from "../../src/i18n/en.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { ptBR } from "../../src/i18n/pt-BR.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { StatusBar } = await import("../src/components/shell/status-bar.tsx");
+const { StatusBar } = await import("../../src/components/shell/status-bar.tsx");
 
 afterEach(cleanup);
 
