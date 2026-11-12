@@ -2,10 +2,10 @@
 /**
  * `bun run scripts/release-highlights.ts [--since <tag>]` (issue #1334): prints a draft of the
  * release's Highlights from the PRs merged since the last release (or <tag>). The logic is in
- * lib/release-highlights.ts; it only reads, with gh.
+ * lib/release/highlights.ts; it only reads, with gh.
  */
 import { runCommand } from "../apps/daemon/src/board/command.ts";
-import { releaseHighlights } from "./lib/release-highlights.ts";
+import { releaseHighlights } from "./lib/release/highlights.ts";
 
 /** gh with its stderr kept and a deadline. */
 const gh = async (args: string[]) => {

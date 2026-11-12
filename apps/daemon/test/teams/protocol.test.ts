@@ -82,6 +82,9 @@ describe("times-protocolo", () => {
     };
     expect(await featuresOf({})).toContain("teams.permissions");
     expect(await featuresOf({ teams: false })).not.toContain("teams.permissions");
+    // Issue #2310: the same gate announces the effort per member.
+    expect(await featuresOf({})).toContain("teams.effort");
+    expect(await featuresOf({ teams: false })).not.toContain("teams.effort");
   });
 
   test("sem o serviço de times o daemon responde invalid_state", async () => {
