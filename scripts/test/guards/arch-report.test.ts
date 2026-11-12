@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
   type ArchInputs,
+  entryRows,
+  formatEntries,
   formatTable,
   growing,
+  isEntry,
   ratchetRows,
   shapeShares,
 } from "../../lib/arch-report.ts";
@@ -124,6 +127,75 @@ describe("arch-report (#1610)", () => {
       "| a | 3 | 3 | ok |",
       "| b | 3 | 2 | down |",
       "| c | 3 | 4 | UP |",
+    ]);
+  });
+});
+
+describe("arch-report: narrow entries (#1624)", () => {
+  const ENTRY = "apps/desktop/src/features/board/index.ts";
+  const names = (count: number) =>
+    `export { ${Array.from({ length: count }, (_, i) => `n${i}`).join(", ")} };\n`;
+
+  test("an entry is a domain's index.ts under a package's src; a test file or another file is not", () => {
+    expect(isEntry("apps/desktop/src/features/board/index.ts")).toBe(true);
+    expect(isEntry("apps/daemon/src/sessions/index.ts")).toBe(true);
+    expect(isEntry("packages/protocol/src/index.ts")).toBe(true);
+    expect(isEntry("apps/desktop/src/features/board/board.ts")).toBe(false);
+    expect(isEntry("apps/desktop/test/board/index.ts")).toBe(false);
+    expect(isEntry("scripts/lib/index.ts")).toBe(false);
+  });
+
+  test("the export count of an entry counts every name it lists, whatever the form, and skips comments", () => {
+    const text = [
+      'export { a, b } from "./x.ts";',
+      'export type { T, U as V } from "./y.ts";',
+      "export {",
+      "  c, // a note",
+      "  d,",
+      "};",
+      "export const e = 1;",
+      "export function f() {}",
+      "export interface G {}",
+      "export type H = string;",
+      'export * as ns from "./z.ts";',
+      "// export const nope = 1;",
+      "/* export const alsoNope = 1; */",
+    ].join("\n");
+    expect(entryRows(new Map([[ENTRY, text]]), new Map())).toEqual([
+      { entry: ENTRY, base: null, today: 11, broad: false },
+    ]);
+  });
+
+  test("an entry with a bare export-star is reported as broad", () => {
+    const rows = entryRows(new Map([[ENTRY, `${names(2)}export * from "./all.ts";\n`]]), new Map());
+    expect(rows).toEqual([{ entry: ENTRY, base: null, today: 2, broad: true }]);
+    expect(formatEntries(rows)).toContain("broad (export *)");
+  });
+
+  test("a growth over 20% in one PR is flagged; exactly 20%, a smaller growth, a shrink and a new entry are not", () => {
+    const base = new Map([[ENTRY, names(5)]]);
+    const flagged = (count: number) =>
+      formatEntries(entryRows(new Map([[ENTRY, names(count)]]), base)).includes("grew");
+    expect(flagged(7)).toBe(true);
+    expect(flagged(6)).toBe(false);
+    expect(flagged(5)).toBe(false);
+    expect(flagged(3)).toBe(false);
+    expect(formatEntries(entryRows(new Map([[ENTRY, names(9)]]), new Map()))).not.toContain("grew");
+  });
+
+  test("the table lists each entry with its count on main and today, sorted by path", () => {
+    const rows = entryRows(
+      new Map([
+        ["packages/protocol/src/index.ts", names(3)],
+        [ENTRY, names(7)],
+      ]),
+      new Map([[ENTRY, names(5)]]),
+    );
+    expect(formatEntries(rows).split("\n")).toEqual([
+      "| Entry | On main | Today | Note |",
+      "| --- | ---: | ---: | --- |",
+      `| ${ENTRY} | 5 | 7 | grew 40% (over 20%) |`,
+      "| packages/protocol/src/index.ts | - | 3 |  |",
     ]);
   });
 });

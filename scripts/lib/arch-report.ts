@@ -110,3 +110,23 @@ export function formatTable(rows: RatchetRow[]): string {
     ...rows.map((row) => `| ${row.ratchet} | ${row.baseline} | ${row.today} | ${status(row)} |`),
   ].join("\n");
 }
+
+export type EntryRow = { entry: string; base: number | null; today: number; broad: boolean };
+
+/** Whether a tracked path is a domain's `index.ts` (#1624); stub. */
+export function isEntry(_path: string): boolean {
+  return false;
+}
+
+/** One row per entry in `today` (path to source text), against the same entry in `base` (#1624); stub. */
+export function entryRows(
+  _today: ReadonlyMap<string, string>,
+  _base: ReadonlyMap<string, string>,
+): EntryRow[] {
+  return [];
+}
+
+/** A markdown table of the entries with a note for a broad one and for a growth over 20% (#1624); stub. */
+export function formatEntries(_rows: EntryRow[]): string {
+  return "";
+}
