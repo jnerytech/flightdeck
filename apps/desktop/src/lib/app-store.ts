@@ -167,7 +167,7 @@ import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
 import { Webhooks } from "../features/webhook/webhooks.ts";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
-import { I18n, type Key } from "../i18n/index.ts";
+import { I18n } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
 import { AppLog } from "./app-log.ts";
 import type {
@@ -1063,9 +1063,8 @@ export class AppStore {
   }
 
   /** Puts an idle session to sleep now and says, in a toast, what came of it. */
-  async sleepSession(hostId: string, sessionId: string): Promise<void> {
-    const answer = await this.hostCommand(hostId, "session.sleep", { sessionId });
-    if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
+  sleepSession(hostId: string, sessionId: string): Promise<void> {
+    return this.commands.sleep(hostId, sessionId);
   }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
