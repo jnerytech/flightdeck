@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { actionsFor, carriesThirdParty, TRIGGER_TYPES } from "../src/lib/automations.ts";
+import {
+  actionsFor,
+  carriesThirdParty,
+  TRIGGER_TYPES,
+} from "../src/features/automations/automations.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar/helpers.ts";

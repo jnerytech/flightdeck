@@ -9,8 +9,8 @@ import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { actionText, confirmOnText, triggerText } from "../../lib/automations.ts";
 import { AutomationForm } from "./automation-form.tsx";
+import { actionText, confirmOnText, triggerText } from "./automations.ts";
 
 const RUN_TONE: Record<AutomationRun["status"], string> = {
   ok: "text-status-idle",
