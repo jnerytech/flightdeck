@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { Notice } from "../src/lib/app-store.ts";
 import {
   ERROR_TOAST_MS,
   noticeAction,
   noticeLifetime,
   SUCCESS_TOAST_MS,
-} from "../src/lib/notice-lifetime.ts";
+} from "../src/app/notice-lifetime.ts";
+import type { Notice } from "../src/lib/app-store.ts";
 
 const success: Notice = { id: 1, kind: "success", code: "", text: "saved" };
 const error: Notice = { id: 2, kind: "error", code: "invalid_state", text: "no" };

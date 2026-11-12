@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { sameNotice } from "../../src/app/notice-lifetime.ts";
 import type { Notice } from "../../src/lib/app-store.ts";
-import { sameNotice } from "../../src/lib/notice-lifetime.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { settle, stays } from "../wait.ts";
