@@ -4,7 +4,7 @@
  * option keeps the string its accessor threw before the split, even where the two differ.
  */
 import { featureOff } from "../kernel/index.ts";
-import type { ServerOptions } from "../server.ts";
+import type { ServerOptions } from "../server-options.ts";
 
 /** Each gated option, and the feature named when it is off. */
 export const GATES = {
