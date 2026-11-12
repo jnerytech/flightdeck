@@ -44,10 +44,10 @@ No `mock.module` anywhere. Real board, store and git run in the tests.
 
 | path | verdict | how it stays protected |
 |---|---|---|
-| `deps/gate.test.ts` (`startCallers`: greps `.startCard(` in `src`) | delete | the same file runs each start door and asserts `card_blocked` |
-| `account/no-secret.test.ts` (10 regexes over `src` for `.credentials`, `process.env`) | delete the scans | the last test runs `Account` and checks its wire state; a Biome rule if the scan is wanted |
-| `server/gates.test.ts` (`GATES` equals a pinned copy of itself) | delete | `server/features.test.ts` compares the gates to `DAEMON_FEATURES` |
-| `server/features.test.ts` (test 1: regex over `src/server`) | rewrite: derive the used names at run time | typed `featureOff` argument |
+| `deps/gate.test.ts` * (`startCallers`: greps `.startCard(` in `src`) | delete, daemon slice | the same file runs each start door (`startCard`, `startArena`) and asserts `card_blocked` |
+| `account/no-secret.test.ts` * (10 regexes over `src` for `.credentials`, `process.env`) | keep: a deliberate security scan of the account module (never read credentials) | the scan itself; the last test also runs `Account` and checks its wire state |
+| `server/gates.test.ts` * (`GATES` equals a pinned copy of itself) | delete that test, daemon slice | the behavior tests in the same file; `server/features.test.ts` compares the gates to `DAEMON_FEATURES` |
+| `server/features.test.ts` * (test 1: regex over `src/server`, a deliberate scan from #747) | needs a decision | a rewrite needs a product change (type `featureOff` with `DaemonFeature`); tests-only slices cannot do it |
 | `board/contracts.test.ts` ("only card.move asks": reads `src`) | rewrite | assert no other path moves a card |
 | `review/type.test.ts` ("a Rev is forged nowhere": regex `as Rev`) | rewrite | branded type, `tsc` refuses a cast |
 | `core/refusal-english.test.ts`, `core/homedir-ratchet.test.ts` | rewrite | assert at the raise point; a Biome rule |
@@ -57,7 +57,7 @@ No `mock.module` anywhere. Real board, store and git run in the tests.
 | `core/refusals-session.test.ts` (private `live` map), `watch/check-loop-board.test.ts` (private `onSessionEvent`), `runtime/session-runtime.test.ts` (private `starts`), `sessions/sessions.test.ts` (private `open`) | rewrite or delete | public API; the neighbour tests cover the refusal |
 | `resources/wiring.test.ts`, `actions/execution.test.ts`, `actions/timing.test.ts` (fake `Bun.spawn`, a type we do not own) | rewrite | fake `getconf` and the runner on the test PATH |
 | `power/keep-awake.test.ts`, `personas/model.test.ts`, `vault/rules-audit.test.ts` (expected value comes from the function under test) | rewrite | write the literal |
-| `core/coverage-main-0330.test.ts` (two `toBeDefined`/`length > 0` assertions), `git/sync.test.ts` (dead `SRC` helper) | rewrite | exact status, exit code and text |
+| `core/coverage-main-0330.test.ts` * (two `toBeDefined`/`length > 0` assertions), `git/sync.test.ts` * (dead `SRC` helper) | rewrite, daemon slice | exact status, exit code and text |
 | `central/*` (6 files cast `{...} as unknown as Central`) | rewrite later | build the real `Central` |
 
 ### desktop (884 files): the CSS-text debt of #1870 is not gone
@@ -86,8 +86,9 @@ and the CI pyramid time before and after in the PR body, `handoff:check` green, 
 under its baseline.
 
 1. **scripts, slice 1** (this branch): the three safe rows marked done above.
-2. **daemon**: the four source-text scans first (`deps/gate`, `account/no-secret`,
-   `server/features`, `server/gates`), then the own-module spies and private-state casts.
+2. **daemon**: the safe rows marked "daemon slice" above first (`deps/gate`, `server/gates`,
+   `core/coverage-main-0330`, `git/sync`), then the own-module spies and private-state casts.
+   `account/no-secret` stays; `server/features` waits for the product change.
 3. **protocol**: the dictionary and Rust `REASONS` tests, moved to a desktop dictionary test.
 4. **desktop**: the CSS-text deletes (the long first row), then the seeding helper, then the rest.
 5. **scripts, slice 2**: the `ci.yml` merge and the `sonar-*` merges.
