@@ -20,7 +20,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
 
   useEffect(() => {
     let alive = true;
-    void store.runEnvConfig(hostId, card.projectId).then((found) => alive && setInfo(found));
+    void store.runEnv.config(hostId, card.projectId).then((found) => alive && setInfo(found));
     return () => {
       alive = false;
     };
@@ -31,7 +31,7 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
   const live = LIVE.has(status);
   const trust = async () => {
     setTrusting(false);
-    if (info.hash) setInfo(await store.runTrust(hostId, card.projectId, info.hash));
+    if (info.hash) setInfo(await store.runEnv.trust(hostId, card.projectId, info.hash));
   };
   const open = (name: "terminal" | "preview", terminalId: string, url = "", title = "") => {
     if (name === "terminal") store.hostTabs.show({ name, host: hostId, terminalId });
@@ -84,12 +84,12 @@ export function RunPanel(props: Readonly<{ store: AppStore; hostId: string; card
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => void store.runStop(hostId, card.id)}
+                  onClick={() => void store.runEnv.stop(hostId, card.id)}
                 >
                   {t("runEnv.stop")}
                 </Button>
               ) : (
-                <Button size="sm" onClick={() => void store.runStart(hostId, card.id)}>
+                <Button size="sm" onClick={() => void store.runEnv.start(hostId, card.id)}>
                   {t("runEnv.run")}
                 </Button>
               )}
