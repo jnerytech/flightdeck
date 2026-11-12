@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { layoutViolations } from "../../../../scripts/lib/style-lint.ts";
+import { layoutViolations } from "../../../../scripts/lib/styles/style-lint.ts";
 
 const found = (source: string) => layoutViolations(source).map((v) => v.text);
 

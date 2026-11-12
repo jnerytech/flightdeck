@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
 import { canScrollRight } from "@/shared/lib/index.ts";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { EMPTY_PERIOD } from "../../src/features/roi/roi.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";

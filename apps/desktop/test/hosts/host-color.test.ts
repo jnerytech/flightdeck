@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { contrastRatio } from "@/shared/lib/index.ts";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { HOST_COLORS, hostColorIndex, hostColorVar } from "../../src/features/hosts/host-color.ts";
 
 const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));

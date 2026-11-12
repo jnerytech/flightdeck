@@ -39,7 +39,7 @@ const project = (id: string, name: string, hostName: string) => ({
 function setup(picked: string | null, scope: "host" | "all" = "host", offline = false) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
-  store.loadPalette = async () => {};
+  store.palette.load = async () => {};
   store.hostCommand = (async () => null) as never;
   if (picked) store.hostTabs.switchHost(picked);
   store.tabScope.set(scope);

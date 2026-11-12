@@ -955,16 +955,6 @@ export class AppStore {
     return () => clearInterval(timer);
   }
 
-  /** What the palette was used for lately, most recent first. */
-  paletteRecents(): string[] {
-    return this.palette.recents();
-  }
-
-  /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
-  recordPaletteUse(id: string): void {
-    this.palette.recordUse(id);
-  }
-
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
   fillComposer(key: string, text: string): void {
     const waiting = this.state.composerFill[key];
@@ -1078,14 +1068,6 @@ export class AppStore {
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
   loadBoard(hostId: string, projectId: string): Promise<void> {
     return this.boardCards.load(hostId, projectId);
-  }
-
-  /**
-   * What the palette lists besides live state: the Sessões lists, each host's projects and their
-   * cards. Quiet: a host without a board (or offline) just lists less.
-   */
-  loadPalette(): Promise<void> {
-    return this.palette.load();
   }
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */

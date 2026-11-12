@@ -408,7 +408,7 @@ describe("paleta: criar card a partir do texto (issue #147)", () => {
       return real(hostId, type as never, payload as never);
     }) as never;
     await act(async () => {
-      await store.loadPalette();
+      await store.palette.load();
     });
     const [host] = store.getState().hosts;
     const [project] = store.getState().projects[host?.id ?? ""] ?? [];
@@ -426,7 +426,7 @@ describe("paleta: criar card a partir do texto (issue #147)", () => {
       });
     });
     // The palette reloads the projects when it opens: keep the ones that have Issues connected.
-    store.loadPalette = (async () => {}) as never;
+    store.palette.load = (async () => {}) as never;
     await create("#7");
     await settle(() => calls.length === 2);
     expect(calls.map(([type]) => type)).toEqual(["issues.get", "issues.createCard"]);
