@@ -38,31 +38,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { EndWithChangesDialog } from "../components/session/end-with-changes-dialog.tsx";
-import {
-  commandItemsOf,
-  composerModeMenu,
-  ModelOptions,
-  missedAfter,
-  offersModelPicker,
-  queueStep,
-  rememberPosition,
-  type ScrollPosition,
-  StatusBadge,
-  slashFill,
-  submitAction,
-} from "../features/sessions/index.ts";
-import { ToolCall } from "../features/sessions/tool-call.tsx";
-import { translateError } from "../i18n/errors.ts";
-import type { T } from "../i18n/index.ts";
-import type { Answer } from "../lib/app-store.ts";
-import { usd } from "../lib/costs.ts";
-import { nextMode } from "../lib/mode-menu.ts";
-import type { MenuItem } from "../lib/prompt-menu.ts";
-import { activityOf } from "../lib/session-activity.ts";
-import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
-import type { ChatItem, SessionState } from "../lib/session-state.ts";
-import { isBusy } from "../lib/status.ts";
+import { EndWithChangesDialog } from "../../components/session/end-with-changes-dialog.tsx";
+import { translateError } from "../../i18n/errors.ts";
+import type { T } from "../../i18n/index.ts";
+import type { Answer } from "../../lib/app-store.ts";
+import { usd } from "../../lib/costs.ts";
+import { nextMode } from "../../lib/mode-menu.ts";
+import type { MenuItem } from "../../lib/prompt-menu.ts";
+import { activityOf } from "../../lib/session-activity.ts";
+import { type ImageRefusal, readImage, refuseImage } from "../../lib/session-images.ts";
+import type { ChatItem, SessionState } from "../../lib/session-state.ts";
+import { isBusy } from "../../lib/status.ts";
+import { commandItemsOf, slashFill } from "./command-menu.ts";
+import { composerModeMenu, offersModelPicker } from "./composer-pickers.ts";
+import { queueStep, submitAction } from "./composer-queue.ts";
+import { ModelOptions } from "./model-options.tsx";
+import { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
+import { StatusBadge } from "./status-badge.tsx";
+import { ToolCall } from "./tool-call.tsx";
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, ScrollPosition>();
