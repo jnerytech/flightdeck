@@ -61,8 +61,6 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { ReviewFiles } from "./review/files.ts";
-import { SessionFiles } from "./review/session-files.ts";
 import { createChanges, createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
@@ -376,15 +374,16 @@ export async function startDaemon(
     self: selfCommand,
     log: (message) => logger.log(message),
   });
-  // The diff of every session and card, for the review (phase 11), and a plain session's commit
-  // and PR (#1133).
-  const { changes, sessionCommits, sessionPrs } = createChanges({
+  // The diff of every session and card, for the review (phase 11), a plain session's commit
+  // and PR (#1133), and the files viewer.
+  const changes = createChanges({
     db: store.db,
     board,
     log: logger.log.bind(logger),
     terminals,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
+    dataDir: config.dataDir,
   });
   const issues = new Issues({ board, autoApprove });
   // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
@@ -560,7 +559,7 @@ export async function startDaemon(
   });
   // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
   const reviewScanner = new SecretScanner(() => heldValues());
-  const { reviewComments, cardReviews } = createReview({
+  const review = createReview({
     db: store.db,
     changes,
     manager,
@@ -677,12 +676,7 @@ export async function startDaemon(
     webhook: new WebhookSender({ log: logger.log.bind(logger) }),
     telemetryOptIn,
     budgets,
-    changes,
-    sessionCommits,
-    sessionPrs,
-    review: reviewComments,
-    ...(cardReviews ? { cardReview: cardReviews } : {}),
-    sessionFiles: new SessionFiles({ db: store.db }),
+    review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     personas: personaStore,
@@ -698,11 +692,6 @@ export async function startDaemon(
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
     onTerminalSettings,
-    files: new ReviewFiles({
-      changes,
-      dataDir: config.dataDir,
-      allowedRoots: config.allowedRoots,
-    }),
     central,
     maintenance,
     fileLog,

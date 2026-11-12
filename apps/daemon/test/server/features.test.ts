@@ -89,5 +89,19 @@ describe("daemon features: the list in the protocol matches the server", () => {
       quotaOf({ pause: {} }),
       quotaOf({ history: {} }),
     ]).toEqual([[], ["quota"], ["quotaPause"], []]);
+    const reviewNames = ["review", "file.list", "file.search", "cardReview"];
+    const reviewOf = (opts: object) =>
+      featuresOf({ review: opts } as unknown as ServerOptions).filter((f) =>
+        reviewNames.includes(f),
+      );
+    // The diffs announce `review`, the files the explorer and its search; the commits, the PRs,
+    // the comments and which session wrote a file announce nothing of their own.
+    expect([
+      reviewOf({}),
+      reviewOf({ changes: {} }),
+      reviewOf({ files: {} }),
+      reviewOf({ cardReview: {} }),
+      reviewOf({ sessionCommits: {}, sessionPrs: {}, comments: {}, sessionFiles: {} }),
+    ]).toEqual([[], ["review"], ["file.list", "file.search"], ["cardReview"], []]);
   });
 });

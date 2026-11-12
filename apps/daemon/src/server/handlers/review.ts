@@ -93,12 +93,12 @@ export const reviewHandlers = {
     return await server.need("trace").export(claudeSessionId, includeContent === true);
   },
   "changes.get": async (payload, { server }) => {
-    return await server.need("changes").get(payload.target);
+    return await server.needIn("review", "changes").get(payload.target);
   },
   "changes.watch": async (payload, { ws, send, server }) => {
     const { target } = payload;
     const stop = await server
-      .need("changes")
+      .needIn("review", "changes")
       .watch(target, (result) => send({ type: "changes.updated", ...result }));
     ws.data.changeWatchers.get(target)?.();
     ws.data.changeWatchers.set(target, stop);
@@ -108,23 +108,23 @@ export const reviewHandlers = {
     ws.data.changeWatchers.delete(payload.target);
   },
   "review.list": async (payload, { server }) => {
-    return { comments: await server.need("review").list(payload.target) };
+    return { comments: await server.needIn("review", "comments").list(payload.target) };
   },
   "review.add": async (payload, { server }) => {
-    return await server.need("review").add(payload);
+    return await server.needIn("review", "comments").add(payload);
   },
   "review.update": async (payload, { server }) => {
-    return await server.need("review").update(payload.id, payload.body);
+    return await server.needIn("review", "comments").update(payload.id, payload.body);
   },
   "review.remove": (payload, { server }) => {
-    server.need("review").remove(payload.id);
+    server.needIn("review", "comments").remove(payload.id);
   },
   "review.send": async (payload, { server }) => {
-    return await server.need("review").send(payload.target, payload.language);
+    return await server.needIn("review", "comments").send(payload.target, payload.language);
   },
   "changes.revert": async (payload, { server }) => {
     const { target, path, confirm } = payload;
-    return await server.need("files").revert(target, path, confirm === true);
+    return await server.needIn("review", "files").revert(target, path, confirm === true);
   },
   "changes.commit": async (payload, { ws, server }) => {
     const { target, files, message, branch, confirm } = payload;
@@ -137,7 +137,9 @@ export const reviewHandlers = {
         "changes_commit_confirm",
       );
     }
-    return await server.need("sessionCommits").commit(target, { files, message, branch });
+    return await server
+      .needIn("review", "sessionCommits")
+      .commit(target, { files, message, branch });
   },
   "changes.pr": async (payload, { ws, server }) => {
     const { target, title, body, remote, confirm } = payload;
@@ -150,10 +152,10 @@ export const reviewHandlers = {
         "changes_pr_confirm",
       );
     }
-    return await server.need("sessionPrs").open(target, { title, body, remote });
+    return await server.needIn("review", "sessionPrs").open(target, { title, body, remote });
   },
   "changes.undoRevert": async (payload, { server }) => {
     const { target, path, confirm } = payload;
-    return await server.need("files").undoRevert(target, path, confirm === true);
+    return await server.needIn("review", "files").undoRevert(target, path, confirm === true);
   },
 } satisfies Partial<Handlers>;

@@ -224,7 +224,7 @@ export const sessionHandlers = {
     return await server.need("summary").get(claudeSessionId, { question, state });
   },
   "session.files": (payload, { server }) => {
-    return { files: server.need("sessionFiles").list(payload.claudeSessionId) };
+    return { files: server.needIn("review", "sessionFiles").list(payload.claudeSessionId) };
   },
   // Issue #1361: a persona the person switches in a card's session is their input too.
   "session.applyPersona": async (payload, { server }) => {

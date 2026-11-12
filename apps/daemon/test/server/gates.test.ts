@@ -29,11 +29,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   boardsync: "boardsync",
   budgets: "budgets",
   central: "central",
-  changes: "changes",
-  sessionCommits: "sessionCommits",
-  sessionPrs: "sessionPrs",
   costs: "costs",
-  files: "files",
   fileLog: "logs",
   github: "github",
   history: "history",
@@ -51,13 +47,10 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   plugins: "plugins",
   memoryPause: "memoryPause",
   hostPause: "hostPause",
-  cardReview: "cardReview",
   releases: "releases",
-  review: "review",
   rewinder: "rewinder",
   roi: "roi",
   runenv: "runEnv",
-  sessionFiles: "sessionFiles",
   summary: "summary",
   teams: "teams",
   telemetry: "telemetry",
@@ -129,6 +122,16 @@ const GROUPED: Record<string, Record<string, string>> = {
     pause: "quotaPause",
     history: "quotaHistory",
   },
+  // The comments were the flat `review` option; each service keeps its flat option's feature.
+  review: {
+    changes: "changes",
+    sessionCommits: "sessionCommits",
+    sessionPrs: "sessionPrs",
+    comments: "review",
+    cardReview: "cardReview",
+    files: "files",
+    sessionFiles: "sessionFiles",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -178,6 +181,7 @@ describe("server-gates", () => {
       snippets: {},
       hostChecks: {},
       quota: {},
+      review: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),

@@ -495,8 +495,7 @@ describe("session-commit: a plain session's files committed on a new branch (#11
       token: TOKEN,
       allowedRoots: [ctx.root],
       allowedNetworks: ["0.0.0.0/0", "::/0"],
-      changes,
-      sessionCommits: commits,
+      review: { changes, sessionCommits: commits },
     };
     const servers = [startServer(base), startServer({ ...base, peerOf: () => "8.8.8.8" })];
     const clients = servers.map((server) => new FrameClient(server.url));

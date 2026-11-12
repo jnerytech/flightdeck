@@ -206,7 +206,7 @@ describe("reverter-editar", () => {
     const ctx = setup();
     const server = startServer({
       manager: ctx.manager,
-      files: ctx.files,
+      review: { files: ctx.files },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

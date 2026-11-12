@@ -100,7 +100,7 @@ describe("file-terminal: a terminal's folder is a target of the Files viewer (#5
     const ctx = await setup();
     const server = startServer({
       manager: ctx.manager,
-      files: ctx.files,
+      review: { files: ctx.files },
       terminals: ctx.terminals,
       hostName: "h",
       bind: "127.0.0.1",

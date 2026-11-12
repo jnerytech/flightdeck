@@ -7,7 +7,7 @@ import type { Handlers } from "../dispatch.ts";
 
 export const filesHandlers = {
   "files.sessions": (payload, { server }) => {
-    return { sessions: server.need("sessionFiles").sessionsOf(payload.path) };
+    return { sessions: server.needIn("review", "sessionFiles").sessionsOf(payload.path) };
   },
   "fs.dirs": async (payload, { server }) => {
     const { path, hidden } = payload;
@@ -18,10 +18,10 @@ export const filesHandlers = {
     return await listFiles(path, server.opts.allowedRoots, hidden === undefined ? {} : { hidden });
   },
   "file.list": async (payload, { server }) => {
-    return await server.need("files").list(payload.target, payload.dir);
+    return await server.needIn("review", "files").list(payload.target, payload.dir);
   },
   "file.read": async (payload, { server }) => {
-    return await server.need("files").read(payload.target, payload.path);
+    return await server.needIn("review", "files").read(payload.target, payload.path);
   },
   "file.search": async (payload, { ws, server }) => {
     // One search at a time per connection: a newer one replaces the one before it (#905).
@@ -29,13 +29,13 @@ export const filesHandlers = {
     const mine = new AbortController();
     ws.data.search = mine;
     try {
-      return await server.need("files").search(payload, mine.signal);
+      return await server.needIn("review", "files").search(payload, mine.signal);
     } finally {
       if (ws.data.search === mine) ws.data.search = undefined;
     }
   },
   "file.write": async (payload, { server }) => {
     const { target, path, text, expectedHash } = payload;
-    return await server.need("files").write(target, path, text, expectedHash);
+    return await server.needIn("review", "files").write(target, path, text, expectedHash);
   },
 } satisfies Partial<Handlers>;

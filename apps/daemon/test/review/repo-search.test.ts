@@ -618,7 +618,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     });
     const server = startServer({
       manager: ctx.manager,
-      files,
+      review: { files },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
@@ -683,7 +683,7 @@ describe("repo-search: a repository searched by name and by content (#797)", () 
     });
     const server = startServer({
       manager: ctx.manager,
-      files,
+      review: { files },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

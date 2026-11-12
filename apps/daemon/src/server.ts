@@ -153,6 +153,24 @@ interface QuotaServer {
   history?: QuotaHistory;
 }
 
+/** Phase 11, #1593: the review domain's part of the server, each service optional. */
+interface ReviewServer {
+  /** The diff of sessions and cards behind `changes.*`. */
+  changes?: Changes;
+  /** #1133: a plain session's files committed on a new branch in its own checkout. */
+  sessionCommits?: SessionCommits;
+  /** #1133: a plain session's branch pushed and its PR opened. */
+  sessionPrs?: SessionPrs;
+  /** Inline comments behind `review.*`. */
+  comments?: ReviewComments;
+  /** Issue #1439: the cards' second-opinion review, for the near-only `card.review`. */
+  cardReview?: { start(cardId: string, language?: "en" | "pt-BR"): Promise<CardReviewResult> };
+  /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*`. */
+  files?: ReviewFiles;
+  /** Which session wrote which file, behind `files.sessions` and `session.files`. */
+  sessionFiles?: SessionFiles;
+}
+
 /** #1593: the host's checks (`deps/`), each service optional. */
 interface HostChecksServer {
   /** Runs the host's self-check for `doctor.run`. */
@@ -262,8 +280,6 @@ export interface ServerOptions {
   projectGit?: AsyncGitRunner;
   /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
   hostPause?: { status(): HostPauseStatus; set(paused: boolean): void | Promise<void> };
-  /** Issue #1439: the cards' second-opinion review, for the near-only `card.review`. */
-  cardReview?: { start(cardId: string, language?: "en" | "pt-BR"): Promise<CardReviewResult> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
   /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
   peerOf?: (
@@ -426,12 +442,6 @@ export interface ServerOptions {
   bg?: BgService;
   /** Budgets behind the `budget.*` commands (phase 8). */
   budgets?: Budgets;
-  /** The diff of sessions and cards behind `changes.*` (phase 11). */
-  changes?: Changes;
-  /** #1133: a plain session's files committed on a new branch in its own checkout. */
-  sessionCommits?: SessionCommits;
-  /** #1133: a plain session's branch pushed and its PR opened. */
-  sessionPrs?: SessionPrs;
   /** The ssh destinos and what the server offers of them (phase 15, #1593). */
   ssh?: SshServer;
   /** Where the server writes what it refuses and why a connection closed (never a secret). */
@@ -442,12 +452,8 @@ export interface ServerOptions {
   personas?: Personas;
   /** Applying a persona to an open session, behind `session.applyPersona` and `session.clearPersona` (phase 20). */
   personaSessions?: OpenSessionPersonas;
-  /** Inline comments behind `review.*` (phase 11). */
-  review?: ReviewComments;
-  /** Revert and edit behind `changes.revert`, `changes.undoRevert` and `file.*` (phase 11). */
-  files?: ReviewFiles;
-  /** Which session wrote which file, behind `files.sessions` and `session.files` (phase 11). */
-  sessionFiles?: SessionFiles;
+  /** The review of sessions and cards and their files (phase 11, #1593). */
+  review?: ReviewServer;
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
   /** The templates behind `template.list` (phase 33): the built-ins and the host's own files. */
