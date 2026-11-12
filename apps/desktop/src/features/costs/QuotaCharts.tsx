@@ -4,8 +4,8 @@ import { useT } from "@/i18n/context";
 import { Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { usd } from "../../lib/costs.ts";
 import { HISTORY_HOURS, projectionText, SHOWN } from "../../lib/quota.ts";
+import { usd } from "./costs.ts";
 
 const WIDTH = 240;
 const HEIGHT = 60;

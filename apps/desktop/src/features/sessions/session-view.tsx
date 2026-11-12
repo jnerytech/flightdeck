@@ -24,7 +24,7 @@ import { Markdown } from "@/shared/markdown/index.ts";
 import { translateError } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Answer } from "../../lib/app-store.ts";
-import { usd } from "../../lib/costs.ts";
+import { usd } from "../costs/index.ts";
 import { ActivityLine } from "./activity-line";
 import { commandItemsOf, slashFill } from "./command-menu.ts";
 import { composerModeMenu, offersModelPicker } from "./composer-pickers.ts";

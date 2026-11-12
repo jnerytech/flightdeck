@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { groupByProject, hiddenProject, projectCwd, projectLabel } from "../src/lib/usage-rows.ts";
+import {
+  groupByProject,
+  hiddenProject,
+  projectCwd,
+  projectLabel,
+} from "../src/features/costs/usage-rows.ts";
 
 describe("uso-tabela: the rows of a host's usage", () => {
   test("a folder key is labelled by its folder and gives its cwd, whatever the slash", () => {

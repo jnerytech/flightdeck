@@ -1,6 +1,5 @@
-import { projectLabel } from "../../lib/costs.ts";
-import type { DataScope } from "../../lib/data-scope.ts";
 import { rowInFilter, type WorktreeFilter } from "../../lib/project-tree.ts";
+import { type DataScope, projectLabel } from "../costs/index.ts";
 import type { HubRow } from "./hub.ts";
 
 type Where = Pick<HubRow, "hostId" | "projectKey" | "cwd">;

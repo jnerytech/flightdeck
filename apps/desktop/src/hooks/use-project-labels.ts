@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { projectLabels } from "../features/costs/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
-import { projectLabels } from "../lib/costs.ts";
 import { knownProjectKeys } from "../lib/project-keys.ts";
 
 /**

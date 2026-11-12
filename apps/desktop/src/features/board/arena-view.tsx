@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { usd } from "../../lib/costs.ts";
+import { usd } from "../costs/index.ts";
 import { DiffView } from "../review/index.ts";
 import { StatusBadge } from "../sessions/index.ts";
 

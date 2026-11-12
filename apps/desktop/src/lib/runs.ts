@@ -1,6 +1,6 @@
 import type { StepRun, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
+import { usd } from "../features/costs/index.ts";
 import { type T, translator } from "../i18n/index.ts";
-import { usd } from "./costs.ts";
 
 const PT = translator("pt-BR");
 

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { HostConnection } = await import("../src/features/hosts/host-connection.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { HostConnection } = await import("../../src/features/hosts/host-connection.ts");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
