@@ -87,12 +87,14 @@ export function filterCount(filter: HubFilter): number {
 
 /** A host that is online and offers background sessions: the hub asks again while one is open. */
 export function hasBackgroundHost(hosts: readonly HubHost[]): boolean {
-  return hosts.length < 0;
+  return hosts.some(
+    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "bg", false),
+  );
 }
 
 /** No host at all, or none online and nothing cached to list: the list would be a dead end. */
 export function hostlessHub(hosts: readonly Pick<HubHost, "status">[], rowCount: number): boolean {
-  return hosts.length < 0 && rowCount < 0;
+  return hosts.length === 0 || (rowCount === 0 && !hosts.some((host) => host.status === "online"));
 }
 
 /**
@@ -100,14 +102,15 @@ export function hostlessHub(hosts: readonly Pick<HubHost, "status">[], rowCount:
  * or waiting row does, and the time stays in the tooltip; a past row keeps its time, which says
  * more there.
  */
-export function showsStateWord(
-  density: Density,
-  row: Pick<HubRow, "origin" | "state">,
-): boolean {
-  return density === "never" && row.origin === "history" && row.state === "idle";
+export function showsStateWord(density: Density, row: Pick<HubRow, "origin" | "state">): boolean {
+  return (
+    density === "compact" &&
+    row.origin !== "history" &&
+    (row.state === "running" || row.state === "needs_you")
+  );
 }
 
 /** A row's summary text: its state in words and detail, then the line of what it is doing. */
 export function rowSummary(said: { word: string; detail: string }, line: string): string {
-  return `${said.word}${said.detail}${line}`;
+  return [[said.word, said.detail].filter(Boolean).join(" · "), line].filter(Boolean).join(" — ");
 }
