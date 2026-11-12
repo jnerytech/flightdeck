@@ -14,7 +14,7 @@ import {
   type HarnessDraft,
   type SecretScanner,
 } from "@flightdeck/protocol";
-import { walkInside } from "../create-inside.ts";
+import { walkInside } from "../board/index.ts";
 import { FlightdeckError } from "../errors.ts";
 import { samePath } from "../paths.ts";
 import type { Quota } from "../quota/quota.ts";

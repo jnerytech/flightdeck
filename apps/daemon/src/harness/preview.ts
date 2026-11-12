@@ -13,7 +13,7 @@ import {
   type HarnessStack,
   HOOK_KINDS,
 } from "@flightdeck/protocol";
-import { type Walk, walkInside } from "../create-inside.ts";
+import { type Walk, walkInside } from "../board/index.ts";
 import { layoutLike, parseJsonText } from "../json-text.ts";
 import { detectStack } from "./stack.ts";
 import { claudeMd, DENY_RULES, EDIT_MATCHER, reviewerAgent, tddSkill } from "./templates.ts";
