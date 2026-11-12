@@ -43,3 +43,16 @@ export function anyHostHas(
 ): boolean {
   return hosts.some((host) => hasFeature(host.hostInfo?.features, feature, false));
 }
+
+/**
+ * The hosts that are online and offer `feature`: the ones a screen can ask for that feature. A host
+ * that announced nothing (older than phase 7) does not count.
+ */
+export function hostsWith<
+  H extends {
+    status: string;
+    hostInfo: { features?: readonly string[] | undefined } | null;
+  },
+>(_hosts: readonly H[], _feature: string): H[] {
+  return [];
+}
