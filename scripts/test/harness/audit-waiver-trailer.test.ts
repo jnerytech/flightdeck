@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCommits, runAudit } from "../../lib/tdd-audit.ts";
+import { parseCommits, runAudit } from "../../lib/guards/tdd-audit.ts";
 
 const HASH_A = "a".repeat(40);
 const HASH_B = "b".repeat(40);

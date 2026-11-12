@@ -30,8 +30,8 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
   test("a host the app does not know is refused as offline", async () => {
     const mem = memoryPlatform(false, "en");
     const store = new AppStore(mem.platform);
-    const answer = await store
-      .teleportRequest("nowhere")("teleport.cancel", { id: "p1" })
+    const answer = await store.mover
+      .request("nowhere")("teleport.cancel", { id: "p1" })
       .then(
         () => "answered",
         (error: { code?: string }) => error.code ?? String(error),
@@ -41,8 +41,8 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
 
   test("a move between hosts the app does not reach is refused as offline", async () => {
     const store = new AppStore(memoryPlatform(false, "en").platform);
-    const answer = await store
-      .moveSession("alfa", "s1", {
+    const answer = await store.mover
+      .move("alfa", "s1", {
         target: "beta",
         repo: "/work/app",
         confirm: async () => true,
@@ -82,7 +82,7 @@ describe("teleport-store: the preview switch and the hosts' channels (#100)", ()
       "h1",
       fake,
     );
-    const answer = await store.teleportRequest("h1")("teleport.receive", {
+    const answer = await store.mover.request("h1")("teleport.receive", {
       manifest: {} as never,
     });
     expect([

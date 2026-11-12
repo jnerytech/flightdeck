@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { auditBase, runAudit } from "../../lib/tdd-audit.ts";
+import { auditBase, runAudit } from "../../lib/guards/tdd-audit.ts";
 
 const HEAD = "f".repeat(40);
 const BASE = "b".repeat(40);
