@@ -1,6 +1,5 @@
 import type { Card, ChangesResult } from "@flightdeck/protocol";
 import { useState } from "react";
-import { AssistField } from "@/components/assistant/assist-field";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistField } from "@/features/assistant/index.ts";
 import { useT } from "@/i18n/context";
 import { translateError } from "@/i18n/errors";
 import { ActionButton } from "@/shared/feedback/index.ts";

@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { AssistantSettings } = await import("../../src/components/assistant/assistant-settings.tsx");
+const { AssistantSettings } = await import("../../src/features/assistant/assistant-settings.tsx");
 const { Settings } = await import("../../src/features/settings/page.tsx");
 const axe = (await import("axe-core")).default;
 
