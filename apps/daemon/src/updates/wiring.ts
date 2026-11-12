@@ -1,8 +1,10 @@
 import type { Config } from "../config.ts";
+import { present } from "../present.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { osServiceContext } from "../service-os.ts";
 import { DAEMON_VERSION } from "../version.ts";
 import { DaemonUpdater } from "./apply.ts";
-import { AutoUpdater } from "./auto.ts";
+import { AutoUpdater, autoUpdateOf } from "./auto.ts";
 import { UpdateChecker } from "./check.ts";
 
 /**
@@ -13,7 +15,7 @@ import { UpdateChecker } from "./check.ts";
  */
 export function createUpdates(
   config: Config,
-  host: { idle: () => boolean; log: (line: string) => void },
+  host: { configFile: string; idle: () => boolean; log: (line: string) => void },
 ) {
   let autoUpdater: AutoUpdater | undefined;
   const updates = config.updates.manifestUrl
@@ -41,5 +43,25 @@ export function createUpdates(
       log: host.log,
     });
   }
-  return { updates, updater, autoUpdater };
+  const module: DomainModule<"updates"> = {
+    server: {
+      // A host without the update manifest runs none of them.
+      updates: serverGroup<"updates", "check" | "apply" | "auto">()(
+        present({
+          check: updates,
+          apply: updater,
+          auto: autoUpdater && autoUpdateOf(autoUpdater, config, host.configFile),
+        }),
+      ),
+    },
+    // Not awaited: the boot does not wait on the release server (#2094).
+    start: () => {
+      void updates?.start();
+    },
+    stop: () => {
+      updates?.stop();
+      autoUpdater?.stop();
+    },
+  };
+  return { modules: [module] as const };
 }
