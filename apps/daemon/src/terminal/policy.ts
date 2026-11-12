@@ -1,4 +1,4 @@
-import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "../networks.ts";
+import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "../kernel/index.ts";
 
 /** Whether the daemon listens only on this machine (127.x, ::1 or localhost). */
 export function loopbackBind(bind: string): boolean {

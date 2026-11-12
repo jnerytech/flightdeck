@@ -55,7 +55,13 @@ import type { PreviewPart } from "./harness/preview.ts";
 import type { HarnessTemplates, TemplateMarkdown } from "./harness/templates-store.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import type { Issues } from "./issues/issues.ts";
-import { DAEMON_VERSION, FlightdeckError } from "./kernel/index.ts";
+import {
+  DAEMON_VERSION,
+  DEFAULT_ALLOWED_NETWORKS,
+  FlightdeckError,
+  ipInNetworks,
+  tokenMatches,
+} from "./kernel/index.ts";
 import type { KnowledgeSwitch } from "./knowledge/switch.ts";
 import type { FileLog } from "./logs/file-log.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
@@ -63,7 +69,6 @@ import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
-import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
@@ -109,7 +114,6 @@ import type { TeleportInbox } from "./teleport/receive.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
 import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager } from "./terminal/terminal-manager.ts";
-import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
