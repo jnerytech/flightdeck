@@ -42,7 +42,6 @@ export { holdAwake } from "./keep-awake.ts";
 export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";
 export { pairingErrorText } from "./pairing-text.ts";
 export { RenameHostDialog } from "./rename-host-dialog.tsx";
-export { parseRequestLink, requestLink } from "./request-link.ts";
 export { HostRosterSlice, type NewHost } from "./roster-store.ts";
 export {
   type HostUpdateCore,

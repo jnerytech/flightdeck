@@ -1,5 +1,5 @@
 import type { SessionEventOf, TeamInfo } from "@flightdeck/protocol";
-import { parseRequestLink, requestLink } from "@/features/hosts/index.ts";
+import { parseRequestLink, requestLink } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { SidebarSession } from "../../lib/app-store.ts";

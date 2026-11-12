@@ -3,7 +3,7 @@ import type {
   ExternalSession,
   ExternalUpdated,
 } from "@flightdeck/protocol";
-import { requestLink } from "@/features/hosts/index.ts";
+import { requestLink } from "@/features/permissions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";

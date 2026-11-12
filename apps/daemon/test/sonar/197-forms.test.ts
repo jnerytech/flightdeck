@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { refusalCounts } from "../../../../scripts/lib/refusal-ratchet.ts";
+import { refusalCounts } from "../../../../scripts/lib/ratchets/refusal.ts";
 import { type GhIn, listAlerts, PER_SOURCE } from "../../src/github/alerts.ts";
 import { inspectPlugin } from "../../src/plugins/inventory.ts";
 import { tempDir } from "../support/helpers.ts";

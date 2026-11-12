@@ -12,5 +12,6 @@ export { GateText } from "./gate-text.tsx";
 export { HIGH_RISK_HOLD_MS } from "./hold.ts";
 export { HoldButton } from "./hold-button.tsx";
 export { RulesSection } from "./project-rules.tsx";
+export { parseRequestLink, requestLink } from "./request-link.ts";
 export { PermissionsSlice } from "./store.ts";
 export { wirePermissions } from "./wire.ts";

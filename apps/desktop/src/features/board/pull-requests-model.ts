@@ -1,7 +1,7 @@
 import type { Card, WatchInfo } from "@flightdeck/protocol";
-import { formatAgo } from "../i18n/format.ts";
-import type { T } from "../i18n/index.ts";
-import type { AppState } from "./app-store.ts";
+import { formatAgo } from "../../i18n/format.ts";
+import type { T } from "../../i18n/index.ts";
+import type { AppState } from "../../lib/app-store.ts";
 
 /** One open pull request: the card that holds it, and where that card lives. */
 export interface PullRequestRow {
