@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { PrProvider } from "../../src/board/pr.ts";
-import { PrWatcher, readWatchSettings, type WatchTrigger } from "../../src/watch/watch.ts";
+import { readWatchSettings } from "../../src/watch/settings.ts";
+import { PrWatcher, type WatchTrigger } from "../../src/watch/watch.ts";
 import { cleanups, comment, fixture } from "../support/watch-helpers.ts";
 
 setDefaultTimeout(30_000);
