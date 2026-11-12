@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
+import { DAEMON_VERSION } from "../../src/kernel/version.ts";
 import { acquireLock } from "../../src/lock.ts";
 import { type CliDeps, runCli } from "../../src/main.ts";
 import {
@@ -13,7 +14,6 @@ import {
   type SetupDeps,
 } from "../../src/service/setup.ts";
 import { stableBinPath } from "../../src/service/update.ts";
-import { DAEMON_VERSION } from "../../src/version.ts";
 import {
   defaultHostName,
   detectWsl,

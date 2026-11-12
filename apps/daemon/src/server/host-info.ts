@@ -9,12 +9,11 @@ import {
   FEATURE_SERVICE_INSTALL,
   type HostRuntime,
 } from "@flightdeck/protocol";
+import { DAEMON_VERSION, present } from "../kernel/index.ts";
 import { logPathFor } from "../logs/serve.ts";
-import { present } from "../present.ts";
 import type { OpenCodeInfo } from "../runtime/opencode-discovery.ts";
 import type { ServerOptions } from "../server.ts";
 import { isVaultTransport } from "../vault/vault.ts";
-import { DAEMON_VERSION } from "../version.ts";
 import type { ServerContext } from "./context.ts";
 
 /** What `host.info` says about OpenCode: no executable fingerprint, no finding paths. */
