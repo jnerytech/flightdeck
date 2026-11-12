@@ -34,10 +34,18 @@ module.exports = {
     },
     {
       name: "shared-depends-on-no-domain",
-      comment: "shared/ is the most stable code: it imports no domain (SDP).",
+      comment:
+        "shared/ is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597).",
       severity: "error",
       from: { path: "^apps/[^/]+/src/shared/" },
-      to: { path: "^apps/[^/]+/src/", pathNot: "^apps/[^/]+/src/shared/" },
+      to: {
+        path: "^apps/[^/]+/src/",
+        pathNot: [
+          "^apps/[^/]+/src/shared/",
+          "^apps/desktop/src/components/ui/",
+          "^apps/desktop/src/lib/utils\\.ts$",
+        ],
+      },
     },
     {
       name: "domain-depends-on-no-adapter",
@@ -52,5 +60,7 @@ module.exports = {
     doNotFollow: { path: "node_modules" },
     exclude: { path: "(^|/)node_modules/" },
     enhancedResolveOptions: { extensions: [".ts", ".tsx", ".js"] },
+    // The desktop imports through the `@/` alias; without this its edges are never seen (#1597).
+    tsConfig: { fileName: "apps/desktop/tsconfig.json" },
   },
 };
