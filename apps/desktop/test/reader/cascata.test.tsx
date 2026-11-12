@@ -71,14 +71,14 @@ async function open(opts: Opts) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const asked: Array<string | undefined> = [];
-  const real = store.historyGet.bind(store);
-  store.historyGet = (async (host: string, id: string, cursor?: string, tail?: boolean) => {
+  const real = store.history.get.bind(store.history);
+  store.history.get = (async (host: string, id: string, cursor?: string, tail?: boolean) => {
     asked.push(cursor);
     // An old daemon strips `tail`: page one comes back, and it knows no `cursor` field.
     const page = await real(host, id, cursor, opts.oldDaemon ? false : tail);
     if (page && opts.oldDaemon) delete (page as { cursor?: string }).cursor;
     return page;
-  }) as typeof store.historyGet;
+  }) as typeof store.history.get;
   render(<App store={store} />);
   await act(async () => {
     await store.addHost({ name: "alfa", url: server.url, token: TOKEN });

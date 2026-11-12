@@ -108,7 +108,10 @@ function usePin(
   return useMemo(
     () =>
       claudeId
-        ? { pinned, toggle: () => void store.setMeta(hostId, claudeId, { pinned: !pinned }) }
+        ? {
+            pinned,
+            toggle: () => void store.sessionLists.setMeta(hostId, claudeId, { pinned: !pinned }),
+          }
         : undefined,
     [store, hostId, claudeId, pinned],
   );

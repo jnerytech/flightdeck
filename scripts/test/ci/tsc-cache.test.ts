@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
-import { type CacheFiles, seedCache } from "../../lib/tsc-cache.ts";
+import { type CacheFiles, seedCache } from "../../lib/typecheck/tsc-cache.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 /** An in-memory cache: path to its last change in ms. */

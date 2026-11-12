@@ -4,11 +4,8 @@ import type {
   CommandResults,
   EffortLevel,
   HistoryChanged,
-  HistoryGetResult,
-  HistoryListResult,
   MessageInfo,
   SessionImage,
-  SessionMeta,
   SessionRecap,
   SettableMode,
   TeamsUpdatedFrame,
@@ -163,10 +160,8 @@ import type {
   AppState,
   AppStoreOptions,
   GateRef,
-  HistoryFilter,
   HostView,
   Notice,
-  PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
@@ -258,20 +253,20 @@ export class AppStore {
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
   /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
-  private readonly permissions: PermissionsSlice;
+  readonly permissions: PermissionsSlice;
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
   /** What a host tells about the Claude sessions started in a terminal (#1596). */
   readonly external: ExternalSessionsSlice;
   /** What the Sessions screen lists from the online hosts (#1596). */
-  private readonly sessionLists: SessionListsSlice;
+  readonly sessionLists: SessionListsSlice;
   /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
   private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** The sessions that keep their full event stream: the open one and the followed (#1596). */
-  private readonly subscriptions: SessionSubscriptions;
+  readonly subscriptions: SessionSubscriptions;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
@@ -951,21 +946,6 @@ export class AppStore {
     return () => clearInterval(timer);
   }
 
-  /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
-  onOpenRequest(listener: (item: PendingItem) => void): () => void {
-    return this.permissions.onOpen(listener);
-  }
-
-  /** A `flightdeck://request` link: the window comes up on it; false for any other link. */
-  openRequestLink(url: string): boolean {
-    return this.permissions.openLink(url);
-  }
-
-  /** Approves or denies the oldest waiting request, if it is still the one shown (#245). */
-  decideOldest(decision: "approve" | "deny", shown: string): void {
-    this.permissions.decideOldest(decision, shown);
-  }
-
   /** Hands `text` to the message box of the session `key`; it waits there until the box takes it. */
   fillComposer(key: string, text: string): void {
     const waiting = this.state.composerFill[key];
@@ -1026,14 +1006,6 @@ export class AppStore {
   /** Selects a session: only the open one keeps a subscription to its full event stream. */
   select(hostId: string, sessionId: string | null): void {
     this.subscriptions.select(hostId, sessionId);
-  }
-
-  /**
-   * Follows a session's full event stream without opening it, for as long as the returned function
-   * has not been called (the tiles of a project follow several at once).
-   */
-  watchSession(hostId: string, sessionId: string): () => void {
-    return this.subscriptions.watchSession(hostId, sessionId);
   }
 
   /** Puts an idle session to sleep now and says, in a toast, what came of it. */
@@ -1099,27 +1071,6 @@ export class AppStore {
       }
     }
     area.close(tabId);
-  }
-
-  /** A host's indexed sessions; errors go to the banner and give `null`. */
-  historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
-    return this.history.list(hostId, filter);
-  }
-
-  /** One page of a host's transcript; errors go to the banner and give `null`. */
-  historyGet(
-    hostId: string,
-    claudeSessionId: string,
-    cursor?: string,
-    tail = false,
-    refused?: (reason: string | undefined) => void,
-  ): Promise<HistoryGetResult | null> {
-    return this.history.get(hostId, claudeSessionId, cursor, tail, refused);
-  }
-
-  /** Continues an indexed transcript as a managed session and opens it. */
-  resumeHistory(hostId: string, claudeSessionId: string, force: boolean): Promise<string | null> {
-    return this.history.resume(hostId, claudeSessionId, force);
   }
 
   /**
@@ -1193,11 +1144,6 @@ export class AppStore {
    */
   refreshHub(): Promise<void> {
     return this.sessionLists.refresh();
-  }
-
-  /** Renames, pins or archives a session (managed or external) of a host. */
-  setMeta(hostId: string, claudeSessionId: string, patch: Partial<SessionMeta>): Promise<void> {
-    return this.sessionLists.setMeta(hostId, claudeSessionId, patch);
   }
 
   /**

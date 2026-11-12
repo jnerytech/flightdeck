@@ -86,7 +86,7 @@ function SessionTile(
   const { store, hostId, row } = props;
   const { t } = store.i18n;
   const sessionId = row.sessionId as string;
-  useEffect(() => store.watchSession(hostId, sessionId), [store, hostId, sessionId]);
+  useEffect(() => store.subscriptions.watchSession(hostId, sessionId), [store, hostId, sessionId]);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
   const lines = lastLines(session);
   const pending = pendingOf(session);

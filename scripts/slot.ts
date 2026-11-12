@@ -20,7 +20,7 @@ import {
 import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
 import { logHook } from "../.claude/hooks/log.ts";
-import { offerToOomKiller } from "./lib/oom-guard.ts";
+import { offerToOomKiller } from "./lib/machine/oom-guard.ts";
 import {
   type ProcessInfo,
   type ProcReader,

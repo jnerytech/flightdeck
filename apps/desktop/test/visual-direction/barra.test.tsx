@@ -188,7 +188,9 @@ describe("direcao-visual: barra lateral", () => {
     await settle(() => hubRows(store.getState()).some((r) => r.title === "Gerenciada"));
     const row = hubRows(store.getState()).find((r) => r.title === "Gerenciada");
     await act(async () => {
-      await store.setMeta(row?.hostId as string, row?.claudeSessionId as string, { pinned: true });
+      await store.sessionLists.setMeta(row?.hostId as string, row?.claudeSessionId as string, {
+        pinned: true,
+      });
     });
     await settle(() => inAside().queryByRole("button", { name: "Fixadas" }) !== null);
     expect(inAside().queryByRole("button", { name: "Fixadas" })).not.toBeNull();
