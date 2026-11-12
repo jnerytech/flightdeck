@@ -1,4 +1,4 @@
-/** Helpers with no domain (paths, bytes, widths, backoff, contrast, status tone), public entry (#1589): another folder imports from here, never a file inside. */
+/** Helpers with no domain (paths, bytes, widths, backoff, contrast, status tone, stored JSON), public entry (#1589): another folder imports from here, never a file inside. */
 export { backoffDelay } from "./backoff.ts";
 export { contrastRatio } from "./contrast.ts";
 export { languageFor, loadLanguage } from "./file-language.ts";
@@ -20,4 +20,5 @@ export {
 } from "./paths.ts";
 export { canScrollRight } from "./scroll-edge.ts";
 export { isBusy, statusTone } from "./status.ts";
+export { readStored } from "./stored-json.ts";
 export { useHeight, useWidth } from "./use-width.ts";

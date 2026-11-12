@@ -1,4 +1,6 @@
 import type { PermissionMode } from "@flightdeck/protocol";
+import { z } from "zod";
+import { readStored } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 
 /** Where the New session form's last choices are kept on this computer. */
@@ -31,37 +33,34 @@ export const CLAUDE_MODELS: readonly string[] = ["opus", "sonnet", "haiku"];
 
 const NOTHING: NewSessionPrefsValue = { mode: "default", model: "", folders: {} };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 const isKept = (mode: unknown): mode is PermissionMode => KEPT_MODES.has(mode as PermissionMode);
 
 /** No model (the account's default) or one the form offers. */
 const isOffered = (model: unknown): model is string =>
   model === "" || (typeof model === "string" && CLAUDE_MODELS.includes(model));
 
+const Folder = z.object({ root: z.string(), sub: z.string() });
+
 /** What is kept, read leniently: a part that is missing or of the wrong kind starts from nothing. */
-function read(storage: Platform["storage"]): NewSessionPrefsValue {
-  try {
-    const kept: unknown = JSON.parse(storage.getItem(NEW_SESSION_PREFS_KEY) ?? "{}");
-    if (!isRecord(kept)) return NOTHING;
-    const folders: Record<string, RememberedFolder> = {};
-    if (isRecord(kept.folders)) {
-      for (const [host, folder] of Object.entries(kept.folders)) {
-        if (isRecord(folder) && typeof folder.root === "string" && typeof folder.sub === "string") {
-          folders[host] = { root: folder.root, sub: folder.sub };
-        }
-      }
-    }
-    return {
-      mode: isKept(kept.mode) ? kept.mode : NOTHING.mode,
-      model: isOffered(kept.model) ? kept.model : NOTHING.model,
-      folders,
-    };
-  } catch {
-    return NOTHING;
-  }
-}
+const Stored = z.object({
+  mode: z.custom<PermissionMode>(isKept).catch(NOTHING.mode),
+  model: z.custom<string>(isOffered).catch(NOTHING.model),
+  // A host whose folder does not fit is dropped; the others stay.
+  folders: z
+    .record(z.string(), z.unknown())
+    .catch({})
+    .transform((all) =>
+      Object.fromEntries(
+        Object.entries(all).flatMap(([host, folder]) => {
+          const kept = Folder.safeParse(folder);
+          return kept.success ? [[host, kept.data]] : [];
+        }),
+      ),
+    ),
+});
+
+const read = (storage: Platform["storage"]): NewSessionPrefsValue =>
+  readStored(storage, NEW_SESSION_PREFS_KEY, Stored, NOTHING);
 
 export class NewSessionPrefs {
   /** Replaced, never changed in place. */
