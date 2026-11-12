@@ -24,8 +24,9 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   `shared/layout/` (the page, panel, stack, list and table primitives), `shared/feedback/`
   (dialogs, notices, busy and action buttons), `shared/status/` (dots, meters, progress),
   `shared/lib/` (formatting, keys, paths, width and draft helpers). Moving `components/layout`,
-  `feedback`, `status` and `markdown` there is one PR per folder (the first PR of each folder
-  adds the `GLOSSARY.md` row and the `index.ts`).
+  `feedback`, `status` and `markdown` there is one PR per folder (each adds its `index.ts`; a
+  `shared/` folder is not a domain, so it gets no `GLOSSARY.md` row: the domain-glossary guard
+  reads only the `features/` folders).
 - `shared/` may import `components/ui/` and `lib/utils.ts` (`cn`), the two domain-free leaves that stay where
   they are; the depcruise rule `shared-depends-on-no-domain` allows them and nothing else outside
   `shared/` (decision of fd-coordinator, 2026-11-12). `bun run arch` now cruises `apps/desktop/src`, so
@@ -50,7 +51,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `shell/` | `features/shell/` (new domain, GLOSSARY row) | account footer, quota bars, scope menu, status bar, top bar; with `app-shell.tsx` and `breadcrumb.tsx` from `layout/` |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (the sheet already lives there) |
 | `simple/` | `features/home/` (simple mode) | home, question and task views, settings view; `ui/simple/SimpleApp.tsx` goes with it |
-| `status/` | `shared/status/` | meter, progress ring, status dot and text |
+| `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
 | `tabs/` | `features/tabs/` | overflow and switcher (the tab bar already lives there); **theirs** if the session view needs the file, ask first |
 | `ui/` | **stay** | vendored shadcn |
 | `whatsnew/` | `features/appupdate/` | the "what's new" dialog is part of the update story |
@@ -135,7 +136,7 @@ prefix. Tests move with their file in the same PR.
 - One folder or one file group per PR, structure only: `refactor(...)` commits, tests change
   only their import paths (the structure guard fails the PR otherwise), baselines
   (`fast-coverage-baseline.json`, `apps/desktop/layout-baseline.json`, `src-size`) updated.
-- A new `features/<x>`, `shared/<x>` or `app/` folder gets its `GLOSSARY.md` Domains row in the same PR.
+- A new `features/<x>` folder gets its `GLOSSARY.md` Domains row in the same PR; `shared/<x>` and `app/` are not domains and get none.
 - A file that two domains import is not moved into either: it goes to `shared/` first.
 - Names in the table are the proposal. When a move finds the file belongs elsewhere (the
   importers say so), the PR fixes this table in the same commit.

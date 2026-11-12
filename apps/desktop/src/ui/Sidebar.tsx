@@ -17,8 +17,6 @@ import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStor
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
-import { ProgressRing } from "@/components/status/progress-ring";
-import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +39,7 @@ import { rowRoute } from "@/features/sessions/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
+import { ProgressRing, StatusDot } from "@/shared/status/index.ts";
 import { pendingCount } from "../features/needs-you/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";

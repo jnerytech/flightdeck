@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Pin } from "lucide-react";
 import { useState } from "react";
-import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
+import { type StateTone, StatusDot } from "@/shared/status/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { TreeNode, TreeProject, WorktreeFilter } from "../../lib/project-tree.ts";

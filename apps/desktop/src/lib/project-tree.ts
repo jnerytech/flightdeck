@@ -1,5 +1,5 @@
 import type { Card, Project } from "@flightdeck/protocol";
-import type { StateTone } from "@/components/status/status-dot";
+import type { StateTone } from "@/shared/status/index.ts";
 import type { AppState } from "./app-store.ts";
 import type { HubRow } from "./hub.ts";
 import { basename, isInside } from "./paths.ts";

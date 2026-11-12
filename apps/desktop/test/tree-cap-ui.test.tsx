@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { StateTone } from "../src/components/status/status-dot.tsx";
 import type { TreeProject, WorktreeFilter } from "../src/lib/project-tree.ts";
 import type { Route } from "../src/lib/router.ts";
+import type { StateTone } from "../src/shared/status/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 

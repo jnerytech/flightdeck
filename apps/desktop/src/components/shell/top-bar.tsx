@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
-import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +27,7 @@ import type { Key, T } from "@/i18n/index";
 import { hostDotView } from "@/lib/host-status";
 import type { Theme } from "@/lib/theme";
 import { IconTip } from "@/shared/feedback/index.ts";
+import { StatusDot } from "@/shared/status/index.ts";
 
 /** A host as the top bar shows it: its name and how its connection is. */
 export interface TopBarHostItem {
