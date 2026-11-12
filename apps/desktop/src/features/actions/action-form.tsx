@@ -11,8 +11,8 @@ import { actionIssueText, refusalText } from "@/i18n/errors";
 import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import type { ActionSeed } from "../../lib/snippets.ts";
 import { AppDialogContent, InlineNotice } from "../../shared/feedback/index.ts";
+import type { ActionSeed } from "../snippets/index.ts";
 
 type Approval = ActionInfo["approval"];
 const APPROVALS: Approval[] = ["first-per-session", "always", "never"];
