@@ -177,7 +177,6 @@ import type {
   HistoryFilter,
   HostView,
   Notice,
-  PendingItem,
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
@@ -269,7 +268,7 @@ export class AppStore {
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
   readonly tray: TraySlice;
   /** Answering a permission request, with the hold a high-risk allow needs (#245, #1596). */
-  private readonly permissions: PermissionsSlice;
+  readonly permissions: PermissionsSlice;
   private noticeSeq = 0;
   /** What a host's session summaries tell the person, and the teams whose workers it folds (#1596). */
   readonly summaries: SummariesSlice;
@@ -960,21 +959,6 @@ export class AppStore {
     if (this.options.githubTicker) return this.options.githubTicker(tick);
     const timer = setInterval(tick, 1500);
     return () => clearInterval(timer);
-  }
-
-  /** "Abrir" on a request outside the window (tray, notification): the app shows it. */
-  onOpenRequest(listener: (item: PendingItem) => void): () => void {
-    return this.permissions.onOpen(listener);
-  }
-
-  /** A `flightdeck://request` link: the window comes up on it; false for any other link. */
-  openRequestLink(url: string): boolean {
-    return this.permissions.openLink(url);
-  }
-
-  /** Approves or denies the oldest waiting request, if it is still the one shown (#245). */
-  decideOldest(decision: "approve" | "deny", shown: string): void {
-    this.permissions.decideOldest(decision, shown);
   }
 
   /** What the palette was used for lately, most recent first. */

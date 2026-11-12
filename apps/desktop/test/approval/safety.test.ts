@@ -111,7 +111,7 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
   test("H3: the tray never grants a vault request: it offers only Open, and an Approve that reaches it opens it", async () => {
     const { store, hostId, push, types, fromTray } = await setup();
     const opened: string[] = [];
-    store.onOpenRequest((item) => opened.push(item.requestId));
+    store.permissions.onOpen((item) => opened.push(item.requestId));
     push({});
     await settle(() => needsYou(store.getState()).length === 1);
     // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.

@@ -132,7 +132,7 @@ function storeWith(items: PendingItem[]) {
   hidden.respondTo = async (hostId, requestId, decision) => {
     answered.push([hostId, requestId, decision]);
   };
-  store.onOpenRequest((item) => opened.push(item.requestId));
+  store.permissions.onOpen((item) => opened.push(item.requestId));
   return { store, answered, opened };
 }
 
@@ -142,8 +142,8 @@ describe("paleta-v2-ui: approve and deny the oldest request", () => {
       request({ requestId: "r1" }),
       request({ requestId: "r2", createdAt: "2026-11-02T11:00:00Z" }),
     ]);
-    store.decideOldest("approve", "h1/r1");
-    store.decideOldest("deny", "h1/r1");
+    store.permissions.decideOldest("approve", "h1/r1");
+    store.permissions.decideOldest("deny", "h1/r1");
     expect(answered).toEqual([
       ["h1", "r1", "allow"],
       ["h1", "r1", "deny"],
@@ -152,16 +152,16 @@ describe("paleta-v2-ui: approve and deny the oldest request", () => {
 
   test("a high-risk request is opened to be held, never approved from here", () => {
     const { store, answered, opened } = storeWith([request({ requestId: "r1", risk: "high" })]);
-    store.decideOldest("approve", "h1/r1");
+    store.permissions.decideOldest("approve", "h1/r1");
     expect(answered).toEqual([]);
     expect(opened).toEqual(["r1"]);
-    store.decideOldest("deny", "h1/r1");
+    store.permissions.decideOldest("deny", "h1/r1");
     expect(answered).toEqual([["h1", "r1", "deny"]]);
   });
 
   test("with nothing waiting it does nothing", () => {
     const { store, answered, opened } = storeWith([]);
-    store.decideOldest("approve", "h1/r1");
+    store.permissions.decideOldest("approve", "h1/r1");
     expect([answered, opened]).toEqual([[], []]);
   });
 
@@ -170,8 +170,8 @@ describe("paleta-v2-ui: approve and deny the oldest request", () => {
     const { store, answered, opened } = storeWith([
       request({ requestId: "r2", createdAt: "2026-11-02T11:00:00Z" }),
     ]);
-    store.decideOldest("approve", "h1/r1");
-    store.decideOldest("deny", "h1/r1");
+    store.permissions.decideOldest("approve", "h1/r1");
+    store.permissions.decideOldest("deny", "h1/r1");
     expect([answered, opened]).toEqual([[], ["r2", "r2"]]);
   });
 });
