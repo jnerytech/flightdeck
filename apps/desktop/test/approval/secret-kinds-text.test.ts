@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { SECRET_KINDS } from "@flightdeck/protocol";
-import { refusalText as assistantText } from "../src/features/assistant/refusal-text.ts";
-import { translateError } from "../src/i18n/errors.ts";
-import { type Key, translator } from "../src/i18n/index.ts";
+import { refusalText as assistantText } from "../../src/features/assistant/refusal-text.ts";
+import { translateError } from "../../src/i18n/errors.ts";
+import { type Key, translator } from "../../src/i18n/index.ts";
 
 /**
  * Issue #714: every kind the scanner can name has a text in each language, and every screen that

@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { uiIdle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { uiIdle } from "../wait.ts";
 
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ChangesPanel } = await import("../src/features/review/changes-panel.tsx");
-const { DiffView } = await import("../src/features/review/diff-view.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { ChangesPanel } = await import("../../src/features/review/changes-panel.tsx");
+const { DiffView } = await import("../../src/features/review/diff-view.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
-import type { AppStore } from "../src/lib/app-store.ts";
+import type { AppStore } from "../../src/lib/app-store.ts";
 
 afterEach(cleanup);
 
