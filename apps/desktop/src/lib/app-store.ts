@@ -128,7 +128,7 @@ import {
   wireSummaries,
 } from "../features/sessions/index.ts";
 import { type SettingsSlice, wireSettings } from "../features/settings/index.ts";
-import { probeAfter, SetupSettings } from "../features/setup/index.ts";
+import { SetupProbes, SetupSettings } from "../features/setup/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
 import { TabScopeController } from "../features/tabs/tab-scope.ts";
@@ -242,23 +242,6 @@ const newHostView = (config: HostConfig): HostView => ({
 
 function describeError(error: unknown): string {
   return error instanceof RequestError ? `${error.code}: ${error.message}` : String(error);
-}
-
-/**
- * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
- * they are not read yet. A look from the Setup screen or a host page reads them for the checklist
- * only; the one at connect also opens the list the screens use (see `refreshSetup`).
- */
-function setupWants(
-  features: readonly string[] | undefined,
-  projectsRead: boolean,
-  githubAsked: boolean,
-) {
-  return {
-    hooks: hasFeature(features, "central", false),
-    github: githubAsked && hasFeature(features, "github", false),
-    projects: !projectsRead && hasFeature(features, "workflows", false),
-  };
 }
 
 /**
@@ -607,6 +590,17 @@ export class AppStore {
     this.terminalFont = new TerminalFontController(platform.storage);
     this.terminalReader = new TerminalReaderSetting(platform.storage);
     this.setup = new SetupSettings(platform.storage);
+    this.setupProbes = new SetupProbes({
+      host: (hostId) => {
+        const host = this.state.hosts.find((h) => h.id === hostId);
+        return host && { status: host.status, features: host.hostInfo?.features };
+      },
+      projectsRead: (hostId) => this.state.projects[hostId] !== undefined,
+      request: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
+      rememberProjects: (hostId, projects) => this.projectList.remember(hostId, projects),
+      probes: () => this.state.setupProbes,
+      setProbes: (setupProbes) => this.update({ setupProbes }),
+    });
     this.cacheTimer = new CacheTimerSettings(platform.storage);
     this.clock = new SharedClock(
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
@@ -791,6 +785,8 @@ export class AppStore {
   readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
+  /** #1596: what the setup checklist asked each host. */
+  private readonly setupProbes: SetupProbes;
   /** The prompt cache countdown on idle sessions: off by default (issue #159). */
   readonly cacheTimer: CacheTimerSettings;
   /** One 1-second clock for every countdown on screen. */
@@ -1291,39 +1287,16 @@ export class AppStore {
     return this.link.watchChanges(hostId, target, listener);
   }
 
-  /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
   /**
    * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
    * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
    * panel); what it said last stays until then.
    */
-  async refreshSetup(
+  refreshSetup(
     hostId: string,
     options: { github?: boolean; connect?: boolean } = {},
   ): Promise<void> {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    if (host?.status !== "online") return;
-    const wants = setupWants(
-      host.hostInfo?.features,
-      options.connect !== true && this.state.projects[hostId] !== undefined,
-      options.github === true,
-    );
-    const { hooks: wantsHooks, github: wantsGithub, projects: wantsProjects } = wants;
-    if (!wantsHooks && !wantsGithub && !wantsProjects) return;
-    const [hooks, github, projects] = await Promise.all([
-      wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
-      wantsGithub ? this.hostRequest(hostId, "github.status", {}) : null,
-      wantsProjects ? this.hostRequest(hostId, "project.list", {}) : null,
-    ]);
-    // The host may have gone while it was asked.
-    if (!this.state.hosts.some((h) => h.id === hostId)) return;
-    // At connect the probe's list is also the screens' (the sidebar tree needs it on any page, #721):
-    // one request, not two.
-    if (options.connect === true && wantsProjects && projects?.ok) {
-      this.projectList.remember(hostId, projects.data.projects);
-    }
-    const probe = probeAfter(this.state.setupProbes[hostId], wants, { hooks, github, projects });
-    this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
+    return this.setupProbes.refresh(hostId, options);
   }
 
   /** Asks the host for its `host.info` again (after a change of its settings). */
