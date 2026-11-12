@@ -129,6 +129,7 @@ import {
   type ExternalSessionsSlice,
   type Finish,
   finishOutcome,
+  HISTORY_LIST_LIMIT,
   hubRows,
   initialSessionsState,
   loadFinished,
@@ -412,6 +413,9 @@ export class AppStore {
     this.history = wireHistory(this.kernel, {
       searchTimeoutMs: options.searchTimeoutMs,
       select: (hostId, sessionId) => this.select(hostId, sessionId),
+      listLimit: HISTORY_LIST_LIMIT,
+      offline: () => new RequestError("offline", "unknown host"),
+      reason: (error) => (error instanceof RequestError ? error.reason : undefined),
     });
     this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
     this.sessions = wireSessions(this.kernel, { storage: platform.storage });

@@ -1,20 +1,25 @@
 import type {
   CommandPayload,
+  CommandResults,
   HistoryGetResult,
   HistoryListResult,
   HistorySearchHit,
   HistorySearchResult,
 } from "@flightdeck/protocol";
-import { type HostConnection, RequestError } from "../hosts/index.ts";
+
+/** What the slice sends on a host's connection: the store's `HostConnection` fits it. */
+interface HistoryConnection {
+  request<C extends "history.list" | "history.get" | "history.resume">(
+    type: C,
+    payload: CommandPayload<C>,
+  ): Promise<CommandResults[C]>;
+}
 
 /** Filters of the per-host history list. */
 export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
 
 /** Messages per `history.get` page in the transcript reader. */
 export const HISTORY_PAGE = 50;
-
-/** Sessions shown by the per-host history list (the newest ones; filters narrow it down). */
-export const HISTORY_LIST_LIMIT = 200;
 
 export interface GlobalHit extends HistorySearchHit {
   hostId: string;
@@ -51,7 +56,13 @@ export interface HistoryCore {
   /** How long the search waits for each host. */
   timeoutMs(): number;
   /** A host's open connection, if it has one. */
-  connection(hostId: string): HostConnection | undefined;
+  connection(hostId: string): HistoryConnection | undefined;
+  /** Sessions shown by the per-host history list (the sessions domain's `HISTORY_LIST_LIMIT`). */
+  listLimit: number;
+  /** The connection's error for a host it does not know. */
+  offline(): Error;
+  /** Why a host refused a request, when `error` is the connection's refusal. */
+  reason(error: unknown): string | undefined;
   /** Shows an error in the banner. */
   fail(error: unknown): void;
   /** Opens a session (a resumed transcript). */
@@ -125,8 +136,8 @@ export class HistorySlice {
   async list(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
     try {
       const conn = this.core.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
+      if (!conn) throw this.core.offline();
+      return await conn.request("history.list", { ...filter, limit: this.core.listLimit });
     } catch (error) {
       this.core.fail(error);
       return null;
@@ -144,7 +155,7 @@ export class HistorySlice {
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.core.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
+      if (!conn) throw this.core.offline();
       return await conn.request("history.get", {
         claudeSessionId,
         limit: HISTORY_PAGE,
@@ -152,9 +163,9 @@ export class HistorySlice {
         ...(tail && !cursor ? { tail: true } : {}),
       });
     } catch (error) {
-      refused?.(error instanceof RequestError ? error.reason : undefined);
+      refused?.(this.core.reason(error));
       // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
-      if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
+      if (this.core.reason(error) !== "transcript_not_indexed") {
         this.core.fail(error);
       }
       return null;
@@ -168,7 +179,7 @@ export class HistorySlice {
   async resume(hostId: string, claudeSessionId: string, force: boolean): Promise<string | null> {
     try {
       const conn = this.core.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
+      if (!conn) throw this.core.offline();
       const { sessionId } = await conn.request("history.resume", {
         claudeSessionId,
         ...(force ? { force: true } : {}),
