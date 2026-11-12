@@ -14,8 +14,8 @@ import {
   type FakeClaudeEvent,
   installFakeClaude,
 } from "../apps/daemon/test/support/fake-claude.ts";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
-import { type Pending, pollUntil } from "./lib/smoke-poll";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
+import { type Pending, pollUntil } from "./lib/smoke/poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
