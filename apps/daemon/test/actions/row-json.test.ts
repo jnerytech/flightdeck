@@ -19,17 +19,18 @@ describe("action row JSON: the columns are parsed, not cast (#1609)", () => {
   });
 
   test("a definition that does not fit is refused, never half read", () => {
-    const refusal = (text: string) => {
-      try {
-        definitionOf(text);
-        return "read";
-      } catch (error) {
-        return (error as Error).message;
-      }
-    };
-    expect([refusal("{not json"), refusal(JSON.stringify({ name: "x", run: "rm -rf /" }))]).toEqual(
-      ["text is not JSON", "JSON does not fit (5 problem(s): invalid_type)"],
+    expect(() => definitionOf("{not json")).toThrow("text is not JSON");
+    expect(() => definitionOf(JSON.stringify({ name: "x", run: "rm -rf /" }))).toThrow(
+      "JSON does not fit",
     );
+  });
+
+  test("a key the row holds beyond the declared ones is kept", () => {
+    const stored = {
+      ...{ name: "a", description: "", run: ["x"], env: {}, params: {}, timeoutS: 1 },
+      later: 1,
+    };
+    expect(definitionOf(JSON.stringify(stored))).toEqual(stored as ActionDef);
   });
 
   test("the pinned files come back as a path to hash record, and bad text is refused", () => {
