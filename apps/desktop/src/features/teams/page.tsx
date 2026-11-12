@@ -2,7 +2,6 @@ import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { Copy, MoreHorizontal, UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { AssistField } from "@/components/assistant/assist-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AssistField } from "@/features/assistant/index.ts";
 import {
   ModelSelect,
   type PermissionChoice,

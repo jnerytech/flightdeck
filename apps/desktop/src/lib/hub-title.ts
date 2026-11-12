@@ -1,5 +1,5 @@
 import type { SessionPersona } from "@flightdeck/protocol";
-import { basename } from "./paths.ts";
+import { basename } from "@/shared/lib/index.ts";
 
 export interface TitleSources {
   name: string | null;

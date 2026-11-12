@@ -1,7 +1,7 @@
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, sessionKey } from "@/lib/app-store.ts";
-import { basename } from "@/lib/paths.ts";
 import type { Route } from "@/lib/router.ts";
+import { basename } from "@/shared/lib/index.ts";
 
 /** One step of the header's path: a label and, when it can be clicked, where it goes. */
 export interface Crumb {

@@ -19,6 +19,7 @@ import type {
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import { ShellPrefs, SidebarFoldController } from "@/features/shell/index.ts";
+import { basename, isInside } from "@/shared/lib/index.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
   type ActivitySlice,
@@ -162,7 +163,6 @@ import { hubRows, takeHubHost } from "./hub.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { basename, isInside } from "./paths.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "./quiet-snooze.ts";

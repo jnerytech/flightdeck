@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { languageFor, loadLanguage } from "../../src/lib/file-language.ts";
+import { languageFor, loadLanguage } from "@/shared/lib/index.ts";
 
 describe("file-language: which language colors a file in the viewer (#506)", () => {
   test("by extension, without regard to case, and by a few whole names", () => {

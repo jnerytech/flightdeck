@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
-import { canScrollRight } from "@/lib/scroll-edge";
+import { canScrollRight } from "@/shared/lib/index.ts";
 
 /** The fade: an overlay beside the frame, from the surface to transparent, that never takes a click. */
 const FADE =

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { SECRET_KINDS } from "@flightdeck/protocol";
-import { refusalText as assistantText } from "../src/components/assistant/refusal-text.ts";
+import { refusalText as assistantText } from "../src/features/assistant/refusal-text.ts";
 import { translateError } from "../src/i18n/errors.ts";
 import { type Key, translator } from "../src/i18n/index.ts";
 

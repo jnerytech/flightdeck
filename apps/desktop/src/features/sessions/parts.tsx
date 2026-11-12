@@ -3,8 +3,8 @@ import { createContext, forwardRef, type ReactNode, useContext, useRef } from "r
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/i18n/context";
-import { useHeight, useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
+import { useHeight, useWidth } from "@/shared/lib/index.ts";
 
 /** Below this width of the header's own box it is one line and the actions fold into a menu. */
 const NARROW_HEADER = 560;

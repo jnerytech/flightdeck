@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { breadcrumbSteps, holdsFolder, trimTrailingSeparators } from "../src/lib/paths.ts";
+import { breadcrumbSteps, holdsFolder, trimTrailingSeparators } from "@/shared/lib/index.ts";
 
 describe("paths", () => {
   test("holdsFolder: the root itself and what is below it, with either separator, and nothing else", () => {

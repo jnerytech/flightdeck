@@ -35,8 +35,9 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
   (the translation hook, domain-free) and `hooks/use-in-flight.ts` (the in-flight stage hook), which the
   feedback and layout primitives need. `components/layout/form.tsx` was a third exception only until the
   layout move (the field-row context now lives in `shared/layout/field-row-context.ts`, a leaf). The three
-  helpers `lib/list-width.ts`, `lib/use-width.ts` and `lib/scroll-edge.ts` are allowed until the `shared/lib/`
-  move. Each exception is a path in the rule, so it shows in `.dependency-cruiser.cjs`.
+  helpers `lib/list-width.ts`, `lib/use-width.ts` and `lib/scroll-edge.ts` were allowed only until the
+  `shared/lib/` move (they live there now, so that entry is gone). Each exception is a path in the rule, so
+  it shows in `.dependency-cruiser.cjs`.
 - `components/ui/` **stays**: it is the vendored shadcn folder (`components.json` alias,
   Biome override, knip and coverage exclusions all name it), and the shadcn CLI writes there.
 - `hooks/` is outside the three folders this map covers; a hook follows its domain the same way
@@ -135,7 +136,7 @@ prefix. Tests move with their file in the same PR.
 | `watch-*.ts` | `features/watch/` |
 | `webhook*.ts` | `features/webhook/` |
 | `app-log.ts`, `kernel.ts` | `app/` |
-| `backoff.ts`, `format-bytes.ts`, `paths.ts`, `utils.ts`, `file-language.ts`, `contrast.ts`, `status.ts`, `list-width.ts`, `use-width.ts`, `scroll-edge.ts` | `shared/lib/` (the last three are used by `shared/layout`, so they are shared; until they move, the shared rule allows those three paths) |
+| `backoff.ts`, `format-bytes.ts`, `paths.ts`, `file-language.ts`, `contrast.ts`, `status.ts`, `list-width.ts`, `use-width.ts`, `scroll-edge.ts` | `shared/lib/` (**moved**, behind an `index.ts`; the last three are used by `shared/layout`). `lib/utils.ts` (`cn`) **stays** in `lib/` per the #1597 decision; `host-connection.ts` imports `shared/lib/backoff.ts` by a relative path because the daemon's heartbeat test loads it and the daemon tsconfig has no `@/` alias |
 
 ## Rules for the moves
 

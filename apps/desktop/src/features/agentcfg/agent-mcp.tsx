@@ -17,6 +17,7 @@ import {
   LoadingState,
   NativeSelect,
 } from "@/shared/layout/index.ts";
+import { isInside } from "@/shared/lib/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import {
   commandLine,
@@ -26,7 +27,6 @@ import {
   type McpDraft,
   serverFromDraft,
 } from "../../lib/mcp-form.ts";
-import { isInside } from "../../lib/paths.ts";
 
 /** The protocol's names, which the screen shows as they are. */
 /** Sessions of a managed run that can still answer `mcp.status`. */
