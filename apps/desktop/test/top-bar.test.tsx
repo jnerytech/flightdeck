@@ -8,7 +8,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TopBarActions, TopBarHost } = await import("../src/components/shell/top-bar.tsx");
+const { TopBarActions, TopBarHost } = await import("../src/features/shell/top-bar.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { memoryPlatform, TOKEN } = await import("./fixtures.ts");
