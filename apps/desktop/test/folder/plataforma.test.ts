@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { AppStore } from "../src/lib/app-store.ts";
-import { tauriPlatform } from "../src/platform/tauri/index.ts";
-import { createWebPlatform } from "../src/platform/web/index.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { tauriPlatform } from "../../src/platform/tauri/index.ts";
+import { createWebPlatform } from "../../src/platform/web/index.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 describe("pasta: the system's folder dialog", () => {
   test("tauri: the desktop shell opens it through pick_folder, and cancelling gives null", async () => {

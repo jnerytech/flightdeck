@@ -1,6 +1,5 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { DepsResult, DoctorResult } from "@flightdeck/protocol";
 import { hooksStatus, hookTarget } from "../central/index.ts";
 import { type Config, claudeSettingsPath } from "../config.ts";
 import { runDoctor } from "../doctor.ts";
@@ -9,6 +8,7 @@ import { lingerState } from "../linger.ts";
 import { mcpReachable } from "../mcp.ts";
 import { tailscaleIp } from "../pairing.ts";
 import { openCodeState } from "../runtime/index.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { daemonCommand, type ServiceContext, serviceCommand } from "../service.ts";
 import { osServiceContext } from "../service-os.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
@@ -55,10 +55,7 @@ export function createHostChecks({
   claudePath,
   account,
   options,
-}: HostChecksDeps): {
-  doctor: (appVersion?: string) => Promise<DoctorResult>;
-  deps: () => Promise<DepsResult>;
-} {
+}: HostChecksDeps) {
   // What both read: this executable, the service, linger and the hooks it would install.
   const self = daemonCommand(process.execPath, Bun.main);
   const serviceContext = () => (options.serviceContext ?? osServiceContext)(false);
@@ -66,7 +63,7 @@ export function createHostChecks({
     options.serviceInstalled ?? (async () => (await serviceCommand(serviceContext())) !== null);
   const linger = options.linger ?? (() => lingerState(serviceContext()));
   const hooks = () => hooksStatus(claudeSettingsPath(), hookTarget(config, self));
-  return {
+  const hostChecks = serverGroup<"hostChecks">()({
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
     doctor: (appVersion) =>
@@ -108,5 +105,7 @@ export function createHostChecks({
         account,
         hooks,
       }),
-  };
+  });
+  const module: DomainModule<"hostChecks"> = { server: { hostChecks } };
+  return { modules: [module] as const };
 }

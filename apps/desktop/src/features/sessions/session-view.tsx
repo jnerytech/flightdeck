@@ -9,10 +9,10 @@ import {
 } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ApprovalCard } from "@/components/approval/approval-card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useWand, type WandBinding, WandButton, WandPanel } from "@/features/assistant/index.ts";
+import { ApprovalCard } from "@/features/permissions/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";

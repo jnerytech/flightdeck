@@ -284,7 +284,7 @@ export async function startDaemon(
     projectForCwd: (cwd) => board.projectForCwd(cwd),
     log: (line) => logger.log(line),
   });
-  const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
+  await domains.add(createKnowledge({ config, configFile, trust: trustForKnowledge }));
   const manager = createSessionManager({
     folderLocks,
     store,
@@ -541,13 +541,15 @@ export async function startDaemon(
   // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
   // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
   await projectTrust.prepareSessions(manager.list());
-  const harness = createHarness({
-    runtime,
-    quota,
-    scanner: snippetScanner,
-    cwd: assistantDir(config.dataDir),
-    config,
-  });
+  await domains.add(
+    createHarness({
+      runtime,
+      quota,
+      scanner: snippetScanner,
+      cwd: assistantDir(config.dataDir),
+      config,
+    }),
+  );
   // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   const assistant = assistantService({
     runtime,
@@ -581,15 +583,17 @@ export async function startDaemon(
     gates: { hostPause, quota, memory: memoryGate },
     usage: usageIndex,
   });
-  const hostChecks = createHostChecks({
-    config,
-    env,
-    opencode,
-    claude,
-    claudePath,
-    account: async () => (await account?.get())?.status ?? null,
-    options,
-  });
+  await domains.add(
+    createHostChecks({
+      config,
+      env,
+      opencode,
+      claude,
+      claudePath,
+      account: async () => (await account?.get())?.status ?? null,
+      options,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -624,8 +628,6 @@ export async function startDaemon(
       picker: true,
     }),
     alerts: (cwd) => listAlerts(runGhIn, cwd),
-    knowledge: serverGroup<"knowledge">()(knowledge),
-    harness: serverGroup<"harness", "draft">()(harness),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
     // Issue #1344: "While you were away": what happened since a time, from what is stored.
     activity: (since, limit) =>
@@ -643,7 +645,6 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    hostChecks: serverGroup<"hostChecks">()(hostChecks),
     sessionSettings: serverGroup<"sessionSettings">()({
       ...sessionSettings.server,
       commands: true,

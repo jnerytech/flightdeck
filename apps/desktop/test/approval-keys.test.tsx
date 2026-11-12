@@ -42,7 +42,7 @@ function setup(info: PlainInfo, lang: "en" | "pt-BR" = "en", locked = false, hol
   return calls;
 }
 
-const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
+const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
 
 /** The key presses that must never approve: select-all and a held-down A. */
 const NOT_APPROVE = [
