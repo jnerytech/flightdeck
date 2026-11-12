@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Inline, Stack } = await import("../src/shared/layout/stack.tsx");
-const { Panel } = await import("../src/shared/layout/panel.tsx");
-const { ListRow } = await import("../src/shared/layout/list-row.tsx");
-const { TwoPane } = await import("../src/shared/layout/two-pane.tsx");
+const { Inline, Stack } = await import("../../src/shared/layout/stack.tsx");
+const { Panel } = await import("../../src/shared/layout/panel.tsx");
+const { ListRow } = await import("../../src/shared/layout/list-row.tsx");
+const { TwoPane } = await import("../../src/shared/layout/two-pane.tsx");
 
 afterEach(cleanup);
 

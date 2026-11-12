@@ -6,7 +6,7 @@ registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { HoldButton } = await import("../src/features/permissions/hold-button.tsx");
-const { QuestionCard } = await import("../src/components/simple/question-card.tsx");
+const { QuestionCard } = await import("../src/features/home/question-card.tsx");
 
 afterEach(cleanup);
 

@@ -9,7 +9,7 @@ import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TaskView } = await import("../src/components/simple/task-view.tsx");
+const { TaskView } = await import("../src/features/home/task-view.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 
 afterEach(cleanup);

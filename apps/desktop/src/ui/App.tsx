@@ -8,7 +8,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Notices } from "@/components/feedback/notices";
-import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
@@ -35,7 +34,7 @@ import { preloadMarkdown } from "@/shared/markdown/index.ts";
 import { GlobalSearch, paletteRoute } from "../features/palette/index.ts";
 import { ShortcutsSheet } from "../features/shortcuts/index.ts";
 import { AskpassPrompt } from "../features/ssh/askpass-prompt.tsx";
-import { tabIntent } from "../features/tabs/index.ts";
+import { TabSwitcherHost, tabIntent } from "../features/tabs/index.ts";
 import { TerminalCloseDialog } from "../features/terminal/index.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
