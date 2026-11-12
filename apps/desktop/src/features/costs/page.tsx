@@ -36,6 +36,13 @@ import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-
 import { basename } from "../../lib/paths.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
+import {
+  costsHosts,
+  hostsOffering,
+  labelledKeys,
+  periodProjectKeys,
+  withFilter,
+} from "./costs-derive.ts";
 import { awayHost, hostScope, routeScopeOf, topModel } from "./costs-scope.ts";
 import { DayChart } from "./day-chart.tsx";
 import { QuotaCharts } from "./QuotaCharts.tsx";
@@ -295,25 +302,19 @@ export const CostsPage = memo(function CostsPage(props: {
   const number = useFormatNumber();
   const { store } = props;
   const state = useStoreSlice(store, COSTSPAGE_KEYS);
-  const hosts = state.hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
-  );
+  const hosts = costsHosts(state.hosts);
   const { setRouteHost, setRouteProject, projectKey, hostSide, dataScope, endVisit, showAllHosts } =
     useCostsRoute(store, state, props);
   const { acrossHosts, hostId, hostIds } = hostScope(hostSide, hosts);
   const away = awayHost(hostSide, state.hosts, hosts);
-  const personaHosts = hosts.filter(
-    (h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "personas", false),
-  );
+  const personaHosts = hostsOffering(hosts, hostIds, "personas");
   const withTelemetry = hasFeature(
     hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "telemetry",
     false,
   );
   const withPersonas = personaHosts.length > 0;
-  const roiHosts = hosts
-    .filter((h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "roi", false))
-    .map((h) => h.id);
+  const roiHosts = hostsOffering(hosts, hostIds, "roi").map((h) => h.id);
   const withRoi = roiHosts.length > 0;
   const personaKey = personaHosts.map((h) => h.id).join("|");
   // The names of the personas the breakdown shows (phase 20).
@@ -351,10 +352,8 @@ export const CostsPage = memo(function CostsPage(props: {
     placed: JSON.stringify([state.clientList, state.clientOverrides]),
   });
   const status = useCostsStatus(store, hostId, acrossHosts);
-  const setFilter = (name: keyof typeof filters, value: string) => {
-    const { [name]: _old, ...rest } = filters;
-    setFilters(value ? { ...rest, [name]: value } : rest);
-  };
+  const setFilter = (name: keyof typeof filters, value: string) =>
+    setFilters(withFilter(filters, name, value));
   const exportCsv = () => exportCosts(store, { acrossHosts, hostId, hosts }, filter);
   const byDay = summary?.byDay ?? [];
   // The same session can come from two hosts: each row needs a key of its own.
@@ -362,22 +361,13 @@ export const CostsPage = memo(function CostsPage(props: {
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
   // They are told apart against every project the app knows, as on Home (issue #881).
-  const labels = useProjectLabels(store, [
-    ...new Set([
-      ...(all?.byProject ?? []).map((p) => p.projectKey),
-      ...(summary?.byProject ?? []).map((p) => p.projectKey),
-      ...(summary?.topSessions ?? []).map((s) => s.projectKey),
-      ...(projectKey ? [projectKey] : []),
-    ]),
-  ]);
+  const labels = useProjectLabels(store, labelledKeys({ all, summary }, projectKey));
   const projectName = (key: string) => labels.get(key) ?? projectLabel(key);
   /** The period's projects, for the scope menu; the chosen one stays listed (slice 4). */
-  const projects = [
-    ...new Set([
-      ...(all?.byProject ?? []).map((p) => p.projectKey),
-      ...(projectKey ? [projectKey] : []),
-    ]),
-  ].map((key) => ({ key, label: projectName(key) }));
+  const projects = periodProjectKeys(all, projectKey).map((key) => ({
+    key,
+    label: projectName(key),
+  }));
   // The split by client is the whole spend of the period: it is not shown for one client.
   const scope = store.clientScope.get();
   const byClient =
