@@ -1,9 +1,9 @@
 import { WandSparkles } from "lucide-react";
 import { useContext, useMemo } from "react";
 import { Inline, Stack } from "@/components/layout/stack";
-import { ShortArea } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ShortArea } from "@/features/sessions/parts";
 import type { T } from "@/i18n/index";
 import { isMac } from "@/lib/shortcuts";
 import { wordDiff } from "@/lib/word-diff";

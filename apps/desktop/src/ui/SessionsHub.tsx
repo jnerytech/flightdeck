@@ -7,7 +7,6 @@ import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState } from "@/components/layout/states";
 import { ViewToggle } from "@/components/layout/view-toggle";
-import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +45,7 @@ import {
   showsStateWord,
   worktreesOf,
 } from "@/features/sessions/index.ts";
+import { RuntimeBadge } from "@/features/sessions/runtime-badge";
 import { SessionCard, STATE_TONES } from "@/features/sessions/session-card";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";

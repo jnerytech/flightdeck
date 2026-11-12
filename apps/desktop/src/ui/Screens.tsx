@@ -4,7 +4,6 @@ import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { Page } from "@/components/layout/page";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
-import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
 import {
@@ -17,6 +16,7 @@ import {
 } from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
+import { EarlierTurns } from "@/features/sessions/earlier-turns";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute, sessionTabOffers } from "@/features/sessions/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";

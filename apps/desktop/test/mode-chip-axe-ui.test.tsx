@@ -9,8 +9,8 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ModeChip } = await import("../src/components/session/mode-chip.tsx");
-const { ModelChip } = await import("../src/components/session/model-chip.tsx");
+const { ModeChip } = await import("../src/features/sessions/mode-chip.tsx");
+const { ModelChip } = await import("../src/features/sessions/model-chip.tsx");
 const axe = (await import("axe-core")).default;
 
 setDefaultTimeout(30_000);
