@@ -47,7 +47,7 @@ import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { Names } from "./names/names.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
-import { createPermissions } from "./permissions/wiring.ts";
+import { createPermissions, type PermissionsDeps } from "./permissions/wiring.ts";
 import { createPersonas } from "./personas/wiring.ts";
 import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
@@ -238,14 +238,18 @@ export async function startDaemon(
   const snapshots = new Snapshots({ db: store.db });
   // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
   // below) and the costs.
-  const { risk, autoApprove } = createPermissions({
-    db: store.db,
-    runtime,
-    config,
-    home: userHome(env),
-    projectForCwd: (cwd) => board.projectForCwd(cwd),
-    usage: { record: (entry) => usageIndex.record(entry) },
-  });
+  const { risk, autoApprove } = await domains.add(
+    createPermissions({
+      db: store.db,
+      runtime,
+      config,
+      home: userHome(env),
+      // The return type is named: `board` is made below from `autoApprove`, and `domains.add` would loop.
+      projectForCwd: (cwd): ReturnType<PermissionsDeps["projectForCwd"]> =>
+        board.projectForCwd(cwd),
+      usage: { record: (entry) => usageIndex.record(entry) },
+    }),
+  );
   // The vault joins this scanner when it exists (phase 16).
   const snippetScanner = new SecretScanner();
   // What a session starts with: agents, MCP, plugins, auto memory, templates and their tasks.
@@ -632,7 +636,6 @@ export async function startDaemon(
     vault,
     log: logger.log.bind(logger),
     actions,
-    autoApprove,
     usage,
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
