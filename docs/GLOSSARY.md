@@ -208,6 +208,7 @@ test's baseline, with the issue that renames them.
 | `sessions` | session | The Flightdeck sessions of a host: start, state, stall and sleep |
 | `settings` | setting | The app's own choices on this machine: tray, autostart, global shortcut, update and preview switches |
 | `setup` | setup | The first-day setup screen: the steps a person does in order (host, hooks, project, first session) and the one to do next |
+| `shell` | shell | The app's frame: the page shell with its header slot, the top bar, the breadcrumb, the status bar, the quota bars, the scope menu and the account footer |
 | `shortcuts` | keyboard shortcut | The `?` sheet that lists every shortcut of the registry, by group |
 | `snippets` | snippet | Saved commands and prompts with `{{name}}` places, and their use |
 | `ssh` | SSH destination | SSH destinations, server keys, key delivery and the ssh runs of actions |

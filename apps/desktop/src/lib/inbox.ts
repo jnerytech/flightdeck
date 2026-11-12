@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../i18n/index.ts";
-import { basename } from "./paths.ts";
 import type { Route } from "./router.ts";
 
 export const INBOX_KEY = "flightdeck.inbox";

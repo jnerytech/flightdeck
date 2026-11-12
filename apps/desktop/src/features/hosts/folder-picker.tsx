@@ -13,8 +13,8 @@ import {
 import { useT } from "@/i18n/context";
 import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
 import { FieldRow } from "@/shared/layout/index.ts";
+import { breadcrumbSteps, isInside } from "@/shared/lib/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { breadcrumbSteps, isInside } from "../../lib/paths.ts";
 import { isLocalUrl } from "../../lib/terminal.ts";
 import { AllowedFolders } from "./allowed-folders.tsx";
 

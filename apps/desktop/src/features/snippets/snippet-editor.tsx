@@ -1,9 +1,9 @@
 import { SnippetModelError, type SnippetVar } from "@flightdeck/protocol";
 import { useId, useState } from "react";
-import { AssistField } from "@/components/assistant/assist-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistField } from "@/features/assistant/index.ts";
 import type { AppSnippet } from "@/features/snippets";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";

@@ -7,10 +7,10 @@ import type {
   SessionPersona,
   SessionStatus,
 } from "@flightdeck/protocol";
+import { basename } from "@/shared/lib/index.ts";
 import { type Key, type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
 import { rowTitle } from "./hub-title.ts";
-import { basename } from "./paths.ts";
 import { sessionLabel } from "./session-label.ts";
 
 const PT = translator("pt-BR");

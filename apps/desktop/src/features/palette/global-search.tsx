@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";
 import {
@@ -10,7 +11,6 @@ import {
   paletteScope,
   paletteSections,
 } from "../../lib/palette.ts";
-import { basename } from "../../lib/paths.ts";
 import { pendingText, pendingWhere } from "../../lib/pending-text.ts";
 import { anyHostHas } from "../../lib/version.ts";
 import type { GlobalHit } from "../history/index.ts";

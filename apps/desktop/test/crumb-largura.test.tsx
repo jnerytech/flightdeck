@@ -7,7 +7,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Breadcrumb } = await import("../src/components/layout/breadcrumb.tsx");
+const { Breadcrumb } = await import("../src/features/shell/breadcrumb.tsx");
 
 afterEach(cleanup);
 

@@ -7,7 +7,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ModelPicker } = await import("../src/components/assistant/model-picker.tsx");
+const { ModelPicker } = await import("../src/features/assistant/model-picker.tsx");
 const axe = (await import("axe-core")).default;
 
 setDefaultTimeout(30_000);

@@ -1,7 +1,7 @@
 import type { InterruptedSession } from "@flightdeck/protocol";
+import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { HostConnection } from "../../lib/host-connection.ts";
-import { basename } from "../../lib/paths.ts";
 import type { Platform } from "../../platform/types.ts";
 import {
   CONTINUATION,

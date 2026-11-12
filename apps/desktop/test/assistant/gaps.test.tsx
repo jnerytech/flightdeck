@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ModelOption } from "@flightdeck/protocol";
-import { failureOf } from "../../src/components/assistant/refusal-text.ts";
-import { type WandState, wandReduce } from "../../src/components/assistant/wand-state.ts";
+import { failureOf } from "../../src/features/assistant/refusal-text.ts";
+import { type WandState, wandReduce } from "../../src/features/assistant/wand-state.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { createWebPlatform } from "../../src/platform/web/index.ts";
 import { liveScreen, registerDom } from "../dom.ts";
@@ -11,7 +11,7 @@ registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { ModelPicker } = await import("../../src/components/assistant/model-picker.tsx");
+const { ModelPicker } = await import("../../src/features/assistant/model-picker.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

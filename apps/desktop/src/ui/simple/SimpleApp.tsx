@@ -8,6 +8,7 @@ import { SettingsView } from "@/components/simple/settings-view";
 import { TaskView } from "@/components/simple/task-view";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { basename } from "@/shared/lib/index.ts";
 import { translator } from "../../i18n/index.ts";
 import {
   type AppStore,
@@ -15,7 +16,6 @@ import {
   type SidebarSession,
   sessionKey,
 } from "../../lib/app-store.ts";
-import { basename } from "../../lib/paths.ts";
 import { type TaskState, taskState } from "../../lib/simple-task.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 

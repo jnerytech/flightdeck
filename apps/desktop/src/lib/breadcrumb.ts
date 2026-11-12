@@ -1,6 +1,6 @@
+import { basename } from "@/shared/lib/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, sessionKey } from "./app-store.ts";
-import { basename } from "./paths.ts";
 import type { Route } from "./router.ts";
 
 /** One step of the header's path: a label and, when it can be clicked, where it goes. */

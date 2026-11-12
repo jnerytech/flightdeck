@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { HistoryIndexer } from "../../src/history/indexer.ts";
 import { startServer } from "../../src/server.ts";
@@ -426,10 +427,11 @@ describe("teleport-wiring: the teleport the daemon builds (#1593)", () => {
     const scan = (text: string) => (text.includes("secret") ? ["secret"] : []);
     const log = () => {};
     const { teleport, teleportInbox } = createTeleport({
-      manager: { get: () => undefined as never },
+      manager: { get: () => undefined as never, ...stubManager },
       names: { get: () => null },
       indexer: undefined,
-      config: { dataDir: "/data", history: { roots: ["/h1", "/h2"] } },
+      config: { dataDir: "/data", history: { roots: ["/h1", "/h2"] }, allowedRoots: [] },
+      meta: undefined,
       scan,
       log,
     });
@@ -454,6 +456,55 @@ describe("teleport-wiring: the teleport the daemon builds (#1593)", () => {
       true,
       true,
       true,
+    ]);
+  });
+
+  test("its module serves the packages, the inbox and the imports, starts both and stops both after the server", async () => {
+    const dataDir = tempDir("fd-teleport-data-");
+    const allowedRoots = ["/work"];
+    const shown: unknown[] = [];
+    const {
+      modules: [module],
+      teleport,
+      teleportInbox,
+    } = createTeleport({
+      manager: { get: () => undefined as never, ...stubManager },
+      names: { get: () => null },
+      indexer: undefined,
+      config: { dataDir, history: { roots: [tempDir("fd-history-")] }, allowedRoots },
+      meta: { set: (claudeSessionId, patch) => shown.push([claudeSessionId, patch]) },
+      scan: () => [],
+      log: () => {},
+    });
+    const group = module.server?.teleport;
+    const folders = () =>
+      [join(dataDir, "teleport"), join(dataDir, "teleport-in")].map((dir) => existsSync(dir));
+    const before = folders();
+    await module.start?.();
+    const started = folders();
+    await module.stop?.();
+    const stopped = folders();
+    group?.imports?.unarchive(ID);
+    expect([
+      group?.packages === teleport,
+      group?.inbox === teleportInbox,
+      group?.imports !== undefined,
+      group?.imports?.allowedRoots === allowedRoots,
+      shown,
+      [before, started, stopped],
+      module.stopPhase,
+    ]).toEqual([
+      true,
+      true,
+      true,
+      true,
+      [[ID, { archived: false }]],
+      [
+        [false, false],
+        [true, true],
+        [false, false],
+      ],
+      "late",
     ]);
   });
 });
