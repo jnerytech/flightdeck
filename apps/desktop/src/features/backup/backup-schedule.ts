@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { readStored } from "@/shared/lib/index.ts";
 import type { BackupOptions, BackupPlatform } from "./backup-bundle.ts";
 import { type BackupFolder, type BackupTarget, folderTarget, keepNewest } from "./backup-target.ts";
 import { DriveError } from "./drive-target.ts";
@@ -50,28 +52,18 @@ const OFF: BackupSchedule = {
   lastRunAt: null,
 };
 
+/** The schedule as kept: a field of the wrong type reads as its default, the others stay. */
+const Saved = z.object({
+  cadence: z.enum(["off", "daily", "weekly"]).catch("off"),
+  target: z.enum(["folder", "drive"]).catch("folder"),
+  folder: z.string().catch(""),
+  keep: z.number().int().min(1).catch(DEFAULT_KEEP),
+  lastRunAt: z.number().nullable().catch(null),
+});
+
 /** The saved schedule; an unset or damaged one is off. */
 export function loadSchedule(storage: BackupPlatform["storage"]): BackupSchedule {
-  try {
-    const raw = JSON.parse(
-      storage.getItem(SCHEDULE_KEY) ?? "null",
-    ) as Partial<BackupSchedule> | null;
-    if (!raw || typeof raw !== "object") return { ...OFF };
-    const cadence: Cadence =
-      raw.cadence === "daily" || raw.cadence === "weekly" ? raw.cadence : "off";
-    return {
-      cadence,
-      target: raw.target === "drive" ? "drive" : "folder",
-      folder: typeof raw.folder === "string" ? raw.folder : "",
-      keep:
-        Number.isInteger(raw.keep) && (raw.keep as number) >= 1
-          ? (raw.keep as number)
-          : DEFAULT_KEEP,
-      lastRunAt: typeof raw.lastRunAt === "number" ? raw.lastRunAt : null,
-    };
-  } catch {
-    return { ...OFF };
-  }
+  return readStored(storage, SCHEDULE_KEY, Saved, { ...OFF });
 }
 
 export function saveSchedule(storage: BackupPlatform["storage"], schedule: BackupSchedule): void {
