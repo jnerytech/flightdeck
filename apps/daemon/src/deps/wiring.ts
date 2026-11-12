@@ -2,7 +2,6 @@ import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { hooksStatus, hookTarget } from "../central/index.ts";
 import { type Config, claudeSettingsPath } from "../config.ts";
-import { runDoctor } from "../doctor.ts";
 import { DAEMON_VERSION, spawnExec, whichOnPath } from "../kernel/index.ts";
 import { mcpReachable } from "../mcp.ts";
 import { tailscaleIp } from "../pairing.ts";
@@ -17,6 +16,7 @@ import {
 } from "../service/index.ts";
 import { BUILTIN_TEMPLATES, loadTemplates } from "../templates/index.ts";
 import { checkDeps, type DepsEnv } from "./deps.ts";
+import { runDoctor } from "./doctor.ts";
 import { probeVersion } from "./probe.ts";
 
 /** What the host's checks read: the daemon's config and what it found at start. */

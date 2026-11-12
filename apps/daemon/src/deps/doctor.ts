@@ -1,7 +1,10 @@
-import { loopbackOnly } from "./pairing.ts";
-import type { OpenCodeState } from "./runtime/index.ts";
-import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
-import { findingText, type ScopeFinding } from "./runtime/opencode-scope.ts";
+import { loopbackOnly } from "../pairing.ts";
+import {
+  findingText,
+  type OpenCodeState,
+  type ScopeFinding,
+  VERIFIED_OPENCODE_VERSION,
+} from "../runtime/index.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 
