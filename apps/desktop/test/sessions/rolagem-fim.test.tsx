@@ -9,7 +9,7 @@ const personScrolls = (el: Element) => {
   fireEvent.wheel(el, { deltaY: -120 });
   fireEvent.scroll(el);
 };
-const { SessionView } = await import("../../src/ui/SessionView.tsx");
+const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
 const { emptySession } = await import("../../src/lib/session-state.ts");
 
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block, a panel). */
