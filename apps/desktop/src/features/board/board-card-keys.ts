@@ -1,6 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import type { KeyboardEvent, MutableRefObject } from "react";
-import { CHORD_TIMEOUT_MS } from "../../lib/shortcuts.ts";
+import { CHORD_TIMEOUT_MS } from "../shortcuts/index.ts";
 import { type BoardKeyAction, boardKey } from "./board-keys.ts";
 import { rangeSelection } from "./board-select.ts";
 
