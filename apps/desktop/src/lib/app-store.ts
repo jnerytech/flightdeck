@@ -23,7 +23,7 @@ import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
-import { basename, isInside } from "@/shared/lib/index.ts";
+import { isInside } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
@@ -127,14 +127,12 @@ import {
   browserClockDeps,
   CacheTimerSettings,
   type ExternalSessionsSlice,
-  type Finish,
-  finishOutcome,
+  type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
   initialSessionsState,
   loadFinished,
   NewSessionPrefs,
-  recordFinish,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
@@ -142,16 +140,15 @@ import {
   SessionViews,
   SharedClock,
   type SummariesSlice,
-  saveFinished,
   sessionKey,
   takeHubHost,
   wireExternalSessions,
+  wireFinished,
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
   wireSessions,
   wireSummaries,
-  withFiles,
 } from "../features/sessions/index.ts";
 import {
   initialSettingsState,
@@ -213,7 +210,6 @@ import type {
   Notice,
   PendingItem,
   ReleaseNotesResult,
-  SidebarSession,
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
@@ -352,6 +348,7 @@ export class AppStore {
   readonly external: ExternalSessionsSlice;
   /** What the Sessions screen lists from the online hosts (#1596). */
   private readonly sessionLists: SessionListsSlice;
+  private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
@@ -694,6 +691,11 @@ export class AppStore {
     this.stream = wireSessionStream(this.kernel, {
       summary: (hostId, event) => this.summaries.apply(hostId, [event]),
     });
+    this.finished = wireFinished(this.kernel, {
+      storage: platform.storage,
+      isFocused: () => this.platform.isFocused(),
+      shown: () => this.shownSessions(),
+    });
     this.summaries = wireSummaries(this.kernel, {
       setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
       shown: () => this.shownSessions(),
@@ -703,7 +705,7 @@ export class AppStore {
       prefs: () => this.notifyPrefs.value,
       notify: (...args) => this.inbox.notify(...args),
       feed: (host, prev, next) => this.webhookFeed.managed(host, prev, next),
-      finished: (hostId, prev, next) => this.recordFinished(hostId, prev, next),
+      finished: (hostId, prev, next) => this.finished.record(hostId, prev, next),
       later: (fn, ms) => void this.later(fn, ms),
     });
     this.tray = wireTray(this.kernel, {
@@ -1038,56 +1040,7 @@ export class AppStore {
 
   /** The person looked at Needs you: what finished before now is no longer new. */
   finishedSeen(): void {
-    this.setFinished(this.state.finished, new Date(this.now()).toISOString());
-  }
-
-  private setFinished(list: Finish[], lastLook: string | null): void {
-    this.update({ finished: list, finishedLook: lastLook });
-    saveFinished(this.platform.storage, { list, lastLook });
-  }
-
-  /** A turn, a failure or an end is a finish for Needs you, unless the person watched it happen. */
-  private recordFinished(
-    hostId: string,
-    prev: SidebarSession | undefined,
-    next: SidebarSession,
-  ): void {
-    const outcome = finishOutcome(prev?.status, next.status);
-    if (!outcome) return;
-    const key = sessionKey(hostId, next.id);
-    if (this.platform.isFocused() && this.shownSessions().has(key)) return;
-    const at = new Date(this.now()).toISOString();
-    const finish: Finish = {
-      key,
-      hostId,
-      sessionId: next.id,
-      name: next.name ?? basename(next.cwd),
-      outcome,
-      at,
-      files: null,
-    };
-    this.setFinished(recordFinish(this.state.finished, finish), this.state.finishedLook);
-    void this.countFinishedFiles(hostId, next.id, key, at);
-  }
-
-  /** Asks the host how many files the session changed; a host that cannot say leaves it unknown. */
-  private async countFinishedFiles(
-    hostId: string,
-    sessionId: string,
-    key: string,
-    at: string,
-  ): Promise<void> {
-    // The host reads `session:<id>` as the Claude session id, which the app learns with the session.
-    const claudeId =
-      this.state.sessions[key]?.claudeSessionId ??
-      this.state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
-    if (!claudeId) return;
-    const result = await this.hostRequest(hostId, "changes.get", {
-      target: `session:${claudeId}`,
-    });
-    if (!result.ok) return;
-    const files = result.data.files.length;
-    this.setFinished(withFiles(this.state.finished, key, at, files), this.state.finishedLook);
+    this.finished.seen();
   }
 
   /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
