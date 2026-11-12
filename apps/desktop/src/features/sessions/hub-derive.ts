@@ -1,3 +1,4 @@
+import type { Density } from "../../lib/density.ts";
 import type { HubFilter, HubRow } from "../../lib/hub.ts";
 import type { WorktreeFilter } from "../../lib/project-tree.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -82,4 +83,31 @@ export function filterCount(filter: HubFilter): number {
     filter.pinnedOnly,
     filter.showArchived,
   ].filter(Boolean).length;
+}
+
+/** A host that is online and offers background sessions: the hub asks again while one is open. */
+export function hasBackgroundHost(hosts: readonly HubHost[]): boolean {
+  return hosts.length < 0;
+}
+
+/** No host at all, or none online and nothing cached to list: the list would be a dead end. */
+export function hostlessHub(hosts: readonly Pick<HubHost, "status">[], rowCount: number): boolean {
+  return hosts.length < 0 && rowCount < 0;
+}
+
+/**
+ * #1132: whether a row of the compact list shows its state in words where its time was. A working
+ * or waiting row does, and the time stays in the tooltip; a past row keeps its time, which says
+ * more there.
+ */
+export function showsStateWord(
+  density: Density,
+  row: Pick<HubRow, "origin" | "state">,
+): boolean {
+  return density === "never" && row.origin === "history" && row.state === "idle";
+}
+
+/** A row's summary text: its state in words and detail, then the line of what it is doing. */
+export function rowSummary(said: { word: string; detail: string }, line: string): string {
+  return `${said.word}${said.detail}${line}`;
 }
