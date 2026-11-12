@@ -1,4 +1,4 @@
-/** Helpers with no domain (paths, bytes, widths, backoff, contrast, status tone, stored JSON, quiet requests), public entry (#1589): another folder imports from here, never a file inside. */
+/** Helpers with no domain (paths, bytes, widths, backoff, contrast, status tone, stored JSON, requests whose error becomes null), public entry (#1589): another folder imports from here, never a file inside. */
 export { backoffDelay } from "./backoff.ts";
 export { contrastRatio } from "./contrast.ts";
 export { languageFor, loadLanguage } from "./file-language.ts";
@@ -11,6 +11,7 @@ export {
   LIST_WIDTH_KEY,
   loadListWidth,
 } from "./list-width.ts";
+export { nullOnError } from "./null-on-error.ts";
 export {
   basename,
   breadcrumbSteps,
@@ -18,7 +19,6 @@ export {
   isInside,
   trimTrailingSeparators,
 } from "./paths.ts";
-export { quiet } from "./quiet.ts";
 export { canScrollRight } from "./scroll-edge.ts";
 export { isBusy, statusTone } from "./status.ts";
 export { parseJsonText, readStored, validItems, validValues } from "./stored-json.ts";

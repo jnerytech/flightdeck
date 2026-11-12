@@ -25,7 +25,7 @@ import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { SystemSlice } from "@/features/shell/system.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
-import { isInside, quiet } from "@/shared/lib/index.ts";
+import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
@@ -607,7 +607,7 @@ export class AppStore {
       loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
       loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
       loadPersonas: (hostId) => this.personas.load(hostId),
-      listSnippets: (hostId) => quiet(this.dispatch(hostId, "snippets.list", {})),
+      listSnippets: (hostId) => nullOnError(this.dispatch(hostId, "snippets.list", {})),
       keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
       refreshHub: () => this.refreshHub(),
     });
@@ -1255,7 +1255,7 @@ export class AppStore {
   async loadBoard(hostId: string, projectId: string): Promise<void> {
     const conn = this.link.connection(hostId);
     if (!conn) return;
-    const board = await quiet(conn.request("board.get", { projectId }));
+    const board = await nullOnError(conn.request("board.get", { projectId }));
     for (const card of cardsIn(board)) this.onCard(hostId, card);
   }
 
