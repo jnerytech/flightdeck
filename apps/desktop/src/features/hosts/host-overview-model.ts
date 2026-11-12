@@ -1,4 +1,4 @@
-import type { ProjectCard } from "../../lib/project-cards.ts";
+import type { ProjectCard } from "@/features/projects/index.ts";
 import { type HubRow, hubRowOrder } from "../sessions/index.ts";
 
 /** How many sessions and projects the host page's overview shows before "See all". */
