@@ -171,6 +171,16 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** #1593: the messaging's part of the server (phase 21), each service optional. */
+interface MessagingServer {
+  /** Messages between sessions (`messages.*`, `messaging.*`). */
+  messages?: Messaging;
+  /** The one-shot idle notices (`idle.subscribe`). */
+  idle?: Idle;
+  /** The teams (`teams.*`). */
+  teams?: Teams;
+}
+
 /** #1593: the Agent setup's part of the server, each service optional. */
 interface AgentSetupServer {
   /** Phase 12: the project's CLAUDE.md, agents and skills (`agentcfg.*`). */
@@ -382,18 +392,14 @@ export interface ServerOptions {
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
   vault?: Vault;
-  /** Phase 21: the teams (`teams.*`). */
-  teams?: Teams;
   /** Phase 22: the PR watch of the cards. */
   watch?: PrWatch;
   /** Issue #1361: the cards' check loop switch (it reads the watch's checks). */
   checkLoop?: CheckLoopSwitch;
-  /** Phase 21: messages between sessions (`messages.*`, `messaging.*`). */
-  messaging?: Messaging;
+  /** Phase 21: messages between sessions, their idle notices and the teams (#1593). */
+  messaging?: MessagingServer;
   /** Phase 21: the standard names of the sessions (`names.list`, and the rename of a session). */
   names?: Names;
-  /** Phase 21: the one-shot idle notices (`idle.subscribe`). */
-  idle?: Idle;
   /** Phase 17: actions that use a secret without Claude seeing it (`actions.*`, `vault.watch`). */
   actions?: Actions;
   /** Phase 13: the projects' automations (`automation.*`). */

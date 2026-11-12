@@ -22,12 +22,10 @@ export const GATES = {
   fileLog: "logs",
   github: "github",
   history: "history",
-  idle: "idle",
   issues: "issues",
   maintenance: "maintenance",
   resources: "resources",
   worktrees: "worktrees",
-  messaging: "messaging",
   names: "names",
   personaSessions: "personaSessions",
   personas: "personas",
@@ -38,7 +36,6 @@ export const GATES = {
   roi: "roi",
   runenv: "runEnv",
   summary: "summary",
-  teams: "teams",
   telemetry: "telemetry",
   telemetryOptIn: "telemetry",
   terminals: "terminals",
@@ -123,6 +120,11 @@ export const GROUP_GATES = {
     memory: "memory",
     tasks: "tasks",
     templates: "templates",
+  },
+  messaging: {
+    messages: "messaging",
+    idle: "idle",
+    teams: "teams",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<keyof NonNullable<ServerOptions[G]>, string>;

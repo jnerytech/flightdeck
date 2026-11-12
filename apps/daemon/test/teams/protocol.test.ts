@@ -55,8 +55,7 @@ async function boot(options: { teams?: boolean } = {}) {
   const server = startServer({
     manager: ctx.manager,
     board: ctx.board,
-    messaging,
-    ...(options.teams === false ? {} : { teams }),
+    messaging: { messages: messaging, ...(options.teams === false ? {} : { teams }) },
     hostName: "pc",
     bind: "127.0.0.1",
     port: 0,

@@ -64,8 +64,7 @@ async function boot() {
   const server = startServer({
     manager: ctx.manager,
     board: ctx.board,
-    messaging,
-    teams,
+    messaging: { messages: messaging, teams },
     hostName: "pc",
     bind: "127.0.0.1",
     port: 0,
