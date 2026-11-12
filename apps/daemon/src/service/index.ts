@@ -1,6 +1,6 @@
 /**
  * The service's public entry (#1594): installing, updating and removing flightdeckd as an OS
- * service (systemd, Task Scheduler, launchd), the stable binary and the user's PATH. Another domain
+ * service (systemd, Task Scheduler), the stable binary and the user's PATH. Another domain
  * imports from here, never a file inside.
  */
 
