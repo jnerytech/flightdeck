@@ -1,6 +1,6 @@
 import { SecretScanner, scrubHome } from "@flightdeck/protocol";
-import { ActionButton } from "@/components/feedback/action-button";
 import { useT } from "@/i18n/context";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 

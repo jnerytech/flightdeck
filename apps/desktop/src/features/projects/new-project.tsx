@@ -1,7 +1,6 @@
 import type { Project } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { AddProject } from "./add-project.tsx";
 
 type HostInfo = AppState["hosts"][number];

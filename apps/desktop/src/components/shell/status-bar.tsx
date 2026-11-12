@@ -11,7 +11,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { IconTip } from "@/components/feedback/icon-tip";
 import { QuotaDetail } from "@/components/shell/quota-detail";
 import { Meter } from "@/components/status/meter";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -21,6 +20,7 @@ import type { AppState, AppStore } from "@/lib/app-store";
 import { type QuotaGlance, quotaGlance } from "@/lib/quota-glance";
 import type { Route } from "@/lib/router";
 import { hostsRoute, type StatusBarSummary, statusBarSummary } from "@/lib/status-bar";
+import { IconTip } from "@/shared/feedback/index.ts";
 
 /** One button of the bar: its words are the name, the tooltip repeats them, never colour alone. */
 function Item(

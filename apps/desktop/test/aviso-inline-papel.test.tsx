@@ -3,7 +3,7 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { cleanup, render } = await import("@testing-library/react");
-const { InlineNotice } = await import("../src/components/feedback/inline-notice.tsx");
+const { InlineNotice } = await import("../src/shared/feedback/index.ts");
 
 afterEach(cleanup);
 

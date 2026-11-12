@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { AppDialogContent } from "../../shared/feedback/index.ts";
 import type { SnippetChoice } from "./snippet-use";
 
 interface Offer {

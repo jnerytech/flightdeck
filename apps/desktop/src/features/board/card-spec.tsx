@@ -1,8 +1,8 @@
 import type { Card } from "@flightdeck/protocol";
 import { useEffect } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 /**
  * What the host found of the card's spec file (issue #78): looked at when the card opens and

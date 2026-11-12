@@ -1,13 +1,13 @@
 import type { WatchInfo } from "@flightdeck/protocol";
 import { CircleAlert, CircleCheck, CircleDashed, TriangleAlert } from "lucide-react";
 import { useId } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import { canMergeCardPr } from "@/lib/card-merge-pr";
 import { mergeStance, type PullRequestRow, prFacts } from "@/lib/pull-requests";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 const CHECK_ICONS = { passing: CircleCheck, pending: CircleDashed, failing: CircleAlert } as const;
 

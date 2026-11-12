@@ -1,7 +1,6 @@
 import type { Card, ChangesResult } from "@flightdeck/protocol";
 import { useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { translateError } from "@/i18n/errors";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 type Mode = "merge" | "squash";

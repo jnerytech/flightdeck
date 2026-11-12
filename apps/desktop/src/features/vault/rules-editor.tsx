@@ -1,6 +1,5 @@
 import type { RuleIssue } from "@flightdeck/protocol";
 import { useId, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -19,6 +18,7 @@ import {
   type RuleDraft,
   ruleOf,
 } from "@/lib/vault-rules-form";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { RulesPreview } from "./rules-preview.tsx";
 
 /** The field of a rule's draft that each path of the daemon's issues points at. */

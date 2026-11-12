@@ -1,6 +1,5 @@
 import { type SnippetContext, SnippetModelError } from "@flightdeck/protocol";
 import { memo, useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppState, AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { ActionButton, AppDialogContent } from "@/shared/feedback/index.ts";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 

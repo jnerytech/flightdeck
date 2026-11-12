@@ -14,8 +14,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
@@ -42,6 +40,7 @@ import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { rowRoute } from "@/features/sessions/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
 import { pendingCount } from "../features/needs-you/index.ts";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";

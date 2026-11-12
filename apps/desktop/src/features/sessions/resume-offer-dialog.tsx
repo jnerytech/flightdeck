@@ -1,6 +1,5 @@
 import type { InterruptedSession } from "@flightdeck/protocol";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +12,7 @@ import {
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { basename } from "@/lib/paths";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { byProject, CONTINUATION } from "./resume-offer.ts";
 
 type Outcome = { ok: true } | { ok: false; reason: string };

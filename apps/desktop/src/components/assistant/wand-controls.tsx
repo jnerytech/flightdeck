@@ -1,7 +1,5 @@
 import { WandSparkles } from "lucide-react";
 import { useContext, useMemo } from "react";
-import { Spinner } from "@/components/feedback/busy";
-import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Inline, Stack } from "@/components/layout/stack";
 import { ShortArea } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
@@ -9,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { T } from "@/i18n/index";
 import { isMac } from "@/lib/shortcuts";
 import { wordDiff } from "@/lib/word-diff";
+import { IconActionButton, Spinner } from "@/shared/feedback/index.ts";
 import { refusalText } from "./refusal-text.ts";
 import type { Wand } from "./use-wand.ts";
 

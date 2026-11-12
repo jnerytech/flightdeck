@@ -1,6 +1,6 @@
 import type * as React from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ActionButton } from "./action-button.tsx";
 
 /**
  * A square icon button for a row of actions: the label (from the dictionary) names it for

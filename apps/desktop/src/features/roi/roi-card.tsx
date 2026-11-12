@@ -1,7 +1,6 @@
 import type { Project, RoiPeriod, RoiSignalValues } from "@flightdeck/protocol";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { periodRange, usd } from "@/lib/costs";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "@/lib/roi";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {

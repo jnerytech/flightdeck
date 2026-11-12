@@ -1,11 +1,10 @@
 import type { Card, WorkflowInfo } from "@flightdeck/protocol";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { type ChainNode, chainOf, pickable } from "../../lib/deps.ts";

@@ -1,6 +1,5 @@
 import type { KnowledgeEntry, KnowledgeListResult, KnowledgeStatus } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Panel } from "@/components/layout/panel";
 import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { Key } from "@/i18n";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import { KnowledgeCreate } from "./knowledge-create.tsx";
 import { KnowledgeFeedSwitch } from "./knowledge-feed-switch.tsx";
 

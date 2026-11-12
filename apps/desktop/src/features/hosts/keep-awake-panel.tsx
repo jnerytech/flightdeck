@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 
 /**
  * The host's switch for keeping the computer awake while sessions run (issue #163): on unless the

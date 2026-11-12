@@ -22,7 +22,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
 import { Inline, Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
@@ -77,6 +76,7 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";

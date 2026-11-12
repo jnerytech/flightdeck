@@ -1,10 +1,10 @@
 import type { CardTemplate, CardTemplates } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { useT } from "@/i18n/context";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
+import { InlineNotice } from "@/shared/feedback/index.ts";
 
 /** What a template put in the description, so a later pick can replace it and never the person's own words. */
 export interface TemplateText {

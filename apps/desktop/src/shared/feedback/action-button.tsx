@@ -1,9 +1,9 @@
 import * as React from "react";
-import { Spinner } from "@/components/feedback/busy";
 import { useFieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useInFlight } from "@/hooks/use-in-flight";
 import { useT } from "@/i18n/context";
+import { Spinner } from "./busy.tsx";
 
 /**
  * A button that answers a click: busy at once while the work its handler started goes on (the

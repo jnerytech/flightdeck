@@ -1,5 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { discardCommand, hasStartedWork } from "./bulk-discard-dialog.tsx";

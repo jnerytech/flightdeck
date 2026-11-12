@@ -8,7 +8,7 @@ const { cleanup, fireEvent, render, within } = await import("@testing-library/re
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
 const { Dialog, DialogTitle } = await import("../src/components/ui/dialog.tsx");
-const { AppDialogContent } = await import("../src/components/feedback/dialog-content.tsx");
+const { AppDialogContent } = await import("../src/shared/feedback/index.ts");
 
 afterEach(cleanup);
 

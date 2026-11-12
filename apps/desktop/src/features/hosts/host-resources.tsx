@@ -1,11 +1,10 @@
 import type { ResourceRow, ResourcesSnapshot } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Bar } from "@/components/layout/bar";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
+import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
 import { formatBytes, formatDuration } from "../../i18n/format.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
