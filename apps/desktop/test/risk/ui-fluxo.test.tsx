@@ -1,20 +1,22 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { EventEnvelope } from "@flightdeck/protocol";
-import { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
-import type { TrayAction, TrayMenu } from "../src/platform/types.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { sidebarNav } from "./sidebar/helpers.ts";
-import { stays, waiter } from "./wait.ts";
+import { RiskClassifier } from "../../../daemon/src/permissions/risk.ts";
+import type { TrayAction, TrayMenu } from "../../src/platform/types.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
+import { sidebarNav } from "../sidebar/helpers.ts";
+import { stays, waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
-const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
-const { applyEnvelope, emptySession } = await import("../src/features/sessions/session-state.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore, needsYou } = await import("../../src/lib/app-store.ts");
+const { applyEnvelope, emptySession } = await import(
+  "../../src/features/sessions/session-state.ts"
+);
+const { App } = await import("../../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
