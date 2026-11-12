@@ -1,14 +1,20 @@
 import { ArrowDown, ArrowUp, Briefcase } from "lucide-react";
 import { useState } from "react";
-import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
-import { ListRow } from "@/components/layout/list-row";
-import { Page } from "@/components/layout/page";
-import { Panel } from "@/components/layout/panel";
-import { Inline, Stack } from "@/components/layout/stack";
-import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import {
+  EmptyState,
+  Field,
+  Form,
+  FormActions,
+  Inline,
+  ListRow,
+  NativeSelect,
+  Page,
+  Panel,
+  Stack,
+} from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../../lib/clients.ts";
 import { anyHostHas } from "../../lib/version.ts";

@@ -2,8 +2,6 @@ import { type Card, specPathProblem, type ValidationTemplate } from "@flightdeck
 import { useEffect, useState } from "react";
 import { type AssistControl, AssistField } from "@/components/assistant/assist-field";
 import type { WandBinding } from "@/components/assistant/use-wand";
-import { Field } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +11,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useDraft } from "@/lib/use-draft";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Field, Panel } from "@/shared/layout/index.ts";
 import { CardSpec } from "./card-spec.tsx";
 
 /**

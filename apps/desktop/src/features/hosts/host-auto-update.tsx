@@ -1,8 +1,8 @@
 import type { AutoUpdateStatus } from "@flightdeck/protocol";
 import { useState } from "react";
-import { Stack } from "@/components/layout/stack";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { hasFeature } from "@/lib/version";
+import { Stack } from "@/shared/layout/index.ts";
 
 /** What the daemon says about its automatic update: waiting, started, failed, or just up to date or off. */
 function updateLine(t: AppStore["i18n"]["t"], status: AutoUpdateStatus, version: string): string {

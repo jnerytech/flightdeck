@@ -5,7 +5,7 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { cleanup, render } = await import("@testing-library/react");
-const { Page, Section } = await import("../src/components/layout/page.tsx");
+const { Page, Section } = await import("../src/shared/layout/page.tsx");
 
 const SRC = resolve(import.meta.dir, "../src");
 

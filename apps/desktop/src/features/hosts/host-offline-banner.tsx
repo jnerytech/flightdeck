@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
+import { Stack } from "@/shared/layout/index.ts";
 import type { HostView } from "../../lib/app-store.ts";
 import { mayBeRefusedAddress, offlineHint } from "../../lib/host-offline.ts";
 

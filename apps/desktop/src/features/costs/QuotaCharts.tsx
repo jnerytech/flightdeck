@@ -1,7 +1,7 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
+import { Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";

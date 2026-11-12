@@ -1,7 +1,6 @@
 import type { BoardColumn } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import type * as React from "react";
-import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { FieldRow } from "@/shared/layout/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { COLUMNS } from "../../lib/board.ts";
 

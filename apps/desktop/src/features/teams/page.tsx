@@ -3,9 +3,6 @@ import { inSequence } from "@flightdeck/protocol";
 import { Copy, MoreHorizontal, UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
-import { Page } from "@/components/layout/page";
-import { EmptyState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +25,14 @@ import { AddProject } from "@/features/projects/index.ts";
 import { useSwitcherHostId } from "@/hooks/use-switcher-hosts";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import {
+  EmptyState,
+  Field,
+  FieldRow,
+  FormActions,
+  NativeSelect,
+  Page,
+} from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { sessionLabel } from "../../lib/session-label.ts";

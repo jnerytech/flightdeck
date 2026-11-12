@@ -1,7 +1,7 @@
 import { useId } from "react";
-import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import type { T } from "@/i18n/index";
+import { Inline, Stack } from "@/shared/layout/index.ts";
 
 /**
  * #1220: the coordinator's last report, the team's outcome, on top of its card. What a session

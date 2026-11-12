@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Field } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import type { AssistantKeyProvider } from "@/platform/types";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Field } from "@/shared/layout/index.ts";
 import { failureOf, refusalText } from "./refusal-text.ts";
 
 /**

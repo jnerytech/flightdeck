@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Panel } from "@/shared/layout/index.ts";
 
 /**
  * Issue #1404: the host's switch for pausing new card runs before a restart or an update. While

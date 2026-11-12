@@ -1,5 +1,4 @@
 import { Briefcase } from "lucide-react";
-import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconTip } from "@/shared/feedback/index.ts";
+import { Inline } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, PendingItem } from "../../lib/app-store.ts";
 import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import { switcherCounts } from "../../lib/client-switcher.ts";

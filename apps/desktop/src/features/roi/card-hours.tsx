@@ -1,10 +1,10 @@
 import type { Card } from "@flightdeck/protocol";
-import { Field } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useDraft } from "@/lib/use-draft";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Field } from "@/shared/layout/index.ts";
 
 /** Phase 36: the hours this card is worth, an estimate typed by the person; empty clears it. */
 export function CardHours(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {

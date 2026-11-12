@@ -1,10 +1,7 @@
 import type { TelemetryItem, TelemetryPrompt } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
-import { Bar } from "../../components/layout/bar.tsx";
-import { Panel } from "../../components/layout/panel.tsx";
-import { Inline, Stack } from "../../components/layout/stack.tsx";
-import { EmptyState, LoadingState } from "../../components/layout/states.tsx";
+import { Bar, EmptyState, Inline, LoadingState, Panel, Stack } from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";

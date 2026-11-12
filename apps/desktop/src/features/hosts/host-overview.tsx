@@ -1,10 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { CardGrid } from "@/components/layout/card-grid";
-import { Panel } from "@/components/layout/panel";
-import { Inline } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { ProjectCardTile } from "@/features/projects/index.ts";
 import { useProjectCards } from "@/hooks/use-project-cards";
+import { CardGrid, Inline, Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { hostProjectCards, hostSessionRows } from "../../lib/host-overview.ts";

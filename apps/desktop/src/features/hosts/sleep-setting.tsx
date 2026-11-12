@@ -1,5 +1,5 @@
-import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
+import { Panel } from "@/shared/layout/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 
 /** The delays the select offers, in minutes; 0 is off. A delay the config holds outside these is added. */

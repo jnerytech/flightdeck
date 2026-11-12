@@ -1,6 +1,5 @@
 import type { Card, WorkflowInfo, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
-import { LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
+import { LoadingState } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { incidentText } from "../../lib/incident-text.ts";
 

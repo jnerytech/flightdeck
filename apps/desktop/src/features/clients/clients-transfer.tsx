@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /** The clients as text, to move to another desktop: copy them out, paste them in. */
