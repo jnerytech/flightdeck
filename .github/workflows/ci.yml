@@ -113,6 +113,13 @@ jobs:
           PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: bun run scripts/structure-guard.ts
 
+      # Issue #2176: the PR's net diff from the merge-base must not leave a test file with fewer
+      # tests or expects, or delete one, unless a commit's `Tests-Removed: <path> — <why>` trailer
+      # names it. A merge of main is judged by its result (#2154 lost four tests in one).
+      - name: Removed-tests guard
+        if: github.event_name == 'pull_request'
+        run: bun run scripts/tests-removed.ts
+
   # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
   # suite and the checks in parallel. The required check `test (ubuntu-latest)` is the aggregate
   # below.
