@@ -12,6 +12,15 @@ export { SessionCommandsSlice } from "./commands.ts";
 export { queueStep, submitAction } from "./composer-queue.ts";
 export { ExternalSessionsSlice } from "./external.ts";
 export {
+  costAsks,
+  cursorMove,
+  filterCount,
+  personasOf,
+  refreshSignature,
+  rowOffers,
+  worktreesOf,
+} from "./hub-derive.ts";
+export {
   awayHost,
   hubProjectKeys,
   projectChoices,
