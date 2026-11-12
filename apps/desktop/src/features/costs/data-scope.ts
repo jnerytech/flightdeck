@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { parseJsonText } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
 import type { ConnectionStatus } from "../hosts/index.ts";
 
@@ -17,24 +19,15 @@ export type DataScope =
 
 export const ALL_SCOPE: DataScope = { kind: "all" };
 
+/** The scope as kept: a host or a project with a name; anything else is every host. */
+const Kept = z.union([
+  z.object({ kind: z.literal("host"), hostId: z.string().min(1) }),
+  z.object({ kind: z.literal("project"), projectKey: z.string().min(1) }),
+]);
+
 /** The scope as kept; anything unreadable is every host. */
 export function parseScope(raw: string | null): DataScope {
-  try {
-    const kept = JSON.parse(raw ?? "") as {
-      kind?: unknown;
-      hostId?: unknown;
-      projectKey?: unknown;
-    };
-    if (kept.kind === "host" && typeof kept.hostId === "string" && kept.hostId !== "") {
-      return { kind: "host", hostId: kept.hostId };
-    }
-    if (kept.kind === "project" && typeof kept.projectKey === "string" && kept.projectKey !== "") {
-      return { kind: "project", projectKey: kept.projectKey };
-    }
-  } catch {
-    // Not JSON: every host.
-  }
-  return ALL_SCOPE;
+  return raw === null ? ALL_SCOPE : parseJsonText<DataScope>(raw, Kept, ALL_SCOPE);
 }
 
 /**

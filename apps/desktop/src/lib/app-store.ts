@@ -18,6 +18,7 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { PaletteSlice } from "@/features/palette/palette-store.ts";
 import { DensityController } from "@/features/shell/density.ts";
 import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
@@ -73,12 +74,12 @@ import {
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
-  effectiveMode,
   HomeCache,
+  type HostUiPatch,
   loadChoices,
   type ModeAnswer,
-  saveChoice,
   type UiMode,
+  UiModeSlice,
 } from "../features/home/index.ts";
 import {
   type ConnectionStatus,
@@ -263,9 +264,7 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
   }
 }
 
-export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
-/** How many used palette entries are kept (the palette shows five). */
-const PALETTE_RECENTS_KEPT = 12;
+export { PALETTE_RECENTS_KEY } from "@/features/palette/palette-store.ts";
 
 export { sessionKey };
 
@@ -469,6 +468,18 @@ export class AppStore {
       platform,
       onShortcut: () => this.history.openSearch(),
     });
+    this.uiModes = new UiModeSlice({
+      hosts: () => this.state.hosts,
+      selectedHostId: () => this.state.selected?.hostId ?? null,
+      choices: () => this.state.uiChoices,
+      storage: platform.storage,
+      setChoices: (uiChoices) => this.update({ uiChoices }),
+      setHostUi: (hostId, patch) => this.hostCommand(hostId, "ui.set", { ...patch, confirm: true }),
+      recordHostUi: (hostId, ui) =>
+        this.updateHost(hostId, (h) =>
+          h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h,
+        ),
+    });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
       undefined,
@@ -583,6 +594,17 @@ export class AppStore {
       settings: () => this.roi,
     });
     this.projectList = wireProjects(this.kernel);
+    this.palette = new PaletteSlice({
+      hosts: () => this.state.hosts,
+      storage: platform.storage,
+      loadProjects: (hostId) => this.projectList.load(hostId),
+      loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
+      loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
+      loadPersonas: (hostId) => this.personas.load(hostId),
+      listSnippets: (hostId) => quiet(this.dispatch(hostId, "snippets.list", {})),
+      keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
+      refreshHub: () => this.refreshHub(),
+    });
     this.prWatch = wireWatch(this.kernel, {
       feed: (host, title, before, watch) => this.webhookFeed.watch(host, title, before, watch),
       notify: (notification, route, fallbackUrl, source) =>
@@ -647,6 +669,7 @@ export class AppStore {
       stop: (hostId) => this.link.stop(hostId),
       detach: (hostId) => {
         this.hostTabs.removeHost(hostId);
+        this.vaultApprovals.hostGone(hostId);
         this.link.remove(hostId);
       },
       forget: (hostId) => {
@@ -842,6 +865,8 @@ export class AppStore {
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
   readonly roster: HostRosterSlice;
+  /** Which mode the window shows, simple or full, per host (phase 33). */
+  readonly uiModes: UiModeSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
   readonly terminals: TerminalsSlice;
   /** How the person left the windows: widths, folds, hub view and filter, tile layout (#1596). */
@@ -1027,23 +1052,12 @@ export class AppStore {
 
   /** What the palette was used for lately, most recent first. */
   paletteRecents(): string[] {
-    try {
-      const stored = JSON.parse(this.platform.storage.getItem(PALETTE_RECENTS_KEY) ?? "[]");
-      return Array.isArray(stored)
-        ? stored.filter((id): id is string => typeof id === "string")
-        : [];
-    } catch {
-      return [];
-    }
+    return this.palette.recents();
   }
 
   /** Remembers that a palette entry was used: first in the list, each id once, a few kept. */
   recordPaletteUse(id: string): void {
-    const next = [id, ...this.paletteRecents().filter((other) => other !== id)].slice(
-      0,
-      PALETTE_RECENTS_KEPT,
-    );
-    this.platform.storage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(next));
+    this.palette.recordUse(id);
   }
 
   private openRequest(item: PendingItem): void {
@@ -1167,10 +1181,9 @@ export class AppStore {
     return this.system.revealPath(hostId, path);
   }
 
-  /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
+  /** The mode a host opens in; the mode slice answers. */
   uiMode(hostId: string): ModeAnswer {
-    const host = this.state.hosts.find((h) => h.id === hostId);
-    return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
+    return this.uiModes.mode(hostId);
   }
 
   /** The host the switcher shows: the active tab's, or the last one used on a shared tab. */
@@ -1187,38 +1200,24 @@ export class AppStore {
     else this.hostTabs.show({ name: "home" });
   }
 
-  /** The host whose mode the window shows: the selected one, else the first that is online. */
+  /** The host whose mode the window shows; the mode slice answers. */
   uiHostId(): string | null {
-    const { hosts, selected } = this.state;
-    return (
-      hosts.find((h) => h.id === selected?.hostId)?.id ??
-      hosts.find((h) => h.status === "online")?.id ??
-      null
-    );
+    return this.uiModes.hostId();
   }
 
   /** Switches the window between simple and full mode; false when the host is locked or none shows. */
   toggleUiMode(): boolean {
-    const hostId = this.uiHostId();
-    if (!hostId) return false;
-    const now = this.uiMode(hostId);
-    if (!now.canSwitch) return false;
-    this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
-    return true;
+    return this.uiModes.toggle();
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
   setUiChoice(hostId: string, mode: UiMode | null): void {
-    saveChoice(this.platform.storage, hostId, mode);
-    this.update({ uiChoices: loadChoices(this.platform.storage) });
+    this.uiModes.choose(hostId, mode);
   }
 
   /** Changes the host's default mode and lock (full mode's Settings of that host). */
-  async setHostUi(hostId: string, patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
-    const ui = await this.hostCommand(hostId, "ui.set", { ...patch, confirm: true });
-    if (!ui) return false;
-    this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
-    return true;
+  setHostUi(hostId: string, patch: HostUiPatch): Promise<boolean> {
+    return this.uiModes.setHostUi(hostId, patch);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
@@ -1246,10 +1245,6 @@ export class AppStore {
     this.update({ worktreeFilter: filter });
   }
 
-  /**
-   * What the palette lists besides live state: the Sessões lists, each host's projects and their
-   * cards. Quiet: a host without a board (or offline) just lists less.
-   */
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
   async loadBoard(hostId: string, projectId: string): Promise<void> {
     const conn = this.link.connection(hostId);
@@ -1258,36 +1253,12 @@ export class AppStore {
     for (const card of cardsIn(board)) this.onCard(hostId, card);
   }
 
-  async loadPalette(): Promise<void> {
-    const boards = this.state.hosts
-      .filter((host) => host.status === "online")
-      .map(async (host) => {
-        const projects = await this.projectList.load(host.id);
-        await inSequence(projects ?? [], (project) => this.loadBoard(host.id, project.id));
-      });
-    const targets = this.state.hosts
-      .filter(
-        (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "ssh", false),
-      )
-      .map(async (host) => {
-        await this.ssh.loadTargets(host.id);
-      });
-    const personas = this.state.hosts
-      .filter(
-        (host) =>
-          host.status === "online" && hasFeature(host.hostInfo?.features, "personas", false),
-      )
-      .map((host) => this.personas.load(host.id));
-    const snippets = this.state.hosts
-      .filter(
-        (host) =>
-          host.status === "online" && hasFeature(host.hostInfo?.features, "snippets", false),
-      )
-      .map(async (host) => {
-        const listed = await quiet(this.dispatch(host.id, "snippets.list", {}));
-        if (listed) this.snippets.keep(host.id, listed.snippets);
-      });
-    await Promise.all([this.refreshHub(), ...boards, ...targets, ...snippets, ...personas]);
+  /**
+   * What the palette lists besides live state: the Sessões lists, each host's projects and their
+   * cards. Quiet: a host without a board (or offline) just lists less.
+   */
+  loadPalette(): Promise<void> {
+    return this.palette.load();
   }
 
   /** The run.yaml of a project on its base branch, with its validation and trust. */
@@ -1841,7 +1812,12 @@ export class AppStore {
       );
     }
     if (status !== "online") this.terminals.tellOffline(hostId);
-    if (status === "connecting") this.stream.dropPartialText(hostId);
+    if (status === "connecting") {
+      this.stream.dropPartialText(hostId);
+      // The cards that waited on the old connection leave the queue: the new one never saw them.
+      // The deny may not reach the daemon; it ends the request at its own deadline.
+      this.vaultApprovals.hostGone(hostId);
+    }
   }
 
   /** A team changed on a host: kept, told to the page, and, when it is news, notified. */
@@ -1908,6 +1884,8 @@ export class AppStore {
   readonly scan: VaultScanSlice;
   /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
   readonly system: SystemSlice;
+  /** What the command palette loads and the entries it used lately (#1596). */
+  readonly palette: PaletteSlice;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
   /** Whether the release notes of an update were not opened yet (issue #125). */

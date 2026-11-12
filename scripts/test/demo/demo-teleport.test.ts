@@ -7,7 +7,7 @@ import {
   DEMO_TELEPORT_SESSION,
   DEMO_TELEPORT_SESSIONS,
   teleportReady,
-} from "../../lib/demo-teleport.ts";
+} from "../../lib/demo/teleport.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const cleanups: string[] = [];
