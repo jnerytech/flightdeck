@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ReactNode } from "react";
-import { AXE_RUN_OPTIONS, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
-import { translator } from "../src/i18n/index.ts";
-import { modeRows } from "../src/lib/mode-menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { AXE_RUN_OPTIONS, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { modeRows } from "../../src/lib/mode-menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ModeChip } = await import("../src/features/sessions/mode-chip.tsx");
-const { ModelChip } = await import("../src/features/sessions/model-chip.tsx");
+const { ModeChip } = await import("../../src/features/sessions/mode-chip.tsx");
+const { ModelChip } = await import("../../src/features/sessions/model-chip.tsx");
 const axe = (await import("axe-core")).default;
 
 setDefaultTimeout(30_000);
