@@ -5,7 +5,7 @@ import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { AccountFooter } = await import("../../src/components/shell/account-footer.tsx");
+const { AccountFooter } = await import("../../src/features/shell/account-footer.tsx");
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { Sidebar } = await import("../../src/ui/Sidebar.tsx");
 const { App } = await import("../../src/ui/App.tsx");

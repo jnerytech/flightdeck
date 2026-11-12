@@ -3,7 +3,6 @@ import { ListFilter, MoreHorizontal, Radio, Server, X } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ViewToggle } from "@/components/layout/view-toggle";
 import { RuntimeBadge } from "@/components/session/runtime-badge";
-import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +18,7 @@ import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { HostsBanner } from "@/features/hosts/index.ts";
 import { WorktreeChip } from "@/features/projects/index.ts";
+import { ScopeMenu } from "@/features/shell/index.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { cn } from "@/lib/utils";

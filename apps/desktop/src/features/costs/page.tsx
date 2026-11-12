@@ -1,12 +1,12 @@
 import type { CostsFilter, CostsStatus, CostsSummary, UsageOrigin } from "@flightdeck/protocol";
 import { Coins } from "lucide-react";
 import { memo, useEffect, useState, useSyncExternalStore } from "react";
-import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RoiPeople } from "@/features/roi/roi-people";
 import { RoiSettingsPanel } from "@/features/roi/roi-settings-panel";
 import { RoiTable } from "@/features/roi/roi-table";
+import { ScopeMenu } from "@/features/shell/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { useFormatNumber, useT } from "@/i18n/context";
