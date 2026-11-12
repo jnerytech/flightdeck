@@ -11,9 +11,9 @@ registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const axe = (await import("axe-core")).default;
-const { HomeView } = await import("../../src/components/simple/home-view.tsx");
-const { TaskView } = await import("../../src/components/simple/task-view.tsx");
-const { SettingsView } = await import("../../src/components/simple/settings-view.tsx");
+const { HomeView } = await import("../../src/features/home/home-view.tsx");
+const { TaskView } = await import("../../src/features/home/task-view.tsx");
+const { SettingsView } = await import("../../src/features/home/settings-view.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

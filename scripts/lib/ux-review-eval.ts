@@ -197,7 +197,7 @@ export function reviewPrompt(base: string, diff: string): string {
 const REVIEW_CHECKS = [
   "apps/desktop/test/textos.test.tsx",
   "apps/desktop/test/i18n-missing.test.ts",
-  "apps/desktop/test/layout-ratchet.test.ts",
+  "apps/desktop/test/layout/layout-ratchet.test.ts",
   "apps/desktop/test/state-selectors-ratchet.test.ts",
 ];
 

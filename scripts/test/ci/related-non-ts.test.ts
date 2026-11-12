@@ -9,7 +9,7 @@ const SOURCES = new Map([
   ["scripts/test/wait-ratchet.test.ts", "const baseline = read('wait-baseline.json');"],
   ["scripts/test/other.test.ts", 'expect(x).toBe("docsy")'],
   ["apps/daemon/test/memory/memory.test.ts", 'write(join(home, ".claude"), "CLAUDE.md", "docs")'],
-  ["apps/desktop/test/layout-ratchet.test.ts", 'resolve(DESKTOP, "layout-baseline.json")'],
+  ["apps/desktop/test/layout/layout-ratchet.test.ts", 'resolve(DESKTOP, "layout-baseline.json")'],
   ["scripts/lib/reader.ts", 'readFileSync(".claude/settings.json")'],
 ]);
 
@@ -67,7 +67,10 @@ describe("related-non-ts", () => {
       [],
     );
     expect(selectByPath(["apps/desktop/layout-baseline.json"], SOURCES)).toEqual([
-      { path: "apps/desktop/test/layout-ratchet.test.ts", why: "names layout-baseline.json" },
+      {
+        path: "apps/desktop/test/layout/layout-ratchet.test.ts",
+        why: "names layout-baseline.json",
+      },
     ]);
   });
 
