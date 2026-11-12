@@ -5,4 +5,10 @@
 
 export { HomeCache } from "./home-cache.ts";
 export { SimpleApp } from "./simple-app.tsx";
-export { loadChoices, type ModeAnswer, type UiMode, UiModeSlice } from "./simple-mode.ts";
+export {
+  type HostUiPatch,
+  loadChoices,
+  type ModeAnswer,
+  type UiMode,
+  UiModeSlice,
+} from "./simple-mode.ts";

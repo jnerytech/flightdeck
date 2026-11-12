@@ -65,22 +65,25 @@ interface ModeHost {
   hostInfo?: { ui?: HostUi } | null;
 }
 
+/** A change to a host's default mode and lock. */
+export interface HostUiPatch {
+  mode?: UiMode;
+  locked?: boolean;
+}
+
 /** What the mode reads and does through the app's store. */
 export interface UiModeCore {
   hosts(): readonly ModeHost[];
   /** The host of the session on screen, if any. */
   selectedHostId(): string | null;
-  choices(): Record<string, unknown>;
+  choices(): Record<string, UiMode>;
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
   /** Shows the person's choices, as stored now. */
   setChoices(choices: Record<string, UiMode>): void;
   /** Asks the host to change its default mode and lock (`ui.set`); null when it failed. */
-  setHostUi(
-    hostId: string,
-    patch: { mode?: UiMode; locked?: boolean },
-  ): Promise<{ mode: UiMode; locked: boolean } | null>;
+  setHostUi(hostId: string, patch: HostUiPatch): Promise<Required<HostUiPatch> | null>;
   /** Records the host's answer on its view. */
-  recordHostUi(hostId: string, ui: { mode: UiMode; locked: boolean }): void;
+  recordHostUi(hostId: string, ui: Required<HostUiPatch>): void;
 }
 
 /**
@@ -124,7 +127,7 @@ export class UiModeSlice {
   }
 
   /** Changes the host's default mode and lock (full mode's Settings of that host). */
-  async setHostUi(hostId: string, patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
+  async setHostUi(hostId: string, patch: HostUiPatch): Promise<boolean> {
     const ui = await this.core.setHostUi(hostId, patch);
     if (!ui) return false;
     this.core.recordHostUi(hostId, ui);

@@ -74,6 +74,7 @@ import {
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
   HomeCache,
+  type HostUiPatch,
   loadChoices,
   type ModeAnswer,
   type UiMode,
@@ -1208,7 +1209,7 @@ export class AppStore {
   }
 
   /** Changes the host's default mode and lock (full mode's Settings of that host). */
-  setHostUi(hostId: string, patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
+  setHostUi(hostId: string, patch: HostUiPatch): Promise<boolean> {
     return this.uiModes.setHostUi(hostId, patch);
   }
 
