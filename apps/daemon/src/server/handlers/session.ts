@@ -12,7 +12,6 @@ import type {
 } from "@flightdeck/protocol";
 import { userHome } from "../../config.ts";
 import { coalesceDeltas } from "../../delta-coalescer.ts";
-import { featureOff } from "../../errors.ts";
 import type { HistoryIndexer } from "../../history/indexer.ts";
 import type { LiveState } from "../../history/session-line.ts";
 import { resolveAllowedCwd } from "../../paths.ts";
@@ -205,8 +204,7 @@ export const sessionHandlers = {
     return { claudeSessionId, ...meta };
   },
   "session.fork": async (payload, { server }) => {
-    if (!server.opts.forker) throw featureOff("forker");
-    return await server.opts.forker.fork(payload);
+    return await server.needIn("checkpoints", "forker").fork(payload);
   },
   "history.list": async (payload, { server }) => {
     const { projectKey, ...filter } = payload;
