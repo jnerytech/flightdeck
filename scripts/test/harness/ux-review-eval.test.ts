@@ -160,7 +160,7 @@ describe("ux-review-eval (#983)", () => {
       "Read(./**)",
       "Bash(bun --config=bunfig.area.toml test apps/desktop/test/textos.test.tsx)",
       "Bash(bun --config=bunfig.area.toml test apps/desktop/test/i18n-missing.test.ts)",
-      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/layout-ratchet.test.ts)",
+      "Bash(bun --config=bunfig.area.toml test apps/desktop/test/layout/layout-ratchet.test.ts)",
       "Bash(bun --config=bunfig.area.toml test apps/desktop/test/state-selectors-ratchet.test.ts)",
     ]);
     const denied = args.slice(args.indexOf("--disallowedTools") + 1);

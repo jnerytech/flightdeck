@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { waiter } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppShell } = await import("../src/features/shell/app-shell.tsx");
-const { Page, Section } = await import("../src/shared/layout/page.tsx");
-const { Grid, Inline, Stack, Toolbar } = await import("../src/shared/layout/stack.tsx");
-const { EmptyState, ErrorState, LoadingState } = await import("../src/shared/layout/states.tsx");
+const { AppShell } = await import("../../src/features/shell/app-shell.tsx");
+const { Page, Section } = await import("../../src/shared/layout/page.tsx");
+const { Grid, Inline, Stack, Toolbar } = await import("../../src/shared/layout/stack.tsx");
+const { EmptyState, ErrorState, LoadingState } = await import("../../src/shared/layout/states.tsx");
 
 const settle = waiter(4000);
 

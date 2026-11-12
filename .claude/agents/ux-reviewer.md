@@ -42,7 +42,7 @@ The worktree and the base (default: `git merge-base HEAD main`). Work inside the
 4. Run the checks that already exist for what changed, and cite what they say:
    - `bun --config=bunfig.area.toml test apps/desktop/test/textos.test.tsx`
    - `bun --config=bunfig.area.toml test apps/desktop/test/i18n-missing.test.ts`
-   - `bun --config=bunfig.area.toml test apps/desktop/test/layout-ratchet.test.ts`
+   - `bun --config=bunfig.area.toml test apps/desktop/test/layout/layout-ratchet.test.ts`
    - `bun --config=bunfig.area.toml test apps/desktop/test/state-selectors-ratchet.test.ts`
 5. When the branch has a PR (`gh pr view --json number,headRefOid`), read `gh pr checks <n>`. If a
    `prints and axe` job failed, read its log (`gh run view <run> --job <job> --log-failed`) and

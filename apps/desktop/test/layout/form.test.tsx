@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { InstantClock } from "./in-flight-clock.tsx";
+import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { InstantClock } from "../in-flight-clock.tsx";
 
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Field, Form, FormActions, NativeSelect } = await import("../src/shared/layout/form.tsx");
+const { Field, Form, FormActions, NativeSelect } = await import("../../src/shared/layout/form.tsx");
 
 afterEach(cleanup);
 
@@ -276,7 +276,7 @@ describe("form-layout: NativeSelect", () => {
 // stays at the bottom of the page's scroller, over the fields that scroll under it, and the
 // scroller keeps a focused field clear of it (WCAG 2.4.11, focus not obscured).
 describe("form-layout: actions that stay in reach", () => {
-  const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+  const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
   const rule = (head: string) => {
     const at = css.indexOf(head);
     return at < 0 ? "" : css.slice(at, css.indexOf("\n}", at));
