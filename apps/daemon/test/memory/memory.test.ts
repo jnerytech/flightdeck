@@ -524,7 +524,7 @@ describe("memoria: protocolo", () => {
     const server = startServer({
       manager,
       board,
-      ...(withMemory ? { memory } : {}),
+      ...(withMemory ? { agentSetup: { memory } } : {}),
       features: undefined,
       hostName: "h",
       bind: "127.0.0.1",

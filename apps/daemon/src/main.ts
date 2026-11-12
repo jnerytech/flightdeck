@@ -250,7 +250,7 @@ export async function startDaemon(
   // The vault joins this scanner when it exists (phase 16).
   const snippetScanner = new SecretScanner();
   // What a session starts with: agents, MCP, plugins, auto memory, templates and their tasks.
-  const { agentcfg, mcp, plugins, memory, tasks, templates } = createAgentSetup({
+  const agentSetup = createAgentSetup({
     dataDir: config.dataDir,
     claudePath,
   });
@@ -258,7 +258,7 @@ export async function startDaemon(
     db: store.db,
     allowedRoots: config.allowedRoots,
     scanner: snippetScanner,
-    agents: agentcfg,
+    agents: agentSetup.agentcfg,
   });
   const awake: {
     pinned?: (claudeSessionId: string | null) => boolean;
@@ -682,12 +682,7 @@ export async function startDaemon(
     personas: personaStore,
     personaSessions,
     terminals,
-    agentcfg,
-    mcp,
-    plugins,
-    memory,
-    tasks,
-    templates,
+    agentSetup: serverGroup<"agentSetup">()(agentSetup),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),

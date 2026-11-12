@@ -109,9 +109,9 @@ export function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.history, "history.tool"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...when(opts.snapshots && opts.rewinder && opts.forker, "checkpoints"),
-    ...when(opts.agentcfg && opts.mcp, "agentcfg"),
-    ...when(opts.memory, "memory"),
-    ...when(opts.plugins, "plugins"),
+    ...when(opts.agentSetup?.agentcfg && opts.agentSetup.mcp, "agentcfg"),
+    ...when(opts.agentSetup?.memory, "memory"),
+    ...when(opts.agentSetup?.plugins, "plugins"),
     // Phase 13: the arena is the board's; issues and automations are services of their own.
     ...when(opts.board, "arena"),
     // Phase 31: card dependencies are the board's.
@@ -175,8 +175,8 @@ export async function hostInfo(server: ServerContext, origin: string) {
       // Issue #506: a path a terminal printed opens in the Files viewer, from its folder.
       ...when(opts.terminals?.enabled && opts.review?.files, "file.terminal"),
       ...when(opts.ui, "ui.mode"),
-      ...when(opts.templates, "templates"),
-      ...when(opts.tasks, "tasks"),
+      ...when(opts.agentSetup?.templates, "templates"),
+      ...when(opts.agentSetup?.tasks, "tasks"),
       ...when(opts.opencode?.info().available, "opencode"),
       ...when(opts.assistant, ASSISTANT_FEATURE),
       ...when(opts.teleport || opts.teleportInbox, "teleport"),

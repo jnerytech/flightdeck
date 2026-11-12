@@ -165,7 +165,7 @@ describe("templates-host-files: the doctor and the protocol", () => {
       token: TOKEN,
       allowedRoots: [tempDir()],
       manager,
-      templates: () => loadTemplates({ dir, builtins: BUILTIN_TEMPLATES }),
+      agentSetup: { templates: () => loadTemplates({ dir, builtins: BUILTIN_TEMPLATES }) },
     });
     cleanups.push(() => server.stop());
     const client = new FrameClient(server.url);

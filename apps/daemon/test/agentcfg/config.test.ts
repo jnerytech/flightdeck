@@ -236,7 +236,7 @@ describe("config-agente", () => {
     const server = startServer({
       manager,
       board,
-      agentcfg: new AgentConfig({ claudeDir: tempDir() }),
+      agentSetup: { agentcfg: new AgentConfig({ claudeDir: tempDir() }) },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,

@@ -72,7 +72,7 @@ describe("plugins: parar", () => {
     const server = startServer({
       manager,
       board,
-      plugins: new Plugins({ cli, pins: NONE }),
+      agentSetup: { plugins: new Plugins({ cli, pins: NONE }) },
       features: undefined,
       hostName: "h",
       bind: "127.0.0.1",

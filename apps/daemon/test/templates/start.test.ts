@@ -39,7 +39,9 @@ async function setup(extra: Template[] = []) {
     token: TOKEN,
     allowedRoots: [root],
     manager,
-    templates: async () => ({ templates: [...BUILTIN_TEMPLATES, ...extra], problems: [] }),
+    agentSetup: {
+      templates: async () => ({ templates: [...BUILTIN_TEMPLATES, ...extra], problems: [] }),
+    },
   });
   cleanups.push(() => server.stop());
   const client = new FrameClient(server.url);

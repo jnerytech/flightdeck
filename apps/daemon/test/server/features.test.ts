@@ -103,5 +103,18 @@ describe("daemon features: the list in the protocol matches the server", () => {
       reviewOf({ cardReview: {} }),
       reviewOf({ sessionCommits: {}, sessionPrs: {}, comments: {}, sessionFiles: {} }),
     ]).toEqual([[], ["review"], ["file.list", "file.search"], ["cardReview"], []]);
+    const setupNames = ["agentcfg", "memory", "plugins"];
+    const setupOf = (opts: object) =>
+      featuresOf({ agentSetup: opts } as unknown as ServerOptions).filter((f) =>
+        setupNames.includes(f),
+      );
+    // The agent editor needs its MCP servers too; the memory and the plugins announce themselves
+    // (the templates and their tasks are announced per connection, in `host.info`).
+    expect([
+      setupOf({}),
+      setupOf({ agentcfg: {} }),
+      setupOf({ agentcfg: {}, mcp: {} }),
+      setupOf({ memory: {}, plugins: {} }),
+    ]).toEqual([[], [], ["agentcfg"], ["memory", "plugins"]]);
   });
 });
