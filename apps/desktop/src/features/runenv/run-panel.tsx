@@ -1,10 +1,10 @@
 import type { Card, RunConfigInfo } from "@flightdeck/protocol";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 
 const LIVE = new Set(["setup", "running"]);

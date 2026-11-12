@@ -1,8 +1,6 @@
 import type { GithubRepoItem, Issue } from "@flightdeck/protocol";
 import { GitBranch } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 
 /**
  * "Start from GitHub" (phase 37): pick a repository, optionally one of its issues, and the host

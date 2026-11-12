@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { IconActionButton } = await import("../src/components/feedback/icon-action-button.tsx");
+const { IconActionButton } = await import("../src/shared/feedback/index.ts");
 
 afterEach(cleanup);
 

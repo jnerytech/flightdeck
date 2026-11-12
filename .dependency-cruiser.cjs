@@ -35,7 +35,7 @@ module.exports = {
     {
       name: "shared-depends-on-no-domain",
       comment:
-        "shared/ is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597).",
+        "shared/ is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597). Three more edges are allowed because the feedback primitives need them: the translation context (i18n/context.tsx, domain-free), the in-flight hook (hooks/use-in-flight.ts) and, until it moves into shared/layout, components/layout/form.tsx (the field-row context of the action button; form.tsx imports the feedback entry back, so move the context into a leaf file with the layout folder).",
       severity: "error",
       from: { path: "^apps/[^/]+/src/shared/" },
       to: {
@@ -44,6 +44,9 @@ module.exports = {
           "^apps/[^/]+/src/shared/",
           "^apps/desktop/src/components/ui/",
           "^apps/desktop/src/lib/utils\\.ts$",
+          "^apps/desktop/src/i18n/context\\.tsx$",
+          "^apps/desktop/src/hooks/use-in-flight\\.ts$",
+          "^apps/desktop/src/components/layout/form\\.tsx$",
         ],
       },
     },

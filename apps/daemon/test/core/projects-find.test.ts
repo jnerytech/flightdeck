@@ -214,7 +214,7 @@ describe("projetos-busca: the commands", () => {
   test("scan and clone answer for the allowed roots; host.info announces them", async () => {
     const { root } = tree();
     const { git, calls } = fakeGit();
-    const running = server(root, { findProjects: true, git });
+    const running = server(root, { projects: { find: true }, git });
     const scan = await ask(running, "projects.scan", {});
     expect(scan?.ok && (scan.data as protocol.ProjectsScanResult).repos).toHaveLength(3);
     const url = "https://example.com/acme/new.git";

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { draftOf, move, newDraft, ruleOf } from "../src/lib/vault-rules-form.ts";
+import { draftOf, move, newDraft, ruleOf } from "../../src/lib/vault-rules-form.ts";
 
 describe("regras-ui-editor: a rule as the editor holds it and as the daemon reads it", () => {
   test("only the fields that are set go to the daemon", () => {

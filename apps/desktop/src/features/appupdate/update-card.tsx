@@ -1,8 +1,8 @@
 import { X } from "lucide-react";
 import { memo, useId } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 const UPDATECARD_KEYS = ["appUpdate", "settings"] as const;

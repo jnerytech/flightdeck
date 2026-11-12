@@ -42,7 +42,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 |---|---|---|
 | `approval/` | `features/permissions/` | the approval card, hold button and question form belong to the permission flow; `approval-lines.ts` and `gate-text.tsx` go with it. **theirs** if fd-frontend needs the card for the session view: ask before moving |
 | `assistant/` | `features/assistant/` (new domain, GLOSSARY row) | the wand, model picker and keys; `refusal-text.ts` goes with it |
-| `feedback/` | `shared/feedback/` | `action-button`, `busy`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`, `notices`, and `confirm-dialog.tsx` (#2101 moves it from `ui/` to `components/feedback/`) |
+| `feedback/` | `shared/feedback/` | **moved**: `action-button`, `busy`, `confirm-dialog`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`. `notices.tsx` stays in `components/feedback/` until the store moves: it reads `AppStore`, so it is not domain-free; it goes to `app/` with the root |
 | `layout/` | `shared/layout/` | primitives with no domain; `app-shell.tsx` and `breadcrumb.tsx` move to `features/shell/` (below) |
 | `markdown/` | `shared/markdown/` | `markdown.tsx` and the lazy `markdown-body.tsx` (the lazy chunk must stay lazy: keep `bundle-reach` green) |
 | `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
@@ -64,7 +64,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `App.tsx` | `app/` (new, with `main.tsx` wiring) | the root; moves last |
 | `Areas.tsx` | `app/` | imports `Screen` from `Screens.tsx`: move it with or after `Screens.tsx` to avoid a cycle |
 | `BoardView.tsx` | **theirs** (`features/board/`) | |
-| `ConfirmDialog.tsx` | `components/feedback/`, then `shared/feedback/` | #2101 (in flight) does the first step; the second goes with the `feedback/` folder |
+| `ConfirmDialog.tsx` | `shared/feedback/` | **moved** (#2101 to `components/feedback/`, then with the folder) |
 | `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
 | `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
@@ -98,7 +98,7 @@ prefix. Tests move with their file in the same PR.
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
 | `notify.ts` | `features/inbox/`: it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
-| `notice-*.ts` | `shared/feedback/` (read by `feedback/notices.tsx`, the board, needs-you and the run timeline) |
+| `notice-*.ts` | `notice-lifetime.ts` goes to `app/` with `notices.tsx` (it reads the `Notice` type and the store); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) stays until `i18n` has a home |
 | `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
 | `quiet*.ts` | `features/needs-you/` (the quiet badge of the board and the needs-you rows) |
 | `away.ts` | `features/needs-you/` |

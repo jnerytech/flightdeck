@@ -1,7 +1,5 @@
 import type { Card, CardReviewResult, ChangesResult } from "@flightdeck/protocol";
 import { useEffect, useId, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -9,6 +7,7 @@ import { refusalText } from "@/i18n/errors";
 import type { T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { cardStartBlock } from "@/lib/card-start-block";
+import { ActionButton, InlineNotice } from "@/shared/feedback/index.ts";
 import { FindingSeverity } from "../review/index.ts";
 
 type Outcome = { kind: "result"; result: CardReviewResult } | { kind: "refused"; text: string };

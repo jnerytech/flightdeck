@@ -25,7 +25,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { IconTip } from "@/components/feedback/icon-tip";
 import { TabOverflow } from "@/components/tabs/tab-overflow";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +37,7 @@ import { HostDot } from "@/features/hosts/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { cn } from "@/lib/utils";
+import { IconTip } from "@/shared/feedback/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { revealTab } from "../../lib/reveal-tab.ts";
 import { badgePulses, type TabBadge, tabKind } from "../../lib/tab-badge.ts";

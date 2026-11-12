@@ -2,7 +2,6 @@ import type { CommandPayload, EffortLevel, PermissionMode } from "@flightdeck/pr
 import { ChevronRight } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Stack } from "@/components/layout/stack";
@@ -11,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { CLAUDE_MODELS } from "../../lib/new-session-prefs.ts";

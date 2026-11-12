@@ -1,9 +1,6 @@
 import type { RewindPreview, SnapshotFiles, SnapshotInfo } from "@flightdeck/protocol";
 import { GitBranch, History, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { IconActionButton } from "@/components/feedback/icon-action-button";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +18,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import {
+  ActionButton,
+  AppDialogContent,
+  IconActionButton,
+  InlineNotice,
+} from "@/shared/feedback/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { type Turn, turnsOf } from "../../lib/turns.ts";

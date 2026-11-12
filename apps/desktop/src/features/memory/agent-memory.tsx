@@ -1,9 +1,6 @@
 import type { MemoryFile, MemorySuggestion } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, Form, FormActions } from "@/components/layout/form";
 import { ListRow } from "@/components/layout/list-row";
 import { Panel } from "@/components/layout/panel";
@@ -13,6 +10,7 @@ import { TwoPane } from "@/components/layout/two-pane";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /** The file being edited; `hash` is `null` for one that does not exist yet. */

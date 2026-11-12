@@ -1,8 +1,6 @@
 import type { McpLiveStatus, McpServerView } from "@flightdeck/protocol";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useBusy } from "@/hooks/use-busy";
-import { AppDialogContent } from "../../components/feedback/dialog-content.tsx";
+import { AppDialogContent, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import {
   commandLine,

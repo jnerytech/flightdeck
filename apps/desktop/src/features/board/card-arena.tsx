@@ -1,10 +1,10 @@
 import type { Arena, ArenaVariant, Card } from "@flightdeck/protocol";
 import { type ReactNode, useEffect, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { PersonaPicker } from "@/features/personas/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { ArenaStartForm, type ArenaVariantInput } from "./arena-start-form.tsx";
 import { ArenaView, variantBusy } from "./arena-view.tsx";
 

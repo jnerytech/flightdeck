@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 
 /**

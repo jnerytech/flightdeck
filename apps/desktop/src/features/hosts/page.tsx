@@ -1,8 +1,5 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -13,6 +10,7 @@ import { HarnessTemplatesSection } from "@/features/harness/index.ts";
 import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import { useHostLatency, useStoreSlice } from "@/lib/use-store";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import type { HostNameError } from "../../lib/host-name.ts";

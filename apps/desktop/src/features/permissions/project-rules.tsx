@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
+import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /** The project's rules (`permissions.allow` of its `.claude/settings.local.json`), each removable. */

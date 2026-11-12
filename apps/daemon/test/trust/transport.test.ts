@@ -28,31 +28,33 @@ function serve(peer: string | null) {
     allowedRoots: [root],
     allowedNetworks: ["0.0.0.0/0", "::/0"],
     ...(peer ? { peerOf: () => peer } : {}),
-    projectTrust: {
-      refresh: async () => undefined,
-      state: (paths) => paths.map((p) => state(p, false)),
-      inspect: async (path) => ({
-        path,
-        hooks: [],
-        mcpServers: [],
-        envKeys: [],
-        allowRules: [],
-        defaultMode: null,
-        agents: [],
-        skills: [],
-        commands: [],
-        claudeMd: false,
-        executables: [],
-        redirects: [],
-        plugins: [],
-        otherKeys: [],
-        extras: [],
-        unreadable: [],
-        omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
-      }),
-      set: (path, trusted) => {
-        decided.push([path, trusted]);
-        return state(path, trusted);
+    projects: {
+      trust: {
+        refresh: async () => undefined,
+        state: (paths) => paths.map((p) => state(p, false)),
+        inspect: async (path) => ({
+          path,
+          hooks: [],
+          mcpServers: [],
+          envKeys: [],
+          allowRules: [],
+          defaultMode: null,
+          agents: [],
+          skills: [],
+          commands: [],
+          claudeMd: false,
+          executables: [],
+          redirects: [],
+          plugins: [],
+          otherKeys: [],
+          extras: [],
+          unreadable: [],
+          omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
+        }),
+        set: (path, trusted) => {
+          decided.push([path, trusted]);
+          return state(path, trusted);
+        },
       },
     },
   });

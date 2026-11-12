@@ -1,7 +1,7 @@
 import { Check, Copy, GitFork, Pin } from "lucide-react";
 import { useEffect, useState } from "react";
-import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { formatAgo } from "@/i18n/format";
+import { IconActionButton } from "@/shared/feedback/index.ts";
 import type { T } from "../../i18n/index.ts";
 
 /** How often the age under a message is worked out again. */

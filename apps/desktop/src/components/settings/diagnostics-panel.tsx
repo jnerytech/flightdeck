@@ -1,6 +1,6 @@
-import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
+import { ActionButton } from "@/shared/feedback/index.ts";
 import { diagnosticsText } from "../../lib/app-log.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { APP_VERSION } from "../../lib/version.ts";

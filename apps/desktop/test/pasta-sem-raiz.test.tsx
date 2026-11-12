@@ -7,7 +7,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { FolderPicker } = await import("../src/features/hosts/folder-picker.tsx");
-const { ActionButton } = await import("../src/components/feedback/action-button.tsx");
+const { ActionButton } = await import("../src/shared/feedback/index.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 
 afterEach(cleanup);

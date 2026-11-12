@@ -2,13 +2,12 @@ import type { ChangesResult, DiffFile, ReviewComment } from "@flightdeck/protoco
 import { reviewMessage } from "@flightdeck/protocol";
 import { Pencil, RotateCcw } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
+import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { formatBytes } from "../../lib/format-bytes.ts";
 import { type Selection, select } from "../../lib/review.ts";

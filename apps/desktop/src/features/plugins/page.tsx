@@ -1,7 +1,5 @@
 import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
 import { memo, useCallback, useEffect, useState } from "react";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Field, Form } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -14,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { AppDialogContent, ConfirmDialog } from "@/shared/feedback/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { FolderPicker } from "../hosts/index.ts";
