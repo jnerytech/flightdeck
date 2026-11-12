@@ -3,12 +3,7 @@ import { useId } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCompact, formatNumber } from "@/i18n/format";
 import type { Lang, T } from "../../i18n/index.ts";
-import {
-  type HomeLeaders,
-  type LeaderRow,
-  sharePercent,
-  type Trend,
-} from "../../lib/home-leaders.ts";
+import { type HomeLeaders, type LeaderRow, sharePercent, type Trend } from "./home-leaders.ts";
 
 const DIMENSIONS = [
   { id: "project", tab: "home.byProject" },

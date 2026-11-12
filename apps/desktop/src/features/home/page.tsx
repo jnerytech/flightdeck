@@ -7,10 +7,6 @@ import type { T } from "@/i18n/index";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Grid, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
-import { type HomeSnapshot, homeHostData, homeKey } from "../../lib/home-cache.ts";
-import { type HomeKpis, homeKpis } from "../../lib/home-kpis.ts";
-import type { HomeLeaders } from "../../lib/home-leaders.ts";
-import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "../../lib/home-view.ts";
 import { knownProjectKeys } from "../../lib/project-keys.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -26,6 +22,10 @@ import {
   projectPath,
   scopeHosts,
 } from "../costs/index.ts";
+import { type HomeSnapshot, homeHostData, homeKey } from "./home-cache.ts";
+import { type HomeKpis, homeKpis } from "./home-kpis.ts";
+import type { HomeLeaders } from "./home-leaders.ts";
+import { addUp, homeMessage, keepAnswers, rangeSubtitle } from "./home-view-model.ts";
 import { KpiCard } from "./kpi-card.tsx";
 import { Leaderboard } from "./leaderboard.tsx";
 

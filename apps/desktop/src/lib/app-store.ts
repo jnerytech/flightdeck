@@ -57,6 +57,14 @@ import {
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
+  effectiveMode,
+  HomeCache,
+  loadChoices,
+  type ModeAnswer,
+  saveChoice,
+  type UiMode,
+} from "../features/home/index.ts";
+import {
   type ConnectionStatus,
   type HealthSlice,
   type HostConfig,
@@ -181,7 +189,6 @@ import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
 import { googleConfig } from "./google-config.ts";
-import { HomeCache } from "./home-cache.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
@@ -190,13 +197,6 @@ import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts
 import { parseRequestLink } from "./request-link.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import {
-  effectiveMode,
-  loadChoices,
-  type ModeAnswer,
-  saveChoice,
-  type UiMode,
-} from "./simple-mode.ts";
 import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";

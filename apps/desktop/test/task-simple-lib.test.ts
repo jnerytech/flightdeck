@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import {
+  lastSummary,
+  pendingQuestion,
+  recentTools,
+  taskState,
+} from "../src/features/home/simple-task.ts";
 import { emptySession, type SessionState } from "../src/features/sessions/session-state.ts";
-import { lastSummary, pendingQuestion, recentTools, taskState } from "../src/lib/simple-task.ts";
 
 const session = (over: Partial<SessionState> = {}): SessionState => ({
   ...emptySession(),

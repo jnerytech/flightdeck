@@ -115,7 +115,7 @@ prefix. Tests move with their file in the same PR.
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest (**moved**: `costs`, `costs-csv`, `costs-export`, `data-scope`, `usage-rows`, `measures`; the index adds their public names, and `usage-rows`' `projectLabel` is exported as `usageProjectLabel` because `costs`' `projectLabel` is a different function) |
 | `deps*.ts` | `deps-summary.ts` to `features/deps/` (**moved**); `deps.ts` (`chainOf`, `pickable`: a card's dependency chain) belongs to `features/board/`, its only reader is `card-deps.tsx` |
 | `harness.ts` | `features/harness/`: **moved** |
-| `home-*.ts`, `simple-*.ts` | `features/home/` |
+| `home-*.ts`, `simple-*.ts` | `features/home/` (**moved**: `home-cache`, `home-kpis`, `home-leaders`, `simple-mode`, `simple-task`, `simple-words`, and `home-view` as `home-view-model.ts`, because `home-view.tsx` already lives in the folder; the index adds `HomeCache` and the simple-mode choice helpers and `UiMode`) |
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`; `host-*.ts` and `hosts.ts` **moved**, where `host-compare.ts` and `host-overview.ts` became `host-compare-model.ts` and `host-overview-model.ts` because `host-compare.tsx` and `host-overview.tsx` already live in the folder) |
 | `inbox.ts` | `features/inbox/` (**moved**) |
 | `issues.ts` | `features/issues/` (**moved**) |
