@@ -8,7 +8,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { emptySummary } = await import("../../src/lib/client-costs.ts");
+const { emptySummary } = await import("../../src/features/clients/client-costs.ts");
 const { HomePage } = await import("../../src/features/home/page.tsx");
 
 setDefaultTimeout(30_000);

@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { RoiSummaryResult } from "@flightdeck/protocol";
+import { UNASSIGNED } from "../../src/features/clients/clients.ts";
 import { RoiSlice } from "../../src/features/roi/index.ts";
 import { RoiSettings } from "../../src/features/roi/roi-settings.ts";
 import type { HostResult } from "../../src/lib/app-store.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
-import { UNASSIGNED } from "../../src/lib/clients.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
 const RESULT = { days: [] } as never as RoiSummaryResult;

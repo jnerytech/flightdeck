@@ -16,13 +16,13 @@ import {
   Stack,
 } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { CLIENT_COLORS, type Client, type ClientColor } from "../../lib/clients.ts";
 import { anyHostHas } from "../../lib/version.ts";
 import { ClientBudget } from "./client-budget.tsx";
 import { ClientDefaults } from "./client-defaults.tsx";
 import { ClientDot } from "./client-dot";
 import { ClientRate } from "./client-rate.tsx";
 import { ClientRules } from "./client-rules.tsx";
+import { CLIENT_COLORS, type Client, type ClientColor } from "./clients.ts";
 import { ClientsSuggest } from "./clients-suggest.tsx";
 import { ClientsTransfer } from "./clients-transfer.tsx";
 

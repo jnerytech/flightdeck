@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { ALL_CLIENTS, CLIENT_SELECTION_KEY } from "../../src/features/clients/client-scope.ts";
+import { type Client, UNASSIGNED } from "../../src/features/clients/clients.ts";
 import { ClientScopeSlice } from "../../src/features/clients/index.ts";
-import { ALL_CLIENTS, CLIENT_SELECTION_KEY } from "../../src/lib/client-scope.ts";
-import { type Client, UNASSIGNED } from "../../src/lib/clients.ts";
 
 const client = (id: string) => ({ id, name: id, rules: [] }) as unknown as Client;
 

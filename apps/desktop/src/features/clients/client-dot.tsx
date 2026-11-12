@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { ClientColor } from "../../lib/clients.ts";
+import type { ClientColor } from "./clients.ts";
 
 /** One class per color, written out so Tailwind finds it; the colors are tokens of the theme. */
 const DOTS: Record<ClientColor, string> = {

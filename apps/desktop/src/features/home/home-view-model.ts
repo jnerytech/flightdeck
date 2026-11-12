@@ -1,6 +1,6 @@
 import type { CostsSummary } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import { mergeSummaries } from "../../lib/client-costs.ts";
+import { mergeSummaries } from "../clients/index.ts";
 import { awayKey, type DataScope, projectLabel } from "../costs/index.ts";
 import type { ConnectionStatus } from "../hosts/index.ts";
 import type { HomeHostData, HomeSnapshot } from "./home-cache.ts";

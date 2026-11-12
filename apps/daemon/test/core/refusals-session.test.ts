@@ -92,11 +92,11 @@ describe("recusas-sessao: folders and sessions refuse with a reason the app tran
     const { sessionId } = await manager.create({ cwd: project, prompt: "oi" });
     const internals = manager as unknown as {
       live: Map<string, unknown>;
-      deliver(id: string, text: string): void;
+      runs: { deliver(id: string, text: string): void };
     };
     const entry = internals.live.get(sessionId);
     internals.live.delete(sessionId);
-    expect(refusal(() => internals.deliver(sessionId, "mais"))).toMatchObject({
+    expect(refusal(() => internals.runs.deliver(sessionId, "mais"))).toMatchObject({
       code: "invalid_state",
       reason: "session_not_running",
     });
