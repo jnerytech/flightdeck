@@ -40,11 +40,7 @@ describe("host-log: the daemon's log and what it never writes (#1593)", () => {
     logger.error("refused");
     const text = await file();
     expect(said).toEqual(["info started", "error refused"]);
-    expect([text.includes("started"), text.includes("refused"), text.includes("error")]).toEqual([
-      true,
-      true,
-      true,
-    ]);
+    expect([text.includes("INFO started"), text.includes("ERROR refused")]).toEqual([true, true]);
   });
 
   test("the tokens, the rotated one and the vault's values never reach the file", async () => {
