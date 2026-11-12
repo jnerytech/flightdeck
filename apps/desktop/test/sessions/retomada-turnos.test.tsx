@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { HistoryMessage } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { waiter } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, render, screen } = await import("@testing-library/react");
-const { EarlierTurns } = await import("../src/features/sessions/earlier-turns.tsx");
-const { translator } = await import("../src/i18n/index.ts");
+const { EarlierTurns } = await import("../../src/features/sessions/earlier-turns.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
 
 afterEach(cleanup);
 const settle = waiter(2000);
