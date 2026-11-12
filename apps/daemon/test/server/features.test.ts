@@ -116,5 +116,24 @@ describe("daemon features: the list in the protocol matches the server", () => {
       setupOf({ agentcfg: {}, mcp: {} }),
       setupOf({ memory: {}, plugins: {} }),
     ]).toEqual([[], [], ["agentcfg"], ["memory", "plugins"]]);
+    const costsOf = (opts: object) =>
+      featuresOf({ costs: opts } as unknown as ServerOptions).filter(
+        (f) => f === "costs" || f === "quotaBudgets",
+      );
+    // The costs announce themselves; the budgets announce `quotaBudgets` only with the plan quota.
+    expect([
+      costsOf({}),
+      costsOf({ costs: {} }),
+      costsOf({ budgets: { opts: {} } }),
+      costsOf({ budgets: { opts: { quota: {} } } }),
+    ]).toEqual([[], ["costs"], [], ["quotaBudgets"]]);
+    const telemetryOf = (opts: object) =>
+      featuresOf({ telemetry: opts } as unknown as ServerOptions).filter((f) => f === "telemetry");
+    // Only the timings' store announces `telemetry`; the opt-in alone does not.
+    expect([telemetryOf({}), telemetryOf({ optIn: {} }), telemetryOf({ store: {} })]).toEqual([
+      [],
+      [],
+      ["telemetry"],
+    ]);
   });
 });

@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { newSessionHost } = await import("../src/lib/new-session-host.ts");
-const { NewSessionForm } = await import("../src/ui/NewSessionForm.tsx");
+const { NewSessionForm } = await import("../src/features/sessions/new-session-form.tsx");
 const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);

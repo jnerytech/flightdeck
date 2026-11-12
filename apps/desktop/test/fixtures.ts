@@ -624,11 +624,10 @@ export function daemon(
       warmProjectKey: (cwd) => keys.resolve(cwd),
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
-      ...(costs ? { costs } : {}),
-      ...(telemetry ? { telemetry, telemetryOptIn } : {}),
+      costs: { ...(costs ? { costs } : {}), ...(budgets ? { budgets } : {}) },
+      ...(telemetry ? { telemetry: { store: telemetry, optIn: telemetryOptIn } } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
       ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
-      ...(budgets ? { budgets } : {}),
       ...(review ? { review } : {}),
       ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
       agentSetup: {
