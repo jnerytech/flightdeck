@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { MessageActions } = await import("../src/features/sessions/message-actions.tsx");
-const { translator } = await import("../src/i18n/index.ts");
-const { SessionView } = await import("../src/features/sessions/session-view.tsx");
-const { applyEnvelope, emptySession } = await import("../src/features/sessions/session-state.ts");
+const { MessageActions } = await import("../../src/features/sessions/message-actions.tsx");
+const { translator } = await import("../../src/i18n/index.ts");
+const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
+const { applyEnvelope, emptySession } = await import(
+  "../../src/features/sessions/session-state.ts"
+);
 
 afterEach(cleanup);
 
