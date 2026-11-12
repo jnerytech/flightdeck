@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { cruise } from "dependency-cruiser";
-import { type CruiseModule, cycleFiles } from "../../lib/cycle-files.ts";
+import { type CruiseModule, cycleFiles } from "../../lib/arch/cycle-files.ts";
 import {
   grownRules,
   KNOWN,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { unguardedGitCalls, unguardedInTree } from "../../lib/git-args.ts";
+import { unguardedGitCalls, unguardedInTree } from "../../lib/ratchets/git-args.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
