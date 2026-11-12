@@ -56,7 +56,7 @@ O `release.yml` da Fase 7 ganha:
    ```
 5. O `SHA256SUMS` cobre todos os arquivos, inclusive os `.sig` e os manifestos.
 
-- **Lógica:** fica nos scripts testáveis da Fase 7 (`scripts/lib/release.ts`), com testes. O YAML só os chama.
+- **Lógica:** fica nos scripts testáveis da Fase 7 (`scripts/lib/release/index.ts`), com testes. O YAML só os chama.
 - **URL estável dos manifestos:** `https://github.com/jnerytech/flightdeck/releases/latest/download/<arquivo>`.
 
 ## Atualizador do app

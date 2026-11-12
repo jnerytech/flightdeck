@@ -3,10 +3,10 @@
  * `bun run release:close -- <tag> [--apply] [--since <tag>]` (issue #252): closes what a release
  * tag shipped. A dry run by default. The board goes through FLIGHTDECK_BOARD_CMD when it is set,
  * called as `<cmd> <issue> done ""` (the coordinator's issue-note.sh, with its REST queue of #242).
- * The logic is in `lib/release-close.ts`.
+ * The logic is in `lib/release/close.ts`.
  */
 import { spawnExec } from "../apps/daemon/src/kernel/exec.ts";
-import { releaseClose } from "./lib/release-close.ts";
+import { releaseClose } from "./lib/release/close.ts";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const since = args.includes("--since") ? args[args.indexOf("--since") + 1] : undefined;

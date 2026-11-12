@@ -6,7 +6,7 @@ import {
   newer,
   type ReleaseDeps,
   release,
-} from "../../lib/release-cmd.ts";
+} from "../../lib/release/cmd.ts";
 
 const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"];
 const VERSAO = "apps/daemon/test/core/version.test.ts";
