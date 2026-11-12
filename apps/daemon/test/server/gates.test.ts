@@ -56,7 +56,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   checkLoop: "prWatch",
   webhook: "webhook",
   // The gates written inline in a case before the split, each with a single name.
-  bypass: "bypass",
   serviceInstall: "serviceInstall",
   forker: "forker",
   snapshots: "snapshots",
@@ -137,6 +136,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     idle: "idle",
     teams: "teams",
   },
+  // The session settings' switches keep the names `host.bypass` and `host.sleep` refused with.
+  sessionSettings: {
+    bypass: "bypass",
+    sleep: "sleep",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -189,6 +193,7 @@ describe("server-gates", () => {
       review: {},
       agentSetup: {},
       messaging: {},
+      sessionSettings: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
