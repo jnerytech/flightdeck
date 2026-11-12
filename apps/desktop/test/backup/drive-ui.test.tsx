@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { REFRESH_TOKEN_ID } from "../../src/lib/google-oauth.ts";
+import { REFRESH_TOKEN_ID } from "../../src/features/backup/google-oauth.ts";
 import { registerDom } from "../dom.ts";
 import { fakeGoogle } from "../fake-google.ts";
 import { memoryPlatform, waitFor } from "../fixtures.ts";

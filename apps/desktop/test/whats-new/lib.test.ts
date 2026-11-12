@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { WHATS_NEW_KEY, WhatsNew } from "../src/features/appupdate/whats-new.ts";
+import { WHATS_NEW_KEY, WhatsNew } from "../../src/features/appupdate/whats-new.ts";
 
 const memory = (initial: Record<string, string> = {}) => {
   const data = new Map(Object.entries(initial));

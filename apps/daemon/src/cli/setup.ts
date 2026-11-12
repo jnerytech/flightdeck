@@ -13,8 +13,8 @@ import {
   doctorExitCode,
   formatDeps,
   probeVersion,
+  runDoctor,
 } from "../deps/index.ts";
-import { runDoctor } from "../doctor.ts";
 import { DAEMON_VERSION, type Exec, linesOf, spawnExec, whichOnPath } from "../kernel/index.ts";
 import { mcpReachable } from "../mcp.ts";
 import {
