@@ -35,6 +35,7 @@ const SOURCES = [
   "src/components/feedback",
   "src/components/layout",
   "src/components/session",
+  "src/shared/markdown",
   "src/shared/status",
 ]
   .flatMap(
