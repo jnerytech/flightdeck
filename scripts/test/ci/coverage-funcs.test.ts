@@ -8,7 +8,7 @@ import {
   PRELOAD,
   planCoverageFuncs,
   uncalled,
-} from "../../lib/coverage-funcs.ts";
+} from "../../lib/coverage-gate/funcs.ts";
 
 const instrument = createInstrumenter();
 const transpiler = new Bun.Transpiler({ loader: "ts" });

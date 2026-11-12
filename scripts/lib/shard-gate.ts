@@ -8,8 +8,13 @@
 
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { testArgs } from "../test/timeout.ts";
-import { belowGate, COVERAGE_GATE, checkCoverage, type FileCoverage } from "./coverage-check.ts";
-import type { FunctionCoverage } from "./coverage-funcs.ts";
+import {
+  belowGate,
+  COVERAGE_GATE,
+  checkCoverage,
+  type FileCoverage,
+} from "./coverage-gate/check.ts";
+import type { FunctionCoverage } from "./coverage-gate/funcs.ts";
 import { fastCoverageVerdict } from "./fast-coverage.ts";
 import { pyramidOf, renderPyramid } from "./pyramid-table.ts";
 import { WHOLE_SUITE_IGNORED } from "./related-coverage.ts";

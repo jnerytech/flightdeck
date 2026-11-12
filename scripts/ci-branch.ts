@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /** `bun run ci:branch <branch> [--only screenshots]`: the branch must already be on origin (#129). */
-import { CI_BRANCH_DEFAULTS, ciBranch } from "./lib/ci-branch.ts";
+import { CI_BRANCH_DEFAULTS, ciBranch } from "./lib/ci/branch.ts";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const only = args.includes("--only") ? args[args.indexOf("--only") + 1] : "all";
