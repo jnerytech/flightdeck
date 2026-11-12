@@ -649,7 +649,7 @@ export async function startDaemon(
     quota: serverGroup<"quota">()({ windows: quota, pause: quotaPause, history: quotaHistory }),
     usage,
     costs: serverGroup<"costs">()({ costs, budgets }),
-    telemetry: telemetryStore,
+    telemetry: serverGroup<"telemetry">()({ store: telemetryStore, optIn: telemetryOptIn }),
     bg: createBgService({
       db: store.db,
       config,
@@ -662,7 +662,6 @@ export async function startDaemon(
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
     webhook: new WebhookSender({ log: logger.log.bind(logger) }),
-    telemetryOptIn,
     review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),

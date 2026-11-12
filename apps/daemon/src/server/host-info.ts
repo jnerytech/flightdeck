@@ -95,7 +95,7 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Issue #1568: a project with no PR provider can have it read from its remote.
     ...when(opts.board, "prDetect"),
     ...when(opts.costs?.costs, "costs"),
-    ...when(opts.telemetry, "telemetry"),
+    ...when(opts.telemetry?.store, "telemetry"),
     ...when(opts.trace, "trace"),
     ...when(opts.summary, "summary"),
     ...when(opts.webhook, "webhook"),

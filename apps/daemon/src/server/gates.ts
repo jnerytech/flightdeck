@@ -32,8 +32,6 @@ export const GATES = {
   roi: "roi",
   runenv: "runEnv",
   summary: "summary",
-  telemetry: "telemetry",
-  telemetryOptIn: "telemetry",
   terminals: "terminals",
   trace: "trace",
   usage: "usage",
@@ -137,6 +135,11 @@ export const GROUP_GATES = {
   costs: {
     costs: "costs",
     budgets: "budgets",
+  },
+  // The telemetry's timings and its opt-in both name `telemetry`.
+  telemetry: {
+    store: "telemetry",
+    optIn: "telemetry",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<
