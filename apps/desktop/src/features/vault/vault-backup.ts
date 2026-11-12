@@ -1,7 +1,9 @@
 import { inSequence } from "@flightdeck/protocol";
 import { armor, Decrypter, Encrypter } from "age-encryption";
+import { z } from "zod";
+import { parseJsonText } from "@/shared/lib/index.ts";
 import { BackupError } from "../backup/index.ts";
-import type { SecretMeta, Vault } from "./vault.ts";
+import { type SecretMeta, SecretMetaSchema, type Vault } from "./vault.ts";
 
 export const MIN_PASSPHRASE = 12;
 
@@ -57,26 +59,19 @@ export async function exportVault(
   return encrypter.encrypt(JSON.stringify({ version: VERSION, secrets: entries }));
 }
 
-function isEntry(item: unknown): item is BackupEntry {
-  const entry = item as BackupEntry | null;
-  return (
-    typeof entry?.value === "string" &&
-    typeof entry.meta?.id === "string" &&
-    typeof entry.meta.name === "string" &&
-    Array.isArray(entry.meta.allowedHosts)
-  );
-}
+/** What a backup holds once decrypted: one wrong secret makes the whole file unreadable. */
+const BackupBody = z.object({
+  version: z.literal(VERSION),
+  secrets: z.array(z.object({ meta: SecretMetaSchema, value: z.string() })),
+});
 
 async function readBackup(file: Uint8Array, passphrase: string): Promise<BackupEntry[]> {
   try {
     const decrypter = new Decrypter();
     decrypter.addPassphrase(passphrase);
-    const body = JSON.parse(await decrypter.decrypt(file, "text")) as {
-      version: number;
-      secrets: unknown[];
-    };
-    if (body.version !== VERSION || !body.secrets.every(isEntry)) throw new Error("shape");
-    return body.secrets as BackupEntry[];
+    const body = parseJsonText(await decrypter.decrypt(file, "text"), BackupBody, null);
+    if (body === null) throw new Error("shape");
+    return body.secrets;
   } catch {
     // A wrong passphrase, a tampered file and a file that is no backup look the same, on purpose.
     throw new BackupError("unreadable");

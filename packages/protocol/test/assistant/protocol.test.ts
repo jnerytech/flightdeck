@@ -12,7 +12,7 @@ import {
   Command,
   ModelOption,
   UsageOrigin,
-} from "../src/index.ts";
+} from "../../src/index.ts";
 
 const command = (type: string, payload: unknown) => Command.safeParse({ id: "1", type, payload });
 const accepted = (type: string, payload: unknown) => command(type, payload).success;
@@ -22,7 +22,7 @@ const accepted = (type: string, payload: unknown) => command(type, payload).succ
  * A dictionary is its `<lang>.ts` and the domain files of its `<lang>/` folder (#1598).
  */
 function refusalTexts(lang: string): string[] {
-  const dir = resolve(import.meta.dir, "../../../apps/desktop/src/i18n");
+  const dir = resolve(import.meta.dir, "../../../../apps/desktop/src/i18n");
   const files = [`${lang}.ts`];
   if (existsSync(resolve(dir, lang))) {
     const names = readdirSync(resolve(dir, lang)).filter((name) => name.endsWith(".ts"));
@@ -157,7 +157,7 @@ describe("assistant-protocol", () => {
 
   test("every reason the Rust crate can refuse with is one the protocol lists, so the app has a text for it", () => {
     const source = readFileSync(
-      resolve(import.meta.dir, "../../../apps/desktop/src-tauri/assistant/src/lib.rs"),
+      resolve(import.meta.dir, "../../../../apps/desktop/src-tauri/assistant/src/lib.rs"),
       "utf8",
     );
     const block = /pub const REASONS: &\[&str\] = &\[([^\]]*)\];/.exec(source)?.[1] ?? "";

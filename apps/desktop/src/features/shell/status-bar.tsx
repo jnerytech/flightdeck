@@ -13,11 +13,11 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { type QuotaGlance, quotaGlance } from "@/features/quota/index.ts";
-import { useBreakpoint } from "@/hooks/use-breakpoint";
 import type { Key, T } from "@/i18n/index";
 import type { AppState, AppStore } from "@/lib/app-store";
 import type { Route } from "@/lib/router";
 import { IconTip } from "@/shared/feedback/index.ts";
+import { useBreakpoint } from "@/shared/hooks/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import { QuotaDetail } from "./quota-detail.tsx";
 import { hostsRoute, type StatusBarSummary, statusBarSummary } from "./status-bar-summary.ts";

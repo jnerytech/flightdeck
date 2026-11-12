@@ -110,10 +110,12 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
 - **Methods screens call stay on the store as forwarders** (`select`, `closeTab`, `moveSession`,
   `sendTo`, ...): the move puts the body in the slice and leaves a one-line forwarder, which
   fd-frontend removes per screen under the 2026-11-11 rule.
-- **The remaining methods go by domain** to the slice of their domain: `allowRoot` to the hosts; the platform helpers
-  (`saveFile`, `copyText`, `pickFolder`, `openPath`, `revealPath`, ...) with the `onLocalPath`
-  guard to `features/shell/` (`SystemSlice` in `system.ts`; whether a host is local is a dep,
-  so the shell imports no terminal entry); the UI mode and tab methods (`uiMode`, `toggleUiMode`,
+- **The remaining methods go by domain** to the slice of their domain: `allowRoot` to the hosts
+  (`HostRosterSlice.allowRoot`, with the host's name and allowed folders; `roots.add` and the
+  toast reach it as roster deps); the platform helpers (`saveFile`, `copyText`, `pickFolder`,
+  `openPath`, `revealPath`, ...) with the `onLocalPath` guard to `features/shell/`
+  (`SystemSlice` in `system.ts`; whether a host is local is a dep, so the shell imports no
+  terminal entry); the UI mode and tab methods (`uiMode`, `toggleUiMode`,
   `setUiChoice`, `setHostUi`, `openNewTab`, `uiHostId`) to the host tabs; the palette
   (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette; the runs (`runEnvConfig`,
   `runTrust`, `runStart`, `runStop`, `onRun`, `onRunEnv`) to their wire; messaging (`relayDeps`,

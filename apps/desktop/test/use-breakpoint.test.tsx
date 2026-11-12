@@ -4,7 +4,7 @@ import { waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { useBreakpoint } = await import("../src/hooks/use-breakpoint.ts");
+const { useBreakpoint } = await import("../src/shared/hooks/use-breakpoint.ts");
 
 const settle = waiter(4000);
 
