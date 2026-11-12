@@ -96,7 +96,8 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   step, which passes it to `refreshSetup`, and nothing else. `refreshSetup` stays a store method;
   it runs no on-line step. The order lives in one place a reviewer reads top to bottom.
 - **Session methods go to the sessions domain** (`features/sessions/`): history (`historyGet`,
-  `historyList`, `resumeHistory`) to `HistorySlice`; the finished list (`recordFinished`,
+  `historyList`, `resumeHistory`) to `HistorySlice`, with the history's own constants and filter
+  type (`HISTORY_PAGE`, `HISTORY_LIST_LIMIT`, `HistoryFilter`), which `app-state.ts` re-exports; the finished list (`recordFinished`,
   `countFinishedFiles`, `setFinished`) to a `FinishedSlice` next to `finished.ts`. The others
   (`select`, `watchSession`, `moveSession`, `closeTab`, `sendTo`, `setMeta`, `sessionRecap`,
   `onCard`) have no home yet: see the open questions. **Vault methods go to the vault slices.**
