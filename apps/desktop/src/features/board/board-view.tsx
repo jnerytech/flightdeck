@@ -77,16 +77,9 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import { BulkRunDialog } from "../features/board/bulk-run-dialog.tsx";
-import { CardStartDialog } from "../features/board/card-start-dialog.tsx";
-import { startPersonaOf, startWorkflowOf } from "../features/board/card-template-field.tsx";
-import { BoardColumnEmpty } from "../features/board/column-empty.tsx";
-import { DeleteCardDialog } from "../features/board/delete-card-dialog.tsx";
-import { NewCardDialog } from "../features/board/new-card-dialog.tsx";
-import { ExternalSeal, IssuesPanel } from "../features/issues/index.ts";
-import type { Key, T } from "../i18n/index.ts";
-import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { boardTitle, COLUMNS, positionBefore, projectCards } from "../lib/board.ts";
+import type { Key, T } from "../../i18n/index.ts";
+import { type AppStore, sessionKey } from "../../lib/app-store.ts";
+import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";
 import {
   bulkRunOutcome,
   bulkSkipReason,
@@ -101,11 +94,11 @@ import {
   startQuotaLines,
   updateMany,
   updateSummary,
-} from "../lib/board-bulk.ts";
-import { cardKey } from "../lib/board-card-keys.ts";
-import { askAbout, dragNeeds, type Lacking, missingFor } from "../lib/board-contracts.ts";
-import { boardFiles, filesPanelOpen } from "../lib/board-files.ts";
-import type { BoardKeyAction } from "../lib/board-keys.ts";
+} from "../../lib/board-bulk.ts";
+import { cardKey } from "../../lib/board-card-keys.ts";
+import { askAbout, dragNeeds, type Lacking, missingFor } from "../../lib/board-contracts.ts";
+import { boardFiles, filesPanelOpen } from "../../lib/board-files.ts";
+import type { BoardKeyAction } from "../../lib/board-keys.ts";
 import {
   type BulkRefusal,
   COLUMN_GAP,
@@ -119,15 +112,22 @@ import {
   rangeSelection,
   shownSelection,
   toggleSelection,
-} from "../lib/board-select.ts";
-import { cardStartBlock } from "../lib/card-start-block.ts";
-import { radarBadge } from "../lib/conflict-radar.ts";
-import { issueNumber } from "../lib/issues.ts";
-import { activeWorktreeFilter, worktreeOfProject } from "../lib/project-tree.ts";
-import { quietAlerts } from "../lib/quiet.ts";
-import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
-import { statusTone } from "../lib/status.ts";
-import { useWidth } from "../lib/use-width.ts";
+} from "../../lib/board-select.ts";
+import { cardStartBlock } from "../../lib/card-start-block.ts";
+import { radarBadge } from "../../lib/conflict-radar.ts";
+import { issueNumber } from "../../lib/issues.ts";
+import { activeWorktreeFilter, worktreeOfProject } from "../../lib/project-tree.ts";
+import { quietAlerts } from "../../lib/quiet.ts";
+import { elsewhereNotice, waitingCards } from "../../lib/start-elsewhere.ts";
+import { statusTone } from "../../lib/status.ts";
+import { useWidth } from "../../lib/use-width.ts";
+import { ExternalSeal, IssuesPanel } from "../issues/index.ts";
+import { BulkRunDialog } from "./bulk-run-dialog.tsx";
+import { CardStartDialog } from "./card-start-dialog.tsx";
+import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
+import { BoardColumnEmpty } from "./column-empty.tsx";
+import { DeleteCardDialog } from "./delete-card-dialog.tsx";
+import { NewCardDialog } from "./new-card-dialog.tsx";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {

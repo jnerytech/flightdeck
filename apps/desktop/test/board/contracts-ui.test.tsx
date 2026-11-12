@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
-const { BoardView } = await import("../../src/ui/BoardView.tsx");
+const { BoardView } = await import("../../src/features/board/board-view.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

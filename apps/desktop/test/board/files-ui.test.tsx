@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { BoardView } = await import("../../src/ui/BoardView.tsx");
+const { BoardView } = await import("../../src/features/board/board-view.tsx");
 // The app gives its screens the language through this context (App.tsx); the panel reads it.
 const { TContext } = await import("../../src/i18n/context.tsx");
 
