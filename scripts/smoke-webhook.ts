@@ -11,7 +11,7 @@ import { join, resolve } from "node:path";
  */
 import { type Ack, byCodeUnit, parseServerMessage } from "@flightdeck/protocol";
 import { Webhooks } from "../apps/desktop/src/features/webhook/webhooks.ts";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { awaitListenUrl, DAEMON_START_MS, readListenUrl } from "../../lib/smoke-daemon.ts";
+import { awaitListenUrl, DAEMON_START_MS, readListenUrl } from "../../lib/smoke/daemon.ts";
 
 const encoder = new TextEncoder();
 const ROOT = resolve(import.meta.dir, "../../..");
