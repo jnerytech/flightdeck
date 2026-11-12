@@ -375,27 +375,6 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/account/account.ts",
-    "to": "apps/daemon/src/account/readers.ts",
-    "unresolvedTo": "./readers.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/account/readers.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/account/account.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "apps/daemon/src/board/board.ts",
     "to": "apps/daemon/src/board/check-loop-engine.ts",
     "unresolvedTo": "./check-loop-engine.ts",
