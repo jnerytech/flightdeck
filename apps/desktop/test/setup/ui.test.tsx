@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
-const { SetupPage } = await import("../src/features/setup/index.ts");
-const { Settings } = await import("../src/features/settings/page.tsx");
-const { StartScreen } = await import("../src/features/sessions/start-screen.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
+const { SetupPage } = await import("../../src/features/setup/index.ts");
+const { Settings } = await import("../../src/features/settings/page.tsx");
+const { StartScreen } = await import("../../src/features/sessions/start-screen.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -167,7 +167,7 @@ function page(w: ReturnType<typeof make>) {
 
 describe("setup-ui: the Setup screen (issue #164)", () => {
   test("the app opens the setup route as a tab, with the screen's title", async () => {
-    const { App } = await import("../src/ui/App.tsx");
+    const { App } = await import("../../src/ui/App.tsx");
     const cleanups: Array<() => unknown> = [];
     const server = makeDaemon(cleanups, {}).listen();
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });

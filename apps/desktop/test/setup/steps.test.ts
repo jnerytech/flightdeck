@@ -12,8 +12,8 @@ import {
   type SetupStep,
   setupProgress,
   setupSteps,
-} from "../src/lib/setup-steps.ts";
-import type { Platform } from "../src/platform/types.ts";
+} from "../../src/lib/setup-steps.ts";
+import type { Platform } from "../../src/platform/types.ts";
 
 const FEATURES = ["central", "workflows", "github", "costs"];
 const host = (id: string, over: object = {}) => ({
