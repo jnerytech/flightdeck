@@ -35,7 +35,6 @@ import {
 import { pendingCount } from "@/features/needs-you/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { rowRoute } from "@/features/sessions/index.ts";
-import { AccountFooter } from "@/features/shell/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { Key, T } from "@/i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app-store.ts";
@@ -51,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { APP_VERSION, anyHostHas, hasFeature } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
 import { ProgressRing, StatusDot } from "@/shared/status/index.ts";
+import { AccountFooter } from "./account-footer.tsx";
 import { footAccount } from "./foot-account.ts";
 import { activeNav } from "./nav-active.ts";
 import { type NavBadgeKey, navBadge } from "./nav-badges.ts";
