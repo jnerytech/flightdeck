@@ -39,6 +39,9 @@ export function wireSessionCommands(
     selected: () => kernel.state().selected,
     fail: (error, text, retry) => kernel.fail(error, text, retry),
     opened: deps.opened,
+    sleep: (hostId, sessionId) => kernel.hostCommand(hostId, "session.sleep", { sessionId }),
+    success: (text) => kernel.success(text),
+    t: () => kernel.t(),
   });
 }
 
