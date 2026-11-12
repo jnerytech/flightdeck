@@ -30,6 +30,17 @@ export {
 } from "./hub-scope.ts";
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { ModelOptions } from "./model-options.tsx";
+export {
+  choicesToKeep,
+  createPayload,
+  joinPath,
+  opensMoreOptions,
+  promptMissing,
+  sessionModes,
+  startChoices,
+  startFolder,
+  underRoot,
+} from "./new-session.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
 export { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
