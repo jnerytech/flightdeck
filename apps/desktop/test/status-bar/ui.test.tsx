@@ -7,7 +7,7 @@ import { liveScreen, registerDom } from "../dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { StatusBar } = await import("../../src/components/shell/status-bar.tsx");
+const { StatusBar } = await import("../../src/features/shell/status-bar.tsx");
 
 afterEach(cleanup);
 

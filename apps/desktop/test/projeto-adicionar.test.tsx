@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
+import { basename } from "@/shared/lib/index.ts";
 import { git } from "../../daemon/test/support/board-helpers.ts";
-import { basename } from "../src/lib/paths.ts";
 import { suggestFolders } from "../src/lib/project-suggestions.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";

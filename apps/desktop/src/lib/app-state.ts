@@ -26,6 +26,7 @@ import type {
   WatchInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
+import { basename } from "@/shared/lib/index.ts";
 import type { AccountSliceState } from "../features/account/index.ts";
 import type { ActivitySliceState } from "../features/activity/index.ts";
 import type { AppUpdateState } from "../features/appupdate/index.ts";
@@ -49,7 +50,6 @@ import type { ConnectionStatus } from "./host-connection.ts";
 import type { RetryState } from "./host-offline.ts";
 import type { HostConfig } from "./hosts.ts";
 import type { InboxEntry } from "./inbox.ts";
-import { basename } from "./paths.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import type { Route } from "./router.ts";
 import { sessionKey } from "./session-key.ts";

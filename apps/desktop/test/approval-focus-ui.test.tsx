@@ -6,7 +6,7 @@ import { settle } from "./wait.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ApprovalCard } = await import("../src/components/approval/approval-card.tsx");
+const { ApprovalCard } = await import("../src/features/permissions/approval-card.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 

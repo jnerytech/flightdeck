@@ -1,23 +1,23 @@
 import { Radio } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { ApprovalCard } from "@/components/approval/approval-card";
-import { AssistField } from "@/components/assistant/assist-field";
-import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AssistField } from "@/features/assistant/index.ts";
 import { TranscriptReader } from "@/features/history/index.ts";
+import { ApprovalCard } from "@/features/permissions/index.ts";
 import { PersonaSwitch } from "@/features/personas/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
+import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { externalState } from "../../lib/hub.ts";
-import { isBusy } from "../../lib/status.ts";
 import { useLaunchTerminal } from "../../lib/use-launch-terminal.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { BgPanel } from "../background/bg-panel.tsx";
 import { CheckpointsButton } from "../checkpoints/index.ts";
 import { TerminalButton } from "../terminal/index.ts";
 import { approvalRequestOf, externalRequestsOf, externalTitle } from "./external-view.ts";
+import { Composer, RecapSlot, SessionHeader, SessionPane } from "./parts";
 
 /**
  * A live session opened outside Flightdeck: its transcript as it grows, its permission requests

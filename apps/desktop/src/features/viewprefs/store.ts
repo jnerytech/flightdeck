@@ -1,3 +1,4 @@
+import { LIST_WIDTH_KEY, loadListWidth } from "@/shared/lib/index.ts";
 import { loadLastBoards, saveLastBoard } from "../../lib/board-shortcut.ts";
 import {
   type HubFilter,
@@ -9,7 +10,6 @@ import {
   saveHubOpen,
   saveHubView,
 } from "../../lib/hub.ts";
-import { LIST_WIDTH_KEY, loadListWidth } from "../../lib/list-width.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "../../lib/sidebar-groups.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "../../lib/tiles.ts";
 import {

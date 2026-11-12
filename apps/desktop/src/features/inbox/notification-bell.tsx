@@ -1,10 +1,5 @@
 import { Bell } from "lucide-react";
 import { useState } from "react";
-import {
-  NotificationCenter,
-  type RowRequest,
-  UnreadBadge,
-} from "@/components/notifications/notification-center";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import type { T } from "../../i18n/index.ts";
@@ -21,6 +16,7 @@ import {
 import { parseRequestLink } from "../../lib/request-link.ts";
 import type { Route } from "../../lib/router.ts";
 import { sessionKey } from "../../lib/session-key.ts";
+import { NotificationCenter, type RowRequest, UnreadBadge } from "./notification-center.tsx";
 
 /** Requests that are answered in full where they are shown (a question, a plan), never from a row. */
 const ASKED_IN_FULL = new Set(["AskUserQuestion", "ExitPlanMode"]);

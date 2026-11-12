@@ -1,8 +1,8 @@
 import { Columns2, Rows2, SquareSplitHorizontal } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { useHeaderSlot } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { useHeaderSlot } from "@/features/shell/index.ts";
 import { TabBar } from "@/features/tabs/index.ts";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";

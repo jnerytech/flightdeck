@@ -7,7 +7,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { Breadcrumb } = await import("../src/components/layout/breadcrumb.tsx");
+const { Breadcrumb } = await import("../src/features/shell/breadcrumb.tsx");
 
 afterEach(cleanup);
 

@@ -19,7 +19,10 @@ const power: PowerContext = {
 
 function wired(configFile: string) {
   const config = { keepAwake: true };
-  return { built: createKeepAwake({ powerContext: power, config, configFile }), config };
+  const built = createKeepAwake({ powerContext: power, config, configFile });
+  const keepAwakeSwitch = built.modules[0].server?.keepAwake;
+  if (!keepAwakeSwitch) throw new Error("no keepAwake switch in the module");
+  return { built: { ...built, keepAwakeSwitch }, config };
 }
 
 describe("power-wiring: the host's hold on the computer and its switch (#1593)", () => {
@@ -36,11 +39,36 @@ describe("power-wiring: the host's hold on the computer and its switch (#1593)",
   test("a switch the config file cannot take leaves the config and the hold as they were", async () => {
     const { built, config } = wired(join(tempDir("fd-power-wiring-"), "missing", "config.json"));
     let failed = false;
-    await built.keepAwakeSwitch.set(false).catch(() => {
+    await Promise.resolve(built.keepAwakeSwitch.set(false)).catch(() => {
       failed = true;
     });
     expect(failed).toBe(true);
     expect(config.keepAwake).toBe(true);
     expect(built.keepAwake.status().enabled).toBe(true);
+  });
+
+  test("its module's stop lets go of the hold, and runs in the first stop phase (#2094)", async () => {
+    let killed = 0;
+    const holding: PowerContext = {
+      ...power,
+      which: (name) => `/usr/bin/${name}`,
+      hold: () => ({ kill: () => void killed++, exited: new Promise<void>(() => {}) }),
+    };
+    const configFile = join(tempDir("fd-power-wiring-"), "config.json");
+    const built = createKeepAwake({
+      powerContext: holding,
+      config: { keepAwake: true },
+      configFile,
+    });
+    const [module] = built.modules;
+    built.keepAwake.update(1);
+    const before = built.keepAwake.status().held;
+    await module.stop?.();
+    expect([before, built.keepAwake.status().held, killed, module.stopPhase]).toEqual([
+      true,
+      false,
+      1,
+      "first",
+    ]);
   });
 });

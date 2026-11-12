@@ -11,7 +11,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
 const axe = (await import("axe-core")).default;
-const { contrastRatio } = await import("../../src/lib/contrast.ts");
+const { contrastRatio } = await import("../../src/shared/lib/contrast.ts");
 
 /** `--name: value;` declarations of the first `selector { … }` block of styles.css. */
 function declarations(css: string, selector: string): Record<string, string> {

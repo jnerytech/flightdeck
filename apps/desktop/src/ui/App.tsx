@@ -8,17 +8,20 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Notices } from "@/components/feedback/notices";
-import { AppShell } from "@/components/layout/app-shell";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { StatusBarSlot } from "@/components/shell/status-bar";
-import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
-import { UpdateBanner, UpdateCard } from "@/features/appupdate/index.ts";
+import { UpdateBanner, UpdateCard, WhatsNewDialog } from "@/features/appupdate/index.ts";
 import { draftFromLink } from "@/features/hosts/index.ts";
 import { NotificationBell } from "@/features/inbox/index.ts";
 import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/index.ts";
+import {
+  AppShell,
+  Breadcrumb,
+  HistoryButtons,
+  StatusBarSlot,
+  TopBarActions,
+  TopBarHost,
+} from "@/features/shell/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
 import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";

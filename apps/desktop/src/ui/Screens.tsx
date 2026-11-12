@@ -1,7 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
 import {
@@ -14,6 +13,7 @@ import {
 } from "@/features/hosts/index.ts";
 import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
+import { EarlierTurns } from "@/features/sessions/earlier-turns";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
 import { rowRoute, sessionTabOffers } from "@/features/sessions/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
@@ -21,6 +21,7 @@ import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
 import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
+import { basename, holdsFolder, isBusy } from "@/shared/lib/index.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";
@@ -46,9 +47,7 @@ import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
-import { basename, holdsFolder } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
-import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
 import { useSessionCost } from "../lib/use-session-cost.ts";
 import { useSessionState } from "../lib/use-store.ts";

@@ -9,34 +9,17 @@ import {
 } from "@flightdeck/protocol";
 import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ApprovalCard } from "@/components/approval/approval-card";
-import { useWand, type WandBinding } from "@/components/assistant/use-wand";
-import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
-import { ActivityLine } from "@/components/session/activity-line";
-import { MessageActions } from "@/components/session/message-actions";
-import { ModeChip } from "@/components/session/mode-chip";
-import { ModelChip } from "@/components/session/model-chip";
-import {
-  Composer,
-  ComposerDock,
-  Message,
-  RecapSlot,
-  SessionHeader,
-  SessionPane,
-  Timeline,
-} from "@/components/session/parts";
-import { RuntimeBadge } from "@/components/session/runtime-badge";
-import { SessionStatusLine } from "@/components/session/status-line";
-import { WorkingRow } from "@/components/session/working-row";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useWand, type WandBinding, WandButton, WandPanel } from "@/features/assistant/index.ts";
+import { ApprovalCard } from "@/features/permissions/index.ts";
 import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { ActionButton, ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
 import { NativeSelect } from "@/shared/layout/index.ts";
+import { isBusy } from "@/shared/lib/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
-import { EndWithChangesDialog } from "../../components/session/end-with-changes-dialog.tsx";
 import { translateError } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Answer } from "../../lib/app-store.ts";
@@ -46,14 +29,30 @@ import type { MenuItem } from "../../lib/prompt-menu.ts";
 import { activityOf } from "../../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../../lib/session-state.ts";
-import { isBusy } from "../../lib/status.ts";
+import { ActivityLine } from "./activity-line";
 import { commandItemsOf, slashFill } from "./command-menu.ts";
 import { composerModeMenu, offersModelPicker } from "./composer-pickers.ts";
 import { queueStep, submitAction } from "./composer-queue.ts";
+import { EndWithChangesDialog } from "./end-with-changes-dialog.tsx";
+import { MessageActions } from "./message-actions";
+import { ModeChip } from "./mode-chip";
+import { ModelChip } from "./model-chip";
 import { ModelOptions } from "./model-options.tsx";
+import {
+  Composer,
+  ComposerDock,
+  Message,
+  RecapSlot,
+  SessionHeader,
+  SessionPane,
+  Timeline,
+} from "./parts";
+import { RuntimeBadge } from "./runtime-badge";
 import { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
 import { StatusBadge } from "./status-badge.tsx";
+import { SessionStatusLine } from "./status-line";
 import { ToolCall } from "./tool-call.tsx";
+import { WorkingRow } from "./working-row";
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, ScrollPosition>();

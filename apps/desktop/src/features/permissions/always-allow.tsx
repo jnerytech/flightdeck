@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
-import { trimTrailingSeparators } from "../../lib/paths.ts";
+import { trimTrailingSeparators } from "@/shared/lib/index.ts";
 
 /**
  * The default project rule: the exact command for Bash, the exact file for a tool that names one,

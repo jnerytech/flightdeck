@@ -8,7 +8,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { QuotaGlanceButton } = await import("../src/components/shell/status-bar.tsx");
+const { QuotaGlanceButton } = await import("../src/features/shell/status-bar.tsx");
 
 afterEach(() => cleanup());
 
@@ -85,7 +85,7 @@ for (const [lang, dict] of [
 
 describe("status-bar: the slot over the app's state (issue #491)", () => {
   test("the quota glance reads the online hosts' quota, names the host and opens it", async () => {
-    const { StatusBarSlot } = await import("../src/components/shell/status-bar.tsx");
+    const { StatusBarSlot } = await import("../src/features/shell/status-bar.tsx");
     const routes: unknown[] = [];
     const state = {
       hosts: [

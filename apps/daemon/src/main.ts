@@ -14,9 +14,8 @@ import { readSpecText } from "./board/spec.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
-import { Forker } from "./checkpoints/fork.ts";
-import { Rewinder } from "./checkpoints/rewind.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
+import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import { type CliDeps, COMMANDS } from "./cli/commands.ts";
@@ -43,7 +42,6 @@ import type { Logger } from "./logger.ts";
 import { createHostLog } from "./logs/wiring.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
-import { Idle } from "./messaging/idle.ts";
 import { Names } from "./names/names.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
 import { credential } from "./permissions/sensitive-paths.ts";
@@ -81,7 +79,6 @@ import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
-import { teleportImportDeps } from "./teleport/import.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
@@ -215,20 +212,24 @@ export async function startDaemon(
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
-  const { memoryGate, memoryPause } = createMemoryGate({
-    config,
-    configFile,
-    reading:
-      options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
-  });
+  const { memoryGate } = await domains.add(
+    createMemoryGate({
+      config,
+      configFile,
+      reading:
+        options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
+    }),
+  );
   // Issue #1404: the person's pause of new card runs, kept in the config.
-  const { hostPause, server: hostPauseServer } = createHostPause({
-    config,
-    configFile,
-    // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
-    // run waiting at a gate has no session but resumes after a restart).
-    running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
-  });
+  const { hostPause } = await domains.add(
+    createHostPause({
+      config,
+      configFile,
+      // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
+      // run waiting at a gate has no session but resumes after a restart).
+      running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
+    }),
+  );
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
@@ -263,11 +264,12 @@ export async function startDaemon(
     pinned?: (claudeSessionId: string | null) => boolean;
     cardSession?: (sessionId: string) => boolean;
   } = {};
-  const { keepAwake, keepAwakeSwitch } = createKeepAwake({
-    powerContext: options.powerContext,
-    config,
-    configFile,
-  });
+  const {
+    keepAwake,
+    modules: [keepAwakeModule],
+  } = await domains.add(
+    createKeepAwake({ powerContext: options.powerContext, config, configFile }),
+  );
 
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
@@ -279,7 +281,7 @@ export async function startDaemon(
     projectForCwd: (cwd) => board.projectForCwd(cwd),
     log: (line) => logger.log(line),
   });
-  const knowledge = createKnowledge({ config, configFile, trust: trustForKnowledge });
+  await domains.add(createKnowledge({ config, configFile, trust: trustForKnowledge }));
   const manager = createSessionManager({
     folderLocks,
     store,
@@ -298,7 +300,7 @@ export async function startDaemon(
     account,
     snapshots,
   });
-  const rewinder = new Rewinder({ snapshots, sessions: manager });
+  await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
   const {
@@ -308,16 +310,20 @@ export async function startDaemon(
     createHistory({ db: store.db, config, names, manager, log: (m) => logger.log(m) }),
   );
   // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
-  const { teleport, teleportInbox } = createTeleport({
-    manager,
-    names,
-    indexer: history,
-    config,
-    scan: snippetScanner.scan.bind(snippetScanner),
-    log: logger.log.bind(logger),
-  });
-  await teleport.start();
-  await teleportInbox.start();
+  const {
+    modules: [teleportModule],
+  } = await domains.add(
+    createTeleport({
+      manager,
+      names,
+      indexer: history,
+      config,
+      // The meta is made with the central below; an import reads it only once the server runs.
+      meta: { set: (claudeSessionId, patch) => central.meta.set(claudeSessionId, patch) },
+      scan: snippetScanner.scan.bind(snippetScanner),
+      log: logger.log.bind(logger),
+    }),
+  );
   const {
     costs,
     usageIndex,
@@ -391,26 +397,25 @@ export async function startDaemon(
   });
   // The issues, the GitHub Projects' boards, the PR watch and the automations around the cards.
   const {
+    modules: [boardWorkModule],
     issues,
-    boardSync,
-    watcher: prWatcher,
-    watch: prWatch,
-    automations,
-  } = createBoardWork({
-    store,
-    board,
-    autoApprove,
-    gh: runGh,
-    manager,
-    costs,
-    snapshots,
-    history,
-    scanner: snippetScanner,
-    checks: boundedCheckRunner(),
-    config,
-    log: logger.log.bind(logger),
-  });
-  automations.start();
+  } = await domains.add(
+    createBoardWork({
+      store,
+      board,
+      autoApprove,
+      gh: runGh,
+      manager,
+      costs,
+      snapshots,
+      history,
+      scanner: snippetScanner,
+      checks: boundedCheckRunner(),
+      config,
+      log: logger.log.bind(logger),
+      checkLoopOf: (watcher) => checkLoop.switchOf({ board, watcher, manager }),
+    }),
+  );
   const {
     modules: [maintenanceModule],
   } = await domains.add(createMaintenance({ db: store.db, config, snapshots }));
@@ -492,20 +497,23 @@ export async function startDaemon(
     },
   });
   heldValues = () => vault.heldValues();
-  const { endpoints, messaging, teams, personaSessions, stopNames } = await createTeams({
-    db: store.db,
-    config,
-    manager,
-    board,
-    central,
-    keys,
-    autoApprove,
-    names,
-    personaStore,
-    prepare,
-    quota,
-  });
-  prWatch.start();
+  const {
+    modules: [teamsModule],
+  } = await domains.add(
+    await createTeams({
+      db: store.db,
+      config,
+      manager,
+      board,
+      central,
+      keys,
+      autoApprove,
+      names,
+      personaStore,
+      prepare,
+      quota,
+    }),
+  );
   // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
   const runEnv = createRunEnv({
     db: store.db,
@@ -514,8 +522,6 @@ export async function startDaemon(
     terminals,
     board,
   });
-  const idle = new Idle({ endpoints, messaging, host: config.hostName });
-  const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
@@ -536,13 +542,15 @@ export async function startDaemon(
   // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
   // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
   await projectTrust.prepareSessions(manager.list());
-  const harness = createHarness({
-    runtime,
-    quota,
-    scanner: snippetScanner,
-    cwd: assistantDir(config.dataDir),
-    config,
-  });
+  await domains.add(
+    createHarness({
+      runtime,
+      quota,
+      scanner: snippetScanner,
+      cwd: assistantDir(config.dataDir),
+      config,
+    }),
+  );
   // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   const assistant = assistantService({
     runtime,
@@ -576,15 +584,17 @@ export async function startDaemon(
     gates: { hostPause, quota, memory: memoryGate },
     usage: usageIndex,
   });
-  const hostChecks = createHostChecks({
-    config,
-    env,
-    opencode,
-    claude,
-    claudePath,
-    account: async () => (await account?.get())?.status ?? null,
-    options,
-  });
+  await domains.add(
+    createHostChecks({
+      config,
+      env,
+      opencode,
+      claude,
+      claudePath,
+      account: async () => (await account?.get())?.status ?? null,
+      options,
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -594,18 +604,6 @@ export async function startDaemon(
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
     ...present({ assistant }),
-    teleport: serverGroup<"teleport", "imports">()({
-      packages: teleport,
-      inbox: teleportInbox,
-      imports: teleportImportDeps({
-        inbox: teleportInbox,
-        allowedRoots: config.allowedRoots,
-        historyRoots: config.history.roots,
-        indexer: history,
-        manager,
-        meta: central.meta,
-      }),
-    }),
     projects: serverGroup<"projects">()({
       warmKey: (cwd) => keys.resolve(cwd),
       keyOf: (cwd) => keys.resolve(cwd),
@@ -618,12 +616,7 @@ export async function startDaemon(
         updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
       picker: true,
     }),
-    hostPause: hostPauseServer,
-    memoryPause,
-    keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
-    knowledge: serverGroup<"knowledge">()(knowledge),
-    harness: serverGroup<"harness", "draft">()(harness),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
     // Issue #1344: "While you were away": what happened since a time, from what is stored.
     activity: (since, limit) =>
@@ -633,7 +626,6 @@ export async function startDaemon(
       keyOf: (path) => keys.known(path),
       signals: new RoiSignals(),
     }),
-    boardsync: boardSync.service,
     github: createGithub({ config, board, issues, manager }),
     serviceInstall: appServiceInstall(
       args.config ?? null,
@@ -641,24 +633,15 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    hostChecks: serverGroup<"hostChecks">()(hostChecks),
     sessionSettings: serverGroup<"sessionSettings">()({
       ...sessionSettings.server,
       commands: true,
     }),
-    messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
-    prWatch: serverGroup<"prWatch">()({
-      watch: prWatch,
-      // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
-      checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
-    }),
     vault,
     log: logger.log.bind(logger),
     actions,
     autoApprove,
-    issues,
-    automations,
     board,
     runenv: { configs: runEnv.configs, manager: runEnv.manager },
     usage,
@@ -677,7 +660,6 @@ export async function startDaemon(
     review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
-    personas: serverGroup<"personas">()({ store: personaStore, sessions: personaSessions }),
     terminals,
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
@@ -702,11 +684,6 @@ export async function startDaemon(
       terminals,
       externals: central.external,
       locks: folderLocks,
-    }),
-    checkpoints: serverGroup<"checkpoints">()({
-      snapshots,
-      rewinder,
-      forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
     }),
     hostName: config.hostName,
     bind: config.bind,
@@ -736,7 +713,7 @@ export async function startDaemon(
   logger.log(
     `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
   );
-  boardSync.loop.start();
+  await domains.started();
   warnIfNoRoots(config, logger);
 
   let stopped: Promise<void> | null = null;
@@ -748,21 +725,14 @@ export async function startDaemon(
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
         // First: whatever stops slowly after must not keep the computer awake meanwhile.
-        keepAwake.stop();
+        await keepAwakeModule.stop?.();
         await wsl?.stop();
-        automations.stop();
-        clearInterval(messagingSweep);
-        stopNames();
-        teams.stop();
-        idle.stop();
-        messaging.stop();
-        endpoints.stop();
+        // The automations, the watch and the board sync use the board: they stop before it.
+        await boardWorkModule.stop?.();
+        await teamsModule.stop?.();
         actions.stop();
         vault.stop();
-        await automations.idle();
-        prWatch.stop();
         for (const unwatch of runEnv.unwatch) unwatch();
-        boardSync.loop.stop();
         board.stop();
         terminals.stop();
         await central.stop();
@@ -773,9 +743,7 @@ export async function startDaemon(
         await updatesModule.stop?.();
         await manager.shutdown();
         await server.stop();
-        // Issue #100: no package of a transcript outlives the daemon.
-        await teleport.stop();
-        await teleportInbox.stop();
+        await teleportModule.stop?.();
         await historyModule.stop?.();
         await costsModule.stop?.();
         await quotaModule.stop?.();

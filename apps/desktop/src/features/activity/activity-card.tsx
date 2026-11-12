@@ -1,4 +1,4 @@
-import { HoldButton } from "@/components/approval/hold-button";
+import { HoldButton } from "@/features/permissions/index.ts";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { type StateTone, StatusDot } from "@/shared/status/index.ts";

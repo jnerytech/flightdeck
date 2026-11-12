@@ -35,7 +35,7 @@ module.exports = {
     {
       name: "shared-depends-on-no-domain",
       comment:
-        "shared/ is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597). More edges are allowed because the feedback and layout primitives need them: the translation context (i18n/context.tsx, domain-free), the in-flight hook (hooks/use-in-flight.ts) and three width and scroll helpers (lib/list-width.ts, lib/use-width.ts, lib/scroll-edge.ts) that move into shared/lib/ with their own row.",
+        "shared/ is the most stable code: it imports no domain (SDP). Two domain-free leaves of the desktop stay where they are and shared/ may import them: components/ui (vendored shadcn, aliased by components.json) and lib/utils.ts (`cn`, which those ui files import); moving them is churn (#1597). More edges are allowed because the feedback and layout primitives need them: the translation context (i18n/context.tsx, domain-free) and the in-flight hook (hooks/use-in-flight.ts). The width and scroll helpers the layout primitives need now live in shared/lib/.",
       severity: "error",
       from: { path: "^apps/[^/]+/src/shared/" },
       to: {
@@ -46,7 +46,6 @@ module.exports = {
           "^apps/desktop/src/lib/utils\\.ts$",
           "^apps/desktop/src/i18n/context\\.tsx$",
           "^apps/desktop/src/hooks/use-in-flight\\.ts$",
-          "^apps/desktop/src/lib/(list-width|use-width|scroll-edge)\\.ts$",
         ],
       },
     },
