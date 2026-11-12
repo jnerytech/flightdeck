@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { registerDom } from "./dom.ts";
+import { registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, renderHook } = await import("@testing-library/react");
-const { useSessionCost } = await import("../src/features/sessions/use-session-cost.ts");
+const { useSessionCost } = await import("../../src/features/sessions/use-session-cost.ts");
 
 afterEach(cleanup);
 

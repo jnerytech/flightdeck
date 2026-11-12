@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { AppStore, sessionKey } from "../src/lib/app-store.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
+import { AppStore, sessionKey } from "../../src/lib/app-store.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
 
 /** Issue #935: the store says whether the host took a mode change, so the picker can go back. */
 const cleanups: Array<() => unknown> = [];

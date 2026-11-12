@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { sinceLastLook } from "../src/features/sessions/finished.ts";
-import { AppStore } from "../src/lib/app-store.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { sinceLastLook } from "../../src/features/sessions/finished.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 const T0 = Date.parse("2026-11-08T10:00:00.000Z");
 
