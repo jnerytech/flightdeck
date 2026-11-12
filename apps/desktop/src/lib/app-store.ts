@@ -42,6 +42,7 @@ import {
   wireBackground,
 } from "../features/background/index.ts";
 import { type Attention, BackupScheduler, BackupSlice } from "../features/backup/index.ts";
+import { BoardWidth } from "../features/board/index.ts";
 import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
@@ -174,7 +175,6 @@ import type {
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
-import { BoardWidth } from "./board-select.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";

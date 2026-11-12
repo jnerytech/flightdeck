@@ -544,7 +544,7 @@
   "apps/desktop/test/movimento-tokens.test.ts": 0,
   "apps/desktop/test/mudancas-ui.test.tsx": 11.352,
   "apps/desktop/test/navegacao.test.tsx": 3.667,
-  "apps/desktop/test/needs-you-rows.test.tsx": 0.34,
+  "apps/desktop/test/needs-you/rows.test.tsx": 0.34,
   "apps/desktop/test/nomes-ui.test.tsx": 0.244,
   "apps/desktop/test/notice-lifetime.test.ts": 0,
   "apps/desktop/test/notice-text.test.ts": 0,
