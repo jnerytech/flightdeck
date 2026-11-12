@@ -1,11 +1,17 @@
 import {
+  groupName,
+  type HubRow,
+  type HubRowState,
+  hubRows,
+  isOver,
+} from "../features/sessions/index.ts";
+import {
   type AppState,
   type NeedsYouState,
   needsYou,
   type PendingItem,
   sessionKey,
 } from "./app-store.ts";
-import { groupName, type HubRow, type HubRowState, hubRows, isOver } from "./hub.ts";
 
 /** The parts of the state the board is made of: its rows, the requests and what was not opened. */
 export const ACTIVITY_KEYS = [

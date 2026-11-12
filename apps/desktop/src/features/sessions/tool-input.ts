@@ -1,4 +1,4 @@
-import { fields } from "./approval.ts";
+import { fields } from "../../lib/approval.ts";
 
 const SUMMARY_KEYS = ["file_path", "command", "pattern", "path", "url", "description"];
 

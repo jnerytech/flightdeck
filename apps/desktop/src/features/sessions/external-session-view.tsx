@@ -10,13 +10,13 @@ import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { isBusy } from "@/shared/lib/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { externalState } from "../../lib/hub.ts";
 import { useLaunchTerminal } from "../../lib/use-launch-terminal.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { BgPanel } from "../background/bg-panel.tsx";
 import { CheckpointsButton } from "../checkpoints/index.ts";
 import { TerminalButton } from "../terminal/index.ts";
 import { approvalRequestOf, externalRequestsOf, externalTitle } from "./external-view.ts";
+import { externalState } from "./hub.ts";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "./parts";
 
 /**

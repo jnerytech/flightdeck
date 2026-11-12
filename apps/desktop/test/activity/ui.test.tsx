@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import type { HubRow } from "../../src/features/sessions/hub.ts";
 import { formatAgo } from "../../src/i18n/format.ts";
-import type { HubRow } from "../../src/lib/hub.ts";
 import { ROUTE_NAMES } from "../../src/lib/router.ts";
 import { shortcutOf } from "../../src/lib/shortcuts.ts";
 import { liveScreen, registerDom } from "../dom.ts";

@@ -10,11 +10,43 @@
 
 export { SessionCommandsSlice } from "./commands.ts";
 export { ExternalSessionsSlice } from "./external.ts";
+export {
+  type Finish,
+  finishOutcome,
+  loadFinished,
+  recordFinish,
+  saveFinished,
+  sinceLastLook,
+  withFiles,
+} from "./finished.ts";
+export {
+  groupName,
+  type HubFilter,
+  type HubRow,
+  type HubRowState,
+  type HubState,
+  type HubView,
+  hubRowOrder,
+  hubRows,
+  isOver,
+  loadHubFilter,
+  loadHubOpen,
+  loadHubView,
+  saveHubFilter,
+  saveHubOpen,
+  saveHubView,
+  sessionLineText,
+  takeHubHost,
+} from "./hub.ts";
 export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
 export { rowRoute } from "./row-route.ts";
+export { sessionKey } from "./session-key.ts";
+export { sessionLabel } from "./session-label.ts";
+export type { SessionState } from "./session-state.ts";
 export { SessionView } from "./session-view.tsx";
+export { type SessionView as SessionViewName, SessionViews, VIEW_LABEL } from "./session-views.ts";
 export { StatusBadge } from "./status-badge.tsx";
 export {
   initialSessionsState,
@@ -26,6 +58,9 @@ export {
 export { SessionStreamSlice } from "./stream.ts";
 export { SummariesSlice } from "./summaries.ts";
 export { sessionTabOffers } from "./tab-offers.ts";
+export { inputSummary } from "./tool-input.ts";
+export { messageParts } from "./tool-line.ts";
+export { type Turn, turnsOf } from "./turns.ts";
 export { useLiveElsewhereAsk, useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
 export { ViewToggle } from "./view-toggle.tsx";
 export {

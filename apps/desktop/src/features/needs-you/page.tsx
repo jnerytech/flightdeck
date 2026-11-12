@@ -10,14 +10,13 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { ApprovalCard, GateText } from "@/features/permissions/index.ts";
+import { type Finish, hubRows, sinceLastLook } from "@/features/sessions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, SplitView, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";
 import { sessionProjectKeys } from "../../lib/client-scope.ts";
-import { type Finish, sinceLastLook } from "../../lib/finished.ts";
-import { hubRows } from "../../lib/hub.ts";
 import { typing } from "../../lib/keys.ts";
 import { pendingWhere } from "../../lib/pending-text.ts";
 import { type QuietAlert, quietAlerts, quietText } from "../../lib/quiet.ts";

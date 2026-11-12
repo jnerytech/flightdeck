@@ -13,6 +13,13 @@ import { FileExplorer, SessionFiles } from "@/features/files/index.ts";
 import { TracePanel } from "@/features/trace/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../../lib/app-store.ts";
+import { useLaunchTerminal } from "../../lib/use-launch-terminal.ts";
+import type { XtermDeps } from "../../lib/xterm-screen.ts";
+import { SessionMessages } from "../messaging/session-messages.tsx";
+import { ChangesPanel } from "../review/index.ts";
+import { TempoPanel } from "../telemetry/index.ts";
+import { SessionTerminal } from "../terminal/index.ts";
+import { SessionFinish } from "./session-finish.tsx";
 import {
   offeredViews,
   type SessionView,
@@ -22,14 +29,7 @@ import {
   VIEW_LABEL,
   type ViewKey,
   viewKeyTarget,
-} from "../../lib/session-views.ts";
-import { useLaunchTerminal } from "../../lib/use-launch-terminal.ts";
-import type { XtermDeps } from "../../lib/xterm-screen.ts";
-import { SessionMessages } from "../messaging/session-messages.tsx";
-import { ChangesPanel } from "../review/index.ts";
-import { TempoPanel } from "../telemetry/index.ts";
-import { SessionTerminal } from "../terminal/index.ts";
-import { SessionFinish } from "./session-finish.tsx";
+} from "./session-views.ts";
 
 /** Where the view keys are not for the page: a field being typed in, a dialog (the palette). */
 const TYPING_OR_DIALOG = "input, textarea, select, [contenteditable], [role=dialog]";

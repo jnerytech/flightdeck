@@ -1,6 +1,6 @@
 import { LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { HubView } from "../../lib/hub.ts";
+import type { HubView } from "@/features/sessions/index.ts";
 
 /** The hub's two views, side by side: the pressed one is on. */
 export function ViewToggle(

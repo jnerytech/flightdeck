@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { EventEnvelope, PlainInfo } from "@flightdeck/protocol";
-import { applyEnvelope, emptySession } from "../src/lib/session-state.ts";
+import { applyEnvelope, emptySession } from "../src/features/sessions/session-state.ts";
 
 const plain: PlainInfo = {
   kind: "run",

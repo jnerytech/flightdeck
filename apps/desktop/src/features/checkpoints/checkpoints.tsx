@@ -17,6 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { type Turn, turnsOf } from "@/features/sessions/index.ts";
 import {
   ActionButton,
   AppDialogContent,
@@ -26,7 +27,6 @@ import {
 import { EmptyState, LoadingState } from "@/shared/layout/index.ts";
 import { formatDateTime } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { type Turn, turnsOf } from "../../lib/turns.ts";
 import { TerminalButton } from "../terminal/index.ts";
 
 interface Target {

@@ -10,7 +10,7 @@ const personScrolls = (el: Element) => {
   fireEvent.scroll(el);
 };
 const { SessionView } = await import("../../src/features/sessions/session-view.tsx");
-const { emptySession } = await import("../../src/lib/session-state.ts");
+const { emptySession } = await import("../../src/features/sessions/session-state.ts");
 
 /** A ResizeObserver whose callbacks the test fires, as a browser does when a box changes size. */
 const observers: ResizeObserverCallback[] = [];

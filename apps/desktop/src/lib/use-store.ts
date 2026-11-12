@@ -1,6 +1,6 @@
 import { useRef, useSyncExternalStore } from "react";
+import type { SessionState } from "../features/sessions/index.ts";
 import type { AppState, AppStore } from "./app-store.ts";
-import type { SessionState } from "./session-state.ts";
 
 /** Whether two states differ in nothing but the conversations (`sessions`). */
 function sameButSessions(a: AppState, b: AppState): boolean {

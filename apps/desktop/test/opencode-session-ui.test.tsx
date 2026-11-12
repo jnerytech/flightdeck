@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { applyEnvelope, emptySession } = await import("../src/lib/session-state.ts");
+const { applyEnvelope, emptySession } = await import("../src/features/sessions/session-state.ts");
 const { errorText, SessionView } = await import("../src/features/sessions/session-view.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
