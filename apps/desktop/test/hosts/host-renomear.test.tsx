@@ -39,8 +39,8 @@ async function setup() {
       <App store={store} />
     </Profiler>,
   );
-  await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
-  await act(() => store.addHost({ name: "wsl", url: server.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "wsl", url: server.url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
   return { store, ...mem };
 }

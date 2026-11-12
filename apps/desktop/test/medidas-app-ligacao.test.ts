@@ -48,7 +48,7 @@ describe("medidas-app: where the measures start", () => {
     const mem = memoryPlatform(false);
     const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
     await waitFor(
       () => store.getState().hosts.find((h) => h.id === hostId)?.status === "online",
       "online",

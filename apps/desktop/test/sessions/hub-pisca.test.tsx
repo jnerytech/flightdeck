@@ -34,7 +34,7 @@ async function online() {
   cleanups.push(() => store.dispose());
   const daemon = legacyDaemon(cleanups);
   daemon.hub.managed = [managed("s1"), managed("s2")];
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
   return { store, daemon, hostId };

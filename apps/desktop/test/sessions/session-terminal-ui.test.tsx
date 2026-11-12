@@ -38,7 +38,9 @@ async function onSessionPage(terminals: true | "off" = true) {
   });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }));
+  const hostId = await act(() =>
+    store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN }),
+  );
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   // createSession opens the session's page, in its own tab.
   const sessionId = (await act(() =>
@@ -314,7 +316,7 @@ describe("session-terminal-ui: a Terminal view on the session page (issue #107)"
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     const hostId = await act(() =>
-      store.addHost({ name: "pc", url: d.listen().url, token: TOKEN }),
+      store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN }),
     );
     await settle(() => store.getState().hosts[0]?.hostInfo != null);
     await store.terminals.openClaude(hostId, { cwd: d.root, claudeSessionId: null });

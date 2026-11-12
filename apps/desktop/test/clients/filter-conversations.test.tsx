@@ -86,7 +86,7 @@ async function open() {
     message("m4", "x1", "x2", "sem projeto", 4),
   ];
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Conversas" }));

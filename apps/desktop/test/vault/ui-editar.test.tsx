@@ -42,7 +42,7 @@ async function open(input: { type: "password" | "ssh-key"; value: string; lastUs
   };
   const store = new AppStore(platform, { baseDelayMs: 60_000 });
   const daemon = legacyDaemon(cleanups);
-  const hostId = await store.addHost({ name: "box", url: daemon.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "box", url: daemon.url, token: TOKEN });
   const meta = await store.secrets.add({ name: "deploy", type: input.type, value: input.value });
   if (input.lastUsedAt !== undefined) {
     await store.vault.restore({ ...meta, lastUsedAt: input.lastUsedAt }, input.value);

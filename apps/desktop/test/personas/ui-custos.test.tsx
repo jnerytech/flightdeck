@@ -52,7 +52,7 @@ describe("personas-ui: costs", () => {
     cleanups.push(() => store.dispose());
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("costs") === true);
     const nav = screen.queryByRole("button", { name: "Custos" });

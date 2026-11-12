@@ -137,7 +137,7 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
     });
     cleanups.push(() => store.dispose());
     store.i18n.start();
-    const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
     await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
     const id = (await store.commands.create(hostId, {
       cwd: d.project,
@@ -171,7 +171,7 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
       maxDelayMs: 20,
     });
     cleanups.push(() => store.dispose());
-    const hostId = await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
     await waitFor(() => store.getState().hosts[0]?.status === "online");
     const host = store.getState().hosts.find((h) => h.id === hostId);
     render(

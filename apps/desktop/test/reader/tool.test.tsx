@@ -55,7 +55,7 @@ async function setup(language: string) {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   store.i18n.start();
-  const hostId = await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+  const hostId = await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
   await settle(() => store.getState().hosts[0]?.status === "online");
   render(
     <TContext.Provider value={store.i18n.t}>

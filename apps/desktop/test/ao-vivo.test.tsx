@@ -113,7 +113,7 @@ describe("ao-vivo: o leitor", () => {
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
     await act(async () => {
-      await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+      await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     });
     const settle = async (check: () => boolean) => {
       const deadline = Date.now() + 3000;

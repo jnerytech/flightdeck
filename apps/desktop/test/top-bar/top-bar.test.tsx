@@ -168,8 +168,12 @@ for (const [lang, dict] of [
       });
       cleanups.push(() => store.dispose());
       render(<App store={store} />);
-      await act(() => store.addHost({ name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }));
-      await act(() => store.addHost({ name: "beta", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }));
+      await act(() =>
+        store.roster.add({ name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }),
+      );
+      await act(() =>
+        store.roster.add({ name: "beta", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }),
+      );
       const banner = screen.queryByRole("banner");
       expect(banner).not.toBeNull();
       const bar = within(banner as HTMLElement);

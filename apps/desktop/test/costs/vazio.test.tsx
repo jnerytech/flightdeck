@@ -36,7 +36,7 @@ async function setup(options: { costs: boolean; routeFirst?: boolean }) {
     });
   }
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   // `host.info` (the features) lands after the host turns online; the screen needs it to pick a host.
   await settle(() => {

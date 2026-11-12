@@ -324,7 +324,7 @@ export function SimpleApp(
             theme={theme}
             onTheme={(next) => store.theme.setMode(next)}
             folders={host?.info?.allowedRoots ?? []}
-            onAddFolder={(path) => store.allowRoot(hostId, path)}
+            onAddFolder={(path) => store.roster.allowRoot(hostId, path)}
             canPickFolder={store.canPickFolder()}
             onPickFolder={() => store.pickFolder()}
             notifications={props.notifyUpdates}

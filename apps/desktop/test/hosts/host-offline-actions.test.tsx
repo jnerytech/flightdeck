@@ -28,7 +28,7 @@ async function offlinePage(lang: "en" | "pt-BR") {
   });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "pc", url: DEAD, token: TOKEN }));
+  await act(() => store.roster.add({ name: "pc", url: DEAD, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.retry != null);
   const id = store.getState().hosts[0]?.id ?? "";
   await act(async () => {

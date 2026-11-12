@@ -41,7 +41,7 @@ async function setup(options: { waiting?: boolean; costs?: boolean } = {}) {
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await settle(() => store.getState().hosts[0]?.sessions.length === 1);

@@ -59,7 +59,7 @@ async function waitingHigh() {
   // The App starts the store, which is what listens to the tray.
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    await store.roster.add({ name: "pc", url: server.url, token: TOKEN });
   });
   await settle(() => needsYou(store.getState()).length === 1);
   return { d, store, tray, sessionId: created.sessionId };
