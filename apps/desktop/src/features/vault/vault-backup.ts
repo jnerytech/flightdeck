@@ -1,12 +1,12 @@
 import { inSequence } from "@flightdeck/protocol";
 import { armor, Decrypter, Encrypter } from "age-encryption";
-import { BackupError } from "../../lib/backup-error.ts";
+import { BackupError } from "../backup/index.ts";
 import type { SecretMeta, Vault } from "./vault.ts";
 
 export const MIN_PASSPHRASE = 12;
 
 // The error lives apart so the store can tell it without loading `age` (see backup-error.ts).
-export { BackupError, type BackupErrorCode } from "../../lib/backup-error.ts";
+export { BackupError, type BackupErrorCode } from "../backup/index.ts";
 
 export interface BackupOptions {
   /** scrypt work factor (log2 N); tests lower it to stay fast. */

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type { KnowledgeFeedState } from "@flightdeck/protocol";
 import { expandHome } from "../config.ts";
-import { isInside, rootNames, samePath } from "../paths.ts";
+import { isInside, rootNames, samePath } from "../kernel/index.ts";
 
 /**
  * Issue #76: the person's switch for the library's index, per project. It is a folder in the

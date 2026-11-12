@@ -18,8 +18,7 @@ import type {
   TeleportChunk,
   TeleportManifest,
 } from "@flightdeck/protocol";
-import { FlightdeckError, readRegularSized } from "../kernel/index.ts";
-import { isInside } from "../paths.ts";
+import { FlightdeckError, isInside, readRegularSized } from "../kernel/index.ts";
 import { bundleCode, type CodeBundle, type CodeBundleInput } from "./bundle.ts";
 import { onDisk } from "./on-disk.ts";
 import { addSecrets, secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";

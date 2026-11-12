@@ -1,4 +1,10 @@
-import type { Platform } from "../platform/types.ts";
+import {
+  type GoogleConfig,
+  type GoogleSignIn,
+  googleSignIn,
+  type SignInResult,
+} from "../../lib/google-oauth.ts";
+import type { Platform } from "../../platform/types.ts";
 import {
   type BackupSchedule,
   type Cadence,
@@ -10,12 +16,6 @@ import {
   saveSchedule,
 } from "./backup-schedule.ts";
 import { DriveError, driveTarget } from "./drive-target.ts";
-import {
-  type GoogleConfig,
-  type GoogleSignIn,
-  googleSignIn,
-  type SignInResult,
-} from "./google-oauth.ts";
 
 /** What the person has to be told about: the passphrase to type, a folder to choose, a write that failed. */
 export type Attention = "passphrase" | "no-folder" | "failed" | "drive-auth";

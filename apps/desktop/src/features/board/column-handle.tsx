@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useEffect, useRef } from "react";
 import type { T } from "../../i18n/index.ts";
-import { COLUMN_WIDTH } from "../../lib/board-select.ts";
+import { COLUMN_WIDTH } from "./board-select.ts";
 
 /** The width a key asks for, or null when the key is not one the handle answers to. */
 function widthForKey(key: string, width: number): number | null {

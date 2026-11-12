@@ -5,7 +5,7 @@
 import { type BigIntStats, constants } from "node:fs";
 import { type FileHandle, lstat, mkdir, open, realpath } from "node:fs/promises";
 import { join } from "node:path";
-import { samePath } from "../paths.ts";
+import { samePath } from "../kernel/index.ts";
 
 /** Not defined on Windows: there the folder checks stand alone. */
 const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;

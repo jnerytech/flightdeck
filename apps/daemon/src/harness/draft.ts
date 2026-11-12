@@ -15,8 +15,7 @@ import {
   type SecretScanner,
 } from "@flightdeck/protocol";
 import { walkInside } from "../board/index.ts";
-import { FlightdeckError } from "../kernel/index.ts";
-import { samePath } from "../paths.ts";
+import { FlightdeckError, samePath } from "../kernel/index.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { CompleteOptions, CompleteResult } from "../runtime/types.ts";
 import { MAX_FILE } from "./preview.ts";

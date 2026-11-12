@@ -1,5 +1,5 @@
 import type { KnowledgeIndexResult } from "@flightdeck/protocol";
-import { rootNames } from "../paths.ts";
+import { rootNames } from "../kernel/index.ts";
 import { feedIndex } from "./feed.ts";
 import { listKnowledge } from "./list.ts";
 import { offFolder } from "./switch.ts";

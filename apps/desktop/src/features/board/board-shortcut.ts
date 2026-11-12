@@ -1,4 +1,4 @@
-import type { WorktreeFilter } from "./project-tree.ts";
+import type { WorktreeFilter } from "../../lib/project-tree.ts";
 
 type Storage = { getItem(key: string): string | null; setItem(key: string, value: string): void };
 
