@@ -1,6 +1,5 @@
 import type { PluginChange, PluginUpdatePreview } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
-import { LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +11,7 @@ import {
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
+import { LoadingState } from "@/shared/layout/index.ts";
 import { InventoryView } from "./inventory-view.tsx";
 
 const KINDS = ["hooks", "monitors", "skills", "agents", "commands", "mcpServers"] as const;

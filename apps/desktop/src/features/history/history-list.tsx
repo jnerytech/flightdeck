@@ -1,15 +1,20 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
-import { CardGrid } from "@/components/layout/card-grid";
-import { CheckField, Field, NativeSelect } from "@/components/layout/form";
-import { Inline } from "@/components/layout/stack";
-import { EmptyState, LoadingState } from "@/components/layout/states";
 import { ViewToggle } from "@/components/layout/view-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { cn } from "@/lib/utils";
+import {
+  CardGrid,
+  CheckField,
+  EmptyState,
+  Field,
+  Inline,
+  LoadingState,
+  NativeSelect,
+} from "@/shared/layout/index.ts";
 import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";
 import type { Density } from "../../lib/density.ts";

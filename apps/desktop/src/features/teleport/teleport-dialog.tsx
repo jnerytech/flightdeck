@@ -5,8 +5,8 @@
  * message is never shown.
  */
 import { memo, type ReactNode, useRef, useState } from "react";
-import { Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 import { useT } from "../../i18n/context.tsx";
 import { translateError } from "../../i18n/errors.ts";
 import { formatBytes } from "../../lib/format-bytes.ts";

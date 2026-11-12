@@ -1,9 +1,6 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
-import { Page } from "@/components/layout/page";
-import { SplitView } from "@/components/layout/split-view";
-import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { TranscriptReader } from "@/features/history/index.ts";
 import {
@@ -23,6 +20,7 @@ import { RecapPanel } from "@/features/summary/index.ts";
 import { UntrustedNotice } from "@/features/trust/index.ts";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
+import { EmptyState, LoadingState, Page, SplitView } from "@/shared/layout/index.ts";
 import { ActivityBoard } from "../features/activity/board.tsx";
 import { CheckpointsButton } from "../features/checkpoints/index.ts";
 import type { TopSession } from "../features/costs/page.tsx";

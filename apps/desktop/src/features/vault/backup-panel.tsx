@@ -1,11 +1,10 @@
 import { useId, useState } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
-import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import type { ConflictChoice, ImportPreview } from "@/lib/vault-backup";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 
 /** Phase 16: the encrypted backup (`.fdvault`): export, and import with a preview. */
 export function BackupPanel(props: Readonly<{ store: AppStore }>) {

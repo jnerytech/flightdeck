@@ -1,11 +1,11 @@
 import { FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { useStoreState } from "@/lib/use-store";
 import { hasFeature } from "@/lib/version";
+import { Panel } from "@/shared/layout/index.ts";
 
 /** On the host's page: the setting that resumes interrupted sessions by itself, and the way back to a put-off offer. */
 export function ResumePanel(props: Readonly<{ store: AppStore; host: HostView }>) {

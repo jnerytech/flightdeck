@@ -1,4 +1,4 @@
-import { Field, NativeSelect } from "@/components/layout/form";
+import { Field, NativeSelect } from "@/shared/layout/index.ts";
 
 /** The model aliases a session can open in or switch to. */
 export const MODELS = ["opus", "sonnet", "haiku"] as const;

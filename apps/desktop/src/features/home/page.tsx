@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Page } from "@/components/layout/page";
-import { Grid, Stack } from "@/components/layout/stack";
 import { ScopeMenu } from "@/components/shell/scope-menu";
 import { Button } from "@/components/ui/button";
 import { useProjectLabels } from "@/hooks/use-project-labels";
 import { formatAgo, formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { T } from "@/i18n/index";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Grid, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { ALL_HOSTS, daysBetween, periodRange, projectLabel, projectPath } from "../../lib/costs.ts";
 import {

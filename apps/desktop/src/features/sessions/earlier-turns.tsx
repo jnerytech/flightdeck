@@ -1,7 +1,7 @@
 import type { HistoryMessage } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { Note } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
-import { Note } from "../../components/layout/note.tsx";
 import type { AppStore } from "../../lib/app-store.ts";
 import { HISTORY_PAGE } from "../../lib/app-store.ts";
 import { Message } from "./parts.tsx";

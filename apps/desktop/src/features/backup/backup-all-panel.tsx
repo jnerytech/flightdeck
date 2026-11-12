@@ -1,7 +1,4 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
@@ -11,6 +8,7 @@ import type { AppStore } from "@/lib/app-store";
 import type { RestorePreview } from "@/lib/backup-bundle";
 import type { ConflictChoice } from "@/lib/vault-backup";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
 
 /** What a conflicting entry gets on restore: kept as it is, or replaced by the bundle's. */
 const CHOICES = [

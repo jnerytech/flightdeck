@@ -1,11 +1,9 @@
 import type { HarnessTemplateInfo } from "@flightdeck/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ListRow } from "@/components/layout/list-row";
-import { Panel } from "@/components/layout/panel";
-import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Inline, ListRow, Panel, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { formatBytes } from "../../lib/format-bytes.ts";
 

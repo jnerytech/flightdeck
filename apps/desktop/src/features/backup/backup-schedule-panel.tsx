@@ -1,7 +1,4 @@
 import { useId, useState, useSyncExternalStore } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
@@ -10,6 +7,7 @@ import { formatDateTime } from "@/i18n/format";
 import type { AppStore } from "@/lib/app-store";
 import type { Cadence, ScheduleTarget } from "@/lib/backup-schedule";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions, Panel, Stack } from "@/shared/layout/index.ts";
 
 const CADENCES: readonly Cadence[] = ["off", "daily", "weekly"];
 const TARGETS: readonly ScheduleTarget[] = ["folder", "drive"];

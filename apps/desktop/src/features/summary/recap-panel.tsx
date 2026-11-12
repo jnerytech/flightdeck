@@ -1,13 +1,12 @@
 import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Panel } from "@/components/layout/panel";
-import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { AdrDraftDialog } from "@/features/sessions/adr-draft-dialog";
 import { useTight } from "@/features/sessions/parts";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";

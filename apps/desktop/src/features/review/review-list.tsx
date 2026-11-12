@@ -1,11 +1,11 @@
 import type { ReviewComment } from "@flightdeck/protocol";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
+import { Inline } from "@/shared/layout/index.ts";
 import { FindingSeverity } from "./finding-severity.tsx";
 
 /** The review's comments: drafts to edit or remove, then the ones already sent as history. */

@@ -1,5 +1,4 @@
 import { useId, useReducer, useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
@@ -7,6 +6,7 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { RoiSettingsError } from "@/lib/roi-settings";
 import { useStoreSlice } from "@/lib/use-store";
+import { Panel } from "@/shared/layout/index.ts";
 
 /** Empty means "none"; anything else must be a number. */
 function amountOf(text: string): number | null | "bad" {

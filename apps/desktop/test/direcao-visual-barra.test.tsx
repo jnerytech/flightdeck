@@ -12,7 +12,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { SplitView } = await import("../src/components/layout/split-view.tsx");
+const { SplitView } = await import("../src/shared/layout/split-view.tsx");
 
 setDefaultTimeout(20_000);
 

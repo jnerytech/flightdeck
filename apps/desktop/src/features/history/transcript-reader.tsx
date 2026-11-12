@@ -1,14 +1,13 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { Copy, History } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Note } from "@/components/layout/note";
-import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/features/sessions/parts";
 import { ToolRow } from "@/features/sessions/tool-row";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
+import { EmptyState, ErrorState, LoadingState, Note } from "@/shared/layout/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { awaitingApproval } from "../../lib/awaiting-approval.ts";

@@ -1,13 +1,12 @@
 import type { Automation, AutomationRun, WorkflowInfo } from "@flightdeck/protocol";
 import { Plus, Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Page } from "@/components/layout/page";
-import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
+import { EmptyState, LoadingState, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { actionText, confirmOnText, triggerText } from "../../lib/automations.ts";

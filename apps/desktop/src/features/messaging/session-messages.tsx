@@ -1,10 +1,10 @@
 import type { MessageInfo, MessagingSession, SendResult } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
-import { Field, NativeSelect } from "@/components/layout/form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Field, NativeSelect } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 
 /**

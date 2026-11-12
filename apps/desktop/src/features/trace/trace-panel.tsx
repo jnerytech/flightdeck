@@ -1,13 +1,18 @@
 import type { SessionTrace, TraceNode } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
-import { NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
-import { Bar } from "../../components/layout/bar.tsx";
-import { Panel } from "../../components/layout/panel.tsx";
-import { Inline, Stack } from "../../components/layout/stack.tsx";
-import { EmptyState, LoadingState } from "../../components/layout/states.tsx";
-import { TreeBranch, TreeItem } from "../../components/layout/tree.tsx";
+import {
+  Bar,
+  EmptyState,
+  Inline,
+  LoadingState,
+  NativeSelect,
+  Panel,
+  Stack,
+  TreeBranch,
+  TreeItem,
+} from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";

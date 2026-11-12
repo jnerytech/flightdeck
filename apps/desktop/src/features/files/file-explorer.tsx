@@ -1,12 +1,11 @@
 import type { DiffFile, FileEntry, FileListing } from "@flightdeck/protocol";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Inline, Stack } from "@/components/layout/stack";
-import { TreeBranch, TreeItem } from "@/components/layout/tree";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
+import { Inline, Stack, TreeBranch, TreeItem } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { affectedDirs } from "../../lib/file-changes.ts";
 import { FileSearch } from "./file-search.tsx";

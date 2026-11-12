@@ -68,7 +68,8 @@ import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
-import { serverGroup, startServer } from "./server.ts";
+import { createModuleRunner, serverGroup } from "./server/index.ts";
+import { startServer } from "./server.ts";
 import { daemonCommand } from "./service.ts";
 import { appServiceInstall } from "./service-from-app.ts";
 import { osServiceContext } from "./service-os.ts";
@@ -205,11 +206,13 @@ export async function startDaemon(
     mcpServer,
     logger.log.bind(logger),
   );
-  const { quota, quotaHistory, onQuota, quotaPause } = createQuota({
-    db: store.db,
-    config,
-    configFile,
-  });
+  // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
+  const domains = createModuleRunner();
+  const {
+    quota,
+    onQuota,
+    modules: [quotaModule],
+  } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
@@ -418,13 +421,18 @@ export async function startDaemon(
     log: logger.log.bind(logger),
   });
   void updates?.start();
-  const { telemetryStore, telemetry, telemetryOptIn } = await createTelemetry({
-    db: store.db,
-    config,
-    configFile,
-    settingsPath: claudeSettingsPath,
-    log: logger,
-  });
+  const {
+    telemetryStore,
+    modules: [telemetryModule],
+  } = await domains.add(
+    await createTelemetry({
+      db: store.db,
+      config,
+      configFile,
+      settingsPath: claudeSettingsPath,
+      log: logger,
+    }),
+  );
   const central = new Central({
     risk,
     autoApprove,
@@ -576,6 +584,7 @@ export async function startDaemon(
     options,
   });
   const server = startServer({
+    ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
     manager,
     opencode: {
@@ -651,10 +660,8 @@ export async function startDaemon(
     history,
     board,
     runenv: { configs: runEnv.configs, manager: runEnv.manager },
-    quota: serverGroup<"quota">()({ windows: quota, pause: quotaPause, history: quotaHistory }),
     usage,
     costs: serverGroup<"costs">()({ costs, budgets }),
-    telemetry: serverGroup<"telemetry">()({ store: telemetryStore, optIn: telemetryOptIn }),
     bg: createBgService({
       db: store.db,
       config,
@@ -768,7 +775,7 @@ export async function startDaemon(
         board.stop();
         terminals.stop();
         await central.stop();
-        await telemetry.stop();
+        await telemetryModule.stop?.();
         maintenance.stop();
         sleeper.stop();
         stall.stop();
@@ -782,7 +789,7 @@ export async function startDaemon(
         history.stop();
         await usageIndex.stop();
         budgets.stop();
-        quota.stop();
+        await quotaModule.stop?.();
         store.close();
         await lock.release();
         // The last lines (shutting down…) reach the file before the process can exit.

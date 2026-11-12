@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { InlineNotice } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Client } from "../../lib/clients.ts";
 import { RoiSettingsError } from "../../lib/roi-settings.ts";

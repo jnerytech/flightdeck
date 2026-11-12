@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
-import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { InlineNotice, useBusy } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 import { type BoundToken, maskOnLeave, readLinkEdit } from "../../lib/pairing-mask.ts";
 import { pairingErrorText } from "../../lib/pairing-text.ts";
 
