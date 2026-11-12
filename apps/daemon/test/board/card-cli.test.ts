@@ -5,7 +5,7 @@ import {
   type CardCliResult,
   isLoopbackHost,
   runCardCli,
-} from "../../src/card-cli.ts";
+} from "../../src/board/card-cli.ts";
 import { poll } from "../support/helpers.ts";
 import {
   CLOSE,
