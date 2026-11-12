@@ -1,5 +1,6 @@
 import type { InstalledPlugin, PluginList } from "@flightdeck/protocol";
 import { memo, useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { Field, Form } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -15,7 +16,6 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { FolderPicker } from "../../ui/FolderPicker.tsx";
 import { InstallDialog, type InstallSource } from "./install-dialog.tsx";
 import { InventoryView } from "./inventory-view.tsx";

@@ -46,17 +46,12 @@ export const GATES = {
   checkLoop: "prWatch",
   webhook: "webhook",
   // Written inline in a case before the split, each with a single name.
-  bypass: "bypass",
   serviceInstall: "serviceInstall",
   forker: "forker",
   snapshots: "snapshots",
   ui: "ui.mode",
   updater: "updater",
   updates: "updater",
-  // The three teleport services name one feature.
-  teleport: "teleport",
-  teleportInbox: "teleport",
-  teleportImport: "teleport",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
@@ -126,9 +121,28 @@ export const GROUP_GATES = {
     idle: "idle",
     teams: "teams",
   },
+  // The commands' announcement and the stall watcher are only announced, never refused.
+  sessionSettings: {
+    bypass: "bypass",
+    sleep: "sleep",
+  },
+  // The three teleport services name one feature.
+  teleport: {
+    packages: "teleport",
+    inbox: "teleport",
+    imports: "teleport",
+  },
 } as const satisfies {
-  [G in keyof ServerOptions]?: Record<keyof NonNullable<ServerOptions[G]>, string>;
+  [G in keyof ServerOptions]?: Record<
+    Exclude<keyof NonNullable<ServerOptions[G]>, AnnouncedOnly[G & keyof AnnouncedOnly]>,
+    string
+  >;
 };
+
+/** The members of a group that `host.info` only announces: no command refuses for them. */
+interface AnnouncedOnly {
+  sessionSettings: "commands" | "stall";
+}
 
 export type GatedGroup = keyof typeof GROUP_GATES;
 

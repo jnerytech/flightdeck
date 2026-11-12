@@ -39,10 +39,12 @@ import { Input } from "@/components/ui/input";
 import {
   boardFeatures,
   boardOrder,
+  cardMoveBody,
   cardMoves,
   columnCards,
   dropPositions,
   idsByColumn,
+  queueMaxOf,
   refusalNames,
   showingColumn,
   shownCards,
@@ -126,7 +128,6 @@ import { quietAlerts } from "../lib/quiet.ts";
 import { elsewhereNotice, waitingCards } from "../lib/start-elsewhere.ts";
 import { statusTone } from "../lib/status.ts";
 import { useWidth } from "../lib/use-width.ts";
-import { hasFeature } from "../lib/version.ts";
 
 /** The icon of each column's status, drawn in the column's own tone. */
 const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
@@ -521,6 +522,8 @@ export const BoardView = memo(function BoardView(props: {
     roi: withRoi,
     sync: withSync,
     issues: withIssues,
+    memoryPause: withMemoryPause,
+    cardTemplates: withCardTemplates,
   } = boardFeatures(state.hosts.find((h) => h.id === hostId)?.hostInfo?.features);
   /** Files pressed for a checkout (#117): another checkout goes back to the default. */
   const [filesChoice, setFilesChoice] = useState<{ path: string; open: boolean } | null>(null);
@@ -599,12 +602,11 @@ export const BoardView = memo(function BoardView(props: {
       cards,
       column,
       async (cardId, to, position) => {
-        const answer = await store.hostRequest(hostId, "card.move", {
-          cardId,
-          column: to,
-          ...(position !== undefined ? { position } : {}),
-          ...(force ? { force } : {}),
-        });
+        const answer = await store.hostRequest(
+          hostId,
+          "card.move",
+          cardMoveBody(cardId, to, position, force),
+        );
         return requestResult(answer);
       },
       positions,
@@ -677,12 +679,11 @@ export const BoardView = memo(function BoardView(props: {
     // Start waits for both (the confirm's button is off): the queue line and each card's workflow.
     void store.hostCommand(hostId, "project.list", {}).then((list) => {
       if (asked !== startAsked.current) return;
-      setQueueMax(typeof list?.maxParallelRuns === "number" ? list.maxParallelRuns : null);
+      setQueueMax(queueMaxOf(list));
     });
     // The memory hold, read now: with nothing queued yet no card carries its reason (#1414). It
     // fails open: a host that does not answer gets no line, and Start does not wait for it.
-    const features = state.hosts.find((h) => h.id === hostId)?.hostInfo?.features;
-    if (hasFeature(features, "memoryPause", false)) {
+    if (withMemoryPause) {
       // The host's own verdict (#1418's review): the share alone is wrong a margin under the hold,
       // and on a host with no reading (macOS). An older host that does not say gets no line.
       void store
@@ -1424,11 +1425,7 @@ export const BoardView = memo(function BoardView(props: {
         projectId={projectId}
         open={creating}
         column={createIn}
-        cardTemplates={hasFeature(
-          state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
-          "cardTemplates",
-          false,
-        )}
+        cardTemplates={withCardTemplates}
         onClose={() => {
           setCreating(false);
           setCreateIn("backlog");

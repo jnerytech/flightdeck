@@ -1,12 +1,12 @@
 import type { TerminalInfo } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /** How often the list of live terminals is asked again. */
 const LIST_REFRESH_MS = 1000;
