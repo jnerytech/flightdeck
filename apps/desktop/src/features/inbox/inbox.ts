@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { basename } from "@/shared/lib/index.ts";
+import { basename, readStored, validItems } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { Route } from "../../lib/router.ts";
 
@@ -117,29 +117,24 @@ export function groupByDay(
   return groups;
 }
 
-const Stored = z.array(
-  z.object({
-    id: z.string(),
-    at: z.string(),
-    title: z.string(),
-    body: z.string(),
-    link: z.string().optional(),
-    route: z.custom<Route>((v) => typeof v === "object" && v !== null && "name" in v).optional(),
-    fallbackUrl: z.string().optional(),
-    subject: z.string().optional(),
-    host: z.string().optional(),
-    ask: z.string().optional(),
-    group: z.string().optional(),
-    read: z.boolean(),
-  }),
-);
+const Entry = z.object({
+  id: z.string(),
+  at: z.string(),
+  title: z.string(),
+  body: z.string(),
+  link: z.string().optional(),
+  route: z.custom<Route>((v) => typeof v === "object" && v !== null && "name" in v).optional(),
+  fallbackUrl: z.string().optional(),
+  subject: z.string().optional(),
+  host: z.string().optional(),
+  ask: z.string().optional(),
+  group: z.string().optional(),
+  read: z.boolean(),
+});
 
+/** The kept entries; one that is not an entry is left out, the others stay (#1609). */
 export function loadInbox(storage: { getItem(key: string): string | null }): InboxEntry[] {
-  try {
-    return Stored.parse(JSON.parse(storage.getItem(INBOX_KEY) ?? "[]")) as InboxEntry[];
-  } catch {
-    return [];
-  }
+  return readStored(storage, INBOX_KEY, validItems(Entry), []) as InboxEntry[];
 }
 
 export function saveInbox(

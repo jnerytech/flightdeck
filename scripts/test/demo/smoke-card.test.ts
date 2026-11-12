@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { describeCard } from "../../lib/smoke-card.ts";
+import { describeCard } from "../../lib/smoke/card.ts";
 
 describe("smoke-card: what a timed-out smoke says about its card", () => {
   test("names the column, the worktree, the PR and checks states and the notice", () => {
