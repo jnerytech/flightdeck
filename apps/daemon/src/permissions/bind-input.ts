@@ -39,3 +39,17 @@ export function bindInput(
       Object.values(answers).every((value) => typeof value === "string"));
   if (!text || canonical(asked(updated)) !== canonical(asked(original))) throw changed();
 }
+
+/** Longer strings are cut here: the queue shows what is asked, not whole files. */
+const MAX_TEXT = 200;
+
+/** The tool input as shown in the queue: long strings cut, everything else as is. */
+export function summarizeInput(input: unknown): Record<string, unknown> {
+  if (typeof input !== "object" || input === null) return {};
+  return Object.fromEntries(
+    Object.entries(input).map(([key, value]) => [
+      key,
+      typeof value === "string" && value.length > MAX_TEXT ? `${value.slice(0, MAX_TEXT)}…` : value,
+    ]),
+  );
+}

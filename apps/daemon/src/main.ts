@@ -20,7 +20,6 @@ import { type CliDeps, COMMANDS } from "./cli/commands.ts";
 import {
   claudeSettingsPath,
   loadConfig,
-  RELEASES_URL,
   type RuntimeKind,
   readToken,
   updateConfigFile,
@@ -45,7 +44,7 @@ import { createKnowledge } from "./knowledge/wiring.ts";
 import { createHostLog } from "./logs/wiring.ts";
 import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
-import { Names } from "./names/names.ts";
+import { createNames } from "./names/wiring.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
 import { createPermissions } from "./permissions/wiring.ts";
 import { createPersonas } from "./personas/wiring.ts";
@@ -54,7 +53,7 @@ import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./projects/index.ts";
 import { createQuota, createUsage } from "./quota/wiring.ts";
-import { ReleaseFeed } from "./releases/releases.ts";
+import { createReleases } from "./releases/wiring.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import {
   createMemoryGate,
@@ -303,7 +302,7 @@ export async function startDaemon(
   await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
   await domains.add(createProjects({ keys, projectTrust, manager }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
-  const names = new Names(store.db);
+  const { names } = await domains.add(createNames(store.db));
   const { history } = await domains.add(
     createHistory({ db: store.db, config, names, manager, log: (m) => logger.log(m) }),
   );
@@ -430,6 +429,7 @@ export async function startDaemon(
   await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   await domains.add(createGithub({ config, board, issues, manager }));
   await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
+  await domains.add(createReleases());
   const central = new Central({
     risk,
     autoApprove,
@@ -629,7 +629,6 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    names,
     vault,
     log: logger.log.bind(logger),
     actions,
@@ -639,7 +638,6 @@ export async function startDaemon(
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     central,
     fileLog,
-    releases: new ReleaseFeed({ url: RELEASES_URL }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
