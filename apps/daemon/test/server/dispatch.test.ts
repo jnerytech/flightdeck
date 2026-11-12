@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Command } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { type ServerContext, serverContext } from "../../src/server/context.ts";
 import { afterAck, type Call, type Handler, runHandler } from "../../src/server/dispatch.ts";
 import { HANDLERS } from "../../src/server/handlers/index.ts";

@@ -4,9 +4,8 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { z } from "zod";
-import { FlightdeckError } from "../errors.ts";
 import { GH_FIELDS, GhIssueRow, GithubIssues } from "../issues/providers.ts";
-import { parseJsonWith } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 import type { GhResult, GhRunner } from "./gh.ts";
 import { GITHUB_HOST, type GithubStatus, githubStatus } from "./status.ts";
 

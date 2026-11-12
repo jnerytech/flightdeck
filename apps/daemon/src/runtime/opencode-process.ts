@@ -6,7 +6,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { OPENCODE_API_TIMEOUT_MS, opencodeConfig, opencodeEnv } from "./opencode-config.ts";
 import type { RunResult } from "./opencode-discovery.ts";
 import { REAL_KILL_DEPS, treeKiller } from "./opencode-runtime.ts";

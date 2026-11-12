@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { byCodeUnit, inSequence, Template, type TemplateProblem } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 const bad = (message: string, reason: string) =>
   new FlightdeckError("bad_request", message, reason);

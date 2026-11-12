@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { RelayMessage } from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import {
   formatSessionMessage,
   formatSystemMessage,

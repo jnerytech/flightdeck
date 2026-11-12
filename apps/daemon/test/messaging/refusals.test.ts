@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { ExternalSessions } from "../../src/central/external.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { LocalEndpoints } from "../../src/messaging/endpoints.ts";
 import { Idle } from "../../src/messaging/idle.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";

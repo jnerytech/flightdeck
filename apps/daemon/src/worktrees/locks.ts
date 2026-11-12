@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 
 /**

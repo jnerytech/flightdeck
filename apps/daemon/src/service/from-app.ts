@@ -7,7 +7,7 @@
 import { resolve } from "node:path";
 import type { ServiceInstallResult } from "@flightdeck/protocol";
 import { updateConfigFile } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { installService, resolveServiceClaude, type ServiceContext } from "./install.ts";
 import { lingerState } from "./linger.ts";
 import { stableBinPath } from "./update.ts";

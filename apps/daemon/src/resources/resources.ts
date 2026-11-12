@@ -1,5 +1,5 @@
 import type { ResourceOrphan, ResourceRow, ResourcesSnapshot } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 
 /** One process as /proc says it: its name only, never its arguments or environment. */
 export interface ProcStat {

@@ -1,7 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { UnblockWhen } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { parseJsonWith } from "../kernel/index.ts";
+import { FlightdeckError, parseJsonWith } from "../kernel/index.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
 import { AutoStart } from "./row-json.ts";
 import type { BoardColumn, Card, CardRow, PrState } from "./types.ts";

@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { createServer } from "node:net";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { portVariable } from "./config.ts";
 
 /** Where the blocks start when the config does not say (`run.portBase`). */

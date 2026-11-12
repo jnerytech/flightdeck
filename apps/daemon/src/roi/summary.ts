@@ -5,7 +5,7 @@
  */
 import type { Database } from "bun:sqlite";
 import type { RoiPeriod, RoiSignalValues, RoiSummaryResult, RoiWeek } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { RoiSignals } from "./signals.ts";
 
 const MAX_DAYS = 366;
