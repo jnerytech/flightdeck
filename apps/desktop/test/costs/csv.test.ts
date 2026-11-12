@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mergeHostCsv } from "../../src/lib/costs-csv.ts";
+import { mergeHostCsv } from "../../src/features/costs/costs-csv.ts";
 
 const HEADER = "day,project_key,model,origin,cost_usd";
 

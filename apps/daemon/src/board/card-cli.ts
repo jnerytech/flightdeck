@@ -5,7 +5,7 @@
  * holds and the limits. Exit codes: 0 done (a start that must wait says why), 1 refused, 2 no daemon.
  */
 import { type Card, type Project, WS_PATH } from "@flightdeck/protocol";
-import { DaemonClient, DaemonUnreachable, daemonUrl } from "../mcp.ts";
+import { DaemonClient, DaemonUnreachable, daemonUrl } from "../daemon-client/index.ts";
 
 export interface CardCliArgs {
   action: "list" | "show" | "new" | "start";

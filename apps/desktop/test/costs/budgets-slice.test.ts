@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Budget } from "@flightdeck/protocol";
+import { usd } from "../../src/features/costs/costs.ts";
 import {
   type BudgetsCore,
   BudgetsSlice,
@@ -9,7 +10,6 @@ import {
   share,
 } from "../../src/features/costs/index.ts";
 import { translator } from "../../src/i18n/index.ts";
-import { usd } from "../../src/lib/costs.ts";
 
 const budget = (id: string, createdAt: string, extra: Partial<Budget> = {}) =>
   ({

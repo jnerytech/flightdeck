@@ -9,8 +9,8 @@ import { reasonText } from "@/lib/notice-text";
 import { InlineNotice } from "@/shared/feedback/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
-import { usd } from "../../lib/costs.ts";
 import { budgetLines, stepDuration, stepUsage } from "../../lib/runs.ts";
+import { usd } from "../costs/index.ts";
 
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 

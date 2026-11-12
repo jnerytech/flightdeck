@@ -6,8 +6,8 @@ import type {
   QuotaBudgetInput,
 } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import { usd } from "../../lib/costs.ts";
 import { budgetLabel, budgetLimitText, estimateNote, share } from "./budgets.ts";
+import { usd } from "./costs.ts";
 
 /** The budgets' part of the app's state (#1596): each host's own, kept by `budget.updated`. */
 export interface BudgetsSliceState {

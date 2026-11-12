@@ -16,7 +16,7 @@ import {
 } from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { usd } from "../../lib/costs.ts";
+import { usd } from "../costs/index.ts";
 import { longest, onlyTool, toolNames } from "./trace.ts";
 import { TraceReplay } from "./trace-replay.tsx";
 

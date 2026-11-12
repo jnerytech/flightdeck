@@ -1,5 +1,5 @@
 import type { CostsFilter } from "@flightdeck/protocol";
-import type { AppStore } from "./app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 import { mergeHostCsv } from "./costs-csv.ts";
 
 /**
