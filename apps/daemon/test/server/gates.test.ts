@@ -32,12 +32,10 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   fileLog: "logs",
   github: "github",
   history: "history",
-  idle: "idle",
   issues: "issues",
   maintenance: "maintenance",
   resources: "resources",
   worktrees: "worktrees",
-  messaging: "messaging",
   names: "names",
   personaSessions: "personaSessions",
   personas: "personas",
@@ -48,7 +46,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   roi: "roi",
   runenv: "runEnv",
   summary: "summary",
-  teams: "teams",
   telemetry: "telemetry",
   telemetryOptIn: "telemetry",
   terminals: "terminals",
@@ -133,6 +130,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     memory: "memory",
     tasks: "tasks",
     templates: "templates",
+  },  // The messages between sessions keep `messaging`; the idle notices and the teams keep theirs.
+  messaging: {
+    messages: "messaging",
+    idle: "idle",
+    teams: "teams",
   },
 };
 
@@ -185,6 +187,7 @@ describe("server-gates", () => {
       quota: {},
       review: {},
       agentSetup: {},
+      messaging: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
