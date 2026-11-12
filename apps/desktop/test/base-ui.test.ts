@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { styleViolations } from "../../../scripts/lib/style-lint.ts";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
+import { styleViolations } from "../../../scripts/lib/styles/style-lint.ts";
+import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
 import { cn } from "../src/lib/utils.ts";
 
 const DESKTOP = resolve(import.meta.dir, "..");

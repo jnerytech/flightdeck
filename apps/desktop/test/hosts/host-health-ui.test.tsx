@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import type { DepResult, DepsResult, DoctorResult } from "@flightdeck/protocol";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
