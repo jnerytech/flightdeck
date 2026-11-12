@@ -49,6 +49,23 @@ describe("component picture (#1624)", () => {
     expect(blocks[1]).toContain("desktop_board --> protocol");
   });
 
+  test("a domain that most others import is listed, not drawn: its edges would bury the picture and pass mermaid's 500-edge limit", () => {
+    const importers = Array.from({ length: 41 }, (_, i) =>
+      module(`${W}/features/f${i}/a.ts`, `${W}/shared/box.ts`, `${W}/features/hub/a.ts`),
+    );
+    const text = componentPicture([...importers, module(`${W}/features/hub/a.ts`)]);
+    const desktop = text.split("## Desktop")[1] ?? "";
+    expect(desktop).not.toContain("desktop_f0 --> desktop_shared");
+    expect(desktop).not.toContain("desktop_f40 --> desktop_hub");
+    expect(desktop).toContain(
+      "Imported by more than 40 domains, so their edges are not drawn: `hub`, `shared`.",
+    );
+    // 40 importers is not yet most of them: the edges stay
+    const few = componentPicture(importers.slice(0, 40)).split("## Desktop")[1] ?? "";
+    expect(few).toContain("desktop_f0 --> desktop_shared");
+    expect(few).not.toContain("are not drawn");
+  });
+
   test("the same graph gives the same text in whatever order its modules come", () => {
     const modules = [
       module(`${D}/sessions/index.ts`, `${D}/board/index.ts`),
