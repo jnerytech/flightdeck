@@ -1,16 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import {
+  boardFeatures,
   boardOrder,
   cardMoves,
   columnCards,
   dropPositions,
   idsByColumn,
+  refusalNames,
   showingColumn,
   shownCards,
+  showsQueuedBadge,
   startableWorkflows,
   stayingPicks,
   tabStops,
 } from "../../src/features/board/board-derive.ts";
+import { translator } from "../../src/i18n/index.ts";
 
 /**
  * #1605 (Humble Object): what BoardView derives from its state, tested by output and without the DOM.
@@ -226,5 +230,71 @@ describe("board derive: the moves a card's menu offers", () => {
       targetId: undefined,
       disabled: false,
     });
+  });
+});
+
+describe("board derive: what the host offers the board", () => {
+  test("each of deps, roi, boardsync and issues is on when the host announces it", () => {
+    expect(boardFeatures(["deps", "boardsync"])).toEqual({
+      deps: true,
+      roi: false,
+      sync: true,
+      issues: false,
+    });
+    expect(boardFeatures(["roi", "issues", "other"])).toEqual({
+      deps: false,
+      roi: true,
+      sync: false,
+      issues: true,
+    });
+  });
+
+  test("a host that announces nothing, or is not known, offers none", () => {
+    const none = { deps: false, roi: false, sync: false, issues: false };
+    expect(boardFeatures([])).toEqual(none);
+    expect(boardFeatures(undefined)).toEqual(none);
+  });
+});
+
+describe("board derive: the queued badge", () => {
+  test("a queued card with no reason, or the slot or budget reason, shows it", () => {
+    expect(showsQueuedBadge({ queued: true, queueReason: null })).toBe(true);
+    expect(showsQueuedBadge({ queued: true, queueReason: "slot" })).toBe(true);
+    expect(showsQueuedBadge({ queued: true, queueReason: "budget" })).toBe(true);
+  });
+
+  test("quota, memory and paused have a badge of their own, so no second one", () => {
+    for (const queueReason of ["quota", "memory", "paused"] as const) {
+      expect(showsQueuedBadge({ queued: true, queueReason })).toBe(false);
+    }
+  });
+
+  test("a card that is not queued shows none", () => {
+    expect(showsQueuedBadge({ queued: false, queueReason: null })).toBe(false);
+  });
+});
+
+describe("board derive: the refusals named", () => {
+  const refusal = (title: string, over: object = {}) =>
+    ({ card: { title }, message: "the card is running", ...over }) as never;
+
+  test("each title with the host's message, joined by commas", () => {
+    expect(
+      refusalNames([refusal("A"), refusal("B", { message: "no room" })], translator("en")),
+    ).toBe("A (the card is running), B (no room)");
+  });
+
+  test("a reason code is said in the app's language", () => {
+    const coded = [refusal("A", { reason: "card_running" })];
+    expect(refusalNames(coded, translator("en"))).toBe(
+      "A (The card is running: wait for the agent to finish.)",
+    );
+    expect(refusalNames(coded, translator("pt-BR"))).toBe(
+      "A (O card está em execução: espere o agente terminar.)",
+    );
+  });
+
+  test("none refused, an empty text", () => {
+    expect(refusalNames([], translator("en"))).toBe("");
   });
 });
