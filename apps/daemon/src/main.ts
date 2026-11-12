@@ -15,7 +15,6 @@ import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
-import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import { type CliDeps, COMMANDS } from "./cli/commands.ts";
 import {
@@ -61,6 +60,7 @@ import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
+import { claudeVersionProbe } from "./runtime/index.ts";
 import { type CreatedOpenCode, createOpenCode } from "./runtime/opencode-wiring.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { createModuleRunner, serverGroup } from "./server/index.ts";
