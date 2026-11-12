@@ -3,7 +3,7 @@
  * an allowed root, and set how the host presents itself.
  */
 import { FlightdeckError } from "../../errors.ts";
-import { addAllowedRoot } from "../../roots.ts";
+import { addAllowedRoot } from "../../projects/index.ts";
 import { requireVaultTransport } from "../../vault/vault.ts";
 import type { Handlers } from "../dispatch.ts";
 
