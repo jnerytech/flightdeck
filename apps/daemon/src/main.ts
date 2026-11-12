@@ -11,8 +11,9 @@ import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
 import { createBg } from "./bg/wiring.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
-import { Central, messageExternal } from "./central/central.ts";
+import { messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
+import { createCentral } from "./central/wiring.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
 import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
@@ -429,20 +430,22 @@ export async function startDaemon(
   await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   await domains.add(createGithub({ config, board, issues, manager }));
   await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
-  const central = new Central({
-    risk,
-    autoApprove,
-    snapshots,
-    db: store.db,
-    keys,
-    manager,
-    hooks: config.hooks,
-    dataDir: config.dataDir,
-    hostName: config.hostName,
-    configFile,
-    selfCommand,
-    settingsPath: claudeSettingsPath,
-  });
+  const { central } = await domains.add(
+    createCentral({
+      risk,
+      autoApprove,
+      snapshots,
+      db: store.db,
+      keys,
+      manager,
+      hooks: config.hooks,
+      dataDir: config.dataDir,
+      hostName: config.hostName,
+      configFile,
+      selfCommand,
+      settingsPath: claudeSettingsPath,
+    }),
+  );
   // Phase 15: the SSH destinations, their server keys, the connector and askpass.
   const ssh = await createSsh({
     db: store.db,
@@ -637,7 +640,6 @@ export async function startDaemon(
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
     hostName: config.hostName,
