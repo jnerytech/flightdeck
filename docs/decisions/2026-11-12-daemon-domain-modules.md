@@ -29,7 +29,7 @@ import type { ServerOptions } from "../server.ts";
 export interface DomainModule<K extends keyof ServerOptions = never> {
   /** The domain's part of `startServer`'s options: its group, built with `serverGroup<K>()`. */
   server?: Pick<ServerOptions, K>;
-  /** Work before the server listens. Awaited right after this module is built. */
+  /** Work before the server listens. Awaited right after this module is added. */
   start?(): void | Promise<void>;
   /** Work that needs the server listening (loops that broadcast, WSL). Awaited in list order. */
   started?(): void | Promise<void>;
@@ -47,10 +47,12 @@ export interface DomainModule<K extends keyof ServerOptions = never> {
   members. A missing group is not a compile error, as today: every group key of `ServerOptions` is
   optional, and the domain's protocol tests catch a group that is not passed.
 - The factory still returns the domain's own objects next to its modules when another domain needs
-  them (`{ module, quota, onQuota }`). The module is the seam to `main.ts`, not the only export.
-- The type and the runner (`startModules`, `stopModules`) live in `apps/daemon/src/server/module.ts`
-  with their own output test. Domains import the type with `import type`, so no domain gains a
-  runtime edge to `server.ts`.
+  them (`{ modules: [module], quota, onQuota }`). The module is the seam to `main.ts`, not the only export.
+- The type and the runner (`createModuleRunner()`, with `add`, `server`, `started` and `stop`) live
+  in `apps/daemon/src/server/module.ts`, exported by `server/index.ts`, with their own output test
+  (`apps/daemon/test/server/module.test.ts`). `serverGroup<K>()` lives there too. Domains import
+  the type and `serverGroup` from `server/index.ts`; `module.ts` imports `server.ts` with
+  `import type` only, so no domain gains a runtime edge to `server.ts`.
 
 ### 2. Dependencies between domains
 
@@ -132,17 +134,20 @@ lines. Under 400 is reachable; #1593 measures it after the module slices.
 
 ### 6. The first slice
 
-1. A `test(server)` commit that extends `apps/daemon/test/daemon/stop-order.test.ts` to pin
-   constraints 2 and 3: an issue search in flight when the stop begins finishes before the board
-   stops, and the watch and the board sync stop before the board. Today the file pins only the
-   keep-awake part of constraint 1; the log flush and the teleport are pinned in
-   `apps/daemon/test/logs/server.test.ts` and `apps/daemon/test/teleport/bundle.test.ts`. It is
-   green on today's code: it pins behavior before the move.
-2. The `DomainModule` type and the runner with its output test, and two domains with a stop and no
-   cross-domain cycle moved onto it: `quota` and `telemetry`. While the hand-written stop sequence
+1. A `test(server)` commit with the runner's output test: start on add, a pending start holding the
+   next module, the stop phases, an async stop awaited, the merged server groups. Red by assertion
+   on a stub, before the runner.
+2. The `DomainModule` type and the runner, and two domains with a stop and no cross-domain cycle
+   moved onto it: `quota` and `telemetry`. While the hand-written stop sequence
    remains, `main.ts` calls each moved module's `stop()` at its current place, so the order does not
    change in this slice.
-3. Later slices, one PR each: a few domains per PR, cycles first for board/issues and
+3. The pins of constraints 2 and 3 in `apps/daemon/test/daemon/stop-order.test.ts` (an issue
+   search in flight when the stop begins finishes before the board stops; the watch and the board
+   sync stop before the board) come first in the PR that moves the board work, green on the code
+   before that move. Today the file pins only the keep-awake part of constraint 1; the log flush
+   and the teleport are pinned in `apps/daemon/test/logs/server.test.ts` and
+   `apps/daemon/test/teleport/bundle.test.ts`.
+4. Later slices, one PR each: a few domains per PR, cycles first for board/issues and
    central/permissions, and last the PR that replaces the hand-written sequence with the runner's
    phases, with the stop-order test green before and after.
 
