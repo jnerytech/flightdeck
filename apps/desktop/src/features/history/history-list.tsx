@@ -1,9 +1,9 @@
 import type { HistoryOrigin, HistorySessionSummary } from "@flightdeck/protocol";
 import { History } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ViewToggle } from "@/components/layout/view-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ViewToggle } from "@/features/sessions/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { cn } from "@/lib/utils";
 import {
