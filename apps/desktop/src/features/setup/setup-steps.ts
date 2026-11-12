@@ -1,6 +1,4 @@
 import type { DepResult, Project } from "@flightdeck/protocol";
-import type { AppState } from "../../lib/app-store.ts";
-import type { Route } from "../../lib/router.ts";
 import type { Platform } from "../../platform/types.ts";
 
 export type SetupStepId =
@@ -51,23 +49,43 @@ export function probeAfter(
   };
 }
 
+/** The screens a step's action opens; each is a variant of the app's `Route`. */
+type SetupRoute =
+  | { name: "add-host" }
+  | { name: "host"; host: string }
+  | { name: "projects"; host: string }
+  | { name: "new-session"; host: string }
+  | { name: "settings" };
+
 export interface SetupStep {
   id: SetupStepId;
   /** A core step counts for the ring and, once all are done, removes the sidebar row. */
   core: boolean;
   done: boolean;
   /** Where its action goes. */
-  route: Route;
+  route: SetupRoute;
 }
 
-export type SetupInput = Pick<
-  AppState,
-  "hosts" | "projects" | "cards" | "hub" | "budgets" | "externals"
-> & {
+/**
+ * What the steps read of the app's state, as plain shapes: the app state (`AppState`) satisfies it,
+ * and this file stays below the store, so the setup domain and the store do not import each other.
+ */
+export interface SetupInput {
+  hosts: Array<{
+    id: string;
+    status: string;
+    hostInfo: { features?: string[] } | null;
+    sessions: unknown[];
+  }>;
+  projects: Record<string, Project[]>;
+  cards: Record<string, { sessionId?: string | null }>;
+  hub: Record<string, { managed: unknown[]; history: unknown[] }>;
+  budgets: Record<string, unknown[]>;
+  externals: Record<string, unknown>;
   probes: Record<string, SetupProbe>;
   /** A test notification reached the system once. */
   notified: boolean;
-};
+}
 
 const online = (hosts: SetupInput["hosts"]) => hosts.filter((h) => h.status === "online");
 
@@ -86,7 +104,7 @@ export function setupSteps(input: SetupInput): SetupStep[] {
   const withFeature = (feature: string) =>
     here.find((h) => h.hostInfo?.features?.includes(feature)) ?? first;
   // Where an action goes when it needs a host: the first that can do it, else the page that adds one.
-  const toHost = (route: (hostId: string) => Route, feature?: string): Route => {
+  const toHost = (route: (hostId: string) => SetupRoute, feature?: string): SetupRoute => {
     const target = feature ? withFeature(feature) : first;
     return target ? route(target.id) : { name: "add-host" };
   };
