@@ -80,7 +80,7 @@ async function setup(over: { mode?: PermissionMode; trusted?: boolean; checks?: 
   const base = {
     manager,
     board,
-    checkLoop,
+    prWatch: { checkLoop },
     hostName: "h",
     bind: "127.0.0.1",
     port: 0,

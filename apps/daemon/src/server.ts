@@ -171,6 +171,14 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** Phase 22, #1593: the cards' PR watch, each service optional. */
+interface PrWatchServer {
+  /** Phase 22: the PR watch of the cards. */
+  watch?: PrWatch;
+  /** Issue #1361: the cards' check loop switch (it reads the watch's checks). */
+  checkLoop?: CheckLoopSwitch;
+}
+
 /** Phases 9 and #280, #1593: the daemon's own update, each service optional. */
 interface UpdatesServer {
   /** Phase 9: the release manifest check behind `host.info.update` and `daemon.update.check`. */
@@ -441,10 +449,8 @@ export interface ServerOptions {
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
   vault?: Vault;
-  /** Phase 22: the PR watch of the cards. */
-  watch?: PrWatch;
-  /** Issue #1361: the cards' check loop switch (it reads the watch's checks). */
-  checkLoop?: CheckLoopSwitch;
+  /** The cards' PR watch and its check loop switch (phase 22, #1361, #1593). */
+  prWatch?: PrWatchServer;
   /** Phase 21: messages between sessions, their idle notices and the teams (#1593). */
   messaging?: MessagingServer;
   /** Phase 21: the standard names of the sessions (`names.list`, and the rename of a session). */

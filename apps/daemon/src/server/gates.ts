@@ -36,8 +36,6 @@ export const GATES = {
   trace: "trace",
   usage: "usage",
   vault: "vault",
-  watch: "prWatch",
-  checkLoop: "prWatch",
   webhook: "webhook",
   // Written inline in a case before the split, each with a single name.
   serviceInstall: "serviceInstall",
@@ -143,6 +141,10 @@ export const GROUP_GATES = {
     check: "updater",
     apply: "updater",
     auto: "autoUpdate",
+  },
+  prWatch: {
+    watch: "prWatch",
+    checkLoop: "prWatch",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<
