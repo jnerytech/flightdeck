@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { PlainInfo, TaskResultsResult } from "@flightdeck/protocol";
-import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
-import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
-import { type Lang, translator } from "../src/i18n/index.ts";
-import { emptySession, type SessionState } from "../src/lib/session-state.ts";
-import { hiddenTermsIn } from "../src/lib/simple-words.ts";
-import { liveScreen, registerDom } from "./dom.ts";
+import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
+import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
+import { type Lang, translator } from "../../src/i18n/index.ts";
+import { emptySession, type SessionState } from "../../src/lib/session-state.ts";
+import { hiddenTermsIn } from "../../src/lib/simple-words.ts";
+import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const axe = (await import("axe-core")).default;
-const { HomeView } = await import("../src/components/simple/home-view.tsx");
-const { TaskView } = await import("../src/components/simple/task-view.tsx");
-const { SettingsView } = await import("../src/components/simple/settings-view.tsx");
+const { HomeView } = await import("../../src/components/simple/home-view.tsx");
+const { TaskView } = await import("../../src/components/simple/task-view.tsx");
+const { SettingsView } = await import("../../src/components/simple/settings-view.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
