@@ -106,7 +106,7 @@ describe("sessao-trabalhando: the conversation shows that Claude is working", ()
   });
 
   test("without a fixed clock the row ticks each second", async () => {
-    const { WorkingRow } = await import("../../src/components/session/working-row.tsx");
+    const { WorkingRow } = await import("../../src/features/sessions/working-row.tsx");
     const { act } = await import("@testing-library/react");
     render(<WorkingRow label="Trabalhando" since={Date.now()} tool={null} />);
     expect(screen.getByRole("status").textContent).toContain("0s");

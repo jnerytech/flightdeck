@@ -215,20 +215,24 @@ export async function startDaemon(
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
-  const { memoryGate, memoryPause } = createMemoryGate({
-    config,
-    configFile,
-    reading:
-      options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
-  });
+  const { memoryGate } = await domains.add(
+    createMemoryGate({
+      config,
+      configFile,
+      reading:
+        options.memoryReading ?? (process.env.FLIGHTDECK_SERVICE_GUARD ? () => null : undefined),
+    }),
+  );
   // Issue #1404: the person's pause of new card runs, kept in the config.
-  const { hostPause, server: hostPauseServer } = createHostPause({
-    config,
-    configFile,
-    // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
-    // run waiting at a gate has no session but resumes after a restart).
-    running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
-  });
+  const { hostPause } = await domains.add(
+    createHostPause({
+      config,
+      configFile,
+      // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
+      // run waiting at a gate has no session but resumes after a restart).
+      running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
+    }),
+  );
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
   const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
@@ -263,11 +267,12 @@ export async function startDaemon(
     pinned?: (claudeSessionId: string | null) => boolean;
     cardSession?: (sessionId: string) => boolean;
   } = {};
-  const { keepAwake, keepAwakeSwitch } = createKeepAwake({
-    powerContext: options.powerContext,
-    config,
-    configFile,
-  });
+  const {
+    keepAwake,
+    modules: [keepAwakeModule],
+  } = await domains.add(
+    createKeepAwake({ powerContext: options.powerContext, config, configFile }),
+  );
 
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
@@ -618,9 +623,6 @@ export async function startDaemon(
         updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
       picker: true,
     }),
-    hostPause: hostPauseServer,
-    memoryPause,
-    keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: serverGroup<"knowledge">()(knowledge),
     harness: serverGroup<"harness", "draft">()(harness),
@@ -748,7 +750,7 @@ export async function startDaemon(
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
         // First: whatever stops slowly after must not keep the computer awake meanwhile.
-        keepAwake.stop();
+        await keepAwakeModule.stop?.();
         await wsl?.stop();
         automations.stop();
         clearInterval(messagingSweep);

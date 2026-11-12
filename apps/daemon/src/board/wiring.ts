@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { SecretScanner } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
 import { present } from "../present.ts";
+import type { DomainModule } from "../server/index.ts";
 import { Board } from "./board.ts";
 import { type CheckLoopDeps, CheckLoopSwitch, cardMode } from "./check-loop.ts";
 import { HostPause } from "./host-pause.ts";
@@ -31,7 +32,8 @@ export function createHostPause({ config, configFile, running }: HostPauseDeps) 
       hostPause.set(paused);
     },
   };
-  return { hostPause, server };
+  const module: DomainModule<"hostPause"> = { server: { hostPause: server } };
+  return { modules: [module] as const, hostPause };
 }
 
 /** What the check loop reads (issue #1361): the project's trust and the sessions' modes. */

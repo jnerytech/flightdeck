@@ -12,7 +12,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { demoToast } = await import("../src/demo/boot.ts");
-const { Composer } = await import("../src/components/session/parts.tsx");
+const { Composer } = await import("../src/features/sessions/parts.tsx");
 
 const CSS = readStyles(join(import.meta.dir, "../src/styles.css"));
 const cleanups: Array<() => unknown> = [];
