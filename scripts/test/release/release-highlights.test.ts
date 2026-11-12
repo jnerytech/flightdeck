@@ -9,7 +9,7 @@ import {
   REPO,
   releaseHighlights,
   userFacing,
-} from "../../lib/release-highlights.ts";
+} from "../../lib/release/highlights.ts";
 
 /**
  * Issue #1334: the release Highlights drafted from the PRs merged since the last tag. Every `gh`

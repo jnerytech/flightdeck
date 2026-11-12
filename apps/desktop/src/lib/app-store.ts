@@ -9,7 +9,6 @@ import type {
   HistoryListResult,
   MessageInfo,
   RunConfigInfo,
-  RunState,
   SessionImage,
   SessionMeta,
   SessionRecap,
@@ -130,6 +129,7 @@ import {
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import { RoiSettings } from "../features/roi/roi-settings.ts";
+import { RunEnvSlice } from "../features/runenv/store.ts";
 import {
   browserClockDeps,
   CacheTimerSettings,
@@ -383,6 +383,8 @@ export class AppStore {
   readonly quota: QuotaSlice;
   /** The Claude account each host is signed in to (phase 34, #1596). */
   readonly account: AccountSlice;
+  /** A card's run environment: run.yaml, trust, start and stop (`features/runenv/store.ts`). */
+  readonly runEnv: RunEnvSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
   readonly hostUpdate: HostUpdateSlice;
   readonly settings: SettingsSlice;
@@ -455,6 +457,16 @@ export class AppStore {
         }),
     });
     this.account = wireAccount(this.kernel);
+    this.runEnv = new RunEnvSlice({
+      state: () => this.state,
+      update: (patch) => this.update(patch),
+      key: sessionKey,
+      config: (hostId, projectId) => this.hostCommand(hostId, "runenv.config", { projectId }),
+      trust: (hostId, projectId, hash) =>
+        this.hostCommand(hostId, "runenv.trust", { projectId, hash }),
+      start: (hostId, cardId) => this.hostCommand(hostId, "runenv.start", { cardId }),
+      stop: (hostId, cardId) => this.hostCommand(hostId, "runenv.stop", { cardId }),
+    });
     this.snippets = wireSnippets(this.kernel, { storage: platform.storage });
     this.budgets = wireBudgets(this.kernel, {
       feed: (host, label, percent, limit) => this.webhookFeed.budget(host, label, percent, limit),
@@ -1259,28 +1271,22 @@ export class AppStore {
 
   /** The run.yaml of a project on its base branch, with its validation and trust. */
   runEnvConfig(hostId: string, projectId: string): Promise<RunConfigInfo | null> {
-    return this.hostCommand(hostId, "runenv.config", { projectId });
+    return this.runEnv.config(hostId, projectId);
   }
 
   /** Trusts the run.yaml the user reviewed. */
   runTrust(hostId: string, projectId: string, hash: string): Promise<RunConfigInfo | null> {
-    return this.hostCommand(hostId, "runenv.trust", { projectId, hash });
+    return this.runEnv.trust(hostId, projectId, hash);
   }
 
   /** Run: the card's setup (once) and processes. A refusal goes to the banner. */
-  async runStart(hostId: string, cardId: string): Promise<void> {
-    const state = await this.hostCommand(hostId, "runenv.start", { cardId });
-    if (state) this.onRunEnv(hostId, state);
+  runStart(hostId: string, cardId: string): Promise<void> {
+    return this.runEnv.start(hostId, cardId);
   }
 
   /** Stop: ends the card's processes and everything they started. */
-  async runStop(hostId: string, cardId: string): Promise<void> {
-    const state = await this.hostCommand(hostId, "runenv.stop", { cardId });
-    if (state) this.onRunEnv(hostId, state);
-  }
-
-  private onRunEnv(hostId: string, state: RunState): void {
-    this.update({ runEnvs: { ...this.state.runEnvs, [sessionKey(hostId, state.cardId)]: state } });
+  runStop(hostId: string, cardId: string): Promise<void> {
+    return this.runEnv.stop(hostId, cardId);
   }
 
   /** Closes a tab; a terminal's waits in `closingTerminal` for detach or end. */
@@ -1720,7 +1726,7 @@ export class AppStore {
       });
     },
     onRunUpdated: (config, run) => this.onRun(config.id, run),
-    onRunEnvUpdated: (config, state) => this.onRunEnv(config.id, state),
+    onRunEnvUpdated: (config, state) => this.runEnv.updated(config.id, state),
     onQuotaUpdated: (config, state) => this.quota.updated(config.id, state),
     onAccountUpdated: (config, state) => this.account.updated(config.id, state),
     onBudgetUpdated: (config, update) => this.budgets.onUpdated(config.id, update),
