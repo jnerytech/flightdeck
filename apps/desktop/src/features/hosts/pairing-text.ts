@@ -1,4 +1,4 @@
-import type { T } from "../i18n/index.ts";
+import type { T } from "../../i18n/index.ts";
 import type { LinkProblem } from "./pairing-mask.ts";
 
 /** The words for a refused pairing link, in the app's language. */

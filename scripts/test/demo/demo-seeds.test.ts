@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { parseRequestLink } from "../../../apps/desktop/src/features/hosts/request-link.ts";
 import {
   loadFinished,
   sinceLastLook,
 } from "../../../apps/desktop/src/features/sessions/finished.ts";
-import { parseRequestLink } from "../../../apps/desktop/src/lib/request-link.ts";
 import { demoFinished, demoInbox } from "../../lib/demo-seeds.ts";
 
 type Entry = { id: string; ask?: string; link?: string; group?: string };

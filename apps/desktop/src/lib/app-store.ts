@@ -93,9 +93,14 @@ import {
   loadHosts,
   type NewHost,
   type OnlineStep,
+  parseRequestLink,
+  type RelayDeps,
   RequestError,
+  relayMessage,
+  relayUpdate,
   saveHosts,
   statusLine,
+  syncPeers,
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
@@ -154,6 +159,7 @@ import {
   type SettingsSlice,
   wireSettings,
 } from "../features/settings/index.ts";
+import { probeAfter, SetupSettings } from "../features/setup/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
@@ -212,9 +218,6 @@ import type {
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
-import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
-import { parseRequestLink } from "./request-link.ts";
-import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */

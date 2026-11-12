@@ -38,7 +38,10 @@ export { HostVersionTip, hostVersionText } from "./host-version.tsx";
 export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 export { HostsBanner } from "./hosts-banner.tsx";
 export { HostLink, type HostRoutes, type OnlineStep } from "./link.ts";
+export { pairingErrorText } from "./pairing-text.ts";
+export { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 export { RenameHostDialog } from "./rename-host-dialog.tsx";
+export { parseRequestLink, requestLink } from "./request-link.ts";
 export { HostRosterSlice, type NewHost } from "./roster-store.ts";
 export {
   type HostUpdateCore,

@@ -15,7 +15,7 @@ const {
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { probeHost } = await import("../../src/lib/probe-host.ts");
+const { probeHost } = await import("../../src/features/hosts/probe-host.ts");
 const { App } = await import("../../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];

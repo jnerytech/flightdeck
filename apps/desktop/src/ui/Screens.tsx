@@ -41,7 +41,7 @@ import { SessionTabs } from "../features/sessions/session-tabs.tsx";
 import { SessionView } from "../features/sessions/session-view.tsx";
 import { SessionsHub } from "../features/sessions/sessions-hub.tsx";
 import { StartScreen } from "../features/sessions/start-screen.tsx";
-import { SetupPage } from "../features/setup/index.ts";
+import { SetupPage } from "../features/setup/page.tsx";
 import { TerminalButton, TerminalPage } from "../features/terminal/index.ts";
 import {
   type AppState,

@@ -5,7 +5,7 @@ import {
   parseServerMessage,
 } from "@flightdeck/protocol";
 
-import { type T, translator } from "../i18n/index.ts";
+import { type T, translator } from "../../i18n/index.ts";
 
 export type ProbeResult =
   | { ok: true; info: HelloResult & HostInfoResult }

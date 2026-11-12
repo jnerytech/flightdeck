@@ -3,10 +3,10 @@ import type {
   ExternalSession,
   ExternalUpdated,
 } from "@flightdeck/protocol";
+import { requestLink } from "@/features/hosts/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppState } from "../../lib/app-store.ts";
-import { requestLink } from "../../lib/request-link.ts";
 import type { InboxSlice } from "../inbox/index.ts";
 import { externalRequestNotification } from "../inbox/notify.ts";
 import { sessionKey } from "./session-key.ts";
