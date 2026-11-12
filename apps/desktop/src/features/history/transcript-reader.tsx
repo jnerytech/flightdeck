@@ -1,6 +1,7 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { Copy, History } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
 import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
@@ -15,7 +16,6 @@ import { awaitingApproval } from "../../lib/awaiting-approval.ts";
 import { toolLoader } from "../../lib/history-tool.ts";
 import { basename, isInside } from "../../lib/paths.ts";
 import { messageParts } from "../../lib/tool-line.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { useLiveElsewhereGuard } from "../sessions/index.ts";
 
 /** Which transcript to read, and where to open it (a search hit). */

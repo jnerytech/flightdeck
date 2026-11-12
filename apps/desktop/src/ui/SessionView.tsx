@@ -13,6 +13,7 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { useWand, type WandBinding } from "@/components/assistant/use-wand";
 import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
 import { Markdown } from "@/components/markdown/markdown";
@@ -61,7 +62,6 @@ import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
-import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */

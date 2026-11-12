@@ -1,10 +1,10 @@
 import type { ProjectLoad, ProjectTrustState } from "@flightdeck/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { HarnessPanel } from "@/features/harness/index.ts";
 import type { AppStore } from "@/lib/app-store";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** What the panel says about the folder: trusted (on its own or through a parent), or not. */
 function trustLine(state: ProjectTrustState, t: AppStore["i18n"]["t"]): string {

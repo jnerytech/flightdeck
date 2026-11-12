@@ -1,6 +1,7 @@
 import type { SnippetFileInfo } from "@flightdeck/protocol";
 import { SquareCode, Star } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -13,7 +14,6 @@ import { selectedClient, tagsFirst } from "../../lib/client-scope.ts";
 import type { Route } from "../../lib/router.ts";
 import { actionSeedFromCommand } from "../../lib/snippets.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { FileImport } from "./file-import.tsx";
 import type { AppSnippet } from "./global-snippets.ts";
 import { HistoryImport } from "./history-import.tsx";

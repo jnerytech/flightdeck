@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "@/lib/app-store";
-import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /**
  * The host's switch for sessions without permission prompts. Off until a person turns it on,

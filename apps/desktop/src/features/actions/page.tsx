@@ -1,6 +1,7 @@
 import type { ActionInfo, ActionList, ActionRunInfo } from "@flightdeck/protocol";
 import { Plus, Terminal } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Page } from "@/components/layout/page";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,6 @@ import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import type { ActionSeed } from "../../lib/snippets.ts";
 import type { SecretMeta } from "../../lib/vault.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { isProd } from "../ssh/index.ts";
 import { ActionForm } from "./action-form.tsx";
 

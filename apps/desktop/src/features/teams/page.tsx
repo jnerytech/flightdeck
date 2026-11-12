@@ -3,6 +3,7 @@ import { inSequence } from "@flightdeck/protocol";
 import { Copy, MoreHorizontal, UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, FieldRow, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -33,7 +34,6 @@ import type { Route } from "../../lib/router.ts";
 import { sessionLabel } from "../../lib/session-label.ts";
 import { useDraft } from "../../lib/use-draft.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import {
   bypassAsked,
   chosenProject,

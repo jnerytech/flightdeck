@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Stack } from "@/components/layout/stack";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { generatedScopeRules, vaultFindings } from "../../lib/client-vault.ts";
 import type { Client } from "../../lib/clients.ts";
 import { useDraft } from "../../lib/use-draft.ts";
 import { hasFeature } from "../../lib/version.ts";
-import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 /**
  * What a client pre-fills: the persona its sessions open in, the tag its snippets carry, and the
