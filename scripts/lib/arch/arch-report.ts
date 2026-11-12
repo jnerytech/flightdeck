@@ -4,7 +4,7 @@
  * fail on growth; this reads their baselines and prints them together, for the terminal, the CI
  * job summary and a JSON file to follow the trend.
  */
-import { ruleCounts } from "./ratchets/arch.ts";
+import { ruleCounts } from "../ratchets/arch.ts";
 
 export type RatchetRow = { ratchet: string; baseline: number; today: number };
 
