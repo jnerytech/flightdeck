@@ -153,8 +153,6 @@ import { hasFeature } from "./version.ts";
 export type {
   Answer,
   AppState,
-  AppStoreOptions,
-  GateRef,
   HistoryFilter,
   HostView,
   NeedsYouState,

@@ -10,7 +10,7 @@ export { Sidebar } from "./sidebar.tsx";
 export { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 export { StatusBarSlot } from "./status-bar.tsx";
 export { firstTerminalTab, hostsRoute, terminalTabCount } from "./status-bar-summary.ts";
-export type { Theme, ThemeMode } from "./theme.ts";
+export type { ThemeMode } from "./theme.ts";
 export { HistoryButtons, TopBarActions, TopBarHost } from "./top-bar.tsx";
 export {
   foldedByDefault,
