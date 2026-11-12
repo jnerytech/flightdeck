@@ -8,7 +8,7 @@ import {
   SONAR_KEY_FINGERPRINT,
   scannerFiles,
   withRetry,
-} from "../../lib/sonar-scanner.ts";
+} from "../../lib/sonar/scanner.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");

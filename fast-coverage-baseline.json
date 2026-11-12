@@ -284,7 +284,7 @@
   "scripts/lib/sleep-ratchet.ts",
   "scripts/lib/slot/index.ts",
   "scripts/lib/smoke/card.ts",
-  "scripts/lib/sonar-project.ts",
+  "scripts/lib/sonar/project.ts",
   "scripts/lib/spec-lint.ts",
   "scripts/lib/style-lint.ts",
   "scripts/lib/tdd-audit.ts",
