@@ -130,8 +130,8 @@ describe("areas: a tela se adapta à largura da sua área", () => {
             join(root, "features", entry.name, f),
           ),
         ),
-      ...["layout", "feedback"].flatMap((dir) =>
-        readdirSync(join(root, "components", dir)).map((f) => join(root, "components", dir, f)),
+      ...["components/layout", "components/feedback", "shared/layout", "shared/feedback"].flatMap(
+        (dir) => readdirSync(join(root, dir)).map((f) => join(root, dir, f)),
       ),
     ].filter((file) => file.endsWith(".tsx") || file.endsWith(".ts"));
     const offenders = files.filter((file) =>

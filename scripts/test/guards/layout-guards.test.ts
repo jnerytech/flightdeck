@@ -830,7 +830,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
     "components/approval/approval-card.tsx",
     "ui/Sidebar.tsx",
     "features/board/board-view.tsx",
-    "components/layout/form.tsx",
+    "shared/layout/form.tsx",
   ].map((file) => readFileSync(join(import.meta.dir, "../../../apps/desktop/src", file), "utf8"));
 
   test("each key region is named in the page it belongs to", () => {
