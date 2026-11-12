@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Command, ReviewTarget } from "../src/index.ts";
+import { Command, ReviewTarget } from "../../src/index.ts";
 
 /**
  * Issue #797: the context panel's daemon side. A project's own checkout is a target, and a search

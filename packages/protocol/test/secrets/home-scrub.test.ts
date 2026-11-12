@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { scrubHome } from "../src/snippets.ts";
+import { scrubHome } from "../../src/snippets.ts";
 
 describe("home-scrub: the user's name is not copied into a log (issue #255)", () => {
   test("the common home folders of Linux, macOS and Windows become ~", () => {

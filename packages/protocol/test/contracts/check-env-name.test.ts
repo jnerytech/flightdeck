@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isCheckEnvName } from "../src/index.ts";
+import { isCheckEnvName } from "../../src/index.ts";
 
 describe("check env names (#1361)", () => {
   test("a location of a toolchain is allowed", () => {

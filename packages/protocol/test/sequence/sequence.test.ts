@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { inSequence } from "../src/sequence.ts";
+import { inSequence } from "../../src/sequence.ts";
 
 describe("sequence: inSequence", () => {
   test("gives back what each step returned, in the order of the items", async () => {

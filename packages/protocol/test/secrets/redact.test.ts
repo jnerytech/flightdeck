@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SecretScanner } from "../src/snippets.ts";
+import { SecretScanner } from "../../src/snippets.ts";
 
 const SECRETS = [
   "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
