@@ -5,7 +5,7 @@
 import { join } from "node:path";
 import type { Config, RuntimeKind } from "../config.ts";
 import type { OpenCodeState } from "../doctor.ts";
-import { buildChildEnv } from "../env.ts";
+import { buildChildEnv } from "../kernel/index.ts";
 import { FakeRuntime } from "./fake-runtime.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import { VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";

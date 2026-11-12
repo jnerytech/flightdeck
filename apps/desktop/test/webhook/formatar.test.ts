@@ -5,7 +5,7 @@ import {
   type NotifyEvent,
   ntfyTopic,
   type WebhookKind,
-} from "../../src/lib/webhook-format.ts";
+} from "../../src/features/webhook/webhook-format.ts";
 
 const event = (over: Partial<NotifyEvent> = {}): NotifyEvent => ({
   id: "01JEVENT0000000000000000AA",

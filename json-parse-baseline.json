@@ -24,6 +24,7 @@
   "apps/desktop/src/features/vault/vault-rules.ts": 1,
   "apps/desktop/src/features/vault/vault-usage.ts": 2,
   "apps/desktop/src/features/vault/vault.ts": 1,
+  "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 2,
   "apps/desktop/src/lib/assistant-prefs.ts": 1,
   "apps/desktop/src/lib/backup-bundle.ts": 2,
@@ -37,6 +38,5 @@
   "apps/desktop/src/lib/roi-settings.ts": 2,
   "apps/desktop/src/lib/setup-steps.ts": 1,
   "apps/desktop/src/lib/simple-mode.ts": 1,
-  "apps/desktop/src/lib/webhook-targets.ts": 1,
   "packages/protocol/src/index.ts": 1
 }

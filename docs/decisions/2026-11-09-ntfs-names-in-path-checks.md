@@ -9,7 +9,7 @@ name that hid a credential.
 
 ## Decision
 
-- One helper, `ntfsName(step)` in `apps/daemon/src/ntfs-name.ts`, says what a step is called on the
+- One helper, `ntfsName(step)` in `apps/daemon/src/kernel/ntfs-name.ts`, says what a step is called on the
   disk: lower case, no stream after a colon, no trailing dots or spaces, and the 8.3 short name of a
   dotted folder (`GIT~1`, `CLAUDE~1`, `SSH~1`) turned back into its name (`.git`, `.claude`,
   `.ssh`). `isGitDir` in the review code is now `ntfsName(name) === ".git"`.

@@ -3,7 +3,7 @@ import {
   type TargetInput,
   WebhookTargetError,
   WebhookTargets,
-} from "../../src/lib/webhook-targets.ts";
+} from "../../src/features/webhook/webhook-targets.ts";
 
 const SLACK_URL = "https://hooks.slack.com/services/T000/B000/XXXXSECRETXXXX";
 

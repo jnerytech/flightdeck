@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { settled } from "../../src/settled.ts";
+import { settled } from "../../src/kernel/settled.ts";
 
 describe("settled: a sync body behind an async contract", () => {
   test("the value of the work is what the promise gives", async () => {

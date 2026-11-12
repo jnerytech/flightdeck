@@ -2,7 +2,7 @@
  * Phase 30: the webhook targets. The list lives in the app's storage without any secret: the URL
  * and the generic target's signing secret are vault values, kept by reference.
  */
-import type { Platform } from "../platform/types.ts";
+import type { Platform } from "../../platform/types.ts";
 import { ntfyTopic, type WebhookKind, type WebhookType } from "./webhook-format.ts";
 
 export type TargetStatus = "new" | "ok" | "failing";

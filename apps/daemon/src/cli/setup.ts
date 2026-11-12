@@ -16,7 +16,7 @@ import {
 } from "../deps/index.ts";
 import { runDoctor } from "../doctor.ts";
 import { type Exec, spawnExec } from "../exec.ts";
-import { linesOf } from "../lines.ts";
+import { linesOf } from "../kernel/index.ts";
 import { mcpReachable } from "../mcp.ts";
 import { loopbackOnly, pairingAddress, renderQr, rotateToken, tailscaleIp } from "../pairing.ts";
 import { openCodeState } from "../runtime/index.ts";

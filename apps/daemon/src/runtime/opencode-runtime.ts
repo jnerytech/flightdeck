@@ -6,11 +6,10 @@
 import { readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { SessionImage } from "@flightdeck/protocol";
-import { AsyncQueue } from "../async-queue.ts";
 import { FlightdeckError } from "../errors.ts";
+import { AsyncQueue, settled } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 import { credential } from "../permissions/risk.ts";
-import { settled } from "../settled.ts";
 import {
   ACP_CLOSED,
   AcpClient,

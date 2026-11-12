@@ -4,7 +4,7 @@
  * shaped like the recorded fixtures), holds `session/prompt` open until the test ends it, sends
  * updates and requests of its own, and records everything it received. Plus manual timers.
  */
-import { AsyncQueue } from "../../src/async-queue.ts";
+import { AsyncQueue } from "../../src/kernel/async-queue.ts";
 import type { SpawnedAcp } from "../../src/runtime/acp/client.ts";
 
 export interface Received {

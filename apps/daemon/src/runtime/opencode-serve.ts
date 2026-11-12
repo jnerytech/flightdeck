@@ -1,4 +1,4 @@
-import { linesOf } from "../lines.ts";
+import { linesOf } from "../kernel/index.ts";
 import { REAL_KILL_DEPS, treeKiller } from "./opencode-runtime.ts";
 
 /**

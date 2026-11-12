@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type { Board } from "../board/board.ts";
 import { closingLine } from "../issues/providers.ts";
+import { trimEndOf } from "../kernel/index.ts";
 import type { SecretScanner } from "../snippets/model.ts";
-import { trimEndOf } from "../trim.ts";
 import type { FixRound, PrFixer } from "./fix.ts";
 
 /** One session that worked on a card, for the trail of its PR (phase 22). */
