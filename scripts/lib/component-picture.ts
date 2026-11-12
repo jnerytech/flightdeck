@@ -41,8 +41,14 @@ function flowchart(app: string, domains: ReadonlySet<string>, edges: ReadonlySet
   const lines = mine
     .sort(byText)
     .map((domain) => `  ${nodeId(domain)}["${domain.slice(domain.indexOf("/") + 1)}"]`);
-  for (const [from, to] of own.sort((a, b) => byText(a.join(" "), b.join(" "))))
-    if (!bases.has(to)) lines.push(`  ${nodeId(from)} --> ${nodeId(to)}`);
+  // One line per importing domain (`a --> b & c`, mermaid's own syntax): the file stays under the Markdown size limit.
+  const drawn = new Map<string, string[]>();
+  for (const [from, to] of own)
+    if (!bases.has(to)) drawn.set(from, [...(drawn.get(from) ?? []), to]);
+  for (const from of [...drawn.keys()].sort(byText))
+    lines.push(
+      `  ${nodeId(from)} --> ${(drawn.get(from) ?? []).sort(byText).map(nodeId).join(" & ")}`,
+    );
   const note =
     bases.size === 0
       ? []
