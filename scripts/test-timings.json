@@ -367,7 +367,7 @@
   "apps/desktop/test/app-store-lacunas.test.ts": 0.051,
   "apps/desktop/test/app-store.test.ts": 0.566,
   "apps/desktop/test/app-updater.test.tsx": 0.476,
-  "apps/desktop/test/approval-actions.test.tsx": 0.005,
+  "apps/desktop/test/approval/actions.test.tsx": 0.005,
   "apps/desktop/test/aprovacao-pendente.test.tsx": 2.14,
   "apps/desktop/test/aprovacao-ui.test.tsx": 1.313,
   "apps/desktop/test/areas-container.test.tsx": 0.047,

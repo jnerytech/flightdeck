@@ -10,7 +10,6 @@ import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
 import { createBgService } from "./bg/wiring.ts";
-import { readSpecText } from "./board/spec.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -44,9 +43,7 @@ import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { Names } from "./names/names.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
-import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
-import { packPersonas } from "./personas/pack.ts";
 import { createPersonas } from "./personas/wiring.ts";
 import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
@@ -57,7 +54,7 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { createChanges, createReview } from "./review/wiring.ts";
+import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
@@ -82,7 +79,7 @@ import { createTelemetry } from "./telemetry/wiring.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
-import { createProjectTrust, trustServer } from "./trust/wiring.ts";
+import { createProjects, createProjectTrust } from "./trust/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { DAEMON_VERSION } from "./version.ts";
 import { readWatchSettings } from "./watch/watch.ts";
@@ -223,7 +220,7 @@ export async function startDaemon(
       configFile,
       // What still runs, as the auto update's idle check counts it: sessions and workflow runs (a
       // run waiting at a gate has no session but resumes after a restart).
-      running: () => manager.activeSessionCount() + board.workflows.activeRuns().length,
+      running: (): number => manager.activeSessionCount() + board.workflows.activeRuns().length,
     }),
   );
   // Phase 34: who the host's own `claude` is signed in to, for the account card.
@@ -294,6 +291,7 @@ export async function startDaemon(
     snapshots,
   });
   await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
+  await domains.add(createProjects({ keys, projectTrust, manager }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
   const { history } = await domains.add(
@@ -331,53 +329,53 @@ export async function startDaemon(
     readSettings: readWatchSettings,
     runner: boundedCheckRunner(),
   });
-  const board = createBoard({
-    folderLocks,
-    preparePersonas: prepare,
-    trustForKnowledge,
-    log: (line) => logger.log(line),
-    db: store.db,
-    manager,
-    quota,
-    memory: memoryGate,
-    pause: hostPause,
-    // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
-    // below is ready by then) and the project's trust, through the bounded runner.
-    checkLoop: checkLoop.board,
-    vaultValues: () => heldValues(),
-    config,
-    configFile,
-    budgets,
-    projectKeys: keys,
-    cardCost: costs.card.bind(costs),
-    // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
-    idle: snapshots.idle.bind(snapshots),
-    // A card raised from an agent's findings keeps automatic approval off (issue #79).
-    suspendApproval: autoApprove.suspendCard.bind(autoApprove),
-  });
-  // In the background: the radar reads the worktrees; the project keys get cached for the first card.
-  void board.start();
-  void board.warmProjectKeys();
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
-  const { terminals, onTerminalSettings } = createTerminals({
-    config,
-    configFile,
-    folderLocks,
-    pty: options.pty,
-    self: selfCommand,
-    log: (message) => logger.log(message),
-  });
-  // The diff of every session and card, for the review (phase 11), a plain session's commit
-  // and PR (#1133), and the files viewer.
-  const changes = createChanges({
-    db: store.db,
-    board,
-    log: logger.log.bind(logger),
-    terminals,
-    allowedRoots: config.allowedRoots,
-    scanner: snippetScanner,
-    dataDir: config.dataDir,
-  });
+  const { terminals } = await domains.add(
+    createTerminals({
+      config,
+      configFile,
+      folderLocks,
+      pty: options.pty,
+      self: selfCommand,
+      log: (message) => logger.log(message),
+    }),
+  );
+  const { board } = await domains.add(
+    createBoard({
+      folderLocks,
+      preparePersonas: prepare,
+      trustForKnowledge,
+      log: (line) => logger.log(line),
+      db: store.db,
+      manager,
+      quota,
+      memory: memoryGate,
+      pause: hostPause,
+      // Issue #1361: the check loop, on the watch's checks (read when a turn ends, so the watcher made
+      // below is ready by then) and the project's trust, through the bounded runner.
+      checkLoop: checkLoop.board,
+      vaultValues: () => heldValues(),
+      config,
+      configFile,
+      budgets,
+      projectKeys: keys,
+      cardCost: costs.card.bind(costs),
+      // A worktree is removed once no snapshot runs git in it (a busy folder on Windows).
+      idle: snapshots.idle.bind(snapshots),
+      // A card raised from an agent's findings keeps automatic approval off (issue #79).
+      suspendApproval: autoApprove.suspendCard.bind(autoApprove),
+    }),
+  );
+  // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
+  const { manager: runs } = await domains.add(
+    createRunEnv({
+      db: store.db,
+      portBase: config.run.portBase,
+      portProbe: options.portProbe,
+      terminals,
+      board,
+    }),
+  );
   // The issues, the GitHub Projects' boards, the PR watch and the automations around the cards.
   const { issues } = await domains.add(
     createBoardWork({
@@ -485,28 +483,21 @@ export async function startDaemon(
       quota,
     }),
   );
-  // Phase 24: each card's run.yaml (scripts, a block of ports, a preview), through the terminals.
-  const runEnv = createRunEnv({
-    db: store.db,
-    portBase: config.run.portBase,
-    portProbe: options.portProbe,
-    terminals,
-    board,
-  });
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
-  const sessionSettings = createSessionSettings({
-    manager,
-    config,
-    configFile,
-    // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
-    stallUnitMs:
-      Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
-        ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
-        : undefined,
-  });
-  const { sleeper, stall } = sessionSettings;
+  await domains.add(
+    createSessionSettings({
+      manager,
+      config,
+      configFile,
+      // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
+      stallUnitMs:
+        Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
+          ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
+          : undefined,
+    }),
+  );
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -534,27 +525,25 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
-  // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
-  const reviewScanner = new SecretScanner(() => heldValues());
-  const review = createReview({
-    db: store.db,
-    changes,
-    manager,
-    board,
-    central,
-    complete: runtime.complete?.bind(runtime),
-    // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
-    // link on the way, no hard link), never a credential file, at most 20 KB.
-    spec: async (id) => {
-      const { specPath, worktreePath } = board.getCard(id);
-      if (!specPath || !worktreePath || credential(specPath)) return undefined;
-      return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
-    },
-    redact: (text) => reviewScanner.redact(text, false),
-    persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
-    gates: { hostPause, quota, memory: memoryGate },
-    usage: usageIndex,
-  });
+  // Issue #1439: the diffs, a plain session's commit and PR, the files viewer, the comments and the
+  // cards' second-opinion review, on the runtime's tool-less one-shot call.
+  await domains.add(
+    createReview({
+      db: store.db,
+      board,
+      log: logger.log.bind(logger),
+      terminals,
+      allowedRoots: config.allowedRoots,
+      scanner: snippetScanner,
+      dataDir: config.dataDir,
+      manager,
+      central,
+      complete: runtime.complete?.bind(runtime),
+      heldValues: () => heldValues(),
+      gates: { hostPause, quota, memory: memoryGate },
+      usage: usageIndex,
+    }),
+  );
   await domains.add(
     createHostChecks({
       config,
@@ -575,12 +564,6 @@ export async function startDaemon(
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
     ...present({ assistant }),
-    projects: serverGroup<"projects">()({
-      warmKey: (cwd) => keys.resolve(cwd),
-      keyOf: (cwd) => keys.resolve(cwd),
-      trust: trustServer({ projectTrust, manager }),
-      find: true,
-    }),
     roots: serverGroup<"roots", "platform">()({
       ...present({ platform: options.rootsPlatform }),
       persist: (roots) =>
@@ -604,17 +587,11 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    sessionSettings: serverGroup<"sessionSettings">()({
-      ...sessionSettings.server,
-      commands: true,
-    }),
     names,
     vault,
     log: logger.log.bind(logger),
     actions,
     autoApprove,
-    board,
-    runenv: { configs: runEnv.configs, manager: runEnv.manager },
     usage,
     bg: createBgService({
       db: store.db,
@@ -628,15 +605,12 @@ export async function startDaemon(
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
     webhook: new WebhookSender({ log: logger.log.bind(logger) }),
-    review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
-    terminals,
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     // The host's default mode and lock (phase 33), kept in the config like the other settings.
     ui: { ...config.ui },
     onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
-    onTerminalSettings,
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
@@ -651,7 +625,7 @@ export async function startDaemon(
     worktrees: createWorktrees({
       board,
       sessions: manager,
-      runs: runEnv.manager,
+      runs,
       terminals,
       externals: central.external,
       locks: folderLocks,
@@ -702,12 +676,7 @@ export async function startDaemon(
           await wsl?.stop();
           actions.stop();
           vault.stop();
-          for (const unwatch of runEnv.unwatch) unwatch();
-          board.stop();
-          terminals.stop();
           await central.stop();
-          sleeper.stop();
-          stall.stop();
           await manager.shutdown();
           await server.stop();
         });

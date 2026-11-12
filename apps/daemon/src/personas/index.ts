@@ -3,5 +3,6 @@
  * never a file inside.
  */
 export { OpenSessionPersonas } from "./open-session.ts";
+export { packPersonas } from "./pack.ts";
 export type { Prepare } from "./prepare.ts";
 export type { Personas } from "./store.ts";

@@ -157,7 +157,24 @@ export function boardOptions({
   };
 }
 
-/** The daemon's board; `start` and `warmProjectKeys` are left to the caller. */
-export function createBoard(deps: BoardDeps): Board {
-  return new Board(boardOptions(deps));
+/**
+ * The daemon's board and its module (#2094): it serves the board, starts it in the background and
+ * stops it. Built after the terminals and before the run env and the board's work, so the runner's
+ * reverse order stops the board's work, then the run env, then the board, then the terminals.
+ */
+export function createBoard(deps: BoardDeps): {
+  modules: readonly [DomainModule<"board">];
+  board: Board;
+} {
+  const board = new Board(boardOptions(deps));
+  const module: DomainModule<"board"> = {
+    server: { board },
+    // In the background: the radar reads the worktrees; the project keys get cached for the first card.
+    start: () => {
+      void board.start();
+      void board.warmProjectKeys();
+    },
+    stop: () => board.stop(),
+  };
+  return { modules: [module] as const, board };
 }

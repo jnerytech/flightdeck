@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { present } from "../present.ts";
+import type { DomainModule } from "../server/index.ts";
 import { RunConfigs } from "./config.ts";
 import { terminalRunHost } from "./host.ts";
 import { RunManager, type RunManagerOptions } from "./manager.ts";
@@ -26,7 +27,8 @@ export interface RunEnvDeps {
 
 /**
  * Phase 24 (issue #1593): each card's run.yaml (scripts, a block of ports, a preview), through the
- * terminals, tied to the board's cards. `unwatch` stops following the board.
+ * terminals, tied to the board's cards. Its module (#2094) serves the configs and the runs, and its
+ * stop stops following the board.
  */
 export function createRunEnv({ db, portBase, portProbe, terminals, board }: RunEnvDeps) {
   const configs = new RunConfigs({ db });
@@ -48,5 +50,11 @@ export function createRunEnv({ db, portBase, portProbe, terminals, board }: RunE
   board.addIdle(manager.idle.bind(manager));
   // A discarded card ends its processes first: a live tree locks the files of its worktree.
   board.addEnd((cardId) => manager.stop(cardId));
-  return { configs, ports, manager, unwatch };
+  const module: DomainModule<"runenv"> = {
+    server: { runenv: { configs, manager } },
+    stop: () => {
+      for (const stop of unwatch) stop();
+    },
+  };
+  return { modules: [module] as const, configs, ports, manager };
 }

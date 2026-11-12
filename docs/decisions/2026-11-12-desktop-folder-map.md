@@ -53,11 +53,11 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `layout/` | `shared/layout/` | **moved** (14 primitives, behind an `index.ts`; the field-row context is a leaf, `field-row-context.ts`, that `shared/feedback` imports directly); `app-shell.tsx` and `breadcrumb.tsx` went to `features/shell/` (below); `view-toggle.tsx` stays in `components/layout/` for now: only the sessions hub and the history list use it, and it reads `lib/hub.ts`, so it follows the sessions rows |
 | `markdown/` | `shared/markdown/` | **moved**: `markdown.tsx` and the lazy `markdown-body.tsx`; the `index.ts` exports only `Markdown` and `preloadMarkdown`, never the body, so the lazy chunk stays lazy (`bundle-reach` green) |
 | `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` (**moved**) | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
-| `session/` | **theirs** (`features/sessions/`) | activity line, message actions, parts, tool rows, finish dialogs |
+| `session/` | **theirs** (`features/sessions/`) | **moved**: activity line, message actions, parts, tool rows, finish dialogs (`session-finish.tsx`) |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
 | `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and nine shell `lib/` files followed (rows below); `workspace.ts`, `density.ts` and `theme.ts` followed; `router.ts` follows later |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (**moved**; the sheet already lives there) |
-| `simple/` | `features/home/` (simple mode) | home, question and task views, settings view (**moved**); `ui/simple/SimpleApp.tsx` goes with it |
+| `simple/` | `features/home/` (simple mode) | home, question and task views, settings view (**moved**); `SimpleApp.tsx` (**moved**, `simple-app.tsx`) |
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
 | `tabs/` | `features/tabs/` | overflow and switcher (**moved**; the tab bar already lives there); **theirs** if the session view needs the file, ask first |
 | `ui/` | **stay** | vendored shadcn |
@@ -70,23 +70,23 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 |---|---|---|
 | `App.tsx` | `app/` (new, with `main.tsx` wiring) | the root; moves last |
 | `Areas.tsx` | `app/` | imports `Screen` from `Screens.tsx`: move it with or after `Screens.tsx` to avoid a cycle |
-| `BoardView.tsx` | **theirs** (`features/board/`) | |
+| `BoardView.tsx` | **theirs** (`features/board/`) | **moved** (`board-view.tsx`) |
 | `ConfirmDialog.tsx` | `shared/feedback/` | **moved** (#2101 to `components/feedback/`, then with the folder) |
-| `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
+| `ExternalView.tsx` | **theirs** (`features/sessions/`) | **moved** (`external-session-view.tsx`) |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
 | `FolderPicker.tsx` | `features/hosts/` | **moved** (it browses a host's folders and already used `AllowedFolders`; `hosts` is the lower domain, so plugins, projects, teleport, the new-session form and the screens import it from the `hosts` index without a file-level cycle; `hosts` and `projects` import each other's index, the one pair to watch) |
 | `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | **moved** (#2099, then the `markdown/` folder) |
-| `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | |
+| `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | **moved** (`new-session-form.tsx`) |
 | `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place |
-| `SessionTabs.tsx` | **theirs** (`features/tabs/`) | |
-| `SessionView.tsx` | **theirs** (`features/sessions/`) | |
-| `SessionsHub.tsx` | **theirs** (`features/sessions/`) | |
+| `SessionTabs.tsx` | **theirs** (`features/tabs/`) | **moved**, to `features/sessions/session-tabs.tsx` |
+| `SessionView.tsx` | **theirs** (`features/sessions/`) | **moved** (`session-view.tsx`) |
+| `SessionsHub.tsx` | **theirs** (`features/sessions/`) | **moved** (`sessions-hub.tsx`) |
 | `SetupPage.tsx` | `features/setup/` | **moved** (#2091) |
 | `Sidebar.tsx` | `features/shell/` | **moved** as `sidebar.tsx`, unsplit (about 980 lines): split by reason to change (nav list, project tree, footer) in a later PR, not in the move |
-| `StartScreen.tsx` | **theirs** (`features/sessions/`) | |
-| `ToolCall.tsx` | **theirs** (`features/sessions/`) | |
+| `StartScreen.tsx` | **theirs** (`features/sessions/`) | **moved** (`start-screen.tsx`) |
+| `ToolCall.tsx` | **theirs** (`features/sessions/`) | **moved** (`tool-call.tsx`, `tool-call-body.tsx`) |
 | `lazy-screen.ts` | `app/` | goes with `Screens.tsx` |
-| `simple/SimpleApp.tsx` | `features/home/` | with `components/simple/` |
+| `simple/SimpleApp.tsx` | `features/home/` | with `components/simple/` (**moved**, `simple-app.tsx`) |
 
 ## `lib/`
 

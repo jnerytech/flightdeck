@@ -1,5 +1,6 @@
 import type { SessionSummary } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { SessionManager, type SessionManagerOptions, type TurnEdge } from "./session-manager.ts";
 import { IdleSleeper, type SleeperOptions } from "./sleeper.ts";
 import { type StallOptions, StallWatcher } from "./stall.ts";
@@ -16,14 +17,15 @@ export interface SessionSettingsDeps {
 /**
  * Issue #1593: the host's session settings, each kept in the config: idle sessions give back their
  * process after N minutes (#157), a quiet running session is marked (#1478), and the switch for
- * sessions without permission prompts. Both timers are off at 0 (no timer then).
+ * sessions without permission prompts. Both timers are off at 0 (no timer then). Its module serves
+ * the settings and the session commands, and its stop ends both timers.
  */
 export function createSessionSettings({
   manager,
   config,
   configFile,
   stallUnitMs,
-}: SessionSettingsDeps) {
+}: SessionSettingsDeps): { modules: readonly [DomainModule<"sessionSettings">] } {
   // Idle sessions give back their process after N minutes (off by default: no timer then).
   const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
   // A running session that says nothing for N minutes is marked quiet (0: off, no timer then).
@@ -52,7 +54,14 @@ export function createSessionSettings({
       },
     },
   };
-  return { sleeper, stall, server };
+  const module: DomainModule<"sessionSettings"> = {
+    server: { sessionSettings: serverGroup<"sessionSettings">()({ ...server, commands: true }) },
+    stop: () => {
+      sleeper.stop();
+      stall.stop();
+    },
+  };
+  return { modules: [module] as const };
 }
 
 /** The options the session manager takes as they are; the rest are built from the deps below. */

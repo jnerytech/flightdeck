@@ -74,6 +74,7 @@ export const DAEMON_REASONS = [
   "name_blank",
   "session_unnamed",
   "terminal_disabled",
+  "terminal_stopping",
   "terminal_missing",
   "terminal_ended",
   "terminal_limit",

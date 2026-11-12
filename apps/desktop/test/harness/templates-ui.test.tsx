@@ -1,14 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { HarnessTemplateInfo } from "@flightdeck/protocol";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle, settleMaybe, uiIdle } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle, settleMaybe, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { HarnessTemplatesSection } = await import("../src/features/harness/templates-section.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { HarnessTemplatesSection } = await import(
+  "../../src/features/harness/templates-section.tsx"
+);
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

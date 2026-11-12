@@ -1,5 +1,9 @@
 import type { Database } from "bun:sqlite";
-import { DEFAULT_MODELS } from "@flightdeck/protocol";
+import { DEFAULT_MODELS, SecretScanner } from "@flightdeck/protocol";
+import { readSpecText } from "../board/index.ts";
+import { credential } from "../permissions/index.ts";
+import { packPersonas } from "../personas/index.ts";
+import { type DomainModule, serverGroup } from "../server/index.ts";
 import { ulid } from "../ulid.ts";
 import { type CardReviewDeps, CardReviews, reviewHold } from "./card-review.ts";
 import { Changes, type ChangesOptions } from "./changes.ts";
@@ -14,19 +18,18 @@ interface Gate {
   blocked(): object | null;
 }
 
-/** What the review of the cards and sessions is built from: the ports its classes read. */
-export interface ReviewDeps {
-  db: Database;
-  /** The diffs and what is built on them (`createChanges`); the comments read the same diffs. */
-  changes: ChangeSet;
+/**
+ * What the review of the cards and sessions is built from: the change set's ports and the ones its
+ * classes read.
+ */
+export interface ReviewDeps extends ChangesDeps {
   manager: ReviewCommentsOptions["manager"];
   board: NonNullable<ReviewCommentsOptions["board"]>;
   central: ReviewCommentsOptions["central"];
   /** The runtime's one-shot call; without one there is no card review. */
   complete: CardReviewDeps["complete"] | undefined;
-  spec: CardReviewDeps["spec"];
-  redact: CardReviewDeps["redact"];
-  persona: CardReviewDeps["persona"];
+  /** The vault's held values: the review's redaction hides them too. */
+  heldValues: () => string[];
   gates: { hostPause: Gate; quota: Gate; memory: Gate };
   usage: {
     record(entry: {
@@ -41,13 +44,26 @@ export interface ReviewDeps {
 }
 
 /**
- * Issue #1439 (issue #1593): the review's part of the server: the change set's services, the
- * comments, and the card review when the runtime can answer a one-shot call.
+ * Issue #1439 (issue #1593): the review's module: the change set's services, the comments, and the
+ * card review when the runtime can answer a one-shot call, in the server's review group.
  */
-export function createReview(deps: ReviewDeps) {
+export function createReview(deps: ReviewDeps): {
+  modules: readonly [DomainModule<"review">];
+  review: ReturnType<typeof reviewGroup>;
+} {
+  const review = reviewGroup(deps);
+  const module: DomainModule<"review"> = {
+    server: { review: serverGroup<"review", "cardReview">()(review) },
+  };
+  return { modules: [module] as const, review };
+}
+
+function reviewGroup(deps: ReviewDeps) {
   const { db, manager, board, central, complete, gates, usage } = deps;
-  const { changes, sessionCommits, sessionPrs, files, sessionFiles } = deps.changes;
+  const { changes, sessionCommits, sessionPrs, files, sessionFiles } = createChanges(deps);
   const reviewComments = new ReviewComments({ db, changes, manager, board, central });
+  // The host's scanner with the vault's held values: neither reaches the reviewer.
+  const scanner = new SecretScanner(deps.heldValues);
   const cardReviews = complete
     ? new CardReviews({
         db,
@@ -65,7 +81,13 @@ export function createReview(deps: ReviewDeps) {
           };
         },
         diff: (id) => board.diff(id),
-        spec: deps.spec,
+        // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
+        // link on the way, no hard link), never a credential file, at most 20 KB.
+        spec: async (id) => {
+          const { specPath, worktreePath } = board.getCard(id);
+          if (!specPath || !worktreePath || credential(specPath)) return undefined;
+          return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
+        },
         hold: (projectId) =>
           reviewHold({
             paused: gates.hostPause.blocked() !== null,
@@ -75,8 +97,8 @@ export function createReview(deps: ReviewDeps) {
           }),
         complete,
         comments: reviewComments,
-        redact: deps.redact,
-        persona: deps.persona,
+        redact: (text) => scanner.redact(text, false),
+        persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
         model: DEFAULT_MODELS.host.careful,
         record: (cardId, worktree, tokens) =>
           usage.record({
@@ -99,9 +121,6 @@ export function createReview(deps: ReviewDeps) {
     sessionFiles,
   };
 }
-
-/** The diffs, a plain session's commit and PR, the files viewer and who wrote each file. */
-type ChangeSet = ReturnType<typeof createChanges>;
 
 /**
  * What the diffs of the sessions and cards, a plain session's commit and PR, the files viewer and
