@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { breadcrumb } from "../../src/features/shell/crumbs.ts";
 import { translator } from "../../src/i18n/index.ts";
 import { type AppState, sessionKey } from "../../src/lib/app-store.ts";
-import { breadcrumb } from "../../src/lib/breadcrumb.ts";
 
 const ID = "01M6YSQE0YHZWV";
 const route = { name: "card", host: "h1", projectId: "p1", cardId: ID } as const;

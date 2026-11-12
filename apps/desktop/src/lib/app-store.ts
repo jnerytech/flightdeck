@@ -19,6 +19,8 @@ import type {
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
 import { DensityController } from "@/features/shell/density.ts";
+import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
+import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { basename, isInside } from "@/shared/lib/index.ts";
@@ -173,8 +175,6 @@ import { RoiSettings } from "./roi-settings.ts";
 import { sessionKey } from "./session-key.ts";
 import { SessionViews } from "./session-views.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import { ShellPrefs } from "./shell-prefs.ts";
-import { SidebarFoldController } from "./sidebar-fold.ts";
 import {
   effectiveMode,
   loadChoices,

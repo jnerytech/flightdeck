@@ -1,6 +1,6 @@
 import type { AccountState } from "@flightdeck/protocol";
-import type { AppState } from "./app-store.ts";
-import type { Route } from "./router.ts";
+import type { AppState } from "@/lib/app-store.ts";
+import type { Route } from "@/lib/router.ts";
 
 /** What the foot of the sidebar shows: one account, or how many there are when the hosts differ. */
 export interface FootAccount {

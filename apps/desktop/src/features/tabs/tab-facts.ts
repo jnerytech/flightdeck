@@ -6,9 +6,8 @@ import {
   SquareKanban,
   SquareTerminal,
 } from "lucide-react";
-import { NAV_ICONS } from "@/components/nav-icons";
+import { breadcrumb, NAV_ICONS } from "@/features/shell/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { breadcrumb } from "../../lib/breadcrumb.ts";
 import { hostColorVar } from "../../lib/host-color.ts";
 import { type TabKind, tabBadge, tabIdleSince, tabKind } from "../../lib/tab-badge.ts";
 import type { Tab } from "../../lib/tabs.ts";

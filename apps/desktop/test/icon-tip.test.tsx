@@ -10,7 +10,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { IconTip } = await import("../src/shared/feedback/index.ts");
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

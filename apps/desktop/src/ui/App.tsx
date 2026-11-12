@@ -18,10 +18,15 @@ import { ResumeOfferDialog, useLiveElsewhereAsk } from "@/features/sessions/inde
 import {
   AppShell,
   Breadcrumb,
+  breadcrumb,
+  firstTerminalTab,
   HistoryButtons,
+  hostsRoute,
+  Sidebar,
   StatusBarSlot,
   TopBarActions,
   TopBarHost,
+  terminalTabCount,
 } from "@/features/shell/index.ts";
 import { SnippetUse } from "@/features/snippets/index.ts";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
@@ -35,18 +40,15 @@ import { tabIntent } from "../features/tabs/index.ts";
 import { TerminalCloseDialog } from "../features/terminal/index.ts";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { boardShortcut } from "../lib/board-shortcut.ts";
-import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
 import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import { activeWorktreeFilter } from "../lib/project-tree.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
-import { firstTerminalTab, hostsRoute, terminalTabCount } from "../lib/status-bar.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
-import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 
 /** A card from an issue the palette named: by its full reference, else by its number in the project. */

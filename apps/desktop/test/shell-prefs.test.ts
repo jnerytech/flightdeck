@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SHELL_PREFS_KEY, ShellPrefs } from "../src/lib/shell-prefs.ts";
+import { SHELL_PREFS_KEY, ShellPrefs } from "../src/features/shell/shell-prefs.ts";
 
 /** A storage that keeps what it is given. */
 function storage(initial?: string) {

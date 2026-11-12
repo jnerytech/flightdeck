@@ -11,7 +11,7 @@ const { act, cleanup, fireEvent, render, screen } = await import("@testing-libra
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { WHATS_NEW_KEY } = await import("../src/lib/whats-new.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
 const { WhatsNewDialog } = await import("../src/components/whatsnew/whats-new-dialog.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 
