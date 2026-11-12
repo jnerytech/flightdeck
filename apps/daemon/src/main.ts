@@ -204,11 +204,7 @@ export async function startDaemon(
   );
   // #2094: the domains that give main.ts one module each; the rest still wire by hand below.
   const domains = createModuleRunner();
-  const {
-    quota,
-    onQuota,
-    modules: [quotaModule],
-  } = await domains.add(createQuota({ db: store.db, config, configFile }));
+  const { quota, onQuota } = await domains.add(createQuota({ db: store.db, config, configFile }));
   // Issue #1343: new cards wait while memory is at or above resources.pauseAt. FLIGHTDECK_SERVICE_GUARD
   // is set only by the test preload, never in production: under it nothing of the real machine is
   // read (a busy runner would hold every board test), so the hold stays open unless a test injects one.
@@ -264,10 +260,7 @@ export async function startDaemon(
     pinned?: (claudeSessionId: string | null) => boolean;
     cardSession?: (sessionId: string) => boolean;
   } = {};
-  const {
-    keepAwake,
-    modules: [keepAwakeModule],
-  } = await domains.add(
+  const { keepAwake } = await domains.add(
     createKeepAwake({ powerContext: options.powerContext, config, configFile }),
   );
 
@@ -303,16 +296,11 @@ export async function startDaemon(
   await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
-  const {
-    history,
-    modules: [historyModule],
-  } = await domains.add(
+  const { history } = await domains.add(
     createHistory({ db: store.db, config, names, manager, log: (m) => logger.log(m) }),
   );
   // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
-  const {
-    modules: [teleportModule],
-  } = await domains.add(
+  await domains.add(
     createTeleport({
       manager,
       names,
@@ -324,12 +312,7 @@ export async function startDaemon(
       log: logger.log.bind(logger),
     }),
   );
-  const {
-    costs,
-    usageIndex,
-    budgets,
-    modules: [costsModule],
-  } = await domains.add(
+  const { costs, usageIndex, budgets } = await domains.add(
     createCosts({
       db: store.db,
       config,
@@ -396,10 +379,7 @@ export async function startDaemon(
     dataDir: config.dataDir,
   });
   // The issues, the GitHub Projects' boards, the PR watch and the automations around the cards.
-  const {
-    modules: [boardWorkModule],
-    issues,
-  } = await domains.add(
+  const { issues } = await domains.add(
     createBoardWork({
       store,
       board,
@@ -416,22 +396,15 @@ export async function startDaemon(
       checkLoopOf: (watcher) => checkLoop.switchOf({ board, watcher, manager }),
     }),
   );
-  const {
-    modules: [maintenanceModule],
-  } = await domains.add(createMaintenance({ db: store.db, config, snapshots }));
-  const {
-    modules: [updatesModule],
-  } = await domains.add(
+  await domains.add(createMaintenance({ db: store.db, config, snapshots }));
+  await domains.add(
     createUpdates(config, {
       configFile,
       idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
       log: logger.log.bind(logger),
     }),
   );
-  const {
-    telemetryStore,
-    modules: [telemetryModule],
-  } = await domains.add(
+  const { telemetryStore } = await domains.add(
     await createTelemetry({
       db: store.db,
       config,
@@ -497,9 +470,7 @@ export async function startDaemon(
     },
   });
   heldValues = () => vault.heldValues();
-  const {
-    modules: [teamsModule],
-  } = await domains.add(
+  await domains.add(
     await createTeams({
       db: store.db,
       config,
@@ -724,29 +695,22 @@ export async function startDaemon(
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
-        // First: whatever stops slowly after must not keep the computer awake meanwhile.
-        await keepAwakeModule.stop?.();
-        await wsl?.stop();
-        // The automations, the watch and the board sync use the board: they stop before it.
-        await boardWorkModule.stop?.();
-        await teamsModule.stop?.();
-        actions.stop();
-        vault.stop();
-        for (const unwatch of runEnv.unwatch) unwatch();
-        board.stop();
-        terminals.stop();
-        await central.stop();
-        await telemetryModule.stop?.();
-        await maintenanceModule.stop?.();
-        sleeper.stop();
-        stall.stop();
-        await updatesModule.stop?.();
-        await manager.shutdown();
-        await server.stop();
-        await teleportModule.stop?.();
-        await historyModule.stop?.();
-        await costsModule.stop?.();
-        await quotaModule.stop?.();
+        // The modules' stops in the record's phases (keep-awake first; the board work, built after
+        // the board, before it; the teleport, the history, the costs and the quota after the
+        // server), around the domains still wired by hand.
+        await domains.stop(async () => {
+          await wsl?.stop();
+          actions.stop();
+          vault.stop();
+          for (const unwatch of runEnv.unwatch) unwatch();
+          board.stop();
+          terminals.stop();
+          await central.stop();
+          sleeper.stop();
+          stall.stop();
+          await manager.shutdown();
+          await server.stop();
+        });
         store.close();
         await lock.release();
         // The last lines (shutting down…) reach the file before the process can exit.
