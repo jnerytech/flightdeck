@@ -58,6 +58,59 @@ function body(text: string): string {
     .join("\n");
 }
 
+/** A name's camelCase words, lower case, a plural `s` left out: `checkClientBudgets` is check, client, budget. */
+function words(name: string): string[] {
+  return name
+    .split(/(?=[A-Z])|_/)
+    .filter((word) => word !== "")
+    .map((word) => word.toLowerCase().replace(/s$/, ""));
+}
+
+/** Whether every item of `part` is in `whole`, counting repeats. */
+function within(part: string[], whole: string[]): boolean {
+  return minus(part, whole).length === 0;
+}
+
+const TOKEN = /\w+|\s+|[^\w\s]/g;
+
+/**
+ * Issue #1732: whether a test line changed only by moving members under a slice of their object:
+ * `.checkClientBudgets` became `.clientBudgets.check`, `.refresh` became `.board.refresh`. The
+ * member called keeps words of the old name, and the old name's words all reach the new path.
+ */
+function onlySliceMoves(was: string, is: string): boolean {
+  const a = was.match(TOKEN) ?? [];
+  const b = is.match(TOKEN) ?? [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    const [member = "", slice = "", dot, called = ""] = [a[i], b[j], b[j + 1], b[j + 2]];
+    const word = /^\w+$/;
+    if (a[i - 1] !== "." || dot !== "." || ![member, slice, called].every((t) => word.test(t)))
+      return false;
+    if (!within(words(member), [...words(slice), ...words(called)])) return false;
+    if (!within(words(called), words(member))) return false;
+    i++;
+    j += 3;
+  }
+  return i === a.length && j === b.length;
+}
+
+/** Whether a moved test checks the same: equal bodies, or lines that only move members under a slice. */
+function sameBody(was: string, is: string): boolean {
+  if (was === is) return true;
+  const a = was.split("\n");
+  const b = is.split("\n");
+  return (
+    a.length === b.length && a.every((line, k) => line === b[k] || onlySliceMoves(line, b[k] ?? ""))
+  );
+}
+
 /** The texts of a dictionary file, imports left out. */
 function texts(text: string | null): string[] {
   if (text === null) return [];
@@ -101,7 +154,7 @@ export function structureVerdict(input: StructureInput): StructureVerdict {
     const isTest = newText !== null && TEST_FILE.test(change.path);
     if (isTest && !wasTest) problems.push(`${change.path}: a test added`);
     else if (wasTest && !isTest) problems.push(`${from}: a test deleted`);
-    else if (wasTest && isTest && body(oldText) !== body(newText))
+    else if (wasTest && isTest && !sameBody(body(oldText), body(newText)))
       problems.push(`${change.path}: changed beyond its import paths`);
   }
   const changed = [...minus(was, is), ...minus(is, was)];
