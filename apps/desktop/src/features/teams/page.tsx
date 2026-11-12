@@ -37,6 +37,7 @@ import {
 import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";
+import { NewMember } from "./new-member.tsx";
 import {
   bypassAsked,
   chosenProject,
@@ -50,21 +51,7 @@ import {
   type TeamConfirm,
 } from "./new-team.ts";
 import { TeamOutcome } from "./team-outcome.tsx";
-
-/**
- * Issue #93: what a host takes for a team member's permission mode. A host that does not announce
- * it would ignore the choice, so the form shows none; Bypass needs the host's own switch.
- */
-function useModes(store: AppStore, hostId: string) {
-  const { hosts } = useStoreSlice(store, MODES_KEYS);
-  const host = hosts.find((h) => h.id === hostId);
-  return {
-    offered: hasFeature(host?.hostInfo?.features, "teams.permissions", false),
-    allowBypass: host?.hostInfo?.allowBypassPermissions === true,
-    name: host?.name ?? hostId,
-  };
-}
-const MODES_KEYS = ["hosts"] as const;
+import { useModes } from "./use-modes.ts";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
@@ -480,72 +467,6 @@ export function TeamMemberRow(
         </FieldRow>
       )}
     </li>
-  );
-}
-
-/** The persona and model of a worker about to join a running team. */
-function NewMember(
-  props: Readonly<{
-    store: AppStore;
-    hostId: string;
-    team: TeamInfo;
-    onAdd(member: {
-      persona: string;
-      model: string;
-      effort: EffortChoice;
-      permission: PermissionChoice;
-    }): void;
-    onCancel(): void;
-  }>,
-) {
-  const { store, team } = props;
-  const { t } = store.i18n;
-  const [persona, setPersona] = useState("");
-  const [model, setModel] = useState("");
-  const [permission, setPermission] = useState<PermissionChoice>("");
-  const modes = useModes(store, props.hostId);
-  return (
-    <div className="row-end-wrap">
-      <PersonaPicker
-        store={store}
-        hostId={props.hostId}
-        label={t("teamsUi.newMemberPersona", { name: team.name })}
-        value={persona}
-        onChange={setPersona}
-        idsOnly
-      />
-      <ModelSelect
-        label={t("teamsUi.newMemberModel", { name: team.name })}
-        defaultLabel={t("teamsUi.modelDefault")}
-        value={model}
-        onChange={setModel}
-      />
-      {modes.offered && (
-        <PermissionSelect
-          label={t("teamsUi.newMemberPermission", { name: team.name })}
-          value={offeredChoice(permission, modes.allowBypass)}
-          allowBypass={modes.allowBypass}
-          onChange={setPermission}
-        />
-      )}
-      <Button
-        size="sm"
-        aria-label={t("teamsUi.addMember", { name: team.name })}
-        onClick={() =>
-          props.onAdd({
-            persona,
-            model,
-            effort: "",
-            permission: offeredChoice(permission, modes.allowBypass),
-          })
-        }
-      >
-        {t("teamsUi.addMemberButton")}
-      </Button>
-      <Button variant="ghost" size="sm" onClick={props.onCancel}>
-        {t("teamsUi.cancel")}
-      </Button>
-    </div>
   );
 }
 
