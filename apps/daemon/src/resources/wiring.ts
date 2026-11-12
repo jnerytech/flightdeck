@@ -111,6 +111,12 @@ export async function createResources(given: ResourcesDeps): Promise<Resources> 
   });
 }
 
+/** The host's resources, as the module the server takes its `resources` key from. */
+export async function createResourcesModule(given: ResourcesDeps) {
+  const module: DomainModule<"resources"> = { server: { resources: await createResources(given) } };
+  return { modules: [module] as const };
+}
+
 /** The machine's value of `name` (`getconf`), or the usual one when it cannot say. */
 export async function defaultSysconf(
   ask: (name: "PAGESIZE" | "CLK_TCK") => number | null | Promise<number | null>,

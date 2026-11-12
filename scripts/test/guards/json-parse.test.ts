@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { isScanned, rawJsonParseCounts } from "../../lib/json-parse.ts";
-import { overBaseline } from "../../lib/layout-ratchet.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
 
 // repo-wide (#1108): reads every tracked source file, so CI's quick job runs it on every PR.
 

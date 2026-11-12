@@ -18,7 +18,8 @@ export interface SessionCommandsCore {
 /**
  * What a person asks of a session (#1596: a slice of the store): make one, send it a message,
  * interrupt it, change its mode, model or effort, close it, resume it. Each command goes to the
- * host of the open session; a refusal reaches the person through `fail`, never as a throw.
+ * host of the open session, except `sendTo` and `interruptOn`, which name the session; a refusal
+ * reaches the person through `fail`, never as a throw.
  */
 export class SessionCommandsSlice {
   constructor(private readonly core: SessionCommandsCore) {}
@@ -79,6 +80,35 @@ export class SessionCommandsSlice {
 
   resume(): Promise<void> {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
+  }
+
+  /** Sends a message to a session of a host, whether it is the open one or not. */
+  async sendTo(
+    hostId: string,
+    sessionId: string,
+    text: string,
+    images?: SessionImage[],
+  ): Promise<void> {
+    const conn = this.core.connection(hostId);
+    if (!conn) return;
+    try {
+      await conn.request("session.send", {
+        sessionId,
+        text,
+        ...(images?.length ? { images } : {}),
+      });
+    } catch (error) {
+      this.core.fail(error);
+    }
+  }
+
+  /** Issue #1478: interrupts any session of a host, open or not. */
+  async interruptOn(hostId: string, sessionId: string): Promise<void> {
+    try {
+      await this.core.connection(hostId)?.request("session.interrupt", { sessionId });
+    } catch (error) {
+      this.core.fail(error);
+    }
   }
 
   /** Runs `action` on the open session's host; nothing happens when no session is open. */

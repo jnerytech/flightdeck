@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { pushViolation } from "../../lib/claude-hooks.ts";
+import { pushViolation } from "../../lib/hooks/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck-fix";
 

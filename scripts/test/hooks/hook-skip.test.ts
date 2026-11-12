@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { testEditViolation } from "../../lib/claude-hooks.ts";
+import { testEditViolation } from "../../lib/hooks/claude-hooks.ts";
 import { findForbiddenMarkers } from "../../lib/tdd-audit.ts";
 
 // Built by concatenation so this very file never holds a marker the audit counts.

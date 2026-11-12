@@ -8,7 +8,7 @@ import {
   UX_CASES,
   type UxCase,
   uxScorecard,
-} from "../../lib/ux-review-eval.ts";
+} from "../../lib/evals/ux-review-eval.ts";
 
 // A missing case is an empty one, so its tests fail by assertion, not by a throw.
 const byName = (name: string): UxCase =>

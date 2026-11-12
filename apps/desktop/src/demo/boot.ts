@@ -6,6 +6,8 @@ import { WORKSPACE_KEY } from "../features/shell/workspace.ts";
 import { LANG_KEY, LANGS, type Lang } from "../i18n/index.ts";
 import type { Route } from "../lib/router.ts";
 import type { Platform } from "../platform/types.ts";
+// The file, not the barrel: the e2e loads this module in Node.
+import { parseJsonText, readStored, validValues } from "../shared/lib/stored-json.ts";
 
 const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), token: z.string() });
 
@@ -18,11 +20,7 @@ export type DemoHost = z.infer<typeof DemoHost>;
  */
 export function parseDemoHosts(json: string | undefined, search = ""): DemoHost[] {
   if (new URLSearchParams(search).get("hosts") === "none") return [];
-  try {
-    return z.array(DemoHost).parse(JSON.parse(json ?? "[]"));
-  } catch {
-    return [];
-  }
+  return parseJsonText(json ?? "[]", z.array(DemoHost), []);
 }
 
 /**
@@ -41,15 +39,20 @@ export function seedDemoHosts(
   for (const host of hosts) secrets.set(host.id, host.token);
 }
 
+/** A route as the address spells it: an object with a name (the screens' own fields are not checked). */
+const StoredRoute = z
+  .custom<Route>(
+    (value) =>
+      typeof value === "object" &&
+      value !== null &&
+      typeof (value as { name?: unknown }).name === "string",
+  )
+  .nullable();
+
 /** `?route=<json>` of the demo's address: the screen a print opens on. */
 export function initialRoute(search: string): Route | null {
   const raw = new URLSearchParams(search).get("route");
-  try {
-    const route = JSON.parse(raw ?? "null") as Route | null;
-    return typeof route?.name === "string" ? route : null;
-  } catch {
-    return null;
-  }
+  return parseJsonText(raw ?? "null", StoredRoute, null);
 }
 
 const THEMES: ReadonlySet<ThemeMode> = new Set<ThemeMode>(["light", "dark", "system"]);
@@ -95,26 +98,24 @@ export const DEMO_BACKUP_FOLDER = "/demo/backups";
 /** The shell's rule: only files named like a backup are written, listed or removed. */
 const BACKUP_NAME = /^flightdeck-backup-\d{8}-\d{6}\.fdbackup$/;
 
-interface DemoFolder {
-  chosen: boolean;
-  files: Record<string, string>;
-}
+/** The folder as it is kept; a part that does not fit reads as empty, the other part stays. */
+const StoredFolder = z.object({
+  chosen: z.boolean().catch(false),
+  files: validValues(z.string()).catch({}),
+});
+
+type DemoFolder = z.infer<typeof StoredFolder>;
 
 /**
  * A stand-in for the desktop's backup folder (issue #1264), for the e2e: the web build has none.
  * Its files live in the page's storage, so a page loaded again finds them, as a restart finds a folder.
  */
 export function demoBackupFolder(platform: Platform): NonNullable<Platform["backupFolder"]> {
-  const read = (): DemoFolder => {
-    try {
-      const raw = JSON.parse(
-        platform.storage.getItem(DEMO_BACKUP_FOLDER_KEY) ?? "null",
-      ) as Partial<DemoFolder> | null;
-      return { chosen: raw?.chosen === true, files: raw?.files ?? {} };
-    } catch {
-      return { chosen: false, files: {} };
-    }
-  };
+  const read = (): DemoFolder =>
+    readStored(platform.storage, DEMO_BACKUP_FOLDER_KEY, StoredFolder, {
+      chosen: false,
+      files: {},
+    });
   const write = (folder: DemoFolder) =>
     platform.storage.setItem(DEMO_BACKUP_FOLDER_KEY, JSON.stringify(folder));
   const named = (name: string) => {

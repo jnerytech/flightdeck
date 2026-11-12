@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { guardAllowLogs, heavyRunViolation, heavyRunWaived } from "../../lib/claude-hooks.ts";
+import { guardAllowLogs, heavyRunViolation, heavyRunWaived } from "../../lib/hooks/claude-hooks.ts";
 
 const worker = (command: string) => heavyRunViolation(command, {});
 const tests = (n: number) =>

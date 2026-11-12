@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { fixedPortCounts, fixedPortUses } from "../../lib/fixed-port-ratchet.ts";
+import { fixedPortCounts, fixedPortUses } from "../../lib/ratchets/fixed-port.ts";
 
 const root = resolve(import.meta.dir, "../../..");
 
