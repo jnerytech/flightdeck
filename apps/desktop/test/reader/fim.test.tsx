@@ -3,10 +3,10 @@ import {
   assistantLine,
   userLine,
   writeTranscript,
-} from "../../daemon/test/support/history-helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+} from "../../../daemon/test/support/history-helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -18,8 +18,8 @@ const personScrolls = (el: Element) => {
   fireEvent.scroll(el);
 };
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
 
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block). */
 const observers: Array<() => void> = [];
@@ -55,30 +55,19 @@ afterEach(async () => {
 const settle = waiter(3000);
 const TOTAL = 120;
 
-type Opts = { cursor?: string; oldDaemon?: boolean };
-
-/** One host with a 120-message transcript, opened in the reader (on a cursor, or as an old daemon would answer a plain open). */
-async function open(opts: Opts) {
+/** One host with a 120-message transcript, opened in the reader without a search hit. */
+async function openLatest() {
   const d = makeDaemon(cleanups);
   const lines = Array.from({ length: TOTAL }, (_, i) => {
     const ts = new Date(Date.UTC(2026, 8, 1, 10, 0, i)).toISOString();
-    const o = { uuid: `m${i}`, text: `mensagem ${i}`, cwd: d.project, ts };
-    return i % 2 === 0 ? userLine(o) : assistantLine(o);
+    const opts = { uuid: `m${i}`, text: `mensagem ${i}`, cwd: d.project, ts };
+    return i % 2 === 0 ? userLine(opts) : assistantLine(opts);
   });
   writeTranscript(d.historyRoot, "-p", "longa", lines);
   await d.history.scan();
   const server = d.listen();
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
-  const asked: Array<string | undefined> = [];
-  const real = store.historyGet.bind(store);
-  store.historyGet = (async (host: string, id: string, cursor?: string, tail?: boolean) => {
-    asked.push(cursor);
-    // An old daemon strips `tail`: page one comes back, and it knows no `cursor` field.
-    const page = await real(host, id, cursor, opts.oldDaemon ? false : tail);
-    if (page && opts.oldDaemon) delete (page as { cursor?: string }).cursor;
-    return page;
-  }) as typeof store.historyGet;
   render(<App store={store} />);
   await act(async () => {
     await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
@@ -86,13 +75,9 @@ async function open(opts: Opts) {
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
   await act(async () => {
-    store.router.push({
-      name: "reader",
-      target: { hostId, claudeSessionId: "longa", ...(opts.cursor ? { cursor: opts.cursor } : {}) },
-    });
+    store.router.push({ name: "reader", target: { hostId, claudeSessionId: "longa" } });
   });
   await settle(() => shown().length > 0);
-  return { asked };
 }
 
 const shown = () =>
@@ -115,31 +100,29 @@ function sized(height: { scroll: number; client: number; top: number }) {
   return { el, size };
 }
 
-describe("leitor-cascata: a page read forward never drags the reader to its end", () => {
-  test("opened on a cursor, a reader 10 px from the end of what is loaded stays where it is when the next page comes in", async () => {
-    const { asked } = await open({ cursor: "0" });
-    const first = shown().length;
-    expect(first).toBeLessThan(TOTAL);
-    const s = sized({ scroll: 3000, client: 400, top: 2590 });
-    await act(async () => void personScrolls(s.el));
-    await settle(() => shown().length > first);
-    // The new page makes the log taller; the reader's place is the same message, not the new end.
-    s.size.scroll = 6000;
+describe("leitor-fim", () => {
+  test("a transcript opens on its latest messages, and stays at the end while the layout settles", async () => {
+    await openLatest();
+    expect(shown()[0]).toBe(`m${TOTAL - 50}`);
+    expect(shown().at(-1)).toBe(`m${TOTAL - 1}`);
+    const s = sized({ scroll: 1000, client: 400, top: 0 });
     await grow();
-    expect(s.size.top).toBe(2590);
-    // One page was asked for by the scroll: no cascade through the transcript.
-    expect(asked).toHaveLength(2);
+    expect(s.size.top).toBe(1000);
+    s.size.scroll = 1800;
+    await grow();
+    expect(s.size.top).toBe(1800);
   });
 
-  test("an old daemon, which ignores tail and sends page one without a cursor, does not pin the reader and does not cascade", async () => {
-    const { asked } = await open({ oldDaemon: true });
-    expect(shown()[0]).toBe("m0");
-    const s = sized({ scroll: 3000, client: 400, top: 0 });
-    await grow();
-    expect(s.size.top).toBe(0);
-    s.size.scroll = 6000;
-    await grow();
-    expect(s.size.top).toBe(0);
-    expect(asked).toHaveLength(1);
+  test("Carregar anteriores, from the top of what is loaded, leaves the reader on the same message", async () => {
+    await openLatest();
+    const s = sized({ scroll: 3000, client: 400, top: 100 });
+    await act(async () => void personScrolls(s.el));
+    s.size.scroll = 5000;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Carregar anteriores" }));
+    });
+    await settle(() => shown().length === 100);
+    expect(shown()[0]).toBe(`m${TOTAL - 100}`);
+    expect(s.size.top).toBe(2100);
   });
 });
