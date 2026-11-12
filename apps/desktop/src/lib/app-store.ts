@@ -83,6 +83,8 @@ import {
   type HealthSlice,
   type HostConfig,
   HostConnection,
+  type HostFrames,
+  HostLink,
   HostRosterSlice,
   HostTabs,
   type HostUpdateSlice,
@@ -273,10 +275,6 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-/** Where the window's events (focus, the network) arrive: `window` in a browser or the webview, else the runtime's own global. */
-const wakeTarget = (): Partial<Window> =>
-  ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
-
 const newHostView = (config: HostConfig): HostView => ({
   ...config,
   status: "offline",
@@ -321,7 +319,18 @@ function setupWants(
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
-  private readonly connections = new Map<string, HostConnection>();
+  /** #1596: the connections to the hosts, built, woken and closed there. */
+  private readonly link = new HostLink({
+    options: () => this.options,
+    rememberToken: (token) => this.scan.rememberToken(token),
+    lastSeqFor: (hostId, sessionId) => this.state.sessions[sessionKey(hostId, sessionId)]?.lastSeq ?? 0,
+    selected: () => this.state.selected,
+    watched: () => this.watched.keys(),
+    onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
+    frames: (config) => this.frames(config),
+    // Hiding the window to the tray can drop its taskbar badge: say it again.
+    onWake: () => this.inbox.resendBadge(),
+  });
   /** Sessions followed without being open (the project page's tiles), with how many follow each. */
   private readonly watched = new Map<string, number>();
   /** The tray and the window title that follow the state (phase 8, issue #88, #1596). */
@@ -340,12 +349,9 @@ export class AppStore {
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
   private readonly commands: SessionCommandsSlice;
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
-  /** Who watches each review target's diff (phase 11), by `hostId|target`. */
-  private readonly changeListeners = new Map<string, Set<(update: ChangesUpdated) => void>>();
   private offQuit: (() => void) | null = null;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
-  private stopWake: (() => void) | null = null;
   /** The history read from every host (#1596): its global search. */
   readonly history: HistorySlice;
   /** What happened on the hosts while the app was away (issue #1344, #1596). */
@@ -384,7 +390,7 @@ export class AppStore {
       this.hostCommand(hostId, type, payload, options),
     hostRequest: (hostId, type, payload) => this.hostRequest(hostId, type, payload),
     dispatch: (hostId, type, payload) => this.dispatch(hostId, type, payload),
-    connection: (hostId) => this.connections.get(hostId),
+    connection: (hostId) => this.link.connection(hostId),
     now: () => this.now(),
     t: () => this.i18n.t,
     onlineHosts: () => this.state.hosts.filter((h) => h.status === "online").map((h) => h.id),
@@ -410,7 +416,7 @@ export class AppStore {
     this.health = wireHealth(this.kernel);
     this.hostUpdate = wireHostUpdate(this.kernel, {
       patch: (hostId, patch) => this.updateHost(hostId, (h) => ({ ...h, ...patch })),
-      open: (hostId) => this.openConnection(hostId),
+      open: (hostId) => this.link.open(hostId),
       describeError,
       timeoutMs: options.daemonUpdateTimeoutMs,
     });
@@ -619,12 +625,11 @@ export class AppStore {
       hosts: () => this.state.hosts,
       list: (config) => this.update({ hosts: [...this.state.hosts, newHostView(config)] }),
       persist: () => this.persistHosts(),
-      connect: (config, token) => this.connect(config, token),
-      stop: (hostId) => this.connections.get(hostId)?.dispose(),
+      connect: (config, token) => this.link.connect(config, token),
+      stop: (hostId) => this.link.stop(hostId),
       detach: (hostId) => {
         this.hostTabs.removeHost(hostId);
-        this.connections.get(hostId)?.dispose();
-        this.connections.delete(hostId);
+        this.link.remove(hostId);
       },
       forget: (hostId) => {
         const ofOthers = <T>(all: Record<string, T>) =>
@@ -874,22 +879,11 @@ export class AppStore {
   }
 
   /** The round trip of each host's last heartbeat, apart from the state: a ping renders no screen. */
-  private readonly latencies = new Map<string, number | null>();
-  private readonly latencyListeners = new Set<() => void>();
 
-  getLatency = (hostId: string): number | null => this.latencies.get(hostId) ?? null;
+  getLatency = (hostId: string): number | null => this.link.getLatency(hostId);
 
   /** For the one component that shows a latency; a heartbeat never reaches `subscribe`. */
-  subscribeLatency = (listener: () => void): (() => void) => {
-    this.latencyListeners.add(listener);
-    return () => this.latencyListeners.delete(listener);
-  };
-
-  private setLatency(hostId: string, latencyMs: number | null): void {
-    if (this.getLatency(hostId) === latencyMs) return;
-    this.latencies.set(hostId, latencyMs);
-    for (const listener of [...this.latencyListeners]) listener(); // NOSONAR: a listener may subscribe or unsubscribe while it runs: this pass goes over a copy
-  }
+  subscribeLatency = (listener: () => void): (() => void) => this.link.subscribeLatency(listener);
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -903,7 +897,7 @@ export class AppStore {
     this.inbox.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
-    this.listenForWake();
+    this.link.listenForWake();
     this.theme.start();
     void this.assistant.refreshKeys();
     this.i18n.start();
@@ -937,7 +931,7 @@ export class AppStore {
       if (this.state.hosts.some((host) => host.id === config.id)) return;
       this.update({ hosts: [...this.state.hosts, newHostView(config)] });
       const token = await this.platform.secrets.get(config.id);
-      if (token) this.connect(config, token);
+      if (token) this.link.connect(config, token);
     });
     this.update({ hostsLoaded: true });
     // #126 slice 2: the hub's own host filter (a name) becomes the data scope once, unless one
@@ -1144,9 +1138,9 @@ export class AppStore {
       previous.sessionId !== sessionId &&
       !this.watched.has(`${previous.hostId}/${previous.sessionId}`)
     ) {
-      this.connections.get(previous.hostId)?.unsubscribe(previous.sessionId);
+      this.link.connection(previous.hostId)?.unsubscribe(previous.sessionId);
     }
-    if (sessionId) this.connections.get(hostId)?.subscribe(sessionId);
+    if (sessionId) this.link.connection(hostId)?.subscribe(sessionId);
     this.update({ selected: { hostId, sessionId } });
   }
 
@@ -1157,7 +1151,7 @@ export class AppStore {
   watchSession(hostId: string, sessionId: string): () => void {
     const key = `${hostId}/${sessionId}`;
     this.watched.set(key, (this.watched.get(key) ?? 0) + 1);
-    this.connections.get(hostId)?.subscribe(sessionId);
+    this.link.connection(hostId)?.subscribe(sessionId);
     let released = false;
     return () => {
       if (released) return;
@@ -1170,7 +1164,7 @@ export class AppStore {
       this.watched.delete(key);
       const open = this.state.selected;
       if (open?.hostId === hostId && open.sessionId === sessionId) return;
-      this.connections.get(hostId)?.unsubscribe(sessionId);
+      this.link.connection(hostId)?.unsubscribe(sessionId);
     };
   }
 
@@ -1279,7 +1273,7 @@ export class AppStore {
     text: string,
     images?: SessionImage[],
   ): Promise<void> {
-    const conn = this.connections.get(hostId);
+    const conn = this.link.connection(hostId);
     if (!conn) return;
     try {
       await conn.request("session.send", {
@@ -1303,7 +1297,7 @@ export class AppStore {
    */
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
   async loadBoard(hostId: string, projectId: string): Promise<void> {
-    const conn = this.connections.get(hostId);
+    const conn = this.link.connection(hostId);
     if (!conn) return;
     const board = await quiet(conn.request("board.get", { projectId }));
     for (const card of cardsIn(board)) this.onCard(hostId, card);
@@ -1390,7 +1384,7 @@ export class AppStore {
   /** A host's indexed sessions; errors go to the banner and give `null`. */
   async historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
     try {
-      const conn = this.connections.get(hostId);
+      const conn = this.link.connection(hostId);
       if (!conn) throw new RequestError("offline", "unknown host");
       return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
     } catch (error) {
@@ -1409,7 +1403,7 @@ export class AppStore {
     refused?: (reason: string | undefined) => void,
   ): Promise<HistoryGetResult | null> {
     try {
-      const conn = this.connections.get(hostId);
+      const conn = this.link.connection(hostId);
       if (!conn) throw new RequestError("offline", "unknown host");
       return await conn.request("history.get", {
         claudeSessionId,
@@ -1437,7 +1431,7 @@ export class AppStore {
     force: boolean,
   ): Promise<string | null> {
     try {
-      const conn = this.connections.get(hostId);
+      const conn = this.link.connection(hostId);
       if (!conn) throw new RequestError("offline", "unknown host");
       const { sessionId } = await conn.request("history.resume", {
         claudeSessionId,
@@ -1508,7 +1502,7 @@ export class AppStore {
     type: T,
     payload: CommandPayload<T>,
   ): Promise<CommandResults[T]> {
-    const conn = this.connections.get(hostId);
+    const conn = this.link.connection(hostId);
     if (!conn) throw new RequestError("offline", "unknown host");
     const result = await conn.request(type, payload);
     for (const card of cardsIn(result)) this.onCard(hostId, card);
@@ -1548,17 +1542,7 @@ export class AppStore {
     target: string,
     listener: (update: ChangesUpdated) => void,
   ): () => void {
-    const key = `${hostId}|${target}`;
-    const listeners = this.changeListeners.get(key) ?? new Set();
-    this.changeListeners.set(key, listeners);
-    listeners.add(listener);
-    this.connections.get(hostId)?.watchChanges(target);
-    return () => {
-      listeners.delete(listener);
-      if (listeners.size > 0) return;
-      this.changeListeners.delete(key);
-      this.connections.get(hostId)?.unwatchChanges(target);
-    };
+    return this.link.watchChanges(hostId, target, listener);
   }
 
   /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
@@ -1598,7 +1582,7 @@ export class AppStore {
 
   /** Asks the host for its `host.info` again (after a change of its settings). */
   async reloadHostInfo(hostId: string): Promise<void> {
-    const conn = this.connections.get(hostId);
+    const conn = this.link.connection(hostId);
     if (conn) await this.loadHostInfo(hostId, conn);
   }
 
@@ -1691,7 +1675,7 @@ export class AppStore {
   async allowRoot(hostId: string, folder: string, retry?: () => void): Promise<boolean> {
     const result = await this.hostCommand(hostId, "roots.add", { path: folder, confirm: true });
     if (!result) return false;
-    const conn = this.connections.get(hostId);
+    const conn = this.link.connection(hostId);
     if (conn?.info) conn.info = { ...conn.info, allowedRoots: result.allowedRoots };
     this.updateHost(hostId, (h) =>
       h.info ? { ...h, info: { ...h.info, allowedRoots: result.allowedRoots } } : h,
@@ -1795,38 +1779,12 @@ export class AppStore {
     return this.permissions.respond(requestId, decision, answer);
   }
 
-  /** The window coming back or the network returning is the moment to try the offline hosts. */
-  private listenForWake(): void {
-    const target = wakeTarget();
-    if (typeof target.addEventListener !== "function") return;
-    const wake = () => {
-      for (const conn of this.connections.values()) conn.wake();
-      // Hiding the window to the tray can drop its taskbar badge: say it again.
-      this.inbox.resendBadge();
-    };
-    const visible = () => {
-      if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();
-    };
-    target.addEventListener("online", wake);
-    target.addEventListener("focus", wake);
-    if (typeof document !== "undefined") document.addEventListener("visibilitychange", visible);
-    this.stopWake = () => {
-      target.removeEventListener?.("online", wake);
-      target.removeEventListener?.("focus", wake);
-      if (typeof document !== "undefined")
-        document.removeEventListener("visibilitychange", visible);
-    };
-  }
-
   dispose(): void {
-    this.stopWake?.();
-    this.stopWake = null;
     if (this.peersTimer) clearInterval(this.peersTimer);
     this.peersTimer = null;
     if (this.awayTimer) clearInterval(this.awayTimer);
     this.awayTimer = null;
-    for (const conn of this.connections.values()) conn.dispose();
-    this.connections.clear();
+    this.link.dispose();
     this.tray.stop();
     this.offQuit?.();
     this.offQuit = null;
@@ -1843,7 +1801,7 @@ export class AppStore {
     // Straight to the connection: a host's teleport answer is checked by the relay, and never
     // reaches the board's card or run state on the way.
     return ((type, payload) => {
-      const conn = this.connections.get(hostId);
+      const conn = this.link.connection(hostId);
       if (!conn) return Promise.reject(new RequestError("offline", "unknown host"));
       return conn.request(type, payload);
     }) as TeleportRequest;
@@ -1874,23 +1832,10 @@ export class AppStore {
 
   // -- internals ------------------------------------------------------------
 
-  private connect(config: HostConfig, token: string): void {
-    this.scan.rememberToken(token);
-    const conn = new HostConnection({
-      url: config.url,
-      token,
-      clientName: "flightdeck-desktop",
-      hostId: config.id,
-      ...(this.options.baseDelayMs !== undefined ? { baseDelayMs: this.options.baseDelayMs } : {}),
-      ...(this.options.wakeDebounceMs !== undefined
-        ? { wakeDebounceMs: this.options.wakeDebounceMs }
-        : {}),
-      ...(this.options.maxDelayMs !== undefined ? { maxDelayMs: this.options.maxDelayMs } : {}),
-      lastSeqFor: (sessionId) =>
-        this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
-      onStatus: (status) => this.onStatus(config.id, conn, status),
+  /** The frames of a host's connection, each to the slice that takes it. */
+  private frames(config: HostConfig): HostFrames {
+    return {
       onSubscribed: (sessionId, result) => this.stream.onSubscribed(config.id, sessionId, result),
-      onPing: () => this.setLatency(config.id, conn.latencyMs),
       onEvent: (envelope) => this.stream.onEvent(config.id, envelope),
       onSummaries: (summaries) => this.summaries.apply(config.id, summaries),
       onCardUpdated: (card) => this.onCard(config.id, card),
@@ -1931,33 +1876,11 @@ export class AppStore {
       onAccountUpdated: (state) => this.account.updated(config.id, state),
       onBudgetUpdated: (update) => this.budgets.onUpdated(config.id, update),
       onTerminal: (frame) => this.terminals.deliver(config.id, frame),
-      onChangesUpdated: (update) => {
-        for (const listener of this.changeListeners.get(`${config.id}|${update.target}`) ?? []) {
-          listener(update);
-        }
-      },
       onHistoryChanged: (change) => {
         for (const listener of this.historyListeners) listener(config.id, change);
       },
       onAskpass: (request) => void this.ssh.onAskpass(config.id, request),
-    });
-    this.connections.set(config.id, conn);
-    // A session selected before its host had a connection (a route opened at start-up).
-    const selected = this.state.selected;
-    if (selected?.hostId === config.id && selected.sessionId) conn.subscribe(selected.sessionId);
-    for (const key of this.watched.keys()) {
-      if (key.startsWith(`${config.id}/`)) conn.subscribe(key.slice(config.id.length + 1));
-    }
-    conn.watch();
-    conn.watchBoard();
-    conn.watchHistory();
-    conn.watchExternal();
-    conn.watchRuns();
-    conn.watchRunEnv();
-    conn.watchQuota();
-    conn.watchBudgets();
-    conn.watchVault();
-    conn.connect();
+    };
   }
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
@@ -2194,7 +2117,7 @@ export class AppStore {
   /** Issue #1478: interrupts any session of a host, open or not. */
   async interruptSession(hostId: string, sessionId: string): Promise<void> {
     try {
-      await this.connections.get(hostId)?.request("session.interrupt", { sessionId });
+      await this.link.connection(hostId)?.request("session.interrupt", { sessionId });
     } catch (error) {
       this.fail(error);
     }
@@ -2256,13 +2179,6 @@ export class AppStore {
     }
     const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
     this.update({ cards });
-  }
-
-  /** A host's open connection; its callers have checked `connections.has` first. */
-  private openConnection(hostId: string): HostConnection {
-    const conn = this.connections.get(hostId);
-    if (!conn) throw new Error(`no connection for ${hostId}`);
-    return conn;
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {
