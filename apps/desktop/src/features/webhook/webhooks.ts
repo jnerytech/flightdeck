@@ -3,8 +3,8 @@
  * through the queue, formatted for each; a test sends a sample straight away.
  */
 import type { SessionRecap } from "@flightdeck/protocol";
-import { translator } from "../i18n/index.ts";
-import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
+import { translator } from "../../i18n/index.ts";
+import type { Platform, WebhookRequest, WebhookResponse } from "../../platform/types.ts";
 import { formatWebhook, type NotifyEvent, type WebhookKind } from "./webhook-format.ts";
 import { delay, type SendResult, WebhookQueue } from "./webhook-queue.ts";
 import { randomId, type WebhookTarget, WebhookTargets } from "./webhook-targets.ts";
