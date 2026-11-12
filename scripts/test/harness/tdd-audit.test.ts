@@ -5,7 +5,7 @@ import {
   parseCommits,
   parseWaivers,
   runAudit,
-} from "../../lib/tdd-audit.ts";
+} from "../../lib/guards/tdd-audit.ts";
 
 // Built by concatenation so this very file never contains the forbidden markers.
 const ONLY = `.${"only"}(`;
