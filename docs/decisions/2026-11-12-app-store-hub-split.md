@@ -138,8 +138,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `request-link.ts` moved from `features/hosts/` to `features/permissions/`; the window and the
   tray's answer come from the store as deps, and the store keeps one-line forwarders for the
   screens; the quiet snooze to sessions.
-- **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(...)`, next to
-  `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
+- **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(platform, held)`
+  (`held`: what the store holds when it is built, the clock's start, the vault's usage log and the
+  clients), next to `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
   its own; it is a recorded exception to the folders-by-domain rule, as `app-store.ts` is, and
   leaves `lib/` with it. Each top-level helper moves with the only group that uses it.
 - The store keeps `init`, `dispose`, `update`, the notices, the route table and the on-line steps:
