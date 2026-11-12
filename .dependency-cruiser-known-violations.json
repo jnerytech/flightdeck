@@ -389,11 +389,7 @@
         "dependencyTypes": ["local", "import", "type-only"]
       },
       {
-        "name": "apps/daemon/src/watch/check-run.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/trace.ts",
+        "name": "apps/daemon/src/board/check-loop.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
@@ -418,11 +414,11 @@
         "dependencyTypes": ["local", "import"]
       },
       {
-        "name": "apps/daemon/src/watch/check-run.ts",
+        "name": "apps/daemon/src/board/check-loop-engine.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
-        "name": "apps/daemon/src/watch/trace.ts",
+        "name": "apps/daemon/src/board/check-loop.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
@@ -451,11 +447,7 @@
         "dependencyTypes": ["local", "import", "type-only"]
       },
       {
-        "name": "apps/daemon/src/watch/check-run.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/trace.ts",
+        "name": "apps/daemon/src/board/check-loop.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
@@ -484,11 +476,7 @@
         "dependencyTypes": ["local", "import", "type-only"]
       },
       {
-        "name": "apps/daemon/src/watch/check-run.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/trace.ts",
+        "name": "apps/daemon/src/board/check-loop.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
@@ -563,12 +551,12 @@
         "dependencyTypes": ["local", "import"]
       },
       {
-        "name": "apps/daemon/src/watch/check-run.ts",
+        "name": "apps/daemon/src/board/check-loop.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
-        "name": "apps/daemon/src/watch/trace.ts",
-        "dependencyTypes": ["local", "import"]
+        "name": "apps/daemon/src/watch/watch.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
       },
       {
         "name": "apps/daemon/src/board/board.ts",
@@ -611,9 +599,9 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/board/check-loop.ts",
-    "to": "apps/daemon/src/board/board.ts",
-    "unresolvedTo": "./board.ts",
+    "from": "apps/daemon/src/board/launch.ts",
+    "to": "apps/daemon/src/board/check-loop-engine.ts",
+    "unresolvedTo": "./check-loop-engine.ts",
     "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
@@ -621,15 +609,23 @@
     },
     "cycle": [
       {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
         "name": "apps/daemon/src/board/check-loop-engine.ts",
         "dependencyTypes": ["local", "import", "type-only"]
       },
       {
         "name": "apps/daemon/src/board/check-loop.ts",
+        "dependencyTypes": ["local", "import"]
+      },
+      {
+        "name": "apps/daemon/src/watch/watch.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
+      },
+      {
+        "name": "apps/daemon/src/board/board.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
+      },
+      {
+        "name": "apps/daemon/src/board/launch.ts",
         "dependencyTypes": ["local", "import"]
       }
     ]
@@ -654,12 +650,12 @@
         "dependencyTypes": ["local", "import", "type-only"]
       },
       {
-        "name": "apps/daemon/src/watch/check-run.ts",
+        "name": "apps/daemon/src/board/check-loop.ts",
         "dependencyTypes": ["local", "import"]
       },
       {
-        "name": "apps/daemon/src/watch/trace.ts",
-        "dependencyTypes": ["local", "import"]
+        "name": "apps/daemon/src/watch/watch.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
       },
       {
         "name": "apps/daemon/src/board/board.ts",
@@ -667,6 +663,39 @@
       },
       {
         "name": "apps/daemon/src/board/launch.ts",
+        "dependencyTypes": ["local", "import"]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "apps/daemon/src/board/session-follow.ts",
+    "to": "apps/daemon/src/board/check-loop-engine.ts",
+    "unresolvedTo": "./check-loop-engine.ts",
+    "dependencyTypes": ["local", "import", "type-only"],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle"
+    },
+    "cycle": [
+      {
+        "name": "apps/daemon/src/board/check-loop-engine.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
+      },
+      {
+        "name": "apps/daemon/src/board/check-loop.ts",
+        "dependencyTypes": ["local", "import"]
+      },
+      {
+        "name": "apps/daemon/src/watch/watch.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
+      },
+      {
+        "name": "apps/daemon/src/board/board.ts",
+        "dependencyTypes": ["local", "import", "type-only"]
+      },
+      {
+        "name": "apps/daemon/src/board/session-follow.ts",
         "dependencyTypes": ["local", "import"]
       }
     ]
@@ -735,101 +764,6 @@
       {
         "name": "apps/daemon/src/server/context.ts",
         "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/watch/fix.ts",
-    "to": "apps/daemon/src/watch/check-run.ts",
-    "unresolvedTo": "./check-run.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/watch/check-run.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/trace.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/fix.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/watch/fix.ts",
-    "to": "apps/daemon/src/watch/watch.ts",
-    "unresolvedTo": "./watch.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/watch/watch.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/watch/check-run.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/trace.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/fix.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "apps/daemon/src/watch/trace.ts",
-    "to": "apps/daemon/src/watch/fix.ts",
-    "unresolvedTo": "./fix.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/watch/fix.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/board.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/board/check-loop-engine.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/watch/check-run.ts",
-        "dependencyTypes": ["local", "import"]
-      },
-      {
-        "name": "apps/daemon/src/watch/trace.ts",
-        "dependencyTypes": ["local", "import"]
       }
     ]
   },
@@ -1001,8 +935,8 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/assistant/context.ts",
-    "to": "apps/daemon/src/watch/trace.ts",
-    "unresolvedTo": "../watch/trace.ts",
+    "to": "apps/daemon/src/watch/check-run.ts",
+    "unresolvedTo": "../watch/check-run.ts",
     "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
