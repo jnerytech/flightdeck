@@ -16,7 +16,7 @@ export function useProjectCards(
   const hostKey = state.hosts.map((h) => `${h.id}:${h.status}`).join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the hosts' set or status changes
   useEffect(() => {
-    void store.loadPalette();
+    void store.palette.load();
     const today = store.today();
     // A host that is not online keeps no figure: it is asked again when it comes back.
     const online = new Set(state.hosts.filter((h) => h.status === "online").map((h) => h.id));

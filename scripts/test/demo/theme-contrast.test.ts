@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { readStyles } from "../../lib/styles-source.ts";
-import { colorOf, contrast, oklchOf, tokensOf } from "../../lib/theme-contrast.ts";
+import { readStyles } from "../../lib/styles/styles-source.ts";
+import { colorOf, contrast, oklchOf, tokensOf } from "../../lib/styles/theme-contrast.ts";
 
 const css = readStyles(resolve(import.meta.dir, "../../../apps/desktop/src/styles.css"));
 

@@ -22,6 +22,10 @@ import {
   DEMO_TEAM_REPORT,
   DEMO_UPDATE_CARDS,
 } from "./lib/e2e/journeys.ts";
+import { holdsScript } from "./lib/shots/holds.ts";
+import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
+import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
+import { pickVariants } from "./lib/shots/variants.ts";
 import {
   type Finding,
   GAP_BOXES,
@@ -36,12 +40,8 @@ import {
   SPACING,
   SPACING_RULES,
   waitForStable,
-} from "./lib/layout-guards.ts";
-import { type Rgb, themeProblem } from "./lib/print-theme.ts";
-import { holdsScript } from "./lib/shots/holds.ts";
-import { PENDING_SELECTOR } from "./lib/shots/loaded.ts";
-import { narrowSizes, unknownNarrowShots } from "./lib/shots/narrow.ts";
-import { pickVariants } from "./lib/shots/variants.ts";
+} from "./lib/styles/layout-guards.ts";
+import { type Rgb, themeProblem } from "./lib/styles/print-theme.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");

@@ -91,7 +91,7 @@ export function GlobalSearch(
   dismissing.current = dismiss;
 
   useEffect(() => {
-    void store.loadPalette();
+    void store.palette.load();
   }, [store]);
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export function GlobalSearch(
         costs,
         t: store.i18n.t,
         globalSnippets: store.snippets.global.list(),
-        recents: frozen.current ?? store.paletteRecents(),
+        recents: frozen.current ?? store.palette.recents(),
         keepRecentOrder: frozen.current !== null,
         ...oldestOf(needsYou(props.state, store.i18n.t), store.i18n.t),
         modeSwitch: modeSwitch(store),
@@ -154,7 +154,7 @@ export function GlobalSearch(
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
   const choose = (item: PaletteItem) => {
-    if (!actionsOf) store.recordPaletteUse(item.id);
+    if (!actionsOf) store.palette.recordUse(item.id);
     props.onGo(item.target);
   };
 
@@ -312,8 +312,8 @@ export function GlobalSearch(
 
 /** The mode the palette offers to go to, when the host in view allows a change. */
 function modeSwitch(store: AppStore): "simple" | "full" | null {
-  const hostId = store.uiHostId();
-  const now = hostId ? store.uiMode(hostId) : null;
+  const hostId = store.uiModes.hostId();
+  const now = hostId ? store.uiModes.mode(hostId) : null;
   if (!now?.canSwitch) return null;
   return now.mode === "simple" ? "full" : "simple";
 }

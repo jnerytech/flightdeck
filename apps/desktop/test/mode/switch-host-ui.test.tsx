@@ -41,7 +41,7 @@ describe("mode-switch-host-ui: the host's own page offers simple mode", () => {
     const { store, hostId } = await hostPage({ mode: "full", locked: false });
     await click("Use simple mode on this host");
     await waitFor(() => screen.getByRole("heading", { name: "What do you want done?" }));
-    expect(store.uiMode(hostId).mode).toBe("simple");
+    expect(store.uiModes.mode(hostId).mode).toBe("simple");
   });
 
   const hostUi = (store: InstanceType<typeof AppStore>, hostId: string) =>
@@ -72,7 +72,7 @@ describe("mode-switch-host-ui: the host's own page offers simple mode", () => {
     ).toBe(true);
     await waitFor(() => screen.getByText("Simple mode is now the default for pc"));
     expect(screen.getByText("This host opens in: Simple mode")).toBeTruthy();
-    expect(store.uiMode(hostId).mode).toBe("full");
+    expect(store.uiModes.mode(hostId).mode).toBe("full");
   });
 
   test("Given an unlocked host, When the lock switch is turned on and confirmed, Then the host is locked and says so in a toast and in its sidebar row", async () => {
@@ -124,7 +124,7 @@ describe("mode-switch-host-ui: the host's own page offers simple mode", () => {
   test("Given a host that defaults to simple mode, Then its sidebar row carries a Simple badge", async () => {
     const { store, hostId } = await hostPage({ mode: "simple", locked: false });
     await act(async () => {
-      store.setUiChoice(hostId, "full");
+      store.uiModes.choose(hostId, "full");
     });
     await waitFor(() =>
       expect(
@@ -163,8 +163,8 @@ describe("mode-switch-host-ui: simple mode follows the host whose page it was ch
     await click("Use simple mode on this host");
     await waitFor(() => screen.getByRole("heading", { name: "What do you want done?" }));
     expect(store.getState().selected?.hostId).toBe(two);
-    expect(store.uiMode(two).mode).toBe("simple");
-    expect(store.uiMode(one).mode).toBe("full");
+    expect(store.uiModes.mode(two).mode).toBe("simple");
+    expect(store.uiModes.mode(one).mode).toBe("full");
   });
 
   test("Given simple mode, When something fails, Then the failure shows as a notice", async () => {

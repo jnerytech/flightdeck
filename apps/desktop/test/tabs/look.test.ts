@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { readStyles } from "../../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 
 const css = readStyles(resolve(import.meta.dir, "../../src/styles.css"));
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../lib/styles-source.ts";
-import { colorOf, contrast, tokensOf } from "../../lib/theme-contrast.ts";
+import { readStyles } from "../../lib/styles/styles-source.ts";
+import { colorOf, contrast, tokensOf } from "../../lib/styles/theme-contrast.ts";
 
 const css = readStyles(join(import.meta.dir, "../../../apps/desktop/src/styles.css"));
 

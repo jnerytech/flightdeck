@@ -5,7 +5,7 @@ import { Account } from "./account/account.ts";
 import { demoAccountReaders } from "./account/demo.ts";
 import { accountReaders } from "./account/readers.ts";
 import { createVault } from "./actions/wiring.ts";
-import { activitySince } from "./activity/since.ts";
+import { createActivity } from "./activity/wiring.ts";
 import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
@@ -53,8 +53,7 @@ import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./projects/index.ts";
-import { UsageLedger } from "./quota/usage.ts";
-import { createQuota } from "./quota/wiring.ts";
+import { createQuota, createUsage } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import {
@@ -233,7 +232,9 @@ export async function startDaemon(
   const account = readers ? new Account({ quota, readers }) : undefined;
   const keys = new ProjectKeys(config.hostName, options.projectGit);
   // The turn is counted when git has answered: a slow git must not stop the daemon meanwhile.
-  const usage = new UsageLedger({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) });
+  const { usage } = await domains.add(
+    createUsage({ db: store.db, projectKey: (cwd) => keys.lookup(cwd) }),
+  );
   // Phase 12: a git snapshot at the start and end of every turn, in the background.
   const snapshots = new Snapshots({ db: store.db });
   // Phase 13: the risk classifier and the projects' automatic approval, through the board (defined
@@ -428,6 +429,7 @@ export async function startDaemon(
   await domains.add(createWebhook({ log: logger.log.bind(logger) }));
   await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   await domains.add(createGithub({ config, board, issues, manager }));
+  await domains.add(createActivity({ db: store.db, quota: () => quota.windows() }));
   const central = new Central({
     risk,
     autoApprove,
@@ -627,14 +629,10 @@ export async function startDaemon(
       picker: true,
     }),
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
-    // Issue #1344: "While you were away": what happened since a time, from what is stored.
-    activity: (since, limit) =>
-      activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
     vault,
     log: logger.log.bind(logger),
     actions,
     autoApprove,
-    usage,
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),

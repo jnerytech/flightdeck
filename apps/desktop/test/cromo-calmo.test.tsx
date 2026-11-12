@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { resolve } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { colorOf, contrast, tokensOf } from "../../../scripts/lib/theme-contrast.ts";
+import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
+import { colorOf, contrast, tokensOf } from "../../../scripts/lib/styles/theme-contrast.ts";
 import { activeNav } from "../src/features/shell/nav-active.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";

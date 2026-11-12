@@ -3,6 +3,7 @@ import { type Config, updateConfigFile } from "../config.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { QuotaHistory } from "./history.ts";
 import { Quota } from "./quota.ts";
+import { UsageLedger, type UsageLedgerOptions } from "./usage.ts";
 
 /** What the plan quota of the host is built from. */
 export interface QuotaDeps {
@@ -46,4 +47,11 @@ export function createQuota({ db, config, configFile }: QuotaDeps) {
       quotaHistory.sample(readings);
     },
   };
+}
+
+/** The cost and tokens of every turn, as the module the server takes `usage` from. */
+export function createUsage(options: UsageLedgerOptions) {
+  const usage = new UsageLedger(options);
+  const module: DomainModule<"usage"> = { server: { usage } };
+  return { modules: [module] as const, usage };
 }
