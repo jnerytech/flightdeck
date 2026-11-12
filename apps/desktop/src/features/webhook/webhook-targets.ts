@@ -2,8 +2,10 @@
  * Phase 30: the webhook targets. The list lives in the app's storage without any secret: the URL
  * and the generic target's signing secret are vault values, kept by reference.
  */
+import { z } from "zod";
+import { readStored, validItems } from "@/shared/lib/index.ts";
 import type { Platform } from "../../platform/types.ts";
-import { ntfyTopic, type WebhookKind, type WebhookType } from "./webhook-format.ts";
+import { KIND_LABEL, ntfyTopic, type WebhookKind, type WebhookType } from "./webhook-format.ts";
 
 export type TargetStatus = "new" | "ok" | "failing";
 
@@ -84,12 +86,22 @@ function checkNtfy(type: WebhookType, url: string | null, token: string | undefi
   if (token && !NTFY_TOKEN.test(token)) throw new WebhookTargetError("invalid_token");
 }
 
-const isTarget = (value: unknown): value is WebhookTarget =>
-  typeof value === "object" &&
-  value !== null &&
-  typeof (value as WebhookTarget).id === "string" &&
-  typeof (value as WebhookTarget).name === "string" &&
-  Array.isArray((value as WebhookTarget).kinds);
+const KINDS = Object.keys(KIND_LABEL) as [WebhookKind, ...WebhookKind[]];
+
+/** A stored target (#1609); a kind this app does not know is dropped from it, the target stays. */
+const Target = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["slack", "discord", "generic", "ntfy"]),
+  hostScope: z.string().nullable(),
+  kinds: validItems(z.enum(KINDS)),
+  clientId: z.string().nullable(),
+  enabled: z.boolean(),
+  urlHost: z.string(),
+  status: z.enum(["new", "ok", "failing"]),
+  lastHttpStatus: z.number().nullable(),
+  lastAt: z.string().nullable(),
+});
 
 /** A new target id. */
 export function randomId(): string {
@@ -109,12 +121,7 @@ export class WebhookTargets {
   }
 
   list(): WebhookTarget[] {
-    try {
-      const parsed: unknown = JSON.parse(this.platform.storage.getItem(KEY) ?? "[]");
-      return Array.isArray(parsed) ? parsed.filter(isTarget) : [];
-    } catch {
-      return [];
-    }
+    return readStored(this.platform.storage, KEY, validItems(Target), []);
   }
 
   private save(targets: WebhookTarget[]): void {
