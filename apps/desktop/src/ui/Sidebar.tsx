@@ -36,6 +36,7 @@ import {
   RenameHostDialog,
 } from "@/features/hosts/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
+import { rowRoute } from "@/features/sessions/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import { pendingCount } from "../features/needs-you/index.ts";
@@ -55,7 +56,6 @@ import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import { type SidebarGroup, toggleGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
-import { rowRoute } from "./Screens.tsx";
 
 const ITEM =
   "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-normal text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";

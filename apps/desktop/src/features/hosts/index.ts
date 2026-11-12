@@ -7,6 +7,7 @@
  */
 
 export { AllowedFolders } from "./allowed-folders.tsx";
+export { awaitedHost } from "./awaited-host.ts";
 export {
   type HealthAnswer,
   type HealthCore,
