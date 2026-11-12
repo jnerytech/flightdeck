@@ -127,8 +127,8 @@ export function boardFeatures(features: readonly string[] | undefined): {
     roi: hasFeature(features, "roi", false),
     sync: hasFeature(features, "boardsync", false),
     issues: hasFeature(features, "issues", false),
-    memoryPause: false,
-    cardTemplates: false,
+    memoryPause: hasFeature(features, "memoryPause", false),
+    cardTemplates: hasFeature(features, "cardTemplates", false),
   };
 }
 
@@ -139,12 +139,17 @@ export function cardMoveBody(
   position?: number,
   force?: boolean,
 ): { cardId: string; column: BoardColumn; position?: number; force?: boolean } {
-  return { cardId, column: "backlog" };
+  return {
+    cardId,
+    column,
+    ...(position !== undefined ? { position } : {}),
+    ...(force ? { force } : {}),
+  };
 }
 
 /** The host's limit of parallel runs, from its project list answer; null when it gives none. */
 export function queueMaxOf(list: { maxParallelRuns?: unknown } | null | undefined): number | null {
-  return list ? 0 : null;
+  return typeof list?.maxParallelRuns === "number" ? list.maxParallelRuns : null;
 }
 
 /** A card shows "queued" only when no reason badge below says why it waits. */

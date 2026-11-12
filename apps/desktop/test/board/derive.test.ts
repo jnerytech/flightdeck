@@ -323,11 +323,15 @@ describe("board derive: the refusals named", () => {
 
 describe("board derive: the card.move request", () => {
   test("a move names the card and the column, and sends position and force only when given", () => {
-    expect(cardMoveBody("c1", "doing")).toEqual({ cardId: "c1", column: "doing" });
-    expect(cardMoveBody("c1", "doing", 2)).toEqual({ cardId: "c1", column: "doing", position: 2 });
-    expect(cardMoveBody("c1", "doing", undefined, true)).toEqual({
+    expect(cardMoveBody("c1", "in_progress")).toEqual({ cardId: "c1", column: "in_progress" });
+    expect(cardMoveBody("c1", "in_progress", 2)).toEqual({
       cardId: "c1",
-      column: "doing",
+      column: "in_progress",
+      position: 2,
+    });
+    expect(cardMoveBody("c1", "in_progress", undefined, true)).toEqual({
+      cardId: "c1",
+      column: "in_progress",
       force: true,
     });
     expect(cardMoveBody("c1", "done", 0, true)).toEqual({
@@ -339,9 +343,9 @@ describe("board derive: the card.move request", () => {
   });
 
   test("a position of 0 is sent, and force false is not", () => {
-    expect(cardMoveBody("c1", "doing", 0, false)).toEqual({
+    expect(cardMoveBody("c1", "in_progress", 0, false)).toEqual({
       cardId: "c1",
-      column: "doing",
+      column: "in_progress",
       position: 0,
     });
   });
