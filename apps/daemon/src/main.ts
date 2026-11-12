@@ -485,17 +485,18 @@ export async function startDaemon(
   awake.pinned = (claudeSessionId) =>
     claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
   awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
-  const sessionSettings = createSessionSettings({
-    manager,
-    config,
-    configFile,
-    // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
-    stallUnitMs:
-      Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
-        ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
-        : undefined,
-  });
-  const { sleeper, stall } = sessionSettings;
+  await domains.add(
+    createSessionSettings({
+      manager,
+      config,
+      configFile,
+      // The demo and the journeys count a "minute" in seconds, so a quiet session does not take a quarter of an hour.
+      stallUnitMs:
+        Number(process.env.FLIGHTDECK_STALL_UNIT_MS) > 0
+          ? Number(process.env.FLIGHTDECK_STALL_UNIT_MS)
+          : undefined,
+    }),
+  );
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
@@ -591,10 +592,6 @@ export async function startDaemon(
       options.serviceContext ?? osServiceContext,
       options.serviceSelf ?? selfCommand,
     ),
-    sessionSettings: serverGroup<"sessionSettings">()({
-      ...sessionSettings.server,
-      commands: true,
-    }),
     names,
     vault,
     log: logger.log.bind(logger),
@@ -685,8 +682,6 @@ export async function startDaemon(
           actions.stop();
           vault.stop();
           await central.stop();
-          sleeper.stop();
-          stall.stop();
           await manager.shutdown();
           await server.stop();
         });
