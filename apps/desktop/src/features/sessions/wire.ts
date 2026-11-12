@@ -90,6 +90,7 @@ export function wireSessionLists(
     patch: (patch) => kernel.update(patch),
     connection: (hostId) => kernel.connection(hostId),
     backgroundPatch: deps.backgroundPatch,
+    setMeta: (hostId, payload) => kernel.hostCommand(hostId, "session.meta.set", payload),
   });
 }
 

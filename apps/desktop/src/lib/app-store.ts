@@ -1271,18 +1271,8 @@ export class AppStore {
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
-  async setMeta(
-    hostId: string,
-    claudeSessionId: string,
-    patch: Partial<SessionMeta>,
-  ): Promise<void> {
-    const result = await this.hostCommand(hostId, "session.meta.set", {
-      claudeSessionId,
-      ...patch,
-    });
-    if (!result) return;
-    const { claudeSessionId: _id, ...meta } = result;
-    this.update({ meta: { ...this.state.meta, [sessionKey(hostId, claudeSessionId)]: meta } });
+  setMeta(hostId: string, claudeSessionId: string, patch: Partial<SessionMeta>): Promise<void> {
+    return this.sessionLists.setMeta(hostId, claudeSessionId, patch);
   }
 
   /**
