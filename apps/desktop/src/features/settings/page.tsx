@@ -1,5 +1,4 @@
 import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
-import { DiagnosticsPanel } from "@/components/settings/diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AssistantSettings } from "@/features/assistant/index.ts";
@@ -21,6 +20,7 @@ import { hostsWith } from "../../lib/version.ts";
 import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/rules-section.tsx";
 import { WebhooksSection } from "../webhook/index.ts";
+import { DiagnosticsPanel } from "./diagnostics-panel.tsx";
 import type { Settings as SettingsState } from "./index.ts";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
