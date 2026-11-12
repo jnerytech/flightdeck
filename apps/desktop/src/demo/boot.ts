@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { saveHosts } from "@/features/hosts/index.ts";
+// The e2e steps load this file in Node: the hosts file directly, not the feature index, which reaches `package.json`.
+import { saveHosts } from "../features/hosts/hosts.ts";
 import { THEME_KEY, type ThemeMode } from "../features/shell/theme.ts";
 import { WORKSPACE_KEY } from "../features/shell/workspace.ts";
 import { LANG_KEY, LANGS, type Lang } from "../i18n/index.ts";
