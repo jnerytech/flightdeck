@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../../src/main.ts";
-import { REAL_KILL_DEPS } from "../../src/runtime/opencode-runtime.ts";
+import { REAL_KILL_DEPS } from "../../src/runtime/opencode-kill.ts";
 import { OPENCODE_LEDGER_FILE, procSource } from "../../src/runtime/process-ledger.ts";
 import { poll, tempDir } from "../support/helpers.ts";
 import { installFakeOpenCode } from "./fake-opencode.ts";
