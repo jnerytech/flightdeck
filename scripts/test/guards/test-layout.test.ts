@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { overBaseline } from "../../lib/layout-ratchet.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
 import { flatTestCounts } from "../../lib/test-layout.ts";
 
 // repo-wide (#1108): reads every tracked path, so CI's quick job runs it on every PR.

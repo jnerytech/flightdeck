@@ -5,7 +5,12 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { initialised, type LayoutBaseline, screenCounts, tightened } from "./lib/layout-ratchet.ts";
+import {
+  initialised,
+  type LayoutBaseline,
+  screenCounts,
+  tightened,
+} from "./lib/ratchets/layout.ts";
 
 const DESKTOP = resolve(import.meta.dir, "../apps/desktop");
 const FILE = resolve(DESKTOP, "layout-baseline.json");

@@ -14,13 +14,13 @@ import { projectContracts, useStartAsk } from "@/hooks/use-start-ask";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
-import { findingsNote } from "@/lib/second-opinion";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
 import { FieldRow, Panel, Stack } from "@/shared/layout/index.ts";
 import { CardFinishDialog } from "./card-finish.tsx";
 import { nextStep } from "./card-next-step.ts";
 import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
+import { findingsNote } from "./second-opinion.ts";
 
 interface Confirming {
   kind: "complete" | "discard";

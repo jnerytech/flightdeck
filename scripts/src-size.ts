@@ -8,7 +8,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { tightened } from "./lib/layout-ratchet.ts";
+import { tightened } from "./lib/ratchets/layout.ts";
 import { crowdedDomains, isMeasured, oversizedSources, shallowModules } from "./lib/src-size.ts";
 
 const ROOT = resolve(import.meta.dir, "..");

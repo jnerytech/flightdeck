@@ -83,7 +83,6 @@ import { StatusDot } from "@/shared/status/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { boardTitle, COLUMNS, positionBefore, projectCards } from "../../lib/board.ts";
-import { radarBadge } from "../../lib/conflict-radar.ts";
 import { ExternalSeal, IssuesPanel, issueNumber } from "../issues/index.ts";
 import { quietAlerts } from "../needs-you/index.ts";
 import {
@@ -124,6 +123,7 @@ import { cardStartBlock } from "./card-start-block.ts";
 import { CardStartDialog } from "./card-start-dialog.tsx";
 import { startPersonaOf, startWorkflowOf } from "./card-template-field.tsx";
 import { BoardColumnEmpty } from "./column-empty.tsx";
+import { radarBadge } from "./conflict-radar.ts";
 import { DeleteCardDialog } from "./delete-card-dialog.tsx";
 import { NewCardDialog } from "./new-card-dialog.tsx";
 import { type MoveFocus, useMoveFocus } from "./use-move-focus.ts";

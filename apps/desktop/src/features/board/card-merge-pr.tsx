@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { refusalText } from "@/i18n/errors";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { radarMergeLine } from "@/lib/conflict-radar";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, NativeSelect, Stack } from "@/shared/layout/index.ts";
+import { radarMergeLine } from "./conflict-radar.ts";
 
 export interface CardMergePrProps {
   store: AppStore;
