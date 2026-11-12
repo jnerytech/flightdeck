@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import { truncateUtf8 } from "./parser.ts";
 
 /** A tool call of a stored transcript with its whole input and its result (#606). */

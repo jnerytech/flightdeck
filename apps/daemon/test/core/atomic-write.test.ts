@@ -12,8 +12,8 @@ import {
 } from "node:fs";
 import { appendFile, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { writeFileAtomic } from "../../src/atomic-write.ts";
 import { liveReceptor } from "../../src/central/wrapper.ts";
+import { writeFileAtomic } from "../../src/kernel/atomic-write.ts";
 import { tempDir } from "../support/helpers.ts";
 
 describe("atomic-write: a reader sees the old file or the new one, never half of it (issue #138)", () => {

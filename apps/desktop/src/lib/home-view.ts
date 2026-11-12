@@ -1,11 +1,11 @@
 import type { CostsSummary } from "@flightdeck/protocol";
+import type { ConnectionStatus } from "../features/hosts/index.ts";
 import type { T } from "../i18n/index.ts";
 import { mergeSummaries } from "./client-costs.ts";
 import { projectLabel } from "./costs.ts";
 import { awayKey, type DataScope } from "./data-scope.ts";
 import type { HomeHostData, HomeSnapshot } from "./home-cache.ts";
 import { type HomeLeaders, homeLeaders } from "./home-leaders.ts";
-import type { ConnectionStatus } from "./host-connection.ts";
 
 /** What Home read from one online host: whether it answered, and the numbers it gave. */
 export interface HostRead {

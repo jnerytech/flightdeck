@@ -3,11 +3,11 @@ import type { T } from "../../i18n/index.ts";
 import { type AppState, sessionKey } from "../../lib/app-store.ts";
 import { ALL_CLIENTS, selectedClient, tagsFirst } from "../../lib/client-scope.ts";
 import { UNASSIGNED } from "../../lib/clients.ts";
-import { hostStatusView } from "../../lib/host-status.ts";
 import type { Route } from "../../lib/router.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "../../lib/shortcuts.ts";
 import type { TerminalTarget } from "../../lib/terminal.ts";
 import { anyHostHas, hasFeature } from "../../lib/version.ts";
+import { hostStatusView } from "../hosts/index.ts";
 import {
   type SessionViewName as SessionView,
   sessionLabel,

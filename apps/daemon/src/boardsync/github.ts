@@ -7,7 +7,7 @@ import { FlightdeckError } from "../errors.ts";
 import type { GhResult, GhRunner } from "../github/gh.ts";
 import { githubStatus } from "../github/status.ts";
 import { TRUSTED_ASSOCIATIONS } from "../issues/providers.ts";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import type {
   BoardProvider,
   ExternalBoard,

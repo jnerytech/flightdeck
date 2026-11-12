@@ -9,7 +9,7 @@ import {
   installHooks,
   uninstallHooks,
 } from "../../src/central/hooks-install.ts";
-import { layoutLike, parseJsonText } from "../../src/json-text.ts";
+import { layoutLike, parseJsonText } from "../../src/kernel/json-text.ts";
 import {
   installTelemetry,
   type TelemetryTarget,

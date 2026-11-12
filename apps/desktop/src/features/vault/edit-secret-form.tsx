@@ -3,8 +3,8 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
-import type { SecretMeta } from "@/lib/vault";
 import { Form, FormActions } from "@/shared/layout/index.ts";
+import type { SecretMeta } from "./vault";
 
 const EDITSECRETFORM_KEYS = ["hosts"] as const;
 

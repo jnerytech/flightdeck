@@ -16,7 +16,7 @@ import {
 import { z } from "zod";
 import { createInside, readInside } from "../board/index.ts";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /** A template's id: a folder name, lower case, no dot, no slash. */
 const ID = HARNESS_TEMPLATE_ID;

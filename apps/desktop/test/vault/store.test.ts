@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { VaultOutcome } from "../../src/lib/vault-requests.ts";
+import type { VaultOutcome } from "../../src/features/vault/vault-requests.ts";
 import { memoryPlatform, TOKEN } from "../fixtures.ts";
 import { legacyDaemon } from "../legacy-daemon.ts";
 import { settlePlain as settle } from "../wait.ts";

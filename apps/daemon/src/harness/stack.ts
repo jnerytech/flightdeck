@@ -9,7 +9,7 @@ import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarnessStack } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 
 type Stack = HarnessStack["stacks"][number];

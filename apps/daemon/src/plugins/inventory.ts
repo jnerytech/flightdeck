@@ -11,7 +11,7 @@ import { basename, join, resolve } from "node:path";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { FlightdeckError } from "../errors.ts";
-import { parseJsonWith } from "../json-text.ts";
+import { parseJsonWith } from "../kernel/index.ts";
 import { isInside } from "../paths.ts";
 import { AnyJson } from "./json-reads.ts";
 

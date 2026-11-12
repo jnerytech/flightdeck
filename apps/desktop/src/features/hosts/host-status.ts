@@ -1,5 +1,5 @@
-import type { Key, T } from "../i18n/index.ts";
-import type { HostView } from "./app-store.ts";
+import type { Key, T } from "../../i18n/index.ts";
+import type { HostView } from "../../lib/app-store.ts";
 import type { ConnectionStatus } from "./host-connection.ts";
 
 /** What a host's connection looks like: its text and the family of its color. */

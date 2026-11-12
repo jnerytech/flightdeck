@@ -7,7 +7,7 @@
 
 const SOURCE = /^(apps|packages)\/[^/]+\/src\/.+\.tsx?$/;
 /** The helper that parses past a byte order mark (#927) is the one place a raw call belongs. */
-const HELPERS = ["apps/daemon/src/json-text.ts"];
+const HELPERS = ["apps/daemon/src/kernel/json-text.ts"];
 
 /** Whether the check reads this tracked path: TypeScript under a package's src, minus the helper and declarations. */
 export function isScanned(path: string): boolean {

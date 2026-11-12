@@ -1,6 +1,6 @@
 import { RunBudget, RunUsage } from "@flightdeck/protocol";
 import { z } from "zod";
-import { parseJsonOr, parseJsonWith } from "../json-text.ts";
+import { parseJsonOr, parseJsonWith } from "../kernel/index.ts";
 import type { RunSpending } from "./budget.ts";
 
 /** The JSON columns of a workflow run and its steps, read through their schemas (#1609). */

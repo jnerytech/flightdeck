@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ResourcesSnapshot } from "@flightdeck/protocol";
+import { RequestError } from "../src/features/hosts/host-connection.ts";
 import { formatBytes } from "../src/i18n/format.ts";
-import { RequestError } from "../src/lib/host-connection.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";

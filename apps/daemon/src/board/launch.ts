@@ -6,7 +6,7 @@ import {
   specExpectedPath,
 } from "@flightdeck/protocol";
 import { FlightdeckError, refusalOf } from "../errors.ts";
-import { parseJsonWith } from "../json-text.ts";
+import { parseJsonWith } from "../kernel/index.ts";
 import { withoutPersonas } from "../personas/prepare.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import type { BoardEvent } from "./columns.ts";

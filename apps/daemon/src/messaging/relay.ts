@@ -1,6 +1,6 @@
 /** A queued message as the app carries it to another host (#1609). */
 import { type MessageKind, RelayMessage } from "@flightdeck/protocol";
-import { parseJsonOr } from "../json-text.ts";
+import { parseJsonOr } from "../kernel/index.ts";
 
 /** The columns of a stored message the relay reads. */
 interface RelayRow {
