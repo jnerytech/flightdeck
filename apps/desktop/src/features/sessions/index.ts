@@ -12,7 +12,6 @@ export { SessionCommandsSlice } from "./commands.ts";
 export { composerModeMenu, offersModelPicker } from "./composer-pickers.ts";
 export { queueStep, submitAction } from "./composer-queue.ts";
 export { ExternalSessionsSlice } from "./external.ts";
-export { approvalRequestOf, externalRequestsOf, externalTitle } from "./external-view.ts";
 export {
   costAsks,
   cursorMove,
