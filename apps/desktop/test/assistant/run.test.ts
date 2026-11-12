@@ -5,8 +5,11 @@ import {
   type AssistantRunPayload,
   KIND_SPECS,
 } from "@flightdeck/protocol";
-import { AssistantController, type AssistantControllerDeps } from "../../src/lib/assistant.ts";
-import { type AssistantPrefs, defaultPrefs } from "../../src/lib/assistant-prefs.ts";
+import {
+  AssistantController,
+  type AssistantControllerDeps,
+} from "../../src/features/assistant/assistant.ts";
+import { type AssistantPrefs, defaultPrefs } from "../../src/features/assistant/assistant-prefs.ts";
 import { fakeAssistant } from "../fixtures.ts";
 
 const RESULT: AssistantResult = {

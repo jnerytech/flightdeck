@@ -1,6 +1,6 @@
 import type { Key, T } from "@/i18n/index";
 import { secretKindsText } from "@/i18n/secret-kinds";
-import type { AssistantFailure } from "@/lib/assistant";
+import type { AssistantFailure } from "./assistant.ts";
 
 /** A refusal in words: the text of its reason, with the values it carries. Never a key, never the user's text. */
 export function refusalText(t: T, failure: AssistantFailure): string {

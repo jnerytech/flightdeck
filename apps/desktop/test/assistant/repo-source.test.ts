@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AssistantContextBundle, AssistantResult } from "@flightdeck/protocol";
-import { AssistantController } from "../../src/lib/assistant.ts";
-import type { AssistantPrefs } from "../../src/lib/assistant-prefs.ts";
+import { AssistantController } from "../../src/features/assistant/assistant.ts";
+import type { AssistantPrefs } from "../../src/features/assistant/assistant-prefs.ts";
 import { fakeAssistant } from "../fixtures.ts";
 
 /**
