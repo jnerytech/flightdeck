@@ -11,7 +11,7 @@ import {
   type Machine,
   machineTag,
   runSteps,
-} from "../../lib/perf-baseline.ts";
+} from "../../lib/bundle/perf-baseline.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const machine: Machine = {

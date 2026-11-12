@@ -251,7 +251,7 @@ export const VaultPage = memo(function VaultPage(props: {
                         info={infos[secret.id] ?? {}}
                         revealed={shown?.id === secret.id ? shown.value : null}
                         onReveal={() => setAsking(secret)}
-                        onCopy={() => void store.copySecret(secret.id, clearMs)}
+                        onCopy={() => void store.secrets.copy(secret.id, clearMs)}
                         onRemove={() => setRemoving(secret)}
                         onEdit={() => setEditing(secret)}
                         onRules={() => setRuling(secret)}

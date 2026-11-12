@@ -16,7 +16,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { byCodeUnit } from "@flightdeck/protocol";
+import { byCodeUnit, type MemorySuggestion } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError, isInside, whichOnPath } from "../kernel/index.ts";
@@ -50,14 +50,6 @@ export interface MemoryDecision {
   before: string | null;
   after: string | null;
   at: string;
-}
-
-/** A cleanup the screen suggests; the memory is never edited because of it. */
-export interface MemorySuggestion {
-  kind: "duplicate" | "broken-link" | "orphan" | "stale" | "contradiction";
-  files: string[];
-  /** The index line behind a broken link. */
-  detail?: string;
 }
 
 export interface MemoryWrite {

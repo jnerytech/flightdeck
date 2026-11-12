@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { specAreas } from "./lib/guards/spec-lint.ts";
-import { parseWaivers, runAudit } from "./lib/tdd-audit.ts";
+import { parseWaivers, runAudit } from "./lib/guards/tdd-audit.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const args = process.argv.slice(2).filter((a) => a !== "--");

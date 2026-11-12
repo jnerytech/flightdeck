@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { bareSorts } from "../../lib/ratchets/sort-compare.ts";
 import {
   exclusionsOf,
   isTestFile,
   matchesGlob,
   testInclusionsOf,
 } from "../../lib/sonar/project.ts";
-import { bareSorts } from "../../lib/sort-compare.ts";
 
 // repo-wide (#1108): reads every tracked code file, so CI's quick job runs it on every PR.
 
