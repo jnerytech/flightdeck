@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { HubRow } from "../src/lib/hub.ts";
+import type { HubRow } from "../src/features/sessions/hub.ts";
 import {
   DEFAULT_TILE_LAYOUT,
   hiddenTiles,

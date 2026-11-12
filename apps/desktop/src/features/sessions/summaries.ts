@@ -4,9 +4,9 @@ import type { T } from "../../i18n/index.ts";
 import type { SidebarSession } from "../../lib/app-store.ts";
 import { type AboutNotification, summaryNotifications } from "../../lib/notify.ts";
 import { parseRequestLink, requestLink } from "../../lib/request-link.ts";
-import { sessionKey } from "../../lib/session-key.ts";
 import type { InboxSlice } from "../inbox/index.ts";
 import { decide, type NotifyPreferences, type NotifySource } from "../notifications/index.ts";
+import { sessionKey } from "./session-key.ts";
 
 /** How long workers of one team finishing are gathered into one message. */
 const FOLD_MS = 10_000;

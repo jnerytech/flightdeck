@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { type HubRowState, hubRows } from "../src/features/sessions/hub.ts";
 import { translator } from "../src/i18n/index.ts";
 import { AppStore } from "../src/lib/app-store.ts";
-import { type HubRowState, hubRows } from "../src/lib/hub.ts";
 import { type QuietState, quietAlerts, quietText } from "../src/lib/quiet.ts";
 import { memoryPlatform } from "./fixtures.ts";
 

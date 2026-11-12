@@ -15,6 +15,7 @@ import { PersonaPicker, PersonaSwitch } from "@/features/personas/index.ts";
 import { CacheTimer } from "@/features/sessions/cache-timer";
 import { EarlierTurns } from "@/features/sessions/earlier-turns";
 import { ExternalView } from "@/features/sessions/external-session-view.tsx";
+import type { HubRow } from "@/features/sessions/index.ts";
 import { rowRoute, sessionTabOffers } from "@/features/sessions/index.ts";
 import { RecapPanel } from "@/features/summary/index.ts";
 import { UntrustedNotice } from "@/features/trust/index.ts";
@@ -44,7 +45,6 @@ import {
   sessionKey,
 } from "../lib/app-store.ts";
 import type { Density } from "../lib/density.ts";
-import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
 import type { Route } from "../lib/router.ts";

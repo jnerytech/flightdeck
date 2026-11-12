@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ViewToggle } from "@/components/layout/view-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { HubView } from "@/features/sessions/index.ts";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { cn } from "@/lib/utils";
 import {
@@ -19,7 +20,6 @@ import { basename } from "@/shared/lib/index.ts";
 import type { AppStore, HistoryFilter } from "../../lib/app-store.ts";
 import { usd } from "../../lib/costs.ts";
 import type { Density } from "../../lib/density.ts";
-import type { HubView } from "../../lib/hub.ts";
 import { projectLabel } from "../../lib/usage-rows.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { HistoryCard } from "./history-card.tsx";

@@ -33,7 +33,7 @@ import {
   RenameHostDialog,
 } from "@/features/hosts/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
-import { rowRoute } from "@/features/sessions/index.ts";
+import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { AccountFooter } from "@/features/shell/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
@@ -48,7 +48,6 @@ import { footAccount } from "../lib/foot-account.ts";
 import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
-import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
 import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";

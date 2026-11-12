@@ -1,4 +1,4 @@
-import type { Key } from "../i18n/index.ts";
+import type { Key } from "../../i18n/index.ts";
 
 /** The views of a session's page, in the order the keys and the palette number them. */
 export const SESSION_VIEWS = [

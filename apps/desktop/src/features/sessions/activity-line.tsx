@@ -2,7 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { formatDuration } from "@/i18n/format";
 import type { T } from "../../i18n/index.ts";
-import type { Activity } from "../../lib/session-activity.ts";
+import type { Activity } from "./session-activity.ts";
 
 /** The words for what the session is doing, from the dictionary. */
 export function activityText(activity: Activity, t: T): string {

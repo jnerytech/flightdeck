@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useT } from "@/i18n/context";
-import { inputSummary } from "../../lib/tool-input.ts";
 import { ToolCallBody } from "./tool-call-body";
+import { inputSummary } from "./tool-input.ts";
 
 /** Collapsed tool call: name and input summary; expands to the full input and its result. */
 export function ToolCall(

@@ -1,6 +1,6 @@
 import type { Card, WatchInfo } from "@flightdeck/protocol";
+import { sessionKey } from "@/features/sessions/index.ts";
 import type { AppKernel } from "../../lib/kernel.ts";
-import { sessionKey } from "../../lib/session-key.ts";
 import { type WatchCore, WatchSlice } from "./store.ts";
 
 /** What the watch's wire file reads from the app's state, keyed by `sessionKey`. */
