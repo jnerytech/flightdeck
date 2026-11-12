@@ -12,8 +12,8 @@ import {
   parseServerMessage,
   type SessionEventOf,
 } from "@flightdeck/protocol";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
-import { pollUntil } from "./lib/smoke-poll";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
+import { pollUntil } from "./lib/smoke/poll";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,

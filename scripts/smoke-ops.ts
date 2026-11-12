@@ -16,7 +16,7 @@ import {
   PROTOCOL_VERSION,
   parseServerMessage,
 } from "@flightdeck/protocol";
-import { readListenUrl } from "./lib/smoke-daemon.ts";
+import { readListenUrl } from "./lib/smoke/daemon.ts";
 import { assertBinaryUntouched, installBinaryGuard } from "./test/binary-guard.ts";
 import {
   assertCheckGuardActive,
