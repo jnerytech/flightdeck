@@ -38,7 +38,7 @@ import { createHostChecks, type HostCheckOptions } from "./deps/wiring.ts";
 import { spawnExec } from "./exec.ts";
 import { listAlerts } from "./github/alerts.ts";
 import { runGh, runGhIn } from "./github/gh.ts";
-import { GithubService } from "./github/service.ts";
+import { createGithub } from "./github/wiring.ts";
 import { createHarness } from "./harness/wiring.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
@@ -664,12 +664,7 @@ export async function startDaemon(
       signals: new RoiSignals(),
     }),
     boardsync: boardSync.service,
-    github: new GithubService({
-      roots: config.allowedRoots,
-      board,
-      issues,
-      startSession: ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
-    }),
+    github: createGithub({ config, board, issues, manager }),
     serviceInstall: appServiceInstall(
       args.config ?? null,
       configFile,
