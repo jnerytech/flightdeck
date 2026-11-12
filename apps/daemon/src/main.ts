@@ -87,6 +87,7 @@ import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
 import { createProjects, createProjectTrust } from "./trust/wiring.ts";
+import { createUi } from "./ui/wiring.ts";
 import { createUpdates } from "./updates/index.ts";
 import { readWatchSettings } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
@@ -266,6 +267,9 @@ export async function startDaemon(
   const { keepAwake } = await domains.add(
     createKeepAwake({ powerContext: options.powerContext, config, configFile }),
   );
+
+  // The host's default mode and lock (phase 33), kept in the config like the other settings.
+  await domains.add(createUi({ config, configFile }));
 
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
@@ -625,9 +629,6 @@ export async function startDaemon(
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
-    // The host's default mode and lock (phase 33), kept in the config like the other settings.
-    ui: { ...config.ui },
-    onUiSettings: (ui) => updateConfigFile(configFile, (raw) => ({ ...raw, ui })),
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
