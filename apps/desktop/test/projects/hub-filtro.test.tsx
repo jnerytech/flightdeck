@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { unfoldAll } from "./unfold.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { unfoldAll } from "../unfold.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { SessionsHub } = await import("../src/ui/SessionsHub.tsx");
-const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { SessionsHub } = await import("../../src/ui/SessionsHub.tsx");
+const { TooltipProvider } = await import("../../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
