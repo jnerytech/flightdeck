@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
-import { readStyles } from "../../../scripts/lib/styles-source.ts";
+import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
 import { EMPTY_PERIOD } from "../src/features/roi/roi.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";
