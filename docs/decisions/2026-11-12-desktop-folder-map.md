@@ -18,6 +18,8 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 - `features/<domain>/` holds the domain's components, store slice, pure rules and hooks. A
   `lib/<name>.ts` that only one domain uses moves into that domain; a `lib` file that two or
   more domains use goes to `shared/` (no domain imports another domain's deep file).
+- `app/` is new: the root component, the lazy screen table, the router, the store and the log. It
+  is the only place that may import every domain; no domain imports it.
 - `shared/` is new. It holds our own primitives with no domain knowledge, in four folders:
   `shared/layout/` (the page, panel, stack, list and table primitives), `shared/feedback/`
   (dialogs, notices, busy and action buttons), `shared/status/` (dots, meters, progress),
@@ -35,7 +37,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 |---|---|---|
 | `approval/` | `features/permissions/` | the approval card, hold button and question form belong to the permission flow; `approval-lines.ts` and `gate-text.tsx` go with it. **theirs** if fd-frontend needs the card for the session view: ask before moving |
 | `assistant/` | `features/assistant/` (new domain, GLOSSARY row) | the wand, model picker and keys; `refusal-text.ts` goes with it |
-| `feedback/` | `shared/feedback/` | `action-button`, `busy`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`, `notices`, and `confirm-dialog.tsx` (moved by #2101) |
+| `feedback/` | `shared/feedback/` | `action-button`, `busy`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`, `notices`, and `confirm-dialog.tsx` (#2101 moves it from `ui/` to `components/feedback/`) |
 | `layout/` | `shared/layout/` | primitives with no domain; `app-shell.tsx` and `breadcrumb.tsx` move to `features/shell/` (below) |
 | `markdown/` | `shared/markdown/` | `markdown.tsx` and the lazy `markdown-body.tsx` (the lazy chunk must stay lazy: keep `bundle-reach` green) |
 | `notifications/` | `features/notifications/` (new domain, GLOSSARY row) | center and preferences |
@@ -57,13 +59,12 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `App.tsx` | `app/` (new, with `main.tsx` wiring) | the root; moves last |
 | `Areas.tsx` | `app/` | imports `Screen` from `Screens.tsx`: move it with or after `Screens.tsx` to avoid a cycle |
 | `BoardView.tsx` | **theirs** (`features/board/`) | |
-| `ConfirmDialog.tsx` | `shared/feedback/` | **moved** (#2101) |
+| `ConfirmDialog.tsx` | `components/feedback/`, then `shared/feedback/` | #2101 (in flight) does the first step; the second goes with the `feedback/` folder |
 | `ExternalView.tsx` | **theirs** (`features/sessions/`) | |
 | `FirstRun.tsx` | `features/hosts/` | **moved** (#2093) |
 | `FolderPicker.tsx` | `features/projects/` | used by plugins, teleport, the new-session form and the screens: export it from the `projects` index |
-| `Markdown.tsx` | `shared/markdown/` | **moved** (#2099) |
+| `Markdown.tsx` | `components/markdown/`, then `shared/markdown/` | the first step is **done** (#2099); the second goes with the `markdown/` folder |
 | `NewSessionForm.tsx` | **theirs** (`features/sessions/`) | |
-| `PreviewPage.tsx` | `features/shell/` or `app/` | two-line page behind a hash route; decide when moving |
 | `Screens.tsx` | `app/` | the lazy screen table; moves with `App.tsx`, after the features it loads are in place |
 | `SessionTabs.tsx` | **theirs** (`features/tabs/`) | |
 | `SessionView.tsx` | **theirs** (`features/sessions/`) | |
@@ -125,7 +126,7 @@ prefix. Tests move with their file in the same PR.
 - One folder or one file group per PR, structure only: `refactor(...)` commits, tests change
   only their import paths (the structure guard fails the PR otherwise), baselines
   (`fast-coverage-baseline.json`, `apps/desktop/layout-baseline.json`, `src-size`) updated.
-- A new `features/<x>` or `shared/<x>` folder gets its `GLOSSARY.md` Domains row in the same PR.
+- A new `features/<x>`, `shared/<x>` or `app/` folder gets its `GLOSSARY.md` Domains row in the same PR.
 - A file that two domains import is not moved into either: it goes to `shared/` first.
 - Names in the table are the proposal. When a move finds the file belongs elsewhere (the
   importers say so), the PR fixes this table in the same commit.
