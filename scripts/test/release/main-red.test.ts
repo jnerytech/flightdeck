@@ -7,7 +7,7 @@ import {
   mainRedLine,
   mainRedWithin,
   openClaims,
-} from "../../lib/main-red.ts";
+} from "../../lib/pr/main-red.ts";
 
 /**
  * Issue #1246: a red main is claimed once. Every `gh` here is a fake that answers by its

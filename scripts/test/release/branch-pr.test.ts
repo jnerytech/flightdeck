@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { branchPr } from "../../lib/branch-pr.ts";
+import { branchPr } from "../../lib/pr/branch-pr.ts";
 
 describe("branch-pr (#1115)", () => {
   test("only a PR of this repository whose head is the branch is its own", () => {

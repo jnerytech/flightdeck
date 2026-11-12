@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { FULL_SUITE_JOB } from "../../lib/pr-flow.ts";
+import { FULL_SUITE_JOB } from "../../lib/pr/pr-flow.ts";
 
 /**
  * #220: the Windows tests run in three shards and the prints apart from e2e, while the four checks

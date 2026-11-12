@@ -7,7 +7,7 @@ import {
   noteCheck,
   type OwnerMark,
   ownerMark,
-} from "../../lib/issue-claim.ts";
+} from "../../lib/pr/issue-claim.ts";
 
 /**
  * Issue #1410: a session claims an issue before it starts. Every `gh` here is a fake that answers

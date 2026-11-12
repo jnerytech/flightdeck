@@ -1,8 +1,8 @@
 import { inSequence } from "@flightdeck/protocol";
+import { type PrRun, prRunFrom, pushWaitPass } from "../hooks/claude-hooks.ts";
+import { heavyReasonGiven } from "../slot/heavy.ts";
 import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "./branch-pr.ts";
-import { type PrRun, prRunFrom, pushWaitPass } from "./hooks/claude-hooks.ts";
 import { reviewProblem } from "./review-record.ts";
-import { heavyReasonGiven } from "./slot/heavy.ts";
 /**
  * `bun run pr -- <open|next|update|merge> …` (issue #260, GitHub Flow): one PR per branch to main,
  * each merged on its own when its required checks are green on its HEAD. All of it through REST

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sliceTitle } from "../../lib/pr-flow.ts";
+import { sliceTitle } from "../../lib/pr/pr-flow.ts";
 
 /** #197 (Sonar S7750): sliceTitle picks the oldest non-merge subject (git log lists the newest first). */
 describe("sonar197-findlast: sliceTitle", () => {
