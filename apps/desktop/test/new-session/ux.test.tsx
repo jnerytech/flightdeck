@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { poll } from "../../daemon/test/support/helpers.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { personasHost } from "./personas/ui-setup.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { poll } from "../../../daemon/test/support/helpers.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { personasHost } from "../personas/ui-setup.ts";
+import { settle, uiIdle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { NewSessionForm } = await import("../src/features/sessions/new-session-form.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { NewSessionForm } = await import("../../src/features/sessions/new-session-form.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -95,8 +95,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
 
   test("the first prompt is optional: with none the session is created idle, with one it is sent", async () => {
     const created: unknown[] = [];
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     render(
       <TContext.Provider value={translator("en")}>
         <NewSessionForm host={host} onCreate={(payload) => void created.push(payload)} />
@@ -119,8 +119,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
   // session sat below it and only Tab reached it. It is a page now: its title is the page's, its
   // body scrolls, and its buttons stay at the bottom of the window.
   test("the form is a page whose body scrolls, and Create session stays at the bottom of the window", async () => {
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     render(
       <TContext.Provider value={translator("en")}>
         <NewSessionForm host={host} onCreate={() => {}} />
@@ -139,8 +139,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
 
   test("a Model select sits by the permission mode: the default sends none, a choice sends it", async () => {
     const created: Array<Record<string, unknown>> = [];
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     render(
       <TContext.Provider value={translator("en")}>
         <NewSessionForm host={host} onCreate={(payload) => void created.push(payload)} />
@@ -161,8 +161,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     const slow = new Promise<void>((resolve) => {
       open = resolve;
     });
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     render(
       <TContext.Provider value={translator("en")}>
         <NewSessionForm
@@ -188,8 +188,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
   });
 
   test("a host with no allowed folder says so instead of a silent button", async () => {
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     const empty = { id: "h2", name: "vazio", info: { allowedRoots: [] } } as unknown as typeof host;
     render(
       <TContext.Provider value={translator("en")}>
@@ -205,8 +205,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
   });
 
   test("every field of the form has the same width, and the button sits at the fields' left edge", async () => {
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     const { container } = render(
       <TContext.Provider value={translator("en")}>
         <NewSessionForm host={host} onCreate={() => {}} extra={<select aria-label="Persona" />} />
@@ -225,8 +225,8 @@ describe("nova-sessao-ux: the form says what it needs", () => {
 
   test("a host whose folders arrive after the form opened is not left with no folder", async () => {
     const created: unknown[] = [];
-    const { TContext } = await import("../src/i18n/context.tsx");
-    const { translator } = await import("../src/i18n/index.ts");
+    const { TContext } = await import("../../src/i18n/context.tsx");
+    const { translator } = await import("../../src/i18n/index.ts");
     const loading = { id: "h3", name: "novo" } as unknown as typeof host;
     const form = (h: typeof host) => (
       <TContext.Provider value={translator("en")}>
