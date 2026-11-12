@@ -9,7 +9,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TContext } = await import("../src/i18n/context.tsx");
-const { RequestError } = await import("../src/lib/host-connection.ts");
+const { RequestError } = await import("../src/features/hosts/host-connection.ts");
 const { BudgetsSection } = await import("../src/features/costs/budgets-section.tsx");
 const { MessagingRulesSection } = await import("../src/features/messaging/rules-section.tsx");
 const { NewSecretForm } = await import("../src/features/vault/new-secret-form.tsx");

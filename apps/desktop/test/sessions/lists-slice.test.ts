@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type { HostConnection } from "../../src/features/hosts/host-connection.ts";
 import { SessionListsSlice } from "../../src/features/sessions/index.ts";
 import type { AppState } from "../../src/lib/app-store.ts";
-import type { HostConnection } from "../../src/lib/host-connection.ts";
 
 type Held = Pick<AppState, "hosts" | "hub" | "names" | "meta" | "externals" | "background">;
 

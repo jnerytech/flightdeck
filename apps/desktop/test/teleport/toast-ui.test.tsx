@@ -13,7 +13,7 @@ const {
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
-const { RequestError } = await import("../../src/lib/host-connection.ts");
+const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
 const { TeleportMove } = await import("../../src/features/teleport/teleport-move.tsx");
 const { TContext } = await import("../../src/i18n/context.tsx");
 

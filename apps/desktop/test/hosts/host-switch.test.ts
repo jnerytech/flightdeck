@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { HostTabs } from "../../src/features/hosts/host-tabs.ts";
+import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
-import { HostTabs } from "../../src/lib/host-tabs.ts";
-import { HOSTS_KEY } from "../../src/lib/hosts.ts";
 import type { Route } from "../../src/lib/router.ts";
 import { memoryPlatform } from "../fixtures.ts";
 

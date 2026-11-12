@@ -54,11 +54,19 @@ import {
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
+  type ConnectionStatus,
   type HealthSlice,
+  type HostConfig,
+  HostConnection,
   HostRosterSlice,
+  HostTabs,
   type HostUpdateSlice,
   initialHealthState,
+  loadHosts,
   type NewHost,
+  RequestError,
+  saveHosts,
+  statusLine,
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
@@ -130,10 +138,15 @@ import {
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
+  checkDelivery,
+  type DeliveryRefusal,
+  Vault,
   type VaultApprovalsSlice,
+  VaultRules,
   type VaultRulesSlice,
   VaultScanSlice,
   type VaultSecretsSlice,
+  VaultUsageLog,
   wireVaultApprovals,
   wireVaultRules,
   wireVaultSecrets,
@@ -169,14 +182,6 @@ import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
-import {
-  type ConnectionStatus,
-  HostConnection,
-  RequestError,
-  statusLine,
-} from "./host-connection.ts";
-import { HostTabs } from "./host-tabs.ts";
-import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
@@ -197,10 +202,6 @@ import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import { isLocalUrl } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
-import { Vault } from "./vault.ts";
-import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
-import { VaultRules } from "./vault-rules.ts";
-import { VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */

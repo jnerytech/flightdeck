@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { VaultScanSlice } from "../../src/features/vault/index.ts";
-import type { SecretMeta } from "../../src/lib/vault.ts";
+import type { SecretMeta } from "../../src/features/vault/vault.ts";
 
 /** A scan over a vault stand-in: each secret's value by id, null for one the keyring has lost. */
 function scan(secrets: Array<[Partial<SecretMeta>, string | null]>, fail = false) {

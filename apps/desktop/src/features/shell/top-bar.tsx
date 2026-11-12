@@ -21,10 +21,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { HostDot } from "@/features/hosts/index.ts";
+import { HostDot, hostDotView } from "@/features/hosts/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import type { Key, T } from "@/i18n/index";
-import { hostDotView } from "@/lib/host-status";
 import { IconTip } from "@/shared/feedback/index.ts";
 import { StatusDot } from "@/shared/status/index.ts";
 import type { Theme } from "./theme.ts";

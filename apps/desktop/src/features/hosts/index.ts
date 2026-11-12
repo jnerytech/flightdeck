@@ -18,12 +18,24 @@ export {
   initialHealthState,
 } from "./health-store.ts";
 export { hostNeedsAttention } from "./host-attention.ts";
+export { hostColorVar } from "./host-color.ts";
+export {
+  type ConnectionStatus,
+  HostConnection,
+  RequestError,
+  statusLine,
+} from "./host-connection.ts";
 export { HostDot } from "./host-dot.tsx";
 export { hostDownReason } from "./host-down-reason.ts";
 export { draftFromLink, draftUrl, type HostDraft, HostForm } from "./host-form.tsx";
+export type { HostNameError } from "./host-name.ts";
+export type { RetryState } from "./host-offline.ts";
 export { HostOfflineBanner } from "./host-offline-banner.tsx";
 export { hostInitial, hostRailLabel } from "./host-rail.ts";
+export { hostDotView, hostStatusView } from "./host-status.ts";
+export { HostTabs } from "./host-tabs.ts";
 export { HostVersionTip, hostVersionText } from "./host-version.tsx";
+export { HOSTS_KEY, HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 export { HostsBanner } from "./hosts-banner.tsx";
 export { RenameHostDialog } from "./rename-host-dialog.tsx";
 export { HostRosterSlice, type NewHost } from "./roster-store.ts";
