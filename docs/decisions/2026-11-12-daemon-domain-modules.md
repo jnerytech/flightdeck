@@ -132,6 +132,15 @@ Each domain then costs its import and one or two lines in the list (its modules 
 another domain takes from it). With about 35 domains that is roughly 185 + 35 × 1.5, about 240
 lines. Under 400 is reachable; #1593 measures it after the module slices.
 
+**Amendment (fd-coordinator, 2026-11-12, on #1593):** the target for #1593 is at most 720 lines,
+not the estimate above. There is no shared `core` deps object (the config, the log and the store
+handed to every factory): a factory would receive dependencies it does not use, against the named
+deps of section 2 and #1589's "nothing depends on what it does not use". Repeating the
+`db`/`config`/`log` lines in the composition root is accepted. Constraints 2 and 3 are pinned at
+module level by `apps/daemon/test/automations/wiring.test.ts` (the board work's stop waits for the
+automations' drain before it stops the watch and the board sync's loop); the daemon-level pin of
+the order comes with the slice that replaces the hand-written stop with the runner's.
+
 ### 6. The first slice
 
 1. A `test(server)` commit with the runner's output test: start on add, a pending start holding the
