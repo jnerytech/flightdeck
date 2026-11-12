@@ -40,7 +40,11 @@ const CUT_LINE = `${FILE}: 4 tests, 5 expects at the base; 0 tests, 0 expects at
 describe("tests-removed (#2176)", () => {
   test("counts tests (test, it, each, skipIf) and expects, not describe or expect.assertions", () => {
     expect(countTests(FULL)).toEqual({ tests: 4, expects: 5 });
-    expect(countTests("describe('x', () => { expect.assertions(1); split(a); fit; });")).toEqual({
+    expect(
+      countTests(
+        "describe('x', () => { expect.assertions(1); split(a); fit; res.expect(200); unexpect(1); });",
+      ),
+    ).toEqual({
       tests: 0,
       expects: 0,
     });
