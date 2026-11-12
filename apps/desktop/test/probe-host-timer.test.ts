@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { probeHost } from "../src/features/hosts/probe-host.ts";
 import { translator } from "../src/i18n/index.ts";
-import { probeHost } from "../src/lib/probe-host.ts";
 
 describe("probe-host-timer: the probe's own time limit, with the clock in the test's hands", () => {
   test("when the limit passes the probe gives up with the timeout reason, and its timer is cleared", async () => {

@@ -25,6 +25,7 @@
   "apps/desktop/src/features/sessions/new-session-prefs.ts": 1,
   "apps/desktop/src/features/sessions/resume-offer.ts": 1,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 1,
+  "apps/desktop/src/features/setup/setup-steps.ts": 1,
   "apps/desktop/src/features/shell/shell-prefs.ts": 1,
   "apps/desktop/src/features/shell/sidebar-groups.ts": 1,
   "apps/desktop/src/features/shell/tree-fold.ts": 2,
@@ -37,6 +38,5 @@
   "apps/desktop/src/lib/app-store.ts": 2,
   "apps/desktop/src/lib/clients.ts": 2,
   "apps/desktop/src/lib/frontmatter.ts": 1,
-  "apps/desktop/src/lib/setup-steps.ts": 1,
   "packages/protocol/src/index.ts": 1
 }

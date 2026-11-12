@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ClientSwitcher } from "@/features/clients/client-switcher.tsx";
 import { requiredMissing } from "@/features/deps/index.ts";
-import type { HostNameError } from "@/features/hosts/index.ts";
 import {
+  type HostNameError,
   HostVersionTip,
   hostDotView,
   hostInitial,
@@ -37,6 +37,7 @@ import {
 import { pendingCount } from "@/features/needs-you/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { hubRows, rowRoute } from "@/features/sessions/index.ts";
+import { setupProgress, setupSteps } from "@/features/setup/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import type { Key, T } from "@/i18n/index.ts";
@@ -44,7 +45,6 @@ import { type AppState, type AppStore, type HostView, needsYou } from "@/lib/app
 import { type GithubHost, githubSignedIn } from "@/lib/github-session.ts";
 import { activeWorktreeFilter, projectTree } from "@/lib/project-tree.ts";
 import type { Route } from "@/lib/router.ts";
-import { setupProgress, setupSteps } from "@/lib/setup-steps.ts";
 import { cn } from "@/lib/utils";
 import { APP_VERSION, anyHostHas, hasFeature } from "@/lib/version.ts";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";

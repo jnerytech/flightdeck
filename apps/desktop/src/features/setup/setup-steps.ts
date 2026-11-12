@@ -1,7 +1,7 @@
 import type { DepResult, Project } from "@flightdeck/protocol";
-import type { Platform } from "../platform/types.ts";
-import type { AppState } from "./app-store.ts";
-import type { Route } from "./router.ts";
+import type { AppState } from "../../lib/app-store.ts";
+import type { Route } from "../../lib/router.ts";
+import type { Platform } from "../../platform/types.ts";
 
 export type SetupStepId =
   | "host"

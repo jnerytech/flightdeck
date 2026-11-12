@@ -1,9 +1,9 @@
 import { Info } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { missingTools } from "@/features/setup/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
-import { missingTools } from "../../lib/setup-steps.ts";
 
 /**
  * A quiet, dismissible card for each tool an online host lacks (the GitHub CLI, `claude`): muted,

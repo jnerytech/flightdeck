@@ -81,9 +81,14 @@ import {
   initialHealthState,
   loadHosts,
   type NewHost,
+  parseRequestLink,
+  type RelayDeps,
   RequestError,
+  relayMessage,
+  relayUpdate,
   saveHosts,
   statusLine,
+  syncPeers,
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
@@ -141,6 +146,7 @@ import {
   type SettingsSlice,
   wireSettings,
 } from "../features/settings/index.ts";
+import { probeAfter, SetupSettings } from "../features/setup/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
@@ -198,9 +204,6 @@ import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from 
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
-import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
-import { parseRequestLink } from "./request-link.ts";
-import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import { TabScopeController } from "./tab-scope.ts";
 import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";

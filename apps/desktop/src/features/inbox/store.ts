@@ -1,5 +1,5 @@
+import { parseRequestLink } from "@/features/hosts/index.ts";
 import type { T } from "../../i18n/index.ts";
-import { parseRequestLink } from "../../lib/request-link.ts";
 import type { Route } from "../../lib/router.ts";
 import type { Notification } from "../../platform/types.ts";
 import {

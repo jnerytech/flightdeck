@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { requestLink } from "../../src/features/hosts/request-link.ts";
 import type { InboxEntry } from "../../src/features/inbox/inbox.ts";
 import { InboxSlice } from "../../src/features/inbox/index.ts";
 import { DEFAULT_NOTIFY_PREFS, type NotifyPrefs } from "../../src/features/notifications/index.ts";
-import { requestLink } from "../../src/lib/request-link.ts";
 
 /**
  * A notification center over stand-ins: what the system showed, the badges the taskbar was told,
