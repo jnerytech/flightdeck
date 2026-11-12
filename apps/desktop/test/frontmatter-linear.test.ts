@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getField, parseDocument, serialize } from "../src/lib/frontmatter.ts";
+import { getField, parseDocument, serialize } from "../src/features/agentcfg/frontmatter.ts";
 
 /**
  * Issue #363 (Sonar S8786): the `key: value` line of an agent or skill file is read in one pass.
