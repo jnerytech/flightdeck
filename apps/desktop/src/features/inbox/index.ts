@@ -3,6 +3,8 @@
  * bell; the taskbar badge, the system toast and the sound. Another domain imports from here, never a
  * file inside.
  */
+
+export type { InboxEntry } from "./inbox.ts";
 export { NotificationBell } from "./notification-bell.tsx";
 export { type InboxCore, InboxSlice } from "./store.ts";
 export { wireInbox } from "./wire.ts";
