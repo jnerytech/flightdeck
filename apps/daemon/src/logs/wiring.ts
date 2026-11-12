@@ -1,4 +1,3 @@
-import type { Config } from "../config.ts";
 import type { Logger } from "../logger.ts";
 import { FileLog } from "./file-log.ts";
 import { createLogScanner } from "./scanner.ts";
@@ -11,7 +10,8 @@ export interface HostLogDeps {
   dir: string;
   /** The user's home folder, written as `~`. */
   home: string;
-  config: Pick<Config, "token" | "hooks">;
+  /** The tokens the config holds: the protocol's at startup and the hooks'. */
+  config: { token: string; hooks: { token?: string } };
   /** The protocol's token as it is now: it rotates after startup. */
   currentToken: () => string;
   /** What the vault holds now: nothing until the vault exists. */
@@ -30,7 +30,7 @@ export function createHostLog(deps: HostLogDeps): { logger: Logger; fileLog: Fil
     home: deps.home,
     scanner: createLogScanner({
       tokens: () => [config.token, deps.currentToken(), config.hooks.token ?? ""].filter(Boolean),
-      vaultValues: () => deps.heldValues(),
+      vaultValues: deps.heldValues,
     }),
   });
   const logger: Logger = {
