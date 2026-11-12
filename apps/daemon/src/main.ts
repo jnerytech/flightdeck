@@ -64,8 +64,7 @@ import {
   type MemoryGateDeps,
 } from "./resources/wiring.ts";
 import { createReview } from "./review/wiring.ts";
-import { RoiSignals } from "./roi/signals.ts";
-import { RoiSummarizer } from "./roi/summary.ts";
+import { createRoi } from "./roi/wiring.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
@@ -427,6 +426,7 @@ export async function startDaemon(
   );
   await domains.add(createSummary({ db: store.db, scanner: snippetScanner }));
   await domains.add(createWebhook({ log: logger.log.bind(logger) }));
+  await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   const central = new Central({
     risk,
     autoApprove,
@@ -601,11 +601,6 @@ export async function startDaemon(
     // Issue #1344: "While you were away": what happened since a time, from what is stored.
     activity: (since, limit) =>
       activitySince({ db: store.db, quota: () => quota.windows() }, since, limit),
-    roi: new RoiSummarizer({
-      db: store.db,
-      keyOf: (path) => keys.known(path),
-      signals: new RoiSignals(),
-    }),
     github: createGithub({ config, board, issues, manager }),
     serviceInstall: appServiceInstall(
       args.config ?? null,
