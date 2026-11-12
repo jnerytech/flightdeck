@@ -1,5 +1,4 @@
 import type {
-  Card,
   ChangesUpdated,
   CommandPayload,
   CommandResults,
@@ -39,7 +38,7 @@ import {
   googleConfig,
   wireBackup,
 } from "../features/backup/index.ts";
-import { BoardWidth } from "../features/board/index.ts";
+import { BoardCardsSlice, BoardWidth } from "../features/board/index.ts";
 import {
   type ClientScopeSlice,
   Clients,
@@ -209,16 +208,6 @@ const AWAY_MARK_MS = 60_000;
 
 const isRun = (value: unknown): value is WorkflowRun =>
   typeof value === "object" && value !== null && "workflowName" in value && "steps" in value;
-
-const isCard = (value: unknown): value is Card =>
-  typeof value === "object" && value !== null && "column" in value && "projectId" in value;
-
-/** Cards inside a command result: a card, a whole board or none. */
-function cardsIn(result: unknown): Card[] {
-  if (isCard(result)) return [result];
-  const columns = (result as { columns?: Array<{ cards: Card[] }> } | undefined)?.columns ?? [];
-  return columns.flatMap((column) => column.cards);
-}
 
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
@@ -701,6 +690,15 @@ export class AppStore {
       show: (notification) => this.platform.notify(notification),
       setBadge: (count) => this.platform.setBadge?.(count),
     });
+    // Built here, not in a board wire: a wire importing the kernel would join its import cycle (#1624).
+    this.boardCards = new BoardCardsSlice({
+      cards: () => this.kernel.state().cards,
+      setCards: (cards) => this.kernel.update({ cards }),
+      connection: (hostId) => this.kernel.connection(hostId),
+      notify: (notification, route, fallbackUrl) =>
+        this.inbox.notify(notification, route, fallbackUrl),
+      t: () => this.kernel.t(),
+    });
     this.i18n = new I18n(platform);
     this.backupScheduler = new BackupScheduler(platform, {
       onAttention: (kind) => this.onBackupAttention(kind),
@@ -816,6 +814,8 @@ export class AppStore {
   readonly notifyPrefs: NotifyPreferences;
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
+  /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
+  private readonly boardCards: BoardCardsSlice;
   /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
   readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
@@ -1127,11 +1127,8 @@ export class AppStore {
   }
 
   /** #1220: one project's board on a host, its cards into the state (a host that fails says nothing). */
-  async loadBoard(hostId: string, projectId: string): Promise<void> {
-    const conn = this.link.connection(hostId);
-    if (!conn) return;
-    const board = await nullOnError(conn.request("board.get", { projectId }));
-    for (const card of cardsIn(board)) this.onCard(hostId, card);
+  loadBoard(hostId: string, projectId: string): Promise<void> {
+    return this.boardCards.load(hostId, projectId);
   }
 
   /**
@@ -1263,7 +1260,7 @@ export class AppStore {
     const conn = this.link.connection(hostId);
     if (!conn) throw new RequestError("offline", "unknown host");
     const result = await conn.request(type, payload);
-    for (const card of cardsIn(result)) this.onCard(hostId, card);
+    this.boardCards.onResult(hostId, result);
     if (isRun(result)) this.onRun(hostId, result);
     return result;
   }
@@ -1555,7 +1552,7 @@ export class AppStore {
       this.stream.onSubscribed(config.id, sessionId, result),
     onEvent: (config, envelope) => this.stream.onEvent(config.id, envelope),
     onSummaries: (config, summaries) => this.summaries.apply(config.id, summaries),
-    onCardUpdated: (config, card) => this.onCard(config.id, card),
+    onCardUpdated: (config, card) => this.boardCards.onCard(config.id, card),
     onExternal: (config, frame) => this.external.onExternal(config.id, frame),
     onVaultRequest: (config, request) => void this.vaultApprovals.onRequest(config, request),
     onVaultUsed: (config, used) => {
@@ -1813,23 +1810,6 @@ export class AppStore {
 
   private onRun(hostId: string, run: WorkflowRun): void {
     this.update({ runs: { ...this.state.runs, [sessionKey(hostId, run.id)]: run } });
-  }
-
-  private onCard(hostId: string, card: Card): void {
-    const { [sessionKey(hostId, card.id)]: previous, ...others } = this.state.cards;
-    // Phase 31: a card the app already knew has just lost its last blocker.
-    if (!card.discarded && card.unblockedAt && previous && !previous.unblockedAt) {
-      this.inbox.notify(
-        {
-          title: this.i18n.t("deps.notifyTitle"),
-          body: this.i18n.t("deps.notifyBody", { title: card.title }),
-        },
-        { name: "card", host: hostId, projectId: card.projectId, cardId: card.id },
-        card.prUrl,
-      );
-    }
-    const cards = card.discarded ? others : { ...others, [sessionKey(hostId, card.id)]: card };
-    this.update({ cards });
   }
 
   private updateHost(hostId: string, fn: (host: HostView) => HostView): void {
