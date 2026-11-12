@@ -602,16 +602,18 @@ export async function startDaemon(
       find: true,
     }),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
-    ...present({ rootsPlatform: options.rootsPlatform }),
+    roots: {
+      ...present({ platform: options.rootsPlatform }),
+      persist: (roots) =>
+        updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
+      picker: true,
+    },
     hostPause: hostPauseServer,
     memoryPause,
     keepAwake: keepAwakeSwitch,
     alerts: (cwd) => listAlerts(runGhIn, cwd),
     knowledge: serverGroup<"knowledge">()(knowledge),
     harness: serverGroup<"harness", "draft">()(harness),
-    persistRoots: (roots) =>
-      updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
-    fsDirs: true,
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
     // Issue #1344: "While you were away": what happened since a time, from what is stored.
     activity: (since, limit) =>

@@ -97,7 +97,7 @@ describe("fs-files: the fs.files command", () => {
       port: 0,
       token: TOKEN,
       allowedRoots: [root],
-      fsDirs: true,
+      roots: { picker: true },
     });
     stops.push(() => server.stop());
     const ok = await ask(server, "fs.files", { path: join(root, "code") });
