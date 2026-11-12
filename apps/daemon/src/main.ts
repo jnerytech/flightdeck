@@ -648,7 +648,7 @@ export async function startDaemon(
     runenv: { configs: runEnv.configs, manager: runEnv.manager },
     quota: serverGroup<"quota">()({ windows: quota, pause: quotaPause, history: quotaHistory }),
     usage,
-    costs,
+    costs: serverGroup<"costs">()({ costs, budgets }),
     telemetry: telemetryStore,
     bg: createBgService({
       db: store.db,
@@ -663,7 +663,6 @@ export async function startDaemon(
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
     webhook: new WebhookSender({ log: logger.log.bind(logger) }),
     telemetryOptIn,
-    budgets,
     review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
