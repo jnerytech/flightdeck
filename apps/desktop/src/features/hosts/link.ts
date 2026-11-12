@@ -22,13 +22,13 @@ type FrameKey = Exclude<
  * error in the table until the table names the slice that takes it.
  */
 export type HostRoutes = {
-  [K in FrameKey]-?: (
+  [K in FrameKey]: (
     host: HostConfig,
     ...args: Parameters<NonNullable<HostConnectionOptions[K]>>
   ) => void;
 };
 
-/** The routes as one connection's callbacks, bound to its host. */
+/** The routes as one connection's callbacks, bound to its host; the table is a plain object literal. */
 function framesFor(routes: HostRoutes, host: HostConfig): Pick<HostConnectionOptions, FrameKey> {
   const bound = Object.entries(routes).map(([kind, route]) => [
     kind,
@@ -49,7 +49,7 @@ export interface HostLinkDeps {
   /** The watched sessions, by `hostId/sessionId`, subscribed on connect. */
   watched(): Iterable<string>;
   onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void;
-  /** The route table, read at each connect. */
+  /** The route table, read at each connect (the store builds it after the link). */
   routes(): HostRoutes;
   /** Runs after every connection was woken (the window came back). */
   onWake(): void;

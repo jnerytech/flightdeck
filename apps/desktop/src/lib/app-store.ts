@@ -331,6 +331,7 @@ export class AppStore {
     selected: () => this.state.selected,
     watched: () => this.watched.keys(),
     onStatus: (hostId, conn, status) => this.onStatus(hostId, conn, status),
+    // Read at connect: the table is a field declared after this one.
     routes: () => this.routes,
     // Hiding the window to the tray can drop its taskbar badge: say it again.
     onWake: () => this.inbox.resendBadge(),
