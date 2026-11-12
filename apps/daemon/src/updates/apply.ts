@@ -6,7 +6,7 @@
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { runChecked, type ServiceContext, serviceCommand } from "../service/index.ts";
 import { updatePublicKey } from "./public-key.ts";
 import { verifyMinisign } from "./signature.ts";

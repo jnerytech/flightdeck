@@ -16,7 +16,7 @@ import type { BoardEvent } from "../board/columns.ts";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import type { Card, Project } from "../board/types.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { addTurn, noSpending, overBudget } from "./budget.ts";

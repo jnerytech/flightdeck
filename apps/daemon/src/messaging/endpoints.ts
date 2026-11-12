@@ -12,9 +12,9 @@ import type {
   SessionSummary,
 } from "@flightdeck/protocol";
 import type { ExternalSessions } from "../central/external.ts";
-import { FlightdeckError } from "../errors.ts";
 import { MAX_TEXT_BYTES, parseLines, truncateUtf8 } from "../history/parser.ts";
 import { requestLine } from "../history/session-line.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 

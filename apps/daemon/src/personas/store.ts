@@ -10,7 +10,7 @@ import type {
   PersonaSubagentsMode,
 } from "@flightdeck/protocol";
 import { byCodeUnit, inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import {

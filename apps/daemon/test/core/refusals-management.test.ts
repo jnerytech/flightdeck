@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { Names } from "../../src/names/names.ts";
 import { checkUpdates } from "../../src/permissions/permission-updates.ts";
 import { EventStore } from "../../src/store/event-store.ts";

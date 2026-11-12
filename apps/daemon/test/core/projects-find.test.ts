@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, realpathSync, symlinkSync, writeFileSync } from 
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import {
   cloneRepo,
   type GitRunner,

@@ -21,8 +21,7 @@ import type {
 import { plainInfo } from "@flightdeck/protocol";
 import { summarizeInput } from "../central/external-permissions.ts";
 import { userHome } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
-import { API_KEY_VARS, buildChildEnv, ulid } from "../kernel/index.ts";
+import { API_KEY_VARS, buildChildEnv, FlightdeckError, ulid } from "../kernel/index.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";

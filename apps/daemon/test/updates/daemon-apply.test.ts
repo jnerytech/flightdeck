@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
 import { signForTest, TEST_PUBLIC_KEY } from "../../../../scripts/test/minisign.ts";
-import type { FlightdeckError } from "../../src/errors.ts";
+import type { FlightdeckError } from "../../src/kernel/errors.ts";
 import { runCli } from "../../src/main.ts";
 import { startServer } from "../../src/server.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../../src/service/install.ts";

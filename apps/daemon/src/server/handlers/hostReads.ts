@@ -3,7 +3,7 @@
  * dependency and doctor checks, and the runtime models.
  */
 import { statuslineData } from "../../costs/statusline.ts";
-import { FlightdeckError } from "../../errors.ts";
+import { FlightdeckError } from "../../kernel/index.ts";
 import { tailForOrigin } from "../../logs/serve.ts";
 import { localDay } from "../../quota/usage.ts";
 import { roiPeriod } from "../../roi/summary.ts";

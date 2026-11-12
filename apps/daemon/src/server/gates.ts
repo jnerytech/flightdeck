@@ -3,7 +3,7 @@
  * with `feature_off` and the feature's name; the app translates that name (`daemonFeature`), so each
  * option keeps the string its accessor threw before the split, even where the two differ.
  */
-import { featureOff } from "../errors.ts";
+import { featureOff } from "../kernel/index.ts";
 import type { ServerOptions } from "../server.ts";
 
 /** Each gated option, and the feature named when it is off. */

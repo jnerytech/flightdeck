@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import type { VaultRequester } from "@flightdeck/protocol";
 import type { RuntimeKind } from "../config.ts";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { ipInNetworks } from "../networks.ts";
 
 /** Loopback, and the ranges Tailscale uses (WireGuard encrypts them). */

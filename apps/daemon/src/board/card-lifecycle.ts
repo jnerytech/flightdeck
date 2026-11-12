@@ -6,7 +6,7 @@ import {
   type SpecState,
   specExpectedPath,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import type { BoardEvent } from "./columns.ts";
 import { git } from "./command.ts";
 import { refArg } from "./ref-arg.ts";

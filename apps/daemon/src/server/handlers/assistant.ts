@@ -3,7 +3,7 @@
  * reads the context a request needs, and records what the person kept.
  */
 import type { AssistantService } from "../../assistant/service.ts";
-import { featureOff } from "../../errors.ts";
+import { featureOff } from "../../kernel/index.ts";
 import type { ServerContext } from "../context.ts";
 import type { Handlers } from "../dispatch.ts";
 

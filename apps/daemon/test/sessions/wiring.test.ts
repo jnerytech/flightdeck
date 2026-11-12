@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { FakeRuntime } from "../../src/runtime/fake-runtime.ts";
 import { createSessionManager } from "../../src/sessions/wiring.ts";
 import { EventStore } from "../../src/store/event-store.ts";

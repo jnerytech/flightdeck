@@ -3,8 +3,7 @@
  * checked for secrets, the branch pushed to `origin`, the PR opened through the provider.
  */
 import type { SecretScanner } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../kernel/index.ts";
+import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 import { killTree, runCommand } from "./command.ts";
 import type { PrProvider } from "./pr.ts";
 import { refArg } from "./ref-arg.ts";

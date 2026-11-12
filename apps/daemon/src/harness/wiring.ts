@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import type { Config } from "../config.ts";
-import { featureOff } from "../errors.ts";
-import { present } from "../kernel/index.ts";
+import { featureOff, present } from "../kernel/index.ts";
 import { type DomainModule, serverGroup } from "../server/index.ts";
 import { type ApplyOptions, applyHarness } from "./apply.ts";
 import { commitHarness } from "./commit.ts";

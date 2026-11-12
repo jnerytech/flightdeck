@@ -1,4 +1,4 @@
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { runCommand } from "./command.ts";
 
 /** `cmd.exe /d /s /c` on Windows (ComSpec), `sh -c` elsewhere. */

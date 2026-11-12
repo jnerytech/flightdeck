@@ -4,7 +4,7 @@ import { stat as fileStat, open, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
+import { FlightdeckError } from "../kernel/index.ts";
 import { type HistoryRecord, lastTitle, parseLines } from "./parser.ts";
 import { lastTool, requestLine } from "./session-line.ts";
 import { fileLines, type ToolDetail, toolDetail } from "./tool-detail.ts";

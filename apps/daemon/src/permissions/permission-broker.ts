@@ -6,8 +6,7 @@ import type {
   SessionEvent,
   ToolInput,
 } from "@flightdeck/protocol";
-import { FlightdeckError } from "../errors.ts";
-import { ulid } from "../kernel/index.ts";
+import { FlightdeckError, ulid } from "../kernel/index.ts";
 import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";

@@ -6,7 +6,7 @@ import { MASK, McpConfig } from "../../src/agentcfg/mcp.ts";
 import { Forker } from "../../src/checkpoints/fork.ts";
 import { Rewinder } from "../../src/checkpoints/rewind.ts";
 import { Snapshots } from "../../src/checkpoints/snapshots.ts";
-import { FlightdeckError } from "../../src/errors.ts";
+import { FlightdeckError } from "../../src/kernel/errors.ts";
 import { EventStore } from "../../src/store/event-store.ts";
 import { tempDir } from "../support/helpers.ts";
 
