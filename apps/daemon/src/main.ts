@@ -20,7 +20,6 @@ import { type CliDeps, COMMANDS } from "./cli/commands.ts";
 import {
   claudeSettingsPath,
   loadConfig,
-  RELEASES_URL,
   type RuntimeKind,
   readToken,
   updateConfigFile,
@@ -55,7 +54,7 @@ import { createKeepAwake } from "./power/wiring.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./projects/index.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { createQuota } from "./quota/wiring.ts";
-import { ReleaseFeed } from "./releases/releases.ts";
+import { createReleases } from "./releases/wiring.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import {
   createMemoryGate,
@@ -428,6 +427,7 @@ export async function startDaemon(
   await domains.add(createWebhook({ log: logger.log.bind(logger) }));
   await domains.add(createRoi({ db: store.db, keyOf: (path) => keys.known(path) }));
   await domains.add(createGithub({ config, board, issues, manager }));
+  await domains.add(createReleases());
   const central = new Central({
     risk,
     autoApprove,
@@ -641,7 +641,6 @@ export async function startDaemon(
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
     central,
     fileLog,
-    releases: new ReleaseFeed({ url: RELEASES_URL }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
