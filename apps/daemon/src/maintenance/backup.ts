@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { chmod, copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
-import { acquireLock } from "../lock.ts";
+import { acquireLock } from "../kernel/index.ts";
 import { MIGRATIONS } from "../store/migrations.ts";
 
 export interface BackupInfo {
