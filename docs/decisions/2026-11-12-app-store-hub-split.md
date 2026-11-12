@@ -134,7 +134,10 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `features/teams/store.ts` (`onFrame`, `onUpdated`; the summaries keep the team, the inbox
   notifies; the connect step that lists the teams stays with the other connect steps); the requests
   (`onOpenRequest`, `openRequest`, `decideOldest`, `respondTo`, `respond`, with the open-request
-  listener set) to permissions; the quiet snooze to sessions.
+  listener set) to the `PermissionsSlice` (`onOpen`, `open`, `openLink`, `decideOldest`), after
+  `request-link.ts` moved from `features/hosts/` to `features/permissions/`; the window and the
+  tray's answer come from the store as deps, and the store keeps one-line forwarders for the
+  screens; the quiet snooze to sessions.
 - **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(...)`, next to
   `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
   its own; it is a recorded exception to the folders-by-domain rule, as `app-store.ts` is, and
