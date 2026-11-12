@@ -36,6 +36,8 @@ function permissions(
     fail: (error, text) =>
       void log.push({ fail: error instanceof Error ? error.message : String(error), text }),
     t: () => t,
+    showWindow: () => void log.push({ window: true }),
+    act: (action) => void log.push({ act: action }),
   });
   return { slice, log };
 }
