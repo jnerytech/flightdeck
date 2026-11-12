@@ -2,7 +2,7 @@ import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@f
 import { userHome } from "../config.ts";
 import { ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
-import { bindInput } from "../permissions/bind-input.ts";
+import { bindInput, summarizeInput } from "../permissions/bind-input.ts";
 import { requireHold } from "../permissions/hold.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
@@ -15,20 +15,6 @@ export type { ExternalPermissionFrame };
 const ALLOW = JSON.stringify({
   hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow" } },
 });
-
-/** Longer strings are cut here: the queue shows what is asked, not whole files. */
-const MAX_TEXT = 200;
-
-/** The tool input as shown in the queue: long strings cut, everything else as is. */
-export function summarizeInput(input: unknown): Record<string, unknown> {
-  if (typeof input !== "object" || input === null) return {};
-  return Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [
-      key,
-      typeof value === "string" && value.length > MAX_TEXT ? `${value.slice(0, MAX_TEXT)}…` : value,
-    ]),
-  );
-}
 
 interface Held {
   frame: ExternalPermissionFrame;

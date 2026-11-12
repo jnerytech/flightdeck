@@ -694,27 +694,6 @@
   },
   {
     "type": "cycle",
-    "from": "apps/daemon/src/central/external-permissions.ts",
-    "to": "apps/daemon/src/permissions/auto-approve.ts",
-    "unresolvedTo": "../permissions/auto-approve.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle"
-    },
-    "cycle": [
-      {
-        "name": "apps/daemon/src/permissions/auto-approve.ts",
-        "dependencyTypes": ["local", "import", "type-only"]
-      },
-      {
-        "name": "apps/daemon/src/central/external-permissions.ts",
-        "dependencyTypes": ["local", "import"]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "apps/daemon/src/runtime/opencode-preflight.ts",
     "to": "apps/daemon/src/runtime/opencode-serve.ts",
     "unresolvedTo": "./opencode-serve.ts",
@@ -2166,17 +2145,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/permissions/auto-approve.ts",
-    "to": "apps/daemon/src/central/external-permissions.ts",
-    "unresolvedTo": "../central/external-permissions.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/permissions/auto-approve.ts",
     "to": "apps/daemon/src/costs/usage-indexer.ts",
     "unresolvedTo": "../costs/usage-indexer.ts",
     "dependencyTypes": ["local", "import", "type-only"],
@@ -3148,17 +3116,6 @@
     "to": "apps/daemon/src/terminal/terminal-manager.ts",
     "unresolvedTo": "../terminal/terminal-manager.ts",
     "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/central/external-permissions.ts",
-    "unresolvedTo": "../central/external-permissions.ts",
-    "dependencyTypes": ["local", "import"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
