@@ -43,6 +43,11 @@ export function shapeShares(filesByTier: Record<string, number>): Record<string,
   return { integration: share("integration"), e2e: share("e2e") };
 }
 
+/** The desktop cycle baseline (`{ "files": n }`): the head's file may lower main's, never raise it (#1624). */
+export function cycleBaseline(_onMain: string | null, _head: string | null): number {
+  return -1;
+}
+
 /** One row per ratchet figure, sorted by name. */
 export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
   const rows: RatchetRow[] = [];

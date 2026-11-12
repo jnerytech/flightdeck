@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   type ArchInputs,
+  cycleBaseline,
   formatTable,
   growing,
   type RatchetRow,
@@ -94,6 +95,16 @@ describe("arch-report (#1610)", () => {
     });
     expect(growing([row(121) as RatchetRow])).toHaveLength(1);
     expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("desktop-cycles"))).toBe(false);
+  });
+
+  test("a PR cannot raise the cycle baseline: the lower of main's file and its own counts (#1624)", () => {
+    const file = (files: number) => JSON.stringify({ files });
+    expect(cycleBaseline(file(172), file(160))).toBe(160);
+    expect(cycleBaseline(file(172), file(400))).toBe(172);
+    expect(cycleBaseline(null, file(172))).toBe(172);
+    expect(cycleBaseline(file(172), null)).toBe(0);
+    expect(cycleBaseline(file(172), "{ not json")).toBe(0);
+    expect(cycleBaseline(file(172), "{}")).toBe(0);
   });
 
   test("a workspace flat today but absent from its baseline is a row with baseline 0", () => {
