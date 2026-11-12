@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { QuotaState } from "@flightdeck/protocol";
-import { quotaGlance, shortDuration } from "../../src/lib/quota-glance.ts";
+import { quotaGlance, shortDuration } from "../../src/features/quota/quota-glance.ts";
 
 const NOW = Date.UTC(2026, 10, 6, 12, 0, 0);
 const at = (ms: number) => new Date(NOW + ms).toISOString();

@@ -1,7 +1,7 @@
 import type { QuotaState } from "@flightdeck/protocol";
+import { quotaBars } from "@/features/quota/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { quotaBars } from "@/lib/quota";
 import { Inline, Stack } from "@/shared/layout/index.ts";
 import { Meter } from "@/shared/status/index.ts";
 
