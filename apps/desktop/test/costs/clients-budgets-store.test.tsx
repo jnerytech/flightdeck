@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { Budgets } from "../../../daemon/src/costs/budgets.ts";
+import { CLIENTS_KEY } from "../../src/features/clients/clients.ts";
 import { CLIENT_BUDGET_ALERTS_KEY } from "../../src/features/costs/index.ts";
-import { CLIENTS_KEY } from "../../src/lib/clients.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { settle } from "../wait.ts";

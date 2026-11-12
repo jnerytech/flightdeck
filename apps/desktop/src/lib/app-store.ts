@@ -45,11 +45,19 @@ import {
 import {
   type Attention,
   BackupScheduler,
-  BackupSlice,
+  type BackupSlice,
   googleConfig,
+  wireBackup,
 } from "../features/backup/index.ts";
 import { BoardWidth } from "../features/board/index.ts";
-import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
+import {
+  type ClientScopeSlice,
+  Clients,
+  knownProjects,
+  loadSelection,
+  UNASSIGNED,
+  wireClientScope,
+} from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
   type ClientBudgetsSlice,
@@ -202,9 +210,6 @@ import type {
   SidebarSession,
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
-import { knownProjects } from "./client-rules.ts";
-import { loadSelection } from "./client-scope.ts";
-import { Clients, UNASSIGNED } from "./clients.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
@@ -655,26 +660,10 @@ export class AppStore {
       google: options.google ?? { config: googleConfig() },
       ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
     });
-    this.backup = new BackupSlice({
-      createText: async (passphrase, confirmation) => {
-        const { createBackup } = await import("../features/backup/backup-bundle.ts");
-        return createBackup(platform, passphrase, confirmation, {
-          ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
-        });
-      },
-      saveFile: (name, text) => platform.saveFile(name, text),
-      pickFile: () => platform.vault.pickFile(),
-      previewText: async (text, passphrase) => {
-        const { previewRestore } = await import("../features/backup/backup-bundle.ts");
-        return previewRestore(platform, text, passphrase);
-      },
-      applyPreview: async (preview, onConflict) => {
-        const { applyRestore } = await import("../features/backup/backup-bundle.ts");
-        return applyRestore(platform, preview, onConflict);
-      },
-      driveNames: () => this.backupScheduler.driveBackups(),
-      driveText: (name) => this.backupScheduler.driveBackupText(name),
-      fail: (error) => this.fail(error),
+    this.backup = wireBackup(this.kernel, {
+      platform,
+      scheduler: this.backupScheduler,
+      vaultWorkFactor: options.vaultWorkFactor,
     });
     this.awayClock = new AwayClock(platform.storage, () => this.now());
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });

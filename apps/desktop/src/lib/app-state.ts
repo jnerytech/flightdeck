@@ -32,6 +32,7 @@ import type { ActivitySliceState } from "../features/activity/index.ts";
 import type { AppUpdateState } from "../features/appupdate/index.ts";
 import type { BackgroundSliceState } from "../features/background/index.ts";
 import type { GoogleConfig } from "../features/backup/index.ts";
+import type { Client } from "../features/clients/index.ts";
 import type { BudgetsSliceState, ClientBudgetsSliceState } from "../features/costs/index.ts";
 import type { HistorySliceState } from "../features/history/index.ts";
 import type { UiMode } from "../features/home/index.ts";
@@ -60,7 +61,6 @@ import type { ClosingTerminal } from "../features/terminal/index.ts";
 import type { TerminalEnv } from "../features/terminal/terminal.ts";
 import type { SecretMeta, UsageEntry, VaultPolicy } from "../features/vault/index.ts";
 import type { T } from "../i18n/index.ts";
-import type { Client } from "./clients.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import type { Route } from "./router.ts";
 

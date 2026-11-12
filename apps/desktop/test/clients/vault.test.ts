@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { SecretMeta } from "../../src/features/vault/vault.ts";
-import { ClientScope } from "../../src/lib/client-scope.ts";
+import { ClientScope } from "../../src/features/clients/client-scope.ts";
 import {
   effectiveRules,
   generatedScopeRules,
@@ -8,8 +7,9 @@ import {
   SCOPE_RULE_PREFIX,
   scopingClient,
   vaultFindings,
-} from "../../src/lib/client-vault.ts";
-import type { Client } from "../../src/lib/clients.ts";
+} from "../../src/features/clients/client-vault.ts";
+import type { Client } from "../../src/features/clients/clients.ts";
+import type { SecretMeta } from "../../src/features/vault/vault.ts";
 
 const client = (
   id: string,

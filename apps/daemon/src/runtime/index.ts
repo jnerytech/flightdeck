@@ -7,3 +7,10 @@ export { claudeVersionProbe } from "./claude-probe.ts";
 export { VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";
 export { findingText, type ScopeFinding } from "./opencode-scope.ts";
 export { type OpenCodeState, openCodeState } from "./opencode-wiring.ts";
+export type {
+  AgentRun,
+  AgentRuntime,
+  QuotaReading,
+  RewindFilesResult,
+  RuntimeEvent,
+} from "./types.ts";

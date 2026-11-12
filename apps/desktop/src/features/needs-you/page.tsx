@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { sessionProjectKeys } from "@/features/clients/index.ts";
 import { ApprovalCard, GateText } from "@/features/permissions/index.ts";
 import { type Finish, hubRows, pendingWhere, sinceLastLook } from "@/features/sessions/index.ts";
 import { ActionButton } from "@/shared/feedback/index.ts";
@@ -16,7 +17,6 @@ import { EmptyState, Inline, SplitView, Stack } from "@/shared/layout/index.ts";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";
-import { sessionProjectKeys } from "../../lib/client-scope.ts";
 import { typing } from "../../lib/keys.ts";
 import type { Route } from "../../lib/router.ts";
 import { awayView } from "../activity/index.ts";

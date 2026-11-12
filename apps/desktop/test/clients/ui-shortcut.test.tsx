@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { ALL_CLIENTS } from "../../src/lib/client-scope.ts";
-import { CLIENTS_KEY, UNASSIGNED } from "../../src/lib/clients.ts";
+import { ALL_CLIENTS } from "../../src/features/clients/client-scope.ts";
+import { CLIENTS_KEY, UNASSIGNED } from "../../src/features/clients/clients.ts";
 import { registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
