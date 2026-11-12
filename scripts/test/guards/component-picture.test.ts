@@ -6,6 +6,13 @@ const module = (source: string, ...deps: string[]) => ({
   dependencies: deps.map((resolved) => ({ resolved })),
 });
 
+/** The edges of a chart as `from --> to` pairs, whether a line draws one target or several (`a --> b & c`). */
+const edgesOf = (chart: string): string[] =>
+  chart.split("\n").flatMap((line) => {
+    const [from, targets] = line.trim().split(" --> ");
+    return targets === undefined ? [] : targets.split(" & ").map((to) => `${from} --> ${to}`);
+  });
+
 const D = "apps/daemon/src";
 const W = "apps/desktop/src";
 const P = "packages/protocol/src";
@@ -29,11 +36,26 @@ describe("component picture (#1624)", () => {
       module(`${D}/sessions/index.ts`),
     ]);
     const daemon = text.split("```mermaid")[1]?.split("```")[0] ?? "";
-    expect(daemon.match(/-->/g)).toHaveLength(2);
-    expect(daemon).toContain("daemon_board --> daemon_sessions");
-    expect(daemon).toContain("daemon_board --> protocol");
-    expect(daemon).not.toContain("daemon_board --> daemon_board");
+    expect(edgesOf(daemon)).toEqual([
+      "daemon_board --> daemon_sessions",
+      "daemon_board --> protocol",
+    ]);
     expect(daemon).not.toContain("node_modules");
+  });
+
+  test("a domain's imports share one line, so the generated file stays under the Markdown size limit", () => {
+    const text = componentPicture([
+      module(`${D}/board/a.ts`, `${D}/sessions/index.ts`, `${D}/runtime/index.ts`, `${P}/index.ts`),
+      module(`${D}/sessions/index.ts`, `${D}/runtime/index.ts`),
+      module(`${D}/runtime/index.ts`),
+    ]);
+    const lines = (text.split("```mermaid")[1]?.split("```")[0] ?? "")
+      .split("\n")
+      .filter((line) => line.includes("-->"));
+    expect(lines).toEqual([
+      "  daemon_board --> daemon_runtime & daemon_sessions & protocol",
+      "  daemon_sessions --> daemon_runtime",
+    ]);
   });
 
   test("each app has its own flowchart, and a domain without an edge is still a node", () => {
@@ -55,14 +77,14 @@ describe("component picture (#1624)", () => {
     );
     const text = componentPicture([...importers, module(`${W}/features/hub/a.ts`)]);
     const desktop = text.split("## Desktop")[1] ?? "";
-    expect(desktop).not.toContain("desktop_f0 --> desktop_shared");
-    expect(desktop).not.toContain("desktop_f40 --> desktop_hub");
+    expect(edgesOf(desktop)).not.toContain("desktop_f0 --> desktop_shared");
+    expect(edgesOf(desktop)).not.toContain("desktop_f40 --> desktop_hub");
     expect(desktop).toContain(
       "Imported by more than 40 domains, so their edges are not drawn: `hub`, `shared`.",
     );
     // 40 importers is not yet most of them: the edges stay
     const few = componentPicture(importers.slice(0, 40)).split("## Desktop")[1] ?? "";
-    expect(few).toContain("desktop_f0 --> desktop_shared");
+    expect(edgesOf(few)).toContain("desktop_f0 --> desktop_shared");
     expect(few).not.toContain("are not drawn");
   });
 
