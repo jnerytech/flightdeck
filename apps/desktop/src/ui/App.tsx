@@ -10,6 +10,7 @@ import {
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { preloadMarkdown } from "@/components/markdown/markdown";
 import { StatusBarSlot } from "@/components/shell/status-bar";
 import { HistoryButtons, TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
@@ -41,7 +42,6 @@ import { firstTerminalTab, hostsRoute, terminalTabCount } from "../lib/status-ba
 import { useStoreState } from "../lib/use-store.ts";
 import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
-import { preloadMarkdown } from "./Markdown.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { SimpleApp } from "./simple/SimpleApp.tsx";
 

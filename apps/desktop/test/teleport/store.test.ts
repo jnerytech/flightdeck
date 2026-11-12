@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { TELEPORT_PREVIEW_KEY } from "../src/features/settings/index.ts";
-import { AppStore } from "../src/lib/app-store.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { TELEPORT_PREVIEW_KEY } from "../../src/features/settings/index.ts";
+import { AppStore } from "../../src/lib/app-store.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 /**
  * Issue #100, slice 3b: the move of a session to another host is a preview the person turns on in

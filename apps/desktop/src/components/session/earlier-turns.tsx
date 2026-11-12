@@ -2,8 +2,8 @@ import type { HistoryMessage } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import type { AppStore } from "../../lib/app-store.ts";
 import { HISTORY_PAGE } from "../../lib/app-store.ts";
-import { Markdown } from "../../ui/Markdown.tsx";
 import { Note } from "../layout/note.tsx";
+import { Markdown } from "../markdown/markdown.tsx";
 import { Message } from "./parts.tsx";
 
 /** The most earlier turns shown; the transcript reader in History has all of them. */
