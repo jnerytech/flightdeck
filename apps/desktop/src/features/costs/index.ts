@@ -29,9 +29,33 @@ export {
   initialClientBudgetsState,
 } from "./client-budgets-store.ts";
 export {
+  ALL_HOSTS,
+  addDays,
+  daysBetween,
+  localDay,
+  periodRange,
+  projectLabel,
+  projectLabels,
+  projectPath,
+  usd,
+} from "./costs.ts";
+export {
+  ALL_SCOPE,
+  activeScope,
+  awayKey,
+  type DataScope,
+  DataScopeController,
+  hubHostScope,
+  scopeHosts,
+  scopeOfValue,
+  scopeValue,
+} from "./data-scope.ts";
+export { actionOfRoute, endMeasure, startMeasure } from "./measures.ts";
+export {
   type BudgetsCore,
   BudgetsSlice,
   type BudgetsSliceState,
   initialBudgetsState,
 } from "./store.ts";
+export { projectLabel as usageProjectLabel, type UsageHistoryTarget } from "./usage-rows.ts";
 export { wireBudgets, wireClientBudgets } from "./wire.ts";

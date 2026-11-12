@@ -1,4 +1,4 @@
-import type { UsageGroup, UsageHistoryTarget } from "../../lib/usage-rows.ts";
+import type { UsageGroup, UsageHistoryTarget } from "./usage-rows.ts";
 
 interface Row {
   day: string;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { MEASURES_FLAG } from "../src/features/costs/measures.ts";
 import { AppStore } from "../src/lib/app-store.ts";
-import { MEASURES_FLAG } from "../src/lib/measures.ts";
 import { Router } from "../src/lib/router.ts";
 import { registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";

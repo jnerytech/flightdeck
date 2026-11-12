@@ -1,4 +1,4 @@
-import type { Route } from "./router.ts";
+import type { Route } from "../../lib/router.ts";
 
 /** The five actions whose click-to-paint time is measured when the debug flag is on. */
 export type MeasuredAction = "open-session" | "open-board" | "open-card" | "send" | "approve";

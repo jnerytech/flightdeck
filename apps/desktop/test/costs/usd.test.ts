@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { usd } from "../../src/lib/costs.ts";
+import { usd } from "../../src/features/costs/costs.ts";
 
 describe("usd: dollars follow the app language (#1332)", () => {
   test("pt-BR uses the dot for thousands and the comma for cents", () => {

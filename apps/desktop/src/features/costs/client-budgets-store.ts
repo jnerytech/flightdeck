@@ -4,12 +4,12 @@ import type { T } from "../../i18n/index.ts";
 import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
 import { ALL_CLIENTS, type ClientScope } from "../../lib/client-scope.ts";
 import type { Client } from "../../lib/clients.ts";
-import { usd } from "../../lib/costs.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
   evaluateClientBudgets,
 } from "./client-budgets.ts";
+import { usd } from "./costs.ts";
 
 /** The clients' limits are looked at this often, besides when one changes or a host comes online. */
 export const CLIENT_BUDGET_INTERVAL_MS = 10 * 60_000;

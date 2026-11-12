@@ -21,8 +21,8 @@ import {
 import { Meter } from "@/shared/status/index.ts";
 import type { T } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { periodRange } from "../../lib/costs.ts";
 import { budgetLabel, budgetLine, projectName } from "./budgets.ts";
+import { periodRange } from "./costs.ts";
 
 /** What the client filter reads: the selection, the clients and where each project belongs. */
 const BUDGETS_KEYS = [

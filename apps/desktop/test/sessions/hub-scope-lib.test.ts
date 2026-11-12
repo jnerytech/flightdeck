@@ -1,4 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import {
+  ALL_SCOPE,
+  DATA_SCOPE_KEY,
+  DataScopeController,
+  hubHostScope,
+} from "../../src/features/costs/data-scope.ts";
 import { HOSTS_KEY } from "../../src/features/hosts/hosts.ts";
 import {
   HUB_FILTER_KEY,
@@ -7,12 +13,6 @@ import {
   takeHubHost,
 } from "../../src/features/sessions/hub.ts";
 import { AppStore } from "../../src/lib/app-store.ts";
-import {
-  ALL_SCOPE,
-  DATA_SCOPE_KEY,
-  DataScopeController,
-  hubHostScope,
-} from "../../src/lib/data-scope.ts";
 import { memoryPlatform } from "../fixtures.ts";
 
 const cleanups: Array<() => unknown> = [];

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CostsFilter } from "@flightdeck/protocol";
-import { exportCosts } from "../../src/lib/costs-export.ts";
+import { exportCosts } from "../../src/features/costs/costs-export.ts";
 
 const HEADER = "day,cost_usd";
 const FILTER: CostsFilter = { from: "2026-10-01", to: "2026-10-07" };

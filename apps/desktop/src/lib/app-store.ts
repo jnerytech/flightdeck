@@ -47,8 +47,11 @@ import { type ClientScopeSlice, wireClientScope } from "../features/clients/inde
 import {
   type BudgetsSlice,
   type ClientBudgetsSlice,
+  DataScopeController,
+  hubHostScope,
   initialBudgetsState,
   initialClientBudgetsState,
+  localDay,
   wireBudgets,
   wireClientBudgets,
 } from "../features/costs/index.ts";
@@ -177,8 +180,6 @@ import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
-import { localDay } from "./costs.ts";
-import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
