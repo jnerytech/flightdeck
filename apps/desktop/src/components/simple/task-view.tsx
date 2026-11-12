@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { T } from "../../i18n/index.ts";
 import type { SessionState } from "../../lib/session-state.ts";
 import { lastSummary, pendingQuestion, recentTools, taskState } from "../../lib/simple-task.ts";
-import { Markdown } from "../../ui/Markdown.tsx";
+import { Markdown } from "../markdown/markdown.tsx";
 import { QuestionCard } from "./question-card.tsx";
 
 export interface TaskViewHandlers {
