@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { projectCwd, projectLabel } from "../src/features/costs/usage-rows.ts";
 import { defaultRule } from "../src/features/permissions/always-allow.tsx";
 import { modelName } from "../src/features/sessions/model-menu.ts";
-import { projectCwd, projectLabel } from "../src/lib/usage-rows.ts";
 
 /**
  * Issue #363 (Sonar S8786): a folder, a model id or a rule's file is cut at its end in one pass.

@@ -11,8 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { AppStore } from "../../lib/app-store.ts";
-import { projectLabel } from "../../lib/costs.ts";
-import { ALL_SCOPE, type DataScope, scopeOfValue, scopeValue } from "../../lib/data-scope.ts";
+import {
+  ALL_SCOPE,
+  type DataScope,
+  projectLabel,
+  scopeOfValue,
+  scopeValue,
+} from "../costs/index.ts";
 
 /**
  * The data scope in a scoped screen's toolbar (#126): it says whose numbers the screen shows and

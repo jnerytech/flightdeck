@@ -6,8 +6,8 @@ import { useStoreSlice } from "@/lib/use-store";
 import { Field, Inline, Panel, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { usd } from "../../lib/costs.ts";
 import { hasFeature } from "../../lib/version.ts";
+import { usd } from "../costs/index.ts";
 
 const BGPANEL_KEYS = ["background", "hosts"] as const;
 

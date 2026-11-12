@@ -9,7 +9,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
-const { projectLabel } = await import("../../src/lib/costs.ts");
+const { projectLabel } = await import("../../src/features/costs/costs.ts");
 
 setDefaultTimeout(20_000);
 

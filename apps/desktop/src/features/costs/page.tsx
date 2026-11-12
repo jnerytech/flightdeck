@@ -27,18 +27,9 @@ import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../../lib/client-costs.ts";
 import { ALL_CLIENTS } from "../../lib/client-scope.ts";
-import {
-  daysBetween,
-  PERIODS,
-  type Period,
-  periodRange,
-  projectLabel,
-  usd,
-} from "../../lib/costs.ts";
-import { exportCosts } from "../../lib/costs-export.ts";
-import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
 import { hasFeature } from "../../lib/version.ts";
 import { CostsQuotaLead } from "./CostsQuotaLead.tsx";
+import { daysBetween, PERIODS, type Period, periodRange, projectLabel, usd } from "./costs.ts";
 import {
   costsHosts,
   hostsOffering,
@@ -46,7 +37,9 @@ import {
   periodProjectKeys,
   withFilter,
 } from "./costs-derive.ts";
+import { exportCosts } from "./costs-export.ts";
 import { awayHost, hostScope, routeScopeOf, topModel } from "./costs-scope.ts";
+import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "./data-scope.ts";
 import { DayChart } from "./day-chart.tsx";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";

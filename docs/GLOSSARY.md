@@ -175,6 +175,7 @@ test's baseline, with the issue that renames them.
 | `cli` | command line | The `flightdeckd` command line: its words, flags and usage, parsed with no effect |
 | `clients` | client | The clients that group projects across hosts: their rules, colors, month budget, hourly rate and defaults, the switcher that scopes the app, the selection the work screens filter by (kept across starts) and the client of each project |
 | `costs` | cost | Estimated costs from the transcripts, price table, budgets and the status line |
+| `daemon-client` | daemon client | The daemon protocol as the host's own commands speak it to the local daemon: its address, `hello`, then commands and acks |
 | `deps` | dependency | The tools a host needs (git, gh, claude...), probed and reported, and the doctor's checks of the daemon's own setup |
 | `files` | file | The files of a session or a card: the explorer, the search, the viewer, a session's files tab and a card's files panel |
 | `github` | GitHub | `gh` on a project: login, status, alerts, start a PR |
@@ -188,6 +189,7 @@ test's baseline, with the issue that renames them.
 | `knowledge` | library | A project's document library and what a session is given from it |
 | `logs` | log | The daemon's own log files: rotation, scan and serve |
 | `maintenance` | maintenance | Backup and retention of the daemon's data |
+| `mcp` | MCP server | The Flightdeck MCP server a Claude Code session runs: its tools over the local daemon (projects, cards, runs, messages, actions, snippets) and whether its program is still there |
 | `memory` | memory | Claude Code's auto memory of a project, edited only by an explicit action |
 | `messaging` | message | Messages between sessions, their policy, loops and exceptions |
 | `names` | standard name | The display name and alias of every session |

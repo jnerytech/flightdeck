@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { projectLabel, projectLabels, projectPath } from "../../src/lib/costs.ts";
+import { projectLabel, projectLabels, projectPath } from "../../src/features/costs/costs.ts";
 
 const labels = (...keys: string[]) => keys.map((key) => projectLabels(keys).get(key));
 

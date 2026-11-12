@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Project } from "@flightdeck/protocol";
-import { projectLabels } from "../src/lib/costs.ts";
+import { projectLabels } from "../src/features/costs/costs.ts";
 import { knownProjectKeys, ProjectKeys } from "../src/lib/project-keys.ts";
 
 const ALFA = "host:alfa:/work/docs-site";

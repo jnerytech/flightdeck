@@ -1,5 +1,5 @@
-import { ALL_HOSTS } from "../../lib/costs.ts";
-import { ALL_SCOPE, type DataScope } from "../../lib/data-scope.ts";
+import { ALL_HOSTS } from "./costs.ts";
+import { ALL_SCOPE, type DataScope } from "./data-scope.ts";
 
 /**
  * Which host(s) the screen reads (#126): every one that has costs, or the scoped one. A scoped host
