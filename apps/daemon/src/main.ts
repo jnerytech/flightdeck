@@ -48,6 +48,7 @@ import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
 import { createKeepAwake } from "./power/wiring.ts";
 import { present } from "./present.ts";
+import { type PlatformInfo, warnIfNoRoots } from "./projects/index.ts";
 import { UsageLedger } from "./quota/usage.ts";
 import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
@@ -56,7 +57,6 @@ import { createMemoryGate, createResources, type MemoryGateDeps } from "./resour
 import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
-import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
 import { createRunEnv } from "./runenv/wiring.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";

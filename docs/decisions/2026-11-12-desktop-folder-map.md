@@ -126,7 +126,7 @@ prefix. Tests move with their file in the same PR.
 | `quota*.ts` | `features/quota/` |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
 | `roi*.ts` | `features/roi/` |
-| `snippets.ts` | `features/snippets/` (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
+| `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
 | `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` |
 | `teleport.ts` | `features/teleport/` |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |

@@ -15,6 +15,7 @@ export { PromptMenu, type PromptSnippets } from "./prompt-menu.tsx";
 export type { MenuGroup, MenuItem } from "./prompt-menu-model.ts";
 export { SnippetPicker } from "./snippet-picker.tsx";
 export { SnippetUse } from "./snippet-use.tsx";
+export type { ActionSeed } from "./snippets.ts";
 export {
   initialSnippetsState,
   type SnippetChoice,

@@ -1,7 +1,7 @@
 import type { ReaderTarget } from "../features/history/index.ts";
 import type { HostDraft } from "../features/hosts/index.ts";
+import type { ActionSeed } from "../features/snippets/index.ts";
 import { actionOfRoute, startMeasure } from "./measures.ts";
-import type { ActionSeed } from "./snippets.ts";
 
 /** Every screen of the app, with what it shows. */
 export type Route =
