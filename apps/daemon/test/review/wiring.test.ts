@@ -143,7 +143,7 @@ describe("review-wiring: the card review the daemon builds (#1593)", () => {
   });
 });
 
-describe("changes-wiring: a plain session's commit and PR the daemon builds (#1593)", () => {
+describe("changes-wiring: the diffs, a plain session's commit and PR, and the files the daemon builds (#1593)", () => {
   function built() {
     const store = new EventStore(":memory:");
     stores.push(store);
@@ -210,10 +210,10 @@ describe("changes-wiring: a plain session's commit and PR the daemon builds (#15
   test("the files viewer reads the same diffs inside the allowed roots, its undo kept under the data folder", () => {
     const { changes, files, sessionFiles, db } = built();
     expect([
-      files?.opts.changes === changes,
-      files?.opts.allowedRoots,
-      files?.opts.dataDir,
-      sessionFiles?.opts.db === db,
+      files.opts.changes === changes,
+      files.opts.allowedRoots,
+      files.opts.dataDir,
+      sessionFiles.opts.db === db,
     ]).toEqual([true, ["/w"], "/data", true]);
   });
 });
@@ -248,7 +248,7 @@ describe("review-wiring: the review's part of the server (#1593)", () => {
       group.sessionPrs === set.sessionPrs,
       group.files === set.files,
       group.sessionFiles === set.sessionFiles,
-      group.comments?.opts.changes === set.changes,
+      group.comments.opts.changes === set.changes,
       "cardReview" in group,
     ]).toEqual([true, true, true, true, true, true, false]);
   });
