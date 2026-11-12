@@ -36,7 +36,7 @@ import {
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
-import { AssistantController, type HostAnswer } from "../features/assistant/assistant.ts";
+import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -109,7 +109,7 @@ import {
 import { AwayClock } from "../features/needs-you/away.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
-import { PermissionsSlice } from "../features/permissions/index.ts";
+import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
   type PersonasSlice,
@@ -161,6 +161,9 @@ import {
   wireSnippets,
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { TabScopeController } from "../features/tabs/tab-scope.ts";
+import { TabOrderController } from "../features/tabs/tab-switcher.ts";
+import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import {
   type TeleportOutcome,
   type TeleportRequest,
@@ -214,9 +217,6 @@ import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from 
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
-import { TabScopeController } from "./tab-scope.ts";
-import { TabOrderController } from "./tab-switcher.ts";
-import type { Navigation, Tabs } from "./tabs.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -559,20 +559,10 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
-    this.assistant = new AssistantController({
+    this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
-      hosts: () =>
-        this.state.hosts.map((host) => ({
-          id: host.id,
-          name: host.name,
-          online: host.status === "online",
-          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
-        })),
-      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
       language: () => this.i18n.lang,
-      request: (hostId, type, payload) =>
-        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
     });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
@@ -675,17 +665,11 @@ export class AppStore {
         this.router.push({ name: "session", host: hostId, id: sessionId });
       },
     });
-    this.permissions = new PermissionsSlice({
+    this.permissions = wirePermissions(this.kernel, {
       needsYou: () => needsYou(this.state, this.i18n.t),
-      sessions: () => this.state.sessions,
-      selectedHostId: () => this.state.selected?.hostId,
       settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
-      sendOn: (hostId, response) =>
-        this.connections.get(hostId)?.request("permission.respond", response),
       sendSelected: (response) =>
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
-      fail: (error, text) => this.fail(error, text),
-      t: () => this.i18n.t,
     });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),

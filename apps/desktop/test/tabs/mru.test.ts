@@ -5,8 +5,8 @@ import {
   stepSwitcher,
   TAB_ORDER_KEY,
   TabOrderController,
-} from "../../src/lib/tab-switcher.ts";
-import { Tabs } from "../../src/lib/tabs.ts";
+} from "../../src/features/tabs/tab-switcher.ts";
+import { Tabs } from "../../src/features/tabs/tabs.ts";
 import type { Platform } from "../../src/platform/types.ts";
 
 const names = (tabs: Tabs) => tabs.recent().map((tab) => tab.router.current.name);

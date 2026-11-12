@@ -128,7 +128,7 @@ prefix. Tests move with their file in the same PR.
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
 | `roi*.ts` | `features/roi/` (**moved**; `RoiSettingsError` is exported by the index for `features/clients`) |
 | `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
-| `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` |
+| `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` (**moved**; the shell, hosts and the switcher hosts hook import by file to avoid an index cycle, settings reads the `TabOrder` type through the index) |
 | `teleport.ts` | `features/teleport/`: **moved** |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` (**moved**; public names through its index) |
 | `trace.ts` | `features/trace/`: **moved** |

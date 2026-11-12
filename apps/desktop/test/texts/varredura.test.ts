@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { visibleTsLiterals } from "../../../scripts/lib/i18n-sweep.ts";
+import { visibleTsLiterals } from "../../../../scripts/lib/i18n-sweep.ts";
 
-const ROOT = resolve(import.meta.dir, "..");
+const ROOT = resolve(import.meta.dir, "../..");
 
 /** Where text for a person can hide outside the JSX: the lib, the screens, the hooks, the parts, the platform. */
 const FILES = [

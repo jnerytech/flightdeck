@@ -1,5 +1,5 @@
 import { byCodeUnit } from "@flightdeck/protocol";
-import { homeRoute, type Route, Router } from "./router.ts";
+import { homeRoute, type Route, Router } from "../../lib/router.ts";
 
 export interface Tab {
   id: string;

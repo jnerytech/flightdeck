@@ -40,7 +40,7 @@ The worktree and the base (default: `git merge-base HEAD main`). Work inside the
    - **State as a prop:** a screen that takes `state: AppState` instead of
      `useStoreSlice(store, keys)` (the state-selectors ratchet).
 4. Run the checks that already exist for what changed, and cite what they say:
-   - `bun --config=bunfig.area.toml test apps/desktop/test/textos.test.tsx`
+   - `bun --config=bunfig.area.toml test apps/desktop/test/texts/texts.test.tsx`
    - `bun --config=bunfig.area.toml test apps/desktop/test/i18n-missing.test.ts`
    - `bun --config=bunfig.area.toml test apps/desktop/test/layout/layout-ratchet.test.ts`
    - `bun --config=bunfig.area.toml test apps/desktop/test/state-selectors-ratchet.test.ts`

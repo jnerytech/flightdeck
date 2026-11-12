@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { revealTab } from "../src/lib/reveal-tab.ts";
+import { revealTab } from "../src/features/tabs/reveal-tab.ts";
 
 /**
  * #1430: the tab strip keeps the active tab in view by scrolling itself sideways. Not with
