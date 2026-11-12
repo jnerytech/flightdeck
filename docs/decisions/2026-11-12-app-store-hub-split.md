@@ -124,7 +124,9 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   `runTrust`, `runStart`, `runStop`, `onRun`, `onRunEnv`) to their wire; messaging (`relayDeps`,
   `onTeams`, `onTeamsUpdated`, `onMessageUpdated`, `startPeersSync`) to messaging; the requests
   (`onOpenRequest`, `openRequest`, `decideOldest`, `respondTo`, `respond`, with the open-request
-  listener set) to permissions; the quiet snooze to sessions.
+  listener set) to permissions; the quiet snooze
+  (`snoozeQuiet`) to a `QuietSnoozeSlice` in `features/needs-you/quiet-snooze.ts`, next to the
+  snoozes' storage (Needs you lists the quiet sessions, not the session screens).
 - **The initial state literal** moves to `lib/app-state.ts` as `initialAppState(...)`, next to
   `app-store.ts`: it is the composition root's own data, one key per slice, so it has no domain of
   its own; it is a recorded exception to the folders-by-domain rule, as `app-store.ts` is, and
