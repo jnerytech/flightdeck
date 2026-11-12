@@ -33,6 +33,7 @@ export function createSessionSettings({
     ...(stallUnitMs !== undefined ? { unitMs: stallUnitMs } : {}),
   });
   const server = {
+    commands: true as const,
     bypass: {
       allowed: () => config.allowBypassPermissions,
       set: async (allow: boolean) => {

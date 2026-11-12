@@ -608,9 +608,6 @@ export async function startDaemon(
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
     ...present({ rootsPlatform: options.rootsPlatform }),
-    bypass: sessionSettings.server.bypass,
-    stall: sessionSettings.server.stall,
-    sleep: sessionSettings.server.sleep,
     hostPause: hostPauseServer,
     memoryPause,
     keepAwake: keepAwakeSwitch,
@@ -640,7 +637,7 @@ export async function startDaemon(
       options.serviceSelf ?? selfCommand,
     ),
     hostChecks: serverGroup<"hostChecks">()(hostChecks),
-    sessionSettings: true,
+    sessionSettings: sessionSettings.server,
     messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
     watch: prWatch,

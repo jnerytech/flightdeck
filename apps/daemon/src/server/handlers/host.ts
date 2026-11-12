@@ -25,9 +25,7 @@ export const hostHandlers = {
     return pause.status();
   },
   "host.sleep": async (payload, { server }) => {
-    const { sleep } = server.opts;
-    if (!sleep) throw featureOff("sleep");
-    await sleep.set(payload.minutes);
+    await server.needIn("sessionSettings", "sleep").set(payload.minutes);
     return { sleepAfterMinutes: payload.minutes };
   },
   "host.updates.set": async (payload, { ws, server }) => {
@@ -41,7 +39,7 @@ export const hostHandlers = {
   "host.bypass": async (payload, { ws, server }) => {
     requireVaultTransport(ws.data.origin, "host.bypass", server.opts.log);
     const { allow, confirm } = payload;
-    const bypass = server.need("bypass");
+    const bypass = server.needIn("sessionSettings", "bypass");
     if (allow && confirm !== true) {
       throw new FlightdeckError(
         "invalid_state",

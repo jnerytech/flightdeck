@@ -171,6 +171,18 @@ interface ReviewServer {
   sessionFiles?: SessionFiles;
 }
 
+/** #1593: the session settings' part of the server, each switch optional. */
+interface SessionSettingsServer {
+  /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
+  commands?: true;
+  /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
+  bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
+  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
+  /** Issue #1478: the stall watcher: its presence announces the host feature `stall`. */
+  stall?: { minutes(): number };
+}
+
 /** #1593: the messaging's part of the server (phase 21), each service optional. */
 interface MessagingServer {
   /** Messages between sessions (`messages.*`, `messaging.*`). */
@@ -294,14 +306,8 @@ export interface ServerOptions {
   port: number;
   token: string;
   allowedRoots: readonly string[];
-  /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
-  bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
-  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
-  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
-  /** Issue #1478: the stall watcher: its presence announces the host feature `stall`. */
-  stall?: { minutes(): number };
   /** Issue #1568: the git behind `project.detectProvider` (the real one when absent; a test fakes it). */
   projectGit?: AsyncGitRunner;
   /** Issue #1404: the pause of new card runs, for `host.info` and the near-only `host.pause`. */
@@ -353,8 +359,8 @@ export interface ServerOptions {
   findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
   git?: GitRunner;
-  /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
-  sessionSettings?: boolean;
+  /** #1593: the session settings: the commands' announcement and the host's switches. */
+  sessionSettings?: SessionSettingsServer;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;

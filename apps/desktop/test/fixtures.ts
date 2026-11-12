@@ -572,7 +572,6 @@ export function daemon(
           }
         : {}),
       rootsPlatform: testRootsPlatform(),
-      sessionSettings: true,
       ...(options.opencode
         ? {
             opencode: {
@@ -584,10 +583,13 @@ export function daemon(
             },
           }
         : {}),
-      bypass: {
-        allowed: () => bypass,
-        set: (allow) => {
-          bypass = allow;
+      sessionSettings: {
+        commands: true,
+        bypass: {
+          allowed: () => bypass,
+          set: (allow) => {
+            bypass = allow;
+          },
         },
       },
       ...(awake
