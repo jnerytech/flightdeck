@@ -51,8 +51,9 @@ export interface VaultApprovalsCore {
 /**
  * The daemon's requests for a secret (phases 17 and 19; #1596: a slice of the store): the policy
  * decides each one, a request that must ask waits in the "Precisa de você" queue, and what it ended
- * in goes to the usage log and the listeners. A secret's value never passes through here: it goes
- * from the vault to the daemon, in `answerVaultRequest`.
+ * in goes to the usage log and the listeners. A daemon's request never brings a value through
+ * here: it goes from the vault to the daemon, in `answerVaultRequest`. Only `secretFor`, the app's
+ * own use (ssh), hands a value back, to its caller.
  */
 export class VaultApprovalsSlice {
   private readonly listeners = new Set<(outcome: VaultOutcome) => void>();

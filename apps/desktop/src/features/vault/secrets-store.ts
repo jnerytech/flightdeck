@@ -27,7 +27,8 @@ export interface VaultSecretsCore {
 /**
  * The secrets of the vault (phase 16; #1596: a slice of the store): created, generated, imported
  * from a key file, edited and removed, and the encrypted `.fdvault` file that carries them between
- * machines. Values never come back from here, only metadata; an error never carries a value.
+ * machines. Values never come back from here, only metadata; an error never carries a value. `copy`
+ * reads one value and hands it only to the clipboard.
  */
 export class VaultSecretsSlice {
   constructor(private readonly core: VaultSecretsCore) {}
