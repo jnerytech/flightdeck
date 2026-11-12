@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const UI = resolve(import.meta.dir, "../src/ui");
+const UI = resolve(import.meta.dir, "../../src/ui");
 
 /**
  * The classes of the first stylesheet (removed in phase 10): a screen that still uses one is
