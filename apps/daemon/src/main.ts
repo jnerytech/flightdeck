@@ -704,9 +704,11 @@ export async function startDaemon(
       externals: central.external,
       locks: folderLocks,
     }),
-    snapshots,
-    rewinder,
-    forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
+    checkpoints: serverGroup<"checkpoints">()({
+      snapshots,
+      rewinder,
+      forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
+    }),
     // A host without the update manifest runs none of them.
     updates: serverGroup<"updates", "check" | "apply" | "auto">()(
       present({

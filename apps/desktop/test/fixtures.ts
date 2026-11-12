@@ -630,7 +630,7 @@ export function daemon(
       ...(telemetry ? { telemetry: { store: telemetry, optIn: telemetryOptIn } } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
       ...(review ? { review } : {}),
-      ...(snapshots && rewinder && forker ? { snapshots, rewinder, forker } : {}),
+      ...(snapshots && rewinder && forker ? { checkpoints: { snapshots, rewinder, forker } } : {}),
       agentSetup: {
         ...(mcp && agentcfg ? { mcp, agentcfg } : {}),
         ...(memory ? { memory } : {}),

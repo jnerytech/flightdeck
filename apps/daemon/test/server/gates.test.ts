@@ -38,7 +38,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   releases: "releases",
-  rewinder: "rewinder",
   roi: "roi",
   runenv: "runEnv",
   summary: "summary",
@@ -49,8 +48,6 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   webhook: "webhook",
   // The gates written inline in a case before the split, each with a single name.
   serviceInstall: "serviceInstall",
-  forker: "forker",
-  snapshots: "snapshots",
   ui: "ui.mode",
 };
 
@@ -160,6 +157,12 @@ const GROUPED: Record<string, Record<string, string>> = {
     watch: "prWatch",
     checkLoop: "prWatch",
   },
+  // The turns' snapshots, the rewind and the fork (#1593): each keeps its flat feature name.
+  checkpoints: {
+    snapshots: "snapshots",
+    rewinder: "rewinder",
+    forker: "forker",
+  },
   // The projects' trust (#1593): it keeps `projectTrust`. The keys and "find my projects" are not
   // refused through a gate.
   projects: {
@@ -225,6 +228,7 @@ describe("server-gates", () => {
       updates: {},
       prWatch: {},
       projects: {},
+      checkpoints: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),

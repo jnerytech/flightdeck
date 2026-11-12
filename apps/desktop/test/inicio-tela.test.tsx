@@ -7,7 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
-const { StartScreen } = await import("../src/ui/StartScreen.tsx");
+const { StartScreen } = await import("../src/features/sessions/start-screen.tsx");
 
 afterEach(cleanup);
 

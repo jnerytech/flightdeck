@@ -28,7 +28,6 @@ export const GATES = {
   memoryPause: "memoryPause",
   hostPause: "hostPause",
   releases: "releases",
-  rewinder: "rewinder",
   roi: "roi",
   runenv: "runEnv",
   summary: "summary",
@@ -39,8 +38,6 @@ export const GATES = {
   webhook: "webhook",
   // Written inline in a case before the split, each with a single name.
   serviceInstall: "serviceInstall",
-  forker: "forker",
-  snapshots: "snapshots",
   ui: "ui.mode",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
@@ -145,6 +142,11 @@ export const GROUP_GATES = {
   prWatch: {
     watch: "prWatch",
     checkLoop: "prWatch",
+  },
+  checkpoints: {
+    snapshots: "snapshots",
+    rewinder: "rewinder",
+    forker: "forker",
   },
   projects: {
     trust: "projectTrust",
