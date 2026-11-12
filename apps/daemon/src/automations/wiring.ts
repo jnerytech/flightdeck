@@ -51,7 +51,9 @@ export interface BoardWorkDeps extends Omit<WatchDeps, "board"> {
   config: AutomationsWiringDeps["config"];
   log: (message: string) => void;
   /** Issue #1361: the check loop's switch, on the watch's checks. */
-  checkLoopOf: (watcher: ReturnType<typeof createWatch>["watcher"]) => NonNullable<PrWatchGroup["checkLoop"]>;
+  checkLoopOf: (
+    watcher: ReturnType<typeof createWatch>["watcher"],
+  ) => NonNullable<PrWatchGroup["checkLoop"]>;
 }
 
 /**
