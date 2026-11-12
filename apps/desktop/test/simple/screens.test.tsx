@@ -2,9 +2,9 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { PlainInfo, TaskResultsResult } from "@flightdeck/protocol";
 import { type AxeViolation, blocking, describeViolation } from "../../../../scripts/lib/axe.ts";
 import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
+import { hiddenTermsIn } from "../../src/features/home/simple-words.ts";
 import { emptySession, type SessionState } from "../../src/features/sessions/session-state.ts";
 import { type Lang, translator } from "../../src/i18n/index.ts";
-import { hiddenTermsIn } from "../../src/lib/simple-words.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 
 registerDom();

@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import type { TreeProject, WorktreeFilter } from "../src/lib/project-tree.ts";
-import type { Route } from "../src/lib/router.ts";
-import type { StateTone } from "../src/shared/status/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import type { TreeProject, WorktreeFilter } from "../../src/lib/project-tree.ts";
+import type { Route } from "../../src/lib/router.ts";
+import type { StateTone } from "../../src/shared/status/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { ProjectTree } = await import("../src/features/projects/project-tree.tsx");
-const { TContext } = await import("../src/i18n/context.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { ProjectTree } = await import("../../src/features/projects/project-tree.tsx");
+const { TContext } = await import("../../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

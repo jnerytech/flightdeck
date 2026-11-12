@@ -16,7 +16,7 @@ import {
   runDoctor,
 } from "../deps/index.ts";
 import { DAEMON_VERSION, type Exec, linesOf, spawnExec, whichOnPath } from "../kernel/index.ts";
-import { mcpReachable } from "../mcp.ts";
+import { mcpReachable } from "../mcp/index.ts";
 import {
   loopbackOnly,
   pairingAddress,

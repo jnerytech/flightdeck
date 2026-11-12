@@ -4,6 +4,7 @@ import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protoc
 import { inSequence } from "@flightdeck/protocol";
 import { z } from "zod";
 import type { Config } from "../config.ts";
+import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
 import {
   type Exec,
   type Logger,
@@ -12,7 +13,6 @@ import {
   ulid,
   whichOnPath,
 } from "../kernel/index.ts";
-import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
 
 /** What the daemon publishes about the receiver it runs: where it listens. */

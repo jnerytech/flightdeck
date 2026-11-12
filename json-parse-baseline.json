@@ -13,6 +13,8 @@
   "apps/desktop/src/features/costs/client-budgets-store.ts": 1,
   "apps/desktop/src/features/costs/data-scope.ts": 1,
   "apps/desktop/src/features/costs/page.tsx": 2,
+  "apps/desktop/src/features/home/home-cache.ts": 1,
+  "apps/desktop/src/features/home/simple-mode.ts": 1,
   "apps/desktop/src/features/hosts/hosts.ts": 1,
   "apps/desktop/src/features/inbox/inbox.ts": 1,
   "apps/desktop/src/features/needs-you/quiet-snooze.ts": 1,
@@ -35,8 +37,6 @@
   "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 2,
   "apps/desktop/src/lib/clients.ts": 2,
-  "apps/desktop/src/lib/home-cache.ts": 1,
   "apps/desktop/src/lib/setup-steps.ts": 1,
-  "apps/desktop/src/lib/simple-mode.ts": 1,
   "packages/protocol/src/index.ts": 1
 }
