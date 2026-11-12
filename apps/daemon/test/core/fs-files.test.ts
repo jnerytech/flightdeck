@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { listFiles } from "../../src/fs-dirs.ts";
+import { listFiles } from "../../src/files/fs-dirs.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { newManager, poll, tempDir } from "../support/helpers.ts";
 
