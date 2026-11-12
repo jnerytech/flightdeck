@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { basename, join } from "node:path";
 import { PROTOCOL_VERSION } from "@flightdeck/protocol";
-import { parsePublicKey } from "../../apps/daemon/src/updates/signature.ts";
+import { parsePublicKey } from "../../../apps/daemon/src/updates/signature.ts";
 
 /** The packages that carry the product version (`tauri.conf.json` reads the desktop's). */
 export const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"] as const;

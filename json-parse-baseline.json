@@ -10,7 +10,6 @@
   "apps/desktop/src/features/palette/palette-store.ts": 1,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 1,
   "apps/desktop/src/features/setup/setup-steps.ts": 1,
-  "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 1,
   "packages/protocol/src/index.ts": 1
 }

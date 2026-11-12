@@ -11,8 +11,8 @@
  *
  * The logic is here; the effects (git, gh, bun, the files) come in through `ReleaseDeps`.
  */
-import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "./branch-pr.ts";
-import { PACKAGES } from "./release.ts";
+import { BRANCH_PR_JQ, branchPr, otherPrsMessage } from "../branch-pr.ts";
+import { PACKAGES } from "./index.ts";
 
 export interface ReleaseResult {
   code: number;

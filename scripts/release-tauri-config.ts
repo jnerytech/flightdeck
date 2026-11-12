@@ -6,7 +6,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { tauriReleaseConfig } from "./lib/release.ts";
+import { tauriReleaseConfig } from "./lib/release/index.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const out = resolve(

@@ -6,7 +6,7 @@ import {
   checkCoverage,
   hasRuntimeCode,
   parseLcov,
-} from "../../lib/coverage-check.ts";
+} from "../../lib/coverage-gate/check.ts";
 
 const lcov = [
   "TN:",
