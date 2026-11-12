@@ -36,6 +36,7 @@ import {
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
+import { AssistantController, type HostAnswer } from "../features/assistant/assistant.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -178,7 +179,6 @@ import type {
   SidebarSession,
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
-import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
