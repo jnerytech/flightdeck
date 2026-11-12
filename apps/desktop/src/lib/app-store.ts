@@ -104,7 +104,7 @@ import {
 import { AwayClock } from "../features/needs-you/away.ts";
 import { loadQuietSnooze, saveQuietSnooze } from "../features/needs-you/quiet-snooze.ts";
 import { NotifyPreferences } from "../features/notifications/index.ts";
-import { PermissionsSlice } from "../features/permissions/index.ts";
+import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import {
   initialPersonasState,
   type PersonasSlice,
@@ -672,17 +672,11 @@ export class AppStore {
         this.router.push({ name: "session", host: hostId, id: sessionId });
       },
     });
-    this.permissions = new PermissionsSlice({
+    this.permissions = wirePermissions(this.kernel, {
       needsYou: () => needsYou(this.state, this.i18n.t),
-      sessions: () => this.state.sessions,
-      selectedHostId: () => this.state.selected?.hostId,
       settleVault: (requestId, answer) => this.vaultApprovals.settle(requestId, answer),
-      sendOn: (hostId, response) =>
-        this.connections.get(hostId)?.request("permission.respond", response),
       sendSelected: (response) =>
         this.commands.onSelected((conn) => conn.request("permission.respond", response)),
-      fail: (error, text) => this.fail(error, text),
-      t: () => this.i18n.t,
     });
     this.external = wireExternalSessions(this.kernel, {
       projectOf: (hostId, cwd) => this.sessionProject(hostId, cwd),
