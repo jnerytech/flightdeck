@@ -9,7 +9,15 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CONFIG, KNOWN, newRules } from "./lib/arch-ratchet.ts";
-import { formatTable, growing, ratchetRows, shapeShares } from "./lib/arch-report.ts";
+import {
+  entryRows,
+  formatEntries,
+  formatTable,
+  growing,
+  isEntry,
+  ratchetRows,
+  shapeShares,
+} from "./lib/arch-report.ts";
 import { isScanned, rawJsonParseCounts } from "./lib/json-parse.ts";
 import { knipCounts } from "./lib/knip-counts.ts";
 import { isMeasured, oversizedSources } from "./lib/src-size.ts";
@@ -84,9 +92,24 @@ const rows = ratchetRows({
   shapeBaseline: json("test-shape-baseline.json"),
 });
 const table = formatTable(rows);
+// Each entry's export count against main's, with a note for a broad one and a growth over 20% (#1624).
+const entryPaths = tracked.filter(isEntry);
+const entriesToday = new Map<string, string>();
+const entriesOnMain = new Map<string, string>();
+for (const path of entryPaths) {
+  const now = read(path);
+  if (now !== null) entriesToday.set(path, now);
+  const before = mergeBase ? git(["show", `${mergeBase}:${path}`]) : null;
+  if (before !== null) entriesOnMain.set(path, before);
+}
+const entries = formatEntries(entryRows(entriesToday, entriesOnMain));
 console.log(table);
+console.log(`\nEntry exports\n\n${entries}`);
 if (process.env.GITHUB_STEP_SUMMARY)
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Structure ratchets\n\n${table}\n`);
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    `### Structure ratchets\n\n${table}\n\n### Entry exports\n\n${entries}\n`,
+  );
 const jsonAt = process.argv.indexOf("--json");
 const out = jsonAt >= 0 ? process.argv[jsonAt + 1] : undefined;
 if (jsonAt >= 0 && (!out || out.startsWith("--"))) {

@@ -110,3 +110,107 @@ export function formatTable(rows: RatchetRow[]): string {
     ...rows.map((row) => `| ${row.ratchet} | ${row.baseline} | ${row.today} | ${status(row)} |`),
   ].join("\n");
 }
+
+export type EntryRow = { entry: string; base: number | null; today: number; broad: boolean };
+
+/** Growth of an entry's export count in one PR that gets flagged (#1624), as a share of its count on main. */
+const ENTRY_GROWTH = 0.2;
+
+/** Whether a tracked path is a domain's `index.ts` under a package's `src`; plain path characters only, as the table prints it (#1624). */
+export function isEntry(path: string): boolean {
+  return /^(?:apps|packages)\/[\w.-]+\/src\/(?:[\w.-]+\/)*index\.ts$/.test(path);
+}
+
+/** The text without `/* ... *\/` comments, in one pass: an unterminated one runs to the end. */
+function withoutBlockComments(text: string): string {
+  const parts: string[] = [];
+  let at = 0;
+  for (;;) {
+    const open = text.indexOf("/*", at);
+    if (open === -1) return [...parts, text.slice(at)].join("");
+    parts.push(text.slice(at, open));
+    const close = text.indexOf("*/", open + 2);
+    if (close === -1) return parts.join("");
+    at = close + 2;
+  }
+}
+
+/** The names the `export { ... }` lists of a text hold (the alias of `a as b`), scanning forward once: an unclosed one ends the scan. */
+function listedNames(text: string): string[] {
+  const opening = /^export\s+(?:type\s+)?\{/gm;
+  const names: string[] = [];
+  for (let found = opening.exec(text); found; found = opening.exec(text)) {
+    const close = text.indexOf("}", opening.lastIndex);
+    if (close === -1) break;
+    for (const item of text.slice(opening.lastIndex, close).split(",")) {
+      const name = item
+        .trim()
+        .replace(/^type\s+/, "")
+        .split(/\s+as\s+/)
+        .pop()
+        ?.trim();
+      if (name) names.push(name);
+    }
+    opening.lastIndex = close + 1;
+  }
+  return names;
+}
+
+/**
+ * The distinct names an entry exports (a value and a type of one name are one) and whether it has a
+ * bare `export * from` (#1624); comments are skipped. An entry is PR code, so every scan is linear:
+ * a stalled regex would hang the CI job.
+ */
+function exportsOf(source: string): { count: number; broad: boolean } {
+  const text = withoutBlockComments(source).replaceAll(/(^|[^:])\/\/.*$/gm, "$1");
+  const declared = text.matchAll(
+    /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|interface|type|enum)\s+(\w+)/gm,
+  );
+  const namespaced = text.matchAll(/^export\s*\*\s*as\s+(\w+)/gm);
+  const names = new Set([
+    ...listedNames(text),
+    ...[...declared, ...namespaced].map((found) => found[1]),
+    ...(/^export\s+default\b/m.test(text) ? ["default"] : []),
+  ]);
+  return { count: names.size, broad: /^export\s*\*\s*from/m.test(text) };
+}
+
+/** One row per entry in `today` (path to source text), against the same entry in `base`, sorted by path (#1624). */
+export function entryRows(
+  today: ReadonlyMap<string, string>,
+  base: ReadonlyMap<string, string>,
+): EntryRow[] {
+  return [...today.entries()]
+    .map(([entry, source]) => {
+      const now = exportsOf(source);
+      const before = base.get(entry);
+      return {
+        entry,
+        base: before === undefined ? null : exportsOf(before).count,
+        today: now.count,
+        broad: now.broad,
+      };
+    })
+    .sort((a, b) => (a.entry < b.entry ? -1 : Number(a.entry > b.entry)));
+}
+
+const entryNote = (row: EntryRow): string => {
+  const notes = [];
+  if (row.broad) notes.push("broad (export *)");
+  if (row.base !== null && row.today > row.base * (1 + ENTRY_GROWTH))
+    notes.push(
+      `grew ${row.base === 0 ? "from 0" : `${Math.ceil(((row.today - row.base) / row.base) * 100)}%`} (over ${ENTRY_GROWTH * 100}%)`,
+    );
+  return notes.join("; ");
+};
+
+/** A markdown table of the entries with a note for a broad one and for a growth over 20% (#1624). */
+export function formatEntries(rows: EntryRow[]): string {
+  return [
+    "| Entry | On main | Today | Note |",
+    "| --- | ---: | ---: | --- |",
+    ...rows.map(
+      (row) => `| ${row.entry} | ${row.base ?? "-"} | ${row.today} | ${entryNote(row)} |`,
+    ),
+  ].join("\n");
+}
