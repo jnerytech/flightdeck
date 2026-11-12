@@ -101,7 +101,7 @@ export function NotificationBell(
     store.inbox.markRead(row.ids);
     setOpen(false);
     const target = inboxTarget(row.entry, cardExists, requestOpen);
-    if (target?.kind === "link") store.openRequestLink(target.link);
+    if (target?.kind === "link") store.permissions.openLink(target.link);
     else if (target?.kind === "url") store.openLink(target.url);
     else if (target?.kind === "route") props.go(target.route);
   };
