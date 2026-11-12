@@ -11,13 +11,13 @@ import { formatBytes } from "@/shared/lib/index.ts";
 import { useT } from "../../i18n/context.tsx";
 import { translateError } from "../../i18n/errors.ts";
 import { RequestError } from "../../lib/host-connection.ts";
+import { AppDialogContent } from "../../shared/feedback/index.ts";
 import {
   plainText,
   type TeleportOutcome,
   type TeleportRunArgs,
   type TeleportSummary,
-} from "../../lib/teleport.ts";
-import { AppDialogContent } from "../../shared/feedback/index.ts";
+} from "./teleport.ts";
 
 export interface TeleportDialogProps {
   /** The hosts the session can go to: online, with teleport, not its own. */
