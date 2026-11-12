@@ -70,7 +70,11 @@ const isHostData = (value: unknown): value is HomeHostData => {
 const Hosts = z
   .record(z.string(), z.unknown())
   .transform((hosts) =>
-    Object.fromEntries(Object.entries(hosts).filter(([, host]) => isHostData(host))),
+    Object.fromEntries(
+      Object.entries(hosts).filter((entry): entry is [string, HomeHostData] =>
+        isHostData(entry[1]),
+      ),
+    ),
   );
 
 /** The stored entries: an entry that is not an object of hosts is dropped, the others stay. */
