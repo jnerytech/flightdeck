@@ -10,7 +10,6 @@ import { assistantService } from "./assistant/factory.ts";
 import { assistantDir } from "./assistant/paths.ts";
 import { createBoardWork } from "./automations/wiring.ts";
 import { createBgService } from "./bg/wiring.ts";
-import { readSpecText } from "./board/spec.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
@@ -44,9 +43,7 @@ import { createMaintenance } from "./maintenance/index.ts";
 import { exists } from "./memory/index.ts";
 import { Names } from "./names/names.ts";
 import { historyExcludes } from "./permissions/auto-approve.ts";
-import { credential } from "./permissions/sensitive-paths.ts";
 import { createPermissions } from "./permissions/wiring.ts";
-import { packPersonas } from "./personas/pack.ts";
 import { createPersonas } from "./personas/wiring.ts";
 import { createAgentSetup } from "./plugins/index.ts";
 import type { PowerContext } from "./power/keep-awake.ts";
@@ -57,7 +54,7 @@ import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
-import { createChanges, createReview } from "./review/wiring.ts";
+import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
 import { type PlatformInfo, warnIfNoRoots } from "./roots.ts";
@@ -378,17 +375,6 @@ export async function startDaemon(
       board,
     }),
   );
-  // The diff of every session and card, for the review (phase 11), a plain session's commit
-  // and PR (#1133), and the files viewer.
-  const changes = createChanges({
-    db: store.db,
-    board,
-    log: logger.log.bind(logger),
-    terminals,
-    allowedRoots: config.allowedRoots,
-    scanner: snippetScanner,
-    dataDir: config.dataDir,
-  });
   // The issues, the GitHub Projects' boards, the PR watch and the automations around the cards.
   const { issues } = await domains.add(
     createBoardWork({
@@ -537,27 +523,25 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
-  // Issue #1439: the cards' second-opinion review, on the runtime's tool-less one-shot call.
-  const reviewScanner = new SecretScanner(() => heldValues());
-  const review = createReview({
-    db: store.db,
-    changes,
-    manager,
-    board,
-    central,
-    complete: runtime.complete?.bind(runtime),
-    // The spec file of the card, with readSpec's checks (its real place inside the worktree, no
-    // link on the way, no hard link), never a credential file, at most 20 KB.
-    spec: async (id) => {
-      const { specPath, worktreePath } = board.getCard(id);
-      if (!specPath || !worktreePath || credential(specPath)) return undefined;
-      return (await readSpecText(worktreePath, specPath, 20_000)) ?? undefined;
-    },
-    redact: (text) => reviewScanner.redact(text, false),
-    persona: (language) => packPersonas(language).find((p) => p.id === "revisor")?.body ?? "",
-    gates: { hostPause, quota, memory: memoryGate },
-    usage: usageIndex,
-  });
+  // Issue #1439: the diffs, a plain session's commit and PR, the files viewer, the comments and the
+  // cards' second-opinion review, on the runtime's tool-less one-shot call.
+  await domains.add(
+    createReview({
+      db: store.db,
+      board,
+      log: logger.log.bind(logger),
+      terminals,
+      allowedRoots: config.allowedRoots,
+      scanner: snippetScanner,
+      dataDir: config.dataDir,
+      manager,
+      central,
+      complete: runtime.complete?.bind(runtime),
+      heldValues: () => heldValues(),
+      gates: { hostPause, quota, memory: memoryGate },
+      usage: usageIndex,
+    }),
+  );
   await domains.add(
     createHostChecks({
       config,
@@ -629,7 +613,6 @@ export async function startDaemon(
     trace: new TraceService({ db: store.db, scanner: snippetScanner, telemetry: telemetryStore }),
     summary: new SummaryService({ db: store.db, scanner: snippetScanner }),
     webhook: new WebhookSender({ log: logger.log.bind(logger) }),
-    review: serverGroup<"review", "cardReview">()(review),
     ssh: serverGroup<"ssh">()(ssh.server),
     snippets: serverGroup<"snippets">()(snippets),
     agentSetup: serverGroup<"agentSetup">()(agentSetup),
