@@ -30,7 +30,7 @@ export const hostChangesHandlers = {
     );
     // The trust's view of the roots (which one is a project of its own) is a snapshot: read it
     // again, so the gates that read it without asking do not use the old list (#1738).
-    await opts.projectTrust?.refresh();
+    await opts.projects?.trust?.refresh();
     return { allowedRoots };
   },
   "ui.set": async (payload, { server }) => {

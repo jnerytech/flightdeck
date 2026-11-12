@@ -54,8 +54,8 @@ export function serverContext(opts: ServerOptions): ServerContext {
       return sessionLine(claudeSessionId ? opts.history.lastActivity(claudeSessionId) : null, live);
     },
     warmKeys: async (cwds) => {
-      if (!opts.central || !opts.warmProjectKey) return;
-      const warm = opts.warmProjectKey;
+      const warm = opts.projects?.warmKey;
+      if (!opts.central || !warm) return;
       await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
     },
   };

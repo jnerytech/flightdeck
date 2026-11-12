@@ -50,9 +50,11 @@ describe("roots.add", () => {
   test("the project trust reads the roots again once a folder is added, and not when nothing was added (#1738)", async () => {
     let reads = 0;
     const { client } = await serve({
-      projectTrust: {
-        refresh: async () => {
-          reads += 1;
+      projects: {
+        trust: {
+          refresh: async () => {
+            reads += 1;
+          },
         },
       },
     });

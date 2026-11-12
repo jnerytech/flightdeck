@@ -14,7 +14,7 @@ import type { ServerOptions } from "../../src/server.ts";
 /**
  * The feature each gated option names when it is off, as the accessors of `startServer` threw it
  * before the split (issue #248). The app translates these names, so none may change; seven differ
- * from their option. `findProjects` names its command (`projects.scan`, `projects.clone`), so it
+ * from their option. `projects.find` names its command (`projects.scan`, `projects.clone`), so it
  * stays a check of its own in those two handlers.
  */
 const BEFORE_THE_SPLIT: Record<string, string> = {
@@ -160,6 +160,11 @@ const GROUPED: Record<string, Record<string, string>> = {
     watch: "prWatch",
     checkLoop: "prWatch",
   },
+  // The projects' trust (#1593): it keeps `projectTrust`. The keys and "find my projects" are not
+  // refused through a gate.
+  projects: {
+    trust: "projectTrust",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -219,6 +224,7 @@ describe("server-gates", () => {
       telemetry: {},
       updates: {},
       prWatch: {},
+      projects: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),
