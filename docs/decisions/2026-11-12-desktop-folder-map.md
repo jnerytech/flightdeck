@@ -52,16 +52,16 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `feedback/` | `shared/feedback/` | **moved**: `action-button`, `busy`, `confirm-dialog`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`. `notices.tsx` stays in `components/feedback/` until the store moves: it reads `AppStore`, so it is not domain-free; it goes to `app/` with the root |
 | `layout/` | `shared/layout/` | **moved** (14 primitives, behind an `index.ts`; the field-row context is a leaf, `field-row-context.ts`, that `shared/feedback` imports directly); `app-shell.tsx` and `breadcrumb.tsx` went to `features/shell/` (below); `view-toggle.tsx` stays in `components/layout/` for now: only the sessions hub and the history list use it, and it reads `lib/hub.ts`, so it follows the sessions rows |
 | `markdown/` | `shared/markdown/` | **moved**: `markdown.tsx` and the lazy `markdown-body.tsx`; the `index.ts` exports only `Markdown` and `preloadMarkdown`, never the body, so the lazy chunk stays lazy (`bundle-reach` green) |
-| `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
+| `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` (**moved**) | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
 | `session/` | **theirs** (`features/sessions/`) | activity line, message actions, parts, tool rows, finish dialogs |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
 | `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and the shell `lib/` files follow in later PRs |
-| `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (the sheet already lives there) |
+| `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (**moved**; the sheet already lives there) |
 | `simple/` | `features/home/` (simple mode) | home, question and task views, settings view; `ui/simple/SimpleApp.tsx` goes with it |
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
 | `tabs/` | `features/tabs/` | overflow and switcher (the tab bar already lives there); **theirs** if the session view needs the file, ask first |
 | `ui/` | **stay** | vendored shadcn |
-| `whatsnew/` | `features/appupdate/` | the "what's new" dialog is part of the update story |
+| `whatsnew/` | `features/appupdate/` (**moved**) | the "what's new" dialog is part of the update story |
 | `nav-icons.ts` | `features/shell/` | the sidebar and rail icons |
 
 ## `ui/`

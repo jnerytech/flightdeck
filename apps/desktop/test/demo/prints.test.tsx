@@ -10,23 +10,23 @@ import {
   initialRoute,
   parseDemoHosts,
   seedDemoHosts,
-} from "../src/demo/boot.ts";
-import { entryPlugin } from "../src/demo/entry-html.ts";
-import { LANG_KEY } from "../src/i18n/index.ts";
-import { loadHosts } from "../src/lib/hosts.ts";
-import { THEME_KEY } from "../src/lib/theme.ts";
-import { WORKSPACE_KEY, Workspace } from "../src/lib/workspace.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+} from "../../src/demo/boot.ts";
+import { entryPlugin } from "../../src/demo/entry-html.ts";
+import { LANG_KEY } from "../../src/i18n/index.ts";
+import { loadHosts } from "../../src/lib/hosts.ts";
+import { THEME_KEY } from "../../src/lib/theme.ts";
+import { WORKSPACE_KEY, Workspace } from "../../src/lib/workspace.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
+import { waiter } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { App } = await import("../src/ui/App.tsx");
-const { createWebPlatform } = await import("../src/platform/web/index.ts");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { App } = await import("../../src/ui/App.tsx");
+const { createWebPlatform } = await import("../../src/platform/web/index.ts");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
