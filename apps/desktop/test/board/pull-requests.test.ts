@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
-import type { AppState } from "../src/lib/app-store.ts";
-import { mergeStance, openPullRequests, prFacts } from "../src/lib/pull-requests.ts";
+import {
+  mergeStance,
+  openPullRequests,
+  prFacts,
+} from "../../src/features/board/pull-requests-model.ts";
+import { translator } from "../../src/i18n/index.ts";
+import type { AppState } from "../../src/lib/app-store.ts";
 
 const card = (id: string, over: object = {}) =>
   ({

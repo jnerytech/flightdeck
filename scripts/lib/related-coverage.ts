@@ -6,7 +6,7 @@ import {
   ENTRY_POINTS,
   hasRuntimeCode,
   isCoverageSource,
-} from "./coverage-check.ts";
+} from "./coverage-gate/check.ts";
 
 export { isCoverageSource };
 

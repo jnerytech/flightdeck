@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { COVERAGE_GATE } from "./lib/coverage-check.ts";
+import { COVERAGE_GATE } from "./lib/coverage-gate/check.ts";
 import { localPyramid } from "./lib/pyramid-table.ts";
 import { checkChanged, wholeSuiteCheck } from "./lib/related-coverage.ts";
 import { keepCoverageProblem, listSelection, planRelated } from "./lib/test-related.ts";

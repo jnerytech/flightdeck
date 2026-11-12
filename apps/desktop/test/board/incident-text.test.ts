@@ -5,7 +5,7 @@ import {
   type IncidentInput,
   incidentText,
   STEP_OUTPUT_MAX,
-} from "../src/lib/incident-text.ts";
+} from "../../src/features/board/incident-text.ts";
 
 const base = (over: Partial<IncidentInput> = {}): IncidentInput => ({
   card: { title: "Fix the login", notice: "The setup script failed.", prUrl: null },

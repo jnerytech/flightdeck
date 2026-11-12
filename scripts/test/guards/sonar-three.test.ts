@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { domEqualities, holdsElement } from "../../lib/dom-equal-ratchet.ts";
+import { domEqualities, holdsElement } from "../../lib/ratchets/dom-equal.ts";
 
 const LIMIT_MS = 250;
 const timed = <T>(run: () => T): { value: T; ms: number } => {

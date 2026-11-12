@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { domEqualCounts, domEqualities, holdsElement } from "../../lib/dom-equal-ratchet.ts";
-import { overBaseline } from "../../lib/layout-ratchet.ts";
+import { domEqualCounts, domEqualities, holdsElement } from "../../lib/ratchets/dom-equal.ts";
+import { overBaseline } from "../../lib/ratchets/layout.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");

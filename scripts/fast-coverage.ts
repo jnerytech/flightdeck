@@ -10,7 +10,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
-import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-check.ts";
+import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-gate/check.ts";
 import { fastCoverageVerdict, fullyCovered } from "./lib/fast-coverage.ts";
 import { testTiers } from "./lib/test-tiers.ts";
 import { testArgs } from "./test/timeout.ts";
