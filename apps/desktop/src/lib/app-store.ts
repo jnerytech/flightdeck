@@ -36,7 +36,7 @@ import {
   wireAppUpdates,
 } from "../features/appupdate/index.ts";
 import { WhatsNew } from "../features/appupdate/whats-new.ts";
-import { AssistantController, type HostAnswer } from "../features/assistant/assistant.ts";
+import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import {
   type BackgroundSlice,
   initialBackgroundState,
@@ -157,6 +157,9 @@ import {
   wireSnippets,
 } from "../features/snippets/index.ts";
 import { initialSshState, type SshSlice, wireSsh } from "../features/ssh/index.ts";
+import { TabScopeController } from "../features/tabs/tab-scope.ts";
+import { TabOrderController } from "../features/tabs/tab-switcher.ts";
+import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import {
   type TeleportOutcome,
   type TeleportRequest,
@@ -213,9 +216,6 @@ import type { WorktreeFilter } from "./project-tree.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink } from "./request-link.ts";
 import { probeAfter, SetupSettings } from "./setup-steps.ts";
-import { TabScopeController } from "./tab-scope.ts";
-import { TabOrderController } from "./tab-switcher.ts";
-import type { Navigation, Tabs } from "./tabs.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -562,20 +562,10 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
-    this.assistant = new AssistantController({
+    this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
-      hosts: () =>
-        this.state.hosts.map((host) => ({
-          id: host.id,
-          name: host.name,
-          online: host.status === "online",
-          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
-        })),
-      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
       language: () => this.i18n.lang,
-      request: (hostId, type, payload) =>
-        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
     });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);

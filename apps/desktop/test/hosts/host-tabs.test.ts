@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { HostTabs, routeHost } from "../../src/features/hosts/host-tabs.ts";
+import type { Tab } from "../../src/features/tabs/tabs.ts";
 import type { Route } from "../../src/lib/router.ts";
-import type { Tab } from "../../src/lib/tabs.ts";
 
 /**
  * Issue #644: each host keeps its own tabs, the shared screens stay at the left of every set, and
