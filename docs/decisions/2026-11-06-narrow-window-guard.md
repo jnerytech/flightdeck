@@ -7,7 +7,7 @@
   - clipped titles.
 
   fd-ux-designer writes the breakpoint spec and fd-frontend builds the shell from it. They need a list of what breaks, page by page and worst first. The list must also stop a fixed page from breaking again.
-- **Where.** `demo:shots` resizes the same page after a print's 1280x800 checks: to 1024x700, then 640x800, then 390x844 (`NARROW_SIZES` in `scripts/lib/shots-narrow.ts`). Nothing reloads.
+- **Where.** `demo:shots` resizes the same page after a print's 1280x800 checks: to 1024x700, then 640x800, then 390x844 (`NARROW_SIZES` in `scripts/lib/shots/narrow.ts`). Nothing reloads.
   - Only the dark prints do this. The width does not depend on the theme, and both languages run, because pt-BR strings are longer.
   - Only the prints in `NARROW_SHOTS` do this: hub, inicio-kpis, sessao, host, projeto-blocos, board, configuracoes, card, custos and abas-muitas. These are the pages #641 must bring to zero, plus the ones with tables and tabs.
   - Each narrow print is saved as `screenshots/narrow-<theme>-<lang>/<print>@<WxH>.png`.

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { NARROW_SHOTS } from "../../../../scripts/lib/shots-narrow.ts";
+import { NARROW_SHOTS } from "../../../../scripts/lib/shots/narrow.ts";
 import { readStyles } from "../../../../scripts/lib/styles-source.ts";
 import { BUILTIN_TEMPLATES } from "../../../daemon/src/templates/builtin.ts";
 import { translator } from "../../src/i18n/index.ts";
