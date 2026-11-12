@@ -101,7 +101,7 @@ const Target = z.object({
   status: z.enum(["new", "ok", "failing"]),
   lastHttpStatus: z.number().nullable(),
   lastAt: z.string().nullable(),
-});
+}) satisfies z.ZodType<WebhookTarget>;
 
 /** A new target id. */
 export function randomId(): string {
