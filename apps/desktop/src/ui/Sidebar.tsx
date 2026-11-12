@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
-import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +35,7 @@ import {
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
 import { rowRoute } from "@/features/sessions/index.ts";
 import { AccountFooter } from "@/features/shell/index.ts";
+import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, IconTip } from "@/shared/feedback/index.ts";
