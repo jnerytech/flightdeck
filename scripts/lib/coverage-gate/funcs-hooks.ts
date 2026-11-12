@@ -1,6 +1,6 @@
 /**
  * What the coverage:funcs preload needs to instrument files as they load (#296: split from
- * coverage-funcs.ts). It imports only istanbul, so the preload loads no repo source before its
+ * coverage-gate/funcs.ts). It imports only istanbul, so the preload loads no repo source before its
  * plugin registers, and the sharded suite's istanbul job sees every source.
  */
 import { createInstrumenter as createIstanbulInstrumenter } from "istanbul-lib-instrument";

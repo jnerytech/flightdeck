@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { commitWaived } from "../../lib/claude-hooks.ts";
+import { commitWaived } from "../../lib/hooks/claude-hooks.ts";
 import {
   appendHookLog,
   type HookLogEntry,
   hookLogPath,
   summarizeHookLog,
-} from "../../lib/hook-log.ts";
+} from "../../lib/hooks/hook-log.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const entry = (hook: string, ms: number, rule: string | null = null): HookLogEntry => ({

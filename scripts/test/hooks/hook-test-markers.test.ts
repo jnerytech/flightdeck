@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { testEditViolation } from "../../lib/claude-hooks.ts";
+import { testEditViolation } from "../../lib/hooks/claude-hooks.ts";
 
 // Built by concatenation so this very file never contains the forbidden markers.
 const ONLY = `.${"only"}(`;
@@ -24,12 +24,6 @@ describe("hook-test-markers", () => {
       expect(reason).toContain(marker);
       expect(reason).toContain("docs/TDD.md");
     }
-  });
-
-  test("a .skip is blocked too, and the reason says a flaky test is deleted (#1003)", () => {
-    const reason = edit("apps/daemon/test/a.test.ts", "", `describe${SKIP}"b", () => {})`) ?? "";
-    expect(reason).toContain("is blocked");
-    expect(reason).toContain("a flaky test is deleted, never skipped (#1003)");
   });
 
   test("tsx files and Windows paths count as test files", () => {

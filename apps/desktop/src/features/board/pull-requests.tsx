@@ -4,7 +4,6 @@ import { refusalText } from "@/i18n/errors";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { EmptyState, Inline, LoadingState, Page, Stack } from "@/shared/layout/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { openPullRequests } from "../../lib/pull-requests.ts";
 import type { Route } from "../../lib/router.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
 import { hasFeature } from "../../lib/version.ts";
@@ -13,6 +12,7 @@ import { answerOf } from "./board-select.ts";
 import { CardMergePr } from "./card-merge-pr.tsx";
 import { PrRefusal } from "./pr-refusal.tsx";
 import { PrRow } from "./pr-row.tsx";
+import { openPullRequests } from "./pull-requests-model.ts";
 
 const SLICE = ["hosts", "projects", "cards", "watches"] as const;
 

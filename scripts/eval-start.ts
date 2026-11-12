@@ -1,7 +1,7 @@
 /**
  * The start both evals share (`scripts/harness-eval.ts`, `scripts/ux-review-eval.ts`): the options,
  * the platform refusal, claude on the PATH and a runner whose processes get only the filtered env
- * (scripts/lib/harness-eval.ts). It exits with 2, naming the eval, when one cannot start. Only the
+ * (scripts/lib/evals/harness-eval.ts). It exits with 2, naming the eval, when one cannot start. Only the
  * real effects live here; the logic is evalOptions and evalContext, tested with fakes.
  */
 import { spawnSync } from "node:child_process";
@@ -12,7 +12,7 @@ import {
   type EvalOptions,
   evalContext,
   evalOptions,
-} from "./lib/harness-eval.ts";
+} from "./lib/evals/harness-eval.ts";
 
 const spawn: EvalHost["spawn"] = (command, cwd, env) => {
   const proc = spawnSync(command[0] ?? "", command.slice(1), {

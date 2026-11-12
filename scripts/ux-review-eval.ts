@@ -4,7 +4,7 @@
  * measures the `ux-reviewer` agent (issue #983). For each case and sample it clones HEAD into a
  * temporary folder (origin removed), commits one known-bad UI change there, runs
  * `claude -p --agent ux-reviewer` on it with no Edit or Write, and grades the report with the
- * deterministic checks of scripts/lib/ux-review-eval.ts. The session gets no token or key from the
+ * deterministic checks of scripts/lib/evals/ux-review-eval.ts. The session gets no token or key from the
  * environment. It costs real quota: opt-in only, never in the suite or CI, and never under the slot.
  * Linux and macOS only: it refuses Windows, where its git deny patterns miss backslash paths.
  */
@@ -12,7 +12,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { startEval } from "./eval-start.ts";
-import { prepareClone } from "./lib/harness-eval.ts";
+import { prepareClone } from "./lib/evals/harness-eval.ts";
 import {
   applyCase,
   gradeReport,
@@ -21,7 +21,7 @@ import {
   reviewPrompt,
   UX_CASES,
   uxScorecard,
-} from "./lib/ux-review-eval.ts";
+} from "./lib/evals/ux-review-eval.ts";
 
 const argv = process.argv.slice(2);
 const options = startEval("ux-review-eval", [

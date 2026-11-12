@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   ASSISTANT_FEATURE,
@@ -16,27 +16,6 @@ import {
 
 const command = (type: string, payload: unknown) => Command.safeParse({ id: "1", type, payload });
 const accepted = (type: string, payload: unknown) => command(type, payload).success;
-
-/**
- * The keys of the `assistantRefusal` block of an app dictionary, read as text (no app import here).
- * A dictionary is its `<lang>.ts` and the domain files of its `<lang>/` folder (#1598).
- */
-function refusalTexts(lang: string): string[] {
-  const dir = resolve(import.meta.dir, "../../../../apps/desktop/src/i18n");
-  const files = [`${lang}.ts`];
-  if (existsSync(resolve(dir, lang))) {
-    const names = readdirSync(resolve(dir, lang)).filter((name) => name.endsWith(".ts"));
-    files.push(...names.map((name) => `${lang}/${name}`));
-  }
-  for (const file of files) {
-    const source = readFileSync(resolve(dir, file), "utf8");
-    const start = source.indexOf("\n  assistantRefusal: {\n");
-    if (start < 0) continue;
-    const end = source.indexOf("\n  },\n", start);
-    return [...source.slice(start, end).matchAll(/^ {4}(\w+):/gm)].map((m) => m[1] as string);
-  }
-  throw new Error(`no assistantRefusal block in ${lang}.ts or the files of ${lang}/`);
-}
 
 describe("assistant-protocol", () => {
   test("the providers, profiles and kinds are closed lists", () => {
@@ -167,7 +146,7 @@ describe("assistant-protocol", () => {
     expect(rust.filter((reason) => !known.includes(reason))).toEqual([]);
   });
 
-  test("every refusal names its reason, and the app has a text for each in both languages", () => {
+  test("every refusal names its reason (the app's texts for them are checked in apps/desktop/test/assistant/refusal-texts.test.ts)", () => {
     expect([...ASSISTANT_REASONS]).toEqual([
       "assistant_not_configured",
       "assistant_empty_input",
@@ -196,8 +175,6 @@ describe("assistant-protocol", () => {
       "assistant_key_store",
       "assistant_repo_other_host",
     ]);
-    const sorted = [...ASSISTANT_REASONS].sort();
-    expect([refusalTexts("en").sort(), refusalTexts("pt-BR").sort()]).toEqual([sorted, sorted]);
   });
 
   test("a model option carries an id, a label, an optional group, per-million prices and whether it takes an effort", () => {
