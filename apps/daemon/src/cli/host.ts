@@ -5,8 +5,8 @@
 
 import { resolve } from "node:path";
 import { type Config, claudeSettingsPath, loadConfig, updateConfigFile } from "../config.ts";
+import { daemonUrl } from "../daemon-client/index.ts";
 import { acquireLock, DAEMON_VERSION, type Logger, readLockPid } from "../kernel/index.ts";
-import { daemonUrl } from "../mcp.ts";
 import {
   binDir,
   installService,

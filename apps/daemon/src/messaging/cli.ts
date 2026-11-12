@@ -4,7 +4,7 @@
  * the environment of the Claude Code session (FLIGHTDECK_SESSION, or the launch id of a terminal).
  */
 import type { SessionIdentity } from "@flightdeck/protocol";
-import { DaemonClient, daemonUrl } from "../mcp.ts";
+import { DaemonClient, daemonUrl } from "../daemon-client/index.ts";
 import { listSessions, notifyWhenIdle, readSession, sendToSession, teamStatus } from "./tools.ts";
 
 export interface MessageCliArgs {
