@@ -18,8 +18,6 @@ const { SnippetEditor } = await import("../src/features/snippets/snippet-editor.
 const { ActionForm } = await import("../src/features/actions/action-form.tsx");
 const { TargetForm } = await import("../src/features/ssh/target-form.tsx");
 
-import type { AppStore } from "../src/lib/app-store.ts";
-
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
@@ -73,16 +71,10 @@ async function expectBusyOnce(
 describe("formularios-pendentes: a form answers Enter before the work is done", () => {
   test("Criar orçamento goes busy and saves once", async () => {
     const save = slow();
-    // One state object: the slice reads it again after each render and needs the same hosts list.
-    const state = { clientSelection: "all", hosts: [] };
-    const store = {
-      today: () => "2026-10-15",
-      hostCommand: () => Promise.resolve(null),
-      clientScope: { get: () => ({ includes: () => true }) },
-      subscribe: () => () => {},
-      getState: () => state,
-      budgets: { set: save.call },
-    } as unknown as AppStore;
+    const { store } = await fakeHostStore({
+      "costs.summary": () => null,
+      "budget.set": onWire(save.call),
+    });
     render(
       <TContext.Provider value={t}>
         <BudgetsSection store={store} hostId="h" hostName="alfa" budgets={[]} />
@@ -121,14 +113,12 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     const add = slow();
     const generate = slow();
     const importKey = slow();
-    const store = {
-      secrets: {
-        add: add.call,
-        generateKey: generate.call,
-        importKeyFile: importKey.call,
-      },
-      copyText: () => Promise.resolve(true),
-    } as unknown as AppStore;
+    // The platform's vault is the seam: the real store, slice and vault run over it.
+    const { store, platform } = await fakeHostStore();
+    const storeValue = platform.vault.set;
+    platform.vault.set = add.call as never;
+    platform.vault.generateKey = generate.call as never;
+    platform.vault.pickFile = importKey.call as never;
     render(
       <TContext.Provider value={t}>
         <NewSecretForm store={store} onClose={() => {}} />
@@ -137,9 +127,11 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
     await type("Nome", "chave");
     await type("Valor", "segredo");
     await expectBusyOnce("Guardar", add.calls, () => add.settle());
-    for (const [name, work] of [
-      ["Gerar chave SSH", generate],
-      ["Importar arquivo de chave", importKey],
+    // The key made is stored by the vault as any secret: its value goes to the real store.
+    platform.vault.set = storeValue;
+    for (const [name, work, answer] of [
+      ["Importar arquivo de chave", importKey, null],
+      ["Gerar chave SSH", generate, { privateKey: "k", publicKey: "ssh-ed25519 AAA" }],
     ] as const) {
       await act(async () => {
         fireEvent.click(button(name) as HTMLElement);
@@ -149,9 +141,10 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
         fireEvent.click(button(name) as HTMLElement);
       });
       expect(work.calls).toHaveLength(1);
-      await work.settle(null);
+      await work.settle(answer);
       expect(button(name)?.getAttribute("aria-busy")).toBeNull();
     }
+    expect(screen.queryByText("ssh-ed25519 AAA")).not.toBeNull();
   });
 
   test("Salvar persona goes busy and saves once, and a refusal brings the form back", async () => {
