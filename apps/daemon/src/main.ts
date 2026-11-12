@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { unwatchFile, watchFile } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
@@ -91,8 +90,7 @@ import { SummaryService } from "./summary/service.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
 import { teleportImportDeps } from "./teleport/import.ts";
-import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
-import { TeleportInbox } from "./teleport/receive.ts";
+import { createTeleport } from "./teleport/wiring.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
@@ -332,26 +330,16 @@ export async function startDaemon(
     ...present({ scanIntervalMs: config.history.scanIntervalMs || undefined }),
   });
   history.start();
-  // Issue #100: the packages of the sessions this host teleports to another; none outlives a run.
-  const teleport = new TeleportPackages(
-    teleportDeps({
-      manager,
-      names,
-      indexer: history,
-      historyRoots: config.history.roots,
-      dataDir: config.dataDir,
-      scan: snippetScanner.scan.bind(snippetScanner),
-      log: logger.log.bind(logger),
-    }),
-  );
-  await teleport.start();
-  // The packages other hosts send to this one (slice 2a); none outlives a run either.
-  const teleportInbox = new TeleportInbox({
-    dir: join(config.dataDir, "teleport-in"),
-    now: Date.now,
-    newId: randomUUID,
-    timers: globalThis,
+  // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
+  const { teleport, teleportInbox } = createTeleport({
+    manager,
+    names,
+    indexer: history,
+    config,
+    scan: snippetScanner.scan.bind(snippetScanner),
+    log: logger.log.bind(logger),
   });
+  await teleport.start();
   await teleportInbox.start();
   const { costs, usageIndex, budgets } = createCosts({
     db: store.db,
