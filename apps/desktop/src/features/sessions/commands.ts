@@ -18,7 +18,7 @@ export interface SessionCommandsCore {
 /**
  * What a person asks of a session (#1596: a slice of the store): make one, send it a message,
  * interrupt it, change its mode, model or effort, close it, resume it. Each command goes to the
- * host of the open session, but for `sendTo` and `interruptOn`, which name the session; a refusal
+ * host of the open session, except `sendTo` and `interruptOn`, which name the session; a refusal
  * reaches the person through `fail`, never as a throw.
  */
 export class SessionCommandsSlice {
