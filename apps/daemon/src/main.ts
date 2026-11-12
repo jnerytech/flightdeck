@@ -601,13 +601,12 @@ export async function startDaemon(
       trust: trustServer({ projectTrust, manager }),
       find: true,
     }),
-    // `roots.add` pushes into this same array, so every service sees the new folder at once.
-    roots: {
+    roots: serverGroup<"roots", "platform">()({
       ...present({ platform: options.rootsPlatform }),
       persist: (roots) =>
         updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
       picker: true,
-    },
+    }),
     hostPause: hostPauseServer,
     memoryPause,
     keepAwake: keepAwakeSwitch,
@@ -713,6 +712,7 @@ export async function startDaemon(
     bind: config.bind,
     port: config.port,
     token: config.token,
+    // `roots.add` pushes into this same array, so every service sees the new folder at once.
     allowedRoots: config.allowedRoots,
     allowedNetworks: config.allowedNetworks,
     ...present({ claude, account, onShutdown: options.onShutdown }),
