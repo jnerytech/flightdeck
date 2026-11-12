@@ -700,7 +700,7 @@ export class Teams {
       const asked = [
         spec.persona && `persona ${spec.persona}`,
         spec.model && `modelo ${spec.model}`,
-        spec.effort && `esforço ${spec.effort}`,
+        spec.effort && `effort ${spec.effort}`,
         spec.permission && `modo de permissão ${spec.permission}`,
       ].filter(Boolean);
       tellCoordinator(
