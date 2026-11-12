@@ -29,13 +29,14 @@ function built(scanIntervalMs = 0) {
 }
 
 describe("history-wiring: the index of the recorded conversations (#1593)", () => {
-  test("the roots and the exclusions come from the config", () => {
+  test("the roots and the exclusions come from the config, the same the costs skip", () => {
     const { history, store } = built();
     try {
-      expect([history.opts.roots, history.opts.excludeCwds]).toEqual([
-        config.history.roots,
-        historyExcludes(config),
-      ]);
+      expect([
+        history.opts.roots,
+        history.opts.excludeCwds?.includes("/skip"),
+        history.opts.excludeCwds,
+      ]).toEqual([config.history.roots, true, historyExcludes(config)]);
     } finally {
       store.close();
     }
