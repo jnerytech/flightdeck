@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Fetched, sonarLeft } from "../../lib/sonar-left.ts";
+import { type Fetched, sonarLeft } from "../../lib/sonar/left.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 /**

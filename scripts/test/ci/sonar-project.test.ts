@@ -5,7 +5,7 @@ import {
   isTestFile,
   matchesGlob,
   testInclusionsOf,
-} from "../../lib/sonar-project.ts";
+} from "../../lib/sonar/project.ts";
 
 describe("sonar-project: what sonar-project.properties tells SonarCloud (#283)", () => {
   const properties = [
@@ -26,7 +26,7 @@ describe("sonar-project: what sonar-project.properties tells SonarCloud (#283)",
     expect(matchesGlob("**/test/**", "apps/daemon/test/a.ts")).toBe(true);
     expect(matchesGlob("**/*.test.ts", "board.test.ts")).toBe(true);
     expect(matchesGlob("scripts/*.ts", "scripts/slot.ts")).toBe(true);
-    expect(matchesGlob("scripts/*.ts", "scripts/lib/slot.ts")).toBe(false);
+    expect(matchesGlob("scripts/*.ts", "scripts/lib/slot/index.ts")).toBe(false);
     expect(matchesGlob("**/*.d.ts", "apps/daemon/src/xd.ts")).toBe(false);
   });
 
@@ -40,7 +40,7 @@ describe("sonar-project: what sonar-project.properties tells SonarCloud (#283)",
 
   test("coverage counts analysed source files only", () => {
     expect(countsForCoverage("apps/daemon/src/board/board.ts", properties)).toBe(true);
-    expect(countsForCoverage("scripts/lib/slot.ts", properties)).toBe(true);
+    expect(countsForCoverage("scripts/lib/slot/index.ts", properties)).toBe(true);
     expect(countsForCoverage("scripts/slot.ts", properties)).toBe(false);
     expect(countsForCoverage("apps/daemon/src/text-modules.d.ts", properties)).toBe(false);
     expect(countsForCoverage("apps/daemon/test/board/board.test.ts", properties)).toBe(false);

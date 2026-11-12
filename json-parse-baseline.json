@@ -7,11 +7,8 @@
   "apps/desktop/src/demo/boot.ts": 3,
   "apps/desktop/src/features/agentcfg/frontmatter.ts": 1,
   "apps/desktop/src/features/costs/page.tsx": 2,
-  "apps/desktop/src/features/hosts/hosts.ts": 1,
   "apps/desktop/src/features/palette/palette-store.ts": 1,
-  "apps/desktop/src/features/personas/global-personas.ts": 1,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 1,
-  "apps/desktop/src/features/snippets/global-snippets.ts": 1,
   "apps/desktop/src/features/webhook/webhook-targets.ts": 1,
   "apps/desktop/src/lib/app-store.ts": 1,
   "packages/protocol/src/index.ts": 1
