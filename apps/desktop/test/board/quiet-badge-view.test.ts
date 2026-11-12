@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { quietBadge } from "../../src/features/board/quiet-badge-view.ts";
+import type { QuietAlert } from "../../src/features/needs-you/quiet.ts";
 import { translator } from "../../src/i18n/index.ts";
-import type { QuietAlert } from "../../src/lib/quiet.ts";
 
 const t = translator("en");
 const NOW = Date.parse("2026-11-11T12:00:00Z");
