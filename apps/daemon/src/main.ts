@@ -634,9 +634,11 @@ export async function startDaemon(
     }),
     messaging: serverGroup<"messaging">()({ messages: messaging, idle, teams }),
     names,
-    watch: prWatch,
-    // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
-    checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
+    prWatch: serverGroup<"prWatch">()({
+      watch: prWatch,
+      // Issue #1361: the check loop's switch, on the watch's checks and the project's trust.
+      checkLoop: checkLoop.switchOf({ board, watcher: prWatcher, manager }),
+    }),
     vault,
     log: logger.log.bind(logger),
     actions,
@@ -692,14 +694,17 @@ export async function startDaemon(
       externals: central.external,
       locks: folderLocks,
     }),
-    ...present({ updates }),
     snapshots,
     rewinder,
     forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
-    ...present({
-      updater,
-      autoUpdate: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
-    }),
+    // A host without the update manifest runs none of them.
+    updates: serverGroup<"updates", "check" | "apply" | "auto">()(
+      present({
+        check: updates,
+        apply: updater,
+        auto: autoUpdater && autoUpdateOf(autoUpdater, config, configFile),
+      }),
+    ),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,

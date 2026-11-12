@@ -117,7 +117,7 @@ describe("daemon-update-check", () => {
     await updates.start();
     const { manager } = newManager();
     const base = { manager, hostName: "h", bind: "127.0.0.1", port: 0, token: TOKEN };
-    const server = startServer({ ...base, allowedRoots: [], updates });
+    const server = startServer({ ...base, allowedRoots: [], updates: { check: updates } });
     cleanups.push(() => server.stop());
     const client = new FrameClient(server.url);
     cleanups.push(() => client.close());

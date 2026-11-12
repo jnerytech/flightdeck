@@ -21,7 +21,7 @@ const FAR_EDITABLE: ReadonlySet<string> = new Set([
 
 export const watchHandlers = {
   "watch.settings": (payload, { ws, server }) => {
-    const watch = server.need("watch");
+    const watch = server.needIn("prWatch", "watch");
     const { projectId, patch } = payload;
     if (patch) {
       const current: Record<string, unknown> = { ...watch.settings(projectId) };
@@ -38,29 +38,29 @@ export const watchHandlers = {
     return watch.settings(projectId, patch);
   },
   "watch.set": (payload, { server }) => {
-    return server.need("watch").set(payload.cardId, payload.enabled);
+    return server.needIn("prWatch", "watch").set(payload.cardId, payload.enabled);
   },
   "watch.get": (payload, { server }) => {
-    return server.need("watch").info(payload.cardId);
+    return server.needIn("prWatch", "watch").info(payload.cardId);
   },
   "watch.resolveHeld": async (payload, { server }) => {
     const { cardId, roundId, action } = payload;
-    return await server.need("watch").resolveHeld(cardId, roundId, action);
+    return await server.needIn("prWatch", "watch").resolveHeld(cardId, roundId, action);
   },
   "watch.extend": (payload, { server }) => {
-    return server.need("watch").extend(payload.cardId, payload.rounds);
+    return server.needIn("prWatch", "watch").extend(payload.cardId, payload.rounds);
   },
   "watch.trace": (payload, { server }) => {
-    return server.need("watch").trace(payload.cardId);
+    return server.needIn("prWatch", "watch").trace(payload.cardId);
   },
   "watch.describe": (payload, { server }) => {
-    return server.need("watch").describe(payload.cardId);
+    return server.needIn("prWatch", "watch").describe(payload.cardId);
   },
   "watch.byUrl": (payload, { server }) => {
-    return server.need("watch").byUrl(payload.url);
+    return server.needIn("prWatch", "watch").byUrl(payload.url);
   },
   "watch.watch": (_payload, { ws, send, server }) => {
-    const service = server.need("watch");
+    const service = server.needIn("prWatch", "watch");
     ws.data.unwatchPrs?.();
     ws.data.unwatchPrs = service.watch((frame) => send(frame));
   },

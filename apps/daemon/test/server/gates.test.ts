@@ -46,16 +46,12 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   trace: "trace",
   usage: "usage",
   vault: "vault",
-  watch: "prWatch",
-  checkLoop: "prWatch",
   webhook: "webhook",
   // The gates written inline in a case before the split, each with a single name.
   serviceInstall: "serviceInstall",
   forker: "forker",
   snapshots: "snapshots",
   ui: "ui.mode",
-  updater: "updater",
-  updates: "updater",
 };
 
 /**
@@ -152,6 +148,18 @@ const GROUPED: Record<string, Record<string, string>> = {
     store: "telemetry",
     optIn: "telemetry",
   },
+  // The daemon's own update (#1593): the check and the apply keep `updater`, the automatic
+  // update the `autoUpdate` that `host.updates.set` named.
+  updates: {
+    check: "updater",
+    apply: "updater",
+    auto: "autoUpdate",
+  },
+  // The cards' PR watch and its check loop switch (#1593): both keep `prWatch`.
+  prWatch: {
+    watch: "prWatch",
+    checkLoop: "prWatch",
+  },
 };
 
 /** What `needIn` answers for a grouped service: the service, or the refusal's reason and feature. */
@@ -209,6 +217,8 @@ describe("server-gates", () => {
       personas: {},
       costs: {},
       telemetry: {},
+      updates: {},
+      prWatch: {},
     } as ServerOptions;
     const named = Object.entries(GROUPED).flatMap(([group, keys]) =>
       Object.entries(keys).map(([key, feature]) => [group, key, feature] as const),

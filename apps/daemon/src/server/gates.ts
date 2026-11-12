@@ -36,16 +36,12 @@ export const GATES = {
   trace: "trace",
   usage: "usage",
   vault: "vault",
-  watch: "prWatch",
-  checkLoop: "prWatch",
   webhook: "webhook",
   // Written inline in a case before the split, each with a single name.
   serviceInstall: "serviceInstall",
   forker: "forker",
   snapshots: "snapshots",
   ui: "ui.mode",
-  updater: "updater",
-  updates: "updater",
 } as const satisfies Partial<Record<keyof ServerOptions, string>>;
 
 export type GatedOption = keyof typeof GATES;
@@ -140,6 +136,15 @@ export const GROUP_GATES = {
   telemetry: {
     store: "telemetry",
     optIn: "telemetry",
+  },
+  updates: {
+    check: "updater",
+    apply: "updater",
+    auto: "autoUpdate",
+  },
+  prWatch: {
+    watch: "prWatch",
+    checkLoop: "prWatch",
   },
 } as const satisfies {
   [G in keyof ServerOptions]?: Record<
