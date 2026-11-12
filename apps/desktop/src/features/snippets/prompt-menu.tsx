@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
-import { filterMenu, highlight, type MenuItem } from "../../lib/prompt-menu.ts";
+import { filterMenu, highlight, type MenuItem } from "./prompt-menu-model.ts";
 
 /** The prompt snippets a message box offers after `/` (phase 18). */
 export interface PromptSnippets {

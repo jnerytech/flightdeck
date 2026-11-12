@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { HostConnection } from "../src/features/hosts/host-connection.ts";
 import { AppStore } from "../src/lib/app-store.ts";
-import { HostConnection } from "../src/lib/host-connection.ts";
 import { projectTree } from "../src/lib/project-tree.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settlePlain as settle, settleMaybe, stays } from "./wait.ts";

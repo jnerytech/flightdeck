@@ -9,15 +9,15 @@ import { EmptyState, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { selectedClient } from "../../lib/client-scope.ts";
 import { groupSecrets } from "../../lib/client-vault.ts";
-import type { SecretMeta } from "../../lib/vault.ts";
-import { describeSecret, type SecretInfo } from "../../lib/vault-types.ts";
 import { BackupPanel } from "./backup-panel.tsx";
 import { EditSecretForm } from "./edit-secret-form.tsx";
 import { NewSecretForm } from "./new-secret-form.tsx";
 import { RulesEditor } from "./rules-editor.tsx";
 import { TypedConfirm } from "./typed-confirm.tsx";
 import { UsageLog } from "./usage-log.tsx";
+import type { SecretMeta } from "./vault.ts";
 import { VaultReport } from "./vault-report.tsx";
+import { describeSecret, type SecretInfo } from "./vault-types.ts";
 
 const REVEAL_MS = 10_000;
 const CLEAR_MS = 30_000;

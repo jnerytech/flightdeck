@@ -16,7 +16,7 @@ const {
 const screen = liveScreen(within);
 const { AppStore } = await import("../../src/lib/app-store.ts");
 const { App } = await import("../../src/ui/App.tsx");
-const { RequestError } = await import("../../src/lib/host-connection.ts");
+const { RequestError } = await import("../../src/features/hosts/host-connection.ts");
 
 setDefaultTimeout(40_000);
 const settle = waiter(10_000);

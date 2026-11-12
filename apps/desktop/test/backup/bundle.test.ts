@@ -4,9 +4,9 @@ import {
   type BackupPlatform,
   createBackup,
   previewRestore,
-} from "../../src/lib/backup-bundle.ts";
-import { Vault } from "../../src/lib/vault.ts";
-import type { BackupError } from "../../src/lib/vault-backup.ts";
+} from "../../src/features/backup/backup-bundle.ts";
+import { Vault } from "../../src/features/vault/vault.ts";
+import type { BackupError } from "../../src/features/vault/vault-backup.ts";
 
 /**
  * Issue #1241: one encrypted file holds the app's settings, personas, snippets, hosts (with their

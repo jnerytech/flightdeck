@@ -41,7 +41,7 @@ import {
   initialBackgroundState,
   wireBackground,
 } from "../features/background/index.ts";
-import { BackupSlice } from "../features/backup/index.ts";
+import { type Attention, BackupScheduler, BackupSlice } from "../features/backup/index.ts";
 import { type ClientScopeSlice, wireClientScope } from "../features/clients/index.ts";
 import {
   type BudgetsSlice,
@@ -53,11 +53,19 @@ import {
 } from "../features/costs/index.ts";
 import { type HistorySlice, initialHistoryState, wireHistory } from "../features/history/index.ts";
 import {
+  type ConnectionStatus,
   type HealthSlice,
+  type HostConfig,
+  HostConnection,
   HostRosterSlice,
+  HostTabs,
   type HostUpdateSlice,
   initialHealthState,
+  loadHosts,
   type NewHost,
+  RequestError,
+  saveHosts,
+  statusLine,
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
@@ -80,6 +88,8 @@ import { type ProjectsSlice, wireProjects } from "../features/projects/index.ts"
 import { initialQuotaState, type QuotaSlice, wireQuota } from "../features/quota/index.ts";
 import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import {
+  browserClockDeps,
+  CacheTimerSettings,
   type ExternalSessionsSlice,
   type Finish,
   finishOutcome,
@@ -87,12 +97,14 @@ import {
   hubRows,
   initialSessionsState,
   loadFinished,
+  NewSessionPrefs,
   recordFinish,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
   type SessionsSlice,
   SessionViews,
+  SharedClock,
   type SummariesSlice,
   saveFinished,
   sessionKey,
@@ -125,10 +137,15 @@ import {
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
+  checkDelivery,
+  type DeliveryRefusal,
+  Vault,
   type VaultApprovalsSlice,
+  VaultRules,
   type VaultRulesSlice,
   VaultScanSlice,
   type VaultSecretsSlice,
+  VaultUsageLog,
   wireVaultApprovals,
   wireVaultRules,
   wireVaultSecrets,
@@ -156,9 +173,7 @@ import type {
 } from "./app-state.ts";
 import { HISTORY_PAGE, needsYou } from "./app-state.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
-import { type Attention, BackupScheduler } from "./backup-scheduler.ts";
 import { BoardWidth } from "./board-select.ts";
-import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { knownProjects } from "./client-rules.ts";
 import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
@@ -166,16 +181,7 @@ import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
 import { googleConfig } from "./google-config.ts";
 import { HomeCache } from "./home-cache.ts";
-import {
-  type ConnectionStatus,
-  HostConnection,
-  RequestError,
-  statusLine,
-} from "./host-connection.ts";
-import { HostTabs } from "./host-tabs.ts";
-import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
-import { NewSessionPrefs } from "./new-session-prefs.ts";
 import { sameNotice } from "./notice-lifetime.ts";
 import { ProjectKeys } from "./project-keys.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
@@ -195,10 +201,6 @@ import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import { isLocalUrl } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
-import { Vault } from "./vault.ts";
-import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
-import { VaultRules } from "./vault-rules.ts";
-import { VaultUsageLog } from "./vault-usage.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -644,7 +646,7 @@ export class AppStore {
     });
     this.backup = new BackupSlice({
       createText: async (passphrase, confirmation) => {
-        const { createBackup } = await import("./backup-bundle.ts");
+        const { createBackup } = await import("../features/backup/backup-bundle.ts");
         return createBackup(platform, passphrase, confirmation, {
           ...(options.vaultWorkFactor !== undefined && { workFactor: options.vaultWorkFactor }),
         });
@@ -652,11 +654,11 @@ export class AppStore {
       saveFile: (name, text) => platform.saveFile(name, text),
       pickFile: () => platform.vault.pickFile(),
       previewText: async (text, passphrase) => {
-        const { previewRestore } = await import("./backup-bundle.ts");
+        const { previewRestore } = await import("../features/backup/backup-bundle.ts");
         return previewRestore(platform, text, passphrase);
       },
       applyPreview: async (preview, onConflict) => {
-        const { applyRestore } = await import("./backup-bundle.ts");
+        const { applyRestore } = await import("../features/backup/backup-bundle.ts");
         return applyRestore(platform, preview, onConflict);
       },
       driveNames: () => this.backupScheduler.driveBackups(),

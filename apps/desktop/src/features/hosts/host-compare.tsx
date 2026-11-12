@@ -16,7 +16,7 @@ import {
   featureDiffTied,
   hasFix,
   hostFacts,
-} from "../../lib/host-compare.ts";
+} from "./host-compare-model.ts";
 
 const COMPARE_KEYS = ["hosts", "doctor", "deps"] as const;
 const DASH = "—";

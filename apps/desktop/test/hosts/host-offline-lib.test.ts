@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { hostUptime, mayBeRefusedAddress, offlineHint } from "../../src/lib/host-offline.ts";
+import {
+  hostUptime,
+  mayBeRefusedAddress,
+  offlineHint,
+} from "../../src/features/hosts/host-offline.ts";
 
 describe("host-offline", () => {
   test("the uptime ages with the time since host.info arrived and never goes backwards", () => {

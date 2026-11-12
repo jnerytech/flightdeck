@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../../src/demo/boot.ts";
-import { hostColorVar } from "../../src/lib/host-color.ts";
+import { hostColorVar } from "../../src/features/hosts/host-color.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { memoryPlatform } from "../fixtures.ts";
 import { tabName } from "../tabs/names.ts";

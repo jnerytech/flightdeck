@@ -1,15 +1,15 @@
 import type { CommandPayload, CommandResults, VaultRequestFrame } from "@flightdeck/protocol";
+import { HIGH_RISK_HOLD_MS } from "@/features/permissions/index.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
-import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
-import type { SecretMeta, Vault } from "../../lib/vault.ts";
-import { actionPolicy, type VaultAnswer } from "../../lib/vault-approval.ts";
+import type { SecretMeta, Vault } from "./vault.ts";
+import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import {
   answerVaultRequest,
   type VaultOutcome,
   type VaultPolicy,
   type VaultRequestContext,
-} from "../../lib/vault-requests.ts";
+} from "./vault-requests.ts";
 
 /** The host a request came from, as far as the approvals go. */
 export interface ApprovalHost {

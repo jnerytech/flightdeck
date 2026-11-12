@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, renderHook, within } = await import(
   "@testing-library/react"
 );
 const screen = liveScreen(within);
-const { useDraft } = await import("../src/lib/use-draft.ts");
+const { useDraft } = await import("../src/features/sessions/use-draft.ts");
 const { CardHours } = await import("../src/features/roi/card-hours.tsx");
 const { ClientDefaults } = await import("../src/features/clients/client-defaults.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");

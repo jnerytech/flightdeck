@@ -12,9 +12,9 @@ import { useProjectCards } from "@/hooks/use-project-cards";
 import { CardGrid, Inline, Panel } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { hostProjectCards, hostSessionRows } from "../../lib/host-overview.ts";
 import type { ProjectCard } from "../../lib/project-cards.ts";
 import { SessionCard, STATE_TONES } from "../sessions/session-card.tsx";
+import { hostProjectCards, hostSessionRows } from "./host-overview-model.ts";
 
 /**
  * What a host page leads with: that host's own sessions (the rows and cards of the Sessions list)

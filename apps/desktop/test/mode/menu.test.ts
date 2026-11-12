@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MENU_MODES, modeRows, nextMode } from "../../src/lib/mode-menu.ts";
+import { MENU_MODES, modeRows, nextMode } from "../../src/features/sessions/mode-menu.ts";
 
 const rows = (current: string, start: string, bypassAllowed: boolean) =>
   modeRows({ current: current as never, start: start as never, bypassAllowed });

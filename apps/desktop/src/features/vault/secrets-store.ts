@@ -1,6 +1,6 @@
-import { BackupError, type BackupErrorCode } from "../../lib/backup-error.ts";
-import type { NewKey, NewSecret, SecretMeta, SecretPatch, Vault } from "../../lib/vault.ts";
-import type { ConflictChoice, ImportPreview, ImportResult } from "../../lib/vault-backup.ts";
+import { BackupError, type BackupErrorCode } from "../backup/index.ts";
+import type { NewKey, NewSecret, SecretMeta, SecretPatch, Vault } from "./vault.ts";
+import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
 
 /** Why a `.fdvault` export or import did not go through: the backup's own code, or a cancelled dialog. */
 export type VaultFileFailure = { ok: false; code: BackupErrorCode | "cancelled" };
@@ -76,7 +76,7 @@ export class VaultSecretsSlice {
     confirmation: string,
   ): Promise<{ ok: true } | VaultFileFailure> {
     try {
-      const { exportVault, toFdvault } = await import("../../lib/vault-backup.ts");
+      const { exportVault, toFdvault } = await import("./vault-backup.ts");
       const workFactor = this.core.workFactor();
       const file = await exportVault(this.core.vault, passphrase, confirmation, {
         ...(workFactor !== undefined && { workFactor }),
@@ -95,7 +95,7 @@ export class VaultSecretsSlice {
     try {
       const file = await this.core.pickFile();
       if (!file) return { ok: false, code: "cancelled" };
-      const { fromFdvault, previewImport } = await import("../../lib/vault-backup.ts");
+      const { fromFdvault, previewImport } = await import("./vault-backup.ts");
       const preview = await previewImport(this.core.vault, fromFdvault(file.text), passphrase);
       return { ok: true, preview };
     } catch (error) {
@@ -104,7 +104,7 @@ export class VaultSecretsSlice {
   }
 
   async applyImport(preview: ImportPreview, onConflict: ConflictChoice): Promise<ImportResult> {
-    const { applyImport } = await import("../../lib/vault-backup.ts");
+    const { applyImport } = await import("./vault-backup.ts");
     const result = await applyImport(this.core.vault, preview, onConflict);
     this.core.secretsChanged();
     return result;

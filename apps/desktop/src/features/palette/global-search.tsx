@@ -1,8 +1,11 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { pendingText, pendingWhere } from "@/features/sessions/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { T } from "../../i18n/index.ts";
 import { type AppState, type AppStore, needsYou, type PendingItem } from "../../lib/app-store.ts";
+import { anyHostHas } from "../../lib/version.ts";
+import type { GlobalHit } from "../history/index.ts";
 import {
   type PaletteItem,
   type PaletteScope,
@@ -10,10 +13,7 @@ import {
   type PaletteTarget,
   paletteScope,
   paletteSections,
-} from "../../lib/palette.ts";
-import { pendingText, pendingWhere } from "../../lib/pending-text.ts";
-import { anyHostHas } from "../../lib/version.ts";
-import type { GlobalHit } from "../history/index.ts";
+} from "./palette.ts";
 import { PaletteScopeChips, PaletteSectionView } from "./palette-section.tsx";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */

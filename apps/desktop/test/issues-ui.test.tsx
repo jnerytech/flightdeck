@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Issue } from "@flightdeck/protocol";
-import { filterIssues, issueLabel, issueNumber, issueUrl } from "../src/lib/issues.ts";
+import { filterIssues, issueLabel, issueNumber, issueUrl } from "../src/features/issues/issues.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { ghIssue, ghRules, issuesDaemon } from "./issues-fixtures.ts";
