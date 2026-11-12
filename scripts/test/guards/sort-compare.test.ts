@@ -6,7 +6,7 @@ import {
   isTestFile,
   matchesGlob,
   testInclusionsOf,
-} from "../../lib/sonar-project.ts";
+} from "../../lib/sonar/project.ts";
 import { bareSorts } from "../../lib/sort-compare.ts";
 
 // repo-wide (#1108): reads every tracked code file, so CI's quick job runs it on every PR.
