@@ -166,7 +166,7 @@ describe("persistencia-abas", () => {
     // offline banner (issue #227), not the wait this test is about.
     const silent = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
     const first = new AppStore(mem.platform, { baseDelayMs: 10_000, maxDelayMs: 10_000 });
-    const hostId = await first.addHost({
+    const hostId = await first.roster.add({
       name: "pc",
       url: `ws://127.0.0.1:${silent.port}/v1/ws`,
       token: "t",

@@ -73,10 +73,10 @@ async function fleet(searchTimeoutMs = 3000) {
   });
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: a.url, token: TOKEN });
-    await store.addHost({ name: "beta", url: b.url, token: TOKEN });
-    await store.addHost({ name: "mudo", url: silentHost(), token: TOKEN });
-    await store.addHost({ name: "desligado", url: deadUrl(), token: TOKEN });
+    await store.roster.add({ name: "alfa", url: a.url, token: TOKEN });
+    await store.roster.add({ name: "beta", url: b.url, token: TOKEN });
+    await store.roster.add({ name: "mudo", url: silentHost(), token: TOKEN });
+    await store.roster.add({ name: "desligado", url: deadUrl(), token: TOKEN });
   });
   await settle(() => store.getState().hosts.filter((h) => h.status === "online").length === 3);
   return store;

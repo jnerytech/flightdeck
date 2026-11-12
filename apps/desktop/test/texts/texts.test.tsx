@@ -60,7 +60,7 @@ async function online(language: string) {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
   await uiIdle(300);
   return { d, store, sessionId, hostId: store.getState().hosts[0]?.id ?? "" };

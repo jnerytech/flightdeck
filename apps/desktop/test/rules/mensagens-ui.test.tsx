@@ -48,7 +48,7 @@ async function open() {
   daemon.messaging.policy = structuredClone(POLICY);
   daemon.messaging.paused = ["h/s1|h/s2"];
   render(<App store={store} />);
-  await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
+  await act(() => store.roster.add({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   await act(async () => {
     store.router.push({ name: "settings" });

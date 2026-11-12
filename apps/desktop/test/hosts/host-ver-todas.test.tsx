@@ -31,7 +31,7 @@ async function setup() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 10 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+  const hostId = await act(() => store.roster.add({ name: "pc", url: server.url, token: TOKEN }));
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull());
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: "Abrir host pc" }));

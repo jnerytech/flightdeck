@@ -51,7 +51,7 @@ const treeNames = (store: AppStore) =>
 describe("tree-on-connect: the sidebar project tree fills when a host comes online", () => {
   test("a host that connects gets its projects into the state, once, with no page asking", async () => {
     const { server, store, asked } = await setup();
-    const hostId = await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     await settle(() => statusOf(store, hostId) === "online");
     expect(await settleMaybe(() => names(store, hostId).length > 0)).toBe(true);
     expect(names(store, hostId)).toEqual(["shop"]);
@@ -61,7 +61,7 @@ describe("tree-on-connect: the sidebar project tree fills when a host comes onli
 
   test("a reconnect reloads the host's projects without duplicating them", async () => {
     const { d, server, store, asked } = await setup();
-    const hostId = await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     expect(await settleMaybe(() => names(store, hostId).length === 1)).toBe(true);
     const port = server.port;
     await server.stop();
@@ -77,7 +77,7 @@ describe("tree-on-connect: the sidebar project tree fills when a host comes onli
 
   test("a host that goes offline keeps its projects in the state and leaves the tree", async () => {
     const { server, store } = await setup();
-    const hostId = await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+    const hostId = await store.roster.add({ name: "alfa", url: server.url, token: TOKEN });
     expect(await settleMaybe(() => names(store, hostId).length === 1)).toBe(true);
     await server.stop();
     await settle(() => statusOf(store, hostId) !== "online");

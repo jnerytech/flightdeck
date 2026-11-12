@@ -42,7 +42,7 @@ async function connected() {
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {
-    await store.addHost({ name: "pc", url: d.listen().url, token: TOKEN });
+    await store.roster.add({ name: "pc", url: d.listen().url, token: TOKEN });
   });
   const hostId = await pollFor(() => store.getState().hosts[0]?.id, "the host");
   await pollFor(() => asks.deps >= 1 || undefined, "the first check");
