@@ -9,7 +9,7 @@ import { defaultConfigPath, expandHome, loadConfig } from "../config.ts";
 import { runStatusline } from "../costs/index.ts";
 import { daemonUrl } from "../daemon-client/index.ts";
 import { DAEMON_VERSION, type Logger, settled } from "../kernel/index.ts";
-import { identityOf, startMcp } from "../mcp.ts";
+import { identityOf, startMcp } from "../mcp/index.ts";
 import { runMessageCli } from "../messaging/index.ts";
 import { daemonCommand } from "../service/index.ts";
 import { runAskpass } from "../ssh/index.ts";

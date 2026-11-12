@@ -9,7 +9,7 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { z } from "zod";
-import { DaemonClient } from "./daemon-client/index.ts";
+import { DaemonClient } from "../daemon-client/index.ts";
 import {
   listSessions,
   notifyWhenIdle,
@@ -17,7 +17,7 @@ import {
   sendToSession,
   teamReport,
   teamStatus,
-} from "./messaging/tools.ts";
+} from "../messaging/index.ts";
 
 export interface McpOptions {
   /** Protocol URL of the local daemon (`ws://…/v1/ws`). */
