@@ -2,7 +2,7 @@ import type { RoiSummaryResult } from "@flightdeck/protocol";
 import type { AppState, HostResult } from "../../lib/app-store.ts";
 import type { RoiMoney } from "../../lib/roi.ts";
 import type { RoiSettings } from "../../lib/roi-settings.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 
 /** What the ROI reads and asks through the app's store. */
 export interface RoiCore {
@@ -45,9 +45,7 @@ export class RoiSlice {
     from: string,
     to: string,
   ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
-    const hosts = this.core
-      .hosts()
-      .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "roi", false));
+    const hosts = hostsWith(this.core.hosts(), "roi");
     const answers = await Promise.all(
       hosts.map(async (host) => ({
         hostId: host.id,

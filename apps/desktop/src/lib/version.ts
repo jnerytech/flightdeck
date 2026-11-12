@@ -51,8 +51,10 @@ export function anyHostHas(
 export function hostsWith<
   H extends {
     status: string;
-    hostInfo: { features?: readonly string[] | undefined } | null;
+    hostInfo?: { features?: readonly string[] | undefined } | null | undefined;
   },
->(_hosts: readonly H[], _feature: string): H[] {
-  return [];
+>(hosts: readonly H[], feature: string): H[] {
+  return hosts.filter(
+    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, feature, false),
+  );
 }

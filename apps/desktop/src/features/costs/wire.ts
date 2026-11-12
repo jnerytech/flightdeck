@@ -1,5 +1,5 @@
 import type { AppKernel } from "../../lib/kernel.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 import { type ClientBudgetsCore, ClientBudgetsSlice } from "./client-budgets-store.ts";
 import { type BudgetsCore, BudgetsSlice } from "./store.ts";
 
@@ -45,13 +45,7 @@ export function wireClientBudgets(
     ...deps,
     state: () => kernel.state(),
     update: (patch) => kernel.update(patch),
-    hostsWithCosts: () =>
-      kernel
-        .state()
-        .hosts.filter(
-          (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
-        )
-        .map((h) => h.id),
+    hostsWithCosts: () => hostsWith(kernel.state().hosts, "costs").map((h) => h.id),
     summary: (hostId, filter) => kernel.hostCommand(hostId, "costs.summary", filter),
     t: () => kernel.t(),
   });

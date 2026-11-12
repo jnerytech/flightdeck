@@ -32,7 +32,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
 import { sessionLabel } from "../../lib/session-label.ts";
 import { useDraft } from "../../lib/use-draft.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hasFeature, hostsWith } from "../../lib/version.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import {
   bypassAsked,
@@ -743,9 +743,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
   const { store } = props;
   const state = useStoreSlice(store, TEAMSPAGE_KEYS);
   const { t } = store.i18n;
-  const hosts = state.hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "teams", false),
-  );
+  const hosts = hostsWith(state.hosts, "teams");
   // The host shown: the route's (an alert), else a pick in the page's own select, else the
   // switcher's (#932), so the page never shows another host than the top bar without saying so.
   const switcherId = useSwitcherHostId(store) ?? "";

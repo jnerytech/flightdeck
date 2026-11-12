@@ -1,5 +1,5 @@
 import type { CostsSummary } from "@flightdeck/protocol";
-import { hasFeature } from "../../lib/version.ts";
+import { hasFeature, hostsWith } from "../../lib/version.ts";
 
 /** What the costs screen reads of a host. */
 export interface CostsHost {
@@ -10,9 +10,7 @@ export interface CostsHost {
 
 /** The online hosts that report costs. */
 export function costsHosts<H extends CostsHost>(hosts: readonly H[]): H[] {
-  return hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
-  );
+  return hostsWith(hosts, "costs");
 }
 
 /** Of the hosts in view (`hostIds`), those that offer `feature`. */

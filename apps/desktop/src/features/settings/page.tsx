@@ -20,7 +20,7 @@ import type { Density } from "../../lib/density.ts";
 import type { TabOrder } from "../../lib/tab-switcher.ts";
 import { TERMINAL_FONT_MAX, TERMINAL_FONT_MIN } from "../../lib/terminal-view.ts";
 import type { ThemeMode } from "../../lib/theme.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 import type { AppUpdateState } from "../appupdate/index.ts";
 import { MessagingRulesSection } from "../messaging/rules-section.tsx";
 import { WebhooksSection } from "../webhook/index.ts";
@@ -110,16 +110,10 @@ export const Settings = memo(function Settings(props: {
   const [current, setCurrent] = useState<string | null>(null);
   /** A checkbox with its sentence on its right. */
   const check = "flex items-center gap-2 text-sm";
-  const budgetHosts = state.hosts.filter(
-    // Budgets came with the costs (phase 8).
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false),
-  );
-  const watchHosts = state.hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "watch", false),
-  );
-  const messagingHosts = state.hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
-  );
+  // Budgets came with the costs (phase 8).
+  const budgetHosts = hostsWith(state.hosts, "costs");
+  const watchHosts = hostsWith(state.hosts, "watch");
+  const messagingHosts = hostsWith(state.hosts, "messaging");
   const sections: SettingsSection[] = [
     {
       id: "appearance",
