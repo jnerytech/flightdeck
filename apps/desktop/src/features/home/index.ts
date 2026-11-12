@@ -6,9 +6,9 @@
 export { HomeCache } from "./home-cache.ts";
 export { SimpleApp } from "./simple-app.tsx";
 export {
-  effectiveMode,
+  type HostUiPatch,
   loadChoices,
   type ModeAnswer,
-  saveChoice,
   type UiMode,
+  UiModeSlice,
 } from "./simple-mode.ts";

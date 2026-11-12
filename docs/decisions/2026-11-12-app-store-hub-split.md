@@ -115,8 +115,10 @@ feature that gates the step. `onStatus` runs it with `connect = true` on `online
   toast reach it as roster deps); the platform helpers (`saveFile`, `copyText`, `pickFolder`,
   `openPath`, `revealPath`, ...) with the `onLocalPath` guard to `features/shell/`
   (`SystemSlice` in `system.ts`; whether a host is local is a dep, so the shell imports no
-  terminal entry); the UI mode and tab methods (`uiMode`, `toggleUiMode`,
-  `setUiChoice`, `setHostUi`, `openNewTab`, `uiHostId`) to the host tabs; the palette
+  terminal entry); the UI mode methods (`uiMode`, `toggleUiMode`, `setUiChoice`, `setHostUi`,
+  `uiHostId`) to a `UiModeSlice` next to the mode's rules in `features/home/simple-mode.ts`
+  (they change with simple mode, phase 33, not with the tabs); `openNewTab` to the host tabs;
+  the palette
   (`loadPalette`, `paletteRecents`, `recordPaletteUse`) to the palette; the runs (`runEnvConfig`,
   `runTrust`, `runStart`, `runStop`, `onRun`, `onRunEnv`) to their wire; messaging (`relayDeps`,
   `onTeams`, `onTeamsUpdated`, `onMessageUpdated`, `startPeersSync`) to messaging; the requests
