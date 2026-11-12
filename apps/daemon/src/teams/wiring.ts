@@ -82,7 +82,7 @@ export async function createTeams({
       },
     },
     bypassAllowed: () => config.allowBypassPermissions,
-    startCoordinator: async ({ cwd, prompt, name, persona, model, permissionMode }) => {
+    startCoordinator: async ({ cwd, prompt, name, persona, model, effort, permissionMode }) => {
       const ref = persona ? { id: persona } : undefined;
       return manager.create(
         {
@@ -91,6 +91,7 @@ export async function createTeams({
           name,
           ...(ref ? { persona: ref } : {}),
           ...(model ? { model } : {}),
+          ...(effort ? { effort } : {}),
           ...(permissionMode ? { permissionMode } : {}),
         },
         { prepared: await prepare(ref, cwd) },
