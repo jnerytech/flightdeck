@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { BgService } from "../../src/bg/service.ts";
 import { FlightdeckError } from "../../src/errors.ts";
+import { whichOnPath } from "../../src/kernel/which.ts";
 import { startServer } from "../../src/server.ts";
 import { EventStore } from "../../src/store/event-store.ts";
-import { whichOnPath } from "../../src/which.ts";
 import { installFakeClaude } from "../support/fake-claude.ts";
 import { newManager, tempDir } from "../support/helpers.ts";
 import { FrameClient } from "../support/history-helpers.ts";

@@ -1,8 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
 import { useCallback, useRef, useState } from "react";
-import type { T } from "../i18n/index.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
-import { cardStartBlock } from "../lib/card-start-block.ts";
 import {
   type Elsewhere,
   type ElsewhereAsk,
@@ -10,7 +7,10 @@ import {
   type HostFacts,
   offeredHosts,
   startElsewhere,
-} from "../lib/start-elsewhere.ts";
+} from "@/features/sessions/index.ts";
+import type { T } from "../i18n/index.ts";
+import type { AppState, AppStore } from "../lib/app-store.ts";
+import { cardStartBlock } from "../lib/card-start-block.ts";
 
 /** What another host said when the Start N confirm opened: its projects and its limit. */
 interface Listed {

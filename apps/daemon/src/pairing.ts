@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
 import { generateToken, updateConfigFile } from "./config.ts";
-import type { Exec } from "./exec.ts";
+import type { Exec } from "./kernel/index.ts";
 
 const LOOPBACK_BINDS: ReadonlySet<string> = new Set(["127.0.0.1", "::1", "localhost"]);
 

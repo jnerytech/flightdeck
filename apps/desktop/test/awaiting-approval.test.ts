@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { HistoryMessage } from "@flightdeck/protocol";
-import { awaitingApproval } from "../src/lib/awaiting-approval.ts";
+import { awaitingApproval } from "../src/features/sessions/awaiting-approval.ts";
 
 const message = (role: "user" | "assistant", text: string, uuid = text): HistoryMessage => ({
   uuid,

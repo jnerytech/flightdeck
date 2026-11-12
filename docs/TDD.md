@@ -246,7 +246,7 @@ em vez de depender de cuidado.
 - **Claude real.** `scripts/test/preload.ts` (preload dos dois bunfigs) põe um `claude` sentinela no
   início do PATH, tira do PATH as pastas com um `claude` de verdade e reprova a suíte se o sentinela
   tiver sido executado. Também aborta se a busca no PATH atual não cair no sentinela.
-  - Código que procura executáveis usa `whichOnPath` (`apps/daemon/src/which.ts`).
+  - Código que procura executáveis usa `whichOnPath` (`apps/daemon/src/kernel/which.ts`).
     `Bun.which(nome)` sem opções usa o PATH de quando o processo começou e escapa da trava.
   - Teste que sobe o daemon com runtime `claude` aponta `claude.executablePath` para um
     caminho inexistente.

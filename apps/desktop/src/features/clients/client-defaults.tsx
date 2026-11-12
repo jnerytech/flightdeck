@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PersonaPicker } from "@/features/personas/index.ts";
+import { useDraft } from "@/features/sessions/index.ts";
 import { ConfirmDialog } from "@/shared/feedback/index.ts";
 import { Field, Form, FormActions, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import { generatedScopeRules, vaultFindings } from "../../lib/client-vault.ts";
 import type { Client } from "../../lib/clients.ts";
-import { useDraft } from "../../lib/use-draft.ts";
 import { hasFeature } from "../../lib/version.ts";
 
 /**

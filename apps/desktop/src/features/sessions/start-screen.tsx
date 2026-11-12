@@ -5,9 +5,9 @@ import { useT } from "@/i18n/context";
 import { Inline, Page, Section, Stack } from "@/shared/layout/index.ts";
 import { basename } from "@/shared/lib/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
-import { newSessionHost } from "../../lib/new-session-host.ts";
 import type { Route } from "../../lib/router.ts";
 import { useStoreSlice } from "../../lib/use-store.ts";
+import { newSessionHost } from "./new-session-host.ts";
 
 const RECENT = 5;
 const SHORTCUTS = [

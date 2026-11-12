@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readStyles } from "../../../scripts/lib/styles-source.ts";
-import { DAEMON_VERSION } from "../../daemon/src/version.ts";
+import { DAEMON_VERSION } from "../../daemon/src/kernel/version.ts";
 import { git } from "../../daemon/test/support/board-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";

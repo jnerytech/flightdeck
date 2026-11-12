@@ -10,9 +10,9 @@ import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
 import { type Issues, UNTRUSTED_MARK } from "../issues/issues.ts";
+import { ulid } from "../kernel/index.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
 import { localDay } from "../quota/usage.ts";
-import { ulid } from "../ulid.ts";
 import { type CronError, type CronSpec, cronMatches, parseCron, validTimeZone } from "./cron.ts";
 
 export type AutomationEvent =

@@ -9,8 +9,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FlightdeckError } from "../errors.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import { SAFE, TIMEOUT_MS } from "../teleport/git.ts";
-import { whichOnPath } from "../which.ts";
 import { type CommandResult, killTree, runCommand } from "./command.ts";
 import type { Rev } from "./ref-arg.ts";
 

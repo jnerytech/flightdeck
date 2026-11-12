@@ -32,7 +32,7 @@ import { type CommandResult, killTree, runCommand } from "../board/command.ts";
 import { assertBranchName, refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
-import { whichOnPath } from "../which.ts";
+import { whichOnPath } from "../kernel/index.ts";
 import type { Changes } from "./changes.ts";
 
 export interface SessionCommitDeps {

@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { present } from "../present.ts";
+import { present } from "../kernel/index.ts";
 import type { DomainModule } from "../server/index.ts";
 import { RunConfigs } from "./config.ts";
 import { terminalRunHost } from "./host.ts";

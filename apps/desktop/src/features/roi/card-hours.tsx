@@ -1,8 +1,8 @@
 import type { Card } from "@flightdeck/protocol";
 import { Input } from "@/components/ui/input";
+import { useDraft } from "@/features/sessions/index.ts";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { useDraft } from "@/lib/use-draft";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { Field } from "@/shared/layout/index.ts";
 
