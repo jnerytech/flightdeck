@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
   type ArchInputs,
+  cycleBaseline,
   entryRows,
   formatEntries,
   formatTable,
   growing,
   isEntry,
+  type RatchetRow,
   ratchetRows,
   shapeShares,
 } from "../../lib/arch-report.ts";
@@ -82,6 +84,30 @@ describe("arch-report (#1610)", () => {
       }),
     );
     expect(growing(old)).toEqual([{ ratchet: "depcruise shared-rule", baseline: 0, today: 1 }]);
+  });
+
+  test("the desktop's files in an import cycle get a row; one more file puts it above its baseline (#1624)", () => {
+    const row = (today: number) =>
+      ratchetRows(inputs({ desktopCycles: { today, baseline: 120 } })).find((r) =>
+        r.ratchet.startsWith("desktop-cycles"),
+      );
+    expect(row(118)).toEqual({
+      ratchet: "desktop-cycles files in a cycle",
+      baseline: 120,
+      today: 118,
+    });
+    expect(growing([row(121) as RatchetRow])).toHaveLength(1);
+    expect(ratchetRows(inputs()).some((r) => r.ratchet.startsWith("desktop-cycles"))).toBe(false);
+  });
+
+  test("a PR cannot raise the cycle baseline: the lower of main's file and its own counts (#1624)", () => {
+    const file = (files: number) => JSON.stringify({ files });
+    expect(cycleBaseline(file(172), file(160))).toBe(160);
+    expect(cycleBaseline(file(172), file(400))).toBe(172);
+    expect(cycleBaseline(null, file(172))).toBe(172);
+    expect(cycleBaseline(file(172), null)).toBe(0);
+    expect(cycleBaseline(file(172), "{ not json")).toBe(0);
+    expect(cycleBaseline(file(172), "{}")).toBe(0);
   });
 
   test("a workspace flat today but absent from its baseline is a row with baseline 0", () => {

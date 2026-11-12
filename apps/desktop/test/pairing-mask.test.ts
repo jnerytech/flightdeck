@@ -5,7 +5,7 @@ import {
   readLinkEdit,
   TOKEN_MASK,
   tokenInText,
-} from "../src/lib/pairing-mask.ts";
+} from "../src/features/hosts/pairing-mask.ts";
 
 /** #1548: a pasted pairing link shows its token masked, as the Token field does. */
 describe("pairing-mask: the token of a pairing link is shown as dots (#1548)", () => {

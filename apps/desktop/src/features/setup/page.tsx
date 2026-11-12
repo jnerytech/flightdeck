@@ -6,7 +6,7 @@ import { Page, Section, Stack } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import type { Route } from "../../lib/router.ts";
-import { type SetupStep, setupProgress, setupSteps } from "../../lib/setup-steps.ts";
+import { type SetupStep, setupProgress, setupSteps } from "./setup-steps.ts";
 
 /** A list of steps: a check or its number in a circle, one sentence, one action. */
 function StepList(

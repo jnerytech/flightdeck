@@ -1,9 +1,9 @@
 import { parsePairingLink } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import { pairingErrorText } from "../../lib/pairing-text.ts";
-import { probeHost } from "../../lib/probe-host.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { HostConfig } from "./hosts.ts";
+import { pairingErrorText } from "./pairing-text.ts";
+import { probeHost } from "./probe-host.ts";
 
 /** What the roster reads and does through the app's store. */
 export interface RosterCore {

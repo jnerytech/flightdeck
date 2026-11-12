@@ -23,7 +23,7 @@ import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
 import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
-import { basename, isInside } from "@/shared/lib/index.ts";
+import { isInside } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
@@ -93,9 +93,14 @@ import {
   loadHosts,
   type NewHost,
   type OnlineStep,
+  parseRequestLink,
+  type RelayDeps,
   RequestError,
+  relayMessage,
+  relayUpdate,
   saveHosts,
   statusLine,
+  syncPeers,
   wireHealth,
   wireHostUpdate,
 } from "../features/hosts/index.ts";
@@ -127,14 +132,11 @@ import {
   browserClockDeps,
   CacheTimerSettings,
   type ExternalSessionsSlice,
-  type Finish,
-  finishOutcome,
+  type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
   initialSessionsState,
-  loadFinished,
   NewSessionPrefs,
-  recordFinish,
   type SessionCommandsSlice,
   type SessionListsSlice,
   type SessionStreamSlice,
@@ -142,22 +144,22 @@ import {
   SessionViews,
   SharedClock,
   type SummariesSlice,
-  saveFinished,
   sessionKey,
   takeHubHost,
   wireExternalSessions,
+  wireFinished,
   wireSessionCommands,
   wireSessionLists,
   wireSessionStream,
   wireSessions,
   wireSummaries,
-  withFiles,
 } from "../features/sessions/index.ts";
 import {
   initialSettingsState,
   type SettingsSlice,
   wireSettings,
 } from "../features/settings/index.ts";
+import { probeAfter, SetupSettings } from "../features/setup/index.ts";
 import {
   initialSnippetsState,
   type SnippetsSlice,
@@ -213,13 +215,9 @@ import type {
   Notice,
   PendingItem,
   ReleaseNotesResult,
-  SidebarSession,
 } from "./app-state.ts";
-import { HISTORY_PAGE, needsYou } from "./app-state.ts";
+import { needsYou } from "./app-state.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
-import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
-import { parseRequestLink } from "./request-link.ts";
-import { probeAfter, SetupSettings } from "./setup-steps.ts";
 import { hasFeature } from "./version.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
@@ -352,6 +350,8 @@ export class AppStore {
   readonly external: ExternalSessionsSlice;
   /** What the Sessions screen lists from the online hosts (#1596). */
   private readonly sessionLists: SessionListsSlice;
+  /** The sessions that finished, as Needs you lists them, kept between runs (#1596). */
+  private readonly finished: FinishedSlice;
   /** What a host's session events do to the conversations the app holds (#1596). */
   readonly stream: SessionStreamSlice;
   /** What a person asks of a session: make one, send, interrupt, change mode, close, resume (#1596). */
@@ -410,7 +410,13 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.history = wireHistory(this.kernel, { searchTimeoutMs: options.searchTimeoutMs });
+    this.history = wireHistory(this.kernel, {
+      searchTimeoutMs: options.searchTimeoutMs,
+      select: (hostId, sessionId) => this.select(hostId, sessionId),
+      listLimit: HISTORY_LIST_LIMIT,
+      offline: () => new RequestError("offline", "unknown host"),
+      reason: (error) => (error instanceof RequestError ? error.reason : undefined),
+    });
     this.activity = wireActivity(this.kernel, { since: () => this.awayClock.since() });
     this.sessions = wireSessions(this.kernel, { storage: platform.storage });
     this.personas = wirePersonas(this.kernel, {
@@ -694,6 +700,11 @@ export class AppStore {
     this.stream = wireSessionStream(this.kernel, {
       summary: (hostId, event) => this.summaries.apply(hostId, [event]),
     });
+    this.finished = wireFinished(this.kernel, {
+      storage: platform.storage,
+      isFocused: () => this.platform.isFocused(),
+      shown: () => this.shownSessions(),
+    });
     this.summaries = wireSummaries(this.kernel, {
       setSessions: (hostId, sessions) => this.updateHost(hostId, (h) => ({ ...h, sessions })),
       shown: () => this.shownSessions(),
@@ -703,7 +714,7 @@ export class AppStore {
       prefs: () => this.notifyPrefs.value,
       notify: (...args) => this.inbox.notify(...args),
       feed: (host, prev, next) => this.webhookFeed.managed(host, prev, next),
-      finished: (hostId, prev, next) => this.recordFinished(hostId, prev, next),
+      finished: (hostId, prev, next) => this.finished.record(hostId, prev, next),
       later: (fn, ms) => void this.later(fn, ms),
     });
     this.tray = wireTray(this.kernel, {
@@ -888,8 +899,7 @@ export class AppStore {
 
   async init(): Promise<void> {
     this.inbox.load();
-    const kept = loadFinished(this.platform.storage);
-    this.update({ finished: kept.list, finishedLook: kept.lastLook });
+    this.finished.load();
     this.inbox.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
@@ -1038,56 +1048,7 @@ export class AppStore {
 
   /** The person looked at Needs you: what finished before now is no longer new. */
   finishedSeen(): void {
-    this.setFinished(this.state.finished, new Date(this.now()).toISOString());
-  }
-
-  private setFinished(list: Finish[], lastLook: string | null): void {
-    this.update({ finished: list, finishedLook: lastLook });
-    saveFinished(this.platform.storage, { list, lastLook });
-  }
-
-  /** A turn, a failure or an end is a finish for Needs you, unless the person watched it happen. */
-  private recordFinished(
-    hostId: string,
-    prev: SidebarSession | undefined,
-    next: SidebarSession,
-  ): void {
-    const outcome = finishOutcome(prev?.status, next.status);
-    if (!outcome) return;
-    const key = sessionKey(hostId, next.id);
-    if (this.platform.isFocused() && this.shownSessions().has(key)) return;
-    const at = new Date(this.now()).toISOString();
-    const finish: Finish = {
-      key,
-      hostId,
-      sessionId: next.id,
-      name: next.name ?? basename(next.cwd),
-      outcome,
-      at,
-      files: null,
-    };
-    this.setFinished(recordFinish(this.state.finished, finish), this.state.finishedLook);
-    void this.countFinishedFiles(hostId, next.id, key, at);
-  }
-
-  /** Asks the host how many files the session changed; a host that cannot say leaves it unknown. */
-  private async countFinishedFiles(
-    hostId: string,
-    sessionId: string,
-    key: string,
-    at: string,
-  ): Promise<void> {
-    // The host reads `session:<id>` as the Claude session id, which the app learns with the session.
-    const claudeId =
-      this.state.sessions[key]?.claudeSessionId ??
-      this.state.hub[hostId]?.managed.find((s) => s.id === sessionId)?.claudeSessionId;
-    if (!claudeId) return;
-    const result = await this.hostRequest(hostId, "changes.get", {
-      target: `session:${claudeId}`,
-    });
-    if (!result.ok) return;
-    const files = result.data.files.length;
-    this.setFinished(withFiles(this.state.finished, key, at, files), this.state.finishedLook);
+    this.finished.seen();
   }
 
   /** Issue #1327: a scheduled backup that cannot go reaches the bell, and a click opens its settings. */
@@ -1378,67 +1339,24 @@ export class AppStore {
   }
 
   /** A host's indexed sessions; errors go to the banner and give `null`. */
-  async historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
-    try {
-      const conn = this.link.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      return await conn.request("history.list", { ...filter, limit: HISTORY_LIST_LIMIT });
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
+  historyList(hostId: string, filter: HistoryFilter): Promise<HistoryListResult | null> {
+    return this.history.list(hostId, filter);
   }
 
   /** One page of a host's transcript; errors go to the banner and give `null`. */
-  async historyGet(
+  historyGet(
     hostId: string,
     claudeSessionId: string,
     cursor?: string,
     tail = false,
-    /** Told why a read was refused (issue #227): the reader tells "not found" from a failure. */
     refused?: (reason: string | undefined) => void,
   ): Promise<HistoryGetResult | null> {
-    try {
-      const conn = this.link.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      return await conn.request("history.get", {
-        claudeSessionId,
-        limit: HISTORY_PAGE,
-        ...(cursor ? { cursor } : {}),
-        ...(tail && !cursor ? { tail: true } : {}),
-      });
-    } catch (error) {
-      refused?.(error instanceof RequestError ? error.reason : undefined);
-      // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
-      if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
-        this.fail(error);
-      }
-      return null;
-    }
+    return this.history.get(hostId, claudeSessionId, cursor, tail, refused);
   }
 
-  /**
-   * Continues an indexed transcript as a managed session and opens it. `force` is only sent after
-   * the user confirmed a possibly-in-use session.
-   */
-  async resumeHistory(
-    hostId: string,
-    claudeSessionId: string,
-    force: boolean,
-  ): Promise<string | null> {
-    try {
-      const conn = this.link.connection(hostId);
-      if (!conn) throw new RequestError("offline", "unknown host");
-      const { sessionId } = await conn.request("history.resume", {
-        claudeSessionId,
-        ...(force ? { force: true } : {}),
-      });
-      this.select(hostId, sessionId);
-      return sessionId;
-    } catch (error) {
-      this.fail(error);
-      return null;
-    }
+  /** Continues an indexed transcript as a managed session and opens it. */
+  resumeHistory(hostId: string, claudeSessionId: string, force: boolean): Promise<string | null> {
+    return this.history.resume(hostId, claudeSessionId, force);
   }
 
   /**

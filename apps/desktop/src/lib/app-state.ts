@@ -5,7 +5,6 @@
  */
 import type {
   Card,
-  CommandPayload,
   ExternalPermissionFrame,
   ExternalSession,
   HelloResult,
@@ -55,6 +54,7 @@ import {
   sessionLabel,
 } from "../features/sessions/index.ts";
 import type { SettingsSliceState } from "../features/settings/index.ts";
+import type { SetupProbe } from "../features/setup/index.ts";
 import type { SnippetsSliceState } from "../features/snippets/index.ts";
 import type { SshSliceState } from "../features/ssh/index.ts";
 import type { ClosingTerminal } from "../features/terminal/index.ts";
@@ -62,7 +62,6 @@ import type { TerminalEnv } from "../features/terminal/terminal.ts";
 import type { SecretMeta, UsageEntry, VaultPolicy } from "../features/vault/index.ts";
 import type { T } from "../i18n/index.ts";
 import type { Route } from "./router.ts";
-import type { SetupProbe } from "./setup-steps.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -433,8 +432,4 @@ export interface Answer {
   held?: boolean;
 }
 
-/** Filters of the per-host history list. */
-export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
-
-/** Messages per `history.get` page in the transcript reader. */
-export const HISTORY_PAGE = 50;
+export { HISTORY_PAGE, type HistoryFilter } from "../features/history/index.ts";
