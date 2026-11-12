@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { VaultRequestFrame } from "@flightdeck/protocol";
-import { actionPolicy, SIBLING_MS } from "../src/lib/vault-approval.ts";
-import type { VaultRequestContext } from "../src/lib/vault-requests.ts";
+import { actionPolicy, SIBLING_MS } from "../../src/lib/vault-approval.ts";
+import type { VaultRequestContext } from "../../src/lib/vault-requests.ts";
 
 const frame = (over: Partial<VaultRequestFrame> = {}): VaultRequestFrame => ({
   type: "vault.request",
