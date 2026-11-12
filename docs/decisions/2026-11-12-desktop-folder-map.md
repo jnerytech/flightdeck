@@ -124,7 +124,7 @@ prefix. Tests move with their file in the same PR.
 | `grid-keys.ts`, `keys.ts`, `shortcut.ts`, `shortcuts.ts` | `features/shortcuts/` (`board-shortcut.ts` stays with the board) |
 | `palette.ts` | `features/palette/` (**moved**) |
 | `project-*.ts` | `features/projects/` |
-| `quota*.ts` | `features/quota/` |
+| `quota.ts`, `quota-glance.ts` | `features/quota/` (**moved**; the panel, the shell bars, the costs quota charts and the board bulk actions read them through the index) |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
 | `roi*.ts` | `features/roi/` (**moved**; `RoiSettingsError` is exported by the index for `features/clients`) |
 | `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
