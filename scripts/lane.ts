@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { lanePlaces, runInLane } from "./lib/lane.ts";
 import { offerToOomKiller } from "./lib/oom-guard.ts";
-import type { SlotEnv } from "./lib/slot.ts";
+import type { SlotEnv } from "./lib/slot/index.ts";
 
 /** The file is written whole under another name and linked in, as the slot does. */
 function create(path: string, data: string): boolean {

@@ -1,6 +1,6 @@
 import { testArgs } from "../test/timeout.ts";
 import type { FunctionCoverage } from "./coverage-funcs-hooks.ts";
-import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot-heavy.ts";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./slot/heavy.ts";
 import { type Plan, SLOT_ABOVE, selectRelated } from "./test-related.ts";
 
 export {
