@@ -1,9 +1,8 @@
 import { z } from "zod";
+import { THEME_KEY, type ThemeMode, WORKSPACE_KEY } from "@/features/shell/index.ts";
 import { LANG_KEY, LANGS, type Lang } from "../i18n/index.ts";
 import { saveHosts } from "../lib/hosts.ts";
 import type { Route } from "../lib/router.ts";
-import { THEME_KEY, type ThemeMode } from "../lib/theme.ts";
-import { WORKSPACE_KEY } from "../lib/workspace.ts";
 import type { Platform } from "../platform/types.ts";
 
 const DemoHost = z.object({ id: z.string(), name: z.string(), url: z.string(), token: z.string() });

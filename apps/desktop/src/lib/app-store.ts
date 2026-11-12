@@ -18,6 +18,9 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
+import { DensityController } from "@/features/shell/density.ts";
+import { ThemeController } from "@/features/shell/theme.ts";
+import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { basename, isInside } from "@/shared/lib/index.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import {
@@ -139,7 +142,6 @@ import { loadSelection } from "./client-scope.ts";
 import { Clients, UNASSIGNED } from "./clients.ts";
 import { localDay } from "./costs.ts";
 import { DataScopeController, hubHostScope } from "./data-scope.ts";
-import { DensityController } from "./density.ts";
 import {
   type Finish,
   finishOutcome,
@@ -191,7 +193,6 @@ import {
 } from "./teleport.ts";
 import { isLocalUrl } from "./terminal.ts";
 import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
-import { ThemeController } from "./theme.ts";
 import { Vault } from "./vault.ts";
 import { checkDelivery, type DeliveryRefusal } from "./vault-requests.ts";
 import { VaultRules } from "./vault-rules.ts";
@@ -200,7 +201,6 @@ import { hasFeature } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WhatsNew } from "./whats-new.ts";
-import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
 /** The state's types and pure functions live in `app-state.ts`; screens import them from here until each binds its slice (#1596). */
 export type {

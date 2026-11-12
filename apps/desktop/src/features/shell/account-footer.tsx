@@ -22,8 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Key, T } from "../../i18n/index.ts";
-import type { Density } from "../../lib/density.ts";
 import type { Route } from "../../lib/router.ts";
+import type { Density } from "./density.ts";
 
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 

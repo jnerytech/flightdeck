@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { FRACTION_MAX, FRACTION_MIN, Workspace } from "../src/features/shell/workspace.ts";
 import type { Route } from "../src/lib/router.ts";
-import { FRACTION_MAX, FRACTION_MIN, Workspace } from "../src/lib/workspace.ts";
 
 const hub: Route = { name: "hub" };
 const costs: Route = { name: "costs" };

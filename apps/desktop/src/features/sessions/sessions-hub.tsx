@@ -17,6 +17,7 @@ import { AssignMenu } from "@/features/clients/assign-menu.tsx";
 import { ClientChip } from "@/features/clients/client-chip.tsx";
 import { HostsBanner } from "@/features/hosts/index.ts";
 import { WorktreeChip } from "@/features/projects/index.ts";
+import type { Density } from "@/features/shell/index.ts";
 import { ScopeMenu } from "@/features/shell/index.ts";
 import { TeleportMove } from "@/features/teleport/index.ts";
 import { useProjectLabels } from "@/hooks/use-project-labels";
@@ -29,7 +30,6 @@ import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import { UNASSIGNED } from "../../lib/clients.ts";
 import { usd } from "../../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
-import type { Density } from "../../lib/density.ts";
 import {
   activeCount,
   capGroups,
