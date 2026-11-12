@@ -229,7 +229,7 @@ export function structureVerdict(input: StructureInput): StructureVerdict {
 }
 
 /** `git diff --name-status -M` lines as changes; a copy counts as an added file. */
-function parseChanges(text: string): FileChange[] {
+export function parseChanges(text: string): FileChange[] {
   return text
     .split("\n")
     .filter((line) => line.trim() !== "")
