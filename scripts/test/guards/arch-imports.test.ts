@@ -101,6 +101,68 @@ describe("arch-imports: the domain borders (#1591)", () => {
     );
   });
 
+  test("a deep import into another desktop feature fails; its entry and the feature's own files pass (#1624)", async () => {
+    const found = await planted({
+      "apps/desktop/src/features/board/board.tsx":
+        'import { start } from "../sessions/store.ts";\nimport { list } from "../sessions/index.ts";\nimport { col } from "./columns.ts";\nexport const b = [start, list, col];\n',
+      "apps/desktop/src/features/board/columns.ts": "export const col = 1;\n",
+      "apps/desktop/src/features/sessions/store.ts": "export const start = 1;\n",
+      "apps/desktop/src/features/sessions/index.ts": "export const list = 2;\n",
+    });
+    expect(found).toEqual([
+      "desktop-no-deep-cross-domain apps/desktop/src/features/board/board.tsx -> apps/desktop/src/features/sessions/store.ts",
+    ]);
+  });
+
+  test("a feature that imports lib/ or its own subfolders is no cross-feature import (#1624)", async () => {
+    const found = await planted({
+      "apps/desktop/src/features/board/board.tsx":
+        'import { x } from "../../lib/x.ts";\nimport { y } from "./parts/y.ts";\nexport const b = [x, y];\n',
+      "apps/desktop/src/lib/x.ts": "export const x = 1;\n",
+      "apps/desktop/src/features/board/parts/y.ts": "export const y = 2;\n",
+    });
+    expect(found).toEqual([]);
+  });
+
+  test("a cycle in the desktop fails under its own rule, so the daemon's baseline does not grow (#1624)", async () => {
+    const found = await planted({
+      "apps/desktop/src/features/board/a.ts": 'import { b } from "./b.ts";\nexport const a = b;\n',
+      "apps/desktop/src/features/board/b.ts": 'import { a } from "./a.ts";\nexport const b = a;\n',
+    });
+    expect(found).toEqual([
+      "desktop-no-cycle apps/desktop/src/features/board/a.ts -> apps/desktop/src/features/board/b.ts",
+    ]);
+  });
+
+  test("a rule new in this PR may bring its first baseline; a rule main already has may not grow (#1624)", () => {
+    const config = '{ name: "no-cycle" }, { name: "shared-depends-on-no-domain" }';
+    const git = (args: string[]) =>
+      ({
+        "merge-base HEAD origin/main": "base1\n",
+        [`show base1:${KNOWN}`]: known(["no-cycle"]),
+        "show base1:.dependency-cruiser.cjs": config,
+      })[args.join(" ")] ?? null;
+    const first = runArchRatchet({
+      git,
+      readFile: () => known(["no-cycle", "desktop-no-cycle", "desktop-no-cycle"]),
+    });
+    expect(first.code).toBe(0);
+    expect(first.output).toContain("desktop-no-cycle 2");
+    const grew = runArchRatchet({
+      git,
+      readFile: () => known(["no-cycle", "no-cycle", "desktop-no-cycle"]),
+    });
+    expect(grew.code).toBe(1);
+    expect(grew.output).toContain("no-cycle: 1 -> 2");
+    expect(grew.output).not.toContain("desktop-no-cycle:");
+    const empty = runArchRatchet({
+      git,
+      readFile: () => known(["no-cycle", "shared-depends-on-no-domain"]),
+    });
+    expect(empty.code).toBe(1);
+    expect(empty.output).toContain("shared-depends-on-no-domain: 0 -> 1");
+  });
+
   test("the counts per rule of a known-violations file; an unreadable one counts nothing", () => {
     expect(ruleCounts(known(["no-cycle", "no-cycle", "no-deep-cross-domain"]))).toEqual({
       "no-cycle": 2,
