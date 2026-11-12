@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config.ts";
 import { startDaemon } from "../../src/main.ts";
-import { tcpAlive, type WslItem, WslSupervisor, wslCommand } from "../../src/wsl.ts";
+import { tcpAlive, type WslItem, WslSupervisor, wslCommand } from "../../src/wsl/supervisor.ts";
 import { poll, tempDir } from "../support/helpers.ts";
 
 const stops: Array<() => Promise<void>> = [];

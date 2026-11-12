@@ -109,7 +109,7 @@ import { whichOnPath } from "./which.ts";
 import { boundedCheckRunner } from "./workflows/check-runner.ts";
 import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
-import { createWsl, type WslItem } from "./wsl.ts";
+import { createWsl, type WslItem } from "./wsl/index.ts";
 
 export { type CliArgs, parseArgs, type ServiceAction } from "./cli/args.ts";
 export { type CliDeps, HOOK_CONNECT_TIMEOUT_MS } from "./cli/commands.ts";
