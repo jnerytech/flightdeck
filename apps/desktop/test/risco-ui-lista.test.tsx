@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { git } from "../../daemon/test/support/board-helpers.ts";
-import { trayStatus } from "../src/lib/tray.ts";
+import { trayStatus } from "../src/features/tray/tray.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";

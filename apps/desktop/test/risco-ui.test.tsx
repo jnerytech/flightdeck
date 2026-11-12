@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { trayMenu } from "../src/features/tray/tray.ts";
 import { translator } from "../src/i18n/index.ts";
-import { trayMenu } from "../src/lib/tray.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();

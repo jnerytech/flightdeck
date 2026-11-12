@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { UntrustedNotice } = await import("../src/features/trust/untrusted-notice.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { UntrustedNotice } = await import("../../src/features/trust/untrusted-notice.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

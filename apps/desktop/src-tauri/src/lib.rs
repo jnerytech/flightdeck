@@ -1215,7 +1215,7 @@ struct TrayState {
     close_to_tray: AtomicBool,
 }
 
-/// One open request of the submenu, built by the frontend (apps/desktop/src/lib/tray.ts).
+/// One open request of the submenu, built by the frontend (apps/desktop/src/features/tray/tray.ts).
 #[derive(serde::Deserialize)]
 struct TrayEntry {
     key: String,

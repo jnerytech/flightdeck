@@ -9,8 +9,8 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
-import { placeholders, SPECIAL_VARS } from "@/lib/snippets";
 import { Form, FormActions } from "@/shared/layout/index.ts";
+import { placeholders, SPECIAL_VARS } from "./snippets.ts";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 
