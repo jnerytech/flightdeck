@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { laggingBranches } from "../../lib/demo-lagging.ts";
+import { laggingBranches } from "../../lib/demo/lagging.ts";
 import { realTempDir } from "../temp-dir.ts";
 
 const cleanups: string[] = [];

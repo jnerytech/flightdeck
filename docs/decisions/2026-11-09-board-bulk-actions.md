@@ -207,7 +207,7 @@ languages, re-measured at 1024, 640 and 390 by the narrow guard:
   if they are ever needed, are a feature of their own.
 - **Checked by:** the `board-atualizar` journey and print, on the demo's billing project. Its three
   cards (`DEMO_UPDATE_CARDS`) each have a branch one commit behind main, and the last one changes the
-  README line that main changed too (`scripts/lib/demo-lagging.ts`, tested with the host's own
+  README line that main changed too (`scripts/lib/demo/lagging.ts`, tested with the host's own
   rebase). The journey selects them by keyboard, runs Update 3 from the base, and waits for the
   summary to name the conflicted card and its file, with the other two updated (or already current on
   the second language's run).

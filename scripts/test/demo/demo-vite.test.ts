@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { viteCommands } from "../../lib/demo-vite.ts";
+import { viteCommands } from "../../lib/demo/vite.ts";
 
 const base = { bun: "/bin/bun", vite: "/d/vite.js", port: 4321, outDir: "/tmp/demo-dist" };
 
