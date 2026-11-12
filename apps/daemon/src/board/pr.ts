@@ -1,10 +1,10 @@
+import type { ChecksState, PrProviderKind, PrState } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError, whichOnPath } from "../kernel/index.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
 import { type CommandResult, runCommand } from "./command.ts";
 import { parseChecks, parsePrUrl } from "./gh-json.ts";
 import { azureDetails, githubDetails, type PrDetails } from "./pr-details.ts";
-import type { ChecksState, PrProviderKind, PrState } from "./types.ts";
 
 export interface PrStatus extends Partial<PrDetails> {
   state: PrState;

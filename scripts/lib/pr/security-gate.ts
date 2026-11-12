@@ -4,7 +4,7 @@
  * the pairing code, and whether the security-reviewer's verdict was committed after the last of
  * them, as a `Security-Reviewed: <summary>` trailer.
  */
-import { auditBase } from "../tdd-audit.ts";
+import { auditBase } from "../guards/tdd-audit.ts";
 
 export interface RiskyFile {
   path: string;
@@ -188,7 +188,7 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
   [
     "guard",
     [
-      /^scripts\/lib\/(?:pr\/(?:security-gate|handoff)|hooks\/claude-hooks|tdd-audit|bounded-run)\.ts$/,
+      /^scripts\/lib\/(?:pr\/(?:security-gate|handoff)|hooks\/claude-hooks|guards\/tdd-audit|bounded-run)\.ts$/,
       /^scripts\/(?:handoff-check|pr-flow)\.ts$/,
       /^\.github\/actions\//,
       /^\.claude\/agents\/security-reviewer\.md$/,
