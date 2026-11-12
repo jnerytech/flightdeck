@@ -5,7 +5,7 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
-const { useMoveFocus } = await import("../src/hooks/use-move-focus.ts");
+const { useMoveFocus } = await import("../src/features/board/use-move-focus.ts");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);

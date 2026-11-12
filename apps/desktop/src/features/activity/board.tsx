@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import { Input } from "@/components/ui/input";
 import type { HubRow } from "@/features/sessions/index.ts";
-import { useBoardTransition } from "@/hooks/use-board-transition";
 import { useStoreSlice } from "@/lib/use-store";
 import { EmptyState, NativeSelect, Page } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
@@ -17,6 +16,7 @@ import {
 } from "./activity.ts";
 import { ActivityCardView } from "./activity-card.tsx";
 import { ActivityColumnView } from "./activity-column.tsx";
+import { useBoardTransition } from "./use-board-transition.ts";
 
 /** How often the board reads the clock again. */
 const CLOCK_TICK_MS = 30_000;
