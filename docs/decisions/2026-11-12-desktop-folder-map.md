@@ -52,10 +52,10 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `feedback/` | `shared/feedback/` | **moved**: `action-button`, `busy`, `confirm-dialog`, `dialog-content`, `icon-action-button`, `icon-tip`, `inline-notice`. `notices.tsx` stays in `components/feedback/` until the store moves: it reads `AppStore`, so it is not domain-free; it goes to `app/` with the root |
 | `layout/` | `shared/layout/` | **moved** (14 primitives, behind an `index.ts`; the field-row context is a leaf, `field-row-context.ts`, that `shared/feedback` imports directly); `app-shell.tsx` and `breadcrumb.tsx` went to `features/shell/` (below); `view-toggle.tsx` went to `features/sessions/` (**moved**, exported from its index: the sessions hub and the history list use it, and it reads `lib/hub.ts`) |
 | `markdown/` | `shared/markdown/` | **moved**: `markdown.tsx` and the lazy `markdown-body.tsx`; the `index.ts` exports only `Markdown` and `preloadMarkdown`, never the body, so the lazy chunk stays lazy (`bundle-reach` green) |
-| `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` (**moved**) | the center's only importer is the inbox bell, and it reads `lib/inbox.ts` |
+| `notifications/` | `notification-prefs.tsx` to `features/notifications/` (**moved**, with `notify-policy.ts` and `notify-sound.ts` from `lib/`); `notification-center.tsx` to `features/inbox/` (**moved**) | the center's only importer is the inbox bell, and it reads `inbox.ts`, now in the same folder |
 | `session/` | **theirs** (`features/sessions/`) | **moved**: activity line, message actions, parts, tool rows, finish dialogs (`session-finish.tsx`) |
 | `settings/` | `features/settings/` | `diagnostics-panel.tsx` only |
-| `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and nine shell `lib/` files followed (rows below); `router.ts`, `workspace.ts`, `density.ts` and `theme.ts` follow later |
+| `shell/` | `features/shell/` (new domain, GLOSSARY row) | **moved** (account footer, quota bars, quota detail, scope menu, status bar, top bar, with `app-shell.tsx` and `breadcrumb.tsx` from `layout/`, behind an `index.ts`); `Sidebar.tsx`, `nav-icons.ts` and nine shell `lib/` files followed (rows below); `workspace.ts`, `density.ts` and `theme.ts` followed; `router.ts` follows later |
 | `shortcuts/` | `features/shortcuts/` | `keycap.tsx` only (**moved**; the sheet already lives there) |
 | `simple/` | `features/home/` (simple mode) | home, question and task views, settings view (**moved**); `SimpleApp.tsx` (**moved**, `simple-app.tsx`) |
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
@@ -103,20 +103,20 @@ prefix. Tests move with their file in the same PR.
 | `automations.ts`, `check-loop.ts` | `features/automations/` |
 | `backup-*.ts`, `drive-target.ts`, `google-config.ts`, `google-oauth.ts` | `features/backup/` |
 | `notify-policy.ts`, `notify-sound.ts` | `features/notifications/` (**moved**) |
-| `notify.ts` | `features/inbox/`: it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
+| `notify.ts` | `features/inbox/` (**moved**): it builds the system notification from an inbox entry (`describeRequest`), so moving it into `notifications` would make `notifications` and `inbox` import each other |
 | `badge-icon.ts` | stays until `platform/tauri` no longer imports it (a platform adapter must not import a feature): it moves to `platform/tauri/` as a pure pixel helper |
 | `notice-*.ts` | `notice-lifetime.ts` goes to `app/` with `notices.tsx` (it reads the `Notice` type and the store); `notice-text.ts` (`reasonText`, used by the board, needs-you and the run timeline) stays until `i18n` has a home |
 | `incident-text.ts` | **theirs** (`features/board/`, only `post-mortem.tsx` reads it) |
 | `quiet*.ts` | `features/needs-you/` (the quiet badge of the board and the needs-you rows) |
 | `away.ts` | `features/needs-you/` |
 | `keep-awake.ts` | `features/hosts/` |
-| `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`. Still in `lib/`: `router.ts`, `workspace.ts`, `density.ts`, `theme.ts` (many importers, one move of their own). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
+| `breadcrumb.ts`, `nav-active.ts`, `nav-badges.ts`, `sidebar-*.ts`, `tree-fold.ts`, `shell-prefs.ts`, `status-bar.ts`, `foot-account.ts`, `router.ts`, `workspace.ts`, `density.ts`, `theme.ts`, `whats-new.ts` | `features/shell/` (`whats-new.ts` to `features/appupdate/`; `router.ts` to `app/`). **Moved**: `breadcrumb.ts` as `crumbs.ts` and `status-bar.ts` as `status-bar-summary.ts` (the component files `breadcrumb.tsx` and `status-bar.tsx` already sit there), `nav-active.ts`, `nav-badges.ts`, `sidebar-fold.ts`, `sidebar-groups.ts`, `tree-fold.ts`, `shell-prefs.ts`, `foot-account.ts`, `workspace.ts`, `density.ts`, `theme.ts`. Still in `lib/`: `router.ts` (to `app/`, last). `tree-fold.ts` serves the project tree too, so it may move to `features/projects/` when that domain is cut |
 | `client*.ts`, `costs*.ts`, `data-scope.ts`, `usage-rows.ts`, `measures.ts` | `features/clients/` for `client*.ts`; `features/costs/` for the rest |
 | `deps*.ts` | `features/deps/` |
 | `harness.ts` | `features/harness/` |
 | `home-*.ts`, `simple-*.ts` | `features/home/` |
 | `host-*.ts`, `hosts.ts`, `probe-host.ts`, `pairing-*.ts`, `request-link.ts`, `relay.ts`, `version.ts`, `setup-steps.ts` | `features/hosts/` (`setup-steps.ts` to `features/setup/`; `host-*.ts` and `hosts.ts` **moved**, where `host-compare.ts` and `host-overview.ts` became `host-compare-model.ts` and `host-overview-model.ts` because `host-compare.tsx` and `host-overview.tsx` already live in the folder) |
-| `inbox.ts` | `features/inbox/` |
+| `inbox.ts` | `features/inbox/` (**moved**) |
 | `issues.ts` | `features/issues/` |
 | `frontmatter.ts`, `mcp-form.ts` | `features/agentcfg/` |
 | `github-session.ts` | `features/hosts/` (the GitHub panel) |

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { HOSTS_KEY } from "../src/features/hosts/hosts.ts";
+import { WORKSPACE_KEY, Workspace } from "../src/features/shell/workspace.ts";
 import type { Route } from "../src/lib/router.ts";
-import { WORKSPACE_KEY, Workspace } from "../src/lib/workspace.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 

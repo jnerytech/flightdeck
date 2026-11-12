@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chooseFromAccountMenu } from "./account/menu.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { chooseFromAccountMenu } from "../account/menu.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -15,9 +15,11 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
-const { AUTO_UPDATE_KEY, NOTIFY_UPDATES_KEY } = await import("../src/features/settings/index.ts");
-const { App } = await import("../src/ui/App.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
+const { AUTO_UPDATE_KEY, NOTIFY_UPDATES_KEY } = await import(
+  "../../src/features/settings/index.ts"
+);
+const { App } = await import("../../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
 afterEach(async () => {
