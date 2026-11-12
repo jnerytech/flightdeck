@@ -14,9 +14,8 @@ import { readSpecText } from "./board/spec.ts";
 import { createBoard, createCheckLoop, createHostPause } from "./board/wiring.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { type AsyncGitRunner, ProjectKeys } from "./central/project-key.ts";
-import { Forker } from "./checkpoints/fork.ts";
-import { Rewinder } from "./checkpoints/rewind.ts";
 import { Snapshots } from "./checkpoints/snapshots.ts";
+import { createCheckpoints } from "./checkpoints/wiring.ts";
 import { claudeVersionProbe } from "./claude-probe.ts";
 import { type CliArgs, configPath, parseArgs } from "./cli/args.ts";
 import { type CliDeps, COMMANDS } from "./cli/commands.ts";
@@ -81,7 +80,6 @@ import { EventStore } from "./store/event-store.ts";
 import { SummaryService } from "./summary/service.ts";
 import { createTeams } from "./teams/wiring.ts";
 import { createTelemetry } from "./telemetry/wiring.ts";
-import { teleportImportDeps } from "./teleport/import.ts";
 import { createTeleport } from "./teleport/wiring.ts";
 import { createTerminals, type TerminalsDeps, terminalInfo } from "./terminal/wiring.ts";
 import { TraceService } from "./trace/service.ts";
@@ -303,7 +301,7 @@ export async function startDaemon(
     account,
     snapshots,
   });
-  const rewinder = new Rewinder({ snapshots, sessions: manager });
+  await domains.add(createCheckpoints({ snapshots, manager, runtime, prepare }));
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
   const {
@@ -313,16 +311,20 @@ export async function startDaemon(
     createHistory({ db: store.db, config, names, manager, log: (m) => logger.log(m) }),
   );
   // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
-  const { teleport, teleportInbox } = createTeleport({
-    manager,
-    names,
-    indexer: history,
-    config,
-    scan: snippetScanner.scan.bind(snippetScanner),
-    log: logger.log.bind(logger),
-  });
-  await teleport.start();
-  await teleportInbox.start();
+  const {
+    modules: [teleportModule],
+  } = await domains.add(
+    createTeleport({
+      manager,
+      names,
+      indexer: history,
+      config,
+      // The meta is made with the central below; an import reads it only once the server runs.
+      meta: { set: (claudeSessionId, patch) => central.meta.set(claudeSessionId, patch) },
+      scan: snippetScanner.scan.bind(snippetScanner),
+      log: logger.log.bind(logger),
+    }),
+  );
   const {
     costs,
     usageIndex,
@@ -603,18 +605,6 @@ export async function startDaemon(
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
     ...present({ assistant }),
-    teleport: serverGroup<"teleport", "imports">()({
-      packages: teleport,
-      inbox: teleportInbox,
-      imports: teleportImportDeps({
-        inbox: teleportInbox,
-        allowedRoots: config.allowedRoots,
-        historyRoots: config.history.roots,
-        indexer: history,
-        manager,
-        meta: central.meta,
-      }),
-    }),
     projects: serverGroup<"projects">()({
       warmKey: (cwd) => keys.resolve(cwd),
       keyOf: (cwd) => keys.resolve(cwd),
@@ -706,11 +696,6 @@ export async function startDaemon(
       externals: central.external,
       locks: folderLocks,
     }),
-    checkpoints: serverGroup<"checkpoints">()({
-      snapshots,
-      rewinder,
-      forker: new Forker({ runtime, manager, rewinder, preparePersonas: prepare }),
-    }),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -776,9 +761,7 @@ export async function startDaemon(
         await updatesModule.stop?.();
         await manager.shutdown();
         await server.stop();
-        // Issue #100: no package of a transcript outlives the daemon.
-        await teleport.stop();
-        await teleportInbox.stop();
+        await teleportModule.stop?.();
         await historyModule.stop?.();
         await costsModule.stop?.();
         await quotaModule.stop?.();
