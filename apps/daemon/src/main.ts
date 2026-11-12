@@ -301,14 +301,12 @@ export async function startDaemon(
   const rewinder = new Rewinder({ snapshots, sessions: manager });
   // Phase 21: every session of this host has a standard name and an alias that addresses it.
   const names = new Names(store.db);
-  const history = createHistory({
-    db: store.db,
-    config,
-    names,
-    manager,
-    log: (m) => logger.log(m),
-  });
-  history.start();
+  const {
+    history,
+    modules: [historyModule],
+  } = await domains.add(
+    createHistory({ db: store.db, config, names, manager, log: (m) => logger.log(m) }),
+  );
   // Issue #100: the packages this host teleports to another, and the ones other hosts send here.
   const { teleport, teleportInbox } = createTeleport({
     manager,
@@ -320,17 +318,24 @@ export async function startDaemon(
   });
   await teleport.start();
   await teleportInbox.start();
-  const { costs, usageIndex, budgets } = createCosts({
-    db: store.db,
-    config,
-    readPricing: async () => (await loadConfig(configFile)).pricing,
-    excludeCwds: historyExcludes(config),
-    projectKey: (cwd) => keys.known(cwd),
-    warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
-    quota,
-    log: (m) => logger.log(m),
-    history,
-  });
+  const {
+    costs,
+    usageIndex,
+    budgets,
+    modules: [costsModule],
+  } = await domains.add(
+    createCosts({
+      db: store.db,
+      config,
+      readPricing: async () => (await loadConfig(configFile)).pricing,
+      excludeCwds: historyExcludes(config),
+      projectKey: (cwd) => keys.known(cwd),
+      warmKeys: (cwds) => Promise.all(cwds.map((cwd) => keys.resolve(cwd))),
+      quota,
+      log: (m) => logger.log(m),
+      history,
+    }),
+  );
   const checkLoop = createCheckLoop({
     db: store.db,
     trust: projectTrust,
@@ -654,11 +659,9 @@ export async function startDaemon(
     autoApprove,
     issues,
     automations,
-    history,
     board,
     runenv: { configs: runEnv.configs, manager: runEnv.manager },
     usage,
-    costs: serverGroup<"costs">()({ costs, budgets }),
     bg: createBgService({
       db: store.db,
       config,
@@ -773,9 +776,8 @@ export async function startDaemon(
         // Issue #100: no package of a transcript outlives the daemon.
         await teleport.stop();
         await teleportInbox.stop();
-        history.stop();
-        await usageIndex.stop();
-        budgets.stop();
+        await historyModule.stop?.();
+        await costsModule.stop?.();
         await quotaModule.stop?.();
         store.close();
         await lock.release();
