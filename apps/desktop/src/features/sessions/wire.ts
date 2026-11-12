@@ -5,6 +5,7 @@ import { type FinishedCore, FinishedSlice } from "./finished.ts";
 import { type SessionListsCore, SessionListsSlice } from "./lists.ts";
 import { type SessionsCore, SessionsSlice, type SessionsSliceState } from "./store.ts";
 import { type SessionStreamCore, SessionStreamSlice } from "./stream.ts";
+import { type OpenSession, SessionSubscriptions } from "./subscriptions.ts";
 import { type SummariesCore, SummariesSlice } from "./summaries.ts";
 
 /*
@@ -102,6 +103,18 @@ export function wireSessionStream(
     setSessions: (sessions) => kernel.update({ sessions }),
     summary: deps.summary,
     resync: (hostId, sessionId) => kernel.connection(hostId)?.resync(sessionId),
+  });
+}
+
+/** The sessions that keep a subscription to their full event stream: the open one and the followed. */
+export function wireSessionSubscriptions(
+  kernel: AppKernel<{ selected: OpenSession | null }>,
+): SessionSubscriptions {
+  return new SessionSubscriptions({
+    selected: () => kernel.state().selected,
+    setSelected: (selected) => kernel.update({ selected }),
+    subscribe: (hostId, sessionId) => kernel.connection(hostId)?.subscribe(sessionId),
+    unsubscribe: (hostId, sessionId) => kernel.connection(hostId)?.unsubscribe(sessionId),
   });
 }
 
