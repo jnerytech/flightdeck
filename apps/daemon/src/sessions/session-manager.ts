@@ -10,10 +10,8 @@ import type {
   PermissionMode,
   PermissionUpdate,
   SessionEvent,
-  SessionEventOf,
   SessionImage,
   SessionPersona,
-  SessionRuntime,
   SessionStatus,
   SessionSummary,
   ToolInput,
@@ -31,104 +29,26 @@ import {
 } from "../kernel/index.ts";
 import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
-import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
 import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
-import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
+import { clampPermissionMode } from "../personas/model.ts";
 import type { PreparedPersonas } from "../personas/prepare.ts";
-import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
-import type {
-  AgentRun,
-  AgentRuntime,
-  QuotaReading,
-  RewindFilesResult,
-  RuntimeEvent,
-} from "../runtime/types.ts";
+import { snapshotOf } from "../personas/snapshot.ts";
+import type { RewindFilesResult } from "../runtime/index.ts";
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 import { ActivityClock, type ToolNote } from "./activity-clock.ts";
 import { interruptedSessions, RESTART_REASON } from "./interrupted.ts";
+import type { SessionManagerOptions } from "./session-options.ts";
+import { type LiveSession, SessionRuns } from "./session-runs.ts";
 import type { QuietInfo } from "./stall.ts";
 
-/** Phase 39 (ADR 39-3): permission modes an OpenCode session does not offer. */
-const OPENCODE_UNSUPPORTED_MODES: ReadonlySet<PermissionMode> = new Set([
-  "acceptEdits",
-  "dontAsk",
-  "auto",
-]);
+export type { SessionManagerOptions, TurnEdge } from "./session-options.ts";
+
 /** The reason of the `session.status` event a sleeping session logs. */
 export const SLEPT_REASON = "slept";
 
-export interface SessionManagerOptions {
-  store: EventStore;
-  runtime: AgentRuntime;
-  /** Phase 39: OpenCode sessions run here; none when the host has no OpenCode. */
-  opencode?: AgentRuntime;
-  allowedRoots: readonly string[];
-  defaultPermissionMode: PermissionMode;
-  allowApiKey: boolean;
-  /** Whether a session may start in `bypassPermissions` (the host switch); refused when absent. */
-  allowBypass?: () => boolean;
-  /** Folders being removed (issue #152): no session starts in one. */
-  folderLocks?: { isHeld(cwd: string): boolean };
-  /** Whether a folder's own configuration may load in a session (issue #196); absent: it always does. */
-  trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
-  /** Looks at a folder's git boundaries before its run is decided (issue #196); awaited by every async entry. */
-  prepareTrust?: (cwd: string) => Promise<void>;
-  baseEnv: Record<string, string | undefined>;
-  /** Plan quota readings of any session go to the host's quota (phase 7). */
-  onQuota?: (readings: QuotaReading[]) => void;
-  /** Every turn of a managed session, before it is stored (phase 7's usage). */
-  onTurn?: (
-    sessionId: string,
-    cwd: string,
-    turn: SessionEventOf<"turn.result">,
-    /** Phase 39: OpenCode turns spend no Claude plan, so the account is not told. */
-    runtime: SessionRuntime,
-  ) => void;
-  /** How many sessions are running or waiting for a permission, after every change of status (keep-awake, #163). */
-  onActivity?: (active: number) => void;
-  /** Start and end of every turn (phase 12's snapshots); the first start waits for session.init. */
-  onTurnEdge?: (edge: TurnEdge) => void;
-  /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
-  risk?: RiskClassifier;
-  /** Issue #157: a session the host wants awake (pinned, a card's): it never sleeps. */
-  keepAwake?: (session: SessionSummary) => boolean;
-  /** Phase 13: the projects' automatic approval. */
-  autoApprove?: Pick<AutoApprover, "decide">;
-}
-
-export interface TurnEdge {
-  sessionId: string;
-  claudeSessionId: string;
-  cwd: string;
-  kind: "before" | "after";
-  prompt?: string;
-  /** The user message's uuid (before edges), which the SDK rewinds to. */
-  turnUuid?: string;
-}
-
 export type EventListener = (envelope: EventEnvelope) => void;
-
-interface LiveSession {
-  run: AgentRun;
-  /** Messages sent while a turn is in progress, delivered one per turn. */
-  queue: Array<{ text: string; images?: SessionImage[] }>;
-  closing: boolean;
-  /** The first turn's prompt and uuid, until session.init names the Claude session. */
-  pendingBefore?: { text: string; uuid: string };
-  /** Whether the run was given the project's own setup (its folder was trusted when it started). */
-  trustedAtStart: boolean;
-}
-
-/** What the runtime is given of a session's persona. */
-function personaOf(snapshot: PersonaSnapshot) {
-  return {
-    append: snapshot.append,
-    ...(snapshot.effort ? { effort: snapshot.effort } : {}),
-    tools: snapshot.tools,
-  };
-}
 
 const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awaiting_permission"]);
 
@@ -136,11 +56,6 @@ const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awai
  * Owns the sessions: starts agent runs, assigns every event a `seq` through the store before
  * fanning it out to subscribers, drives the status machine and the per-session message queue.
  */
-/** What an OpenCode session cannot take, by name: a persona, or a permission mode it lacks. */
-function unsupportedOnOpenCode(persona: unknown, mode: PermissionMode): string | null {
-  if (persona) return "persona";
-  return OPENCODE_UNSUPPORTED_MODES.has(mode) ? mode : null;
-}
 
 export class SessionManager {
   private readonly store: EventStore;
@@ -160,6 +75,8 @@ export class SessionManager {
   private readonly updateListeners = new Set<
     (sessionId: string, updates: PermissionUpdate[]) => void
   >();
+  /** #1595: the sessions' agent runs, driven with the manager's stores and state. */
+  private readonly runs: SessionRuns;
 
   constructor(private readonly opts: SessionManagerOptions) {
     this.store = opts.store;
@@ -183,6 +100,19 @@ export class SessionManager {
                   }),
           }
         : {}),
+    });
+    this.runs = new SessionRuns({
+      opts,
+      store: this.store,
+      broker: this.broker,
+      live: this.live,
+      efforts: this.efforts,
+      unattended: this.unattended,
+      userListeners: this.userListeners,
+      get: (sessionId) => this.get(sessionId),
+      emit: (sessionId, event) => this.emit(sessionId, event),
+      setStatus: (sessionId, status, reason) => this.setStatus(sessionId, status, reason),
+      bypassAllowed: () => this.bypassAllowed(),
     });
     this.recover();
   }
@@ -318,32 +248,6 @@ export class SessionManager {
     return this.withSleep(session);
   }
 
-  /** Phase 39: an OpenCode session is refused before anything is created, so a refusal leaves no session. */
-  private async checkOpenCode(
-    payload: CommandPayload<"session.create">,
-    cwd: string,
-  ): Promise<void> {
-    const opencode = this.opts.opencode;
-    if (!opencode) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "OpenCode is not available on this host",
-        "runtime_unavailable",
-      );
-    }
-    const mode = payload.permissionMode ?? this.opts.defaultPermissionMode;
-    const unsupported = unsupportedOnOpenCode(payload.persona, mode);
-    if (unsupported) {
-      throw new FlightdeckError(
-        "invalid_state",
-        `an OpenCode session does not offer ${unsupported}`,
-        "runtime_unsupported",
-        { feature: unsupported },
-      );
-    }
-    await opencode.preflight?.(cwd);
-  }
-
   /**
    * `unattended` (phase 22) marks a session Flightdeck opens by itself, with no person in it:
    * it never gets to use `run_with_secret`, which is for a person to approve each time.
@@ -355,7 +259,7 @@ export class SessionManager {
     const cwd = await resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const runtime = payload.runtime ?? "claude";
-    if (runtime === "opencode") await this.checkOpenCode(payload, cwd);
+    if (runtime === "opencode") await this.runs.checkOpenCode(payload, cwd);
     const id = ulid();
     // Resolved by the caller before anything is created, so a missing, untrusted or invalid
     // persona leaves no session. The manager reads no persona file itself.
@@ -406,9 +310,9 @@ export class SessionManager {
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
-    this.startRun(id);
+    this.runs.startRun(id);
     if (payload.prompt === undefined) this.setStatus(id, "idle", "no first prompt");
-    else this.deliver(id, payload.prompt);
+    else this.runs.deliver(id, payload.prompt);
     return { sessionId: id };
   }
 
@@ -448,7 +352,7 @@ export class SessionManager {
       resumedFrom: opts.claudeSessionId,
     });
     this.emit(id, { type: "session.status", status: "starting" });
-    this.startRun(id, opts.claudeSessionId);
+    this.runs.startRun(id, opts.claudeSessionId);
     this.setStatus(id, "idle", "resumed from history");
     return { sessionId: id };
   }
@@ -464,9 +368,9 @@ export class SessionManager {
     }
     let live = this.live.get(sessionId);
     // Idle session left by a previous daemon process: reattach lazily.
-    live ??= this.startRun(sessionId, session.claudeSessionId ?? undefined);
+    live ??= this.runs.startRun(sessionId, session.claudeSessionId ?? undefined);
     if (session.status === "idle") {
-      this.deliver(sessionId, text, images);
+      this.runs.deliver(sessionId, text, images);
       return { queued: false };
     }
     live.queue.push({ text, ...(images?.length ? { images } : {}) });
@@ -546,8 +450,8 @@ export class SessionManager {
   private async reattach(sessionId: string, session: SessionSummary): Promise<void> {
     await this.opts.prepareTrust?.(session.cwd);
     // Phase 39: an OpenCode session is checked again before it reopens; a refusal leaves it ended.
-    if (session.runtime === "opencode") await this.runtimeOf(session).preflight?.(session.cwd);
-    this.startRun(sessionId, session.claudeSessionId ?? undefined);
+    if (session.runtime === "opencode") await this.runs.runtimeOf(session).preflight?.(session.cwd);
+    this.runs.startRun(sessionId, session.claudeSessionId ?? undefined);
     this.setStatus(sessionId, "idle", "resumed");
   }
 
@@ -704,19 +608,6 @@ export class SessionManager {
     );
   }
 
-  /** Phase 39: the runtime a stored session runs on. */
-  private runtimeOf(session: SessionSummary): AgentRuntime {
-    if (session.runtime !== "opencode") return this.opts.runtime;
-    if (!this.opts.opencode) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "OpenCode is not available on this host",
-        "runtime_unavailable",
-      );
-    }
-    return this.opts.opencode;
-  }
-
   /** The persona applied to the open session, if any. */
   appliedPersona(sessionId: string): SessionPersona | null {
     this.get(sessionId);
@@ -731,194 +622,6 @@ export class SessionManager {
     if (shown)
       this.emit(sessionId, { type: badge ? "persona.applied" : "persona.cleared", persona: shown });
     this.emitSummary(sessionId);
-  }
-
-  /** The answer to a tool request: denied outright for a free command in an unattended session or a tool the persona does not use, else asked of the person. */
-  private canUse(
-    sessionId: string,
-    persona: ReturnType<EventStore["sessionPersona"]>,
-    toolName: string,
-    input: Record<string, unknown>,
-    ctx: { signal: AbortSignal; suggestions?: unknown },
-  ) {
-    if (this.unattended.has(sessionId) && /(^|__)run_with_secret$/.test(toolName)) {
-      return Promise.resolve({
-        behavior: "deny" as const,
-        message:
-          "run_with_secret is not available in a session Flightdeck started by itself: a person approves each use",
-      });
-    }
-    if (persona && !toolAllowed(persona.tools, toolName)) {
-      return Promise.resolve({
-        behavior: "deny" as const,
-        message: `the persona ${persona.name} does not use the tool ${toolName}`,
-      });
-    }
-    return this.broker.request(
-      sessionId,
-      toolName,
-      input,
-      ctx.signal,
-      parseSuggestions(ctx.suggestions),
-    );
-  }
-
-  /** What a run is started with only when the session has it: a resume, a model, an effort, a persona, agents. */
-  private optionalRunOptions(
-    sessionId: string,
-    model: string | null,
-    resume: string | undefined,
-    persona: ReturnType<EventStore["sessionPersona"]>,
-    agents: ReturnType<EventStore["sessionAgents"]>,
-  ) {
-    const effort = this.efforts.get(sessionId);
-    return {
-      ...(resume ? { resume } : {}),
-      ...(model ? { model } : {}),
-      ...(effort ? { effort } : {}),
-      ...(persona ? { persona: personaOf(persona) } : {}),
-      ...(agents && Object.keys(agents).length > 0 ? { agents } : {}),
-    };
-  }
-
-  private startRun(sessionId: string, resume?: string): LiveSession {
-    const session = this.get(sessionId);
-    // The persona the session opened with, as it was then: the prompt it appends is in no transcript.
-    const persona = this.store.sessionPersona(sessionId);
-    // What the session opened with: a later run reads no persona file.
-    const agents = this.store.sessionAgents(sessionId);
-    const run = this.runtimeOf(session).start({
-      cwd: session.cwd,
-      // The mode it last reported (#935): a new run never falls back to the start mode, which
-      // stays only the limit of a change.
-      permissionMode: this.store.lastMode(sessionId) ?? session.permissionMode,
-      allowBypass: this.bypassAllowed(),
-      // The session's own id: the Flightdeck MCP it opens knows who is sending (phase 21).
-      env: {
-        ...buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
-        FLIGHTDECK_SESSION: sessionId,
-      },
-      canUseTool: (toolName, input, ctx) => this.canUse(sessionId, persona, toolName, input, ctx),
-      ...(this.opts.trust ? { trust: this.opts.trust(session.cwd) } : {}),
-      ...this.optionalRunOptions(sessionId, session.model, resume, persona, agents),
-    });
-    const live: LiveSession = {
-      run,
-      queue: [],
-      closing: false,
-      trustedAtStart: this.opts.trust?.(session.cwd).trusted === true,
-    };
-    this.live.set(sessionId, live);
-    void this.consume(sessionId, live);
-    return live;
-  }
-
-  private async consume(sessionId: string, live: LiveSession): Promise<void> {
-    try {
-      for await (const event of live.run.events) {
-        if (live.closing) return;
-        this.handle(sessionId, live, event);
-      }
-      if (!live.closing)
-        this.fail(sessionId, live, "runtime_exit", "the runtime ended unexpectedly");
-    } catch (error) {
-      if (!live.closing) this.failFrom(sessionId, live, error);
-    }
-  }
-
-  /** The runtime threw: the session fails, with the error's typed reason when it has one. */
-  private failFrom(sessionId: string, live: LiveSession, error: unknown): void {
-    // Phase 39: a typed refusal from the runtime keeps its reason for the app to translate.
-    const typed =
-      error instanceof FlightdeckError && error.reason
-        ? { reason: error.reason, ...(error.params ? { params: error.params } : {}) }
-        : undefined;
-    this.fail(
-      sessionId,
-      live,
-      typed?.reason ?? "runtime",
-      error instanceof Error ? error.message : String(error),
-      typed,
-    );
-  }
-
-  private handle(sessionId: string, live: LiveSession, event: RuntimeEvent): void {
-    switch (event.type) {
-      case "session.init":
-        this.store.updateSession(sessionId, {
-          claudeSessionId: event.claudeSessionId,
-          model: event.model,
-        });
-        this.emit(sessionId, event);
-        if (this.get(sessionId).status === "starting") this.setStatus(sessionId, "running");
-        if (live.pendingBefore) {
-          this.turnEdge(sessionId, "before", live.pendingBefore.text, live.pendingBefore.uuid);
-          live.pendingBefore = undefined;
-        }
-        return;
-      case "quota":
-        this.opts.onQuota?.(event.windows);
-        return;
-      case "turn.result": {
-        // Before the event is stored: the usage reads the session's previous total.
-        const session = this.get(sessionId);
-        this.opts.onTurn?.(sessionId, session.cwd, event, session.runtime ?? "claude");
-        this.turnEdge(sessionId, "after");
-        this.emit(sessionId, event);
-        const next = live.queue.shift();
-        if (next !== undefined) this.deliver(sessionId, next.text, next.images);
-        else this.setStatus(sessionId, "idle");
-        return;
-      }
-      default:
-        this.emit(sessionId, event);
-    }
-  }
-
-  private deliver(sessionId: string, text: string, images?: SessionImage[]): void {
-    const live = this.live.get(sessionId);
-    if (!live)
-      throw new FlightdeckError(
-        "invalid_state",
-        "session has no active runtime",
-        "session_not_running",
-      );
-    const status = this.get(sessionId).status;
-    if (status !== "starting") this.setStatus(sessionId, "running");
-    this.emit(sessionId, {
-      type: "message.user",
-      text,
-      ...(images?.length ? { images: images.length } : {}),
-    });
-    for (const listener of this.userListeners) {
-      try {
-        listener(sessionId, text);
-      } catch {
-        // A broken listener must not break the session.
-      }
-    }
-    const uuid = crypto.randomUUID();
-    if (this.get(sessionId).claudeSessionId) this.turnEdge(sessionId, "before", text, uuid);
-    else live.pendingBefore = { text, uuid };
-    live.run.send(text, uuid, images);
-  }
-
-  private turnEdge(
-    sessionId: string,
-    kind: "before" | "after",
-    prompt?: string,
-    turnUuid?: string,
-  ): void {
-    const { claudeSessionId, cwd } = this.get(sessionId);
-    if (!claudeSessionId) return;
-    this.opts.onTurnEdge?.({
-      sessionId,
-      claudeSessionId,
-      cwd,
-      kind,
-      ...(prompt !== undefined ? { prompt } : {}),
-      ...(turnUuid !== undefined ? { turnUuid } : {}),
-    });
   }
 
   /** Phase 12: turns an MCP server of a live managed session on or off right away. */
@@ -1025,21 +728,6 @@ export class SessionManager {
     const session = this.list().find((s) => s.claudeSessionId === claudeSessionId);
     const run = session ? this.live.get(session.id)?.run : undefined;
     return run?.rewindFiles ? run.rewindFiles(userMessageId, { dryRun }) : null;
-  }
-
-  private fail(
-    sessionId: string,
-    live: LiveSession,
-    code: string,
-    message: string,
-    typed?: { reason: string; params?: Record<string, string | number> },
-  ): void {
-    if (this.live.get(sessionId) === live) this.live.delete(sessionId);
-    live.closing = true;
-    this.broker.cancelSession(sessionId);
-    this.emit(sessionId, { type: "session.error", code, message, ...typed });
-    this.setStatus(sessionId, "error", message);
-    void live.run.close();
   }
 
   private onPendingChange(sessionId: string, pending: number): void {

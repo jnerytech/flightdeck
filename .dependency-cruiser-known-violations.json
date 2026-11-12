@@ -4066,17 +4066,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/permissions/permission-updates.ts",
-    "unresolvedTo": "../permissions/permission-updates.ts",
-    "dependencyTypes": ["local", "import"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-manager.ts",
     "to": "apps/daemon/src/permissions/risk.ts",
     "unresolvedTo": "../permissions/risk.ts",
     "dependencyTypes": ["local", "import"],
@@ -4132,17 +4121,6 @@
   {
     "type": "dependency",
     "from": "apps/daemon/src/sessions/session-manager.ts",
-    "to": "apps/daemon/src/runtime/types.ts",
-    "unresolvedTo": "../runtime/types.ts",
-    "dependencyTypes": ["local", "import", "type-only"],
-    "rule": {
-      "severity": "error",
-      "name": "no-deep-cross-domain"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "apps/daemon/src/sessions/session-manager.ts",
     "to": "apps/daemon/src/store/event-store.ts",
     "unresolvedTo": "../store/event-store.ts",
     "dependencyTypes": ["local", "import"],
@@ -4157,6 +4135,28 @@
     "to": "apps/daemon/src/worktrees/locks.ts",
     "unresolvedTo": "../worktrees/locks.ts",
     "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/sessions/session-runs.ts",
+    "to": "apps/daemon/src/personas/model.ts",
+    "unresolvedTo": "../personas/model.ts",
+    "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-deep-cross-domain"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "apps/daemon/src/sessions/session-runs.ts",
+    "to": "apps/daemon/src/personas/snapshot.ts",
+    "unresolvedTo": "../personas/snapshot.ts",
+    "dependencyTypes": ["local", "import", "type-only"],
     "rule": {
       "severity": "error",
       "name": "no-deep-cross-domain"
