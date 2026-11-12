@@ -235,4 +235,24 @@ describe("baseline-merge: through git", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  test("a driver script that crashes still stops the merge when the line merge is clean", () => {
+    const { root, git, write, commit } = repo();
+    try {
+      writeFileSync(join(root, "scripts/merge-baseline.ts"), 'throw new Error("broken");\n');
+      write(base);
+      commit("base");
+      git("checkout", "-q", "-b", "other");
+      write({ ...base, "apps/c.ts": 830 });
+      commit("raise c");
+      git("checkout", "-q", "main");
+      // Two lines apart: the line merge alone takes the raise; the crash must not let it through.
+      write({ ...base, "apps/a.ts": undefined, "apps/a2.ts": 900 });
+      commit("rename a");
+      const merge = git("merge", "-q", "--no-edit", "other");
+      expect(merge.exitCode).not.toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
