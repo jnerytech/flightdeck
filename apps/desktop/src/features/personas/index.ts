@@ -5,7 +5,7 @@
  * chunk, and exporting it here would pull it into the main bundle.
  */
 export { type AppPersona, GlobalPersonas, personaInput } from "./global-personas.ts";
-export { EFFORTS, ModelSelect, takesEffort } from "./model-select.tsx";
+export { EffortSelect, ModelSelect, takesEffort } from "./model-select.tsx";
 export { type PermissionChoice, PermissionSelect } from "./permission-select.tsx";
 export { PersonaPicker, useSuggestedPersona } from "./persona-picker.tsx";
 export { PersonaSwitch } from "./persona-switch.tsx";

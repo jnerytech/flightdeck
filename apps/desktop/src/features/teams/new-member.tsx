@@ -2,14 +2,15 @@ import type { TeamInfo } from "@flightdeck/protocol";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  EffortSelect,
   ModelSelect,
   type PermissionChoice,
   PermissionSelect,
   PersonaPicker,
 } from "@/features/personas/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { type EffortChoice, offeredChoice } from "./new-team.ts";
-import { useModes } from "./use-modes.ts";
+import { type EffortChoice, effortOffered, offeredChoice } from "./new-team.ts";
+import { useModes, usePersonaModels } from "./use-modes.ts";
 
 /** The persona and model of a worker about to join a running team. */
 export function NewMember(
@@ -30,8 +31,11 @@ export function NewMember(
   const { t } = store.i18n;
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
+  const [effort, setEffort] = useState<EffortChoice>("");
   const [permission, setPermission] = useState<PermissionChoice>("");
   const modes = useModes(store, props.hostId);
+  const personaModels = usePersonaModels(store, props.hostId);
+  const effortShown = effortOffered({ efforts: modes.efforts, personaModels }, model, persona);
   return (
     <div className="row-end-wrap">
       <PersonaPicker
@@ -48,6 +52,14 @@ export function NewMember(
         value={model}
         onChange={setModel}
       />
+      {effortShown && (
+        <EffortSelect
+          label={t("teamsUi.newMemberEffort", { name: team.name })}
+          defaultLabel={t("teamsUi.effortDefault")}
+          value={effort}
+          onChange={setEffort}
+        />
+      )}
       {modes.offered && (
         <PermissionSelect
           label={t("teamsUi.newMemberPermission", { name: team.name })}
@@ -63,7 +75,7 @@ export function NewMember(
           props.onAdd({
             persona,
             model,
-            effort: "",
+            effort: effortShown ? effort : "",
             permission: offeredChoice(permission, modes.allowBypass),
           })
         }

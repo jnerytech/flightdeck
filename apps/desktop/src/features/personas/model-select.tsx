@@ -12,7 +12,8 @@ export const EFFORTS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh"
  * `personaModel` is the persona's own model, a full id such as `claude-opus-5-5`, or null for none.
  */
 export function takesEffort(model: string, personaModel: string | null): boolean {
-  return model === "" && personaModel === null;
+  // A model of a family this list does not know, or none, is Claude Code's own: it takes one.
+  return !/haiku/i.test(model || personaModel || "");
 }
 
 /** A choice of model; "" is the default, named by `defaultLabel`. */
@@ -36,6 +37,35 @@ export function ModelSelect(
           {MODELS.map((model) => (
             <option key={model} value={model}>
               {model}
+            </option>
+          ))}
+        </NativeSelect>
+      )}
+    </Field>
+  );
+}
+
+/** A choice of effort; "" is the default, named by `defaultLabel`. */
+export function EffortSelect(
+  props: Readonly<{
+    label: string;
+    defaultLabel: string;
+    value: EffortLevel | "";
+    onChange(value: EffortLevel | ""): void;
+  }>,
+) {
+  return (
+    <Field label={props.label}>
+      {(control) => (
+        <NativeSelect
+          {...control}
+          value={props.value}
+          onChange={(e) => props.onChange(e.target.value as EffortLevel | "")}
+        >
+          <option value="">{props.defaultLabel}</option>
+          {EFFORTS.map((effort) => (
+            <option key={effort} value={effort}>
+              {effort}
             </option>
           ))}
         </NativeSelect>

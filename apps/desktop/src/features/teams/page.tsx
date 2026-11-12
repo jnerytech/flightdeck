@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AssistField } from "@/features/assistant/index.ts";
 import { useSwitcherHostId } from "@/features/hosts/index.ts";
 import {
+  EffortSelect,
   ModelSelect,
   type PermissionChoice,
   PermissionSelect,
@@ -44,6 +45,7 @@ import {
   confirmCopy,
   createPayload,
   type EffortChoice,
+  effortOffered,
   memberPayload,
   type NewTeamRow,
   offeredChoice,
@@ -51,7 +53,7 @@ import {
   type TeamConfirm,
 } from "./new-team.ts";
 import { TeamOutcome } from "./team-outcome.tsx";
-import { useModes } from "./use-modes.ts";
+import { useModes, usePersonaModels } from "./use-modes.ts";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
@@ -79,6 +81,8 @@ function NewTeam(
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
   const modes = useModes(store, hostId);
+  const personaModels = usePersonaModels(store, hostId);
+  const [effort, setEffort] = useState<EffortChoice>("");
   const [permission, setPermission] = useState<PermissionChoice>("");
   /** Bypass asks again each time the team is created. */
   const [asking, setAsking] = useState(false);
@@ -94,6 +98,8 @@ function NewTeam(
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
   const workerDefault = useSuggestedPersona(store, hostId, "dev", true);
   const personaOf = (row: NewTeamRow) => rowPersona(row, workerDefault);
+  const effortShown = (member: string, personaId: string) =>
+    effortOffered({ efforts: modes.efforts, personaModels }, member, personaId);
   const [creating, setCreating] = useState(false);
   // A second submit before the first answered would create the team twice.
   const inFlight = useRef(false);
@@ -105,13 +111,13 @@ function NewTeam(
       name,
       persona,
       model,
-      effort: "" as const,
+      effort,
       permission,
       rows,
       workerDefault,
       modes,
-      efforts: false,
-      personaModels: {},
+      efforts: modes.efforts,
+      personaModels,
     };
     if (bypassAsked(form) && !confirmed) {
       setAsking(true);
@@ -197,6 +203,14 @@ function NewTeam(
         value={model}
         onChange={setModel}
       />
+      {effortShown(model, persona) && (
+        <EffortSelect
+          label={t("teamsUi.coordinatorEffort")}
+          defaultLabel={t("teamsUi.effortDefault")}
+          value={effort}
+          onChange={setEffort}
+        />
+      )}
       {modes.offered && (
         <PermissionSelect
           label={t("teamsUi.coordinatorPermission")}
@@ -228,6 +242,14 @@ function NewTeam(
               value={row.model}
               onChange={(value) => setRow(i, { model: value })}
             />
+            {effortShown(row.model, personaOf(row)) && (
+              <EffortSelect
+                label={t("teamsUi.workerEffort", { n: i + 1 })}
+                defaultLabel={t("teamsUi.effortDefault")}
+                value={row.effort}
+                onChange={(value) => setRow(i, { effort: value })}
+              />
+            )}
             {modes.offered && (
               <PermissionSelect
                 label={t("teamsUi.workerPermission", { n: i + 1 })}

@@ -11,8 +11,16 @@ export function useModes(store: AppStore, hostId: string) {
   const host = hosts.find((h) => h.id === hostId);
   return {
     offered: hasFeature(host?.hostInfo?.features, "teams.permissions", false),
+    efforts: hasFeature(host?.hostInfo?.features, "teams.effort", false),
     allowBypass: host?.hostInfo?.allowBypassPermissions === true,
     name: host?.name ?? hostId,
   };
 }
 const MODES_KEYS = ["hosts"] as const;
+
+/** The model of each persona the host lists, by id: a member's effort depends on its model. */
+export function usePersonaModels(store: AppStore, hostId: string): Record<string, string | null> {
+  const listed = useStoreSlice(store, PERSONA_KEYS).personas[hostId];
+  return Object.fromEntries((listed ?? []).map((p) => [p.id, p.model]));
+}
+const PERSONA_KEYS = ["personas"] as const;

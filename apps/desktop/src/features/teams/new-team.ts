@@ -1,6 +1,6 @@
 import type { CommandPayload, EffortLevel } from "@flightdeck/protocol";
 import type { T } from "../../i18n/index.ts";
-import type { PermissionChoice } from "../personas/index.ts";
+import { type PermissionChoice, takesEffort } from "../personas/index.ts";
 
 /** The effort a member was given; "" is the persona's own. */
 export type EffortChoice = EffortLevel | "";
@@ -47,7 +47,7 @@ export function effortOffered(
   model: string,
   persona: string,
 ): boolean {
-  return form.efforts && model === "" && persona === "";
+  return form.efforts && takesEffort(model, form.personaModels[persona] ?? null);
 }
 
 /** A choice the host no longer offers (Bypass after its switch went off) is the default again. */
@@ -86,6 +86,12 @@ export function createPayload(form: NewTeamForm): CommandPayload<"teams.create">
   const { coordinator, workers } = modesSent(form);
   const personaOf = (row: NewTeamRow) => rowPersona(row, form.workerDefault);
   const name = form.name.trim();
+  // An effort goes only where the host takes it and the member's model has one to give.
+  const coordinatorEffort =
+    effortOffered(form, form.model, form.persona) && form.effort ? form.effort : null;
+  const workerEfforts = form.rows.map((row) =>
+    effortOffered(form, row.model, personaOf(row)) && row.effort ? row.effort : null,
+  );
   return {
     projectId: form.projectId,
     goal: form.goal,
@@ -101,6 +107,8 @@ export function createPayload(form: NewTeamForm): CommandPayload<"teams.create">
     ...(form.modes.offered && workers.some(Boolean)
       ? { workerPermissions: workers.map((mode) => mode || null) }
       : {}),
+    ...(coordinatorEffort ? { coordinatorEffort } : {}),
+    ...(workerEfforts.some(Boolean) ? { workerEfforts } : {}),
   };
 }
 
@@ -113,6 +121,7 @@ export const memberPayload = (member: {
 }): NonNullable<CommandPayload<"teams.update">["addMember"]> => ({
   persona: member.persona || null,
   model: member.model || null,
+  ...(member.effort ? { effort: member.effort } : {}),
   ...(member.permission ? { permission: member.permission } : {}),
 });
 
