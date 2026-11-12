@@ -99,6 +99,28 @@ describe("vault approvals slice", () => {
     expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
   });
 
+  test("a host that is gone takes its waiting requests out of the queue, denied and never delivered, and only its own", async () => {
+    const { approvals, pending, sent, recorded } = slice();
+    const gone = approvals.onRequest(HOST, ACTION);
+    const kept = approvals.onRequest(
+      { id: "g", url: "ws://localhost:7778" },
+      {
+        ...ACTION,
+        requestId: "r2",
+      },
+    );
+    expect(pending().map((i) => i.requestId)).toEqual(["r1", "r2"]);
+    approvals.hostGone("h");
+    expect(pending().map((i) => i.requestId)).toEqual(["r2"]);
+    await gone;
+    expect(recorded.map((o) => [o.hostId, o.delivered])).toEqual([["h", false]]);
+    expect(sent.map((c) => c.type)).toEqual(["vault.deny"]);
+    // The other host's request still waits, and its answer still goes through.
+    expect(approvals.settle("r2", { scope: "once", via: "app" })).toBe(true);
+    await kept;
+    expect(sent.some((c) => c.type === "vault.deliver")).toBe(true);
+  });
+
   test("an answer to a request the vault never asked about is not taken", () => {
     expect(slice().approvals.settle("other", { scope: "once", via: "app" })).toBe(false);
   });

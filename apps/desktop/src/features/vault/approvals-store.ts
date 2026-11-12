@@ -79,6 +79,9 @@ export class VaultApprovalsSlice {
     return true;
   }
 
+  /** A host's connection or entry is gone: its waiting requests are denied and leave the queue. */
+  hostGone(_hostId: string): void {}
+
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
   approveForSession(hostId: string, requestId: string): void {
     // Only where the rule allows it and no hold is needed: the session approval has no button to
