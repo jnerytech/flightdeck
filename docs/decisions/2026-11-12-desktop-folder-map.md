@@ -61,7 +61,7 @@ primitives in `shared/`, no import cycles, one structural move per PR with behav
 | `status/` | `shared/status/` | meter, progress ring, status dot and text: **moved** (index exports `Meter`, `ProgressRing`, `StatusDot`, `StateTone`, `StatusText`) |
 | `tabs/` | `features/tabs/` | overflow and switcher (the tab bar already lives there); **theirs** if the session view needs the file, ask first |
 | `ui/` | **stay** | vendored shadcn |
-| `whatsnew/` | `features/appupdate/` | the "what's new" dialog is part of the update story |
+| `whatsnew/` | `features/appupdate/` (**moved**) | the "what's new" dialog is part of the update story |
 | `nav-icons.ts` | `features/shell/` | the sidebar and rail icons |
 
 ## `ui/`
