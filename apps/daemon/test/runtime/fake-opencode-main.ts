@@ -7,7 +7,7 @@
  */
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { linesOf } from "../../src/lines.ts";
+import { linesOf } from "../../src/kernel/lines.ts";
 
 const args = process.argv.slice(2);
 const log = process.env.FAKE_OPENCODE_LOG;

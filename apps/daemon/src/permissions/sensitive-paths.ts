@@ -5,7 +5,7 @@
  * permission must never cover). Every other check derives from these lists.
  */
 
-import { ntfsName } from "../ntfs-name.ts";
+import { ntfsName } from "../kernel/index.ts";
 
 /** A file whose name starts with one of these holds a secret: `.env`, `.env.local`, `id_rsa`. */
 export const SECRET_PREFIXES: readonly string[] = [".env", "id_"];

@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { trimEndOf } from "../trim.ts";
+import { trimEndOf } from "../kernel/index.ts";
 import { whichOnPath } from "../which.ts";
 
 export type GitResult = { code: number; stdout: string };
