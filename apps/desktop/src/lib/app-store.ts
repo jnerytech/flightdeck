@@ -1191,7 +1191,7 @@ export class AppStore {
     return this.hostTabs.hostId;
   }
 
-  /** A new tab: the Overview of a host; with no host at all, the one Home tab is brought forward. */
+  /** A new tab; the host tabs choose where (`HostTabs.openNew`). */
   openNewTab(): void {
     this.hostTabs.openNew(this.state.hosts);
   }
