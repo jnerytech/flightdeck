@@ -1,4 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
+import { nullOnError } from "@/shared/lib/index.ts";
 
 /** What the board's cards read and ask through the app's store. */
 export interface BoardCardsCore {
@@ -32,9 +33,6 @@ function cardsIn(result: unknown): Card[] {
   const columns = (result as { columns?: Array<{ cards: Card[] }> } | undefined)?.columns ?? [];
   return columns.flatMap((column) => column.cards);
 }
-
-/** A request whose failure only means less to show (a host without a board, or offline). */
-const quiet = <R>(promise: Promise<R>) => promise.catch(() => null);
 
 /**
  * The board cards the app has seen (#1596: a slice of the store): the ones a host sends
@@ -72,7 +70,7 @@ export class BoardCardsSlice {
   async load(hostId: string, projectId: string): Promise<void> {
     const conn = this.core.connection(hostId);
     if (!conn) return;
-    const board = await quiet(conn.request("board.get", { projectId }));
+    const board = await nullOnError(conn.request("board.get", { projectId }));
     this.onResult(hostId, board);
   }
 }
