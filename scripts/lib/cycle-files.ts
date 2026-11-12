@@ -67,5 +67,5 @@ export function cycleFiles(modules: readonly CruiseModule[]): string[] {
     if (component.length > 1) inCycle.push(...component);
   };
   for (const name of graph.keys()) if (!index.has(name)) visit(name);
-  return inCycle.sort();
+  return inCycle.sort((a, b) => (a < b ? -1 : Number(a > b)));
 }
