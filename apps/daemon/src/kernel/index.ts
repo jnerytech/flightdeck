@@ -21,5 +21,6 @@ export { settled } from "./settled.ts";
 export { tokenMatches } from "./token.ts";
 export { trimEndOf, trimStartOf } from "./trim.ts";
 export { ulid } from "./ulid.ts";
+export { UNTRUSTED_MARK } from "./untrusted.ts";
 export { DAEMON_VERSION } from "./version.ts";
 export { whichOnPath } from "./which.ts";
