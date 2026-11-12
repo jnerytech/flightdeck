@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type WordPart, wordDiff } from "../src/lib/word-diff.ts";
+import { type WordPart, wordDiff } from "../../src/features/assistant/word-diff.ts";
 
 const text = (parts: WordPart[], kind: WordPart["kind"]) =>
   parts
