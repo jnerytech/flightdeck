@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AppStore } from "./app-store.ts";
+import type { AppStore } from "../../lib/app-store.ts";
 
 /**
  * The estimated cost of a session, once its Claude session is known and the host reports costs

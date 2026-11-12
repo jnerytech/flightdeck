@@ -1,5 +1,5 @@
 import type { PermissionMode } from "@flightdeck/protocol";
-import { type ModeRow, modeRows } from "../../lib/mode-menu.ts";
+import { type ModeRow, modeRows } from "./mode-menu.ts";
 
 /** Whether the composer offers a model picker: the session lets it change and, on OpenCode, the host listed models. */
 export function offersModelPicker(opts: {

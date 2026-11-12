@@ -1,6 +1,6 @@
 import type { HistoryToolDetail } from "@flightdeck/protocol";
-import type { AppStore } from "./app-store.ts";
-import { hasFeature } from "./version.ts";
+import type { AppStore } from "../../lib/app-store.ts";
+import { hasFeature } from "../../lib/version.ts";
 
 type Request = AppStore["hostRequest"];
 

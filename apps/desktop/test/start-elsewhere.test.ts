@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { translator } from "../src/i18n/index.ts";
 import {
   type ElsewhereAnswer,
   elsewhereNotice,
@@ -7,7 +6,8 @@ import {
   offeredHosts,
   startElsewhere,
   waitingCards,
-} from "../src/lib/start-elsewhere.ts";
+} from "../src/features/sessions/start-elsewhere.ts";
+import { translator } from "../src/i18n/index.ts";
 
 /**
  * #1422 (docs/decisions/2026-11-09-start-elsewhere.md): when a Start would wait, the confirm offers

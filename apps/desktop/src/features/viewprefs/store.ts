@@ -4,9 +4,12 @@ import {
   loadHubFilter,
   loadHubOpen,
   loadHubView,
+  loadTileLayout,
   saveHubFilter,
   saveHubOpen,
   saveHubView,
+  saveTileLayout,
+  type TileLayout,
 } from "@/features/sessions/index.ts";
 import {
   loadFolded,
@@ -21,7 +24,6 @@ import {
 } from "@/features/shell/index.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "@/shared/lib/index.ts";
 import { loadLastBoards, saveLastBoard } from "../../lib/board-shortcut.ts";
-import { loadTileLayout, saveTileLayout, type TileLayout } from "../../lib/tiles.ts";
 
 /** Where the Activity board keeps whether it shows its Idle column. */
 const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";

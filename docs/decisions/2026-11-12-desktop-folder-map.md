@@ -97,7 +97,7 @@ prefix. Tests move with their file in the same PR.
 |---|---|
 | `app-store.ts`, `app-state.ts`, `use-store.ts`, `unique-keys.ts` | `app/` (the store is one slice per domain; slices already live in `features/*/store.ts` or `*-store.ts`, and each move shrinks this file) |
 | `board*.ts`, `card-*.ts`, `conflict-radar.ts`, `file-changes.ts`, `review.ts`, `second-opinion.ts`, `word-diff.ts`, `diff.ts`, `pull-requests.ts`, `runs.ts` | **theirs** (`features/board/`) and `features/review/` for `file-changes`, `review`, `word-diff`, `diff`, `second-opinion` |
-| `session-*.ts`, `hub*.ts`, `live-elsewhere.ts`, `start-elsewhere.ts`, `new-session-*.ts`, `turns.ts`, `tool-*.ts`, `history-tool.ts`, `activity.ts`, `finished.ts`, `hold.ts`, `awaiting-approval.ts`, `pending-text.ts`, `cache-timer.ts`, `tiles.ts`, `timing.ts`, `use-session-cost.ts`, `use-follow.ts`, `use-draft.ts`, `mode-menu.ts`, `model-menu.ts`, `prompt-menu.ts` | **theirs** (`features/sessions/`); **moved** so far: `session-activity`, `session-finish`, `session-images`, `session-key`, `session-label`, `session-state`, `session-views`, `hub`, `hub-title`, `finished`, `turns`, `tool-line`, `tool-input`, behind the sessions `index.ts` |
+| `session-*.ts`, `hub*.ts`, `live-elsewhere.ts`, `start-elsewhere.ts`, `new-session-*.ts`, `turns.ts`, `tool-*.ts`, `history-tool.ts`, `finished.ts`, `hold.ts`, `awaiting-approval.ts`, `pending-text.ts`, `cache-timer.ts`, `tiles.ts`, `timing.ts`, `use-session-cost.ts`, `use-follow.ts`, `use-draft.ts`, `mode-menu.ts`, `model-menu.ts`, `prompt-menu.ts` | **theirs** (`features/sessions/`); **moved** so far: `session-activity`, `session-finish`, `session-images`, `session-key`, `session-label`, `session-state`, `session-views`, `hub`, `hub-title`, `finished`, `turns`, `tool-line`, `tool-input`, `live-elsewhere`, `start-elsewhere`, `new-session-host`, `new-session-prefs`, `history-tool`, `awaiting-approval`, `pending-text`, `cache-timer` (as `cache-timer-model.ts`, because `cache-timer.tsx` already lives in the folder), `tiles`, `timing`, `use-session-cost`, `use-follow`, `use-draft`, `mode-menu`, `model-menu`, behind the sessions `index.ts`. Three went elsewhere to keep the folders free of import cycles: `activity.ts` is the activity board's model (`features/activity/`), `hold.ts` goes with the approval buttons that use it (`features/permissions/`) and `prompt-menu.ts` with the `/` menu that shows it (`features/snippets/prompt-menu-model.ts`) |
 | `approval.ts`, `ask-question.ts`, `vault-approval.ts` | `features/permissions/` |
 | `assistant.ts`, `assistant-prefs.ts` | `features/assistant/` |
 | `automations.ts`, `check-loop.ts` | `features/automations/` |
@@ -126,7 +126,7 @@ prefix. Tests move with their file in the same PR.
 | `quota*.ts` | `features/quota/` |
 | `recap-preview.ts`, `summary*.ts` | `features/summary/` |
 | `roi*.ts` | `features/roi/` |
-| `snippets.ts` | `features/snippets/`: **moved** |
+| `snippets.ts` | `features/snippets/`: **moved** (`prompt-menu.ts`, moved from the sessions row, is its `prompt-menu-model.ts`) |
 | `tab-*.ts`, `tabs.ts`, `reveal-tab.ts` | `features/tabs/` |
 | `teleport.ts` | `features/teleport/`: **moved** |
 | `terminal*.ts`, `xterm-*.ts`, `use-launch-terminal.ts` | `features/terminal/` |

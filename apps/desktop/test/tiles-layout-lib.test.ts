@@ -10,7 +10,7 @@ import {
   TILE_LAYOUTS,
   tileColumns,
   tileSlots,
-} from "../src/lib/tiles.ts";
+} from "../src/features/sessions/tiles.ts";
 
 const row = (n: number): HubRow => ({
   key: `h/m/s${n}`,

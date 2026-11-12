@@ -2,6 +2,7 @@ import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol
 import { Copy, History } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { awaitingApproval, toolLoader } from "@/features/sessions/index.ts";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/features/sessions/parts";
 import { ToolRow } from "@/features/sessions/tool-row";
 import { useStoreState } from "@/lib/use-store";
@@ -11,8 +12,6 @@ import { EmptyState, ErrorState, LoadingState, Note } from "@/shared/layout/inde
 import { basename, isInside } from "@/shared/lib/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
-import { awaitingApproval } from "../../lib/awaiting-approval.ts";
-import { toolLoader } from "../../lib/history-tool.ts";
 import { messageParts, useLiveElsewhereGuard } from "../sessions/index.ts";
 
 /** Which transcript to read, and where to open it (a search hit). */
