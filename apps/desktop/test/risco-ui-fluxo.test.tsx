@@ -13,7 +13,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore, needsYou } = await import("../src/lib/app-store.ts");
-const { applyEnvelope, emptySession } = await import("../src/lib/session-state.ts");
+const { applyEnvelope, emptySession } = await import("../src/features/sessions/session-state.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);

@@ -13,7 +13,7 @@ import {
   loadHubFilter,
   saveHubFilter,
   sharedMeta,
-} from "../../src/lib/hub.ts";
+} from "../../src/features/sessions/hub.ts";
 import { liveScreen, registerDom } from "../dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "../fixtures.ts";
 import { sidebarNav } from "../sidebar/helpers.ts";

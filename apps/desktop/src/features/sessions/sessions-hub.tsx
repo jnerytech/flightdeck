@@ -29,6 +29,14 @@ import { ALL_CLIENTS } from "../../lib/client-scope.ts";
 import { UNASSIGNED } from "../../lib/clients.ts";
 import { usd } from "../../lib/costs.ts";
 import { ALL_SCOPE, activeScope, awayKey, type DataScope } from "../../lib/data-scope.ts";
+import { typing } from "../../lib/keys.ts";
+import { newSessionHost } from "../../lib/new-session-host.ts";
+import { activeWorktreeFilter } from "../../lib/project-tree.ts";
+import { hasFeature } from "../../lib/version.ts";
+import { InlineNotice } from "../../shared/feedback/index.ts";
+import { AsleepMark } from "./asleep-mark";
+import { CacheTimer } from "./cache-timer";
+import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
 import {
   activeCount,
   capGroups,
@@ -44,15 +52,7 @@ import {
   rowStatus,
   sessionLineText,
   sharedMeta,
-} from "../../lib/hub.ts";
-import { typing } from "../../lib/keys.ts";
-import { newSessionHost } from "../../lib/new-session-host.ts";
-import { activeWorktreeFilter } from "../../lib/project-tree.ts";
-import { hasFeature } from "../../lib/version.ts";
-import { InlineNotice } from "../../shared/feedback/index.ts";
-import { AsleepMark } from "./asleep-mark";
-import { CacheTimer } from "./cache-timer";
-import { CountChip, FoldAll, HostChip, ProjectHeader } from "./group-header";
+} from "./hub.ts";
 import {
   costAsks,
   cursorMove,

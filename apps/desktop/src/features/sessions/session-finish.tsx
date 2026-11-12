@@ -7,6 +7,8 @@ import { PrDescriptionDialog } from "@/features/watch/pr-description-dialog.tsx"
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
+import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { CheckField, Field, Inline, Stack } from "@/shared/layout/index.ts";
 import {
   committable,
   draftCommit,
@@ -14,9 +16,7 @@ import {
   recallCommit,
   rememberCommit,
   whyNot,
-} from "@/lib/session-finish";
-import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
-import { CheckField, Field, Inline, Stack } from "@/shared/layout/index.ts";
+} from "./session-finish.ts";
 
 /** The hooks a commit runs, in a line: none set, or not known. */
 function hooksText(t: ReturnType<typeof useT>, hooks: string[] | undefined): string {

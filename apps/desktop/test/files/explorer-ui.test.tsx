@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { FileExplorer } = await import("../../src/features/files/file-explorer.tsx");
 const { SessionTabs } = await import("../../src/features/sessions/session-tabs.tsx");
-const { SessionViews } = await import("../../src/lib/session-views.ts");
+const { SessionViews } = await import("../../src/features/sessions/session-views.ts");
 const { TContext } = await import("../../src/i18n/context.tsx");
 const { translator } = await import("../../src/i18n/index.ts");
 

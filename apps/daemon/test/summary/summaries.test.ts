@@ -7,7 +7,10 @@ import {
   SessionEvent,
   type SessionEventOf,
 } from "@flightdeck/protocol";
-import { applyEnvelope, emptySession } from "../../../desktop/src/lib/session-state.ts";
+import {
+  applyEnvelope,
+  emptySession,
+} from "../../../desktop/src/features/sessions/session-state.ts";
 import { type RunningServer, startServer } from "../../src/server.ts";
 import { SecretScanner } from "../../src/snippets/model.ts";
 import { EventStore } from "../../src/store/event-store.ts";

@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useWand, WandButton, WandPanel } from "@/features/assistant/index.ts";
 import { ApprovalActions } from "@/features/permissions/index.ts";
+import { type HubRow, type HubRowState, hubRows, inputSummary } from "@/features/sessions/index.ts";
 import { useBusy } from "@/hooks/use-busy";
 import { ActionButton, IconTip } from "@/shared/feedback/index.ts";
 import { statusTone } from "@/shared/lib/index.ts";
 import { StatusText } from "@/shared/status/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { type HubRow, type HubRowState, hubRows } from "../../lib/hub.ts";
 import {
   hiddenTiles,
   lastLines,
@@ -20,7 +20,6 @@ import {
   type TileLayout,
   tileColumns,
 } from "../../lib/tiles.ts";
-import { inputSummary } from "../../lib/tool-input.ts";
 import { uniqueKeys } from "../../lib/unique-keys.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 

@@ -33,7 +33,7 @@ import {
 } from "@/features/hosts/index.ts";
 import { pendingCount } from "@/features/needs-you/index.ts";
 import { ProjectTree, RailFlyout } from "@/features/projects/index.ts";
-import { rowRoute } from "@/features/sessions/index.ts";
+import { hubRows, rowRoute } from "@/features/sessions/index.ts";
 import { ShortcutKeys } from "@/features/shortcuts/index.ts";
 
 import { useSwitcherHostId, useSwitcherHosts } from "@/hooks/use-switcher-hosts";
@@ -43,7 +43,6 @@ import { requiredMissing } from "@/lib/deps-summary.ts";
 import { type GithubHost, githubSignedIn } from "@/lib/github-session.ts";
 import type { HostNameError } from "@/lib/host-name.ts";
 import { hostDotView } from "@/lib/host-status.ts";
-import { hubRows } from "@/lib/hub.ts";
 import { activeWorktreeFilter, projectTree } from "@/lib/project-tree.ts";
 import type { Route } from "@/lib/router.ts";
 import { setupProgress, setupSteps } from "@/lib/setup-steps.ts";

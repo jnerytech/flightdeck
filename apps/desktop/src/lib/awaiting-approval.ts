@@ -1,6 +1,6 @@
 /** Issue #1705: what a stored conversation is waiting for the person to answer, if its tail says so. */
 import type { HistoryMessage } from "@flightdeck/protocol";
-import { messageParts } from "./tool-line.ts";
+import { messageParts } from "../features/sessions/index.ts";
 
 export type Awaiting = "plan" | "question";
 

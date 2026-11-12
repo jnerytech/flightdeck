@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { HubRow } from "../src/lib/hub.ts";
-import { emptySession, type SessionState } from "../src/lib/session-state.ts";
+import type { HubRow } from "../src/features/sessions/hub.ts";
+import { emptySession, type SessionState } from "../src/features/sessions/session-state.ts";
 import { lastLines, pendingOf, pickTiles } from "../src/lib/tiles.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({

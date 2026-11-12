@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { PlainInfo, TaskResultsResult } from "@flightdeck/protocol";
 import type { WandBinding } from "../src/features/assistant/use-wand.ts";
+import { emptySession, type SessionState } from "../src/features/sessions/session-state.ts";
 import { translator } from "../src/i18n/index.ts";
-import { emptySession, type SessionState } from "../src/lib/session-state.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
 

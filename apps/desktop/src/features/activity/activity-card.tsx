@@ -1,4 +1,5 @@
 import { HoldButton } from "@/features/permissions/index.ts";
+import { sessionLineText } from "@/features/sessions/index.ts";
 import { cn } from "@/lib/utils";
 import { ActionButton } from "@/shared/feedback/index.ts";
 import { type StateTone, StatusDot } from "@/shared/status/index.ts";
@@ -7,7 +8,6 @@ import type { Key, T } from "../../i18n/index.ts";
 import type { ActivityCard, ActivityColumn } from "../../lib/activity.ts";
 import type { PendingItem } from "../../lib/app-store.ts";
 import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
-import { sessionLineText } from "../../lib/hub.ts";
 import { pendingText } from "../../lib/pending-text.ts";
 
 const TONE: Record<ActivityColumn, StateTone> = {

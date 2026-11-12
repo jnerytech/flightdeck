@@ -7,7 +7,7 @@ import {
   hubGroups,
   hubView,
   isSearching,
-} from "../../src/lib/hub.ts";
+} from "../../src/features/sessions/hub.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
   key: `h/${n}`,

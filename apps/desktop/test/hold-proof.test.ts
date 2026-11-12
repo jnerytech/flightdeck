@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { seedDemoHosts } from "../src/demo/boot.ts";
-import { emptySession } from "../src/lib/session-state.ts";
+import { emptySession } from "../src/features/sessions/session-state.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 const { AppStore } = await import("../src/lib/app-store.ts");

@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AssistField, type WandBinding } from "@/features/assistant/index.ts";
+import type { SessionState } from "@/features/sessions/index.ts";
 import { Markdown } from "@/shared/markdown/index.ts";
 import type { T } from "../../i18n/index.ts";
-import type { SessionState } from "../../lib/session-state.ts";
 import { lastSummary, pendingQuestion, recentTools, taskState } from "../../lib/simple-task.ts";
 import { QuestionCard } from "./question-card.tsx";
 

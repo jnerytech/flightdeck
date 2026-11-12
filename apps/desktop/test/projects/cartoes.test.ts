@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Card, CostsSummary, Project } from "@flightdeck/protocol";
+import type { HubRow } from "../../src/features/sessions/hub.ts";
 import { emptySummary } from "../../src/lib/client-costs.ts";
-import type { HubRow } from "../../src/lib/hub.ts";
 import {
   boardLandingOrder,
   buildProjectCards,
