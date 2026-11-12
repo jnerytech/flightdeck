@@ -34,6 +34,8 @@ function slice(overrides: Partial<Pick<MessagingCore, "rules" | "setRules">> = {
     },
     notify: (n) => notified.push(n),
     t: () => translator("en"),
+    relay: { hosts: () => [], call: async () => null },
+    repeat: () => () => {},
     ...overrides,
   };
   return { messaging: new MessagingSlice(core), alerts: () => state.loopAlerts, notified, sent };
