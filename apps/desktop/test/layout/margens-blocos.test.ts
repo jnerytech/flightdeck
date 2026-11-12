@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 /** The app's own screens and components; the vendored shadcn ones in components/ui are not ours. */
-const SRC = join(import.meta.dir, "..", "src");
+const SRC = join(import.meta.dir, "../..", "src");
 
 function tsxFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

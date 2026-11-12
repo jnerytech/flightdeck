@@ -1,23 +1,23 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { memoryPlatform } from "../fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { ActionButton } = await import("../src/shared/feedback/index.ts");
-const { FieldRow } = await import("../src/shared/layout/form.tsx");
-const { AllowedFolders } = await import("../src/features/hosts/allowed-folders.tsx");
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { ActionButton } = await import("../../src/shared/feedback/index.ts");
+const { FieldRow } = await import("../../src/shared/layout/form.tsx");
+const { AllowedFolders } = await import("../../src/features/hosts/allowed-folders.tsx");
+const { AppStore } = await import("../../src/lib/app-store.ts");
 const { Dialog, DialogContent, DialogFooter, DialogTitle } = await import(
-  "../src/components/ui/dialog.tsx"
+  "../../src/components/ui/dialog.tsx"
 );
 
 afterEach(cleanup);
 
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 describe("botao-motivo-linha: a button's reason does not make its row taller", () => {
   test("the reason hangs under the button out of the layout, and the button is still described by it", () => {

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
-import { colorOf, contrast, tokensOf } from "../../../scripts/lib/styles/theme-contrast.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
+import { colorOf, contrast, tokensOf } from "../../../../scripts/lib/styles/theme-contrast.ts";
 
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 /** The selector list of the rule: the toggle variants (outline, ghost) when pressed. */
 const SELECTOR =
   '[data-slot="button"][data-variant="outline"][aria-pressed="true"],\n[data-slot="button"][data-variant="ghost"][aria-pressed="true"] {';

@@ -1,24 +1,24 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { translator } from "../src/i18n/index.ts";
-import { liveScreen, registerDom } from "./dom.ts";
-import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { translator } from "../../src/i18n/index.ts";
+import { liveScreen, registerDom } from "../dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "../fixtures.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
-const { hubRows } = await import("../src/features/sessions/hub.ts");
-const { useStoreState } = await import("../src/lib/use-store.ts");
-const { TContext } = await import("../src/i18n/context.tsx");
-const { Breadcrumb } = await import("../src/features/shell/breadcrumb.tsx");
-const { DayChart } = await import("../src/features/costs/day-chart.tsx");
-const { SessionTiles } = await import("../src/features/projects/session-tiles.tsx");
-const { FolderPicker } = await import("../src/features/hosts/folder-picker.tsx");
-const { App } = await import("../src/ui/App.tsx");
-const { Sidebar } = await import("../src/features/shell/sidebar.tsx");
+const { AppStore, sessionKey } = await import("../../src/lib/app-store.ts");
+const { hubRows } = await import("../../src/features/sessions/hub.ts");
+const { useStoreState } = await import("../../src/lib/use-store.ts");
+const { TContext } = await import("../../src/i18n/context.tsx");
+const { Breadcrumb } = await import("../../src/features/shell/breadcrumb.tsx");
+const { DayChart } = await import("../../src/features/costs/day-chart.tsx");
+const { SessionTiles } = await import("../../src/features/projects/session-tiles.tsx");
+const { FolderPicker } = await import("../../src/features/hosts/folder-picker.tsx");
+const { App } = await import("../../src/ui/App.tsx");
+const { Sidebar } = await import("../../src/features/shell/sidebar.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];

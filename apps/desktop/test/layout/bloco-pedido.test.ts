@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { readStyles } from "../../../scripts/lib/styles/styles-source.ts";
+import { readStyles } from "../../../../scripts/lib/styles/styles-source.ts";
 
-const css = readStyles(join(import.meta.dir, "../src/styles.css"));
+const css = readStyles(join(import.meta.dir, "../../src/styles.css"));
 
 // Issue #641, narrow-window guard ("projeto-blocos" at 1024): a tile's pending request is a
 // <fieldset>, and a fieldset will not shrink below its content (`min-inline-size: min-content`),

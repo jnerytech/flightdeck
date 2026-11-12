@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { registerDom } from "./dom.ts";
-import { settle } from "./wait.ts";
+import { registerDom } from "../dom.ts";
+import { settle } from "../wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
-const { StatusDot } = await import("../src/shared/status/index.ts");
+const { StatusDot } = await import("../../src/shared/status/index.ts");
 
 setDefaultTimeout(20_000);
 afterEach(cleanup);
