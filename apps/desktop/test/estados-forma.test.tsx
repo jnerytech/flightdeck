@@ -5,7 +5,7 @@ import { InstantClock } from "./in-flight-clock.tsx";
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { cleanup, render } = await import("@testing-library/react");
-const { LoadingState } = await import("../src/components/layout/states.tsx");
+const { LoadingState } = await import("../src/shared/layout/states.tsx");
 
 afterEach(cleanup);
 

@@ -7,7 +7,7 @@ import { memoryPlatform } from "./fixtures.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SplitView } = await import("../src/components/layout/split-view.tsx");
+const { SplitView } = await import("../src/shared/layout/split-view.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 

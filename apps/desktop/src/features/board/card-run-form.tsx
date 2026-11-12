@@ -1,9 +1,6 @@
 import type { Card } from "@flightdeck/protocol";
 import { MoreHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { FieldRow } from "@/components/layout/form";
-import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +16,7 @@ import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { findingsNote } from "@/lib/second-opinion";
 import { ActionButton, ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import { FieldRow, Panel, Stack } from "@/shared/layout/index.ts";
 import { nextStep } from "../../lib/card-next-step.ts";
 import { cardStartBlock } from "../../lib/card-start-block.ts";
 import { CardFinishDialog } from "./card-finish.tsx";

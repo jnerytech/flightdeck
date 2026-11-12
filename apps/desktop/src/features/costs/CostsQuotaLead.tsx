@@ -1,10 +1,9 @@
-import { Panel } from "@/components/layout/panel";
-import { Stack } from "@/components/layout/stack";
 import { QuotaBarList } from "@/components/shell/quota-bars";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { onSubscription } from "@/lib/quota";
 import { useStoreSlice } from "@/lib/use-store";
+import { Panel, Stack } from "@/shared/layout/index.ts";
 
 const LEAD_KEYS = ["quota", "account", "hosts"] as const;
 

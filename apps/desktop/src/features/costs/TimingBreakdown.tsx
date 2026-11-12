@@ -1,8 +1,7 @@
 import type { TelemetrySummary } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
-import { Panel } from "../../components/layout/panel.tsx";
-import { Stack } from "../../components/layout/stack.tsx";
+import { Panel, Stack } from "@/shared/layout/index.ts";
 import { formatDuration } from "../../i18n/format.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { projectLabel } from "../../lib/costs.ts";

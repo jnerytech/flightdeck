@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Field, Form, FormActions } from "@/components/layout/form";
-import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field, Form, FormActions, Inline, Stack } from "@/shared/layout/index.ts";
 import type { AppState, AppStore } from "../../lib/app-store.ts";
 import type { Client } from "../../lib/clients.ts";
 import { usd } from "../../lib/costs.ts";

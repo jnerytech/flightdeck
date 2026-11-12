@@ -1,10 +1,10 @@
 import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Panel } from "@/shared/layout/index.ts";
 import { formatBytes } from "../../i18n/format.ts";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";

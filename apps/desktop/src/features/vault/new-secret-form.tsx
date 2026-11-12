@@ -1,5 +1,4 @@
 import { useId, useState } from "react";
-import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +7,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import type { SecretType } from "@/lib/vault";
 import { ActionButton } from "@/shared/feedback/index.ts";
+import { Form, FormActions } from "@/shared/layout/index.ts";
 
 const TYPES: SecretType[] = ["ssh-key", "password", "token", "env"];
 

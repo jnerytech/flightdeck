@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { Page } from "@/components/layout/page";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { SnippetPicker } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { IconTip } from "@/shared/feedback/index.ts";
+import { Page } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { insideFolder, resolvePath } from "../../lib/terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "../../lib/terminal-session.ts";

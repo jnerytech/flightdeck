@@ -1,9 +1,9 @@
 import type { QuotaHistory } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
-import { Grid } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { Grid } from "@/shared/layout/index.ts";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "../../lib/quota.ts";
 import { hasFeature, hostsWith } from "../../lib/version.ts";

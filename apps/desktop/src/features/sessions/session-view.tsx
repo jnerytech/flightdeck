@@ -12,7 +12,6 @@ import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useS
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { useWand, type WandBinding } from "@/components/assistant/use-wand";
 import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
-import { NativeSelect } from "@/components/layout/form";
 import { Markdown } from "@/components/markdown/markdown";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
@@ -36,6 +35,7 @@ import { PromptMenu, type PromptSnippets } from "@/features/snippets/index.ts";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { ActionButton, ConfirmDialog, IconActionButton } from "@/shared/feedback/index.ts";
+import { NativeSelect } from "@/shared/layout/index.ts";
 import { EndWithChangesDialog } from "../../components/session/end-with-changes-dialog.tsx";
 import { translateError } from "../../i18n/errors.ts";
 import type { T } from "../../i18n/index.ts";

@@ -1,9 +1,9 @@
 import type { Project } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
 import { type KeyboardEvent, useId, useMemo, useState } from "react";
-import { EmptyState } from "@/components/layout/states";
 import { Input } from "@/components/ui/input";
 import { useProjectCards } from "@/hooks/use-project-cards";
+import { EmptyState } from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { COLUMNS } from "../../lib/board.ts";

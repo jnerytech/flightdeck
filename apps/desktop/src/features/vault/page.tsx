@@ -1,13 +1,11 @@
 import { inSequence } from "@flightdeck/protocol";
 import { KeyRound } from "lucide-react";
 import { memo, useEffect, useState } from "react";
-import { Page } from "@/components/layout/page";
-import { Stack } from "@/components/layout/stack";
-import { EmptyState } from "@/components/layout/states";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { EmptyState, Page, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { selectedClient } from "../../lib/client-scope.ts";
 import { groupSecrets } from "../../lib/client-vault.ts";

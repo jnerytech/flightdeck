@@ -1,6 +1,5 @@
 import type { SshAuth, SshTarget } from "@flightdeck/protocol";
 import { memo, useState } from "react";
-import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +10,7 @@ import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { useStoreSlice } from "@/lib/use-store";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Field, Form, FormActions, NativeSelect } from "@/shared/layout/index.ts";
 
 const AUTHS: SshAuth[] = ["agent", "key-file", "vault-key", "password"];
 /** The dictionary key of each authentication the form offers. */

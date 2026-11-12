@@ -1,8 +1,6 @@
 import type { AlertsUnavailable, RepoAlert } from "@flightdeck/protocol";
 import { ShieldAlert } from "lucide-react";
 import { useState } from "react";
-import { Stack } from "@/components/layout/stack";
-import { LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +13,7 @@ import {
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import { AppDialogContent, InlineNotice } from "@/shared/feedback/index.ts";
+import { LoadingState, Stack } from "@/shared/layout/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";
 

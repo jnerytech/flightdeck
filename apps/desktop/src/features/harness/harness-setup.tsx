@@ -4,12 +4,11 @@ import {
   type HarnessTemplateInfo,
 } from "@flightdeck/protocol";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { Field, NativeSelect } from "@/components/layout/form";
-import { Stack } from "@/components/layout/stack";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "@/lib/app-store";
 import { addsNothing, needsReformat, previewDigests } from "@/lib/harness";
 import { ActionButton, ConfirmDialog } from "@/shared/feedback/index.ts";
+import { Field, NativeSelect, Stack } from "@/shared/layout/index.ts";
 
 type T = AppStore["i18n"]["t"];
 

@@ -1,14 +1,20 @@
 import { useReducer, useState } from "react";
-import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
-import { ListRow } from "@/components/layout/list-row";
-import { Panel } from "@/components/layout/panel";
-import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import { ConfirmDialog, InlineNotice } from "@/shared/feedback/index.ts";
+import {
+  Field,
+  Form,
+  FormActions,
+  Inline,
+  ListRow,
+  NativeSelect,
+  Panel,
+  Stack,
+} from "@/shared/layout/index.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { hasFeature } from "../../lib/version.ts";

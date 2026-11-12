@@ -1,11 +1,11 @@
 import type { Card } from "@flightdeck/protocol";
 import { useState } from "react";
 import { AssistField } from "@/components/assistant/assist-field";
-import { Field } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
+import { Field } from "@/shared/layout/index.ts";
 
 /** A message to the card's running session: an adjustment, sent with its button. */
 export function CardAdjustment(
