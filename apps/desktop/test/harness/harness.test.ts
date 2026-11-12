@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { HarnessPreview, ProjectLoad } from "@flightdeck/protocol";
-import { addsNothing, harnessParts, needsReformat, templateIdFrom } from "../src/lib/harness.ts";
+import { addsNothing, harnessParts, needsReformat, templateIdFrom } from "../../src/lib/harness.ts";
 
 /** Issue #75, slice S1: a project's harness as a checklist, from what the host already lists. */
 const EMPTY: ProjectLoad = {
