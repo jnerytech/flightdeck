@@ -118,7 +118,7 @@ export interface PlanDeps {
   junit?: string;
   /** `--tier unit,component`: only the tests of these tiers (#261); the coverage gate stays in CI. */
   tiers?: string[];
-  /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
+  /** A test file's tier (lib/tests/test-tiers.ts); undefined for a file it does not classify. */
   tierOf?: (path: string) => string | undefined;
   /**
    * `--pr` (#309): every unit and component test, plus the related tests of the other tiers, with

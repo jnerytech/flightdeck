@@ -22,7 +22,7 @@ export interface ShardDeps {
   /** Runs `bun <args>` with the terminal; its exit code. */
   bun(args: string[]): Promise<number>;
   log(line: string): void;
-  /** The tier of every tracked test file (lib/test-tiers.ts); a file no tier claims is absent. */
+  /** The tier of every tracked test file (lib/tests/test-tiers.ts); a file no tier claims is absent. */
   tiers(): Record<string, string>;
 }
 
