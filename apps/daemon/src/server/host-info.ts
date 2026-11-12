@@ -108,7 +108,10 @@ export function featuresOf(opts: ServerOptions): string[] {
     // Issue #606: a stored tool call opens to its input and result, read from its transcript.
     ...when(opts.history, "history.tool"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
-    ...when(opts.snapshots && opts.rewinder && opts.forker, "checkpoints"),
+    ...when(
+      opts.checkpoints?.snapshots && opts.checkpoints.rewinder && opts.checkpoints.forker,
+      "checkpoints",
+    ),
     ...when(opts.agentSetup?.agentcfg && opts.agentSetup.mcp, "agentcfg"),
     ...when(opts.agentSetup?.memory, "memory"),
     ...when(opts.agentSetup?.plugins, "plugins"),

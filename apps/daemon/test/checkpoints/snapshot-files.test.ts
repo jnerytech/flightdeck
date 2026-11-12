@@ -94,7 +94,7 @@ describe("snapshots-arquivos", () => {
     const { manager } = newManager();
     const server = startServer({
       manager,
-      snapshots,
+      checkpoints: { snapshots },
       hostName: "h",
       bind: "127.0.0.1",
       port: 0,
