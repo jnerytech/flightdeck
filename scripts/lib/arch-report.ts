@@ -57,6 +57,12 @@ export function ratchetRows(inputs: ArchInputs): RatchetRow[] {
         today: head[rule] ?? 0,
       });
   }
+  if (inputs.desktopCycles)
+    rows.push({
+      ratchet: "desktop-cycles files in a cycle",
+      baseline: inputs.desktopCycles.baseline,
+      today: inputs.desktopCycles.today,
+    });
   rows.push({
     ratchet: "src-size files over the limit",
     baseline: Object.keys(inputs.srcBaseline).length,

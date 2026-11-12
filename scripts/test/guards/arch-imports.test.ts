@@ -181,7 +181,8 @@ describe("arch-imports: the domain borders (#1591)", () => {
           'import { b } from "./b.ts";\nexport const a = b;\n',
         "apps/desktop/src/features/board/b.ts":
           'import { i } from "./index.ts";\nimport { s } from "./b.ts";\nexport const b = [i, s];\n',
-        "apps/desktop/src/features/board/index.ts": 'export { a } from "./a.ts";\n',
+        "apps/desktop/src/features/board/c.ts": "export const c = 3;\n",
+        "apps/desktop/src/features/board/index.ts": 'export { c } from "./c.ts";\n',
       }),
     ).toEqual([]);
   });
