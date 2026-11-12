@@ -32,6 +32,7 @@ export { HISTORY_LIST_LIMIT, SessionListsSlice } from "./lists.ts";
 export { ModelOptions } from "./model-options.tsx";
 export { byProject, CONTINUATION } from "./resume-offer.ts";
 export { ResumeOfferDialog } from "./resume-offer-dialog.tsx";
+export { rowRoute } from "./row-route.ts";
 export { missedAfter, rememberPosition, type ScrollPosition } from "./scroll-memory.ts";
 export { StatusBadge } from "./status-badge.tsx";
 export {
@@ -43,6 +44,7 @@ export {
 } from "./store.ts";
 export { SessionStreamSlice } from "./stream.ts";
 export { SummariesSlice } from "./summaries.ts";
+export { sessionTabOffers } from "./tab-offers.ts";
 export { useLiveElsewhereAsk, useLiveElsewhereGuard } from "./use-live-elsewhere-guard.tsx";
 export {
   wireExternalSessions,
