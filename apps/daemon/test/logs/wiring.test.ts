@@ -22,7 +22,7 @@ function built() {
     console: { log: (m) => said.push(`info ${m}`), error: (m) => said.push(`error ${m}`) },
     dir,
     home: "/home/dev",
-    config: { token: TOKEN, hooks: { token: HOOKS } } as never,
+    config: { token: TOKEN, hooks: { token: HOOKS } },
     currentToken: () => secrets.token,
     heldValues: () => secrets.held,
   });
@@ -55,5 +55,6 @@ describe("host-log: the daemon's log and what it never writes (#1593)", () => {
       false,
       false,
     ]);
+    expect(text.includes("saw [redacted] [redacted] [redacted] [redacted]")).toBe(true);
   });
 });
