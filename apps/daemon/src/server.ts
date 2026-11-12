@@ -24,6 +24,7 @@ import { drainAll } from "./server/delta-coalescer.ts";
 import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
 import { HANDLERS } from "./server/handlers/index.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
+import type { ServerOptions } from "./server-options.ts";
 
 /**
  * How often the daemon pings each authenticated client. A client is closed after
@@ -32,8 +33,6 @@ import { ackError, type Connection, decode, type Socket, send } from "./server/t
  */
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
-
-import type { ServerOptions } from "./server-options.ts";
 
 export type { ServerOptions };
 
