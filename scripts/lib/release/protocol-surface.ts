@@ -4,7 +4,7 @@
  * Schema. A line the release baseline has and the code lost is a breaking change: a removed
  * command or field, an optional field made required, a dropped enum value. Additions are free.
  */
-import { byCodeUnit } from "../../packages/protocol/src/compare.ts";
+import { byCodeUnit } from "../../../packages/protocol/src/compare.ts";
 
 /** A JSON Schema node, as far as the walk reads it. */
 interface Node {

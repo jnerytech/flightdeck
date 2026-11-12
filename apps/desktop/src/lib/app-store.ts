@@ -9,19 +9,12 @@ import type {
   WorkflowRun,
 } from "@flightdeck/protocol";
 import { FEATURE_RESUME_OFFER, inSequence } from "@flightdeck/protocol";
-import { PaletteSlice } from "@/features/palette/palette-store.ts";
-import { DensityController } from "@/features/shell/density.ts";
-import { ShellPrefs } from "@/features/shell/shell-prefs.ts";
-import { SidebarFoldController } from "@/features/shell/sidebar-fold.ts";
 import { SystemSlice } from "@/features/shell/system.ts";
-import { ThemeController } from "@/features/shell/theme.ts";
 import { WORKSPACE_KEY, Workspace } from "@/features/shell/workspace.ts";
 import { isInside, nullOnError } from "@/shared/lib/index.ts";
 import { sameNotice } from "../app/notice-lifetime.ts";
 import { type AccountSlice, initialAccountState, wireAccount } from "../features/account/index.ts";
 import { type ActivitySlice, wireActivity } from "../features/activity/index.ts";
-import { type AppUpdateSlice, wireAppUpdates } from "../features/appupdate/index.ts";
-import { WhatsNew } from "../features/appupdate/whats-new.ts";
 import { type AssistantController, wireAssistant } from "../features/assistant/index.ts";
 import { type BackgroundSlice, wireBackground } from "../features/background/index.ts";
 import {
@@ -31,7 +24,7 @@ import {
   googleConfig,
   wireBackup,
 } from "../features/backup/index.ts";
-import { BoardCardsSlice, BoardWidth } from "../features/board/index.ts";
+import { BoardCardsSlice } from "../features/board/index.ts";
 import {
   type ClientScopeSlice,
   Clients,
@@ -42,14 +35,12 @@ import {
 import {
   type BudgetsSlice,
   type ClientBudgetsSlice,
-  DataScopeController,
   hubHostScope,
   localDay,
   wireBudgets,
   wireClientBudgets,
 } from "../features/costs/index.ts";
 import { type HistorySlice, wireHistory } from "../features/history/index.ts";
-import { HomeCache, UiModeSlice } from "../features/home/index.ts";
 import {
   type ConnectionStatus,
   type HealthSlice,
@@ -72,9 +63,6 @@ import {
 } from "../features/hosts/index.ts";
 import { type InboxSlice, wireInbox } from "../features/inbox/index.ts";
 import { type MessagingSlice, wireMessaging } from "../features/messaging/index.ts";
-import { AwayClock } from "../features/needs-you/away.ts";
-import { QuietSnoozeSlice } from "../features/needs-you/quiet-snooze.ts";
-import { NotifyPreferences } from "../features/notifications/index.ts";
 import { type PermissionsSlice, wirePermissions } from "../features/permissions/index.ts";
 import { type PersonasSlice, wirePersonas } from "../features/personas/index.ts";
 import {
@@ -88,13 +76,10 @@ import { type RoiSlice, wireRoi } from "../features/roi/index.ts";
 import { RoiSettings } from "../features/roi/roi-settings.ts";
 import { RunEnvSlice } from "../features/runenv/store.ts";
 import {
-  browserClockDeps,
-  CacheTimerSettings,
   type ExternalSessionsSlice,
   type FinishedSlice,
   HISTORY_LIST_LIMIT,
   hubRows,
-  NewSessionPrefs,
   type SessionActions,
   type SessionCommandsSlice,
   type SessionListsSlice,
@@ -102,7 +87,6 @@ import {
   type SessionSubscriptions,
   type SessionsSlice,
   SessionViews,
-  SharedClock,
   type SummariesSlice,
   sessionKey,
   takeHubHost,
@@ -116,21 +100,14 @@ import {
   wireSessions,
   wireSummaries,
 } from "../features/sessions/index.ts";
-import { type SettingsSlice, wireSettings } from "../features/settings/index.ts";
 import { SetupProbes, SetupSettings } from "../features/setup/index.ts";
 import { type SnippetsSlice, wireSnippets } from "../features/snippets/index.ts";
 import { type SshSlice, wireSsh } from "../features/ssh/index.ts";
-import { TabScopeController } from "../features/tabs/tab-scope.ts";
-import { TabOrderController } from "../features/tabs/tab-switcher.ts";
 import type { Navigation, Tabs } from "../features/tabs/tabs.ts";
 import { TeamsSlice } from "../features/teams/store.ts";
 import { SessionMover } from "../features/teleport/teleport.ts";
 import { type TerminalsSlice, wireTerminals } from "../features/terminal/index.ts";
 import { isLocalUrl } from "../features/terminal/terminal.ts";
-import {
-  TerminalFontController,
-  TerminalReaderSetting,
-} from "../features/terminal/terminal-view.ts";
 import { type TraySlice, wireTray } from "../features/tray/index.ts";
 import {
   type DeliveryRefusal,
@@ -145,7 +122,6 @@ import {
   wireVaultRules,
   wireVaultSecrets,
 } from "../features/vault/index.ts";
-import { ViewPrefsSlice } from "../features/viewprefs/index.ts";
 import { type WatchSlice, wireWatch } from "../features/watch/index.ts";
 import { WebhookFeed } from "../features/webhook/webhook-feed.ts";
 import { Webhooks } from "../features/webhook/webhooks.ts";
@@ -153,7 +129,6 @@ import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n } from "../i18n/index.ts";
 import type { Platform, WebhookRequest, WebhookResponse } from "../platform/types.ts";
-import { AppLog } from "./app-log.ts";
 import type {
   Answer,
   AppState,
@@ -164,6 +139,7 @@ import type {
   ReleaseNotesResult,
 } from "./app-state.ts";
 import { initialAppState, needsYou } from "./app-state.ts";
+import { composeShell, type ShellSlices } from "./compose/shell.ts";
 import type { AppKernel, HostCommandOptions, HostCommandType, HostResult } from "./kernel.ts";
 import { hasFeature } from "./version.ts";
 
@@ -171,8 +147,6 @@ import { hasFeature } from "./version.ts";
 export type {
   Answer,
   AppState,
-  AppStoreOptions,
-  GateRef,
   HistoryFilter,
   HostView,
   NeedsYouState,
@@ -227,9 +201,16 @@ function describeError(error: unknown): string {
 }
 
 /**
+ * The slices each composition module builds are the store's fields: the constructor assigns them
+ * (`Object.assign`), and the merged interface gives them their types (#2376).
+ */
+export interface AppStore extends ShellSlices {}
+
+/**
  * All app state in one framework-free store: hosts and their connections, session timelines and
  * the current selection. React reads it through `useSyncExternalStore`.
  */
+// biome-ignore lint/suspicious/noUnsafeDeclarationMerging: the compose modules build these fields; each returns a typed record, so none is left unset
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -299,13 +280,10 @@ export class AppStore {
   readonly quota: QuotaSlice;
   /** The Claude account each host is signed in to (phase 34, #1596). */
   readonly account: AccountSlice;
-  /** "Not stuck" on a quiet session (`features/needs-you/quiet-snooze.ts`). */
-  readonly quietSnooze: QuietSnoozeSlice;
   /** A card's run environment: run.yaml, trust, start and stop (`features/runenv/store.ts`). */
   readonly runEnv: RunEnvSlice;
   /** A host's daemon update: asked for, checked, and watched until it comes back (#1596). */
   readonly hostUpdate: HostUpdateSlice;
-  readonly settings: SettingsSlice;
   /** The saved commands and prompts, the hosts' and the app's own (phase 18, #1596). */
   readonly snippets: SnippetsSlice;
 
@@ -329,6 +307,26 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
+    Object.assign(
+      this,
+      composeShell(this.kernel, {
+        platform,
+        appUpdateIntervalMs: () => this.options.appUpdateIntervalMs,
+        updateHost: (hostId, change) => this.updateHost(hostId, change),
+        formatTime: (iso) => this.formatTime(iso),
+        secretValues: () => this.scan.values(),
+        openSearch: () => this.history.openSearch(),
+        palette: {
+          loadProjects: (hostId) => this.projectList.load(hostId),
+          loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
+          loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
+          loadPersonas: (hostId) => this.personas.load(hostId),
+          listSnippets: (hostId) => nullOnError(this.dispatch(hostId, "snippets.list", {})),
+          keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
+          refreshHub: () => this.refreshHub(),
+        },
+      }),
+    );
     this.system = new SystemSlice({
       platform,
       localHost: (hostId) => {
@@ -375,16 +373,6 @@ export class AppStore {
         }),
     });
     this.account = wireAccount(this.kernel);
-    this.quietSnooze = new QuietSnoozeSlice({
-      snoozes: () => this.state.quietSnooze,
-      setSnoozes: (quietSnooze) => this.update({ quietSnooze }),
-      storage: platform.storage,
-      now: () => this.now(),
-      key: sessionKey,
-      t: () => this.i18n.t,
-      formatTime: (iso) => this.formatTime(iso),
-      success: (text) => this.success(text),
-    });
     this.runEnv = new RunEnvSlice({
       state: () => this.state,
       update: (patch) => this.update(patch),
@@ -416,22 +404,6 @@ export class AppStore {
       remember: (hostId, team) => this.summaries.rememberTeam(hostId, team),
       notify: (notification, route) => this.inbox.notify(notification, route),
       t: () => this.i18n.t,
-    });
-    this.settings = wireSettings(this.kernel, {
-      platform,
-      onShortcut: () => this.history.openSearch(),
-    });
-    this.uiModes = new UiModeSlice({
-      hosts: () => this.state.hosts,
-      selectedHostId: () => this.state.selected?.hostId ?? null,
-      choices: () => this.state.uiChoices,
-      storage: platform.storage,
-      setChoices: (uiChoices) => this.update({ uiChoices }),
-      setHostUi: (hostId, patch) => this.hostCommand(hostId, "ui.set", { ...patch, confirm: true }),
-      recordHostUi: (hostId, ui) =>
-        this.updateHost(hostId, (h) =>
-          h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h,
-        ),
     });
     this.hostTabs = HostTabs.restore(
       storedWorkspace(platform.storage),
@@ -491,8 +463,6 @@ export class AppStore {
       fail: (error, text) => this.fail(error, text),
       success: (text) => this.success(text),
     });
-    this.homeCache = new HomeCache(platform.storage);
-    this.whatsNew = new WhatsNew(platform.storage);
     this.clients = new Clients(platform, { onChange: () => this.clientScope.sync() });
     this.clientScope = wireClientScope(this.kernel, {
       storage: platform.storage,
@@ -547,32 +517,17 @@ export class AppStore {
       settings: () => this.roi,
     });
     this.projectList = wireProjects(this.kernel);
-    this.palette = new PaletteSlice({
-      hosts: () => this.state.hosts,
-      storage: platform.storage,
-      loadProjects: (hostId) => this.projectList.load(hostId),
-      loadBoard: (hostId, projectId) => this.loadBoard(hostId, projectId),
-      loadSshTargets: (hostId) => this.ssh.loadTargets(hostId),
-      loadPersonas: (hostId) => this.personas.load(hostId),
-      listSnippets: (hostId) => nullOnError(this.dispatch(hostId, "snippets.list", {})),
-      keepSnippets: (hostId, snippets) => this.snippets.keep(hostId, snippets),
-      refreshHub: () => this.refreshHub(),
-    });
     this.prWatch = wireWatch(this.kernel, {
       feed: (host, title, before, watch) => this.webhookFeed.watch(host, title, before, watch),
       notify: (notification, route, fallbackUrl, source) =>
         this.inbox.notify(notification, route, fallbackUrl, source),
     });
     this.usage = new VaultUsageLog(platform);
-    this.theme = new ThemeController(platform);
     this.assistant = wireAssistant(this.kernel, {
       storage: platform.storage,
       api: platform.assistant,
       language: () => this.i18n.lang,
     });
-    this.density = new DensityController(platform.storage);
-    this.terminalFont = new TerminalFontController(platform.storage);
-    this.terminalReader = new TerminalReaderSetting(platform.storage);
     this.setup = new SetupSettings(platform.storage);
     this.setupProbes = new SetupProbes({
       host: (hostId) => {
@@ -584,24 +539,6 @@ export class AppStore {
       rememberProjects: (hostId, projects) => this.projectList.remember(hostId, projects),
       probes: () => this.state.setupProbes,
       setProbes: (setupProbes) => this.update({ setupProbes }),
-    });
-    this.cacheTimer = new CacheTimerSettings(platform.storage);
-    this.clock = new SharedClock(
-      browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
-    );
-    this.tabOrder = new TabOrderController(platform.storage);
-    this.tabScope = new TabScopeController(platform.storage);
-    this.sidebarFold = new SidebarFoldController(platform.storage);
-    this.dataScope = new DataScopeController(platform.storage);
-    this.shellPrefs = new ShellPrefs(platform.storage);
-    this.newSessionPrefs = new NewSessionPrefs(platform.storage);
-    this.boardWidth = new BoardWidth(platform.storage);
-    this.notifyPrefs = new NotifyPreferences(platform.storage);
-    this.appUpdates = wireAppUpdates(this.kernel, {
-      updater: () => this.platform.updater,
-      intervalMs: () => this.options.appUpdateIntervalMs,
-      log: (level, source, message) => this.appLog.log(level, source, message),
-      quitNow: () => this.platform.quitNow(),
     });
     this.terminals = wireTerminals(this.kernel, {
       showTab: (hostId, terminalId) =>
@@ -623,7 +560,6 @@ export class AppStore {
       spawn: (program, args) => this.platform.terminal.open(program, args),
       describeError,
     });
-    this.viewPrefs = new ViewPrefsSlice({ storage: platform.storage });
     this.roster = new HostRosterSlice({
       secrets: platform.secrets,
       hosts: () => this.state.hosts,
@@ -688,8 +624,6 @@ export class AppStore {
       scheduler: this.backupScheduler,
       vaultWorkFactor: options.vaultWorkFactor,
     });
-    this.awayClock = new AwayClock(platform.storage, () => this.now());
-    this.appLog = new AppLog({ sink: platform.logs, values: () => this.scan.values() });
     this.commands = wireSessionCommands(this.kernel, {
       opened: (hostId, sessionId) => {
         this.select(hostId, sessionId);
@@ -760,70 +694,36 @@ export class AppStore {
     });
   }
 
-  /** Light, dark or the system's (phase 10). */
-  readonly theme: ThemeController;
   /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
   readonly assistant: AssistantController;
   /** Where a wand with no provider sends the person: Settings, section Assistant (issue #162). */
   readonly openAssistantSettings = (): void =>
     this.router.push({ name: "settings", section: "assistant" });
-  readonly density: DensityController;
-  readonly terminalFont: TerminalFontController;
   /** Issue #107: the view each session tab was on, and the page now on screen. */
   readonly sessionViews = new SessionViews();
-  readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
   /** #1596: what the setup checklist asked each host. */
   private readonly setupProbes: SetupProbes;
-  /** The prompt cache countdown on idle sessions: off by default (issue #159). */
-  readonly cacheTimer: CacheTimerSettings;
-  /** One 1-second clock for every countdown on screen. */
-  readonly clock: SharedClock;
-  /** How Ctrl+Tab orders the tabs (issue #148). */
-  readonly tabOrder: TabOrderController;
-  /** Whether the tab row shows one host's tabs or every host's (issue #644). */
-  readonly tabScope: TabScopeController;
-  readonly sidebarFold: SidebarFoldController;
-  /** Whose data Home (and later Sessions, Costs, Board) show: every host or one (#126). */
-  readonly dataScope: DataScopeController;
   /** The project keys any screen has read, for one label per project everywhere (issue #881). */
   readonly projectKeys = new ProjectKeys();
-  /** What the shell hides: the New and Beta badges, What's new (issue #282). */
-  readonly shellPrefs: ShellPrefs;
-  /** What the New session form starts from: the last mode, model and folder (issue #1135). */
-  readonly newSessionPrefs: NewSessionPrefs;
-  /** The board columns' width, one for all, kept across starts (issue #161). */
-  readonly boardWidth: BoardWidth;
-  /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
-  readonly notifyPrefs: NotifyPreferences;
   /** The notification center (the bell), the taskbar badge, the OS toast and the sound (#1596). */
   readonly inbox: InboxSlice;
   /** The board cards the app has seen: sent, answered with, or loaded with a board (#1596). */
   private readonly boardCards: BoardCardsSlice;
   /** The teleport's channels and moves (#1596); the connection is read when a move asks. */
   readonly mover = new SessionMover((hostId) => this.link.connection(hostId));
-  /** The app's own update: the check, the background download, the install and the one on quit (#1596). */
-  readonly appUpdates: AppUpdateSlice;
   /** Which hosts the app has: adding, removing, naming, pairing again and reconnecting (#1596). */
   readonly roster: HostRosterSlice;
-  /** Which mode the window shows, simple or full, per host (phase 33). */
-  readonly uiModes: UiModeSlice;
   /** The terminals of every host: their commands, tabs, "Claude aqui" and the close that asks (#1596). */
   readonly terminals: TerminalsSlice;
-  /** How the person left the windows: widths, folds, hub view and filter, tile layout (#1596). */
-  readonly viewPrefs: ViewPrefsSlice;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** Issue #1264: scheduled backups to a picked folder (the desktop app only). */
   readonly backupScheduler: BackupScheduler;
   /** The whole-app backup file: save, read, compare and restore (#1596). */
   readonly backup: BackupSlice;
-  /** Issue #1344: when the app was last active, read before this start writes its own. */
-  private readonly awayClock: AwayClock;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
-  /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
-  readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
   readonly router: Navigation;
   /** Each host's own tabs and the shared screens (issue #644). */
@@ -1499,12 +1399,6 @@ export class AppStore {
   readonly scan: VaultScanSlice;
   /** The machine's dialogs, clipboard, log file and a local host's files (#1596). */
   readonly system: SystemSlice;
-  /** What the command palette loads and the entries it used lately (#1596). */
-  readonly palette: PaletteSlice;
-  /** Home's last numbers per host set and period (issue #607). */
-  readonly homeCache: HomeCache;
-  /** Whether the release notes of an update were not opened yet (issue #125). */
-  readonly whatsNew: WhatsNew;
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
   /** Phase 36: the rates, the plan price and the people, kept by the app. */

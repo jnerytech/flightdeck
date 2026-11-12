@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parseFeature, scenarioTitlesOfSpec } from "../../lib/gherkin-lite.ts";
+import { parseFeature, scenarioTitlesOfSpec } from "../../lib/tests/gherkin-lite.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const DIR = join(ROOT, "scripts/e2e/bdd/roi");

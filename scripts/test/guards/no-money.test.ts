@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { COST_FIELDS, MONEY_WORDS, moneyFieldsIn } from "../../lib/no-money.ts";
+import { COST_FIELDS, MONEY_WORDS, moneyFieldsIn } from "../../lib/guards/no-money.ts";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 // Issue #1600: the protocol is split by context, so every file of packages/protocol/src is read.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { deployPlan, parseDeployHosts, runDeploy } from "../../lib/deploy.ts";
+import { deployPlan, parseDeployHosts, runDeploy } from "../../lib/release/deploy.ts";
 
 const HOSTS = JSON.stringify({
   pi: { ssh: "ubuntu@orange", target: "linux-arm64", path: "~/.local/bin/flightdeckd" },
