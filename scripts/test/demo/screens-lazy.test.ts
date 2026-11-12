@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { staticImports } from "../../lib/bundle-reach.ts";
 
 const UI = resolve(import.meta.dir, "../../../apps/desktop/src/ui");
@@ -67,12 +67,21 @@ const specifierOf = (name: string) => {
 
 describe("screens-lazy: the secondary screens are not in the entry chunk", () => {
   const read = (file: string) => readFileSync(resolve(UI, file), "utf8");
+  const SRC = resolve(UI, "..");
+  // A specifier as the absolute file it names, whether it is written with `@/` or relative.
+  const target = (from: string, specifier: string) =>
+    specifier.startsWith("@/")
+      ? resolve(SRC, specifier.slice(2))
+      : resolve(dirname(from), specifier);
 
   test("no file the entry loads imports a lazy screen statically", () => {
-    const loaders = ["Screens.tsx", "App.tsx", "Sidebar.tsx"];
+    const loaders = ["Screens.tsx", "App.tsx", "../features/shell/sidebar.tsx"].map((file) =>
+      resolve(UI, file),
+    );
+    const lazyFiles = LAZY_SCREENS.map((name) => resolve(UI, specifierOf(name)));
     const eager = loaders.flatMap((file) =>
-      staticImports(read(file))
-        .filter((specifier) => LAZY_SCREENS.some((name) => specifier === specifierOf(name)))
+      staticImports(readFileSync(file, "utf8"))
+        .filter((specifier) => lazyFiles.includes(target(file, specifier)))
         .map((specifier) => `${file}: ${specifier}`),
     );
     expect(eager).toEqual([]);
