@@ -132,7 +132,7 @@ export function HistoryList(
 
   useEffect(() => {
     let live = true;
-    void store.historyList(hostId, { ...filter, hideAutomated }).then((result) => {
+    void store.history.list(hostId, { ...filter, hideAutomated }).then((result) => {
       if (!live || !result) return;
       setSessions(result.sessions);
       setAutomatedCount(result.automatedCount ?? 0);

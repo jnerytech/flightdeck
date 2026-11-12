@@ -89,8 +89,8 @@ export function TranscriptReader(
     // Opened on a hit or a cursor it starts there; opened plainly it starts on the latest messages.
     const latest = target.cursor === undefined && target.focusUuid === undefined;
     let reason: string | undefined;
-    void store
-      .historyGet(target.hostId, target.claudeSessionId, target.cursor, latest, (why) => {
+    void store.history
+      .get(target.hostId, target.claudeSessionId, target.cursor, latest, (why) => {
         reason = why;
       })
       .then((page) => {
@@ -154,7 +154,7 @@ export function TranscriptReader(
   const loadPage = async (cursor: string, where: "before" | "after") => {
     if (loading.current) return;
     loading.current = true;
-    const page = await store.historyGet(target.hostId, target.claudeSessionId, cursor);
+    const page = await store.history.get(target.hostId, target.claudeSessionId, cursor);
     loading.current = false;
     if (!page) return;
     setMessages((list) => merge(list, page.messages, where));
@@ -180,7 +180,7 @@ export function TranscriptReader(
 
   const resume = async (force: boolean) => {
     setConfirming(false);
-    const sessionId = await store.resumeHistory(target.hostId, target.claudeSessionId, force);
+    const sessionId = await store.history.resume(target.hostId, target.claudeSessionId, force);
     if (sessionId) props.onResumed();
   };
 
