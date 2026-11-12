@@ -5,7 +5,6 @@
   "apps/daemon/src/maintenance/maintenance.ts": 1,
   "apps/daemon/src/personas/store.ts": 1,
   "apps/desktop/src/demo/boot.ts": 3,
-  "apps/desktop/src/features/agentcfg/frontmatter.ts": 1,
   "apps/desktop/src/features/costs/page.tsx": 2,
   "apps/desktop/src/features/palette/palette-store.ts": 1,
   "apps/desktop/src/features/sessions/sessions-hub.tsx": 1,
