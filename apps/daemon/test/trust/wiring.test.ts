@@ -2,7 +2,11 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { EventStore } from "../../src/store/event-store.ts";
-import { createProjectTrust, type ProjectTrustDeps } from "../../src/trust/wiring.ts";
+import {
+  createProjects,
+  createProjectTrust,
+  type ProjectTrustDeps,
+} from "../../src/trust/wiring.ts";
 import { tempDir } from "../support/helpers.ts";
 
 /**
@@ -70,5 +74,32 @@ describe("trust-wiring: the trust the daemon builds (#1593)", () => {
       (await trustForKnowledge(worktree)).trusted,
       (await trustForKnowledge(root)).trusted,
     ]).toEqual([true, false]);
+  });
+});
+
+describe("trust-wiring: the projects group as a module (#1593)", () => {
+  test("the module serves the keys, the trust (set tells the live sessions) and find", async () => {
+    const { projectTrust, project } = setup(withoutCard);
+    let changes = 0;
+    const manager = { staleSessions: () => 2, trustChanged: () => void changes++ };
+    const keys = { resolve: async (cwd: string) => `key:${cwd}` };
+    const [module] = createProjects({ keys, projectTrust, manager }).modules;
+    const projects = module.server?.projects;
+    const set = projects?.trust?.set(project, true);
+    expect({
+      key: await projects?.keyOf?.(project),
+      warm: await projects?.warmKey?.(project),
+      trusted: set?.trusted,
+      staleSessions: set?.staleSessions,
+      changes,
+      find: projects?.find,
+    }).toEqual({
+      key: `key:${project}`,
+      warm: `key:${project}`,
+      trusted: true,
+      staleSessions: 2,
+      changes: 1,
+      find: true,
+    });
   });
 });
