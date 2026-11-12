@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { humanTokens, personRows } from "@/lib/roi-people";
 import { useStoreSlice } from "@/lib/use-store";
 import { periodRange, usd } from "../costs/index.ts";
+import { humanTokens, personRows } from "./roi-people.ts";
 
 const DASH = "—";
 const REFRESH_MS = 30_000;

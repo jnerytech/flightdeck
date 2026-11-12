@@ -14,7 +14,6 @@ import {
   SecretScanner,
 } from "@flightdeck/protocol";
 import type { AssistantKeyProvider, AssistantPlatform } from "@/platform/types";
-import { RunGate } from "../features/assistant/wand-state.ts";
 import {
   type AssistantPrefs,
   confirmHost,
@@ -27,6 +26,7 @@ import {
   resolveProvider,
   writePrefs,
 } from "./assistant-prefs.ts";
+import { RunGate } from "./wand-state.ts";
 
 /** What a failed call carries to the screen: a reason it translates, and the values the text fills in. */
 export interface AssistantFailure {
