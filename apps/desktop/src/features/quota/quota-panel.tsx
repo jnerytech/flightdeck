@@ -6,7 +6,7 @@ import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore, HostView } from "../../lib/app-store.ts";
 import { HISTORY_HOURS, projectionText, quotaBars, quotaGroups, SHOWN } from "../../lib/quota.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hasFeature, hostsWith } from "../../lib/version.ts";
 import { QuotaGuard } from "./quota-guard.tsx";
 
 // The native meter, drawn with the state tokens (WebKit/Blink and Gecko pseudo-elements).
@@ -128,10 +128,8 @@ const QUOTAPANEL_KEYS = ["quota", "hosts", "account"] as const;
 export const QuotaPanel = memo(function QuotaPanel(props: { store: AppStore }) {
   const { store } = props;
   const state = useStoreSlice(store, QUOTAPANEL_KEYS);
-  const hosts = state.hosts.filter(
-    // Only hosts that announce the quota (phase 7 or later).
-    (host) => host.status === "online" && hasFeature(host.hostInfo?.features, "quota", false),
-  );
+  // Only hosts that announce the quota (phase 7 or later).
+  const hosts = hostsWith(state.hosts, "quota");
   // Which account each host is signed in to: hosts that share one share its quota, so one card.
   const watching = hosts
     .filter((host) => hasFeature(host.hostInfo?.features, "account", false))

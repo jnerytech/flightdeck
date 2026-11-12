@@ -1,7 +1,7 @@
 import type { Density } from "../../lib/density.ts";
 import type { HubFilter, HubRow } from "../../lib/hub.ts";
 import type { WorktreeFilter } from "../../lib/project-tree.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 
 /** What the hub reads of a host. */
 export interface HubHost {
@@ -47,12 +47,10 @@ export function costAsks(
   hosts: readonly HubHost[],
   rows: readonly Pick<HubRow, "hostId" | "claudeSessionId">[],
 ): Array<[string, string[]]> {
-  return hosts
-    .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
-    .map((h) => [
-      h.id,
-      rows.flatMap((r) => (r.hostId === h.id && r.claudeSessionId ? [r.claudeSessionId] : [])),
-    ]);
+  return hostsWith(hosts, "costs").map((h) => [
+    h.id,
+    rows.flatMap((r) => (r.hostId === h.id && r.claudeSessionId ? [r.claudeSessionId] : [])),
+  ]);
 }
 
 /** Changes when a host comes online or goes offline, or when its session count or info changes. */

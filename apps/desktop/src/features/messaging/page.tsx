@@ -14,7 +14,7 @@ import type { AppStore } from "../../lib/app-store.ts";
 import { sessionProjectKeys } from "../../lib/client-scope.ts";
 import { hubRows } from "../../lib/hub.ts";
 import type { Route } from "../../lib/router.ts";
-import { hasFeature } from "../../lib/version.ts";
+import { hostsWith } from "../../lib/version.ts";
 
 const STATUSES: MessageStatus[] = ["delivered", "queued", "refused", "expired", "pending"];
 const TONE: Record<MessageStatus, string> = {
@@ -61,9 +61,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
-  const hosts = state.hosts.filter(
-    (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "messaging", false),
-  );
+  const hosts = hostsWith(state.hosts, "messaging");
   const hostKey = hosts.map((h) => h.id).join("|");
 
   const load = useCallback(async () => {
