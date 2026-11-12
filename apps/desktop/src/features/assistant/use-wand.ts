@@ -1,8 +1,8 @@
 import { type AssistantKind, type CommitSource, KIND_SPECS } from "@flightdeck/protocol";
 import type * as React from "react";
 import { useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from "react";
-import type { AssistantController } from "@/lib/assistant";
-import type { ResolvedProvider } from "@/lib/assistant-prefs";
+import type { AssistantController } from "./assistant.ts";
+import type { ResolvedProvider } from "./assistant-prefs.ts";
 import { failureOf } from "./refusal-text.ts";
 import { type WandState, wandReduce } from "./wand-state.ts";
 
