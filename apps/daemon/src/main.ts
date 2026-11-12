@@ -58,7 +58,11 @@ import { UsageLedger } from "./quota/usage.ts";
 import { createQuota } from "./quota/wiring.ts";
 import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
-import { createMemoryGate, createResources, type MemoryGateDeps } from "./resources/wiring.ts";
+import {
+  createMemoryGate,
+  createResourcesModule,
+  type MemoryGateDeps,
+} from "./resources/wiring.ts";
 import { createReview } from "./review/wiring.ts";
 import { RoiSignals } from "./roi/signals.ts";
 import { RoiSummarizer } from "./roi/summary.ts";
@@ -558,6 +562,16 @@ export async function startDaemon(
       options,
     }),
   );
+  await domains.add(
+    await createResourcesModule({
+      dataDir: config.dataDir,
+      sessions: manager.list.bind(manager),
+      // With the terminal off there are none to list, and the read must not fail on it (#937).
+      terminals: () => (terminals.enabled ? terminals.list() : []),
+      pidOf: terminals.pidOf.bind(terminals),
+      ...present({ proc: options.resourcesProc }),
+    }),
+  );
   const server = startServer({
     ...domains.server(),
     ...(options.projectGit ? { projectGit: options.projectGit } : {}),
@@ -617,14 +631,6 @@ export async function startDaemon(
     central,
     fileLog,
     releases: new ReleaseFeed({ url: RELEASES_URL }),
-    resources: await createResources({
-      dataDir: config.dataDir,
-      sessions: manager.list.bind(manager),
-      // With the terminal off there are none to list, and the read must not fail on it (#937).
-      terminals: () => (terminals.enabled ? terminals.list() : []),
-      pidOf: terminals.pidOf.bind(terminals),
-      ...present({ proc: options.resourcesProc }),
-    }),
     worktrees: createWorktrees({
       board,
       sessions: manager,
